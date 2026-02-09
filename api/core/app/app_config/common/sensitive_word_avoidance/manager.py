@@ -25,25 +25,25 @@ class SensitiveWordAvoidanceConfigManager:
             config["sensitive_word_avoidance"] = {"enabled": False}
 
         if not isinstance(config["sensitive_word_avoidance"], dict):
-            raise ValueError("sensitive_word_avoidance must be of dict type")
+            raise ValueError("sensitive_word_avoidance 必须为字典类型")
 
         if "enabled" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["enabled"]:
             config["sensitive_word_avoidance"]["enabled"] = False
 
         if config["sensitive_word_avoidance"]["enabled"]:
             if not config["sensitive_word_avoidance"].get("type"):
-                raise ValueError("sensitive_word_avoidance.type is required")
+                raise ValueError("sensitive_word_avoidance.type 为必填项")
 
             if not only_structure_validate:
                 typ = config["sensitive_word_avoidance"]["type"]
                 if not isinstance(typ, str):
-                    raise ValueError("sensitive_word_avoidance.type must be a string")
+                    raise ValueError("sensitive_word_avoidance.type 必须为字符串")
 
                 sensitive_word_avoidance_config = config["sensitive_word_avoidance"].get("config")
                 if sensitive_word_avoidance_config is None:
                     sensitive_word_avoidance_config = {}
                 if not isinstance(sensitive_word_avoidance_config, dict):
-                    raise ValueError("sensitive_word_avoidance.config must be a dict")
+                    raise ValueError("sensitive_word_avoidance.config 必须为字典")
 
                 ModerationFactory.validate_config(name=typ, tenant_id=tenant_id, config=sensitive_word_avoidance_config)
 

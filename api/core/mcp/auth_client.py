@@ -106,7 +106,7 @@ class MCPClientWithAuthRetry(MCPClient):
             # Session is closed here, before we update headers
             token = self.provider_entity.retrieve_tokens()
             if not token:
-                raise MCPAuthError("Authentication failed - no token received")
+                raise MCPAuthError("认证失败 - 未收到令牌")
 
             # Update headers with new token
             self.headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"

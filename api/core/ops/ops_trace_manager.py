@@ -287,11 +287,11 @@ class OpsTraceManager:
         stmt = select(App).where(App.id == app_id)
         app = db.session.scalar(stmt)
         if not app:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
 
         tenant_id = app.tenant_id
         if trace_config_data.tracing_config is None:
-            raise ValueError("Tracing config cannot be None.")
+            raise ValueError("追踪配置不能为 None。")
         decrypt_tracing_config = cls.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -390,7 +390,7 @@ class OpsTraceManager:
 
         app_config: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
         app_config.tracing = json.dumps(
             {
                 "enabled": enabled,
@@ -408,7 +408,7 @@ class OpsTraceManager:
         """
         app: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
         if not app.tracing:
             return {"enabled": False, "tracing_provider": None}
         app_trace_config = json.loads(app.tracing)
@@ -548,7 +548,7 @@ class TraceTask:
         workflow_run_repo = self._get_workflow_run_repo()
         workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(run_id=workflow_run_id)
         if not workflow_run:
-            raise ValueError("Workflow run not found")
+            raise ValueError("工作流运行未找到")
 
         workflow_id = workflow_run.workflow_id
         tenant_id = workflow_run.tenant_id

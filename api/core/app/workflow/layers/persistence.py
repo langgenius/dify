@@ -304,7 +304,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _get_execution_id(self) -> str:
         workflow_execution_id = self._system_variables().get(SystemVariableKey.WORKFLOW_EXECUTION_ID)
         if not workflow_execution_id:
-            raise ValueError("workflow_execution_id must be provided in system variables for pause/resume flows")
+            raise ValueError("暂停/恢复流需要在系统变量中提供 workflow_execution_id")
         return str(workflow_execution_id)
 
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
@@ -323,7 +323,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _get_workflow_execution(self) -> WorkflowExecution:
         if self._workflow_execution is None:
-            raise ValueError("workflow execution not initialized")
+            raise ValueError("工作流执行未初始化")
         return self._workflow_execution
 
     def _get_node_execution(self, node_execution_id: str) -> WorkflowNodeExecution:

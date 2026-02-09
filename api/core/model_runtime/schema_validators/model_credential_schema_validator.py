@@ -17,7 +17,7 @@ class ModelCredentialSchemaValidator(CommonValidator):
         """
 
         if self.model_credential_schema is None:
-            raise ValueError("Model credential schema is None")
+            raise ValueError("模型凭据架构为 None")
 
         # get the credential_form_schemas in provider_credential_schema
         credential_form_schemas = self.model_credential_schema.credential_form_schemas

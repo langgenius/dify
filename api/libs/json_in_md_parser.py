@@ -28,7 +28,7 @@ def parse_json_markdown(json_string: str):
         extracted_content = json_string[start_index:end_index].strip()
         parsed = json.loads(extracted_content)
     else:
-        raise ValueError("could not find json block in the output.")
+        raise ValueError("无法在输出中找到 JSON 块。")
 
     return parsed
 

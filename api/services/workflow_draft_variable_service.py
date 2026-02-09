@@ -673,7 +673,7 @@ def _batch_upsert_draft_variable(
             stmt = stmt.prefix_with("IGNORE")
 
     if policy not in [_UpsertPolicy.OVERWRITE, _UpsertPolicy.IGNORE]:
-        raise Exception("Invalid value for update policy.")
+        raise Exception("无效的更新策略值。")
     session.execute(stmt)
 
 
@@ -827,7 +827,7 @@ class DraftVariableSaver:
         for item in updated_variables:
             selector = item.selector
             if len(selector) < SELECTORS_LENGTH:
-                raise Exception("selector too short")
+                raise Exception("选择器过短")
             # NOTE(QuantumGhost): only the following two kinds of variable could be updated by
             # VariableAssigner: ConversationVariable and iteration variable.
             # We only save conversation variable here.

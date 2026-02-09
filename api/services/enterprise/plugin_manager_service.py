@@ -40,14 +40,14 @@ class PluginManagerService:
                 "POST", "/check-credential-policy-compliance", json=body.model_dump()
             )
             if not isinstance(ret, dict) or "result" not in ret:
-                raise ValueError("Invalid response format from plugin manager API")
+                raise ValueError("插件管理 API 响应格式无效")
         except Exception as e:
             raise CredentialPolicyViolationError(
                 f"error occurred while checking credential policy compliance: {e}"
             ) from e
 
         if not ret.get("result", False):
-            raise CredentialPolicyViolationError("Credentials not available: Please use ENTERPRISE global credentials")
+            raise CredentialPolicyViolationError("凭据不可用：请使用企业全局凭据")
 
         logging.debug(
             "Credential policy compliance checked for %s with credential %s, result: %s",

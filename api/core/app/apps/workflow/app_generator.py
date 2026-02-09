@@ -369,10 +369,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param streaming: is streamed
         """
         if not node_id:
-            raise ValueError("node_id is required")
+            raise ValueError("node_id 为必填项")
 
         if args.get("inputs") is None:
-            raise ValueError("inputs is required")
+            raise ValueError("inputs 为必填项")
 
         # convert to app config
         app_config = WorkflowAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
@@ -454,10 +454,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param streaming: is streamed
         """
         if not node_id:
-            raise ValueError("node_id is required")
+            raise ValueError("node_id 为必填项")
 
         if args.inputs is None:
-            raise ValueError("inputs is required")
+            raise ValueError("inputs 为必填项")
 
         # convert to app config
         app_config = WorkflowAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
@@ -547,7 +547,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     )
                 )
                 if workflow is None:
-                    raise ValueError("Workflow not found")
+                    raise ValueError("工作流未找到")
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

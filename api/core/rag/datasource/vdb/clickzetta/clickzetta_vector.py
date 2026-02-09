@@ -56,19 +56,19 @@ class ClickzettaConfig(BaseModel):
         Validate the configuration values.
         """
         if not values.get("username"):
-            raise ValueError("config CLICKZETTA_USERNAME is required")
+            raise ValueError("配置 CLICKZETTA_USERNAME 为必填项")
         if not values.get("password"):
-            raise ValueError("config CLICKZETTA_PASSWORD is required")
+            raise ValueError("配置 CLICKZETTA_PASSWORD 为必填项")
         if not values.get("instance"):
-            raise ValueError("config CLICKZETTA_INSTANCE is required")
+            raise ValueError("配置 CLICKZETTA_INSTANCE 为必填项")
         if not values.get("service"):
-            raise ValueError("config CLICKZETTA_SERVICE is required")
+            raise ValueError("配置 CLICKZETTA_SERVICE 为必填项")
         if not values.get("workspace"):
-            raise ValueError("config CLICKZETTA_WORKSPACE is required")
+            raise ValueError("配置 CLICKZETTA_WORKSPACE 为必填项")
         if not values.get("vcluster"):
-            raise ValueError("config CLICKZETTA_VCLUSTER is required")
+            raise ValueError("配置 CLICKZETTA_VCLUSTER 为必填项")
         if not values.get("schema_name"):
-            raise ValueError("config CLICKZETTA_SCHEMA is required")
+            raise ValueError("配置 CLICKZETTA_SCHEMA 为必填项")
         return values
 
 
@@ -424,7 +424,7 @@ class ClickzettaVector(BaseVector):
     def _execute_write(self, func, *args, **kwargs):
         """Execute a write operation through the queue."""
         if ClickzettaVector._write_queue is None:
-            raise RuntimeError("Write queue not initialized")
+            raise RuntimeError("写入队列未初始化")
 
         result_queue: queue.Queue[tuple[bool, Any]] = queue.Queue()
         ClickzettaVector._write_queue.put((func, args, kwargs, result_queue))

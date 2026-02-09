@@ -76,7 +76,7 @@ class WebhookTriggerApi(Resource):
             )
 
             if not webhook_trigger:
-                raise NotFound("Webhook trigger not found for this node")
+                raise NotFound("未找到此节点的 Webhook 触发器。")
 
             return webhook_trigger
 
@@ -148,7 +148,7 @@ class AppTriggerEnableApi(Resource):
             ).scalar_one_or_none()
 
             if not trigger:
-                raise NotFound("Trigger not found")
+                raise NotFound("触发器未找到。")
 
             # Update status based on enable_trigger boolean
             trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED

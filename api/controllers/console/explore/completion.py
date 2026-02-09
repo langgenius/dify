@@ -68,7 +68,7 @@ class ChatMessagePayload(BaseModel):
         try:
             return helper.uuid_value(value)
         except ValueError as exc:
-            raise ValueError("must be a valid UUID") from exc
+            raise ValueError("必须是有效的 UUID") from exc
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
@@ -97,14 +97,14 @@ class CompletionApi(InstalledAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -136,7 +136,7 @@ class CompletionStopApi(InstalledAppResource):
             raise NotCompletionAppError()
 
         if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+            raise ValueError("current_user 必须是 Account 实例")
 
         AppTaskService.stop_task(
             task_id=task_id,
@@ -170,14 +170,14 @@ class ChatApi(InstalledAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -212,7 +212,7 @@ class ChatStopApi(InstalledAppResource):
             raise NotChatAppError()
 
         if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+            raise ValueError("current_user 必须是 Account 实例")
 
         AppTaskService.stop_task(
             task_id=task_id,

@@ -54,7 +54,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             or "notion_page_id" not in data_source_info
             or "notion_workspace_id" not in data_source_info
         ):
-            raise ValueError("no notion page found")
+            raise ValueError("未找到 Notion 页面")
 
         workspace_id = data_source_info["notion_workspace_id"]
         page_id = data_source_info["notion_page_id"]

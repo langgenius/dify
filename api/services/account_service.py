@@ -130,7 +130,7 @@ class AccountService:
             return None
 
         if account.status == AccountStatus.BANNED:
-            raise Unauthorized("Account is banned.")
+            raise Unauthorized("账号已被禁用。")
 
         current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
         if current_tenant:
@@ -178,10 +178,10 @@ class AccountService:
 
         account = db.session.query(Account).filter_by(email=email).first()
         if not account:
-            raise AccountPasswordError("Invalid email or password.")
+            raise AccountPasswordError("邮箱或密码无效。")
 
         if account.status == AccountStatus.BANNED:
-            raise AccountLoginError("Account is banned.")
+            raise AccountLoginError("账号已被禁用。")
 
         if password and invite_token and account.password is None:
             # if invite_token is valid, set password and password_salt
@@ -193,7 +193,7 @@ class AccountService:
             account.password_salt = base64_salt
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountPasswordError("Invalid email or password.")
+            raise AccountPasswordError("邮箱或密码无效。")
 
         if account.status == AccountStatus.PENDING:
             account.status = AccountStatus.ACTIVE
@@ -207,7 +207,7 @@ class AccountService:
     def update_account_password(account, password, new_password):
         """update account password"""
         if account.password and not compare_password(password, account.password, account.password_salt):
-            raise CurrentPasswordIncorrectError("Current password is incorrect.")
+            raise CurrentPasswordIncorrectError("当前密码不正确。")
 
         # may be raised
         valid_password(new_password)
@@ -365,7 +365,7 @@ class AccountService:
             logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
         except Exception as e:
             logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
-            raise LinkAccountIntegrateError("Failed to link account.") from e
+            raise LinkAccountIntegrateError("关联账户失败。") from e
 
     @staticmethod
     def close_account(account: Account):
@@ -433,11 +433,11 @@ class AccountService:
         # Verify the refresh token
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
-            raise ValueError("Invalid refresh token")
+            raise ValueError("无效的刷新令牌")
 
         account = AccountService.load_user(account_id.decode("utf-8"))
         if not account:
-            raise ValueError("Invalid account")
+            raise ValueError("无效的账户")
 
         # Generate new access token and refresh token
         new_access_token = AccountService.get_account_jwt_token(account)
@@ -463,7 +463,7 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError
@@ -496,7 +496,7 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
 
         if cls.email_register_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailRegisterRateLimitExceededError
@@ -532,9 +532,9 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
         if not phase:
-            raise ValueError("phase must be provided.")
+            raise ValueError("必须提供 phase。")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
@@ -561,7 +561,7 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
 
         send_change_mail_completed_notification_task.delay(
             language=language,
@@ -578,7 +578,7 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
 
         if cls.owner_transfer_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import OwnerTransferRateLimitExceededError
@@ -608,7 +608,7 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
         workspace_name = workspace_name or ""
 
         send_old_owner_transfer_notify_email_task.delay(
@@ -628,7 +628,7 @@ class AccountService:
     ):
         account_email = account.email if account else email
         if account_email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
         workspace_name = workspace_name or ""
 
         send_new_owner_transfer_notify_email_task.delay(
@@ -741,7 +741,7 @@ class AccountService:
     ):
         email = account.email if account else email
         if email is None:
-            raise ValueError("Email must be provided.")
+            raise ValueError("邮箱为必填项。")
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
@@ -797,7 +797,7 @@ class AccountService:
             return None
 
         if account.status == AccountStatus.BANNED:
-            raise Unauthorized("Account is banned.")
+            raise Unauthorized("账号已被禁用。")
 
         return account
 
@@ -1068,7 +1068,7 @@ class TenantService:
         if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
-                raise Exception("Tenant already has an owner.")
+                raise Exception("租户已有所有者。")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
@@ -1097,13 +1097,13 @@ class TenantService:
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
         if not tenant:
-            raise TenantNotFoundError("Tenant not found.")
+            raise TenantNotFoundError("租户未找到。")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
-            raise TenantNotFoundError("Tenant not found for the account.")
+            raise TenantNotFoundError("未找到该账户对应的租户。")
         return tenant
 
     @staticmethod
@@ -1112,7 +1112,7 @@ class TenantService:
 
         # Ensure tenant_id is provided
         if tenant_id is None:
-            raise ValueError("Tenant ID must be provided.")
+            raise ValueError("租户 ID 为必填项。")
 
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
@@ -1126,7 +1126,7 @@ class TenantService:
         )
 
         if not tenant_account_join:
-            raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
+            raise AccountNotLinkTenantError("租户未找到或账户不是该租户成员。")
         else:
             db.session.query(TenantAccountJoin).where(
                 TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id
@@ -1179,7 +1179,7 @@ class TenantService:
     def has_roles(tenant: Tenant, roles: list[TenantAccountRole]) -> bool:
         """Check if user has any of the given roles for a tenant"""
         if not all(isinstance(role, TenantAccountRole) for role in roles):
-            raise ValueError("all roles must be TenantAccountRole")
+            raise ValueError("所有角色必须为 TenantAccountRole")
 
         return (
             db.session.query(TenantAccountJoin)
@@ -1212,11 +1212,11 @@ class TenantService:
             "update": [TenantAccountRole.OWNER],
         }
         if action not in {"add", "remove", "update"}:
-            raise InvalidActionError("Invalid action.")
+            raise InvalidActionError("无效的操作。")
 
         if member:
             if operator.id == member.id:
-                raise CannotOperateSelfError("Cannot operate self.")
+                raise CannotOperateSelfError("不能操作自己。")
 
         ta_operator = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=operator.id).first()
 
@@ -1232,13 +1232,13 @@ class TenantService:
         record is deleted as well.
         """
         if operator.id == account.id:
-            raise CannotOperateSelfError("Cannot operate self.")
+            raise CannotOperateSelfError("不能操作自己。")
 
         TenantService.check_member_permission(tenant, operator, account, "remove")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if not ta:
-            raise MemberNotInTenantError("Member not in tenant.")
+            raise MemberNotInTenantError("成员不在租户中。")
 
         # Capture identifiers before any deletions; attribute access on the ORM
         # object may fail after commit() expires the instance.
@@ -1291,10 +1291,10 @@ class TenantService:
         )
 
         if not target_member_join:
-            raise MemberNotInTenantError("Member not in tenant.")
+            raise MemberNotInTenantError("成员不在租户中。")
 
         if target_member_join.role == new_role:
-            raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+            raise RoleAlreadyAssignedError("该角色已分配给该成员。")
 
         if new_role == "owner":
             # Find the current owner and change their role to 'admin'
@@ -1410,7 +1410,7 @@ class RegisterService:
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             logger.exception("Register failed")
-            raise AccountRegisterError("Workspace is not allowed to create.")
+            raise AccountRegisterError("不允许创建工作空间。")
         except AccountRegisterError as are:
             db.session.rollback()
             logger.exception("Register failed")
@@ -1427,7 +1427,7 @@ class RegisterService:
         cls, tenant: Tenant, email: str, language: str | None, role: str = "normal", inviter: Account | None = None
     ) -> str:
         if not inviter:
-            raise ValueError("Inviter is required")
+            raise ValueError("邀请人为必填项")
 
         normalized_email = email.lower()
 
@@ -1463,7 +1463,7 @@ class RegisterService:
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
-                raise AccountAlreadyInTenantError("Account already in tenant.")
+                raise AccountAlreadyInTenantError("账户已在租户中。")
 
         token = cls.generate_invite_token(tenant, account)
         language = account.interface_language or "en-US"

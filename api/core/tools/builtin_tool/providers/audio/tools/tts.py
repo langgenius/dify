@@ -24,7 +24,7 @@ class TTSTool(BuiltinTool):
         voice = tool_parameters.get(f"voice#{provider}#{model}")
         model_manager = ModelManager()
         if not self.runtime:
-            raise ValueError("Runtime is required")
+            raise ValueError("运行时为必填项")
         model_instance = model_manager.get_model_instance(
             tenant_id=self.runtime.tenant_id or "",
             provider=provider,
@@ -36,9 +36,9 @@ class TTSTool(BuiltinTool):
             if voices:
                 voice = voices[0].get("value")
                 if not voice:
-                    raise ValueError("Sorry, no voice available.")
+                    raise ValueError("抱歉，没有可用的语音。")
             else:
-                raise ValueError("Sorry, no voice available.")
+                raise ValueError("抱歉，没有可用的语音。")
         tts = model_instance.invoke_tts(
             content_text=tool_parameters.get("text"),  # type: ignore
             user=user_id,
@@ -58,7 +58,7 @@ class TTSTool(BuiltinTool):
 
     def get_available_models(self) -> list[tuple[str, str, list[Any]]]:
         if not self.runtime:
-            raise ValueError("Runtime is required")
+            raise ValueError("运行时为必填项")
         model_provider_service = ModelProviderService()
         tid: str = self.runtime.tenant_id or ""
         models = model_provider_service.get_models_by_model_type(tenant_id=tid, model_type="tts")

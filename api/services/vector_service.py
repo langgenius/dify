@@ -43,7 +43,7 @@ class VectorService:
                     .first()
                 )
                 if not processing_rule:
-                    raise ValueError("No processing rule found.")
+                    raise ValueError("未找到处理规则。")
                 # get embedding model instance
                 if dataset.indexing_technique == "high_quality":
                     # check embedding model setting
@@ -62,7 +62,7 @@ class VectorService:
                             model_type=ModelType.TEXT_EMBEDDING,
                         )
                 else:
-                    raise ValueError("The knowledge base index technique is not high quality!")
+                    raise ValueError("知识库索引技术非高质量模式！")
                 cls.generate_child_chunks(
                     segment, dataset_document, dataset, embedding_model_instance, processing_rule, False
                 )

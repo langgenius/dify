@@ -49,9 +49,9 @@ class QAIndexProcessor(BaseIndexProcessor):
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
-            raise ValueError("No process rule found.")
+            raise ValueError("未找到处理规则。")
         if not process_rule.get("rules"):
-            raise ValueError("No rules found in process rule.")
+            raise ValueError("处理规则中未找到规则。")
         rules = Rule.model_validate(process_rule.get("rules"))
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
@@ -116,7 +116,7 @@ class QAIndexProcessor(BaseIndexProcessor):
     def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
+            raise ValueError("无效的文件类型，仅允许 CSV 文件")
 
         try:
             # Skip the first row
@@ -126,7 +126,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
                 text_docs.append(data)
             if len(text_docs) == 0:
-                raise ValueError("The CSV file is empty.")
+                raise ValueError("CSV 文件为空。")
 
         except Exception as e:
             raise ValueError(str(e))
@@ -227,7 +227,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 vector = Vector(dataset)
                 vector.create(documents)
             else:
-                raise ValueError("Indexing technique must be high quality.")
+                raise ValueError("索引技术必须为高质量。")
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         qa_chunks = QAStructureChunk.model_validate(chunks)

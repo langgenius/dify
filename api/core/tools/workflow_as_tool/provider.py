@@ -53,7 +53,7 @@ class WorkflowToolProviderController(ToolProviderController):
         with session_factory.create_session() as session, session.begin():
             app = session.get(App, db_provider.app_id)
             if not app:
-                raise ValueError("app not found")
+                raise ValueError("应用未找到")
 
             user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
             controller = WorkflowToolProviderController(
@@ -102,7 +102,7 @@ class WorkflowToolProviderController(ToolProviderController):
         )
 
         if not workflow:
-            raise ValueError("workflow not found")
+            raise ValueError("工作流未找到")
 
         # fetch start node
         graph: Mapping = workflow.graph_dict
@@ -159,7 +159,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     )
                 )
             else:
-                raise ValueError("variable not found")
+                raise ValueError("变量未找到")
 
         # get output schema from workflow
         outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
@@ -230,7 +230,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
             app = session.get(App, db_provider.app_id)
             if not app:
-                raise ValueError("app not found")
+                raise ValueError("应用未找到")
 
             user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
             self.tools = [self._get_db_provider_tool(db_provider, app, session=session, user=user)]

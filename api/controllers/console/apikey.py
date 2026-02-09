@@ -130,7 +130,7 @@ class BaseApiKeyResource(Resource):
         )
 
         if key is None:
-            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API 密钥未找到")
 
         # Invalidate cache before deleting from database
         # Type assertion: key is guaranteed to be non-None here because abort() raises

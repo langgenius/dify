@@ -73,7 +73,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Extract tenant_id from user
         tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("用户必须有 tenant_id 或 current_tenant_id")
         self._tenant_id = tenant_id
 
         # Store app context

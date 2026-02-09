@@ -27,15 +27,15 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
             typ = value
             value = validation_info.data.get("value")
             if typ == "mixed" and not isinstance(value, str):
-                raise ValueError("value must be a string")
+                raise ValueError("值必须为字符串")
             elif typ == "variable":
                 if not isinstance(value, list):
-                    raise ValueError("value must be a list")
+                    raise ValueError("值必须为列表")
                 for val in value:
                     if not isinstance(val, str):
-                        raise ValueError("value must be a list of strings")
+                        raise ValueError("值必须为字符串列表")
             elif typ == "constant" and not isinstance(value, str | int | float | bool):
-                raise ValueError("value must be a string, int, float, or bool")
+                raise ValueError("值必须为字符串、整数、浮点数或布尔值")
             return typ
 
     datasource_parameters: dict[str, DatasourceInput] | None = None

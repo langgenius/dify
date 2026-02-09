@@ -176,7 +176,7 @@ class MessageCycleManager:
         :return:
         """
         if not self._application_generate_entity.app_config.additional_features:
-            raise ValueError("Additional features not found")
+            raise ValueError("附加功能未找到")
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
             existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}

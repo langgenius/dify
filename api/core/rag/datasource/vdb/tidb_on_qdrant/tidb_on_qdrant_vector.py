@@ -59,7 +59,7 @@ class TidbOnQdrantConfig(BaseModel):
                 if self.root_path:
                     path = os.path.join(self.root_path, path)
                 else:
-                    raise ValueError("root_path is required")
+                    raise ValueError("root_path 为必填项")
 
             return {"path": path}
         else:

@@ -320,7 +320,7 @@ class ModelLoadBalancingService:
         model_type_enum = ModelType.value_of(model_type)
 
         if not isinstance(configs, list):
-            raise ValueError("Invalid load balancing configs")
+            raise ValueError("无效的负载均衡配置集")
 
         current_load_balancing_configs = db.session.scalars(
             select(LoadBalancingModelConfig).where(
@@ -337,7 +337,7 @@ class ModelLoadBalancingService:
 
         for config in configs:
             if not isinstance(config, dict):
-                raise ValueError("Invalid load balancing config")
+                raise ValueError("无效的负载均衡配置")
 
             config_id = config.get("id")
             name = config.get("name")
@@ -375,10 +375,10 @@ class ModelLoadBalancingService:
                 name = credential_record.credential_name
 
             if not name:
-                raise ValueError("Invalid load balancing config name")
+                raise ValueError("无效的负载均衡配置名称")
 
             if enabled is None:
-                raise ValueError("Invalid load balancing config enabled")
+                raise ValueError("无效的负载均衡配置启用状态")
 
             # is config exists
             if config_id:
@@ -393,7 +393,7 @@ class ModelLoadBalancingService:
 
                 if credentials:
                     if not isinstance(credentials, dict):
-                        raise ValueError("Invalid load balancing config credentials")
+                        raise ValueError("无效的负载均衡配置凭据")
 
                     # validate custom provider config
                     credentials = self._custom_credentials_validate(
@@ -418,7 +418,7 @@ class ModelLoadBalancingService:
             else:
                 # create load balancing config
                 if name == "__inherit__":
-                    raise ValueError("Invalid load balancing config name")
+                    raise ValueError("无效的负载均衡配置名称")
 
                 if credential_id:
                     credential_source = "provider" if config_from == "predefined-model" else "custom_model"
@@ -435,10 +435,10 @@ class ModelLoadBalancingService:
                     )
                 else:
                     if not credentials:
-                        raise ValueError("Invalid load balancing config credentials")
+                        raise ValueError("无效的负载均衡配置凭据")
 
                     if not isinstance(credentials, dict):
-                        raise ValueError("Invalid load balancing config credentials")
+                        raise ValueError("无效的负载均衡配置凭据")
 
                     # validate custom provider config
                     credentials = self._custom_credentials_validate(
@@ -604,7 +604,7 @@ class ModelLoadBalancingService:
         elif provider_configuration.provider.provider_credential_schema:
             return provider_configuration.provider.provider_credential_schema
         else:
-            raise ValueError("No credential schema found")
+            raise ValueError("未找到凭据模式")
 
     def _clear_credentials_cache(self, tenant_id: str, config_id: str):
         """

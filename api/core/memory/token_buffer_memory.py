@@ -63,10 +63,10 @@ class TokenBufferMemory:
         elif self.conversation.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             app = self.conversation.app
             if not app:
-                raise ValueError("App not found for conversation")
+                raise ValueError("会话对应的应用未找到")
 
             if not message.workflow_run_id:
-                raise ValueError("Workflow run ID not found")
+                raise ValueError("工作流运行 ID 未找到")
 
             workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
                 tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id

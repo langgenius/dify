@@ -24,7 +24,7 @@ class GraphValidationError(ValueError):
 
     def __init__(self, issues: Sequence[GraphValidationIssue]) -> None:
         if not issues:
-            raise ValueError("GraphValidationError requires at least one issue.")
+            raise ValueError("GraphValidationError 至少需要一个问题。")
         self.issues: tuple[GraphValidationIssue, ...] = tuple(issues)
         message = "; ".join(f"[{issue.code}] {issue.message}" for issue in self.issues)
         super().__init__(message)

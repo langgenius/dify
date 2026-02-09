@@ -26,7 +26,7 @@ class RagPipelineTransformService:
     def transform_dataset(self, dataset_id: str):
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
-            raise ValueError("Dataset not found")
+            raise ValueError("知识库未找到")
         if dataset.pipeline_id and dataset.runtime_mode == "rag_pipeline":
             return {
                 "pipeline_id": dataset.pipeline_id,
@@ -34,7 +34,7 @@ class RagPipelineTransformService:
                 "status": "success",
             }
         if dataset.provider != "vendor":
-            raise ValueError("External dataset is not supported")
+            raise ValueError("不支持外部知识库")
         datasource_type = dataset.data_source_type
         indexing_technique = dataset.indexing_technique
 
@@ -51,7 +51,7 @@ class RagPipelineTransformService:
         # Extract app data
         workflow_data = pipeline_yaml.get("workflow")
         if not workflow_data:
-            raise ValueError("Missing workflow data for rag pipeline")
+            raise ValueError("RAG 流水线缺少工作流数据")
         graph = workflow_data.get("graph", {})
         nodes = graph.get("nodes", [])
         new_nodes = []
@@ -78,7 +78,7 @@ class RagPipelineTransformService:
         elif doc_form == "text_model":
             dataset.chunk_structure = "text_model"
         else:
-            raise ValueError("Unsupported doc form")
+            raise ValueError("不支持的文档格式")
 
         dataset.runtime_mode = "rag_pipeline"
         dataset.pipeline_id = pipeline.id
@@ -125,7 +125,7 @@ class RagPipelineTransformService:
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case _:
-                    raise ValueError("Unsupported datasource type")
+                    raise ValueError("不支持的数据源类型")
         elif doc_form == "hierarchical_model":
             match datasource_type:
                 case "upload_file":
@@ -141,9 +141,9 @@ class RagPipelineTransformService:
                     with open(f"{Path(__file__).parent}/transform/website-crawl-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case _:
-                    raise ValueError("Unsupported datasource type")
+                    raise ValueError("不支持的数据源类型")
         else:
-            raise ValueError("Unsupported doc form")
+            raise ValueError("不支持的文档格式")
         return pipeline_yaml
 
     def _deal_file_extensions(self, node: dict):
@@ -191,7 +191,7 @@ class RagPipelineTransformService:
         # Initialize pipeline based on mode
         workflow_data = data.get("workflow")
         if not workflow_data or not isinstance(workflow_data, dict):
-            raise ValueError("Missing workflow data for rag pipeline")
+            raise ValueError("RAG 流水线缺少工作流数据")
 
         environment_variables_list = workflow_data.get("environment_variables", [])
         environment_variables = [

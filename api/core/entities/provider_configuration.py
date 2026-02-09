@@ -514,7 +514,7 @@ class ProviderConfiguration(BaseModel):
             # Get the credential record to update
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
             try:
                 # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
@@ -604,7 +604,7 @@ class ProviderConfiguration(BaseModel):
             # Get the credential record to update
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
 
             # Check if this credential is used in load balancing configs
             lb_stmt = select(LoadBalancingModelConfig).where(
@@ -679,11 +679,11 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
 
             provider_record = self._get_provider_record(session)
             if not provider_record:
-                raise ValueError("Provider record not found.")
+                raise ValueError("提供商记录未找到。")
 
             try:
                 provider_record.credential_id = credential_record.id
@@ -1010,7 +1010,7 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
 
             try:
                 # Update credential
@@ -1055,7 +1055,7 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
 
             lb_stmt = select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
@@ -1128,7 +1128,7 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
 
             # validate custom model config
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
@@ -1145,7 +1145,7 @@ class ProviderConfiguration(BaseModel):
                 )
             else:
                 if provider_model_record.credential_id == credential_record.id:
-                    raise ValueError("Can't add same credential")
+                    raise ValueError("无法添加相同的凭据")
                 provider_model_record.credential_id = credential_record.id
                 provider_model_record.updated_at = naive_utc_now()
 
@@ -1179,11 +1179,11 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                raise ValueError("凭据记录未找到。")
 
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
             if not provider_model_record:
-                raise ValueError("The custom model record not found.")
+                raise ValueError("自定义模型记录未找到。")
 
             provider_model_record.credential_id = credential_record.id
             provider_model_record.updated_at = naive_utc_now()
@@ -1321,7 +1321,7 @@ class ProviderConfiguration(BaseModel):
             )
             load_balancing_config_count = session.execute(stmt).scalar() or 0
             if load_balancing_config_count <= 1:
-                raise ValueError("Model load balancing configuration must be more than 1.")
+                raise ValueError("模型负载均衡配置必须多于 1 个。")
 
             model_setting = self._get_provider_model_setting(model_type=model_type, model=model, session=session)
 

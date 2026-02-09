@@ -71,7 +71,7 @@ class ChatRequestPayload(BaseModel):
         try:
             return helper.uuid_value(value)
         except ValueError as exc:
-            raise ValueError("conversation_id must be a valid UUID") from exc
+            raise ValueError("conversation_id 必须为有效的 UUID") from exc
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
@@ -87,7 +87,7 @@ class CompletionApi(Resource):
             200: "Completion created successfully",
             400: "Bad request - invalid parameters",
             401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
+            404: "会话未找到",
             500: "Internal server error",
         }
     )
@@ -122,7 +122,7 @@ class CompletionApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -219,7 +219,7 @@ class ChatApi(Resource):
         except WorkflowIdFormatError as ex:
             raise BadRequest(str(ex))
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:

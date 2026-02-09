@@ -42,7 +42,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
             provider=self.entity.identity.name,
             credentials=credentials,
         ):
-            raise ToolProviderCredentialValidationError("Invalid credentials")
+            raise ToolProviderCredentialValidationError("无效的凭据")
 
     def get_tool(self, tool_name: str) -> PluginTool:  # type: ignore
         """

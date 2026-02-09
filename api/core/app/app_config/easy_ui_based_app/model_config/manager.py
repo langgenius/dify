@@ -20,7 +20,7 @@ class ModelConfigManager:
         model_config = config.get("model")
 
         if not model_config:
-            raise ValueError("model is required")
+            raise ValueError("模型为必填项")
 
         completion_params = model_config.get("completion_params")
         stop = []
@@ -48,10 +48,10 @@ class ModelConfigManager:
         :param config: app model config args
         """
         if "model" not in config:
-            raise ValueError("model is required")
+            raise ValueError("模型为必填项")
 
         if not isinstance(config["model"], dict):
-            raise ValueError("model must be of object type")
+            raise ValueError("模型必须为对象类型")
 
         # model.provider
         model_provider_factory = ModelProviderFactory(tenant_id)
@@ -68,7 +68,7 @@ class ModelConfigManager:
 
         # model.name
         if "name" not in config["model"]:
-            raise ValueError("model.name is required")
+            raise ValueError("model.name 为必填项")
 
         provider_manager = ProviderManager()
         models = provider_manager.get_configurations(tenant_id).get_models(
@@ -76,11 +76,11 @@ class ModelConfigManager:
         )
 
         if not models:
-            raise ValueError("model.name must be in the specified model list")
+            raise ValueError("model.name 必须在指定的模型列表中")
 
         model_ids = [m.model for m in models]
         if config["model"]["name"] not in model_ids:
-            raise ValueError("model.name must be in the specified model list")
+            raise ValueError("model.name 必须在指定的模型列表中")
 
         model_mode = None
         for model in models:
@@ -96,7 +96,7 @@ class ModelConfigManager:
 
         # model.completion_params
         if "completion_params" not in config["model"]:
-            raise ValueError("model.completion_params is required")
+            raise ValueError("model.completion_params 为必填项")
 
         config["model"]["completion_params"] = cls.validate_model_completion_params(
             config["model"]["completion_params"]
@@ -108,15 +108,15 @@ class ModelConfigManager:
     def validate_model_completion_params(cls, cp: dict):
         # model.completion_params
         if not isinstance(cp, dict):
-            raise ValueError("model.completion_params must be of object type")
+            raise ValueError("model.completion_params 必须为对象类型")
 
         # stop
         if "stop" not in cp:
             cp["stop"] = []
         elif not isinstance(cp["stop"], list):
-            raise ValueError("stop in model.completion_params must be of list type")
+            raise ValueError("model.completion_params 中的 stop 必须为列表类型")
 
         if len(cp["stop"]) > 4:
-            raise ValueError("stop sequences must be less than 4")
+            raise ValueError("停止序列不能超过 4 个")
 
         return cp

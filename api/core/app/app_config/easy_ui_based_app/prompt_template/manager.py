@@ -13,7 +13,7 @@ class PromptTemplateConfigManager:
     @classmethod
     def convert(cls, config: dict) -> PromptTemplateEntity:
         if not config.get("prompt_type"):
-            raise ValueError("prompt_type is required")
+            raise ValueError("prompt_type 为必填项")
 
         prompt_type = PromptTemplateEntity.PromptType.value_of(config["prompt_type"])
         if prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
@@ -27,10 +27,10 @@ class PromptTemplateConfigManager:
                 for message in chat_prompt_config.get("prompt", []):
                     text = message.get("text")
                     if not isinstance(text, str):
-                        raise ValueError("message text must be a string")
+                        raise ValueError("消息文本必须为字符串")
                     role = message.get("role")
                     if not isinstance(role, str):
-                        raise ValueError("message role must be a string")
+                        raise ValueError("消息角色必须为字符串")
                     chat_prompt_messages.append(
                         AdvancedChatMessageEntity(text=text, role=PromptMessageRole.value_of(role))
                     )
@@ -81,14 +81,14 @@ class PromptTemplateConfigManager:
             config["chat_prompt_config"] = {}
 
         if not isinstance(config["chat_prompt_config"], dict):
-            raise ValueError("chat_prompt_config must be of object type")
+            raise ValueError("chat_prompt_config 必须为对象类型")
 
         # completion_prompt_config
         if not config.get("completion_prompt_config"):
             config["completion_prompt_config"] = {}
 
         if not isinstance(config["completion_prompt_config"], dict):
-            raise ValueError("completion_prompt_config must be of object type")
+            raise ValueError("completion_prompt_config 必须为对象类型")
 
         if config["prompt_type"] == PromptTemplateEntity.PromptType.ADVANCED:
             if not config["chat_prompt_config"] and not config["completion_prompt_config"]:
@@ -114,14 +114,14 @@ class PromptTemplateConfigManager:
                 prompt_list = config["chat_prompt_config"]["prompt"]
 
                 if len(prompt_list) > 10:
-                    raise ValueError("prompt messages must be less than 10")
+                    raise ValueError("提示消息数量不能超过 10")
         else:
             # pre_prompt, for simple mode
             if not config.get("pre_prompt"):
                 config["pre_prompt"] = ""
 
             if not isinstance(config["pre_prompt"], str):
-                raise ValueError("pre_prompt must be of string type")
+                raise ValueError("pre_prompt 必须为字符串类型")
 
         return config, ["prompt_type", "pre_prompt", "chat_prompt_config", "completion_prompt_config"]
 
@@ -137,6 +137,6 @@ class PromptTemplateConfigManager:
             config["post_prompt"] = ""
 
         if not isinstance(config["post_prompt"], str):
-            raise ValueError("post_prompt must be of string type")
+            raise ValueError("post_prompt 必须为字符串类型")
 
         return config

@@ -49,7 +49,7 @@ class Blob(BaseModel):
     def check_blob_is_valid(cls, values: Mapping[str, Any]) -> Mapping[str, Any]:
         """Verify that either data or path is provided."""
         if "data" not in values and "path" not in values:
-            raise ValueError("Either data or path must be provided")
+            raise ValueError("必须提供 data 或 path")
         return values
 
     def as_string(self) -> str:

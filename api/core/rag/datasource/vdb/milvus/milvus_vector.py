@@ -42,12 +42,12 @@ class MilvusConfig(BaseModel):
         Raises ValueError if required fields are missing.
         """
         if not values.get("uri"):
-            raise ValueError("config MILVUS_URI is required")
+            raise ValueError("配置 MILVUS_URI 为必填项")
         if not values.get("token"):
             if not values.get("user"):
-                raise ValueError("config MILVUS_USER is required")
+                raise ValueError("配置 MILVUS_USER 为必填项")
             if not values.get("password"):
-                raise ValueError("config MILVUS_PASSWORD is required")
+                raise ValueError("配置 MILVUS_PASSWORD 为必填项")
         return values
 
     def to_milvus_params(self):

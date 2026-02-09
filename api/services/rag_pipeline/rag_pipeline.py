@@ -146,7 +146,7 @@ class RagPipelineService:
             .first()
         )
         if not customized_template:
-            raise ValueError("Customized pipeline template not found.")
+            raise ValueError("未找到自定义流水线模板。")
         # check template name is exist
         template_name = template_info.name
         if template_name:
@@ -160,7 +160,7 @@ class RagPipelineService:
                 .first()
             )
             if template:
-                raise ValueError("Template name is already exists")
+                raise ValueError("模板名称已存在")
         customized_template.name = template_info.name
         customized_template.description = template_info.description
         customized_template.icon = template_info.icon_info.model_dump()
@@ -182,7 +182,7 @@ class RagPipelineService:
             .first()
         )
         if not customized_template:
-            raise ValueError("Customized pipeline template not found.")
+            raise ValueError("未找到自定义流水线模板。")
         db.session.delete(customized_template)
         db.session.commit()
 
@@ -332,7 +332,7 @@ class RagPipelineService:
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
-            raise ValueError("No valid workflow found.")
+            raise ValueError("未找到有效的工作流。")
 
         # create new workflow
         workflow = Workflow.new(
@@ -364,7 +364,7 @@ class RagPipelineService:
                 # update dataset
                 dataset = pipeline.retrieve_dataset(session=session)
                 if not dataset:
-                    raise ValueError("Dataset not found")
+                    raise ValueError("知识库未找到")
                 DatasetService.update_rag_pipeline_dataset_settings(
                     session=session,
                     dataset=dataset,
@@ -417,7 +417,7 @@ class RagPipelineService:
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
         if not draft_workflow:
-            raise ValueError("Workflow not initialized")
+            raise ValueError("工作流未初始化")
 
         # run draft workflow node
         start_at = time.perf_counter()
@@ -506,7 +506,7 @@ class RagPipelineService:
             else:
                 workflow = self.get_draft_workflow(pipeline=pipeline)
             if not workflow:
-                raise ValueError("Workflow not initialized")
+                raise ValueError("工作流未初始化")
 
             # run draft workflow node
             datasource_node_data = None
@@ -516,7 +516,7 @@ class RagPipelineService:
                     datasource_node_data = datasource_node.get("data", {})
                     break
             if not datasource_node_data:
-                raise ValueError("Datasource node data not found")
+                raise ValueError("未找到数据源节点数据")
 
             variables_map = {}
 
@@ -673,7 +673,7 @@ class RagPipelineService:
             else:
                 workflow = self.get_draft_workflow(pipeline=pipeline)
             if not workflow:
-                raise ValueError("Workflow not initialized")
+                raise ValueError("工作流未初始化")
 
             # run draft workflow node
             datasource_node_data = None
@@ -683,7 +683,7 @@ class RagPipelineService:
                     datasource_node_data = datasource_node.get("data", {})
                     break
             if not datasource_node_data:
-                raise ValueError("Datasource node data not found")
+                raise ValueError("未找到数据源节点数据")
 
             datasource_parameters = datasource_node_data.get("datasource_parameters", {})
             for key, value in datasource_parameters.items():
@@ -730,7 +730,7 @@ class RagPipelineService:
                                 variable_value = online_document_message.message.variable_value
                                 if online_document_message.message.stream:
                                     if not isinstance(variable_value, str):
-                                        raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+                                        raise ValueError("当 'stream' 为 True 时，'variable_value' 必须是字符串。")
                                     if variable_name not in variables:
                                         variables[variable_name] = ""
                                     variables[variable_name] += variable_value
@@ -799,7 +799,7 @@ class RagPipelineService:
                     break
 
             if not node_run_result:
-                raise ValueError("Node run failed with no run result")
+                raise ValueError("节点运行失败，无运行结果")
             # single step debug mode error handling return
             if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.error_strategy:
                 node_error_args: dict[str, Any] = {
@@ -925,7 +925,7 @@ class RagPipelineService:
             self.get_draft_workflow(pipeline=pipeline) if is_draft else self.get_published_workflow(pipeline=pipeline)
         )
         if not workflow:
-            raise ValueError("Workflow not initialized")
+            raise ValueError("工作流未初始化")
 
         datasource_node_data = None
         datasource_nodes = workflow.graph_dict.get("nodes", [])
@@ -934,7 +934,7 @@ class RagPipelineService:
                 datasource_node_data = datasource_node.get("data", {})
                 break
         if not datasource_node_data:
-            raise ValueError("Datasource node data not found")
+            raise ValueError("未找到数据源节点数据")
         variables = workflow.rag_pipeline_variables
         if variables:
             variables_map = {item["variable"]: item for item in variables}
@@ -970,7 +970,7 @@ class RagPipelineService:
             self.get_draft_workflow(pipeline=pipeline) if is_draft else self.get_published_workflow(pipeline=pipeline)
         )
         if not workflow:
-            raise ValueError("Workflow not initialized")
+            raise ValueError("工作流未初始化")
 
         # get second step node
         rag_pipeline_variables = workflow.rag_pipeline_variables
@@ -1083,16 +1083,16 @@ class RagPipelineService:
         """
         pipeline = db.session.query(Pipeline).where(Pipeline.id == pipeline_id).first()
         if not pipeline:
-            raise ValueError("Pipeline not found")
+            raise ValueError("流水线未找到")
         if not pipeline.workflow_id:
-            raise ValueError("Pipeline workflow not found")
+            raise ValueError("流水线工作流未找到")
         workflow = db.session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
         if not workflow:
-            raise ValueError("Workflow not found")
+            raise ValueError("工作流未找到")
         with Session(db.engine) as session:
             dataset = pipeline.retrieve_dataset(session=session)
             if not dataset:
-                raise ValueError("Dataset not found")
+                raise ValueError("知识库未找到")
 
         # check template name is exist
         template_name = args.get("name")
@@ -1106,7 +1106,7 @@ class RagPipelineService:
                 .first()
             )
             if template:
-                raise ValueError("Template name is already exists")
+                raise ValueError("模板名称已存在")
 
         max_position = (
             db.session.query(func.max(PipelineCustomizedTemplate.position))
@@ -1122,9 +1122,9 @@ class RagPipelineService:
         if args.get("icon_info") is None:
             args["icon_info"] = {}
         if args.get("description") is None:
-            raise ValueError("Description is required")
+            raise ValueError("描述为必填项")
         if args.get("name") is None:
-            raise ValueError("Name is required")
+            raise ValueError("名称为必填项")
         pipeline_customized_template = PipelineCustomizedTemplate(
             name=args.get("name") or "",
             description=args.get("description") or "",
@@ -1174,13 +1174,13 @@ class RagPipelineService:
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
         if not draft_workflow:
-            raise ValueError("Workflow not initialized")
+            raise ValueError("工作流未初始化")
 
         # run draft workflow node
         start_at = time.perf_counter()
         node_id = args.get("start_node_id")
         if not node_id:
-            raise ValueError("Node id is required")
+            raise ValueError("节点 ID 为必填项")
         node_config = draft_workflow.get_node_config_by_id(node_id)
 
         eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -1299,14 +1299,14 @@ class RagPipelineService:
             .first()
         )
         if not document_pipeline_execution_log:
-            raise ValueError("Document pipeline execution log not found")
+            raise ValueError("文档流水线执行日志未找到")
         pipeline = db.session.query(Pipeline).where(Pipeline.id == document_pipeline_execution_log.pipeline_id).first()
         if not pipeline:
-            raise ValueError("Pipeline not found")
+            raise ValueError("流水线未找到")
         # convert to app config
         workflow = self.get_published_workflow(pipeline)
         if not workflow:
-            raise ValueError("Workflow not found")
+            raise ValueError("工作流未找到")
         PipelineGenerator().generate(
             pipeline=pipeline,
             workflow=workflow,
@@ -1338,7 +1338,7 @@ class RagPipelineService:
             .first()
         )
         if not dataset:
-            raise ValueError("Dataset not found")
+            raise ValueError("知识库未找到")
         pipeline: Pipeline | None = (
             db.session.query(Pipeline)
             .where(
@@ -1348,7 +1348,7 @@ class RagPipelineService:
             .first()
         )
         if not pipeline:
-            raise ValueError("Pipeline not found")
+            raise ValueError("流水线未找到")
 
         workflow: Workflow | None = None
         if is_published:
@@ -1356,7 +1356,7 @@ class RagPipelineService:
         else:
             workflow = self.get_draft_workflow(pipeline=pipeline)
         if not pipeline or not workflow:
-            raise ValueError("Pipeline or workflow not found")
+            raise ValueError("流水线或工作流未找到")
 
         datasource_nodes = workflow.graph_dict.get("nodes", [])
         datasource_plugins = []
@@ -1436,7 +1436,7 @@ class RagPipelineService:
             .first()
         )
         if not dataset:
-            raise ValueError("Dataset not found")
+            raise ValueError("知识库未找到")
         pipeline: Pipeline | None = (
             db.session.query(Pipeline)
             .where(
@@ -1446,5 +1446,5 @@ class RagPipelineService:
             .first()
         )
         if not pipeline:
-            raise ValueError("Pipeline not found")
+            raise ValueError("流水线未找到")
         return pipeline

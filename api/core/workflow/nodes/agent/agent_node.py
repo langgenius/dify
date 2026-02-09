@@ -239,7 +239,7 @@ class AgentNode(Node[AgentNodeData]):
                                 if value_param and value_param.get("type", "") == "variable":
                                     variable_selector = value_param.get("value")
                                     if not variable_selector:
-                                        raise ValueError("Variable selector is missing for a variable-type parameter.")
+                                        raise ValueError("变量类型参数缺少变量选择器。")
 
                                     variable = variable_pool.get(variable_selector)
                                     if variable is None:
@@ -600,7 +600,7 @@ class AgentNode(Node[AgentNodeData]):
                 if message.message.stream:
                     if not isinstance(variable_value, str):
                         raise AgentVariableTypeError(
-                            "When 'stream' is True, 'variable_value' must be a string.",
+                            "当 stream 为 True 时，variable_value 必须为字符串。",
                             variable_name=variable_name,
                             expected_type="str",
                             actual_type=type(variable_value).__name__,
@@ -621,7 +621,7 @@ class AgentNode(Node[AgentNodeData]):
                 assert isinstance(message.meta, dict)
                 # Validate that meta contains a 'file' key
                 if "file" not in message.meta:
-                    raise AgentNodeError("File message is missing 'file' key in meta")
+                    raise AgentNodeError("文件消息的 meta 中缺少 file 键")
 
                 # Validate that the file is an instance of File
                 if not isinstance(message.meta["file"], File):

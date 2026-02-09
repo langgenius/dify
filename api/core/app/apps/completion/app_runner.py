@@ -41,7 +41,7 @@ class CompletionAppRunner(AppRunner):
         stmt = select(App).where(App.id == app_config.app_id)
         app_record = db.session.scalar(stmt)
         if not app_record:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
 
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query

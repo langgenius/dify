@@ -43,7 +43,7 @@ class DatasetMetadataCreateApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
@@ -57,7 +57,7 @@ class DatasetMetadataCreateApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         return MetadataService.get_dataset_metadatas(dataset), 200
 
 
@@ -78,7 +78,7 @@ class DatasetMetadataApi(Resource):
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
@@ -94,7 +94,7 @@ class DatasetMetadataApi(Resource):
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
@@ -123,7 +123,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         DatasetService.check_dataset_permission(dataset, current_user)
 
         match action:
@@ -146,7 +146,7 @@ class DocumentMetadataEditApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata_args = MetadataOperationData.model_validate(console_ns.payload or {})

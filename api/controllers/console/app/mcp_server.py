@@ -118,7 +118,7 @@ class AppMCPServerController(Resource):
         server.parameters = json.dumps(payload.parameters, ensure_ascii=False)
         if payload.status:
             if payload.status not in [status.value for status in AppMCPServerStatus]:
-                raise ValueError("Invalid status")
+                raise ValueError("无效的状态。")
             server.status = payload.status
         db.session.commit()
         return server

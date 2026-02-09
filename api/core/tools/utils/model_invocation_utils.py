@@ -44,13 +44,13 @@ class ModelInvocationUtils:
         )
 
         if not model_instance:
-            raise InvokeModelError("Model not found")
+            raise InvokeModelError("模型未找到")
 
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
         if not schema:
-            raise InvokeModelError("No model schema found")
+            raise InvokeModelError("未找到模型架构")
 
         max_tokens: int | None = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE, None)
         if max_tokens is None:
@@ -69,7 +69,7 @@ class ModelInvocationUtils:
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
 
         if not model_instance:
-            raise InvokeModelError("Model not found")
+            raise InvokeModelError("模型未找到")
 
         # get tokens
         tokens = model_instance.get_llm_num_tokens(prompt_messages)
@@ -146,7 +146,7 @@ class ModelInvocationUtils:
         except InvokeConnectionError as e:
             raise InvokeModelError(f"Invoke connection error: {e}")
         except InvokeAuthorizationError as e:
-            raise InvokeModelError("Invoke authorization error")
+            raise InvokeModelError("调用授权错误")
         except InvokeServerUnavailableError as e:
             raise InvokeModelError(f"Invoke server unavailable error: {e}")
         except Exception as e:

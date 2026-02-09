@@ -85,7 +85,7 @@ class IrisConnectionPool:
                 conn = self._create_connection()
                 self._in_use += 1
                 return conn
-            raise RuntimeError("Connection pool exhausted")
+            raise RuntimeError("连接池已耗尽")
 
     def return_connection(self, conn: Any) -> None:
         """Return connection to pool after validating it."""

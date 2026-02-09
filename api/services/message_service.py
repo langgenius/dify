@@ -176,7 +176,7 @@ class MessageService:
         content: str | None,
     ):
         if not user:
-            raise ValueError("user cannot be None")
+            raise ValueError("用户不能为 None")
 
         message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
 
@@ -188,7 +188,7 @@ class MessageService:
             feedback.rating = rating
             feedback.content = content
         elif not rating and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
+            raise ValueError("反馈不存在时 rating 不能为 None")
         else:
             assert rating is not None
             feedback = MessageFeedback(
@@ -246,7 +246,7 @@ class MessageService:
         cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str, invoke_from: InvokeFrom
     ) -> list[str]:
         if not user:
-            raise ValueError("user cannot be None")
+            raise ValueError("用户不能为 None")
 
         message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
 
@@ -269,7 +269,7 @@ class MessageService:
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
             if not app_config.additional_features:
-                raise ValueError("Additional features not found")
+                raise ValueError("未找到附加功能")
 
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
@@ -292,7 +292,7 @@ class MessageService:
                 app_model_config.id = conversation.app_model_config_id
                 app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
             if not app_model_config:
-                raise ValueError("did not find app model config")
+                raise ValueError("未找到应用模型配置")
 
             suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
             if suggested_questions_after_answer.get("enabled", False) is False:

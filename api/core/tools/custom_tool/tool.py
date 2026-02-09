@@ -51,7 +51,7 @@ class ApiTool(Tool):
         :return: the new tool
         """
         if self.api_bundle is None:
-            raise ValueError("api_bundle is required")
+            raise ValueError("api_bundle 为必填项")
         return self.__class__(
             entity=self.entity,
             api_bundle=self.api_bundle.model_copy(),
@@ -83,11 +83,11 @@ class ApiTool(Tool):
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
         if self.runtime is None:
-            raise ToolProviderCredentialValidationError("runtime not initialized")
+            raise ToolProviderCredentialValidationError("运行时未初始化")
 
         credentials = self.runtime.credentials or {}
         if "auth_type" not in credentials:
-            raise ToolProviderCredentialValidationError("Missing auth_type")
+            raise ToolProviderCredentialValidationError("缺少 auth_type")
 
         if credentials["auth_type"] in ("api_key_header", "api_key"):  # backward compatibility:
             api_key_header = "Authorization"
@@ -96,9 +96,9 @@ class ApiTool(Tool):
                 api_key_header = credentials["api_key_header"]
 
             if "api_key_value" not in credentials:
-                raise ToolProviderCredentialValidationError("Missing api_key_value")
+                raise ToolProviderCredentialValidationError("缺少 api_key_value")
             elif not isinstance(credentials["api_key_value"], str):
-                raise ToolProviderCredentialValidationError("api_key_value must be a string")
+                raise ToolProviderCredentialValidationError("api_key_value 必须为字符串")
 
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
@@ -305,7 +305,7 @@ class ApiTool(Tool):
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
     ):
         if max_recursive <= 0:
-            raise Exception("Max recursion depth reached")
+            raise Exception("已达到最大递归深度")
         for option in any_of or []:
             try:
                 if "type" in option:

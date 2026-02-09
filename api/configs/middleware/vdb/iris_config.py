@@ -86,6 +86,6 @@ class IrisVectorConfig(BaseSettings):
         min_conn = values.get("IRIS_MIN_CONNECTION", 1)
         max_conn = values.get("IRIS_MAX_CONNECTION", 3)
         if min_conn > max_conn:
-            raise ValueError("IRIS_MIN_CONNECTION must be less than or equal to IRIS_MAX_CONNECTION")
+            raise ValueError("IRIS_MIN_CONNECTION 必须小于或等于 IRIS_MAX_CONNECTION")
 
         return values

@@ -12,13 +12,13 @@ class VolcengineTosStorage(BaseStorage):
     def __init__(self):
         super().__init__()
         if not dify_config.VOLCENGINE_TOS_ACCESS_KEY:
-            raise ValueError("VOLCENGINE_TOS_ACCESS_KEY is not set")
+            raise ValueError("VOLCENGINE_TOS_ACCESS_KEY 未设置")
         if not dify_config.VOLCENGINE_TOS_SECRET_KEY:
-            raise ValueError("VOLCENGINE_TOS_SECRET_KEY is not set")
+            raise ValueError("VOLCENGINE_TOS_SECRET_KEY 未设置")
         if not dify_config.VOLCENGINE_TOS_ENDPOINT:
-            raise ValueError("VOLCENGINE_TOS_ENDPOINT is not set")
+            raise ValueError("VOLCENGINE_TOS_ENDPOINT 未设置")
         if not dify_config.VOLCENGINE_TOS_REGION:
-            raise ValueError("VOLCENGINE_TOS_REGION is not set")
+            raise ValueError("VOLCENGINE_TOS_REGION 未设置")
         self.bucket_name = dify_config.VOLCENGINE_TOS_BUCKET_NAME
         self.client = tos.TosClientV2(
             ak=dify_config.VOLCENGINE_TOS_ACCESS_KEY,
@@ -29,12 +29,12 @@ class VolcengineTosStorage(BaseStorage):
 
     def save(self, filename, data):
         if not self.bucket_name:
-            raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
+            raise ValueError("VOLCENGINE_TOS_BUCKET_NAME 未设置")
         self.client.put_object(bucket=self.bucket_name, key=filename, content=data)
 
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
-            raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
+            raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME 未设置")
         data = self.client.get_object(bucket=self.bucket_name, key=filename).read()
         if not isinstance(data, bytes):
             raise TypeError(f"Expected bytes, got {type(data).__name__}")
@@ -42,14 +42,14 @@ class VolcengineTosStorage(BaseStorage):
 
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
-            raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
+            raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME 未设置")
         response = self.client.get_object(bucket=self.bucket_name, key=filename)
         while chunk := response.read(4096):
             yield chunk
 
     def download(self, filename, target_filepath):
         if not self.bucket_name:
-            raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
+            raise ValueError("VOLCENGINE_TOS_BUCKET_NAME 未设置")
         self.client.get_object_to_file(bucket=self.bucket_name, key=filename, file_path=target_filepath)
 
     def exists(self, filename):

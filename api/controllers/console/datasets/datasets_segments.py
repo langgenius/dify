@@ -118,7 +118,7 @@ class DatasetDocumentSegmentListApi(Resource):
         document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -128,7 +128,7 @@ class DatasetDocumentSegmentListApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
 
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         args = SegmentListQuery.model_validate(
             {
@@ -230,14 +230,14 @@ class DatasetDocumentSegmentListApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         segment_ids = request.args.getlist("segment_id")
 
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -264,11 +264,11 @@ class DatasetDocumentSegmentApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -300,7 +300,7 @@ class DatasetDocumentSegmentApi(Resource):
         document_indexing_cache_key = f"document_{document.id}_indexing"
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
-            raise InvalidActionError("Document is being indexed, please try again later")
+            raise InvalidActionError("文档正在索引中，请稍后重试。")
         try:
             SegmentService.update_segments_status(segment_ids, action, dataset, document)
         except Exception as e:
@@ -324,12 +324,12 @@ class DatasetDocumentSegmentAddApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         if not current_user.is_dataset_editor:
             raise Forbidden()
         # check embedding model setting
@@ -375,14 +375,14 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         if dataset.indexing_technique == "high_quality":
             # check embedding model setting
             try:
@@ -407,7 +407,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -437,14 +437,14 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check segment
         segment_id = str(segment_id)
         segment = (
@@ -453,7 +453,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -484,23 +484,23 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         payload = BatchImportPayload.model_validate(console_ns.payload or {})
         upload_file_id = payload.upload_file_id
 
         upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
         if not upload_file:
-            raise NotFound("UploadFile not found.")
+            raise NotFound("上传文件未找到。")
 
         # check file type
         if not upload_file.name or not upload_file.name.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
+            raise ValueError("文件类型无效，仅支持CSV文件。")
 
         try:
             # async job
@@ -525,12 +525,12 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     def get(self, job_id=None, dataset_id=None, document_id=None):
         if job_id is None:
-            raise NotFound("The job does not exist.")
+            raise NotFound("任务不存在。")
         job_id = str(job_id)
         indexing_cache_key = f"segment_batch_import_{job_id}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
-            raise ValueError("The job does not exist.")
+            raise ValueError("任务不存在。")
 
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 
@@ -551,12 +551,12 @@ class ChildChunkAddApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check segment
         segment_id = str(segment_id)
         segment = (
@@ -565,7 +565,7 @@ class ChildChunkAddApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         if not current_user.is_dataset_editor:
             raise Forbidden()
         # check embedding model setting
@@ -606,14 +606,14 @@ class ChildChunkAddApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check segment
         segment_id = str(segment_id)
         segment = (
@@ -622,7 +622,7 @@ class ChildChunkAddApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         args = SegmentListQuery.model_validate(
             {
                 "limit": request.args.get("limit", default=20, type=int),
@@ -656,14 +656,14 @@ class ChildChunkAddApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
             # check segment
         segment_id = str(segment_id)
         segment = (
@@ -672,7 +672,7 @@ class ChildChunkAddApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -704,14 +704,14 @@ class ChildChunkUpdateApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check segment
         segment_id = str(segment_id)
         segment = (
@@ -720,7 +720,7 @@ class ChildChunkUpdateApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
@@ -734,7 +734,7 @@ class ChildChunkUpdateApi(Resource):
             .first()
         )
         if not child_chunk:
-            raise NotFound("Child chunk not found.")
+            raise NotFound("子分块未找到。")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -761,14 +761,14 @@ class ChildChunkUpdateApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
             # check segment
         segment_id = str(segment_id)
         segment = (
@@ -777,7 +777,7 @@ class ChildChunkUpdateApi(Resource):
             .first()
         )
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
@@ -791,7 +791,7 @@ class ChildChunkUpdateApi(Resource):
             .first()
         )
         if not child_chunk:
-            raise NotFound("Child chunk not found.")
+            raise NotFound("子分块未找到。")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()

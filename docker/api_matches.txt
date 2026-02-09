@@ -1,0 +1,1119 @@
+../api/tasks/clean_document_task.py:37:                raise Exception("Document has no dataset")
+../api/tasks/document_indexing_update_task.py:43:                raise Exception("Dataset not found")
+../api/tasks/remove_document_from_index_task.py:44:                raise Exception("Document has no dataset")
+../api/tasks/deal_dataset_index_update_task.py:32:                raise Exception("Dataset not found")
+../api/tasks/generate_summary_index_task.py:108:            error_message = f"Summary generation failed: {str(e)}"
+../api/tasks/document_indexing_sync_task.py:92:                        raise Exception("Dataset not found")
+../api/controllers/common/file_response.py:14:    message = Message()
+../api/controllers/common/errors.py:1:from werkzeug.exceptions import HTTPException
+../api/controllers/common/errors.py:3:from libs.exception import BaseHTTPException
+../api/controllers/common/errors.py:6:class FilenameNotExistsError(HTTPException):
+../api/controllers/common/errors.py:11:class RemoteFileUploadError(HTTPException):
+../api/controllers/common/errors.py:16:class FileTooLargeError(BaseHTTPException):
+../api/controllers/common/errors.py:22:class UnsupportedFileTypeError(BaseHTTPException):
+../api/controllers/common/errors.py:28:class BlockedFileExtensionError(BaseHTTPException):
+../api/controllers/common/errors.py:34:class TooManyFilesError(BaseHTTPException):
+../api/controllers/common/errors.py:40:class NoFileUploadedError(BaseHTTPException):
+../api/controllers/web/remote_files.py:59:            HTTPException: If the remote file cannot be accessed
+../api/controllers/web/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/web/error.py:4:class AppUnavailableError(BaseHTTPException):
+../api/controllers/web/error.py:10:class NotCompletionAppError(BaseHTTPException):
+../api/controllers/web/error.py:16:class NotChatAppError(BaseHTTPException):
+../api/controllers/web/error.py:22:class NotWorkflowAppError(BaseHTTPException):
+../api/controllers/web/error.py:28:class ConversationCompletedError(BaseHTTPException):
+../api/controllers/web/error.py:34:class ProviderNotInitializeError(BaseHTTPException):
+../api/controllers/web/error.py:43:class ProviderQuotaExceededError(BaseHTTPException):
+../api/controllers/web/error.py:52:class ProviderModelCurrentlyNotSupportError(BaseHTTPException):
+../api/controllers/web/error.py:58:class CompletionRequestError(BaseHTTPException):
+../api/controllers/web/error.py:64:class AppMoreLikeThisDisabledError(BaseHTTPException):
+../api/controllers/web/error.py:70:class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
+../api/controllers/web/error.py:76:class NoAudioUploadedError(BaseHTTPException):
+../api/controllers/web/error.py:82:class AudioTooLargeError(BaseHTTPException):
+../api/controllers/web/error.py:88:class UnsupportedAudioTypeError(BaseHTTPException):
+../api/controllers/web/error.py:94:class ProviderNotSupportSpeechToTextError(BaseHTTPException):
+../api/controllers/web/error.py:100:class WebAppAuthRequiredError(BaseHTTPException):
+../api/controllers/web/error.py:106:class WebAppAuthAccessDeniedError(BaseHTTPException):
+../api/controllers/web/error.py:112:class InvokeRateLimitError(BaseHTTPException):
+../api/controllers/web/error.py:120:class NotFoundError(BaseHTTPException):
+../api/controllers/web/error.py:125:class InvalidArgumentError(BaseHTTPException):
+../api/controllers/mcp/mcp.py:5:from pydantic import BaseModel, Field, ValidationError
+../api/controllers/mcp/mcp.py:24:        self.message = message
+../api/controllers/mcp/mcp.py:64:            ValidationError: Invalid request format or parameters
+../api/controllers/mcp/mcp.py:157:        except ValidationError as e:
+../api/controllers/mcp/mcp.py:183:        except ValidationError:
+../api/controllers/mcp/mcp.py:186:            except ValidationError as e:
+../api/controllers/console/apikey.py:48:        flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
+../api/controllers/console/apikey.py:90:            flask_restx.abort(
+../api/controllers/console/apikey.py:92:                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
+../api/controllers/console/apikey.py:133:            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+../api/controllers/console/apikey.py:136:        # Type assertion: key is guaranteed to be non-None here because abort() raises
+../api/controllers/console/workspace/members.py:176:            abort(404)
+../api/controllers/console/workspace/members.py:215:            abort(404)
+../api/controllers/console/workspace/members.py:361:            abort(404)
+../api/controllers/console/workspace/tool_providers.py:857:            raise Exception("the plugin credentials failed")
+../api/controllers/console/workspace/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/console/workspace/error.py:4:class RepeatPasswordNotMatchError(BaseHTTPException):
+../api/controllers/console/workspace/error.py:10:class CurrentPasswordIncorrectError(BaseHTTPException):
+../api/controllers/console/workspace/error.py:16:class InvalidInvitationCodeError(BaseHTTPException):
+../api/controllers/console/workspace/error.py:22:class AccountAlreadyInitedError(BaseHTTPException):
+../api/controllers/console/workspace/error.py:28:class AccountNotInitializedError(BaseHTTPException):
+../api/controllers/console/workspace/error.py:34:class InvalidAccountDeletionCodeError(BaseHTTPException):
+../api/controllers/console/explore/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/console/explore/error.py:4:class NotCompletionAppError(BaseHTTPException):
+../api/controllers/console/explore/error.py:10:class NotChatAppError(BaseHTTPException):
+../api/controllers/console/explore/error.py:16:class NotWorkflowAppError(BaseHTTPException):
+../api/controllers/console/explore/error.py:22:class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
+../api/controllers/console/explore/error.py:28:class AppAccessDeniedError(BaseHTTPException):
+../api/controllers/console/explore/error.py:34:class TrialAppNotAllowed(BaseHTTPException):
+../api/controllers/console/explore/error.py:45:class TrialAppLimitExceeded(BaseHTTPException):
+../api/controllers/console/explore/wraps.py:113:            abort(403, "Trial app feature is not enabled.")
+../api/controllers/console/explore/wraps.py:124:            abort(403, "Explore banner feature is not enabled.")
+../api/controllers/console/datasets/datasets.py:780:            console_ns.abort(
+../api/controllers/console/datasets/datasets.py:782:                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
+../api/controllers/console/datasets/datasets.py:822:            console_ns.abort(404, message="API key not found")
+../api/controllers/console/datasets/datasets.py:825:        # Type assertion: key is guaranteed to be non-None here because abort() raises
+../api/controllers/console/datasets/rag_pipeline/rag_pipeline_workflow.py:203:            abort(415)
+../api/controllers/console/datasets/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/console/datasets/error.py:4:class DatasetNotInitializedError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:10:class ArchivedDocumentImmutableError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:16:class DatasetNameDuplicateError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:22:class InvalidActionError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:28:class DocumentAlreadyFinishedError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:34:class DocumentIndexingError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:40:class InvalidMetadataError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:46:class WebsiteCrawlError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:52:class DatasetInUseError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:58:class IndexingEstimateError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:64:class ChildChunkIndexingError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:70:class ChildChunkDeleteIndexError(BaseHTTPException):
+../api/controllers/console/datasets/error.py:76:class PipelineNotFoundError(BaseHTTPException):
+../api/controllers/console/app/message.py:255:            first_message = (
+../api/controllers/console/app/message.py:286:            current_page_first_message = history_messages[-1]
+../api/controllers/console/app/message.py:326:        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+../api/controllers/console/app/message.py:479:        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
+../api/controllers/console/app/conversation.py:367:            abort(400, description=str(e))
+../api/controllers/console/app/conversation.py:494:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:74:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:131:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:187:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:245:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:312:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:384:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:446:            abort(400, description=str(e))
+../api/controllers/console/app/statistic.py:505:            abort(400, description=str(e))
+../api/controllers/console/app/workflow_statistic.py:63:            abort(400, description=str(e))
+../api/controllers/console/app/workflow_statistic.py:103:            abort(400, description=str(e))
+../api/controllers/console/app/workflow_statistic.py:143:            abort(400, description=str(e))
+../api/controllers/console/app/workflow_statistic.py:183:            abort(400, description=str(e))
+../api/controllers/console/app/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/console/app/error.py:4:class AppNotFoundError(BaseHTTPException):
+../api/controllers/console/app/error.py:10:class ProviderNotInitializeError(BaseHTTPException):
+../api/controllers/console/app/error.py:19:class ProviderQuotaExceededError(BaseHTTPException):
+../api/controllers/console/app/error.py:28:class ProviderModelCurrentlyNotSupportError(BaseHTTPException):
+../api/controllers/console/app/error.py:34:class ConversationCompletedError(BaseHTTPException):
+../api/controllers/console/app/error.py:40:class AppUnavailableError(BaseHTTPException):
+../api/controllers/console/app/error.py:46:class CompletionRequestError(BaseHTTPException):
+../api/controllers/console/app/error.py:52:class AppMoreLikeThisDisabledError(BaseHTTPException):
+../api/controllers/console/app/error.py:58:class NoAudioUploadedError(BaseHTTPException):
+../api/controllers/console/app/error.py:64:class AudioTooLargeError(BaseHTTPException):
+../api/controllers/console/app/error.py:70:class UnsupportedAudioTypeError(BaseHTTPException):
+../api/controllers/console/app/error.py:76:class ProviderNotSupportSpeechToTextError(BaseHTTPException):
+../api/controllers/console/app/error.py:82:class DraftWorkflowNotExist(BaseHTTPException):
+../api/controllers/console/app/error.py:88:class DraftWorkflowNotSync(BaseHTTPException):
+../api/controllers/console/app/error.py:94:class TracingConfigNotExist(BaseHTTPException):
+../api/controllers/console/app/error.py:100:class TracingConfigIsExist(BaseHTTPException):
+../api/controllers/console/app/error.py:106:class TracingConfigCheckError(BaseHTTPException):
+../api/controllers/console/app/error.py:112:class InvokeRateLimitError(BaseHTTPException):
+../api/controllers/console/app/error.py:120:class NeedAddIdsError(BaseHTTPException):
+../api/controllers/console/app/annotation.py:377:            abort(
+../api/controllers/console/app/workflow.py:278:            abort(415)
+../api/controllers/console/app/workflow.py:894:                abort(400, description=str(e))
+../api/controllers/console/app/workflow.py:896:                abort(400, description=str(e))
+../api/controllers/console/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/console/error.py:4:class AlreadySetupError(BaseHTTPException):
+../api/controllers/console/error.py:10:class NotSetupError(BaseHTTPException):
+../api/controllers/console/error.py:19:class NotInitValidateError(BaseHTTPException):
+../api/controllers/console/error.py:25:class InitValidateFailedError(BaseHTTPException):
+../api/controllers/console/error.py:31:class AccountNotLinkTenantError(BaseHTTPException):
+../api/controllers/console/error.py:37:class AlreadyActivateError(BaseHTTPException):
+../api/controllers/console/error.py:43:class NotAllowedCreateWorkspace(BaseHTTPException):
+../api/controllers/console/error.py:49:class WorkspaceMembersLimitExceeded(BaseHTTPException):
+../api/controllers/console/error.py:55:class WorkspacesLimitExceeded(BaseHTTPException):
+../api/controllers/console/error.py:61:class AccountBannedError(BaseHTTPException):
+../api/controllers/console/error.py:67:class AccountNotFound(BaseHTTPException):
+../api/controllers/console/error.py:73:class EmailSendIpLimitError(BaseHTTPException):
+../api/controllers/console/error.py:79:class UnauthorizedAndForceLogout(BaseHTTPException):
+../api/controllers/console/error.py:85:class AccountInFreezeError(BaseHTTPException):
+../api/controllers/console/error.py:94:class EducationVerifyLimitError(BaseHTTPException):
+../api/controllers/console/error.py:100:class EducationActivateLimitError(BaseHTTPException):
+../api/controllers/console/error.py:106:class ComplianceRateLimitError(BaseHTTPException):
+../api/controllers/console/auth/oauth.py:124:                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
+../api/controllers/console/auth/oauth.py:131:            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
+../api/controllers/console/auth/oauth.py:135:                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+../api/controllers/console/auth/oauth.py:138:            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
+../api/controllers/console/auth/oauth.py:142:            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
+../api/controllers/console/auth/oauth.py:152:            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
+../api/controllers/console/auth/oauth.py:156:                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+../api/controllers/console/auth/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/console/auth/error.py:4:class ApiKeyAuthFailedError(BaseHTTPException):
+../api/controllers/console/auth/error.py:10:class InvalidEmailError(BaseHTTPException):
+../api/controllers/console/auth/error.py:16:class PasswordMismatchError(BaseHTTPException):
+../api/controllers/console/auth/error.py:22:class InvalidTokenError(BaseHTTPException):
+../api/controllers/console/auth/error.py:28:class PasswordResetRateLimitExceededError(BaseHTTPException):
+../api/controllers/console/auth/error.py:38:class EmailRegisterRateLimitExceededError(BaseHTTPException):
+../api/controllers/console/auth/error.py:48:class EmailChangeRateLimitExceededError(BaseHTTPException):
+../api/controllers/console/auth/error.py:58:class OwnerTransferRateLimitExceededError(BaseHTTPException):
+../api/controllers/console/auth/error.py:68:class EmailCodeError(BaseHTTPException):
+../api/controllers/console/auth/error.py:74:class EmailOrPasswordMismatchError(BaseHTTPException):
+../api/controllers/console/auth/error.py:80:class AuthenticationFailedError(BaseHTTPException):
+../api/controllers/console/auth/error.py:86:class EmailPasswordLoginLimitError(BaseHTTPException):
+../api/controllers/console/auth/error.py:92:class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
+../api/controllers/console/auth/error.py:102:class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
+../api/controllers/console/auth/error.py:112:class EmailPasswordResetLimitError(BaseHTTPException):
+../api/controllers/console/auth/error.py:118:class EmailRegisterLimitError(BaseHTTPException):
+../api/controllers/console/auth/error.py:124:class EmailChangeLimitError(BaseHTTPException):
+../api/controllers/console/auth/error.py:130:class EmailAlreadyInUseError(BaseHTTPException):
+../api/controllers/console/auth/error.py:136:class OwnerTransferLimitError(BaseHTTPException):
+../api/controllers/console/auth/error.py:142:class NotOwnerError(BaseHTTPException):
+../api/controllers/console/auth/error.py:148:class CannotTransferOwnerToSelfError(BaseHTTPException):
+../api/controllers/console/auth/error.py:154:class MemberNotInTenantError(BaseHTTPException):
+../api/controllers/console/wraps.py:56:            abort(404)
+../api/controllers/console/wraps.py:67:            abort(404)
+../api/controllers/console/wraps.py:78:            abort(404)
+../api/controllers/console/wraps.py:91:            abort(403, "Billing feature is not enabled.")
+../api/controllers/console/wraps.py:110:                    abort(403, "The number of members has reached the limit of your subscription.")
+../api/controllers/console/wraps.py:112:                    abort(403, "The number of apps has reached the limit of your subscription.")
+../api/controllers/console/wraps.py:114:                    abort(
+../api/controllers/console/wraps.py:122:                        abort(403, "The number of documents has reached the limit of your subscription.")
+../api/controllers/console/wraps.py:126:                    abort(403, "The workspace custom feature has reached the limit of your subscription.")
+../api/controllers/console/wraps.py:128:                    abort(403, "The annotation quota has reached the limit of your subscription.")
+../api/controllers/console/wraps.py:148:                        abort(
+../api/controllers/console/wraps.py:188:                        abort(
+../api/controllers/console/wraps.py:255:        abort(403)
+../api/controllers/console/wraps.py:268:        abort(403)
+../api/controllers/console/wraps.py:281:        abort(403)
+../api/controllers/console/wraps.py:306:        abort(403)
+../api/controllers/console/wraps.py:369:            abort(
+../api/controllers/console/wraps.py:383:            abort(
+../api/controllers/console/wraps.py:420:            abort(
+../api/controllers/service_api/app/file_preview.py:111:            message = (
+../api/controllers/service_api/app/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/service_api/app/error.py:4:class AppUnavailableError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:10:class NotCompletionAppError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:16:class NotChatAppError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:22:class NotWorkflowAppError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:28:class ConversationCompletedError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:34:class ProviderNotInitializeError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:43:class ProviderQuotaExceededError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:52:class ProviderModelCurrentlyNotSupportError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:58:class CompletionRequestError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:64:class NoAudioUploadedError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:70:class AudioTooLargeError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:76:class UnsupportedAudioTypeError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:82:class ProviderNotSupportSpeechToTextError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:88:class FileNotFoundError(BaseHTTPException):
+../api/controllers/service_api/app/error.py:94:class FileAccessDeniedError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:1:from libs.exception import BaseHTTPException
+../api/controllers/service_api/dataset/error.py:4:class DatasetNotInitializedError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:10:class ArchivedDocumentImmutableError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:16:class DatasetNameDuplicateError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:22:class InvalidActionError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:28:class DocumentAlreadyFinishedError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:34:class DocumentIndexingError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:40:class InvalidMetadataError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:46:class DatasetInUseError(BaseHTTPException):
+../api/controllers/service_api/dataset/error.py:52:class PipelineRunError(BaseHTTPException):
+../api/controllers/inner_api/wraps.py:21:            abort(404)
+../api/controllers/inner_api/wraps.py:26:            abort(401)
+../api/controllers/inner_api/wraps.py:37:            abort(404)
+../api/controllers/inner_api/wraps.py:42:            abort(401)
+../api/controllers/inner_api/wraps.py:89:            abort(404)
+../api/controllers/inner_api/wraps.py:94:            abort(404)
+../api/events/event_handlers/update_provider_when_message_created.py:94:    message = sender
+../api/events/event_handlers/update_provider_when_message_created.py:133:            message=message,
+../api/models/model.py:849:            first_message = self.first_message
+../api/models/model.py:1394:            message=data["message"],
+../api/libs/broadcast_channel/redis/_subscription.py:67:                raw_message = self._get_message()
+../api/libs/external_api.py:7:from werkzeug.exceptions import HTTPException
+../api/libs/external_api.py:20:    @api.errorhandler(HTTPException)
+../api/libs/external_api.py:21:    def handle_http_exception(e: HTTPException):
+../api/repositories/sqlalchemy_api_workflow_run_repository.py:715:                        message=reason.message,
+../api/libs/oauth_data_source.py:260:            message = response_json.get("message", "unknown error")
+../api/migrations/versions/2025_11_06_1603-9e6fa5cbcd80_make_message_annotation_question_not_.py:32:    update_question_from_message = (
+../api/libs/exception.py:1:from werkzeug.exceptions import HTTPException
+../api/libs/exception.py:4:class BaseHTTPException(HTTPException):
+../api/tasks/clean_notion_document_task.py:32:                raise Exception("Document has no dataset")
+../api/models/workflow.py:1858:            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+../api/models/workflow.py:1866:            return SchedulingPause(message=self.message)
+../api/tasks/add_document_to_index_task.py:45:                raise Exception(f"Document {dataset_document.id} dataset {dataset_document.dataset_id} doesn't exist.")
+../api/tasks/trigger_processing_tasks.py:331:                error_message = e.to_user_friendly_error(plugin_name=trigger_entity.identity.name)
+../api/tasks/trigger_processing_tasks.py:341:                        error_message=error_message,
+../api/tasks/deal_dataset_vector_index_task.py:35:                raise Exception("Dataset not found")
+../api/tests/unit_tests/tasks/test_mail_send_task.py:1380:        sent_message = mock_server.sendmail.call_args[0][2]
+../api/extensions/ext_sentry.py:11:        from werkzeug.exceptions import HTTPException
+../api/extensions/ext_sentry.py:27:                HTTPException,
+../api/tests/unit_tests/tools/test_api_tool.py:87:        text_message = _get_message_by_type(result, ToolInvokeMessage.TextMessage)
+../api/tests/unit_tests/tools/test_api_tool.py:100:        json_message = _get_message_by_type(result, ToolInvokeMessage.JsonMessage)
+../api/tests/unit_tests/tools/test_api_tool.py:162:        text_message = _get_message_by_type(result, ToolInvokeMessage.TextMessage)
+../api/tests/unit_tests/tools/test_api_tool.py:175:        json_message = _get_message_by_type(result, ToolInvokeMessage.JsonMessage)
+../api/tests/unit_tests/tools/test_api_tool.py:199:        message = result[0]
+../api/tests/unit_tests/tools/test_api_tool.py:225:        message = result[0]
+../api/extensions/storage/clickzetta_volume/volume_permissions.py:640:        error_message = f"Permission denied for operation '{operation}' on {permission_manager.volume_type} volume"
+../api/extensions/otel/parser/llm.py:50:                message = {"role": role, "parts": [{"type": "text", "content": text}]}
+../api/extensions/otel/parser/llm.py:83:        output_message = {
+../api/extensions/otel/parser/llm.py:151:        gen_ai_input_message = _format_input_messages(process_data)
+../api/extensions/otel/parser/llm.py:152:        gen_ai_output_message = _format_output_messages(outputs)
+../api/core/plugin/backwards_invocation/model.py:84:                        message=response.message,
+../api/core/plugin/backwards_invocation/model.py:150:                        message=response.message,
+../api/core/plugin/backwards_invocation/model.py:391:            message = messages[i]
+../api/services/plugin/plugin_migration.py:532:                    raise Exception(f"Failed to download plugin {plugin_identifier}")
+../api/core/plugin/backwards_invocation/base.py:16:                error_message = BaseBackwardsInvocationResponse(error=str(e)).model_dump_json()
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:79:                message=AssistantPromptMessage(content='{"name": "test"}'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:100:                        message=AssistantPromptMessage(content='{"name":'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:110:                        message=AssistantPromptMessage(content=' "test"}'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:128:                message=AssistantPromptMessage(content='{"answer": "test response"}'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:149:                        message=AssistantPromptMessage(content='{"answer": "test'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:159:                        message=AssistantPromptMessage(content=' response"}'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:182:                        message=AssistantPromptMessage(
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:196:                        message=AssistantPromptMessage(
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:218:                message=AssistantPromptMessage(content=None),  # Non-string content
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:235:                message=AssistantPromptMessage(content='{"name": "test"'),  # Invalid JSON - missing closing brace
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:254:                message=AssistantPromptMessage(content='{"result": "success"}'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:273:                message=AssistantPromptMessage(content='{"output": "result"}'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:386:            message=AssistantPromptMessage(content='[{"thought": "reasoning process"}, "other content"]'),
+../api/tests/unit_tests/utils/structured_output_parser/test_structured_output_parser.py:441:        message=AssistantPromptMessage(content='{"result": "true"}'),
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:218:        error_message = json.dumps({"error_type": "PluginDaemonUnauthorizedError", "message": "Unauthorized access"})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:232:        error_message = json.dumps(
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:306:        error_message = json.dumps(
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:352:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:371:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:390:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:409:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:428:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:446:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:460:        error_message = json.dumps(
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:476:        error_message = json.dumps(
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:492:        error_message = json.dumps(
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:508:        error_message = json.dumps({"error_type": "PluginDaemonNotFoundError", "message": "Resource not found"})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:523:        invoke_error_message = json.dumps(
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:526:        error_message = json.dumps({"error_type": "PluginInvokeError", "message": invoke_error_message})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:540:        error_message = json.dumps({"error_type": "UnknownErrorType", "message": "Unknown error occurred"})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:1403:        error_message = json.dumps({"error_type": "PluginDaemonUnauthorizedError", "message": "Invalid API key"})
+../api/tests/unit_tests/core/plugin/test_plugin_runtime.py:1422:        error_message = json.dumps(
+../api/services/tools/tools_transform_service.py:6:from pydantic import ValidationError
+../api/services/tools/tools_transform_service.py:249:        except (ValidationError, json.JSONDecodeError):
+../api/core/plugin/utils/chunk_merger.py:83:                merged_message = message_class(
+../api/core/plugin/utils/chunk_merger.py:85:                    message=ToolInvokeMessage.BlobMessage(
+../api/tests/unit_tests/core/agent/output_parser/test_cot_output_parser.py:14:            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=text[i], tool_calls=[])),
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:25:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:32:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:51:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:58:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:65:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:72:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:89:                message=ToolInvokeMessage.TextMessage(text="Hello"),
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:94:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:101:                message=ToolInvokeMessage.TextMessage(text="World"),
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:121:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:137:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:153:                message=AgentInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:160:                message=AgentInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:176:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:193:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:199:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:212:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:238:                    message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:261:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:268:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:275:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:294:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:324:                    message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:337:                    message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:366:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:376:                message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:407:                    message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/plugin/utils/test_chunk_merger.py:448:                    message=ToolInvokeMessage.BlobChunkMessage(
+../api/tests/unit_tests/core/model_runtime/__base/test_large_language_model_non_stream_parsing.py:18:    message = AssistantPromptMessage(content=content, tool_calls=tool_calls or [])
+../api/tests/unit_tests/core/model_runtime/__base/test_large_language_model_non_stream_parsing.py:19:    delta = LLMResultChunkDelta(index=0, message=message, usage=usage)
+../api/tests/unit_tests/core/model_runtime/__base/test_large_language_model_non_stream_parsing.py:83:        message=AssistantPromptMessage(content="ok"),
+../api/tests/unit_tests/models/test_app_models.py:413:        mock_message = MagicMock()
+../api/tests/unit_tests/models/test_app_models.py:483:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:487:            message={"role": "user", "content": "What is AI?"},
+../api/tests/unit_tests/models/test_app_models.py:507:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:511:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:529:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:533:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:551:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:555:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:574:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:578:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:596:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:600:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:622:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:626:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:684:        message = Message.from_dict(data)
+../api/tests/unit_tests/models/test_app_models.py:1001:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:1005:            message={"role": "user", "content": "Test"},
+../api/tests/unit_tests/models/test_app_models.py:1062:        message = Message(
+../api/tests/unit_tests/models/test_app_models.py:1066:            message={"role": "user", "content": "What is AI?"},
+../api/tests/unit_tests/core/variables/test_variables.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/core/variables/test_variables.py:19:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:23:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:27:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:31:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:36:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:39:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:43:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:47:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/variables/test_variables.py:51:    with pytest.raises(ValidationError):
+../api/core/plugin/impl/plugin.py:42:            message = e.args[0]
+../api/tests/unit_tests/models/test_workflow_models.py:602:        error_message = "Code execution failed: SyntaxError on line 5"
+../api/services/trigger/trigger_subscription_builder_service.py:13:from core.tools.errors import ToolProviderCredentialValidationError
+../api/services/trigger/trigger_subscription_builder_service.py:98:            except ToolProviderCredentialValidationError as e:
+../api/services/trigger/trigger_subscription_builder_service.py:276:                except ToolProviderCredentialValidationError as e:
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:89:        message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:103:        llm_result.message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:129:                message=mock_message,
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:146:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:166:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:195:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:220:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:241:        llm_result.message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:247:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:251:        pipeline._save_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:273:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:297:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:316:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:337:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:360:        mock_queue_message = Mock()
+../api/tests/unit_tests/core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py:364:        pipeline._save_message = Mock()
+../api/core/workflow/nodes/start/start_node.py:3:from jsonschema import Draft7Validator, ValidationError
+../api/core/workflow/nodes/start/start_node.py:62:            except ValidationError as e:
+../api/tests/unit_tests/core/app/layers/test_pause_state_persist_layer.py:36:        return GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")], outputs=outputs or {})
+../api/tests/unit_tests/services/test_saved_message_service.py:150:        message = create_autospec(Message, instance=True)
+../api/tests/unit_tests/services/test_saved_message_service.py:183:        saved_message = create_autospec(SavedMessage, instance=True)
+../api/tests/unit_tests/services/test_saved_message_service.py:387:        message = factory.create_message_mock(message_id="msg-123", app_id=app.id)
+../api/tests/unit_tests/services/test_saved_message_service.py:403:        saved_message = mock_db_session.add.call_args[0][0]
+../api/tests/unit_tests/services/test_saved_message_service.py:417:        message = factory.create_message_mock(message_id="msg-456", app_id=app.id)
+../api/tests/unit_tests/services/test_saved_message_service.py:433:        saved_message = mock_db_session.add.call_args[0][0]
+../api/tests/unit_tests/services/test_saved_message_service.py:490:        message = factory.create_message_mock()
+../api/tests/unit_tests/services/test_saved_message_service.py:520:        saved_message = factory.create_saved_message_mock(
+../api/tests/unit_tests/services/test_saved_message_service.py:547:        saved_message = factory.create_saved_message_mock(
+../api/tests/unit_tests/services/test_saved_message_service.py:609:        saved_message = factory.create_saved_message_mock(
+../api/tests/unit_tests/models/test_dataset_models.py:650:        error_message = "Indexing failed due to timeout"
+../api/tests/unit_tests/core/repositories/test_factory.py:207:        error_message = "Custom error message"
+../api/core/plugin/impl/base.py:36:    TriggerProviderCredentialValidationError,
+../api/core/plugin/impl/base.py:89:            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+../api/core/plugin/impl/base.py:185:            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+../api/core/plugin/impl/base.py:303:                        raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+../api/core/plugin/impl/base.py:319:                raise PluginDaemonInnerError(code=-500, message=message)
+../api/core/plugin/impl/base.py:338:                    case TriggerProviderCredentialValidationError.__name__:
+../api/core/plugin/impl/base.py:339:                        raise TriggerProviderCredentialValidationError(error_object.get("message"))
+../api/core/plugin/impl/base.py:363:                raise Exception(f"got unknown error from plugin daemon: {error_type}, message: {message}")
+../api/services/workflow_service.py:1111:        raise Exception("unreachable")
+../api/services/annotation_service.py:46:            message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
+../api/tests/unit_tests/core/app/apps/advanced_chat/test_app_runner_conversation_variables.py:67:        mock_message = MagicMock()
+../api/tests/unit_tests/core/app/apps/advanced_chat/test_app_runner_conversation_variables.py:96:            message=mock_message,
+../api/tests/unit_tests/core/app/apps/advanced_chat/test_app_runner_conversation_variables.py:207:        mock_message = MagicMock()
+../api/tests/unit_tests/core/app/apps/advanced_chat/test_app_runner_conversation_variables.py:236:            message=mock_message,
+../api/tests/unit_tests/core/app/apps/advanced_chat/test_app_runner_conversation_variables.py:362:        mock_message = MagicMock()
+../api/tests/unit_tests/core/app/apps/advanced_chat/test_app_runner_conversation_variables.py:391:            message=mock_message,
+../api/services/message_service.py:51:            first_message = (
+../api/services/message_service.py:121:            last_message = base_query.where(Message.id == last_id).first()
+../api/services/message_service.py:155:        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
+../api/services/message_service.py:201:        message = (
+../api/services/message_service.py:225:        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
+../api/tests/unit_tests/core/tools/workflow_as_tool/test_tool.py:101:    # Should contain: 3 variable messages + 1 text message + 1 JSON message = 5 messages
+../api/tests/unit_tests/core/tools/workflow_as_tool/test_tool.py:165:    # Should contain: 0 variable messages + 1 text message + 1 JSON message = 2 messages
+../api/tests/unit_tests/core/tools/workflow_as_tool/test_tool.py:213:        message = tool.create_variable_message(var_name, var_value)
+../api/core/plugin/entities/plugin_daemon.py:143:        self.message = message
+../api/services/saved_message_service.py:38:        saved_message = (
+../api/services/saved_message_service.py:52:        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
+../api/services/saved_message_service.py:54:        saved_message = SavedMessage(
+../api/services/saved_message_service.py:68:        saved_message = (
+../api/tests/unit_tests/core/app/apps/common/test_workflow_response_converter_truncation.py:615:            raise Exception("unknown type.")
+../api/tests/unit_tests/services/test_conversation_service.py:216:        message = create_autospec(Message, instance=True)
+../api/tests/unit_tests/services/test_conversation_service.py:226:        message.message = kwargs.get("message", {})
+../api/tests/unit_tests/services/test_conversation_service.py:572:        first_message = ConversationServiceTestDataFactory.create_message_mock(
+../api/tests/unit_tests/services/test_conversation_service.py:802:        first_message = ConversationServiceTestDataFactory.create_message_mock(
+../api/tests/unit_tests/services/test_conversation_service.py:863:        first_message = ConversationServiceTestDataFactory.create_message_mock(conversation_id=conversation.id)
+../api/tests/unit_tests/services/test_conversation_service.py:981:        message = ConversationServiceTestDataFactory.create_message_mock(
+../api/tests/unit_tests/services/test_conversation_service.py:1061:        message = ConversationServiceTestDataFactory.create_message_mock(message_id=message_id, app_id=app_id)
+../api/tests/unit_tests/services/test_conversation_service.py:1298:        message = ConversationServiceTestDataFactory.create_message_mock(
+../api/core/workflow/nodes/variable_assigner/common/helpers.py:27:        raise Exception("selector too short")
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:245:        json_message = ToolInvokeMessage.JsonMessage(json_object=complex_data)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:246:        message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:282:        json_message = ToolInvokeMessage.JsonMessage(json_object=nested_data)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:283:        message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:316:            json_message = ToolInvokeMessage.JsonMessage(json_object=complex_data)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:317:            message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:328:        transformed_message = transformed_messages[0]
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:352:        json_message = ToolInvokeMessage.JsonMessage(json_object=data_with_none)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:353:        message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:373:        json_message = ToolInvokeMessage.JsonMessage(json_object=large_data)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:374:        message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:430:        json_message = ToolInvokeMessage.JsonMessage(json_object=real_world_data)
+../api/tests/unit_tests/core/tools/utils/test_tool_engine_serialization.py:431:        message = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=json_message)
+../api/tests/unit_tests/factories/test_variable_factory.py:868:            error_message = str(exc_info.value)
+../api/tests/unit_tests/core/tools/utils/test_message_transformer.py:60:        message=ToolInvokeMessage.BlobMessage(blob=blob),
+../api/tests/unit_tests/services/test_audio_service.py:199:        message = create_autospec(Message, instance=True)
+../api/tests/unit_tests/services/test_audio_service.py:428:        message = factory.create_message_mock(
+../api/tests/unit_tests/services/test_audio_service.py:610:        message = factory.create_message_mock(
+../api/core/workflow/nodes/llm/node.py:820:                message = LLMNodeChatModelMessage(
+../api/core/workflow/nodes/llm/node.py:1092:                prompt_message = _combine_message_content_with_role(
+../api/core/workflow/nodes/llm/node.py:1125:                    prompt_message = _combine_message_content_with_role(
+../api/core/workflow/nodes/llm/node.py:1132:                    prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
+../api/core/workflow/nodes/llm/node.py:1407:    prompt_message = _combine_message_content_with_role(
+../api/tests/unit_tests/services/test_message_service.py:59:        message = MagicMock(spec=Message)
+../api/tests/unit_tests/services/test_message_service.py:229:        first_message = factory.create_message_mock(
+../api/tests/unit_tests/services/test_message_service.py:470:        last_message = factory.create_message_mock(
+../api/services/retention/workflow_run/clear_free_plan_expired_workflow_run_logs.py:93:                skipped_message = (
+../api/services/retention/workflow_run/clear_free_plan_expired_workflow_run_logs.py:149:                summary_message = (
+../api/services/retention/workflow_run/clear_free_plan_expired_workflow_run_logs.py:154:                summary_message = (
+../api/services/retention/workflow_run/clear_free_plan_expired_workflow_run_logs.py:159:                summary_message = f"{summary_message}; related records: {self._format_related_counts(related_totals)}"
+../api/services/retention/workflow_run/clear_free_plan_expired_workflow_run_logs.py:163:                summary_message = (
+../api/services/retention/workflow_run/clear_free_plan_expired_workflow_run_logs.py:168:                summary_message = (
+../api/tests/unit_tests/core/tools/test_tool_entities.py:15:    log_message = ToolInvokeMessage.LogMessage(
+../api/tests/unit_tests/core/workflow/nodes/test_start_node_json_object.py:5:from pydantic import ValidationError as PydanticValidationError
+../api/tests/unit_tests/core/workflow/nodes/test_start_node_json_object.py:214:    with pytest.raises(PydanticValidationError):
+../api/tests/unit_tests/services/test_feedback_service.py:122:        message = factory.create_message_mock(
+../api/tests/unit_tests/services/test_feedback_service.py:398:        message = factory.create_message_mock(answer=long_answer)
+../api/tests/unit_tests/services/test_feedback_service.py:427:        message = factory.create_message_mock()
+../api/tests/unit_tests/services/test_feedback_service.py:454:        message = factory.create_message_mock()
+../api/tests/unit_tests/services/test_feedback_service.py:481:        message = factory.create_message_mock()
+../api/tests/unit_tests/services/test_feedback_service.py:537:        message = factory.create_message_mock(query=None, inputs={"query": "Query from inputs"})
+../api/tests/unit_tests/services/test_feedback_service.py:564:        message = factory.create_message_mock()
+../api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node.py:120:    message = ToolInvokeMessage(
+../api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node.py:122:        message=ToolInvokeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+../api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node.py:145:    message = ToolInvokeMessage(
+../api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node.py:147:        message=ToolInvokeMessage.TextMessage(text="https://dify.ai"),
+../api/services/auth/jina/jina.py:38:            error_message = response.json().get("error", "Unknown error occurred")
+../api/services/auth/jina/jina.py:39:            raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/services/auth/jina/jina.py:42:                error_message = json.loads(response.text).get("error", "Unknown error occurred")
+../api/services/auth/jina/jina.py:43:                raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/services/auth/jina/jina.py:44:            raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")
+../api/tests/unit_tests/core/workflow/nodes/code/code_node_spec.py:9:    OutputValidationError,
+../api/tests/unit_tests/core/workflow/nodes/code/code_node_spec.py:36:        """Test OutputValidationError inherits from CodeNodeError."""
+../api/tests/unit_tests/core/workflow/nodes/code/code_node_spec.py:37:        error = OutputValidationError("validation failed")
+../api/tests/unit_tests/core/workflow/nodes/code/code_node_spec.py:58:        """Test OutputValidationError with field information."""
+../api/tests/unit_tests/core/workflow/nodes/code/code_node_spec.py:59:        error = OutputValidationError("Output 'result' is not a valid type")
+../api/services/billing_service.py:325:                raise Exception(
+../api/services/auth/firecrawl/firecrawl.py:50:        error_message = payload.get("error") or payload.get("message") or (response.text or "Unknown error occurred")
+../api/services/auth/firecrawl/firecrawl.py:51:        raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/tests/unit_tests/core/workflow/nodes/code/entities_spec.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/core/workflow/nodes/code/entities_spec.py:110:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/code/entities_spec.py:115:        with pytest.raises(ValidationError):
+../api/core/tools/builtin_tool/tool.py:141:            message = messages[i]
+../api/services/auth/jina.py:38:            error_message = response.json().get("error", "Unknown error occurred")
+../api/services/auth/jina.py:39:            raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/services/auth/jina.py:42:                error_message = json.loads(response.text).get("error", "Unknown error occurred")
+../api/services/auth/jina.py:43:                raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/services/auth/jina.py:44:            raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")
+../api/tests/test_containers_integration_tests/tasks/test_rag_pipeline_run_tasks.py:870:            # Act & Assert: Execute the priority task (should raise Exception)
+../api/tests/test_containers_integration_tests/tasks/test_rag_pipeline_run_tasks.py:918:            # Act & Assert: Execute the regular task (should raise Exception)
+../api/services/auth/watercrawl/watercrawl.py:38:            error_message = response.json().get("error", "Unknown error occurred")
+../api/services/auth/watercrawl/watercrawl.py:39:            raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/services/auth/watercrawl/watercrawl.py:42:                error_message = json.loads(response.text).get("error", "Unknown error occurred")
+../api/services/auth/watercrawl/watercrawl.py:43:                raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
+../api/services/auth/watercrawl/watercrawl.py:44:            raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")
+../api/core/tools/errors.py:12:class ToolParameterValidationError(ValueError):
+../api/core/tools/errors.py:16:class ToolProviderCredentialValidationError(ValueError):
+../api/core/workflow/graph/validation.py:22:class GraphValidationError(ValueError):
+../api/core/workflow/graph/validation.py:27:            raise ValueError("GraphValidationError requires at least one issue.")
+../api/core/workflow/graph/validation.py:29:        message = "; ".join(f"[{issue.code}] {issue.message}" for issue in self.issues)
+../api/core/workflow/graph/validation.py:54:                        message=f"Edge {edge.id} references unknown source node '{edge.tail}'.",
+../api/core/workflow/graph/validation.py:62:                        message=f"Edge {edge.id} references unknown target node '{edge.head}'.",
+../api/core/workflow/graph/validation.py:83:                    message=f"Root node '{root_node.id}' is missing from the node registry.",
+../api/core/workflow/graph/validation.py:94:                    message=f"Root node '{root_node.id}' must declare execution type 'root'.",
+../api/core/workflow/graph/validation.py:114:            raise GraphValidationError(issues)
+../api/core/workflow/graph/validation.py:142:                    message=(
+../api/core/tools/plugin_tool/provider.py:7:from core.tools.errors import ToolProviderCredentialValidationError
+../api/core/tools/plugin_tool/provider.py:45:            raise ToolProviderCredentialValidationError("Invalid credentials")
+../api/tests/unit_tests/core/ops/test_config_entity.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/core/ops/test_config_entity.py:73:        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:78:        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:139:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:142:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:145:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:171:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:174:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:177:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:182:        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:222:        with pytest.raises(ValidationError, match="URL should end with /api/"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:227:        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:258:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:261:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:264:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:269:        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:285:        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:310:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:313:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:316:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/ops/test_config_entity.py:340:        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:345:        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
+../api/tests/unit_tests/core/ops/test_config_entity.py:350:        with pytest.raises(ValidationError):
+../api/services/workflow_run_service.py:64:            message = workflow_run.message
+../api/services/audio_service.py:60:            message = f"Audio size larger than {FILE_SIZE} mb"
+../api/services/audio_service.py:136:            message = db.session.query(Message).where(Message.id == message_id).first()
+../api/core/workflow/nodes/code/code_node.py:20:    OutputValidationError,
+../api/core/workflow/nodes/code/code_node.py:133:            raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:157:            raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:167:                raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:242:                            raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:249:                    raise OutputValidationError(f"Output {prefix}.{output_name} is not a valid type.")
+../api/core/workflow/nodes/code/code_node.py:257:                raise OutputValidationError(f"Output {prefix}{dot}{output_name} is missing.")
+../api/core/workflow/nodes/code/code_node.py:265:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:280:                    raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:296:                    raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:315:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:320:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:327:                            raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:347:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:353:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:368:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:374:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:384:                                raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:407:                        raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:414:                            raise OutputValidationError(
+../api/core/workflow/nodes/code/code_node.py:422:                raise OutputValidationError(f"Output type {output_config.type} is not supported.")
+../api/services/dataset_service.py:1546:            invalid_source_message="Document does not have an uploaded file to download.",
+../api/services/dataset_service.py:1547:            missing_file_message="Uploaded file not found.",
+../api/services/dataset_service.py:1582:                invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
+../api/services/dataset_service.py:1583:                missing_file_message="Only uploaded-file documents can be downloaded as ZIP.",
+../api/core/workflow/nodes/code/exc.py:7:class OutputValidationError(CodeNodeError):
+../api/core/tools/utils/message_transformer.py:88:                        message=ToolInvokeMessage.TextMessage(text=url),
+../api/core/tools/utils/message_transformer.py:94:                        message=ToolInvokeMessage.TextMessage(
+../api/core/tools/utils/message_transformer.py:130:                        message=ToolInvokeMessage.TextMessage(text=url),
+../api/core/tools/utils/message_transformer.py:136:                        message=ToolInvokeMessage.TextMessage(text=url),
+../api/core/tools/utils/message_transformer.py:149:                                message=ToolInvokeMessage.TextMessage(text=url),
+../api/core/tools/utils/message_transformer.py:155:                                message=ToolInvokeMessage.TextMessage(text=url),
+../api/services/conversation_service.py:140:        message = (
+../api/core/workflow/nodes/document_extractor/node.py:55:            error_message = f"File variable not found for selector: {variable_selector}"
+../api/core/workflow/nodes/document_extractor/node.py:58:            error_message = f"Variable {variable_selector} is not an ArrayFileSegment"
+../api/services/account_service.py:1071:                raise Exception("Tenant already has an owner.")
+../api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py:104:                message=AssistantPromptMessage(content=""),
+../api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py:382:        message = session.scalar(message_stmt)
+../api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py:390:        message.message = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+../api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py:520:                                message=AssistantPromptMessage(content=self._task_state.llm_result.message.content),
+../api/core/app/task_pipeline/message_cycle_manager.py:85:        is_first_message = self._application_generate_entity.conversation_id is None
+../api/core/workflow/nodes/loop/loop_node.py:259:                raise Exception(event.error)
+../api/core/tools/custom_tool/tool.py:16:from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
+../api/core/tools/custom_tool/tool.py:86:            raise ToolProviderCredentialValidationError("runtime not initialized")
+../api/core/tools/custom_tool/tool.py:90:            raise ToolProviderCredentialValidationError("Missing auth_type")
+../api/core/tools/custom_tool/tool.py:99:                raise ToolProviderCredentialValidationError("Missing api_key_value")
+../api/core/tools/custom_tool/tool.py:101:                raise ToolProviderCredentialValidationError("api_key_value must be a string")
+../api/core/tools/custom_tool/tool.py:125:                    raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
+../api/core/tools/custom_tool/tool.py:167:            raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
+../api/core/tools/custom_tool/tool.py:248:                            raise ToolParameterValidationError(
+../api/core/tools/custom_tool/tool.py:308:            raise Exception("Max recursion depth reached")
+../api/core/app/task_pipeline/based_generate_task_pipeline.py:61:        message = session.scalar(stmt)
+../api/core/app/task_pipeline/based_generate_task_pipeline.py:82:        message = getattr(e, "description", str(e))
+../api/core/app/task_pipeline/based_generate_task_pipeline.py:84:            message = "Internal Server Error, please contact support."
+../api/services/workflow_draft_variable_service.py:676:        raise Exception("Invalid value for update policy.")
+../api/services/workflow_draft_variable_service.py:830:                raise Exception("selector too short")
+../api/core/tools/tool_engine.py:30:    ToolParameterValidationError,
+../api/core/tools/tool_engine.py:31:    ToolProviderCredentialValidationError,
+../api/core/tools/tool_engine.py:110:                tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
+../api/core/tools/tool_engine.py:128:        except ToolProviderCredentialValidationError as e:
+../api/core/tools/tool_engine.py:136:        except ToolParameterValidationError as e:
+../api/core/tools/tool_engine.py:257:                json_message = cast(ToolInvokeMessage.JsonMessage, response.message)
+../api/tests/test_containers_integration_tests/workflow/nodes/code_executor/test_code_javascript.py:14:        result_message = CodeExecutor.execute_code(language=CodeLanguage.JAVASCRIPT, preload="", code=code)
+../api/tests/test_containers_integration_tests/workflow/nodes/code_executor/test_code_javascript.py:15:        assert result_message == "Hello World\n"
+../api/core/workflow/graph_engine/domain/graph_execution.py:60:        message=str(error),
+../api/core/workflow/graph_engine/domain/graph_execution.py:129:    def abort(self, reason: str) -> None:
+../api/tests/test_containers_integration_tests/libs/broadcast_channel/redis/test_sharded_channel.py:79:        message = b"hello sharded world"
+../api/tests/test_containers_integration_tests/libs/broadcast_channel/redis/test_sharded_channel.py:110:        message = b"broadcast sharded message"
+../api/tests/test_containers_integration_tests/libs/broadcast_channel/redis/test_sharded_channel.py:229:                message = f"producer_{producer_idx}_msg_{i}".encode()
+../api/tests/test_containers_integration_tests/libs/broadcast_channel/redis/test_channel.py:76:        message = b"hello world"
+../api/tests/test_containers_integration_tests/libs/broadcast_channel/redis/test_channel.py:116:        message = b"broadcast message"
+../api/tests/test_containers_integration_tests/libs/broadcast_channel/redis/test_channel.py:246:                message = f"producer_{producer_idx}_msg_{i}".encode()
+../api/core/tools/__base/tool_provider.py:11:from core.tools.errors import ToolProviderCredentialValidationError
+../api/core/tools/__base/tool_provider.py:63:                raise ToolProviderCredentialValidationError(
+../api/core/tools/__base/tool_provider.py:74:                    raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
+../api/core/tools/__base/tool_provider.py:78:                    raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
+../api/core/tools/__base/tool_provider.py:82:                    raise ToolProviderCredentialValidationError(f"credential {credential_name} options should be list")
+../api/core/tools/__base/tool_provider.py:85:                    raise ToolProviderCredentialValidationError(
+../api/core/tools/__base/tool_provider.py:94:                raise ToolProviderCredentialValidationError(f"credential {credential_name} is required")
+../api/core/workflow/graph_engine/command_processing/command_handlers.py:22:        execution.abort(command.reason or "User requested abort")
+../api/core/workflow/graph_engine/command_processing/command_handlers.py:33:        pause_reason = SchedulingPause(message=reason)
+../api/core/tools/__base/tool.py:168:            type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image)
+../api/core/tools/__base/tool.py:174:            message=ToolInvokeMessage.FileMessage(),
+../api/core/tools/__base/tool.py:186:            type=ToolInvokeMessage.MessageType.LINK, message=ToolInvokeMessage.TextMessage(text=link)
+../api/core/tools/__base/tool.py:198:            message=ToolInvokeMessage.TextMessage(text=text),
+../api/core/tools/__base/tool.py:211:            message=ToolInvokeMessage.BlobMessage(blob=blob),
+../api/core/tools/__base/tool.py:221:            message=ToolInvokeMessage.JsonMessage(json_object=object, suppress_output=suppress_output),
+../api/core/tools/__base/tool.py:232:            message=ToolInvokeMessage.VariableMessage(
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:191:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:199:            message=[{"role": "user", "text": fake.text(max_nb_chars=100)}],
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:295:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:369:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:432:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:440:            message=[{"role": "user", "text": fake.text(max_nb_chars=100)}],
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:504:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:512:            message=[{"role": "user", "text": fake.text(max_nb_chars=100)}],
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:540:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:592:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:636:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:644:            message=[{"role": "user", "text": fake.text(max_nb_chars=100)}],
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:671:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:733:        error_message = "Plugin not found"
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:753:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:842:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:924:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:949:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_agent_service.py:990:        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/core/app/layers/test_pause_state_persist_layer.py:323:            reasons=[SchedulingPause(message="test pause")],
+../api/tests/test_containers_integration_tests/core/app/layers/test_pause_state_persist_layer.py:385:        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
+../api/tests/test_containers_integration_tests/core/app/layers/test_pause_state_persist_layer.py:419:        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
+../api/tests/test_containers_integration_tests/core/app/layers/test_pause_state_persist_layer.py:453:        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
+../api/tests/test_containers_integration_tests/core/app/layers/test_pause_state_persist_layer.py:519:        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
+../api/tests/test_containers_integration_tests/core/app/layers/test_pause_state_persist_layer.py:575:        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
+../api/tests/test_containers_integration_tests/services/test_message_service.py:169:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_message_service.py:177:            message=json.dumps([{"role": "user", "text": fake.sentence()}]),
+../api/tests/test_containers_integration_tests/services/test_message_service.py:210:            message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:301:            message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:334:            message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:397:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:425:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:442:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:474:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:501:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:520:            message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:553:            message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:581:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:584:        retrieved_message = MessageService.get_message(app_model=app, user=account, message_id=message.id)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:613:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:641:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:678:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:699:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:725:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_message_service.py:751:        message = self._create_test_message(app, conversation, account, fake)
+../api/core/llm_generator/output_parser/structured_output.py:8:from pydantic import TypeAdapter, ValidationError
+../api/core/llm_generator/output_parser/structured_output.py:159:            message=llm_result.message,
+../api/core/llm_generator/output_parser/structured_output.py:196:                    message=AssistantPromptMessage(content=""),
+../api/core/llm_generator/output_parser/structured_output.py:294:    except ValidationError:
+../api/tests/test_containers_integration_tests/services/test_feedback_service.py:35:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_feedback_service.py:247:        long_message = Message(
+../api/tests/test_containers_integration_tests/services/test_feedback_service.py:305:        chinese_message = Message(
+../api/core/mcp/client/streamable_client.py:174:                message = JSONRPCMessage.model_validate_json(sse.data)
+../api/core/mcp/client/streamable_client.py:181:                session_message = SessionMessage(message)
+../api/core/mcp/client/streamable_client.py:287:        message = ctx.session_message.message
+../api/core/mcp/client/streamable_client.py:339:            message = JSONRPCMessage.model_validate_json(content)
+../api/core/mcp/client/streamable_client.py:340:            session_message = SessionMessage(message)
+../api/core/mcp/client/streamable_client.py:389:            error=ErrorData(code=32600, message="Session terminated by server"),
+../api/core/mcp/client/streamable_client.py:391:        session_message = SessionMessage(JSONRPCMessage(jsonrpc_error))
+../api/core/mcp/client/streamable_client.py:414:                session_message = client_to_server_queue.get(timeout=DEFAULT_QUEUE_READ_TIMEOUT)
+../api/core/mcp/client/streamable_client.py:418:                message = session_message.message
+../api/core/mcp/client/streamable_client.py:436:                    session_message=session_message,
+../api/core/mcp/auth/auth_flow.py:11:from pydantic import ValidationError
+../api/core/mcp/auth/auth_flow.py:133:        except (RequestError, ValidationError):
+../api/core/mcp/auth/auth_flow.py:153:        except (RequestError, ValidationError):
+../api/core/mcp/auth/auth_flow.py:216:    except ValidationError as e:
+../api/core/mcp/auth/auth_flow.py:383:        except (ValidationError, json.JSONDecodeError):
+../api/core/workflow/graph_engine/error_handler.py:82:                return self._handle_abort(event)
+../api/core/workflow/graph_engine/error_handler.py:88:    def _handle_abort(self, event: NodeRunFailedEvent):
+../api/core/app/apps/advanced_chat/generate_task_pipeline.py:301:            message = self._get_message(session=session)
+../api/core/app/apps/advanced_chat/generate_task_pipeline.py:703:                queue_message=queue_message,
+../api/core/app/apps/advanced_chat/generate_task_pipeline.py:719:                queue_message=queue_message,
+../api/core/app/apps/advanced_chat/generate_task_pipeline.py:762:                            queue_message=queue_message,
+../api/core/app/apps/advanced_chat/generate_task_pipeline.py:774:        message = self._get_message(session=session)
+../api/core/app/apps/advanced_chat/generate_task_pipeline.py:876:        message = session.scalar(stmt)
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:53:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:76:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:99:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:214:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:218:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:222:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:226:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/core/workflow/nodes/webhook/test_entities.py:230:    with pytest.raises(ValidationError):
+../api/core/helper/ssrf_proxy.py:10:from pydantic import TypeAdapter, ValidationError
+../api/core/helper/ssrf_proxy.py:157:    except ValidationError as e:
+../api/core/llm_generator/llm_generator.py:420:                error_message="",
+../api/core/llm_generator/llm_generator.py:435:            error_message=str(last_run.error),
+../api/core/llm_generator/llm_generator.py:477:                error_message="",
+../api/core/llm_generator/llm_generator.py:510:            error_message=last_run.error,
+../api/core/workflow/runtime/graph_runtime_state.py:74:    def abort(self, reason: str) -> None:
+../api/core/datasource/errors.py:12:class DatasourceParameterValidationError(ValueError):
+../api/core/datasource/errors.py:16:class DatasourceProviderCredentialValidationError(ValueError):
+../api/core/mcp/client/sse_client.py:106:            message = types.JSONRPCMessage.model_validate_json(sse_data)
+../api/core/mcp/client/sse_client.py:108:            session_message = SessionMessage(message)
+../api/core/mcp/client/sse_client.py:178:                    message = write_queue.get(timeout=DEFAULT_QUEUE_READ_TIMEOUT)
+../api/core/mcp/client/sse_client.py:361:                    message = types.JSONRPCMessage.model_validate_json(sse.data)
+../api/core/helper/code_executor/code_executor.py:113:                raise Exception(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:192:                expected_message="Invalid number of parameters",
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:199:                expected_message="Invalid number of parameters",
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:208:                expected_message="Invalid value for parameter name, expected segment type: string, actual_type: none",
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:223:                expected_message="Invalid `select` value for parameter status",
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:230:                expected_message="Invalid value for parameter age, expected segment type: number, actual_type: string",
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:239:                expected_message=(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:252:                expected_message=(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:263:                expected_message=(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:274:                expected_message=(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:285:                expected_message=(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:296:                expected_message=(
+../api/tests/unit_tests/core/workflow/nodes/parameter_extractor/test_parameter_extractor_node.py:308:                expected_message="Parameter name is required",
+../api/core/mcp/session/base_session.py:125:            response=ErrorData(code=0, message="Request cancelled", data=None),
+../api/core/mcp/session/base_session.py:237:            self._write_stream.put(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
+../api/core/mcp/session/base_session.py:255:                        message="No response received",
+../api/core/mcp/session/base_session.py:264:                        ErrorData(code=response_or_error.response.status_code, message=str(response_or_error))
+../api/core/mcp/session/base_session.py:268:                    raise MCPAuthError(message=response_or_error.error.message)
+../api/core/mcp/session/base_session.py:271:                        ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
+../api/core/mcp/session/base_session.py:296:        session_message = SessionMessage(
+../api/core/mcp/session/base_session.py:297:            message=JSONRPCMessage(jsonrpc_notification),
+../api/core/mcp/session/base_session.py:305:            session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_error))
+../api/core/mcp/session/base_session.py:313:            session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_response))
+../api/core/mcp/session/base_session.py:324:                message = self._read_stream.get(timeout=DEFAULT_RESPONSE_READ_TIMEOUT)
+../api/core/mcp/session/base_session.py:338:                                    error=ErrorData(code=message.response.status_code, message=message.args[0]),
+../api/core/mcp/session/client_session.py:56:        message="Sampling not supported",
+../api/core/mcp/session/client_session.py:65:        message="List roots not supported",
+../api/core/mcp/utils.py:134:    error_data = ErrorData(code=code, message=message, data=data)
+../api/core/helper/module_import_helper.py:19:                raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
+../api/core/helper/module_import_helper.py:25:                raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
+../api/core/helper/module_import_helper.py:63:            raise Exception(f"Missing subclass of {parent_type.__name__} in {script_path!r}")
+../api/core/helper/module_import_helper.py:65:            raise Exception(f"Multiple subclasses of {parent_type.__name__} in {script_path!r}")
+../api/tests/unit_tests/core/workflow/nodes/template_transform/entities_spec.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/core/workflow/nodes/template_transform/entities_spec.py:97:        """Test that missing required fields raises ValidationError."""
+../api/tests/unit_tests/core/workflow/nodes/template_transform/entities_spec.py:103:        with pytest.raises(ValidationError) as exc_info:
+../api/tests/unit_tests/core/workflow/nodes/template_transform/entities_spec.py:113:        """Test that invalid variable selector format raises ValidationError."""
+../api/tests/unit_tests/core/workflow/nodes/template_transform/entities_spec.py:122:        with pytest.raises(ValidationError):
+../api/core/mcp/server/streamable_http.py:55:        error_data = ErrorData(code=code, message=message)
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:37:            raise Exception(f"Failed to scrape URL. Status code: {response.status_code}")
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:68:            raise Exception(f"Failed to start map job. Status code: {response.status_code}")
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:78:                    raise Exception("Failed to check crawl status. Error: No page found")
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:92:                        raise Exception(f"Error saving crawl data: {e}")
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:148:            error_message = payload.get("error") or payload.get("message") or response.text or "Unknown error occurred"
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:150:            error_message = response.text or "Unknown error occurred"
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:151:        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:175:                raise Exception(f"Search failed. Error: {response_data.get('warning', 'Unknown error')}")
+../api/core/rag/extractor/firecrawl/firecrawl_app.py:181:            raise Exception(f"Failed to perform search. Status code: {response.status_code}")
+../api/core/trigger/errors.py:4:class TriggerProviderCredentialValidationError(ValueError):
+../api/core/rag/extractor/watercrawl/exceptions.py:13:        self.message = data.get("message", "Unknown error occurred")
+../api/core/trigger/provider.py:31:from core.trigger.errors import TriggerProviderCredentialValidationError
+../api/core/trigger/provider.py:171:                raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
+../api/core/trigger/provider.py:183:            raise TriggerProviderCredentialValidationError(
+../api/core/rag/extractor/watercrawl/client.py:103:        raise Exception(f"Unknown response type: {response.headers.get('Content-Type')}")
+../api/tests/unit_tests/core/workflow/graph/test_graph_validation.py:13:from core.workflow.graph.validation import GraphValidationError
+../api/tests/unit_tests/core/workflow/graph/test_graph_validation.py:140:    with pytest.raises(GraphValidationError) as exc:
+../api/tests/unit_tests/core/workflow/graph/test_graph_validation.py:183:    with pytest.raises(GraphValidationError) as exc_info:
+../api/tests/unit_tests/core/workflow/graph/test_graph_skip_validation.py:11:from core.workflow.graph.validation import GraphValidationError
+../api/tests/unit_tests/core/workflow/graph/test_graph_skip_validation.py:82:    with pytest.raises(GraphValidationError):
+../api/tests/unit_tests/core/workflow/graph/test_graph_skip_validation.py:105:    with pytest.raises(GraphValidationError):
+../api/core/rag/extractor/notion_extractor.py:383:            raise Exception(f"No credential id found for tenant {tenant_id}")
+../api/core/rag/extractor/notion_extractor.py:392:            raise Exception(f"No notion credential found for tenant {tenant_id} and credential {credential_id}")
+../api/tests/unit_tests/libs/test_rsa.py:22:    encrypted_by_pub_key = public_cipher_rsa2.encrypt(message=raw_text_bytes)
+../api/tests/unit_tests/libs/test_rsa.py:27:    encrypted_by_private_key = private_cipher_rsa.encrypt(message=raw_text_bytes)
+../api/core/ops/aliyun_trace/aliyun_trace.py:402:        gen_ai_input_message = format_input_messages(process_data)
+../api/core/ops/aliyun_trace/aliyun_trace.py:403:        gen_ai_output_message = format_output_messages(outputs)
+../api/core/app/apps/message_based_app_queue_manager.py:31:        message = MessageQueueMessage(
+../api/core/rag/retrieval/router/multi_dataset_react_route.py:219:        user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=query)
+../api/core/ops/aliyun_trace/utils.py:159:                message = {"role": role, "parts": [{"type": "text", "content": text}]}
+../api/core/ops/aliyun_trace/utils.py:182:        output_message = {
+../api/core/app/apps/message_based_app_generator.py:74:            message=message,
+../api/core/app/apps/message_based_app_generator.py:186:            message = Message(
+../api/core/app/apps/message_based_app_generator.py:194:                message="",
+../api/core/app/apps/message_based_app_generator.py:281:            message = session.scalar(select(Message).where(Message.id == message_id))
+../api/core/app/apps/chat/app_config_manager.py:56:                raise Exception("override_config_dict is required when config_from is ARGS")
+../api/core/app/apps/chat/app_generator.py:8:from pydantic import ValidationError
+../api/core/app/apps/chat/app_generator.py:200:            message=message,
+../api/core/app/apps/chat/app_generator.py:228:                message = self._get_message(message_id)
+../api/core/app/apps/chat/app_generator.py:236:                    message=message,
+../api/core/app/apps/chat/app_generator.py:244:            except ValidationError as e:
+../api/tests/test_containers_integration_tests/services/test_annotation_service.py:157:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_annotation_service.py:165:            message=json.dumps([{"role": "user", "text": fake.sentence()}]),
+../api/tests/test_containers_integration_tests/services/test_annotation_service.py:311:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_annotation_service.py:346:        message = self._create_test_message(app, conversation, account, fake)
+../api/tests/test_containers_integration_tests/services/test_annotation_service.py:1337:        message = self._create_test_message(app, conversation, account, fake)
+../api/core/app/apps/advanced_chat/app_generator.py:11:from pydantic import ValidationError
+../api/core/app/apps/advanced_chat/app_generator.py:474:            message=message,
+../api/core/app/apps/advanced_chat/app_generator.py:507:            message = self._get_message(message_id)
+../api/core/app/apps/advanced_chat/app_generator.py:542:                message=message,
+../api/core/app/apps/advanced_chat/app_generator.py:560:            except ValidationError as e:
+../api/core/app/apps/advanced_chat/app_generator.py:602:            message=message,
+../api/core/datasource/utils/message_transformer.py:46:                            message=DatasourceMessage.TextMessage(text=url),
+../api/core/datasource/utils/message_transformer.py:52:                        message=DatasourceMessage.TextMessage(
+../api/core/datasource/utils/message_transformer.py:92:                            message=DatasourceMessage.TextMessage(text=url),
+../api/core/datasource/utils/message_transformer.py:98:                            message=DatasourceMessage.TextMessage(text=url),
+../api/core/datasource/utils/message_transformer.py:111:                                message=DatasourceMessage.TextMessage(text=url),
+../api/core/datasource/utils/message_transformer.py:117:                                message=DatasourceMessage.TextMessage(text=url),
+../api/tests/unit_tests/libs/test_external_api.py:7:from libs.exception import BaseHTTPException
+../api/tests/unit_tests/libs/test_external_api.py:121:    class UnauthorizedAndForceLogout(BaseHTTPException):
+../api/core/app/apps/chat/app_runner.py:116:                message=message,
+../api/core/indexing_runner.py:59:            error_message = getattr(error, "description", str(error))
+../api/core/app/apps/advanced_chat/app_runner.py:78:        self.message = message
+../api/core/app/apps/advanced_chat/app_runner.py:137:                message=self.message,
+../api/core/app/apps/advanced_chat/app_runner.py:249:            message=message,
+../api/core/app/apps/advanced_chat/app_runner.py:287:            app_record=app_record, message=message, query=query, user_id=user_id, invoke_from=invoke_from
+../api/core/workflow/nodes/base/node.py:343:                    error_message = "Execution cancelled"
+../api/core/workflow/nodes/base/node.py:555:                raise Exception(f"result status {result.status} not supported")
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:210:        pubsub.get_message = MagicMock()
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:371:        new_message = b"new_message"
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:392:        mock_message = {"type": "message", "channel": "test-topic", "data": b"test payload"}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:407:        mock_message = {"type": "subscribe", "channel": "test-topic", "data": 1}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:418:        mock_message = {"type": "message", "channel": "wrong-topic", "data": b"test payload"}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:497:        mock_message = {"type": "message", "channel": "test-topic", "data": test_case.payload}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:614:        pubsub.get_sharded_message = MagicMock()
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:777:        new_message = b"new_sharded_message"
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:798:        mock_message = {"type": "smessage", "channel": "test-sharded-topic", "data": b"test sharded payload"}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:815:        mock_message = {"type": "ssubscribe", "channel": "test-sharded-topic", "data": 1}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:828:        mock_message = {"type": "smessage", "channel": "wrong-sharded-topic", "data": b"test payload"}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:841:        mock_message = {"type": "message", "channel": "test-sharded-topic", "data": b"test payload"}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:924:        mock_message = {"type": "smessage", "channel": "test-sharded-topic", "data": test_case.payload}
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:1039:        test_message = b"test sharded receive"
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:1072:        pubsub.get_message = MagicMock()
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:1073:        pubsub.get_sharded_message = MagicMock()  # type: ignore[attr-defined]
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:1226:        new_message = b"new_message"
+../api/tests/unit_tests/libs/broadcast_channel/redis/test_channel_unit_tests.py:1347:        mock_message = {"type": expected_message_type, "channel": expected_topic, "data": test_case.payload}
+../api/core/app/apps/common/workflow_response_converter.py:344:            error_message = event.error
+../api/core/app/apps/common/workflow_response_converter.py:347:            error_message = event.error
+../api/core/app/apps/common/workflow_response_converter.py:350:            error_message = event.error
+../api/core/app/apps/base_app_runner.py:193:                    delta=LLMResultChunkDelta(index=index, message=AssistantPromptMessage(content=token)),
+../api/core/app/apps/base_app_runner.py:205:                    message=AssistantPromptMessage(content=text),
+../api/core/app/apps/base_app_runner.py:301:            message = result.delta.message
+../api/core/app/apps/base_app_runner.py:340:            model=model, prompt_messages=prompt_messages, message=AssistantPromptMessage(content=text), usage=usage
+../api/core/app/apps/base_app_runner.py:542:            app_record=app_record, message=message, query=query, user_id=user_id, invoke_from=invoke_from
+../api/core/agent/cot_agent_runner.py:107:                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+../api/core/agent/cot_agent_runner.py:162:                        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=chunk), usage=None),
+../api/core/agent/cot_agent_runner.py:251:                index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
+../api/core/agent/cot_agent_runner.py:273:                    message=AssistantPromptMessage(content=final_answer),
+../api/core/agent/cot_agent_runner.py:317:            message=self.message,
+../api/core/agent/cot_agent_runner.py:370:        message = ""
+../api/core/ops/ops_trace_manager.py:770:            status_message=message_data.error,
+../api/core/agent/fc_agent_runner.py:86:                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+../api/core/agent/fc_agent_runner.py:186:                        message=result.message,
+../api/core/agent/fc_agent_runner.py:191:            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
+../api/core/agent/fc_agent_runner.py:246:                        message=self.message,
+../api/core/agent/fc_agent_runner.py:313:                    message=AssistantPromptMessage(content=final_answer),
+../api/core/app/apps/base_app_queue_manager.py:66:                message = self._q.get(timeout=1)
+../api/core/agent/cot_chat_agent_runner.py:74:        system_message = self._organize_system_prompt()
+../api/core/agent/cot_chat_agent_runner.py:81:            assistant_message = AssistantPromptMessage(content="")
+../api/core/agent/base_agent_runner.py:75:        self.message = message
+../api/core/agent/base_agent_runner.py:300:            message=message,
+../api/core/datasource/__base/datasource_provider.py:8:from core.tools.errors import ToolProviderCredentialValidationError
+../api/core/datasource/__base/datasource_provider.py:39:            raise ToolProviderCredentialValidationError("Invalid credentials")
+../api/core/datasource/__base/datasource_provider.py:74:                raise ToolProviderCredentialValidationError(
+../api/core/datasource/__base/datasource_provider.py:85:                    raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
+../api/core/datasource/__base/datasource_provider.py:89:                    raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
+../api/core/datasource/__base/datasource_provider.py:93:                    raise ToolProviderCredentialValidationError(f"credential {credential_name} options should be list")
+../api/core/datasource/__base/datasource_provider.py:96:                    raise ToolProviderCredentialValidationError(
+../api/core/datasource/__base/datasource_provider.py:105:                raise ToolProviderCredentialValidationError(f"credential {credential_name} is required")
+../api/core/app/apps/pipeline/pipeline_queue_manager.py:29:        message = WorkflowQueueMessage(task_id=self._task_id, app_mode=self._app_mode, event=event)
+../api/core/ops/langfuse_trace/langfuse_trace.py:99:                status_message=trace_info.error or "",
+../api/core/ops/langfuse_trace/langfuse_trace.py:208:                    status_message=trace_info.error or "",
+../api/core/ops/langfuse_trace/langfuse_trace.py:227:                    status_message=trace_info.error or "",
+../api/core/ops/langfuse_trace/langfuse_trace.py:296:            status_message=message_data.error or "",
+../api/core/ops/langfuse_trace/langfuse_trace.py:342:            status_message=message_data.error or "",
+../api/core/ops/langfuse_trace/langfuse_trace.py:373:            status_message=trace_info.error,
+../api/tests/unit_tests/core/rag/datasource/vdb/alibabacloud_mysql/test_alibabacloud_mysql_vector.py:673:        # Test that creating config with unsupported distance function raises ValidationError
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:122:                    raise Exception(
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:174:                    raise Exception(
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:225:                raise Exception(f"Failed to insert document with id '{id}'") from e
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:237:            raise Exception(f"Failed to check text existence for id '{id}'") from e
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:251:            raise Exception(f"Failed to delete documents from collection '{self._collection_name}'") from e
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:285:            raise Exception(f"Failed to query documents by metadata field '{key}'") from e
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:380:            raise Exception(f"Full-text search failed for collection '{self._collection_name}'") from e
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:425:            raise Exception(f"Vector search failed for collection '{self._collection_name}'") from e
+../api/core/rag/datasource/vdb/oceanbase/oceanbase_vector.py:441:            raise Exception(f"Failed to delete collection '{self._collection_name}'") from e
+../api/core/app/apps/pipeline/pipeline_generator.py:13:from pydantic import ValidationError
+../api/core/app/apps/pipeline/pipeline_generator.py:605:            except ValidationError as e:
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:112:    error_message = "Empty Stack Trace"
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:116:            error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:118:            error_message = str(error)
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:132:            exception_message = str(error)
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:134:                exception_message = repr(error)
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:206:            status_message=trace_info.error or "",
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:384:            status_message=trace_info.error or "",
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:500:            status_message=trace_info.message_data.error or "",
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:553:            status_message=trace_info.status_message or "",
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:604:            status_message=trace_info.error or "",
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:647:            status_message=trace_info.error or "",
+../api/core/ops/arize_phoenix_trace/arize_phoenix_trace.py:693:            status_message=trace_info.message_data.error or "",
+../api/tests/unit_tests/core/workflow/graph_engine/test_graph_execution_serialization.py:74:    target.abort("pre-existing abort")
+../api/core/app/apps/agent_chat/app_generator.py:9:from pydantic import ValidationError
+../api/core/app/apps/agent_chat/app_generator.py:210:            message=message,
+../api/core/app/apps/agent_chat/app_generator.py:239:                message = self._get_message(message_id)
+../api/core/app/apps/agent_chat/app_generator.py:247:                    message=message,
+../api/core/app/apps/agent_chat/app_generator.py:255:            except ValidationError as e:
+../api/core/base/tts/app_generator_tts_publisher.py:88:                message = self._msg_queue.get()
+../api/core/base/tts/app_generator_tts_publisher.py:115:                self.last_message = message
+../api/core/rag/datasource/vdb/clickzetta/clickzetta_vector.py:454:            error_message = str(e).lower()
+../api/core/app/apps/agent_chat/app_runner.py:106:                message=message,
+../api/core/app/apps/agent_chat/app_runner.py:220:            message=message_result,
+../api/core/app/apps/agent_chat/app_runner.py:228:            message=message,
+../api/core/app/workflow/layers/persistence.py:197:        execution.error_message = event.error
+../api/core/app/workflow/layers/persistence.py:201:        self._fail_running_node_executions(error_message=event.error)
+../api/core/app/workflow/layers/persistence.py:208:        execution.error_message = event.reason or "Workflow execution aborted"
+../api/core/app/workflow/layers/persistence.py:211:        self._fail_running_node_executions(error_message=execution.error_message or "")
+../api/tests/unit_tests/core/rag/datasource/vdb/milvus/test_milvus.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/core/rag/datasource/vdb/milvus/test_milvus.py:13:        with pytest.raises(ValidationError) as e:
+../api/core/model_runtime/model_providers/__base/ai_model.py:5:from pydantic import BaseModel, ConfigDict, Field, ValidationError
+../api/core/model_runtime/model_providers/__base/ai_model.py:167:            except ValidationError:
+../api/core/model_runtime/model_providers/__base/ai_model.py:284:            raise Exception(f"Invalid model parameter rule name {name}")
+../api/core/rag/datasource/vdb/lindorm/lindorm_vector.py:109:                    raise Exception(error_msg)
+../api/core/app/apps/completion/app_generator.py:8:from pydantic import ValidationError
+../api/core/app/apps/completion/app_generator.py:182:            message=message,
+../api/core/app/apps/completion/app_generator.py:207:                message = self._get_message(message_id)
+../api/core/app/apps/completion/app_generator.py:214:                    message=message,
+../api/core/app/apps/completion/app_generator.py:222:            except ValidationError as e:
+../api/core/app/apps/completion/app_generator.py:259:        message = db.session.scalar(stmt)
+../api/core/app/apps/completion/app_generator.py:345:            message=message,
+../api/core/workflow/nodes/list_operator/node.py:51:            error_message = f"Variable not found for selector: {self.node_data.variable}"
+../api/core/workflow/nodes/list_operator/node.py:70:            error_message = f"Variable {self.node_data.variable} is not an array type, actual type: {type(variable)}"
+../api/tests/unit_tests/core/workflow/graph_engine/test_parallel_streaming_workflow.py:150:            raise Exception(f"Unexpected LLM node ID: {self.id}")
+../api/core/model_runtime/model_providers/__base/large_language_model.py:129:        message=AssistantPromptMessage(
+../api/core/model_runtime/model_providers/__base/large_language_model.py:397:        assistant_message = AssistantPromptMessage(content=message_content)
+../api/core/model_runtime/model_providers/__base/large_language_model.py:403:                message=assistant_message,
+../api/tests/test_containers_integration_tests/services/tools/test_api_tools_manage_service.py:5:from pydantic import TypeAdapter, ValidationError
+../api/tests/test_containers_integration_tests/services/tools/test_api_tools_manage_service.py:433:        with pytest.raises(ValidationError) as exc_info:
+../api/core/model_runtime/model_providers/model_provider_factory.py:8:from pydantic import ValidationError
+../api/core/model_runtime/model_providers/model_provider_factory.py:199:            except ValidationError:
+../api/core/repositories/sqlalchemy_workflow_execution_repository.py:113:            error_message=db_model.error or "",
+../api/core/prompt/advanced_prompt_transform.py:216:                last_message = prompt_messages[-1] if prompt_messages else None
+../api/core/prompt/advanced_prompt_transform.py:287:                tmp_human_message = UserPromptMessage(content=parser.format(prompt_inputs))
+../api/core/app/apps/workflow/generate_task_pipeline.py:543:                queue_message=queue_message,
+../api/core/app/apps/workflow/generate_task_pipeline.py:559:                queue_message=queue_message,
+../api/core/app/apps/workflow/generate_task_pipeline.py:569:                queue_message=queue_message,
+../api/core/app/apps/workflow/generate_task_pipeline.py:595:                        event, tts_publisher=tts_publisher, queue_message=queue_message
+../api/core/app/apps/workflow/generate_task_pipeline.py:617:                            queue_message=queue_message,
+../api/core/app/app_config/features/more_like_this/manager.py:1:from pydantic import BaseModel, ConfigDict, Field, ValidationError
+../api/core/app/app_config/features/more_like_this/manager.py:29:        except ValidationError:
+../api/core/memory/token_buffer_memory.py:105:                prompt_message = file_manager.to_prompt_message_content(
+../api/core/memory/token_buffer_memory.py:163:                user_prompt_message = self._build_prompt_message_with_files(
+../api/core/memory/token_buffer_memory.py:166:                    message=message,
+../api/core/memory/token_buffer_memory.py:168:                    is_user_message=True,
+../api/core/memory/token_buffer_memory.py:180:                assistant_prompt_message = self._build_prompt_message_with_files(
+../api/core/memory/token_buffer_memory.py:183:                    message=message,
+../api/core/memory/token_buffer_memory.py:185:                    is_user_message=False,
+../api/core/memory/token_buffer_memory.py:240:                message = f"{role}: {m.content}"
+../api/core/workflow/nodes/agent/agent_node.py:8:from pydantic import ValidationError
+../api/core/workflow/nodes/agent/agent_node.py:360:                except ValidationError:
+../api/core/prompt/utils/extract_thread_messages.py:9:    next_message = None
+../api/core/prompt/utils/extract_thread_messages.py:19:            next_message = message.parent_message_id
+../api/core/prompt/utils/extract_thread_messages.py:23:                next_message = message.parent_message_id
+../api/tests/test_containers_integration_tests/services/tools/test_workflow_tools_manage_service.py:6:from pydantic import ValidationError
+../api/tests/test_containers_integration_tests/services/tools/test_workflow_tools_manage_service.py:363:        with pytest.raises(ValidationError) as exc_info:
+../api/core/workflow/nodes/agent/exc.py:5:        self.message = message
+../api/core/prompt/utils/prompt_message_util.py:84:            prompt_message = prompt_messages[0]
+../api/core/prompt/simple_prompt_transform.py:253:            tmp_human_message = UserPromptMessage(content=prompt)
+../api/core/prompt/simple_prompt_transform.py:306:            prompt_message = UserPromptMessage(content=prompt_message_contents)
+../api/core/prompt/simple_prompt_transform.py:308:            prompt_message = UserPromptMessage(content=prompt)
+../api/core/app/apps/workflow/app_queue_manager.py:29:        message = WorkflowQueueMessage(task_id=self._task_id, app_mode=self._app_mode, event=event)
+../api/tests/test_containers_integration_tests/services/test_messages_clean_service.py:181:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_messages_clean_service.py:189:            message=[{"role": "user", "text": "Test message"}],
+../api/core/app/apps/workflow/app_generator.py:11:from pydantic import ValidationError
+../api/core/app/apps/workflow/app_generator.py:531:            except ValidationError as e:
+../api/tests/unit_tests/core/workflow/graph_engine/orchestration/test_dispatcher.py:165:            reason=SchedulingPause(message="test pause"),
+../api/core/rag/pipeline/queue.py:7:from pydantic import BaseModel, ValidationError
+../api/core/rag/pipeline/queue.py:80:            except (json.JSONDecodeError, ValidationError, TypeError, ValueError):
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:152:        message = Message(
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:160:            message=fake.text(max_nb_chars=100),
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:340:        message = self._create_test_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:352:        saved_message = (
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:416:        message = self._create_test_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:427:        saved_message = (
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:450:        message = self._create_test_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:453:        saved_message = SavedMessage(
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:483:        deleted_saved_message = (
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:537:        message = self._create_test_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:548:        saved_message = (
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:571:        message = self._create_test_message(db_session_with_containers, app, account)
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:574:        saved_message = SavedMessage(
+../api/tests/test_containers_integration_tests/services/test_saved_message_service.py:604:        deleted_saved_message = (
+../api/tests/test_containers_integration_tests/services/test_workflow_run_service.py:177:        message = Message()
+../api/tests/test_containers_integration_tests/services/test_workflow_run_service.py:181:        message.message = {"type": "text", "content": fake.text(max_nb_chars=100)}
+../api/tests/test_containers_integration_tests/services/test_workflow_run_service.py:344:            message = self._create_test_message(db_session_with_containers, app, account, workflow_run)
+../api/tests/unit_tests/core/workflow/graph_engine/command_channels/test_redis_channel.py:224:    def test_deserialize_command_abort(self):
+../api/core/workflow/nodes/parameter_extractor/exc.py:67:        message = (
+../api/tests/unit_tests/core/workflow/graph_engine/test_command_system.py:188:    assert pause_events[0].reasons == [SchedulingPause(message="User requested pause")]
+../api/tests/unit_tests/core/workflow/graph_engine/test_command_system.py:191:    assert graph_execution.pause_reasons == [SchedulingPause(message="User requested pause")]
+../api/tests/unit_tests/controllers/web/test_message_list.py:119:    message = SimpleNamespace(
+../api/tests/unit_tests/core/rag/pipeline/test_queue.py:13:from pydantic import ValidationError
+../api/tests/unit_tests/core/rag/pipeline/test_queue.py:60:        # Pydantic will raise ValidationError for invalid JSON
+../api/tests/unit_tests/core/rag/pipeline/test_queue.py:61:        with pytest.raises(ValidationError):
+../api/core/model_manager.py:161:            raise Exception("Model type instance is not LargeLanguageModel")
+../api/core/model_manager.py:189:            raise Exception("Model type instance is not LargeLanguageModel")
+../api/core/model_manager.py:213:            raise Exception("Model type instance is not TextEmbeddingModel")
+../api/core/model_manager.py:241:            raise Exception("Model type instance is not TextEmbeddingModel")
+../api/core/model_manager.py:262:            raise Exception("Model type instance is not TextEmbeddingModel")
+../api/core/model_manager.py:292:            raise Exception("Model type instance is not RerankModel")
+../api/core/model_manager.py:326:            raise Exception("Model type instance is not RerankModel")
+../api/core/model_manager.py:350:            raise Exception("Model type instance is not ModerationModel")
+../api/core/model_manager.py:371:            raise Exception("Model type instance is not Speech2TextModel")
+../api/core/model_manager.py:394:            raise Exception("Model type instance is not TTSModel")
+../api/core/model_manager.py:470:            raise Exception("Model type instance is not TTSModel")
+../api/tests/unit_tests/core/workflow/test_system_variable.py:5:from pydantic import ValidationError
+../api/tests/unit_tests/core/workflow/test_system_variable.py:249:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/controllers/test_conversation_rename_payload.py:2:from pydantic import ValidationError
+../api/tests/unit_tests/controllers/test_conversation_rename_payload.py:19:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/controllers/service_api/app/test_chat_request_payload.py:4:from pydantic import ValidationError
+../api/tests/unit_tests/controllers/service_api/app/test_chat_request_payload.py:24:    with pytest.raises(ValidationError):
+../api/tests/unit_tests/controllers/service_api/app/test_file_preview.py:63:        message = Mock(spec=Message)
+../api/tests/unit_tests/controllers/console/datasets/test_external_dataset_payload.py:12:from pydantic import ValidationError
+../api/tests/unit_tests/controllers/console/datasets/test_external_dataset_payload.py:43:    with pytest.raises(ValidationError) as exc_info:
+../api/tests/unit_tests/core/mcp/test_types.py:4:from pydantic import ValidationError
+../api/tests/unit_tests/core/mcp/test_types.py:141:        error_data = ErrorData(code=INVALID_PARAMS, message="Invalid parameters", data={"field": "missing"})
+../api/tests/unit_tests/core/mcp/test_types.py:148:        assert error.error.message == "Invalid parameters"
+../api/tests/unit_tests/core/mcp/test_types.py:389:            progressToken="progress-123", progress=50.0, total=100.0, message="Processing... 50%"
+../api/tests/unit_tests/core/mcp/test_types.py:398:        assert notification.params.message == "Processing... 50%"
+../api/tests/unit_tests/core/mcp/test_types.py:456:        with pytest.raises(ValidationError):
+../api/tests/unit_tests/controllers/console/auth/test_oauth.py:250:            (AccountStatus.BANNED, "http://localhost:3000/signin?message=Account is banned."),
+../api/tests/unit_tests/controllers/console/auth/test_oauth.py:411:        #     "http://localhost:3000/signin?message=Account is closed."
+../api/tests/unit_tests/core/mcp/test_utils.py:252:        generator = create_mcp_error_response(request_id="req-123", code=-32600, message="Invalid Request")
+../api/tests/unit_tests/core/mcp/test_utils.py:282:            message="Invalid params",
+../api/tests/unit_tests/core/mcp/test_utils.py:296:        generator = create_mcp_error_response(request_id=None, code=-32700, message="Parse error")
+../api/tests/unit_tests/core/mcp/test_utils.py:314:            request_id="complex-req", code=-32602, message="Validation failed", data=complex_data
+../api/tests/unit_tests/core/mcp/test_utils.py:328:            message="内部错误",  # Chinese characters
+../api/tests/unit_tests/core/mcp/test_utils.py:343:        generator = create_mcp_error_response(request_id="test", code=-32600, message="Test")
+../api/tests/unit_tests/core/mcp/client/test_session.py:38:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:65:                message=JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_session.py:128:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:147:                message=JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_session.py:187:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:206:                message=JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_session.py:241:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:260:                message=JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_session.py:296:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:315:                message=JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_session.py:352:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:371:                message=JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_session.py:421:        session_message = client_to_server.get(timeout=5.0)
+../api/tests/unit_tests/core/mcp/client/test_session.py:439:                message=JSONRPCMessage(
+../api/tests/integration_tests/model_runtime/__mock/plugin_model.py:162:            message=AssistantPromptMessage(content="elaina", tool_calls=[tool_call] if tool_call else []),
+../api/tests/integration_tests/model_runtime/__mock/plugin_model.py:195:                        message=AssistantPromptMessage(
+../api/tests/integration_tests/model_runtime/__mock/plugin_model.py:207:                        message=AssistantPromptMessage(
+../api/tests/unit_tests/core/mcp/client/test_sse.py:24:    json_message = '{"jsonrpc": "2.0", "id": "123", "method": "ping", "params": null}'
+../api/tests/unit_tests/core/mcp/client/test_sse.py:96:    parsed_message = types.JSONRPCMessage.model_validate_json(data)
+../api/tests/unit_tests/core/mcp/client/test_sse.py:224:    valid_message = '{"jsonrpc": "2.0", "id": 1, "method": "ping"}'
+../api/tests/unit_tests/core/mcp/client/test_sse.py:228:    message = read_queue.get(timeout=1.0)
+../api/tests/integration_tests/controllers/console/app/test_feedback_export_api.py:102:        mock_message = SimpleNamespace(
+../api/tests/integration_tests/controllers/console/app/test_chat_message_permissions.py:147:        mock_message = SimpleNamespace(
+../api/tests/integration_tests/controllers/console/app/test_chat_message_permissions.py:152:            message=[{"text": "hello"}],
+../api/tests/integration_tests/plugin/__mock/http.py:37:                code=0, message="success", data=cls.list_tools()
+../api/tests/unit_tests/core/datasource/test_website_crawl.py:1538:        message = WebsiteCrawlMessage(result=web_info)
+../api/tests/integration_tests/workflow/nodes/test_llm.py:141:        mock_message = AssistantPromptMessage(content="Test response from mock")
+../api/tests/integration_tests/workflow/nodes/test_llm.py:145:            message=mock_message,
+../api/tests/integration_tests/workflow/nodes/test_llm.py:253:        mock_message = AssistantPromptMessage(content="Test response: sunny weather and what's the weather today?")
+../api/tests/integration_tests/workflow/nodes/test_llm.py:257:            message=mock_message,
+../api/tests/integration_tests/workflow/nodes/code_executor/test_code_javascript.py:12:    result_message = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
+../api/tests/integration_tests/workflow/nodes/code_executor/test_code_javascript.py:13:    assert result_message == "Hello World\n"
+../api/tests/integration_tests/workflow/nodes/__mock/code_executor.py:23:                raise Exception("Language not supported")
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:49:        session_message = types.SessionMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:50:            message=types.JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:73:        session_message = types.SessionMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:74:            message=types.JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:99:    response_message = types.SessionMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:100:        message=types.JSONRPCMessage(root=types.JSONRPCResponse(jsonrpc="2.0", id="789", result={"test": "data"}))
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:105:    message = read_queue.get(timeout=1.0)
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:189:    message = read_queue.get(timeout=1.0)
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:197:    tools_message = read_queue.get(timeout=1.0)
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:381:    session_message = types.SessionMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:382:        message=types.JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:397:    message = read_queue.get(timeout=1.0)
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:410:    session_message = types.SessionMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:411:        message=types.JSONRPCMessage(
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:415:                error=types.ErrorData(code=-32601, message="Method not found", data=None),
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:422:    message = read_queue.get(timeout=1.0)
+../api/tests/unit_tests/core/mcp/client/test_streamable_http.py:426:    assert message.message.root.error.message == "Method not found"
+../api/core/workflow/nodes/parameter_extractor/parameter_extractor_node.py:701:            user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
+../api/core/workflow/nodes/parameter_extractor/parameter_extractor_node.py:728:            user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
+../api/tests/unit_tests/core/workflow/context/test_execution_context.py:189:                    barrier.abort()

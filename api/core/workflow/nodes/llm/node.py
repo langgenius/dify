@@ -867,7 +867,7 @@ class LLMNode(Node[LLMNodeData]):
                         else:
                             content_item.data = memory_text + "\n" + content_item.data
             else:
-                raise ValueError("Invalid prompt content type")
+                raise ValueError("无效的提示内容类型")
 
             # Add current query to the prompt message
             if sys_query:
@@ -879,7 +879,7 @@ class LLMNode(Node[LLMNodeData]):
                         if isinstance(content_item, TextPromptMessageContent):
                             content_item.data = sys_query + "\n" + content_item.data
                 else:
-                    raise ValueError("Invalid prompt content type")
+                    raise ValueError("无效的提示内容类型")
         else:
             raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
 
@@ -1213,18 +1213,18 @@ class LLMNode(Node[LLMNodeData]):
             dict[str, Any]: The structured output schema
         """
         if not structured_output:
-            raise LLMNodeError("Please provide a valid structured output schema")
+            raise LLMNodeError("请提供有效的结构化输出模式")
         structured_output_schema = json.dumps(structured_output.get("schema", {}), ensure_ascii=False)
         if not structured_output_schema:
-            raise LLMNodeError("Please provide a valid structured output schema")
+            raise LLMNodeError("请提供有效的结构化输出模式")
 
         try:
             schema = json.loads(structured_output_schema)
             if not isinstance(schema, dict):
-                raise LLMNodeError("structured_output_schema must be a JSON object")
+                raise LLMNodeError("structured_output_schema 必须为 JSON 对象")
             return schema
         except json.JSONDecodeError:
-            raise LLMNodeError("structured_output_schema is not valid JSON format")
+            raise LLMNodeError("structured_output_schema 不是有效的 JSON 格式")
 
     @staticmethod
     def _save_multimodal_output_and_convert_result_to_markdown(
@@ -1363,7 +1363,7 @@ def _handle_memory_completion_mode(
     if memory and memory_config:
         rest_tokens = _calculate_rest_token(prompt_messages=[], model_config=model_config)
         if not memory_config.role_prefix:
-            raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
+            raise MemoryRolePrefixRequiredError("补全模型需要记忆角色前缀。")
         memory_text = memory.get_history_prompt_text(
             max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,

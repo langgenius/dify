@@ -38,18 +38,18 @@ class OracleVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["user"]:
-            raise ValueError("config ORACLE_USER is required")
+            raise ValueError("配置 ORACLE_USER 为必填项")
         if not values["password"]:
-            raise ValueError("config ORACLE_PASSWORD is required")
+            raise ValueError("配置 ORACLE_PASSWORD 为必填项")
         if not values["dsn"]:
-            raise ValueError("config ORACLE_DSN is required")
+            raise ValueError("配置 ORACLE_DSN 为必填项")
         if values.get("is_autonomous", False):
             if not values.get("config_dir"):
-                raise ValueError("config_dir is required for autonomous database")
+                raise ValueError("自治数据库需要 config_dir")
             if not values.get("wallet_location"):
-                raise ValueError("wallet_location is required for autonomous database")
+                raise ValueError("自治数据库需要 wallet_location")
             if not values.get("wallet_password"):
-                raise ValueError("wallet_password is required for autonomous database")
+                raise ValueError("自治数据库需要 wallet_password")
         return values
 
 
@@ -303,7 +303,7 @@ class OracleVector(BaseVector):
                     nltk.data.find("tokenizers/punkt")
                     nltk.data.find("corpora/stopwords")
                 except LookupError:
-                    raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
+                    raise LookupError("无法找到所需的 NLTK 数据包：punkt 和 stopwords")
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")

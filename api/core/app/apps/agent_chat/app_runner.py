@@ -49,7 +49,7 @@ class AgentChatAppRunner(AppRunner):
         app_stmt = select(App).where(App.id == app_config.app_id)
         app_record = db.session.scalar(app_stmt)
         if not app_record:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
 
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
@@ -180,18 +180,18 @@ class AgentChatAppRunner(AppRunner):
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
         if not model_schema:
-            raise ValueError("Model schema not found")
+            raise ValueError("模型架构未找到")
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
         conversation_stmt = select(Conversation).where(Conversation.id == conversation.id)
         conversation_result = db.session.scalar(conversation_stmt)
         if conversation_result is None:
-            raise ValueError("Conversation not found")
+            raise ValueError("会话未找到")
         msg_stmt = select(Message).where(Message.id == message.id)
         message_result = db.session.scalar(msg_stmt)
         if message_result is None:
-            raise ValueError("Message not found")
+            raise ValueError("消息未找到")
         db.session.close()
 
         runner_cls: type[FunctionCallAgentRunner] | type[CotChatAgentRunner] | type[CotCompletionAgentRunner]

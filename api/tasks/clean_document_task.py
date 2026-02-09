@@ -35,7 +35,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
 
             if not dataset:
-                raise Exception("Document has no dataset")
+                raise Exception("文档没有关联的知识库")
 
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             # Use JOIN to fetch attachments with bindings in a single query

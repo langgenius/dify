@@ -19,7 +19,7 @@ class SendGridClient:
             _to = mail["to"]
 
             if not _to:
-                raise ValueError("SendGridClient: Cannot send email: recipient address is missing.")
+                raise ValueError("SendGridClient: 无法发送邮件：缺少收件人地址。")
 
             sg = sendgrid.SendGridAPIClient(api_key=self.sendgrid_api_key)
             from_email = Email(self._from)

@@ -398,7 +398,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 logger.warning("unexpected value for LoopNode, value_type=%s, value=%s", original_value, var_type)
                 value = []
         else:
-            raise AssertionError("this statement should be unreachable.")
+            raise AssertionError("此语句不应被执行。")
         try:
             return build_segment_with_type(var_type, value=value)
         except TypeMismatchError as type_exc:

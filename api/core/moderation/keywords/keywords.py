@@ -19,20 +19,20 @@ class KeywordsModeration(Moderation):
         cls._validate_inputs_and_outputs_config(config, True)
 
         if not config.get("keywords"):
-            raise ValueError("keywords is required")
+            raise ValueError("关键词为必填项")
 
         if len(config.get("keywords", [])) > 10000:
-            raise ValueError("keywords length must be less than 10000")
+            raise ValueError("关键词长度不能超过 10000")
 
         keywords_row_len = config["keywords"].split("\n")
         if len(keywords_row_len) > 100:
-            raise ValueError("the number of rows for the keywords must be less than 100")
+            raise ValueError("关键词行数不能超过 100")
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
 
         if self.config["inputs_config"]["enabled"]:
             preset_response = self.config["inputs_config"]["preset_response"]
@@ -53,7 +53,7 @@ class KeywordsModeration(Moderation):
         flagged = False
         preset_response = ""
         if self.config is None:
-            raise ValueError("The config is not set.")
+            raise ValueError("配置未设置。")
 
         if self.config["outputs_config"]["enabled"]:
             # Filter out empty values

@@ -46,9 +46,9 @@ def to_prompt_message_content(
 ) -> PromptMessageContentUnionTypes:
     """Convert a file to prompt message content."""
     if f.extension is None:
-        raise ValueError("Missing file extension")
+        raise ValueError("缺少文件扩展名")
     if f.mime_type is None:
-        raise ValueError("Missing file mime_type")
+        raise ValueError("缺少文件 MIME 类型")
 
     prompt_class_map: Mapping[FileType, type[PromptMessageContentUnionTypes]] = {
         FileType.IMAGE: ImagePromptMessageContent,
@@ -83,7 +83,7 @@ def download(f: File, /) -> bytes:
         return _download_file_content(f.storage_key)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
         if f.remote_url is None:
-            raise ValueError("Missing file remote_url")
+            raise ValueError("缺少文件远程 URL")
         response = get_workflow_file_runtime().http_get(f.remote_url, follow_redirects=True)
         response.raise_for_status()
         return response.content
@@ -102,7 +102,7 @@ def _get_encoded_string(f: File, /) -> str:
     match f.transfer_method:
         case FileTransferMethod.REMOTE_URL:
             if f.remote_url is None:
-                raise ValueError("Missing file remote_url")
+                raise ValueError("缺少文件远程 URL")
             response = get_workflow_file_runtime().http_get(f.remote_url, follow_redirects=True)
             response.raise_for_status()
             data = response.content
@@ -119,15 +119,15 @@ def _get_encoded_string(f: File, /) -> str:
 def _to_url(f: File, /):
     if f.transfer_method == FileTransferMethod.REMOTE_URL:
         if f.remote_url is None:
-            raise ValueError("Missing file remote_url")
+            raise ValueError("缺少文件远程 URL")
         return f.remote_url
     elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
         if f.related_id is None:
-            raise ValueError("Missing file related_id")
+            raise ValueError("缺少文件 related_id")
         return f.remote_url or helpers.get_signed_file_url(upload_file_id=f.related_id)
     elif f.transfer_method == FileTransferMethod.TOOL_FILE:
         if f.related_id is None or f.extension is None:
-            raise ValueError("Missing file related_id or extension")
+            raise ValueError("缺少文件 related_id 或扩展名")
         return helpers.get_signed_tool_file_url(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")

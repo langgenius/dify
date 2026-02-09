@@ -266,14 +266,14 @@ class DraftWorkflowApi(Resource):
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
-                return {"message": "Invalid JSON data"}, 400
+                return {"message": "无效的 JSON 数据"}, 400
         elif "text/plain" in content_type:
             try:
                 payload_data = json.loads(request.data.decode("utf-8"))
             except json.JSONDecodeError:
-                return {"message": "Invalid JSON data"}, 400
+                return {"message": "无效的 JSON 数据"}, 400
             if not isinstance(payload_data, dict):
-                return {"message": "Invalid JSON data"}, 400
+                return {"message": "无效的 JSON 数据"}, 400
         else:
             abort(415)
 
@@ -343,7 +343,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except InvokeRateLimitError as ex:
@@ -383,7 +383,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
@@ -421,7 +421,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
@@ -459,7 +459,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
@@ -497,7 +497,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
@@ -770,13 +770,13 @@ class DraftWorkflowNodeRunApi(Resource):
 
         user_inputs = args_model.inputs
         if user_inputs is None:
-            raise ValueError("missing inputs")
+            raise ValueError("缺少输入参数")
 
         workflow_srv = WorkflowService()
         # fetch draft workflow by app_model
         draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
-            raise ValueError("Workflow not initialized")
+            raise ValueError("工作流未初始化。")
         files = _parse_file(draft_workflow, args.get("files"))
         workflow_service = WorkflowService()
 
@@ -902,7 +902,7 @@ class DefaultBlockConfigApi(Resource):
             try:
                 filters = json.loads(args.q)
             except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
+                raise ValueError("无效的过滤条件。")
 
         # Get default block configs
         workflow_service = WorkflowService()
@@ -999,7 +999,7 @@ class WorkflowByIdApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
     @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
     @console_ns.response(200, "Workflow updated successfully", workflow_model)
-    @console_ns.response(404, "Workflow not found")
+    @console_ns.response(404, "工作流未找到。")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
@@ -1022,7 +1022,7 @@ class WorkflowByIdApi(Resource):
             update_data["marked_comment"] = args.marked_comment
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            return {"message": "没有有效的字段可更新"}, 400
 
         workflow_service = WorkflowService()
 
@@ -1037,7 +1037,7 @@ class WorkflowByIdApi(Resource):
             )
 
             if not workflow:
-                raise NotFound("Workflow not found")
+                raise NotFound("工作流未找到。")
 
             # Commit the transaction in the controller
             session.commit()
@@ -1090,14 +1090,14 @@ class DraftWorkflowNodeLastRunApi(Resource):
         srv = WorkflowService()
         workflow = srv.get_draft_workflow(app_model)
         if not workflow:
-            raise NotFound("Workflow not found")
+            raise NotFound("工作流未找到。")
         node_exec = srv.get_node_last_run(
             app_model=app_model,
             workflow=workflow,
             node_id=node_id,
         )
         if node_exec is None:
-            raise NotFound("last run not found")
+            raise NotFound("未找到上次运行记录。")
         return node_exec
 
 
@@ -1137,7 +1137,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
         if not draft_workflow:
-            raise ValueError("Workflow not found")
+            raise ValueError("工作流未找到。")
 
         poller: TriggerDebugEventPoller = create_event_poller(
             draft_workflow=draft_workflow,
@@ -1200,11 +1200,11 @@ class DraftWorkflowTriggerNodeApi(Resource):
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
         if not draft_workflow:
-            raise ValueError("Workflow not found")
+            raise ValueError("工作流未找到。")
 
         node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         if not node_config:
-            raise ValueError("Node data not found for node %s", node_id)
+            raise ValueError("未找到节点 %s 的数据", node_id)
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
         event: TriggerDebugEvent | None = None
         # for schedule trigger, when run single node, just execute directly
@@ -1248,7 +1248,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         except Exception as e:
             logger.exception("Error running draft workflow trigger node")
             return jsonable_encoder(
-                {"status": "error", "error": "An unexpected error occurred while running the node."}
+                {"status": "error", "error": "运行节点时发生意外错误。"}
             ), 400
 
 
@@ -1282,7 +1282,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
         if not draft_workflow:
-            raise ValueError("Workflow not found")
+            raise ValueError("工作流未找到。")
 
         try:
             trigger_debug_event: TriggerDebugEvent | None = select_trigger_debug_events(

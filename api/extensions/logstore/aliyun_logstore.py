@@ -859,7 +859,7 @@ class AliyunLogStore:
         """
         # Logstore is required
         if not logstore:
-            raise ValueError("logstore parameter is required for execute_sql")
+            raise ValueError("execute_sql 需要 logstore 参数")
 
         # Route to PG or SDK based on protocol availability
         if self._use_pg_protocol and self._pg_client:

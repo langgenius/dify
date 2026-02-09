@@ -872,7 +872,7 @@ class WebhookService:
             lock_acquired = lock.acquire(blocking=True, blocking_timeout=10)
             if not lock_acquired:
                 logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
-                raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
+                raise RuntimeError("获取 Webhook 触发器同步锁失败")
 
             with Session(db.engine) as session:
                 # fetch the non-cached nodes from DB

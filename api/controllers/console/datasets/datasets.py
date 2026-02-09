@@ -115,7 +115,7 @@ def _validate_indexing_technique(value: str | None) -> str | None:
     if value is None:
         return value
     if value not in Dataset.INDEXING_TECHNIQUE_LIST:
-        raise ValueError("Invalid indexing technique.")
+        raise ValueError("无效的索引技术。")
     return value
 
 
@@ -137,7 +137,7 @@ class DatasetCreatePayload(BaseModel):
     @classmethod
     def validate_provider(cls, value: str) -> str:
         if value not in Dataset.PROVIDER_LIST:
-            raise ValueError("Invalid provider.")
+            raise ValueError("无效的嵌入模型提供商。")
         return value
 
 
@@ -176,7 +176,7 @@ class IndexingEstimatePayload(BaseModel):
     def validate_indexing(cls, value: str) -> str:
         result = _validate_indexing_technique(value)
         if result is None:
-            raise ValueError("indexing_technique is required.")
+            raise ValueError("索引技术参数必填。")
         return result
 
 
@@ -209,7 +209,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         ValueError: If vector_type is None or unsupported
     """
     if vector_type is None:
-        raise ValueError("Vector store type is not configured.")
+        raise ValueError("向量存储类型未配置。")
 
     # Define vector database types that only support semantic search
     semantic_only_types = {
@@ -266,7 +266,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
     elif vector_type in full_search_types:
         return full_methods
     else:
-        raise ValueError(f"Unsupported vector db type {vector_type}.")
+        raise ValueError(f"不支持的向量数据库类型 {vector_type}。")
 
 
 @console_ns.route("/datasets")
@@ -401,7 +401,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -450,7 +450,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
         current_user, current_tenant_id = current_account_with_tenant()
@@ -473,7 +473,7 @@ class DatasetApi(Resource):
         dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user)
 
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         tenant_id = current_tenant_id
@@ -505,7 +505,7 @@ class DatasetApi(Resource):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
                 return {"result": "success"}, 204
             else:
-                raise NotFound("Dataset not found.")
+                raise NotFound("知识库未找到。")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
 
@@ -540,7 +540,7 @@ class DatasetQueryApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -585,7 +585,7 @@ class DatasetIndexingEstimateApi(Resource):
             ).all()
 
             if file_details is None:
-                raise NotFound("File not found.")
+                raise NotFound("文件未找到。")
 
             if file_details:
                 for file_detail in file_details:
@@ -634,7 +634,7 @@ class DatasetIndexingEstimateApi(Resource):
                 )
                 extract_settings.append(extract_setting)
         else:
-            raise ValueError("Data source type not support")
+            raise ValueError("不支持该数据源类型。")
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(
@@ -673,7 +673,7 @@ class DatasetRelatedAppListApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -819,7 +819,7 @@ class DatasetApiDeleteApi(Resource):
         )
 
         if key is None:
-            console_ns.abort(404, message="API key not found")
+            console_ns.abort(404, message="API 密钥未找到")
 
         # Invalidate cache before deleting from database
         # Type assertion: key is guaranteed to be non-None here because abort() raises
@@ -897,7 +897,7 @@ class DatasetErrorDocs(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
 
         return {"data": [marshal(item, document_status_fields) for item in results], "total": len(results)}, 200
@@ -919,7 +919,7 @@ class DatasetPermissionUserListApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -946,5 +946,5 @@ class DatasetAutoDisableLogApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         return DatasetService.get_dataset_auto_disable_logs(dataset_id_str), 200

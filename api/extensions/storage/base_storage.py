@@ -37,4 +37,4 @@ class BaseStorage(ABC):
         This method is implemented only in some storage backends.
         If a storage backend doesn't support scanning, it will raise NotImplementedError.
         """
-        raise NotImplementedError("This storage backend doesn't support scanning")
+        raise NotImplementedError("该存储后端不支持扫描")

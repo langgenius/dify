@@ -90,11 +90,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         pipeline = db.session.query(Pipeline).where(Pipeline.id == app_config.app_id).first()
         if not pipeline:
-            raise ValueError("Pipeline not found")
+            raise ValueError("流水线未找到")
 
         workflow = self.get_workflow(pipeline=pipeline, workflow_id=app_config.workflow_id)
         if not workflow:
-            raise ValueError("Workflow not initialized")
+            raise ValueError("工作流未初始化")
 
         db.session.close()
 
@@ -226,13 +226,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         graph_config = workflow.graph_dict
         if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
+            raise ValueError("工作流图中未找到节点或边")
 
         if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
+            raise ValueError("工作流图中的节点必须为列表")
 
         if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+            raise ValueError("工作流图中的边必须为列表")
         # nodes = graph_config.get("nodes", [])
         # edges = graph_config.get("edges", [])
         # real_run_nodes = []
@@ -274,7 +274,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=start_node_id)
 
         if not graph:
-            raise ValueError("graph not found in workflow")
+            raise ValueError("工作流中未找到 graph")
 
         return graph
 

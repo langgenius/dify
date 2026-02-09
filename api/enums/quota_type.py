@@ -84,7 +84,7 @@ class QuotaType(StrEnum):
         logger.info("Consuming %d %s quota for tenant %s", amount, self.value, tenant_id)
 
         if amount <= 0:
-            raise ValueError("Amount to consume must be greater than 0")
+            raise ValueError("消费金额必须大于 0")
 
         try:
             response = BillingService.update_tenant_feature_plan_usage(tenant_id, self.billing_key, delta=amount)
@@ -132,7 +132,7 @@ class QuotaType(StrEnum):
             return True
 
         if amount <= 0:
-            raise ValueError("Amount to check must be greater than 0")
+            raise ValueError("检查金额必须大于 0")
 
         try:
             remaining = self.get_remaining(tenant_id)

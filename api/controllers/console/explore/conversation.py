@@ -40,7 +40,7 @@ class ConversationRenamePayload(BaseModel):
     def validate_name_requirement(self):
         if not self.auto_generate:
             if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
+                raise ValueError("auto_generate 为 false 时 name 为必填项")
         return self
 
 
@@ -73,7 +73,7 @@ class ConversationListApi(InstalledAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             with Session(db.engine) as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
@@ -92,7 +92,7 @@ class ConversationListApi(InstalledAppResource):
                     data=conversations,
                 ).model_dump(mode="json")
         except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            raise NotFound("上一条对话不存在。")
 
 
 @console_ns.route(
@@ -109,10 +109,10 @@ class ConversationApi(InstalledAppResource):
         conversation_id = str(c_id)
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json"), 204
 
@@ -135,7 +135,7 @@ class ConversationRenameApi(InstalledAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             conversation = ConversationService.rename(
                 app_model, conversation_id, current_user, payload.name, payload.auto_generate
             )
@@ -145,7 +145,7 @@ class ConversationRenameApi(InstalledAppResource):
                 .model_dump(mode="json")
             )
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
 
 @console_ns.route(
@@ -163,10 +163,10 @@ class ConversationPinApi(InstalledAppResource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
+                raise ValueError("current_user 必须是 Account 实例")
             WebConversationService.pin(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -184,7 +184,7 @@ class ConversationUnPinApi(InstalledAppResource):
 
         conversation_id = str(c_id)
         if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+            raise ValueError("current_user 必须是 Account 实例")
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return ResultResponse(result="success").model_dump(mode="json")

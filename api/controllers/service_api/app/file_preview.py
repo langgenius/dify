@@ -68,7 +68,7 @@ class FilePreviewApi(Resource):
         try:
             generator = storage.load(upload_file.key, stream=True)
         except Exception as e:
-            raise FileNotFoundError(f"Failed to load file content: {str(e)}")
+            raise FileNotFoundError(f"加载文件内容失败: {str(e)}")
 
         # Build response with appropriate headers
         response = self._build_file_response(generator, upload_file, args.as_attachment)
@@ -99,13 +99,13 @@ class FilePreviewApi(Resource):
         try:
             # Input validation
             if not file_id or not app_id:
-                raise FileAccessDeniedError("Invalid file or app identifier")
+                raise FileAccessDeniedError("无效的文件或应用标识符")
 
             # First, find the MessageFile that references this upload file
             message_file = db.session.query(MessageFile).where(MessageFile.upload_file_id == file_id).first()
 
             if not message_file:
-                raise FileNotFoundError("File not found in message context")
+                raise FileNotFoundError("消息上下文中未找到文件")
 
             # Get the message and verify it belongs to the requesting app
             message = (
@@ -113,18 +113,18 @@ class FilePreviewApi(Resource):
             )
 
             if not message:
-                raise FileAccessDeniedError("File access denied: not owned by requesting app")
+                raise FileAccessDeniedError("文件访问被拒绝：非请求应用所有")
 
             # Get the actual upload file record
             upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
             if not upload_file:
-                raise FileNotFoundError("Upload file record not found")
+                raise FileNotFoundError("未找到上传文件记录")
 
             # Additional security: verify tenant isolation
             app = db.session.query(App).where(App.id == app_id).first()
             if app and upload_file.tenant_id != app.tenant_id:
-                raise FileAccessDeniedError("File access denied: tenant mismatch")
+                raise FileAccessDeniedError("文件访问被拒绝：租户不匹配")
 
             return message_file, upload_file
 
@@ -137,7 +137,7 @@ class FilePreviewApi(Resource):
                 "Unexpected error during file ownership validation",
                 extra={"file_id": file_id, "app_id": app_id, "error": str(e)},
             )
-            raise FileAccessDeniedError("File access validation failed")
+            raise FileAccessDeniedError("文件访问验证失败")
 
     def _build_file_response(self, generator, upload_file: UploadFile, as_attachment: bool = False) -> Response:
         """

@@ -34,7 +34,7 @@ class PublishFrom(IntEnum):
 class AppQueueManager:
     def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom):
         if not user_id:
-            raise ValueError("user is required")
+            raise ValueError("用户为必填项")
 
         self._task_id = task_id
         self._user_id = user_id

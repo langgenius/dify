@@ -75,7 +75,7 @@ class DocumentTextUpdate(BaseModel):
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:
         if self.text is not None and self.name is None:
-            raise ValueError("name is required when text is provided")
+            raise ValueError("提供文本时 name 为必填项")
         return self
 
 
@@ -132,10 +132,10 @@ class DocumentAddByTextApi(DatasetApiResource):
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset does not exist.")
+            raise ValueError("知识库不存在。")
 
         if not dataset.indexing_technique and not args["indexing_technique"]:
-            raise ValueError("indexing_technique is required.")
+            raise ValueError("indexing_technique 为必填项。")
 
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
@@ -156,7 +156,7 @@ class DocumentAddByTextApi(DatasetApiResource):
             )
 
         if not current_user:
-            raise ValueError("current_user is required")
+            raise ValueError("current_user 为必填项")
 
         upload_file = FileService(db.engine).upload_text(
             text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id
@@ -171,7 +171,7 @@ class DocumentAddByTextApi(DatasetApiResource):
         DocumentService.document_create_args_validate(knowledge_config)
 
         if not current_user:
-            raise ValueError("current_user is required")
+            raise ValueError("current_user 为必填项")
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
@@ -215,7 +215,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
         args = payload.model_dump(exclude_none=True)
         if not dataset:
-            raise ValueError("Dataset does not exist.")
+            raise ValueError("知识库不存在。")
 
         retrieval_model = payload.retrieval_model
         if (
@@ -237,7 +237,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             text = args.get("text")
             name = args.get("name")
             if not current_user:
-                raise ValueError("current_user is required")
+                raise ValueError("current_user 为必填项")
             upload_file = FileService(db.engine).upload_text(
                 text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
             )
@@ -292,10 +292,10 @@ class DocumentAddByFileApi(DatasetApiResource):
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset does not exist.")
+            raise ValueError("知识库不存在。")
 
         if dataset.provider == "external":
-            raise ValueError("External datasets are not supported.")
+            raise ValueError("不支持外部知识库。")
 
         args = {}
         if "data" in request.form:
@@ -311,7 +311,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
-            raise ValueError("indexing_technique is required.")
+            raise ValueError("indexing_technique 为必填项。")
         args["indexing_technique"] = indexing_technique
 
         if "embedding_model_provider" in args:
@@ -342,7 +342,7 @@ class DocumentAddByFileApi(DatasetApiResource):
             raise FilenameNotExistsError
 
         if not current_user:
-            raise ValueError("current_user is required")
+            raise ValueError("current_user 为必填项")
         upload_file = FileService(db.engine).upload_file(
             filename=file.filename,
             content=file.read(),
@@ -361,7 +361,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
         if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
-            raise ValueError("process_rule is required.")
+            raise ValueError("process_rule 为必填项。")
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
@@ -402,10 +402,10 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset does not exist.")
+            raise ValueError("知识库不存在。")
 
         if dataset.provider == "external":
-            raise ValueError("External datasets are not supported.")
+            raise ValueError("不支持外部知识库。")
 
         args = {}
         if "data" in request.form:
@@ -433,7 +433,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
                 raise FilenameNotExistsError
 
             if not current_user:
-                raise ValueError("current_user is required")
+                raise ValueError("current_user 为必填项")
 
             try:
                 upload_file = FileService(db.engine).upload_file(
@@ -491,7 +491,7 @@ class DocumentListApi(DatasetApiResource):
         query_params = DocumentListQuery.model_validate(request.args.to_dict())
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
 
@@ -545,11 +545,11 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         # get dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # get documents
         documents = DocumentService.get_batch_documents(dataset_id, batch)
         if not documents:
-            raise NotFound("Documents not found.")
+            raise NotFound("文档未找到。")
         documents_status = []
         for document in documents:
             completed_segments = (
@@ -610,14 +610,14 @@ class DocumentApi(DatasetApiResource):
         document = DocumentService.get_document(dataset.id, document_id)
 
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         if document.tenant_id != str(tenant_id):
-            raise Forbidden("No permission.")
+            raise Forbidden("无权限。")
 
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
-            raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
+            raise InvalidMetadataError(f"无效的元数据值: {metadata}")
 
         # Calculate summary_index_status if needed
         summary_index_status = None
@@ -728,13 +728,13 @@ class DocumentApi(DatasetApiResource):
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset does not exist.")
+            raise ValueError("知识库不存在。")
 
         document = DocumentService.get_document(dataset.id, document_id)
 
         # 404 if document not found
         if document is None:
-            raise NotFound("Document Not Exists.")
+            raise NotFound("文档不存在。")
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
@@ -744,6 +744,6 @@ class DocumentApi(DatasetApiResource):
             # delete document
             DocumentService.delete_document(document)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+            raise DocumentIndexingError("文档索引中，无法删除。")
 
         return "", 204

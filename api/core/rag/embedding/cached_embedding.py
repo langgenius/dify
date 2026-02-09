@@ -205,7 +205,7 @@ class CacheEmbedding(Embeddings):
             # FIXME: type ignore for numpy here
             embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()  # type: ignore
             if np.isnan(embedding_results).any():
-                raise ValueError("Normalized embedding is nan please try again")
+                raise ValueError("归一化嵌入为 NaN，请重试")
         except Exception as ex:
             if dify_config.DEBUG:
                 logger.exception("Failed to embed query text '%s...(%s chars)'", text[:10], len(text))
@@ -248,7 +248,7 @@ class CacheEmbedding(Embeddings):
             # FIXME: type ignore for numpy here
             embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()  # type: ignore
             if np.isnan(embedding_results).any():
-                raise ValueError("Normalized embedding is nan please try again")
+                raise ValueError("归一化嵌入为 NaN，请重试")
         except Exception as ex:
             if dify_config.DEBUG:
                 logger.exception("Failed to embed multimodal document '%s'", multimodel_document["file_id"])

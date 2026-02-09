@@ -44,7 +44,7 @@ class APIBasedExtensionService:
         )
 
         if not extension:
-            raise ValueError("API based extension is not found")
+            raise ValueError("未找到基于 API 的扩展")
 
         extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
 
@@ -54,7 +54,7 @@ class APIBasedExtensionService:
     def _validation(cls, extension_data: APIBasedExtension):
         # name
         if not extension_data.name:
-            raise ValueError("name must not be empty")
+            raise ValueError("名称不能为空")
 
         if not extension_data.id:
             # case one: check new data, name must be unique
@@ -66,7 +66,7 @@ class APIBasedExtensionService:
             )
 
             if is_name_existed:
-                raise ValueError("name must be unique, it is already existed")
+                raise ValueError("名称必须唯一，该名称已存在")
         else:
             # case two: check existing data, name must be unique
             is_name_existed = (
@@ -78,18 +78,18 @@ class APIBasedExtensionService:
             )
 
             if is_name_existed:
-                raise ValueError("name must be unique, it is already existed")
+                raise ValueError("名称必须唯一，该名称已存在")
 
         # api_endpoint
         if not extension_data.api_endpoint:
-            raise ValueError("api_endpoint must not be empty")
+            raise ValueError("api_endpoint 不能为空")
 
         # api_key
         if not extension_data.api_key:
-            raise ValueError("api_key must not be empty")
+            raise ValueError("api_key 不能为空")
 
         if len(extension_data.api_key) < 5:
-            raise ValueError("api_key must be at least 5 characters")
+            raise ValueError("api_key 至少需要 5 个字符")
 
         # check endpoint
         cls._ping_connection(extension_data)

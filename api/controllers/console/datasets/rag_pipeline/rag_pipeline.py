@@ -88,7 +88,7 @@ class CustomizedPipelineTemplateApi(Resource):
                 session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
             )
             if not template:
-                raise ValueError("Customized pipeline template not found.")
+                raise ValueError("自定义流水线模板未找到。")
 
         return {"data": template.yaml_content}, 200
 

@@ -180,7 +180,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             else:
                 continue
 
-        raise RuntimeError("queue listening stopped unexpectedly.")
+        raise RuntimeError("队列监听意外停止。")
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]

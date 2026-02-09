@@ -67,7 +67,7 @@ class AgentService:
 
         app_model_config = app_model.app_model_config
         if not app_model_config:
-            raise ValueError("App model config not found")
+            raise ValueError("未找到应用模型配置")
 
         result: dict[str, Any] = {
             "meta": {
@@ -85,7 +85,7 @@ class AgentService:
 
         agent_config = AgentConfigManager.convert(app_model_config.to_dict())
         if not agent_config:
-            raise ValueError("Agent config not found")
+            raise ValueError("未找到 Agent 配置")
 
         agent_tools = agent_config.tools or []
 

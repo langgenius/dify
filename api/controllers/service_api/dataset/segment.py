@@ -93,15 +93,15 @@ class SegmentApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check document
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         if document.indexing_status != "completed":
-            raise NotFound("Document is not completed.")
+            raise NotFound("文档未完成。")
         if not document.enabled:
-            raise NotFound("Document is disabled.")
+            raise NotFound("文档已禁用。")
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
@@ -123,14 +123,14 @@ class SegmentApi(DatasetApiResource):
         if payload.segments is not None:
             segments_limit = dify_config.DATASET_MAX_SEGMENTS_PER_REQUEST
             if segments_limit > 0 and len(payload.segments) > segments_limit:
-                raise ValueError(f"Exceeded maximum segments limit of {segments_limit}.")
+                raise ValueError(f"超过最大段落限制 {segments_limit}。")
 
             for args_item in payload.segments:
                 SegmentService.segment_create_args_validate(args_item, document)
             segments = SegmentService.multi_create_segment(payload.segments, document, dataset)
             return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form}, 200
         else:
-            return {"error": "Segments is required"}, 400
+            return {"error": "段落不能为空"}, 400
 
     @service_api_ns.expect(service_api_ns.models[SegmentListQuery.__name__])
     @service_api_ns.doc("list_segments")
@@ -151,11 +151,11 @@ class SegmentApi(DatasetApiResource):
         limit = request.args.get("limit", default=20, type=int)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check document
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
@@ -221,17 +221,17 @@ class DatasetSegmentApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
         SegmentService.delete_segment(segment, document, dataset)
         return "", 204
 
@@ -255,13 +255,13 @@ class DatasetSegmentApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         if dataset.indexing_technique == "high_quality":
             # check embedding model setting
             try:
@@ -281,7 +281,7 @@ class DatasetSegmentApi(DatasetApiResource):
             # check segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
 
@@ -302,17 +302,17 @@ class DatasetSegmentApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         # check segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
@@ -345,17 +345,17 @@ class ChildChunkApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # check document
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         # check segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
@@ -403,17 +403,17 @@ class ChildChunkApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # check document
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         # check segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         args = ChildChunkListQuery.model_validate(
             {
@@ -469,30 +469,30 @@ class DatasetChildChunkApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # check document
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         # check segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         # validate segment belongs to the specified document
         if str(segment.document_id) != str(document_id):
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         # check child chunk
         child_chunk = SegmentService.get_child_chunk_by_id(child_chunk_id=child_chunk_id, tenant_id=current_tenant_id)
         if not child_chunk:
-            raise NotFound("Child chunk not found.")
+            raise NotFound("子分块未找到。")
 
         # validate child chunk belongs to the specified segment
         if str(child_chunk.segment_id) != str(segment.id):
-            raise NotFound("Child chunk not found.")
+            raise NotFound("子分块未找到。")
 
         try:
             SegmentService.delete_child_chunk(child_chunk, dataset)
@@ -528,30 +528,30 @@ class DatasetChildChunkApi(DatasetApiResource):
         # check dataset
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # get document
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         # get segment
         segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         # validate segment belongs to the specified document
         if str(segment.document_id) != str(document_id):
-            raise NotFound("Segment not found.")
+            raise NotFound("分段未找到。")
 
         # get child chunk
         child_chunk = SegmentService.get_child_chunk_by_id(child_chunk_id=child_chunk_id, tenant_id=current_tenant_id)
         if not child_chunk:
-            raise NotFound("Child chunk not found.")
+            raise NotFound("子分块未找到。")
 
         # validate child chunk belongs to the specified segment
         if str(child_chunk.segment_id) != str(segment.id):
-            raise NotFound("Child chunk not found.")
+            raise NotFound("子分块未找到。")
 
         # validate args
         payload = ChildChunkUpdatePayload.model_validate(service_api_ns.payload or {})

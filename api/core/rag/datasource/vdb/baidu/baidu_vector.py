@@ -56,13 +56,13 @@ class BaiduConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["endpoint"]:
-            raise ValueError("config BAIDU_VECTOR_DB_ENDPOINT is required")
+            raise ValueError("配置 BAIDU_VECTOR_DB_ENDPOINT 为必填项")
         if not values["account"]:
-            raise ValueError("config BAIDU_VECTOR_DB_ACCOUNT is required")
+            raise ValueError("配置 BAIDU_VECTOR_DB_ACCOUNT 为必填项")
         if not values["api_key"]:
-            raise ValueError("config BAIDU_VECTOR_DB_API_KEY is required")
+            raise ValueError("配置 BAIDU_VECTOR_DB_API_KEY 为必填项")
         if not values["database"]:
-            raise ValueError("config BAIDU_VECTOR_DB_DATABASE is required")
+            raise ValueError("配置 BAIDU_VECTOR_DB_DATABASE 为必填项")
         return values
 
 
@@ -254,13 +254,13 @@ class BaiduVector(BaseVector):
                 if k == self._client_config.index_type:
                     index_type = v
             if index_type is None:
-                raise ValueError("unsupported index_type")
+                raise ValueError("不支持的 index_type")
             metric_type = None
             for k, v in MetricType.__members__.items():
                 if k == self._client_config.metric_type:
                     metric_type = v
             if metric_type is None:
-                raise ValueError("unsupported metric_type")
+                raise ValueError("不支持的 metric_type")
 
             # Construct field schema
             fields = []

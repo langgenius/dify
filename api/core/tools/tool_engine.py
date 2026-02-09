@@ -284,7 +284,7 @@ class ToolEngine:
             if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 mimetype = None
                 if not response.meta:
-                    raise ValueError("missing meta data")
+                    raise ValueError("缺少元数据")
                 if response.meta.get("mime_type"):
                     mimetype = response.meta.get("mime_type")
                 else:
@@ -304,7 +304,7 @@ class ToolEngine:
                 )
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if not response.meta:
-                    raise ValueError("missing meta data")
+                    raise ValueError("缺少元数据")
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", "application/octet-stream"),

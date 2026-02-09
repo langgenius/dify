@@ -73,7 +73,7 @@ def build_from_mapping(
 ) -> File:
     transfer_method_value = mapping.get("transfer_method")
     if not transfer_method_value:
-        raise ValueError("transfer_method is required in file mapping")
+        raise ValueError("文件映射中 transfer_method 为必填项")
     transfer_method = FileTransferMethod.value_of(transfer_method_value)
 
     build_functions: dict[FileTransferMethod, Callable] = {
@@ -160,12 +160,12 @@ def _build_from_local_file(
 ) -> File:
     upload_file_id = mapping.get("upload_file_id")
     if not upload_file_id:
-        raise ValueError("Invalid upload file id")
+        raise ValueError("无效的上传文件 ID")
     # check if upload_file_id is a valid uuid
     try:
         uuid.UUID(upload_file_id)
     except ValueError:
-        raise ValueError("Invalid upload file id format")
+        raise ValueError("无效的上传文件 ID 格式")
     stmt = select(UploadFile).where(
         UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
@@ -173,13 +173,13 @@ def _build_from_local_file(
 
     row = db.session.scalar(stmt)
     if row is None:
-        raise ValueError("Invalid upload file")
+        raise ValueError("无效的上传文件")
 
     detected_file_type = _standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
     specified_type = mapping.get("type", "custom")
 
     if strict_type_validation and detected_file_type.value != specified_type:
-        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+        raise ValueError("检测到的文件类型与指定类型不匹配，请验证文件。")
 
     if specified_type and specified_type != "custom":
         file_type = FileType(specified_type)
@@ -213,7 +213,7 @@ def _build_from_remote_url(
         try:
             uuid.UUID(upload_file_id)
         except ValueError:
-            raise ValueError("Invalid upload file id format")
+            raise ValueError("无效的上传文件 ID 格式")
         stmt = select(UploadFile).where(
             UploadFile.id == upload_file_id,
             UploadFile.tenant_id == tenant_id,
@@ -221,7 +221,7 @@ def _build_from_remote_url(
 
         upload_file = db.session.scalar(stmt)
         if upload_file is None:
-            raise ValueError("Invalid upload file")
+            raise ValueError("无效的上传文件")
 
         detected_file_type = _standardize_file_type(
             extension="." + upload_file.extension, mime_type=upload_file.mime_type
@@ -230,7 +230,7 @@ def _build_from_remote_url(
         specified_type = mapping.get("type")
 
         if strict_type_validation and specified_type and detected_file_type.value != specified_type:
-            raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+            raise ValueError("检测到的文件类型与指定类型不匹配，请验证文件。")
 
         if specified_type and specified_type != "custom":
             file_type = FileType(specified_type)
@@ -252,7 +252,7 @@ def _build_from_remote_url(
         )
     url = mapping.get("url") or mapping.get("remote_url")
     if not url:
-        raise ValueError("Invalid file url")
+        raise ValueError("无效的文件 URL")
 
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
@@ -261,7 +261,7 @@ def _build_from_remote_url(
     specified_type = mapping.get("type")
 
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
-        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+        raise ValueError("检测到的文件类型与指定类型不匹配，请验证文件。")
 
     if specified_type and specified_type != "custom":
         file_type = FileType(specified_type)
@@ -392,7 +392,7 @@ def _build_from_tool_file(
     specified_type = mapping.get("type")
 
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
-        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+        raise ValueError("检测到的文件类型与指定类型不匹配，请验证文件。")
 
     if specified_type and specified_type != "custom":
         file_type = FileType(specified_type)
@@ -443,7 +443,7 @@ def _build_from_datasource_file(
     specified_type = mapping.get("type")
 
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
-        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+        raise ValueError("检测到的文件类型与指定类型不匹配，请验证文件。")
 
     if specified_type and specified_type != "custom":
         file_type = FileType(specified_type)
@@ -590,7 +590,7 @@ class StorageKeyLoader:
         for file in files:
             related_model_id = file.related_id
             if file.related_id is None:
-                raise ValueError("file id should not be None.")
+                raise ValueError("文件 ID 不能为 None。")
             if file.tenant_id != self._tenant_id:
                 err_msg = (
                     f"invalid file, expected tenant_id={self._tenant_id}, "

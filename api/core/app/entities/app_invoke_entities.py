@@ -171,7 +171,7 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     @classmethod
     def validate_parent_message_id(cls, v, info: ValidationInfo):
         if info.data.get("invoke_from") == InvokeFrom.SERVICE_API and v != UUID_NIL:
-            raise ValueError("parent_message_id should be UUID_NIL for service API")
+            raise ValueError("Service API 的 parent_message_id 应为 UUID_NIL")
         return v
 
 

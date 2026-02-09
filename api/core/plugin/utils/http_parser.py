@@ -40,7 +40,7 @@ def deserialize_request(raw_data: bytes) -> Request:
         lines = header_data.split(b"\n")
 
     if not lines or not lines[0]:
-        raise ValueError("Empty HTTP request")
+        raise ValueError("空的 HTTP 请求")
 
     request_line = lines[0].decode("utf-8", errors="ignore")
     parts = request_line.split(" ", 2)
@@ -140,7 +140,7 @@ def deserialize_response(raw_data: bytes) -> Response:
         lines = header_data.split(b"\n")
 
     if not lines or not lines[0]:
-        raise ValueError("Empty HTTP response")
+        raise ValueError("空的 HTTP 响应")
 
     status_line = lines[0].decode("utf-8", errors="ignore")
     parts = status_line.split(" ", 2)

@@ -43,7 +43,7 @@ class EnterpriseService:
     def get_app_sso_settings_last_update_time(cls) -> datetime:
         data = EnterpriseRequest.send_request("GET", "/sso/app/last-update-time")
         if not data:
-            raise ValueError("No data found.")
+            raise ValueError("未找到数据。")
         try:
             # parse the UTC timestamp from the response
             return datetime.fromisoformat(data)
@@ -54,7 +54,7 @@ class EnterpriseService:
     def get_workspace_sso_settings_last_update_time(cls) -> datetime:
         data = EnterpriseRequest.send_request("GET", "/sso/workspace/last-update-time")
         if not data:
-            raise ValueError("No data found.")
+            raise ValueError("未找到数据。")
         try:
             # parse the UTC timestamp from the response
             return datetime.fromisoformat(data)
@@ -65,10 +65,10 @@ class EnterpriseService:
         @classmethod
         def get_permission(cls, workspace_id: str):
             if not workspace_id:
-                raise ValueError("workspace_id must be provided.")
+                raise ValueError("必须提供 workspace_id。")
             data = EnterpriseRequest.send_request("GET", f"/workspaces/{workspace_id}/permission")
             if not data or "permission" not in data:
-                raise ValueError("No data found.")
+                raise ValueError("未找到数据。")
             return WorkspacePermission.model_validate(data["permission"])
 
     class WebAppAuth:
@@ -86,17 +86,17 @@ class EnterpriseService:
             body = {"userId": user_id, "appIds": app_ids}
             data = EnterpriseRequest.send_request("POST", "/webapp/permission/batch", json=body)
             if not data:
-                raise ValueError("No data found.")
+                raise ValueError("未找到数据。")
             return data.get("permissions", {})
 
         @classmethod
         def get_app_access_mode_by_id(cls, app_id: str) -> WebAppSettings:
             if not app_id:
-                raise ValueError("app_id must be provided.")
+                raise ValueError("必须提供 app_id。")
             params = {"appId": app_id}
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
             if not data:
-                raise ValueError("No data found.")
+                raise ValueError("未找到数据。")
             return WebAppSettings.model_validate(data)
 
         @classmethod
@@ -106,10 +106,10 @@ class EnterpriseService:
             body = {"appIds": app_ids}
             data: dict[str, str] = EnterpriseRequest.send_request("POST", "/webapp/access-mode/batch/id", json=body)
             if not data:
-                raise ValueError("No data found.")
+                raise ValueError("未找到数据。")
 
             if not isinstance(data["accessModes"], dict):
-                raise ValueError("Invalid data format.")
+                raise ValueError("无效的数据格式。")
 
             ret = {}
             for key, value in data["accessModes"].items():
@@ -122,9 +122,9 @@ class EnterpriseService:
         @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
-                raise ValueError("app_id must be provided.")
+                raise ValueError("必须提供 app_id。")
             if access_mode not in ["public", "private", "private_all"]:
-                raise ValueError("access_mode must be either 'public', 'private', or 'private_all'")
+                raise ValueError("access_mode 必须为 'public'、'private' 或 'private_all'")
 
             data = {"appId": app_id, "accessMode": access_mode}
 
@@ -135,7 +135,7 @@ class EnterpriseService:
         @classmethod
         def cleanup_webapp(cls, app_id: str):
             if not app_id:
-                raise ValueError("app_id must be provided.")
+                raise ValueError("必须提供 app_id。")
 
             params = {"appId": app_id}
             EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)

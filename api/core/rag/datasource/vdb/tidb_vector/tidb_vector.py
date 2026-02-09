@@ -33,15 +33,15 @@ class TiDBVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config TIDB_VECTOR_HOST is required")
+            raise ValueError("配置 TIDB_VECTOR_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config TIDB_VECTOR_PORT is required")
+            raise ValueError("配置 TIDB_VECTOR_PORT 为必填项")
         if not values["user"]:
-            raise ValueError("config TIDB_VECTOR_USER is required")
+            raise ValueError("配置 TIDB_VECTOR_USER 为必填项")
         if not values["database"]:
-            raise ValueError("config TIDB_VECTOR_DATABASE is required")
+            raise ValueError("配置 TIDB_VECTOR_DATABASE 为必填项")
         if not values["program_name"]:
-            raise ValueError("config APPLICATION_NAME is required")
+            raise ValueError("配置 APPLICATION_NAME 为必填项")
         return values
 
 
@@ -157,7 +157,7 @@ class TiDBVector(BaseVector):
 
     def _delete_by_ids(self, ids: list[str]) -> bool:
         if ids is None:
-            raise ValueError("No ids provided to delete.")
+            raise ValueError("未提供要删除的 ID。")
         table = self._table(self._dimension)
         try:
             with self._engine.connect() as conn, conn.begin():

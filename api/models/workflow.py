@@ -243,7 +243,7 @@ class Workflow(Base):  # bug
 
         nodes = workflow_graph.get("nodes")
         if not nodes:
-            raise WorkflowDataError("nodes not found in workflow graph")
+            raise WorkflowDataError("工作流图中未找到节点")
 
         try:
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
@@ -268,12 +268,12 @@ class Workflow(Base):  # bug
         if in_loop:
             loop_id = node_config.get("loop_id")
             if loop_id is None:
-                raise _InvalidGraphDefinitionError("invalid graph")
+                raise _InvalidGraphDefinitionError("无效的图")
             return NodeType.LOOP, loop_id
         elif in_iteration:
             iteration_id = node_config.get("iteration_id")
             if iteration_id is None:
-                raise _InvalidGraphDefinitionError("invalid graph")
+                raise _InvalidGraphDefinitionError("无效的图")
             return NodeType.ITERATION, iteration_id
         else:
             return None
@@ -349,7 +349,7 @@ class Workflow(Base):  # bug
         """
         graph_dict = self.graph_dict
         if "nodes" not in graph_dict:
-            raise WorkflowDataError("nodes not found in workflow graph")
+            raise WorkflowDataError("工作流图中未找到节点")
 
         if specific_node_type:
             yield from (
@@ -480,7 +480,7 @@ class Workflow(Base):  # bug
 
         value = list(value)
         if any(var for var in value if not var.id):
-            raise ValueError("environment variable require a unique id")
+            raise ValueError("环境变量需要唯一的 ID")
 
         # Compare inputs and origin variables,
         # if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
@@ -1451,7 +1451,7 @@ class WorkflowDraftVariable(Base):
                 type(selector).__name__,
                 self.selector,
             )
-            raise ValueError("invalid selector.")
+            raise ValueError("无效的选择器。")
         return cast(list[str], selector)
 
     def _set_selector(self, value: list[str]):

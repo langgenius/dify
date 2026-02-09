@@ -399,7 +399,7 @@ class AppModelConfig(TypeBase):
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
             if not collection_binding_detail:
-                raise ValueError("Collection binding detail not found")
+                raise ValueError("集合绑定详情未找到")
 
             return {
                 "id": annotation_setting.id,
@@ -1760,7 +1760,7 @@ class Site(Base):
     @custom_disclaimer.setter
     def custom_disclaimer(self, value: str):
         if len(value) > 512:
-            raise ValueError("Custom disclaimer cannot exceed 512 characters.")
+            raise ValueError("自定义免责声明不能超过 512 个字符。")
         self._custom_disclaimer = value
 
     @staticmethod

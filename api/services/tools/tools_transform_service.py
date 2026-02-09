@@ -301,7 +301,7 @@ class ToolTransformService:
         try:
             user = db_provider.user
             if not user:
-                raise ValueError("user not found")
+                raise ValueError("用户未找到")
 
             username = user.name
         except Exception:

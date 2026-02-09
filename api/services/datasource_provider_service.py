@@ -245,7 +245,7 @@ class DatasourceProviderService:
                 .first()
             )
             if target_provider is None:
-                raise ValueError("provider not found")
+                raise ValueError("提供商未找到")
 
             if target_provider.name == name:
                 return
@@ -262,7 +262,7 @@ class DatasourceProviderService:
                 .count()
                 > 0
             ):
-                raise ValueError("Authorization name is already exists")
+                raise ValueError("授权名称已存在")
 
             target_provider.name = name
             session.commit()
@@ -287,7 +287,7 @@ class DatasourceProviderService:
                 .first()
             )
             if target_provider is None:
-                raise ValueError("provider not found")
+                raise ValueError("提供商未找到")
 
             # clear default provider
             session.query(DatasourceProvider).filter_by(
@@ -411,7 +411,7 @@ class DatasourceProviderService:
             tenant_id=tenant_id, provider_id=str(datasource_provider_id)
         )
         if not datasource_provider.declaration.oauth_schema:
-            raise ValueError("Datasource provider oauth schema not found")
+            raise ValueError("未找到数据源提供方 OAuth 模式")
 
         client_schema = datasource_provider.declaration.oauth_schema.client_schema
         return create_provider_encrypter(
@@ -494,7 +494,7 @@ class DatasourceProviderService:
                     session.query(DatasourceProvider).filter_by(id=credential_id, tenant_id=tenant_id).first()
                 )
                 if target_provider is None:
-                    raise ValueError("provider not found")
+                    raise ValueError("提供商未找到")
 
                 db_provider_name = name
                 if not db_provider_name:
@@ -639,7 +639,7 @@ class DatasourceProviderService:
                     .count()
                     > 0
                 ):
-                    raise ValueError("Authorization name is already exists")
+                    raise ValueError("授权名称已存在")
 
                 try:
                     current_user = get_current_user()
@@ -686,7 +686,7 @@ class DatasourceProviderService:
             credential_form_schemas = list(datasource_provider.declaration.credentials_schema)
         elif credential_type == CredentialType.OAUTH2:
             if not datasource_provider.declaration.oauth_schema:
-                raise ValueError("Datasource provider oauth schema not found")
+                raise ValueError("未找到数据源提供方 OAuth 模式")
             credential_form_schemas = list(datasource_provider.declaration.oauth_schema.credentials_schema)
         else:
             raise ValueError(f"Invalid credential type: {credential_type}")
@@ -928,7 +928,7 @@ class DatasourceProviderService:
                 .first()
             )
             if not datasource_provider:
-                raise ValueError("Datasource provider not found")
+                raise ValueError("未找到数据源提供方")
             # update name
             if name and name != datasource_provider.name:
                 if (
@@ -937,7 +937,7 @@ class DatasourceProviderService:
                     .count()
                     > 0
                 ):
-                    raise ValueError("Authorization name is already exists")
+                    raise ValueError("授权名称已存在")
                 datasource_provider.name = name
 
             # update credentials

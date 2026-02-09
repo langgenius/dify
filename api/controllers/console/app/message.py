@@ -87,7 +87,7 @@ class FeedbackExportQuery(BaseModel):
             return True
         if lowered in {"false", "0", "no", "off"}:
             return False
-        raise ValueError("has_comment must be a boolean value")
+        raise ValueError("has_comment 必须是布尔值")
 
 
 class AnnotationCountResponse(BaseModel):
@@ -233,7 +233,7 @@ class ChatMessageListApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatMessagesQuery.__name__])
     @console_ns.response(200, "Success", message_infinite_scroll_pagination_model)
-    @console_ns.response(404, "Conversation not found")
+    @console_ns.response(404, "对话未找到。")
     @login_required
     @account_initialization_required
     @setup_required
@@ -250,7 +250,7 @@ class ChatMessageListApi(Resource):
         )
 
         if not conversation:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
 
         if args.first_id:
             first_message = (
@@ -260,7 +260,7 @@ class ChatMessageListApi(Resource):
             )
 
             if not first_message:
-                raise NotFound("First message not found")
+                raise NotFound("未找到首条消息。")
 
             history_messages = (
                 db.session.query(Message)
@@ -312,7 +312,7 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully")
-    @console_ns.response(404, "Message not found")
+    @console_ns.response(404, "消息未找到。")
     @console_ns.response(403, "Insufficient permissions")
     @get_app_model
     @setup_required
@@ -328,7 +328,7 @@ class MessageFeedbackApi(Resource):
         message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
 
         feedback = message.admin_feedback
 
@@ -338,11 +338,11 @@ class MessageFeedbackApi(Resource):
             feedback.rating = args.rating
             feedback.content = args.content
         elif not args.rating and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
+            raise ValueError("反馈不存在时评分不能为空")
         else:
             rating_value = args.rating
             if rating_value is None:
-                raise ValueError("rating is required to create feedback")
+                raise ValueError("创建反馈时评分为必填项")
             feedback = MessageFeedback(
                 app_id=app_model.id,
                 conversation_id=message.conversation_id,
@@ -403,9 +403,9 @@ class MessageSuggestedQuestionApi(Resource):
                 app_model=app_model, message_id=message_id, user=current_user, invoke_from=InvokeFrom.DEBUGGER
             )
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFound("消息未找到。")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFound("对话未找到。")
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -469,7 +469,7 @@ class MessageApi(Resource):
     @console_ns.doc(description="Get message details by ID")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
     @console_ns.response(200, "Message retrieved successfully", message_detail_model)
-    @console_ns.response(404, "Message not found")
+    @console_ns.response(404, "消息未找到。")
     @get_app_model
     @setup_required
     @login_required
@@ -481,7 +481,7 @@ class MessageApi(Resource):
         message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("消息不存在。")
 
         attach_message_extra_contents([message])
         return message

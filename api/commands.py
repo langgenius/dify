@@ -364,7 +364,7 @@ def migrate_knowledge_vector_database():
                         if dataset_collection_binding:
                             collection_name = dataset_collection_binding.collection_name
                         else:
-                            raise ValueError("Dataset Collection Binding not found")
+                            raise ValueError("知识库集合绑定未找到")
                     else:
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
 
@@ -557,7 +557,7 @@ def add_qdrant_index(field: str):
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
-                raise ValueError("Qdrant URL is required.")
+                raise ValueError("Qdrant URL 为必填项。")
             qdrant_config = QdrantConfig(
                 endpoint=dify_config.QDRANT_URL,
                 api_key=dify_config.QDRANT_API_KEY,
@@ -1172,7 +1172,7 @@ def restore_workflow_runs(
     if run_id is None and (start_from is None or end_before is None):
         raise click.UsageError("--start-from and --end-before are required for batch restore.")
     if workers < 1:
-        raise click.BadParameter("workers must be at least 1")
+        raise click.BadParameter("workers 至少为 1")
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(

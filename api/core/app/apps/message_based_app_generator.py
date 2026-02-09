@@ -276,7 +276,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id))
 
         if not conversation:
-            raise ConversationNotExistsError("Conversation not exists")
+            raise ConversationNotExistsError("会话不存在")
 
         return conversation
 
@@ -290,7 +290,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             message = session.scalar(select(Message).where(Message.id == message_id))
 
         if message is None:
-            raise MessageNotExistsError("Message not exists")
+            raise MessageNotExistsError("消息不存在")
 
         return message
 

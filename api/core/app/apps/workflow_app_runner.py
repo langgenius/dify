@@ -109,13 +109,13 @@ class WorkflowBasedAppRunner:
         Init graph
         """
         if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
+            raise ValueError("工作流图中未找到节点或边")
 
         if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
+            raise ValueError("工作流图中的节点必须为列表")
 
         if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+            raise ValueError("工作流图中的边必须为列表")
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
@@ -140,7 +140,7 @@ class WorkflowBasedAppRunner:
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
 
         if not graph:
-            raise ValueError("graph not found in workflow")
+            raise ValueError("工作流中未找到 graph")
 
         return graph
 
@@ -195,7 +195,7 @@ class WorkflowBasedAppRunner:
                 node_type_label="loop",
             )
         else:
-            raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
+            raise ValueError("未指定 single_iteration_run 或 single_loop_run")
 
         # Return the graph, variable_pool, and the same graph_runtime_state used during graph creation
         # This ensures all nodes in the graph reference the same GraphRuntimeState instance
@@ -227,18 +227,18 @@ class WorkflowBasedAppRunner:
         # fetch workflow graph
         graph_config = workflow.graph_dict
         if not graph_config:
-            raise ValueError("workflow graph not found")
+            raise ValueError("工作流图未找到")
 
         graph_config = cast(dict[str, Any], graph_config)
 
         if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
+            raise ValueError("工作流图中未找到节点或边")
 
         if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
+            raise ValueError("工作流图中的节点必须为列表")
 
         if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+            raise ValueError("工作流图中的边必须为列表")
 
         # filter nodes only in the specified node type (iteration or loop)
         main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
@@ -288,7 +288,7 @@ class WorkflowBasedAppRunner:
         )
 
         if not graph:
-            raise ValueError("graph not found in workflow")
+            raise ValueError("工作流中未找到 graph")
 
         # fetch node config from node id
         target_node_config = None

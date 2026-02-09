@@ -178,7 +178,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             else:
                 continue
 
-        raise ValueError("queue listening stopped unexpectedly.")
+        raise ValueError("队列监听意外停止。")
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -263,7 +263,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
         if not self._workflow_execution_id:
-            raise ValueError("workflow run not initialized.")
+            raise ValueError("工作流运行未初始化。")
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""

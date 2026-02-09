@@ -97,14 +97,14 @@ class CompletionMessageApi(Resource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
+                raise ValueError("current_user 必须是 Account 或 EndUser 实例")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -137,7 +137,7 @@ class CompletionMessageStopApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+            raise ValueError("current_user 必须是 Account 实例")
 
         AppTaskService.stop_task(
             task_id=task_id,
@@ -176,14 +176,14 @@ class ChatMessageApi(Resource):
 
         try:
             if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
+                raise ValueError("current_user 必须是 Account 或 EndUser 实例")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("对话不存在。")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -218,7 +218,7 @@ class ChatMessageStopApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
+            raise ValueError("current_user 必须是 Account 实例")
 
         AppTaskService.stop_task(
             task_id=task_id,

@@ -20,11 +20,11 @@ class RuleConfigGeneratorOutputParser:
             expected_keys = ["prompt", "variables", "opening_statement"]
             parsed = parse_and_check_json_markdown(text, expected_keys)
             if not isinstance(parsed["prompt"], str):
-                raise ValueError("Expected 'prompt' to be a string.")
+                raise ValueError("prompt 应为字符串类型。")
             if not isinstance(parsed["variables"], list):
-                raise ValueError("Expected 'variables' to be a list.")
+                raise ValueError("variables 应为列表类型。")
             if not isinstance(parsed["opening_statement"], str):
-                raise ValueError("Expected 'opening_statement' to be a str.")
+                raise ValueError("opening_statement 应为字符串类型。")
             return parsed
         except Exception as e:
             raise OutputParserError(f"Parsing text\n{text}\n of rule config generator raised following error:\n{e}")

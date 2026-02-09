@@ -45,7 +45,7 @@ class ConversationRenamePayload(BaseModel):
     def validate_name_requirement(self):
         if not self.auto_generate:
             if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
+                raise ValueError("auto_generate 为 false 时 name 为必填项")
         return self
 
 
@@ -118,7 +118,7 @@ class ConversationListApi(WebApiResource):
                     data=conversations,
                 ).model_dump(mode="json")
         except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            raise NotFound("上一个会话不存在。")
 
 
 @web_ns.route("/conversations/<uuid:c_id>")
@@ -145,7 +145,7 @@ class ConversationApi(WebApiResource):
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("会话不存在。")
         return ResultResponse(result="success").model_dump(mode="json"), 204
 
 
@@ -194,7 +194,7 @@ class ConversationRenameApi(WebApiResource):
                 .model_dump(mode="json")
             )
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("会话不存在。")
 
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
@@ -222,7 +222,7 @@ class ConversationPinApi(WebApiResource):
         try:
             WebConversationService.pin(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("会话不存在。")
 
         return ResultResponse(result="success").model_dump(mode="json")
 

@@ -114,7 +114,7 @@ class RedisClientWrapper:
 
     def __getattr__(self, item: str) -> Any:
         if self._client is None:
-            raise RuntimeError("Redis client is not initialized. Call init_app first.")
+            raise RuntimeError("Redis 客户端未初始化，请先调用 init_app。")
         return getattr(self._client, item)
 
 
@@ -151,7 +151,7 @@ def _get_cache_configuration() -> CacheConfig | None:
 
     resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
     if resp_protocol < 3:
-        raise ValueError("Client side cache is only supported in RESP3")
+        raise ValueError("客户端缓存仅在 RESP3 协议下支持")
 
     return CacheConfig()
 
@@ -173,10 +173,10 @@ def _get_base_redis_params() -> dict[str, Any]:
 def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
-        raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
+        raise ValueError("REDIS_USE_SENTINEL 为 True 时必须设置 REDIS_SENTINELS")
 
     if not dify_config.REDIS_SENTINEL_SERVICE_NAME:
-        raise ValueError("REDIS_SENTINEL_SERVICE_NAME must be set when REDIS_USE_SENTINEL is True")
+        raise ValueError("REDIS_USE_SENTINEL 为 True 时必须设置 REDIS_SENTINEL_SERVICE_NAME")
 
     sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
 
@@ -196,7 +196,7 @@ def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, 
 def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     """Create Redis cluster client."""
     if not dify_config.REDIS_CLUSTERS:
-        raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
+        raise ValueError("REDIS_USE_CLUSTERS 为 True 时必须设置 REDIS_CLUSTERS")
 
     nodes = [
         ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))

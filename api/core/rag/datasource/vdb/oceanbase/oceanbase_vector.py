@@ -50,13 +50,13 @@ class OceanBaseVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config OCEANBASE_VECTOR_HOST is required")
+            raise ValueError("配置 OCEANBASE_VECTOR_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config OCEANBASE_VECTOR_PORT is required")
+            raise ValueError("配置 OCEANBASE_VECTOR_PORT 为必填项")
         if not values["user"]:
-            raise ValueError("config OCEANBASE_VECTOR_USER is required")
+            raise ValueError("配置 OCEANBASE_VECTOR_USER 为必填项")
         if not values["database"]:
-            raise ValueError("config OCEANBASE_VECTOR_DATABASE is required")
+            raise ValueError("配置 OCEANBASE_VECTOR_DATABASE 为必填项")
         return values
 
 
@@ -136,7 +136,7 @@ class OceanBaseVector(BaseVector):
                 val = int(row[6])
                 vals.append(val)
             if len(vals) == 0:
-                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
+                raise ValueError("参数中未找到 ob_vector_memory_limit_percentage。")
             if any(val == 0 for val in vals):
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
@@ -397,7 +397,7 @@ class OceanBaseVector(BaseVector):
         try:
             top_k = kwargs.get("top_k", 5)
             if not isinstance(top_k, int) or top_k <= 0:
-                raise ValueError("top_k must be a positive integer")
+                raise ValueError("top_k 必须为正整数")
 
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
 

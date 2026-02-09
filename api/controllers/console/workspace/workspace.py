@@ -166,7 +166,7 @@ class TenantApi(Resource):
         current_user, _ = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
 
         if tenant.status == TenantStatus.ARCHIVE:
             tenants = TenantService.get_join_tenants(current_user)
@@ -176,7 +176,7 @@ class TenantApi(Resource):
                 tenant = tenants[0]
             # else, raise Unauthorized
             else:
-                raise Unauthorized("workspace is archived")
+                raise Unauthorized("工作空间已归档")
 
         return WorkspaceService.get_tenant_info(tenant), 200
 
@@ -196,11 +196,11 @@ class SwitchWorkspaceApi(Resource):
         try:
             TenantService.switch_tenant(current_user, args.tenant_id)
         except Exception:
-            raise AccountNotLinkTenantError("Account not link tenant")
+            raise AccountNotLinkTenantError("账户未关联租户")
 
         new_tenant = db.session.query(Tenant).get(args.tenant_id)  # Get new tenant
         if new_tenant is None:
-            raise ValueError("Tenant not found")
+            raise ValueError("租户未找到")
 
         return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
 
@@ -284,7 +284,7 @@ class WorkspaceInfoApi(Resource):
         args = WorkspaceInfoPayload.model_validate(payload)
 
         if not current_tenant_id:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         tenant = db.get_or_404(Tenant, current_tenant_id)
         tenant.name = args.name
         db.session.commit()
@@ -308,7 +308,7 @@ class WorkspacePermissionApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         if not current_tenant_id:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
 
         # Get workspace permissions from enterprise service
         permission = EnterpriseService.WorkspacePermissionService.get_permission(current_tenant_id)

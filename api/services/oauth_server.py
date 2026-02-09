@@ -51,7 +51,7 @@ class OAuthServerService:
                 redis_key = OAUTH_AUTHORIZATION_CODE_REDIS_KEY.format(client_id=client_id, code=code)
                 user_account_id = redis_client.get(redis_key)
                 if not user_account_id:
-                    raise BadRequest("invalid code")
+                    raise BadRequest("无效的代码")
 
                 # delete code
                 redis_client.delete(redis_key)
@@ -63,7 +63,7 @@ class OAuthServerService:
                 redis_key = OAUTH_REFRESH_TOKEN_REDIS_KEY.format(client_id=client_id, token=refresh_token)
                 user_account_id = redis_client.get(redis_key)
                 if not user_account_id:
-                    raise BadRequest("invalid refresh token")
+                    raise BadRequest("无效的刷新令牌")
 
                 access_token = OAuthServerService._sign_oauth_access_token(client_id, user_account_id)
                 return access_token, refresh_token

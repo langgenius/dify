@@ -78,6 +78,6 @@ def parse_time_range(
 
     # Range validation
     if start_dt and end_dt and start_dt > end_dt:
-        raise ValueError("start must be earlier than or equal to end")
+        raise ValueError("start 必须早于或等于 end")
 
     return start_dt, end_dt

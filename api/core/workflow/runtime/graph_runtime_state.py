@@ -191,14 +191,14 @@ class GraphRuntimeState:
         self._start_at = start_at
 
         if total_tokens < 0:
-            raise ValueError("total_tokens must be non-negative")
+            raise ValueError("total_tokens 不能为负数")
         self._total_tokens = total_tokens
 
         self._llm_usage = (llm_usage or LLMUsage.empty_usage()).model_copy()
         self._outputs = deepcopy(outputs) if outputs is not None else {}
 
         if node_run_steps < 0:
-            raise ValueError("node_run_steps must be non-negative")
+            raise ValueError("node_run_steps 不能为负数")
         self._node_run_steps = node_run_steps
 
         self._graph: GraphProtocol | None = None
@@ -230,7 +230,7 @@ class GraphRuntimeState:
     def attach_graph(self, graph: GraphProtocol) -> None:
         """Attach the materialized graph to the runtime state."""
         if self._graph is not None and self._graph is not graph:
-            raise ValueError("GraphRuntimeState already attached to a different graph instance")
+            raise ValueError("GraphRuntimeState 已关联到不同的图实例")
 
         self._graph = graph
 
@@ -276,7 +276,7 @@ class GraphRuntimeState:
     def response_coordinator(self) -> ResponseStreamCoordinatorProtocol:
         if self._response_coordinator is None:
             if self._graph is None:
-                raise ValueError("Graph must be attached before accessing response coordinator")
+                raise ValueError("访问响应协调器前必须先关联图")
             self._response_coordinator = self._build_response_coordinator(self._graph)
         return self._response_coordinator
 
@@ -298,7 +298,7 @@ class GraphRuntimeState:
     @total_tokens.setter
     def total_tokens(self, value: int) -> None:
         if value < 0:
-            raise ValueError("total_tokens must be non-negative")
+            raise ValueError("total_tokens 不能为负数")
         self._total_tokens = value
 
     @property
@@ -334,7 +334,7 @@ class GraphRuntimeState:
     @node_run_steps.setter
     def node_run_steps(self, value: int) -> None:
         if value < 0:
-            raise ValueError("node_run_steps must be non-negative")
+            raise ValueError("node_run_steps 不能为负数")
         self._node_run_steps = value
 
     def increment_node_run_steps(self) -> None:
@@ -342,7 +342,7 @@ class GraphRuntimeState:
 
     def add_tokens(self, tokens: int) -> None:
         if tokens < 0:
-            raise ValueError("tokens must be non-negative")
+            raise ValueError("tokens 不能为负数")
         self._total_tokens += tokens
 
     # ------------------------------------------------------------------
@@ -473,11 +473,11 @@ class GraphRuntimeState:
 
         total_tokens = int(payload.get("total_tokens", 0))
         if total_tokens < 0:
-            raise ValueError("total_tokens must be non-negative")
+            raise ValueError("total_tokens 不能为负数")
 
         node_run_steps = int(payload.get("node_run_steps", 0))
         if node_run_steps < 0:
-            raise ValueError("node_run_steps must be non-negative")
+            raise ValueError("node_run_steps 不能为负数")
 
         llm_usage_payload = payload.get("llm_usage", {})
         llm_usage = LLMUsage.model_validate(llm_usage_payload)

@@ -352,7 +352,7 @@ class LLMGenerator:
 
         # Runtime type check since pyright has issues with the overload
         if not isinstance(result, LLMResult):
-            raise TypeError("Expected LLMResult when stream=False")
+            raise TypeError("stream=False 时应返回 LLMResult")
         response = result
 
         answer = response.message.get_text_content()
@@ -453,10 +453,10 @@ class LLMGenerator:
 
         app: App | None = session.query(App).where(App.id == flow_id).first()
         if not app:
-            raise ValueError("App not found.")
+            raise ValueError("应用未找到。")
         workflow = workflow_service.get_draft_workflow(app_model=app)
         if not workflow:
-            raise ValueError("Workflow not found for the given app model.")
+            raise ValueError("给定应用模型的工作流未找到。")
         last_run = workflow_service.get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
         try:
             node_type = cast(WorkflowNodeExecutionModel, last_run).node_type

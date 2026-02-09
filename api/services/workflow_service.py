@@ -288,7 +288,7 @@ class WorkflowService:
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
-            raise ValueError("No valid workflow found.")
+            raise ValueError("未找到有效的工作流。")
 
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
@@ -1186,7 +1186,7 @@ class WorkflowService:
             )
 
             if not node_run_result:
-                raise ValueError("Node execution failed - no result returned")
+                raise ValueError("节点执行失败 - 未返回结果")
 
             # Apply error strategy if node failed
             if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.error_strategy:
@@ -1304,7 +1304,7 @@ class WorkflowService:
         # start node and trigger node cannot coexist
         if NodeType.START in node_types:
             if any(nt.is_trigger_node for nt in node_types):
-                raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
+                raise ValueError("开始节点和触发器节点不能共存于同一工作流")
 
         for node in node_configs:
             node_data = node.get("data", {})
@@ -1392,7 +1392,7 @@ class WorkflowService:
 
         # Check if workflow is a draft version
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
+            raise DraftWorkflowDeletionError("无法删除草稿工作流版本")
 
         # Check if this workflow is currently referenced by an app
         app_stmt = select(App).where(App.workflow_id == workflow_id)
@@ -1415,7 +1415,7 @@ class WorkflowService:
 
         if tool_provider:
             # Cannot delete a workflow that's published as a tool
-            raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
+            raise WorkflowInUseError("无法删除已发布为工具的工作流")
 
         session.delete(workflow)
         return True
@@ -1493,4 +1493,4 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
             raise ValueError(f"expected dict for first element in the file list, got {type(value)}")
         return build_from_mappings(mappings=value, tenant_id=tenant_id)
     else:
-        raise Exception("unreachable")
+        raise Exception("不可达")

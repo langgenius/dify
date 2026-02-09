@@ -20,12 +20,12 @@ class RetrievalResourceConfigManager:
             config["retriever_resource"] = {"enabled": False}
 
         if not isinstance(config["retriever_resource"], dict):
-            raise ValueError("retriever_resource must be of dict type")
+            raise ValueError("retriever_resource 必须为字典类型")
 
         if "enabled" not in config["retriever_resource"] or not config["retriever_resource"]["enabled"]:
             config["retriever_resource"]["enabled"] = False
 
         if not isinstance(config["retriever_resource"]["enabled"], bool):
-            raise ValueError("enabled in retriever_resource must be of boolean type")
+            raise ValueError("retriever_resource 中的 enabled 必须为布尔类型")
 
         return config, ["retriever_resource"]

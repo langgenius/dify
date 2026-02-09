@@ -172,7 +172,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
-                raise ValueError("single_retrieval_config is required for single retrieval mode")
+                raise ValueError("single_retrieval_config 为必填项")
             model = node_data.single_retrieval_config.model
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
                 request=KnowledgeRetrievalRequest(
@@ -194,7 +194,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             )
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
-                raise ValueError("multiple_retrieval_config is required")
+                raise ValueError("multiple_retrieval_config 为必填项")
             reranking_model = None
             weights = None
             match node_data.multiple_retrieval_config.reranking_mode:
@@ -209,7 +209,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     weights = None
                 case "weighted_score":
                     if node_data.multiple_retrieval_config.weights is None:
-                        raise ValueError("weights is required")
+                        raise ValueError("weights 为必填项")
                     reranking_model = None
                     vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
                     weights = {

@@ -19,7 +19,7 @@ class AbortCommandHandler(CommandHandler):
     def handle(self, command: GraphEngineCommand, execution: GraphExecution) -> None:
         assert isinstance(command, AbortCommand)
         logger.debug("Aborting workflow %s: %s", execution.workflow_id, command.reason)
-        execution.abort(command.reason or "User requested abort")
+        execution.abort(command.reason or "用户请求中止")
 
 
 @final

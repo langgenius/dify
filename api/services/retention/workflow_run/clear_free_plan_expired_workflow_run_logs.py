@@ -31,17 +31,17 @@ class WorkflowRunCleanup:
         dry_run: bool = False,
     ):
         if (start_from is None) ^ (end_before is None):
-            raise ValueError("start_from and end_before must be both set or both omitted.")
+            raise ValueError("start_from 和 end_before 必须同时设置或同时省略。")
 
         computed_cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
         self.window_start = start_from
         self.window_end = end_before or computed_cutoff
 
         if self.window_start and self.window_end <= self.window_start:
-            raise ValueError("end_before must be greater than start_from.")
+            raise ValueError("end_before 必须大于 start_from。")
 
         if batch_size <= 0:
-            raise ValueError("batch_size must be greater than 0.")
+            raise ValueError("batch_size 必须大于 0。")
 
         self.batch_size = batch_size
         self._cleanup_whitelist: set[str] | None = None

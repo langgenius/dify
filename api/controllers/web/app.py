@@ -121,7 +121,7 @@ class AppAccessMode(Resource):
             app_id = AppService.get_app_id_by_code(args.app_code)
 
         if not app_id:
-            raise ValueError("appId or appCode must be provided")
+            raise ValueError("必须提供 appId 或 appCode")
 
         res = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
 
@@ -146,7 +146,7 @@ class AppWebAuthPermission(Resource):
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         app_id = request.args.get("appId")
         if not app_id or not app_code:
-            raise ValueError("appId must be provided")
+            raise ValueError("必须提供 appId")
 
         require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
         if not require_permission_check:
@@ -155,7 +155,7 @@ class AppWebAuthPermission(Resource):
         try:
             tk = extract_webapp_passport(app_code, request)
             if not tk:
-                raise Unauthorized("Access token is missing.")
+                raise Unauthorized("访问令牌缺失。")
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:

@@ -127,7 +127,7 @@ class File(BaseModel):
             return self.remote_url
         elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
             if self.related_id is None:
-                raise ValueError("Missing file related_id")
+                raise ValueError("缺少文件 related_id")
             return helpers.get_signed_file_url(upload_file_id=self.related_id, for_external=for_external)
         elif self.transfer_method in [FileTransferMethod.TOOL_FILE, FileTransferMethod.DATASOURCE_FILE]:
             assert self.related_id is not None
@@ -155,18 +155,18 @@ class File(BaseModel):
         match self.transfer_method:
             case FileTransferMethod.REMOTE_URL:
                 if not self.remote_url:
-                    raise ValueError("Missing file url")
+                    raise ValueError("缺少文件 URL")
                 if not isinstance(self.remote_url, str) or not self.remote_url.startswith("http"):
-                    raise ValueError("Invalid file url")
+                    raise ValueError("无效的文件 URL")
             case FileTransferMethod.LOCAL_FILE:
                 if not self.related_id:
-                    raise ValueError("Missing file related_id")
+                    raise ValueError("缺少文件 related_id")
             case FileTransferMethod.TOOL_FILE:
                 if not self.related_id:
-                    raise ValueError("Missing file related_id")
+                    raise ValueError("缺少文件 related_id")
             case FileTransferMethod.DATASOURCE_FILE:
                 if not self.related_id:
-                    raise ValueError("Missing file related_id")
+                    raise ValueError("缺少文件 related_id")
         return self
 
     @property

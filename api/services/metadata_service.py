@@ -21,7 +21,7 @@ class MetadataService:
     def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
-            raise ValueError("Metadata name cannot exceed 255 characters.")
+            raise ValueError("元数据名称不能超过 255 个字符。")
         current_user, current_tenant_id = current_account_with_tenant()
         # check if metadata name already exists
         if (
@@ -29,10 +29,10 @@ class MetadataService:
             .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
             .first()
         ):
-            raise ValueError("Metadata name already exists.")
+            raise ValueError("元数据名称已存在。")
         for field in BuiltInField:
             if field.value == metadata_args.name:
-                raise ValueError("Metadata name already exists in Built-in fields.")
+                raise ValueError("元数据名称已存在于内置字段中。")
         metadata = DatasetMetadata(
             tenant_id=current_tenant_id,
             dataset_id=dataset_id,
@@ -48,7 +48,7 @@ class MetadataService:
     def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
         # check if metadata name is too long
         if len(name) > 255:
-            raise ValueError("Metadata name cannot exceed 255 characters.")
+            raise ValueError("元数据名称不能超过 255 个字符。")
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
@@ -58,15 +58,15 @@ class MetadataService:
             .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=name)
             .first()
         ):
-            raise ValueError("Metadata name already exists.")
+            raise ValueError("元数据名称已存在。")
         for field in BuiltInField:
             if field.value == name:
-                raise ValueError("Metadata name already exists in Built-in fields.")
+                raise ValueError("元数据名称已存在于内置字段中。")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                raise ValueError("元数据未找到。")
             old_name = metadata.name
             metadata.name = name
             metadata.updated_by = current_user.id
@@ -102,7 +102,7 @@ class MetadataService:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                raise ValueError("元数据未找到。")
             db.session.delete(metadata)
 
             # deal related documents
@@ -205,7 +205,7 @@ class MetadataService:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
                 document = DocumentService.get_document(dataset.id, operation.document_id)
                 if document is None:
-                    raise ValueError("Document not found.")
+                    raise ValueError("文档未找到。")
                 if operation.partial_update:
                     doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                 else:
@@ -258,12 +258,12 @@ class MetadataService:
         if dataset_id:
             lock_key = f"dataset_metadata_lock_{dataset_id}"
             if redis_client.get(lock_key):
-                raise ValueError("Another knowledge base metadata operation is running, please wait a moment.")
+                raise ValueError("另一个知识库元数据操作正在运行，请稍候。")
             redis_client.set(lock_key, 1, ex=3600)
         if document_id:
             lock_key = f"document_metadata_lock_{document_id}"
             if redis_client.get(lock_key):
-                raise ValueError("Another document metadata operation is running, please wait a moment.")
+                raise ValueError("另一个文档元数据操作正在运行，请稍候。")
             redis_client.set(lock_key, 1, ex=3600)
 
     @staticmethod

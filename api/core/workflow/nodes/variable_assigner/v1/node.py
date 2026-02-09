@@ -74,19 +74,19 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
         original_variable = self.graph_runtime_state.variable_pool.get(assigned_variable_selector)
         if not isinstance(original_variable, VariableBase):
-            raise VariableOperatorNodeError("assigned variable not found")
+            raise VariableOperatorNodeError("已分配的变量未找到")
 
         match self.node_data.write_mode:
             case WriteMode.OVER_WRITE:
                 income_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
                 if not income_value:
-                    raise VariableOperatorNodeError("input value not found")
+                    raise VariableOperatorNodeError("输入值未找到")
                 updated_variable = original_variable.model_copy(update={"value": income_value.value})
 
             case WriteMode.APPEND:
                 income_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
                 if not income_value:
-                    raise VariableOperatorNodeError("input value not found")
+                    raise VariableOperatorNodeError("输入值未找到")
                 updated_value = original_variable.value + [income_value.value]
                 updated_variable = original_variable.model_copy(update={"value": updated_value})
 

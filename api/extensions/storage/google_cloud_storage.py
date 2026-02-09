@@ -36,7 +36,7 @@ class GoogleCloudStorage(BaseStorage):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
         if blob is None:
-            raise FileNotFoundError("File not found")
+            raise FileNotFoundError("文件未找到")
         data: bytes = blob.download_as_bytes()
         return data
 
@@ -44,7 +44,7 @@ class GoogleCloudStorage(BaseStorage):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
         if blob is None:
-            raise FileNotFoundError("File not found")
+            raise FileNotFoundError("文件未找到")
         with blob.open(mode="rb") as blob_stream:
             while chunk := blob_stream.read(4096):
                 yield chunk
@@ -53,7 +53,7 @@ class GoogleCloudStorage(BaseStorage):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
         if blob is None:
-            raise FileNotFoundError("File not found")
+            raise FileNotFoundError("文件未找到")
         blob.download_to_filename(target_filepath)
 
     def exists(self, filename):

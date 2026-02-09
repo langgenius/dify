@@ -217,7 +217,7 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             raise FilenameNotExistsError
 
         if not current_user:
-            raise ValueError("Invalid user account")
+            raise ValueError("无效的用户账户")
 
         try:
             upload_file = FileService(db.engine).upload_file(

@@ -14,5 +14,5 @@ def serialize_value_type(v: _VarTypedDict | Segment) -> str:
     else:
         value_type = v.get("value_type")
         if value_type is None:
-            raise ValueError("value_type is required but not provided")
+            raise ValueError("value_type 为必填项但未提供")
         return value_type.exposed_type().value

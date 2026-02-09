@@ -43,10 +43,10 @@ class ArchiveStorage:
 
     def __init__(self, bucket: str):
         if not dify_config.ARCHIVE_STORAGE_ENABLED:
-            raise ArchiveStorageNotConfiguredError("Archive storage is not enabled")
+            raise ArchiveStorageNotConfiguredError("归档存储未启用")
 
         if not bucket:
-            raise ArchiveStorageNotConfiguredError("Archive storage bucket is not configured")
+            raise ArchiveStorageNotConfiguredError("归档存储桶未配置")
         if not all(
             [
                 dify_config.ARCHIVE_STORAGE_ENDPOINT,

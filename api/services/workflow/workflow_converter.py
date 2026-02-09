@@ -61,7 +61,7 @@ class WorkflowConverter:
         """
         # convert app model config
         if not app_model.app_model_config:
-            raise ValueError("App model config is required")
+            raise ValueError("应用模型配置为必填项")
 
         workflow = self.convert_app_model_config_to_workflow(
             app_model=app_model, app_model_config=app_model.app_model_config, account_id=account.id
@@ -219,7 +219,7 @@ class WorkflowConverter:
                 app_model=app_model, app_model_config=app_model_config
             )
         else:
-            raise ValueError("Invalid app mode")
+            raise ValueError("无效的应用模式")
 
         return app_config
 
@@ -414,7 +414,7 @@ class WorkflowConverter:
         if model_config.mode == LLMMode.CHAT:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
                 if not prompt_template.simple_prompt_template:
-                    raise ValueError("Simple prompt template is required")
+                    raise ValueError("简单提示模板为必填项")
                 # get prompt template
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
@@ -455,7 +455,7 @@ class WorkflowConverter:
         else:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
                 if not prompt_template.simple_prompt_template:
-                    raise ValueError("Simple prompt template is required")
+                    raise ValueError("简单提示模板为必填项")
                 # get prompt template
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(

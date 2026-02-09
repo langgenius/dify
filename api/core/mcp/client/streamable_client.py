@@ -245,7 +245,7 @@ class StreamableHTTPTransport:
         if ctx.metadata and ctx.metadata.resumption_token:
             headers[LAST_EVENT_ID] = ctx.metadata.resumption_token
         else:
-            raise ResumptionError("Resumption request requires a resumption token")
+            raise ResumptionError("恢复请求需要恢复令牌")
 
         # Extract original request ID to map responses
         original_request_id = None

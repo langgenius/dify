@@ -50,7 +50,7 @@ def handle_webhook(webhook_id: str):
     try:
         webhook_trigger, workflow, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id)
         if error:
-            return jsonify({"error": "Bad Request", "message": error}), 400
+            return jsonify({"code": "webhook_bad_request", "error": "请求错误", "message": error}), 400
 
         # Process webhook call (send to Celery)
         WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
@@ -65,7 +65,7 @@ def handle_webhook(webhook_id: str):
         raise
     except Exception as e:
         logger.exception("Webhook processing failed for %s", webhook_id)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+        return jsonify({"code": "webhook_internal_error", "error": "内部服务器错误", "message": str(e)}), 500
 
 
 @bp.route("/webhook-debug/<string:webhook_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
@@ -74,7 +74,7 @@ def handle_webhook_debug(webhook_id: str):
     try:
         webhook_trigger, _, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id, is_debug=True)
         if error:
-            return jsonify({"error": "Bad Request", "message": error}), 400
+            return jsonify({"code": "webhook_bad_request", "error": "请求错误", "message": error}), 400
 
         workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
 
@@ -108,4 +108,4 @@ def handle_webhook_debug(webhook_id: str):
         raise
     except Exception as e:
         logger.exception("Webhook debug processing failed for %s", webhook_id)
-        return jsonify({"error": "Internal server error", "message": "An internal error has occurred."}), 500
+        return jsonify({"code": "webhook_internal_error", "error": "内部服务器错误", "message": "发生了内部错误。"}), 500

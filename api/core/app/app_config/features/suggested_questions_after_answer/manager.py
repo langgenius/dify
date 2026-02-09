@@ -25,7 +25,7 @@ class SuggestedQuestionsAfterAnswerConfigManager:
             config["suggested_questions_after_answer"] = {"enabled": False}
 
         if not isinstance(config["suggested_questions_after_answer"], dict):
-            raise ValueError("suggested_questions_after_answer must be of dict type")
+            raise ValueError("suggested_questions_after_answer 必须为字典类型")
 
         if (
             "enabled" not in config["suggested_questions_after_answer"]
@@ -34,6 +34,6 @@ class SuggestedQuestionsAfterAnswerConfigManager:
             config["suggested_questions_after_answer"]["enabled"] = False
 
         if not isinstance(config["suggested_questions_after_answer"]["enabled"], bool):
-            raise ValueError("enabled in suggested_questions_after_answer must be of boolean type")
+            raise ValueError("suggested_questions_after_answer 中的 enabled 必须为布尔类型")
 
         return config, ["suggested_questions_after_answer"]

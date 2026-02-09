@@ -192,7 +192,7 @@ class BaseAppGenerator:
                 if value and not isinstance(value, dict):
                     raise ValueError(f"{variable_entity.variable} in input form must be a dict")
             case _:
-                raise AssertionError("this statement should be unreachable.")
+                raise AssertionError("此语句不应被执行。")
 
         return value
 

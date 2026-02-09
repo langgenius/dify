@@ -37,11 +37,11 @@ class LindormVectorStoreConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["hosts"]:
-            raise ValueError("config URL is required")
+            raise ValueError("配置 URL 为必填项")
         if not values["username"]:
-            raise ValueError("config USERNAME is required")
+            raise ValueError("配置 USERNAME 为必填项")
         if not values["password"]:
-            raise ValueError("config PASSWORD is required")
+            raise ValueError("配置 PASSWORD 为必填项")
         return values
 
     def to_opensearch_params(self) -> dict[str, Any]:
@@ -62,7 +62,7 @@ class LindormVectorStore(BaseVector):
         if using_ugc:
             routing_value: str | None = kwargs.get("routing_value")
             if routing_value is None:
-                raise ValueError("UGC index should init vector with valid 'routing_value' parameter value")
+                raise ValueError("UGC 索引应使用有效的 routing_value 参数值初始化向量")
             self._routing = routing_value.lower()
         super().__init__(collection_name.lower())
         self._client_config = config
@@ -236,10 +236,10 @@ class LindormVectorStore(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         if not isinstance(query_vector, list):
-            raise ValueError("query_vector should be a list of floats")
+            raise ValueError("query_vector 应为浮点数列表")
 
         if not all(isinstance(x, float) for x in query_vector):
-            raise ValueError("All elements in query_vector should be floats")
+            raise ValueError("query_vector 中所有元素必须为浮点数")
 
         filters = []
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -375,7 +375,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
         )
         using_ugc = dify_config.LINDORM_USING_UGC
         if using_ugc is None:
-            raise ValueError("LINDORM_USING_UGC is not set")
+            raise ValueError("LINDORM_USING_UGC 未设置")
         routing_value = None
         if dataset.index_struct:
             # if an existed record's index_struct_dict doesn't contain using_ugc field,

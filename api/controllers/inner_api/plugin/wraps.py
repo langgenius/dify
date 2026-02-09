@@ -66,7 +66,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 session.refresh(user_model)
 
     except Exception:
-        raise ValueError("user not found")
+        raise ValueError("用户未找到")
 
     return user_model
 
@@ -80,7 +80,7 @@ def get_user_tenant(view_func: Callable[P, R]):
         tenant_id = payload.tenant_id
 
         if not tenant_id:
-            raise ValueError("tenant_id is required")
+            raise ValueError("tenant_id 为必填项")
 
         if not user_id:
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
@@ -94,10 +94,10 @@ def get_user_tenant(view_func: Callable[P, R]):
                 .first()
             )
         except Exception:
-            raise ValueError("tenant not found")
+            raise ValueError("工作区未找到")
 
         if not tenant_model:
-            raise ValueError("tenant not found")
+            raise ValueError("工作区未找到")
 
         kwargs["tenant_model"] = tenant_model
 
@@ -118,7 +118,7 @@ def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseMo
             try:
                 data = request.get_json()
             except Exception:
-                raise ValueError("invalid json")
+                raise ValueError("无效的 JSON")
 
             try:
                 payload = payload_type.model_validate(data)

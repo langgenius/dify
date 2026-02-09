@@ -56,9 +56,9 @@ class ParameterConfig(BaseModel):
     @classmethod
     def validate_name(cls, value) -> str:
         if not value:
-            raise ValueError("Parameter name is required")
+            raise ValueError("参数名为必填项")
         if value in {"__reason", "__is_success"}:
-            raise ValueError("Invalid parameter name, __reason and __is_success are reserved")
+            raise ValueError("无效的参数名，__reason 和 __is_success 为保留名称")
         return str(value)
 
     def is_array_type(self) -> bool:
@@ -113,7 +113,7 @@ class ParameterExtractorNodeData(BaseNodeData):
                 parameter_schema["type"] = "array"
                 element_type = parameter.type.element_type()
                 if element_type is None:
-                    raise AssertionError("element type should not be None.")
+                    raise AssertionError("元素类型不能为 None。")
                 parameter_schema["items"] = {"type": element_type.value}
             else:
                 parameter_schema["type"] = parameter.type

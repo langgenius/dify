@@ -273,7 +273,7 @@ class PluginModelClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("Failed to invoke text embedding")
+        raise ValueError("调用文本嵌入失败")
 
     def invoke_multimodal_embedding(
         self,
@@ -315,7 +315,7 @@ class PluginModelClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("Failed to invoke file embedding")
+        raise ValueError("调用文件嵌入失败")
 
     def get_text_embedding_num_tokens(
         self,
@@ -401,7 +401,7 @@ class PluginModelClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("Failed to invoke rerank")
+        raise ValueError("调用重排序失败")
 
     def invoke_multimodal_rerank(
         self,
@@ -446,7 +446,7 @@ class PluginModelClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("Failed to invoke multimodal rerank")
+        raise ValueError("调用多模态重排序失败")
 
     def invoke_tts(
         self,
@@ -575,7 +575,7 @@ class PluginModelClient(BasePluginClient):
         for resp in response:
             return resp.result
 
-        raise ValueError("Failed to invoke speech to text")
+        raise ValueError("调用语音转文字失败")
 
     def invoke_moderation(
         self,
@@ -615,4 +615,4 @@ class PluginModelClient(BasePluginClient):
         for resp in response:
             return resp.result
 
-        raise ValueError("Failed to invoke moderation")
+        raise ValueError("调用内容审核失败")

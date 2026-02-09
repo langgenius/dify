@@ -65,7 +65,7 @@ class PartnerTenants(Resource):
         )
     )
     @console_ns.response(200, "Tenants synced to partner successfully")
-    @console_ns.response(400, "Invalid partner information")
+    @console_ns.response(400, "无效的合作方信息")
     @setup_required
     @login_required
     @account_initialization_required
@@ -78,9 +78,9 @@ class PartnerTenants(Resource):
             click_id = args.click_id
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
         except Exception:
-            raise BadRequest("Invalid partner_key")
+            raise BadRequest("无效的合作方密钥")
 
         if not click_id or not decoded_partner_key or not current_user.id:
-            raise BadRequest("Invalid partner information")
+            raise BadRequest("无效的合作方信息")
 
         return BillingService.sync_partner_tenants_bindings(current_user.id, decoded_partner_key, click_id)

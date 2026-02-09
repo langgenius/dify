@@ -282,7 +282,7 @@ class WorkflowToolManageService:
         :return: the tool
         """
         if db_tool is None:
-            raise ValueError("Tool not found")
+            raise ValueError("工具未找到")
 
         workflow_app: App | None = (
             db.session.query(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
@@ -293,7 +293,7 @@ class WorkflowToolManageService:
 
         workflow = workflow_app.workflow
         if not workflow:
-            raise ValueError("Workflow not found")
+            raise ValueError("工作流未找到")
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
         workflow_tools: list[WorkflowTool] = tool.get_tools(tenant_id)

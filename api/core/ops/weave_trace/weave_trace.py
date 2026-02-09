@@ -57,7 +57,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         if not login_status:
             logger.error("Failed to login to Weights & Biases with the provided API key")
-            raise ValueError("Weave login failed")
+            raise ValueError("Weave 登录失败")
 
         # Then initialize weave client
         self.weave_client = weave.init(
@@ -149,7 +149,7 @@ class WeaveDataTrace(BaseTraceInstance):
         # Find the app's creator account
         app_id = trace_info.metadata.get("app_id")
         if not app_id:
-            raise ValueError("No app_id found in trace_info metadata")
+            raise ValueError("trace_info 元数据中未找到 app_id")
 
         service_account = self.get_service_account_with_tenant(app_id)
 
@@ -425,7 +425,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
 
             if not login_status:
-                raise ValueError("Weave login failed")
+                raise ValueError("Weave 登录失败")
             else:
                 logger.info("Weave login successful")
                 return True

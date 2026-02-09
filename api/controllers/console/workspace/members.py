@@ -83,7 +83,7 @@ class MemberListApi(Resource):
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         members = TenantService.get_tenant_members(current_user.current_tenant)
         member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = AccountWithRoleList(accounts=member_models)
@@ -107,11 +107,11 @@ class MemberInviteEmailApi(Resource):
         invitee_role = args.role
         interface_language = args.language
         if not TenantAccountRole.is_non_owner_role(invitee_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "无效的角色"}, 400
         current_user, _ = current_account_with_tenant()
         inviter = current_user
         if not inviter.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
@@ -130,7 +130,7 @@ class MemberInviteEmailApi(Resource):
             normalized_invitee_email = invitee_email.lower()
             try:
                 if not inviter.current_tenant:
-                    raise ValueError("No current tenant")
+                    raise ValueError("当前租户不存在")
                 token = RegisterService.invite_new_member(
                     tenant=inviter.current_tenant,
                     email=invitee_email,
@@ -170,7 +170,7 @@ class MemberCancelInviteApi(Resource):
     def delete(self, member_id):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         member = db.session.query(Account).where(Account.id == str(member_id)).first()
         if member is None:
             abort(404)
@@ -206,10 +206,10 @@ class MemberUpdateRoleApi(Resource):
         new_role = args.role
 
         if not TenantAccountRole.is_valid_role(new_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "无效的角色"}, 400
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
@@ -236,7 +236,7 @@ class DatasetOperatorMemberListApi(Resource):
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
         member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = AccountWithRoleList(accounts=member_models)
@@ -261,7 +261,7 @@ class SendOwnerTransferEmailApi(Resource):
         current_user, _ = current_account_with_tenant()
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -295,7 +295,7 @@ class OwnerTransferCheckApi(Resource):
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -340,7 +340,7 @@ class OwnerTransfer(Resource):
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -362,7 +362,7 @@ class OwnerTransfer(Resource):
             return  # Never reached, but helps type checker
 
         if not current_user.current_tenant:
-            raise ValueError("No current tenant")
+            raise ValueError("当前租户不存在")
         if not TenantService.is_member(member, current_user.current_tenant):
             raise MemberNotInTenantError()
 

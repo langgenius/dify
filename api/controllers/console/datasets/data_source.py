@@ -164,7 +164,7 @@ class DataSourceApi(Resource):
                 select(DataSourceOauthBinding).filter_by(id=binding_id)
             ).scalar_one_or_none()
         if data_source_binding is None:
-            raise NotFound("Data source binding not found.")
+            raise NotFound("数据源绑定未找到。")
         # enable binding
         match action:
             case "enable":
@@ -174,7 +174,7 @@ class DataSourceApi(Resource):
                     db.session.add(data_source_binding)
                     db.session.commit()
                 else:
-                    raise ValueError("Data source is not disabled.")
+                    raise ValueError("数据源未禁用，无法执行此操作。")
             # disable binding
             case "disable":
                 if not data_source_binding.disabled:
@@ -183,7 +183,7 @@ class DataSourceApi(Resource):
                     db.session.add(data_source_binding)
                     db.session.commit()
                 else:
-                    raise ValueError("Data source is disabled.")
+                    raise ValueError("数据源已禁用，无法执行此操作。")
         return {"result": "success"}, 200
 
 
@@ -209,16 +209,16 @@ class DataSourceNotionListApi(Resource):
             plugin_id="langgenius/notion_datasource",
         )
         if not credential:
-            raise NotFound("Credential not found.")
+            raise NotFound("凭据未找到。")
         exist_page_ids = []
         with Session(db.engine) as session:
             # import notion in the exist dataset
             if query.dataset_id:
                 dataset = DatasetService.get_dataset(query.dataset_id)
                 if not dataset:
-                    raise NotFound("Dataset not found.")
+                    raise NotFound("知识库未找到。")
                 if dataset.data_source_type != "notion_import":
-                    raise ValueError("Dataset is not notion type.")
+                    raise ValueError("知识库不是 Notion 类型。")
 
                 documents = session.scalars(
                     select(Document).filter_by(
@@ -363,7 +363,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
@@ -381,10 +381,10 @@ class DataSourceNotionDocumentSyncApi(Resource):
         document_id_str = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         document = DocumentService.get_document(dataset_id_str, document_id_str)
         if document is None:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)
         return {"result": "success"}, 200

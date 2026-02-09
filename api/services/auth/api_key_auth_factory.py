@@ -26,4 +26,4 @@ class ApiKeyAuthFactory:
 
                 return JinaAuth
             case _:
-                raise ValueError("Invalid provider")
+                raise ValueError("无效的提供方")

@@ -50,22 +50,22 @@ class ElasticSearchConfig(BaseModel):
         if use_cloud:
             # Cloud configuration validation - requires cloud_url and api_key
             if not cloud_url:
-                raise ValueError("cloud_url is required for Elastic Cloud")
+                raise ValueError("Elastic Cloud 需要 cloud_url")
 
             api_key = values.get("api_key")
             if not api_key:
-                raise ValueError("api_key is required for Elastic Cloud")
+                raise ValueError("Elastic Cloud 需要 api_key")
 
         else:
             # Regular Elasticsearch validation
             if not values.get("host"):
-                raise ValueError("config HOST is required for regular Elasticsearch")
+                raise ValueError("常规 Elasticsearch 需要配置 HOST")
             if not values.get("port"):
-                raise ValueError("config PORT is required for regular Elasticsearch")
+                raise ValueError("常规 Elasticsearch 需要配置 PORT")
             if not values.get("username"):
-                raise ValueError("config USERNAME is required for regular Elasticsearch")
+                raise ValueError("常规 Elasticsearch 需要配置 USERNAME")
             if not values.get("password"):
-                raise ValueError("config PASSWORD is required for regular Elasticsearch")
+                raise ValueError("常规 Elasticsearch 需要配置 PASSWORD")
 
         return values
 
@@ -136,7 +136,7 @@ class ElasticSearchVector(BaseVector):
 
             # Test connection
             if not client.ping():
-                raise ConnectionError("Failed to connect to Elasticsearch")
+                raise ConnectionError("连接 Elasticsearch 失败")
 
         except ElasticsearchConnectionError as e:
             raise ConnectionError(f"Vector database connection error: {str(e)}")
@@ -152,7 +152,7 @@ class ElasticSearchVector(BaseVector):
 
     def _check_version(self):
         if parse_version(self._version) < parse_version("8.0.0"):
-            raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
+            raise ValueError("Elasticsearch 向量数据库版本必须大于 8.0.0")
 
     def get_type(self) -> str:
         return VectorType.ELASTICSEARCH

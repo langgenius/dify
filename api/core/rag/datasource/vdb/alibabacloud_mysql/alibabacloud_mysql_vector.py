@@ -36,17 +36,17 @@ class AlibabaCloudMySQLVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values.get("host"):
-            raise ValueError("config ALIBABACLOUD_MYSQL_HOST is required")
+            raise ValueError("配置 ALIBABACLOUD_MYSQL_HOST 为必填项")
         if not values.get("port"):
-            raise ValueError("config ALIBABACLOUD_MYSQL_PORT is required")
+            raise ValueError("配置 ALIBABACLOUD_MYSQL_PORT 为必填项")
         if not values.get("user"):
-            raise ValueError("config ALIBABACLOUD_MYSQL_USER is required")
+            raise ValueError("配置 ALIBABACLOUD_MYSQL_USER 为必填项")
         if values.get("password") is None:
-            raise ValueError("config ALIBABACLOUD_MYSQL_PASSWORD is required")
+            raise ValueError("配置 ALIBABACLOUD_MYSQL_PASSWORD 为必填项")
         if not values.get("database"):
-            raise ValueError("config ALIBABACLOUD_MYSQL_DATABASE is required")
+            raise ValueError("配置 ALIBABACLOUD_MYSQL_DATABASE 为必填项")
         if not values.get("max_connection"):
-            raise ValueError("config ALIBABACLOUD_MYSQL_MAX_CONNECTION is required")
+            raise ValueError("配置 ALIBABACLOUD_MYSQL_MAX_CONNECTION 为必填项")
         return values
 
 
@@ -215,7 +215,7 @@ class AlibabaCloudMySQLVector(BaseVector):
         """
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
 
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
@@ -280,7 +280,7 @@ class AlibabaCloudMySQLVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
 
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""

@@ -66,8 +66,8 @@ class WorkflowToolConfigurationUtils:
         variable_names = [variable.variable for variable in variables]
 
         if len(tool_configurations) != len(variables):
-            raise ValueError("parameter configuration mismatch, please republish the tool to update")
+            raise ValueError("参数配置不匹配，请重新发布工具以更新")
 
         for parameter in tool_configurations:
             if parameter.name not in variable_names:
-                raise ValueError("parameter configuration mismatch, please republish the tool to update")
+                raise ValueError("参数配置不匹配，请重新发布工具以更新")

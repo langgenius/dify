@@ -425,7 +425,7 @@ class CodeNode(Node[CodeNodeData]):
 
         # check if all output parameters are validated
         if len(parameters_validated) != len(result):
-            raise CodeNodeError("Not all output parameters are validated.")
+            raise CodeNodeError("并非所有输出参数都已验证。")
 
         return transformed_result
 

@@ -195,7 +195,7 @@ def check_csrf_token(request: Request, user_id: str):
             return
 
     def _unauthorized():
-        raise Unauthorized("CSRF token is missing or invalid.")
+        raise Unauthorized("CSRF 令牌缺失或无效。")
 
     for pattern in CSRF_WHITE_LIST:
         if pattern.match(request.path):

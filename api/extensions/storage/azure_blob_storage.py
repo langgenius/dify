@@ -36,7 +36,7 @@ class AzureBlobStorage(BaseStorage):
 
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
-            raise FileNotFoundError("Azure bucket name is not configured.")
+            raise FileNotFoundError("Azure 存储桶名称未配置。")
 
         client = self._sync_client()
         blob = client.get_container_client(container=self.bucket_name)
@@ -48,7 +48,7 @@ class AzureBlobStorage(BaseStorage):
 
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
-            raise FileNotFoundError("Azure bucket name is not configured.")
+            raise FileNotFoundError("Azure 存储桶名称未配置。")
 
         client = self._sync_client()
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)

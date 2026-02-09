@@ -108,7 +108,7 @@ class CodeExecutor:
                 timeout=timeout,
             )
             if response.status_code == 503:
-                raise CodeExecutionError("Code execution service is unavailable")
+                raise CodeExecutionError("代码执行服务不可用")
             elif response.status_code != 200:
                 raise Exception(
                     f"Failed to execute code, got status code {response.status_code},"
@@ -126,7 +126,7 @@ class CodeExecutor:
         try:
             response_data = response.json()
         except Exception as e:
-            raise CodeExecutionError("Failed to parse response") from e
+            raise CodeExecutionError("解析响应失败") from e
 
         if (code := response_data.get("code")) != 0:
             raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response_data.get('message')}")

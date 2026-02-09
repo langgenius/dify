@@ -25,19 +25,19 @@ class AnalyticdbVectorBySqlConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config ANALYTICDB_HOST is required")
+            raise ValueError("配置 ANALYTICDB_HOST 为必填项")
         if not values["port"]:
-            raise ValueError("config ANALYTICDB_PORT is required")
+            raise ValueError("配置 ANALYTICDB_PORT 为必填项")
         if not values["account"]:
-            raise ValueError("config ANALYTICDB_ACCOUNT is required")
+            raise ValueError("配置 ANALYTICDB_ACCOUNT 为必填项")
         if not values["account_password"]:
-            raise ValueError("config ANALYTICDB_PASSWORD is required")
+            raise ValueError("配置 ANALYTICDB_PASSWORD 为必填项")
         if not values["min_connection"]:
-            raise ValueError("config ANALYTICDB_MIN_CONNECTION is required")
+            raise ValueError("配置 ANALYTICDB_MIN_CONNECTION 为必填项")
         if not values["max_connection"]:
-            raise ValueError("config ANALYTICDB_MAX_CONNECTION is required")
+            raise ValueError("配置 ANALYTICDB_MAX_CONNECTION 为必填项")
         if values["min_connection"] > values["max_connection"]:
-            raise ValueError("config ANALYTICDB_MIN_CONNECTION should less than ANALYTICDB_MAX_CONNECTION")
+            raise ValueError("配置 ANALYTICDB_MIN_CONNECTION 应小于 ANALYTICDB_MAX_CONNECTION")
         return values
 
 
@@ -209,7 +209,7 @@ class AnalyticdbVectorBySql:
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = "WHERE 1=1"
         if document_ids_filter:
@@ -242,7 +242,7 @@ class AnalyticdbVectorBySql:
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError("top_k must be a positive integer")
+            raise ValueError("top_k 必须为正整数")
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
         if document_ids_filter:

@@ -198,7 +198,7 @@ def generate_span_id() -> int:
 
 def convert_to_trace_id(uuid_v4: str | None) -> int:
     if uuid_v4 is None:
-        raise ValueError("UUID cannot be None")
+        raise ValueError("UUID 不能为 None")
     try:
         uuid_obj = uuid.UUID(uuid_v4)
         return cast(int, uuid_obj.int)
@@ -215,7 +215,7 @@ def convert_string_to_id(string: str | None) -> int:
 
 def convert_to_span_id(uuid_v4: str | None, span_type: str) -> int:
     if uuid_v4 is None:
-        raise ValueError("UUID cannot be None")
+        raise ValueError("UUID 不能为 None")
     try:
         uuid_obj = uuid.UUID(uuid_v4)
     except ValueError as e:

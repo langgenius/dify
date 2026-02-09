@@ -32,7 +32,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     logger.info(click.style("Start batch clean documents when documents deleted", fg="green"))
     start_at = time.perf_counter()
     if not doc_form:
-        raise ValueError("doc_form is required")
+        raise ValueError("doc_form 为必填项")
 
     storage_keys_to_delete: list[str] = []
     index_node_ids: list[str] = []

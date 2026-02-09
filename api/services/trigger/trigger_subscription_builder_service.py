@@ -117,7 +117,7 @@ class TriggerSubscriptionBuilderService:
                 raise ValueError(f"Subscription builder {subscription_builder_id} not found")
 
             if not subscription_builder.name:
-                raise ValueError("Subscription builder name is required")
+                raise ValueError("订阅构建器名称为必填项")
 
             credential_type = CredentialType.of(
                 subscription_builder.credential_type or CredentialType.UNAUTHORIZED.value
@@ -316,7 +316,7 @@ class TriggerSubscriptionBuilderService:
                 raise ValueError(f"Subscription builder {subscription_builder_id} not found")
 
             if not subscription_builder.name:
-                raise ValueError("Subscription builder name is required")
+                raise ValueError("订阅构建器名称为必填项")
 
             # Build
             credential_type = CredentialType.of(

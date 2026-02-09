@@ -416,7 +416,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     assert isinstance(message.content, str)
                     current_scratchpad.observation = message.content
                 else:
-                    raise NotImplementedError("expected str type")
+                    raise NotImplementedError("期望字符串类型")
             elif isinstance(message, UserPromptMessage):
                 if scratchpads:
                     result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))

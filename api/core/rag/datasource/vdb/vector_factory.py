@@ -59,7 +59,7 @@ class Vector:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
         if not vector_type:
-            raise ValueError("Vector store must be specified.")
+            raise ValueError("必须指定向量存储。")
 
         vector_factory_cls = self.get_vector_factory(vector_type)
         return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)

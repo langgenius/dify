@@ -87,11 +87,11 @@ class WebsiteCrawlApiRequest:
         options = args.get("options", {})
 
         if not provider:
-            raise ValueError("Provider is required")
+            raise ValueError("提供方为必填项")
         if not url:
-            raise ValueError("URL is required")
+            raise ValueError("URL 为必填项")
         if not options:
-            raise ValueError("Options are required")
+            raise ValueError("选项为必填项")
 
         return cls(provider=provider, url=url, options=options)
 
@@ -108,9 +108,9 @@ class WebsiteCrawlStatusApiRequest:
         """Create from Flask-RESTful parsed arguments."""
         provider = args.get("provider")
         if not provider:
-            raise ValueError("Provider is required")
+            raise ValueError("提供方为必填项")
         if not job_id:
-            raise ValueError("Job ID is required")
+            raise ValueError("任务 ID 为必填项")
 
         return cls(provider=provider, job_id=job_id)
 
@@ -128,7 +128,7 @@ class WebsiteService:
         elif provider == "jinareader":
             plugin_id = "langgenius/jina_datasource"
         else:
-            raise ValueError("Invalid provider")
+            raise ValueError("无效的提供方")
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=tenant_id,
@@ -140,14 +140,14 @@ class WebsiteService:
         elif provider in {"watercrawl", "jinareader"}:
             return credential.get("api_key"), credential
         else:
-            raise ValueError("Invalid provider")
+            raise ValueError("无效的提供方")
 
     @classmethod
     def _get_decrypted_api_key(cls, tenant_id: str, config: dict) -> str:
         """Decrypt and return the API key from config."""
         api_key = config.get("api_key")
         if not api_key:
-            raise ValueError("API key not found in configuration")
+            raise ValueError("配置中未找到 API 密钥")
         return encrypter.decrypt_token(tenant_id=tenant_id, token=api_key)
 
     @classmethod
@@ -172,7 +172,7 @@ class WebsiteService:
         elif request.provider == "jinareader":
             return cls._crawl_with_jinareader(request=request, api_key=api_key)
         else:
-            raise ValueError("Invalid provider")
+            raise ValueError("无效的提供方")
 
     @classmethod
     def _crawl_with_firecrawl(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
@@ -228,7 +228,7 @@ class WebsiteService:
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
             if response.json().get("code") != 200:
-                raise ValueError("Failed to crawl:")
+                raise ValueError("爬取失败：")
             return {"status": "active", "data": response.json().get("data")}
         else:
             response = httpx.post(
@@ -244,7 +244,7 @@ class WebsiteService:
                 },
             )
             if response.json().get("code") != 200:
-                raise ValueError("Failed to crawl")
+                raise ValueError("爬取失败")
             return {"status": "active", "job_id": response.json().get("data", {}).get("taskId")}
 
     @classmethod
@@ -265,7 +265,7 @@ class WebsiteService:
         elif api_request.provider == "jinareader":
             return cls._get_jinareader_status(api_request.job_id, api_key)
         else:
-            raise ValueError("Invalid provider")
+            raise ValueError("无效的提供方")
 
     @classmethod
     def _get_firecrawl_status(cls, job_id: str, api_key: str, config: dict) -> dict[str, Any]:
@@ -339,7 +339,7 @@ class WebsiteService:
         elif provider == "jinareader":
             return cls._get_jinareader_url_data(job_id, url, api_key)
         else:
-            raise ValueError("Invalid provider")
+            raise ValueError("无效的提供方")
 
     @classmethod
     def _get_firecrawl_url_data(cls, job_id: str, url: str, api_key: str, config: dict) -> dict[str, Any] | None:
@@ -353,7 +353,7 @@ class WebsiteService:
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
             result = firecrawl_app.check_crawl_status(job_id)
             if result.get("status") != "completed":
-                raise ValueError("Crawl job is not completed")
+                raise ValueError("爬取任务未完成")
             crawl_data = result.get("data")
 
         if crawl_data:
@@ -374,7 +374,7 @@ class WebsiteService:
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
             if response.json().get("code") != 200:
-                raise ValueError("Failed to crawl")
+                raise ValueError("爬取失败")
             return dict(response.json().get("data", {}))
         else:
             # Get crawl status first
@@ -385,7 +385,7 @@ class WebsiteService:
             )
             status_data = status_response.json().get("data", {})
             if status_data.get("status") != "completed":
-                raise ValueError("Crawl job is not completed")
+                raise ValueError("爬取任务未完成")
 
             # Get processed data
             data_response = httpx.post(
@@ -410,7 +410,7 @@ class WebsiteService:
         elif request.provider == "watercrawl":
             return cls._scrape_with_watercrawl(request=request, api_key=api_key, config=config)
         else:
-            raise ValueError("Invalid provider")
+            raise ValueError("无效的提供方")
 
     @classmethod
     def _scrape_with_firecrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:

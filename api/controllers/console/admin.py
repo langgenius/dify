@@ -73,13 +73,13 @@ def admin_required(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.ADMIN_API_KEY:
-            raise Unauthorized("API key is invalid.")
+            raise Unauthorized("API 密钥无效。")
 
         auth_token = extract_access_token(request)
         if not auth_token:
-            raise Unauthorized("Authorization header is missing.")
+            raise Unauthorized("缺少授权头。")
         if auth_token != dify_config.ADMIN_API_KEY:
-            raise Unauthorized("API key is invalid.")
+            raise Unauthorized("API 密钥无效。")
 
         return view(*args, **kwargs)
 
@@ -101,7 +101,7 @@ class InsertExploreAppListApi(Resource):
 
         app = db.session.execute(select(App).where(App.id == payload.app_id)).scalar_one_or_none()
         if not app:
-            raise NotFound(f"App '{payload.app_id}' is not found")
+            raise NotFound(f"应用 '{payload.app_id}' 未找到")
 
         site = app.site
         if not site:
@@ -271,7 +271,7 @@ class DeleteExploreBannerApi(Resource):
     def delete(self, banner_id):
         banner = db.session.execute(select(ExporleBanner).where(ExporleBanner.id == banner_id)).scalar_one_or_none()
         if not banner:
-            raise NotFound(f"Banner '{banner_id}' is not found")
+            raise NotFound(f"横幅 '{banner_id}' 未找到")
 
         db.session.delete(banner)
         db.session.commit()

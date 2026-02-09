@@ -23,7 +23,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
         prompt_entity = self.app_config.agent.prompt
         if not prompt_entity:
-            raise ValueError("Agent prompt configuration is not set")
+            raise ValueError("智能体提示配置未设置")
         first_prompt = prompt_entity.first_prompt
 
         system_prompt = (

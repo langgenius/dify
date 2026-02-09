@@ -103,7 +103,7 @@ class BasicVariablesConfigManager:
             config["user_input_form"] = []
 
         if not isinstance(config["user_input_form"], list):
-            raise ValueError("user_input_form must be a list of objects")
+            raise ValueError("user_input_form 必须为对象列表")
 
         variables = []
         for item in config["user_input_form"]:
@@ -122,20 +122,20 @@ class BasicVariablesConfigManager:
 
             form_item = item[key]
             if "label" not in form_item:
-                raise ValueError("label is required in user_input_form")
+                raise ValueError("user_input_form 中 label 为必填项")
 
             if not isinstance(form_item["label"], str):
-                raise ValueError("label in user_input_form must be of string type")
+                raise ValueError("user_input_form 中的 label 必须为字符串类型")
 
             if "variable" not in form_item:
-                raise ValueError("variable is required in user_input_form")
+                raise ValueError("user_input_form 中 variable 为必填项")
 
             if not isinstance(form_item["variable"], str):
-                raise ValueError("variable in user_input_form must be of string type")
+                raise ValueError("user_input_form 中的 variable 必须为字符串类型")
 
             pattern = re.compile(r"^(?!\d)[\u4e00-\u9fa5A-Za-z0-9_\U0001F300-\U0001F64F\U0001F680-\U0001F6FF]{1,100}$")
             if pattern.match(form_item["variable"]) is None:
-                raise ValueError("variable in user_input_form must be a string, and cannot start with a number")
+                raise ValueError("user_input_form 中的 variable 必须为字符串，且不能以数字开头")
 
             variables.append(form_item["variable"])
 
@@ -143,17 +143,17 @@ class BasicVariablesConfigManager:
                 form_item["required"] = False
 
             if not isinstance(form_item["required"], bool):
-                raise ValueError("required in user_input_form must be of boolean type")
+                raise ValueError("user_input_form 中的 required 必须为布尔类型")
 
             if key == "select":
                 if "options" not in form_item or not form_item["options"]:
                     form_item["options"] = []
 
                 if not isinstance(form_item["options"], list):
-                    raise ValueError("options in user_input_form must be a list of strings")
+                    raise ValueError("user_input_form 中的 options 必须为字符串列表")
 
                 if "default" in form_item and form_item["default"] and form_item["default"] not in form_item["options"]:
-                    raise ValueError("default value in user_input_form must be in the options list")
+                    raise ValueError("user_input_form 中的默认值必须在选项列表中")
 
         return config, ["user_input_form"]
 
@@ -169,7 +169,7 @@ class BasicVariablesConfigManager:
             config["external_data_tools"] = []
 
         if not isinstance(config["external_data_tools"], list):
-            raise ValueError("external_data_tools must be of list type")
+            raise ValueError("external_data_tools 必须为列表类型")
 
         for tool in config["external_data_tools"]:
             if "enabled" not in tool or not tool["enabled"]:
@@ -179,7 +179,7 @@ class BasicVariablesConfigManager:
                 continue
 
             if "type" not in tool or not tool["type"]:
-                raise ValueError("external_data_tools[].type is required")
+                raise ValueError("external_data_tools[].type 为必填项")
 
             typ = tool["type"]
             config = tool["config"]

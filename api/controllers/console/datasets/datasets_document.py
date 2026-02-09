@@ -140,7 +140,7 @@ class DocumentResource(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -150,10 +150,10 @@ class DocumentResource(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
 
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
 
         if document.tenant_id != current_tenant_id:
-            raise Forbidden("No permission.")
+            raise Forbidden("无权限。")
 
         return document
 
@@ -161,7 +161,7 @@ class DocumentResource(Resource):
         current_user, _ = current_account_with_tenant()
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -171,7 +171,7 @@ class DocumentResource(Resource):
         documents = DocumentService.get_batch_documents(dataset_id, batch)
 
         if not documents:
-            raise NotFound("Documents not found.")
+            raise NotFound("文档未找到。")
 
         return documents
 
@@ -202,7 +202,7 @@ class GetProcessRuleApi(Resource):
             dataset = DatasetService.get_dataset(document.dataset_id)
 
             if not dataset:
-                raise NotFound("Dataset not found.")
+                raise NotFound("知识库未找到。")
 
             try:
                 DatasetService.check_dataset_permission(dataset, current_user)
@@ -272,7 +272,7 @@ class DatasetDocumentListApi(Resource):
             fetch = False
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -370,7 +370,7 @@ class DatasetDocumentListApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
 
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_dataset_editor:
@@ -384,7 +384,7 @@ class DatasetDocumentListApi(Resource):
         knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
 
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
-            raise ValueError("indexing_technique is required.")
+            raise ValueError("indexing_technique 为必填项。")
 
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
@@ -410,7 +410,7 @@ class DatasetDocumentListApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
 
@@ -418,7 +418,7 @@ class DatasetDocumentListApi(Resource):
             document_ids = request.args.getlist("document_id")
             DocumentService.delete_documents(dataset, document_ids)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+            raise DocumentIndexingError("索引进行中，无法删除文档。")
 
         return {"result": "success"}, 204
 
@@ -445,7 +445,7 @@ class DatasetInitApi(Resource):
         knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
-                raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
+                raise ValueError("高质量索引需要嵌入模型和嵌入模型提供商。")
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
@@ -524,7 +524,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 # raise error if file not found
                 if not file:
-                    raise NotFound("File not found.")
+                    raise NotFound("文件未找到。")
 
                 extract_setting = ExtractSetting(
                     datasource_type=DatasourceType.FILE, upload_file=file, document_model=document.doc_form
@@ -588,7 +588,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     )
 
                     if file_detail is None:
-                        raise NotFound("File not found.")
+                        raise NotFound("文件未找到。")
 
                     extract_setting = ExtractSetting(
                         datasource_type=DatasourceType.FILE, upload_file=file_detail, document_model=document.doc_form
@@ -631,7 +631,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     extract_settings.append(extract_setting)
 
                 case _:
-                    raise ValueError("Data source type not support")
+                    raise ValueError("不支持的数据源类型")
             indexing_runner = IndexingRunner()
             try:
                 response = indexing_runner.indexing_estimate(
@@ -773,7 +773,7 @@ class DocumentApi(DocumentResource):
 
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
-            raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
+            raise InvalidMetadataError(f"无效的元数据值: {metadata}")
 
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
@@ -859,7 +859,7 @@ class DocumentApi(DocumentResource):
         document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
 
@@ -868,7 +868,7 @@ class DocumentApi(DocumentResource):
         try:
             DocumentService.delete_document(document)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+            raise DocumentIndexingError("索引进行中，无法删除文档。")
 
         return {"result": "success"}, 204
 
@@ -956,7 +956,7 @@ class DocumentProcessingApi(DocumentResource):
         match action:
             case "pause":
                 if document.indexing_status != "indexing":
-                    raise InvalidActionError("Document not in indexing state.")
+                    raise InvalidActionError("文档不在索引状态。")
 
                 document.paused_by = current_user.id
                 document.paused_at = naive_utc_now()
@@ -965,7 +965,7 @@ class DocumentProcessingApi(DocumentResource):
 
             case "resume":
                 if document.indexing_status not in {"paused", "error"}:
-                    raise InvalidActionError("Document not in paused or error state.")
+                    raise InvalidActionError("文档不在暂停或错误状态。")
 
                 document.paused_by = None
                 document.paused_at = None
@@ -1011,13 +1011,13 @@ class DocumentMetadataApi(DocumentResource):
             raise Forbidden()
 
         if doc_type is None or doc_metadata is None:
-            raise ValueError("Both doc_type and doc_metadata must be provided.")
+            raise ValueError("doc_type 和 doc_metadata 必须同时提供。")
 
         if doc_type not in DocumentService.DOCUMENT_METADATA_SCHEMA:
-            raise ValueError("Invalid doc_type.")
+            raise ValueError("无效的文档类型。")
 
         if not isinstance(doc_metadata, dict):
-            raise ValueError("doc_metadata must be a dictionary.")
+            raise ValueError("doc_metadata 必须为字典。")
         metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
         document.doc_metadata = {}
@@ -1033,7 +1033,7 @@ class DocumentMetadataApi(DocumentResource):
         document.updated_at = naive_utc_now()
         db.session.commit()
 
-        return {"result": "success", "message": "Document metadata updated."}, 200
+        return {"result": "success", "message": "文档元数据已更新。"}, 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
@@ -1048,7 +1048,7 @@ class DocumentStatusApi(DocumentResource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_dataset_editor:
@@ -1087,13 +1087,13 @@ class DocumentPauseApi(DocumentResource):
 
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         document = DocumentService.get_document(dataset.id, document_id)
 
         # 404 if document not found
         if document is None:
-            raise NotFound("Document Not Exists.")
+            raise NotFound("文档不存在。")
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
@@ -1103,7 +1103,7 @@ class DocumentPauseApi(DocumentResource):
             # pause document
             DocumentService.pause_document(document)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot pause completed document.")
+            raise DocumentIndexingError("无法暂停已完成的文档。")
 
         return {"result": "success"}, 204
 
@@ -1120,12 +1120,12 @@ class DocumentRecoverApi(DocumentResource):
         document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         document = DocumentService.get_document(dataset.id, document_id)
 
         # 404 if document not found
         if document is None:
-            raise NotFound("Document Not Exists.")
+            raise NotFound("文档不存在。")
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
@@ -1134,7 +1134,7 @@ class DocumentRecoverApi(DocumentResource):
             # pause document
             DocumentService.recover_document(document)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Document is not in paused status.")
+            raise DocumentIndexingError("文档不在暂停状态。")
 
         return {"result": "success"}, 204
 
@@ -1153,7 +1153,7 @@ class DocumentRetryApi(DocumentResource):
         dataset = DatasetService.get_dataset(dataset_id)
         retry_documents = []
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         for document_id in payload.document_ids:
             try:
                 document_id = str(document_id)
@@ -1162,7 +1162,7 @@ class DocumentRetryApi(DocumentResource):
 
                 # 404 if document not found
                 if document is None:
-                    raise NotFound("Document Not Exists.")
+                    raise NotFound("文档不存在。")
 
                 # 403 if document is archived
                 if DocumentService.check_archived(document):
@@ -1195,14 +1195,14 @@ class DocumentRenameApi(DocumentResource):
             raise Forbidden()
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         DatasetService.check_dataset_operator_permission(current_user, dataset)
         payload = DocumentRenamePayload.model_validate(console_ns.payload or {})
 
         try:
             document = DocumentService.rename_document(dataset_id, document_id, payload.name)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+            raise DocumentIndexingError("索引进行中，无法删除文档。")
 
         return document
 
@@ -1218,15 +1218,15 @@ class WebsiteDocumentSyncApi(DocumentResource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         if document.tenant_id != current_tenant_id:
-            raise Forbidden("No permission.")
+            raise Forbidden("无权限。")
         if document.data_source_type != "website_crawl":
-            raise ValueError("Document is not a website document.")
+            raise ValueError("文档不是网站文档。")
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
@@ -1247,10 +1247,10 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
 
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("文档未找到。")
         log = (
             db.session.query(DocumentPipelineExecutionLog)
             .filter_by(document_id=document_id)
@@ -1300,7 +1300,7 @@ class DocumentGenerateSummaryApi(Resource):
         # Get dataset
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # Check permissions
         if not current_user.is_dataset_editor:
@@ -1318,7 +1318,7 @@ class DocumentGenerateSummaryApi(Resource):
         if not document_list:
             from werkzeug.exceptions import BadRequest
 
-            raise BadRequest("document_list cannot be empty.")
+            raise BadRequest("document_list 不能为空。")
 
         # Check if dataset configuration supports summary generation
         if dataset.indexing_technique != "high_quality":
@@ -1329,7 +1329,7 @@ class DocumentGenerateSummaryApi(Resource):
 
         summary_index_setting = dataset.summary_index_setting
         if not summary_index_setting or not summary_index_setting.get("enable"):
-            raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
+            raise ValueError("该知识库未启用摘要索引，请在知识库设置中启用。")
 
         # Verify all documents exist and belong to the dataset
         documents = DocumentService.get_documents_by_ids(dataset_id, document_list)
@@ -1337,7 +1337,7 @@ class DocumentGenerateSummaryApi(Resource):
         if len(documents) != len(document_list):
             found_ids = {doc.id for doc in documents}
             missing_ids = set(document_list) - found_ids
-            raise NotFound(f"Some documents not found: {list(missing_ids)}")
+            raise NotFound(f"部分文档未找到: {list(missing_ids)}")
 
         # Update need_summary to True for documents that don't have it set
         # This handles the case where documents were created when summary_index_setting was disabled
@@ -1399,7 +1399,7 @@ class DocumentSummaryStatusApi(DocumentResource):
         # Get dataset
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         # Check permissions
         try:

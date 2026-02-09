@@ -92,14 +92,14 @@ class MCPClient:
     def list_tools(self) -> list[Tool]:
         """List available tools from the MCP server"""
         if not self._session:
-            raise ValueError("Session not initialized.")
+            raise ValueError("会话未初始化。")
         response = self._session.list_tools()
         return response.tools
 
     def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""
         if not self._session:
-            raise ValueError("Session not initialized.")
+            raise ValueError("会话未初始化。")
         return self._session.call_tool(tool_name, tool_args)
 
     def cleanup(self):

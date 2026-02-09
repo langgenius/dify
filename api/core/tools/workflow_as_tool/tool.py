@@ -86,7 +86,7 @@ class WorkflowTool(Tool):
 
         user = self._resolve_user(user_id=user_id)
         if user is None:
-            raise ToolInvokeError("User not found")
+            raise ToolInvokeError("用户未找到")
 
         self._latest_usage = LLMUsage.empty_usage()
 
@@ -255,7 +255,7 @@ class WorkflowTool(Tool):
                 workflow = session.scalar(stmt)
 
             if not workflow:
-                raise ValueError("workflow not found or not published")
+                raise ValueError("工作流未找到或未发布")
 
             session.expunge(workflow)
             return workflow
@@ -268,7 +268,7 @@ class WorkflowTool(Tool):
         with session_factory.create_session() as session, session.begin():
             app = session.scalar(stmt)
             if not app:
-                raise ValueError("app not found")
+                raise ValueError("应用未找到")
 
             session.expunge(app)
             return app

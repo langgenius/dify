@@ -105,7 +105,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             app_record = session.scalar(select(App).where(App.id == app_config.app_id))
 
         if not app_record:
-            raise ValueError("App not found")
+            raise ValueError("应用未找到")
 
         invoke_from = self.application_generate_entity.invoke_from
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:

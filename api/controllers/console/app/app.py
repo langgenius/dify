@@ -79,7 +79,7 @@ class AppListQuery(BaseModel):
         elif isinstance(value, list):
             items = [str(item).strip() for item in value if item and str(item).strip()]
         else:
-            raise TypeError("Unsupported tag_ids type.")
+            raise TypeError("不支持的 tag_ids 类型。")
 
         if not items:
             return None
@@ -87,7 +87,7 @@ class AppListQuery(BaseModel):
         try:
             return [str(uuid.UUID(item)) for item in items]
         except ValueError as exc:
-            raise ValueError("Invalid UUID format in tag_ids.") from exc
+            raise ValueError("tag_ids 中包含无效的 UUID 格式。") from exc
 
 
 class CreateAppPayload(BaseModel):
@@ -147,7 +147,7 @@ class AppTracePayload(BaseModel):
     @classmethod
     def validate_tracing_provider(cls, value: str | None, info) -> str | None:
         if info.data.get("enabled") and not value:
-            raise ValueError("tracing_provider is required when enabled is True")
+            raise ValueError("启用追踪时必须指定 tracing_provider。")
         return value
 
 
@@ -486,7 +486,7 @@ class AppListApi(Resource):
             app_ids = [str(app.id) for app in app_pagination.items]
             res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
             if len(res) != len(app_ids):
-                raise BadRequest("Invalid app id in webapp auth")
+                raise BadRequest("Web 应用认证中包含无效的应用 ID。")
 
             for app in app_pagination.items:
                 if str(app.id) in res:

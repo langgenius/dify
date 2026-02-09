@@ -346,7 +346,7 @@ class ToolManager:
                 )
             )
         elif provider_type == ToolProviderType.APP:
-            raise NotImplementedError("app provider not implemented")
+            raise NotImplementedError("应用提供商未实现")
         elif provider_type == ToolProviderType.PLUGIN:
             return cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
         elif provider_type == ToolProviderType.MCP:
@@ -390,7 +390,7 @@ class ToolManager:
         )
         runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
         if tool_entity.runtime is None or tool_entity.runtime.runtime_parameters is None:
-            raise ValueError("runtime not found or runtime parameters not found")
+            raise ValueError("运行时未找到或运行时参数未找到")
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity

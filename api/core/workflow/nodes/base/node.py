@@ -237,7 +237,7 @@ class Node(Generic[NodeDataT]):
 
         node_id = config.get("id")
         if not node_id:
-            raise ValueError("Node ID is required.")
+            raise ValueError("节点 ID 为必填项。")
 
         self._node_id = node_id
         self._node_execution_id: str = ""
@@ -245,7 +245,7 @@ class Node(Generic[NodeDataT]):
 
         raw_node_data = config.get("data") or {}
         if not isinstance(raw_node_data, Mapping):
-            raise ValueError("Node config data must be a mapping.")
+            raise ValueError("节点配置数据必须为映射类型。")
 
         self._node_data: NodeDataT = self._hydrate_node_data(raw_node_data)
 
@@ -450,7 +450,7 @@ class Node(Generic[NodeDataT]):
         """
         node_id = config.get("id")
         if not node_id:
-            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
+            raise ValueError("提取变量选择器到变量映射时需要节点 ID。")
 
         # Pass raw dict data instead of creating NodeData instance
         data = cls._extract_variable_selector_to_variable_mapping(
@@ -492,7 +492,7 @@ class Node(Generic[NodeDataT]):
         #
         # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
         # in `api/core/workflow/nodes/__init__.py`.
-        raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
+        raise NotImplementedError("BaseNode 的子类必须实现 `version` 方法。")
 
     @classmethod
     def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:

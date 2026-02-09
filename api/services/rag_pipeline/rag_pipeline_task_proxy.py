@@ -77,7 +77,7 @@ class RagPipelineTaskProxy:
     def _dispatch(self):
         upload_file_id = self._upload_invoke_entities()
         if not upload_file_id:
-            raise ValueError("upload_file_id is empty")
+            raise ValueError("upload_file_id 为空")
 
         logger.info(
             "dispatch args: %s - %s - %s",

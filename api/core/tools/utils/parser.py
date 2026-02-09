@@ -26,7 +26,7 @@ class ApiBasedToolSchemaParser:
         extra_info["description"] = openapi["info"].get("description", "")
 
         if len(openapi["servers"]) == 0:
-            raise ToolProviderNotFoundError("No server found in the openapi yaml.")
+            raise ToolProviderNotFoundError("OpenAPI YAML 中未找到服务器。")
 
         server_url = openapi["servers"][0]["url"]
         request_env = request.headers.get("X-Request-Env")
@@ -265,7 +265,7 @@ class ApiBasedToolSchemaParser:
 
         openapi: dict = safe_load(yaml)
         if openapi is None:
-            raise ToolApiSchemaError("Invalid openapi yaml.")
+            raise ToolApiSchemaError("无效的 OpenAPI YAML。")
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
@@ -285,7 +285,7 @@ class ApiBasedToolSchemaParser:
         servers = swagger.get("servers", [])
 
         if len(servers) == 0:
-            raise ToolApiSchemaError("No server found in the swagger yaml.")
+            raise ToolApiSchemaError("Swagger YAML 中未找到服务器。")
 
         converted_openapi: dict[str, Any] = {
             "openapi": "3.0.0",
@@ -301,7 +301,7 @@ class ApiBasedToolSchemaParser:
 
         # check paths
         if "paths" not in swagger or len(swagger["paths"]) == 0:
-            raise ToolApiSchemaError("No paths found in the swagger yaml.")
+            raise ToolApiSchemaError("Swagger YAML 中未找到路径。")
 
         # convert paths
         for path, path_item in swagger["paths"].items():
@@ -355,10 +355,10 @@ class ApiBasedToolSchemaParser:
             api_url = api["url"]
             api_type = api["type"]
         except JSONDecodeError:
-            raise ToolProviderNotFoundError("Invalid openai plugin json.")
+            raise ToolProviderNotFoundError("无效的 OpenAI 插件 JSON。")
 
         if api_type != "openapi":
-            raise ToolNotSupportedError("Only openapi is supported now.")
+            raise ToolNotSupportedError("目前仅支持 OpenAPI。")
 
         # get openapi yaml
         response = httpx.get(
@@ -367,7 +367,7 @@ class ApiBasedToolSchemaParser:
 
         try:
             if response.status_code != 200:
-                raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
+                raise ToolProviderNotFoundError("无法从 URL 获取 OpenAPI YAML。")
 
             return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
                 response.text, extra_info=extra_info, warning=warning

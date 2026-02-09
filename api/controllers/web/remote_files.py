@@ -115,9 +115,9 @@ class RemoteFileUploadApi(WebApiResource):
             if resp.status_code != httpx.codes.OK:
                 resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
             if resp.status_code != httpx.codes.OK:
-                raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
+                raise RemoteFileUploadError(f"从 {url} 获取文件失败: {resp.text}")
         except httpx.RequestError as e:
-            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")
+            raise RemoteFileUploadError(f"从 {url} 获取文件失败: {str(e)}")
 
         file_info = helpers.guess_file_info_from_response(resp)
 

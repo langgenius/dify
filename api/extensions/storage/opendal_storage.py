@@ -46,7 +46,7 @@ class OpenDALStorage(BaseStorage):
 
     def load_once(self, filename: str) -> bytes:
         if not self.exists(filename):
-            raise FileNotFoundError("File not found")
+            raise FileNotFoundError("文件未找到")
 
         content: bytes = self.op.read(path=filename)
         logger.debug("file %s loaded", filename)
@@ -54,7 +54,7 @@ class OpenDALStorage(BaseStorage):
 
     def load_stream(self, filename: str) -> Generator:
         if not self.exists(filename):
-            raise FileNotFoundError("File not found")
+            raise FileNotFoundError("文件未找到")
 
         batch_size = 4096
         with self.op.open(
@@ -68,7 +68,7 @@ class OpenDALStorage(BaseStorage):
 
     def download(self, filename: str, target_filepath: str):
         if not self.exists(filename):
-            raise FileNotFoundError("File not found")
+            raise FileNotFoundError("文件未找到")
 
         Path(target_filepath).write_bytes(self.op.read(path=filename))
         logger.debug("file %s downloaded to %s", filename, target_filepath)
@@ -85,7 +85,7 @@ class OpenDALStorage(BaseStorage):
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         if not self.exists(path):
-            raise FileNotFoundError("Path not found")
+            raise FileNotFoundError("路径未找到")
 
         # Use the new OpenDAL 0.46.0+ API with recursive listing
         lister = self.op.list(path, recursive=True)
@@ -99,4 +99,4 @@ class OpenDALStorage(BaseStorage):
             logger.debug("directories on %s scanned", path)
             return [entry.path for entry in lister if entry.metadata.is_dir]
         else:
-            raise ValueError("At least one of files or directories must be True")
+            raise ValueError("文件或目录至少选择一个")

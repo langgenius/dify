@@ -262,4 +262,4 @@ class InstructionGenerationTemplateApi(Resource):
 
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
-                raise ValueError(f"Invalid type: {args.type}")
+                raise ValueError(f"无效的类型: {args.type}")

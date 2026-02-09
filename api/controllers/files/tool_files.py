@@ -54,7 +54,7 @@ class ToolFileApi(Resource):
 
         args = ToolFileQuery.model_validate(request.args.to_dict())
         if not verify_tool_file_signature(file_id=file_id, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign):
-            raise Forbidden("Invalid request.")
+            raise Forbidden("无效的请求。")
 
         try:
             tool_file_manager = ToolFileManager(engine=global_db.engine)
@@ -63,7 +63,7 @@ class ToolFileApi(Resource):
             )
 
             if not stream or not tool_file:
-                raise NotFound("file is not found")
+                raise NotFound("文件未找到")
         except Exception:
             raise UnsupportedFileTypeError()
 

@@ -122,11 +122,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param streaming: is stream
         """
         if not args.get("query"):
-            raise ValueError("query is required")
+            raise ValueError("查询为必填项")
 
         query = args["query"]
         if not isinstance(query, str):
-            raise ValueError("query must be a string")
+            raise ValueError("查询必须为字符串")
 
         query = query.replace("\x00", "")
         inputs = args["inputs"]
@@ -281,10 +281,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param streaming: is streamed
         """
         if not node_id:
-            raise ValueError("node_id is required")
+            raise ValueError("node_id 为必填项")
 
         if args.get("inputs") is None:
-            raise ValueError("inputs is required")
+            raise ValueError("inputs 为必填项")
 
         # convert to app config
         app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
@@ -366,10 +366,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param streaming: is stream
         """
         if not node_id:
-            raise ValueError("node_id is required")
+            raise ValueError("node_id 为必填项")
 
         if args.inputs is None:
-            raise ValueError("inputs is required")
+            raise ValueError("inputs 为必填项")
 
         # convert to app config
         app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
@@ -585,7 +585,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     )
                 )
                 if workflow is None:
-                    raise ValueError("Workflow not found")
+                    raise ValueError("工作流未找到")
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
@@ -603,7 +603,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
                 app = session.scalar(select(App).where(App.id == application_generate_entity.app_config.app_id))
                 if app is None:
-                    raise ValueError("App not found")
+                    raise ValueError("应用未找到")
 
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,

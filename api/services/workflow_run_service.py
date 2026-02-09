@@ -152,7 +152,7 @@ class WorkflowRunService:
         # Get tenant_id from user
         tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
         if tenant_id is None:
-            raise ValueError("User tenant_id cannot be None")
+            raise ValueError("用户 tenant_id 不能为空")
 
         return self._node_execution_service_repo.get_executions_by_workflow_run(
             tenant_id=tenant_id,

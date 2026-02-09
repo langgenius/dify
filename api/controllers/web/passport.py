@@ -37,7 +37,7 @@ class PassportResource(Resource):
         user_id = request.args.get("user_id")
         access_token = extract_webapp_access_token(request)
         if app_code is None:
-            raise Unauthorized("X-App-Code header is missing.")
+            raise Unauthorized("缺少 X-App-Code 请求头。")
         if system_features.webapp_auth.enabled:
             enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
             app_auth_type = WebAppAuthService.get_app_auth_type(app_code=app_code)
@@ -113,7 +113,7 @@ def decode_enterprise_webapp_user_id(jwt_token: str | None):
     decoded = PassportService().verify(jwt_token)
     source = decoded.get("token_source")
     if not source or source != "webapp_login_token":
-        raise Unauthorized("Invalid token source. Expected 'webapp_login_token'.")
+        raise Unauthorized("无效的令牌来源。")
     return decoded
 
 
@@ -128,7 +128,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     exchanged_token_expires_unix = enterprise_user_decoded.get("exp")
 
     if not user_auth_type:
-        raise Unauthorized("Missing auth_type in the token.")
+        raise Unauthorized("令牌中缺少 auth_type。")
 
     site = db.session.scalar(select(Site).where(Site.code == app_code, Site.status == "normal"))
     if not site:
@@ -141,9 +141,9 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     if auth_type == WebAppAuthType.PUBLIC:
         return _exchange_for_public_app_token(app_model, site, enterprise_user_decoded)
     elif auth_type == WebAppAuthType.EXTERNAL and user_auth_type != "external":
-        raise WebAppAuthRequiredError("Please login as external user.")
+        raise WebAppAuthRequiredError("请以外部用户身份登录。")
     elif auth_type == WebAppAuthType.INTERNAL and user_auth_type != "internal":
-        raise WebAppAuthRequiredError("Please login as internal user.")
+        raise WebAppAuthRequiredError("请以内部用户身份登录。")
 
     end_user = None
     if end_user_id:
@@ -158,7 +158,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         )
     if not end_user:
         if not session_id:
-            raise NotFound("Missing session_id for existing web user.")
+            raise NotFound("缺少现有 Web 用户的 session_id。")
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,

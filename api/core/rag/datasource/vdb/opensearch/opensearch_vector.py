@@ -36,16 +36,16 @@ class OpenSearchConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values.get("host"):
-            raise ValueError("config OPENSEARCH_HOST is required")
+            raise ValueError("配置 OPENSEARCH_HOST 为必填项")
         if not values.get("port"):
-            raise ValueError("config OPENSEARCH_PORT is required")
+            raise ValueError("配置 OPENSEARCH_PORT 为必填项")
         if values.get("auth_method") == "aws_managed_iam":
             if not values.get("aws_region"):
-                raise ValueError("config OPENSEARCH_AWS_REGION is required for AWS_MANAGED_IAM auth method")
+                raise ValueError("AWS_MANAGED_IAM 认证方式需要配置 OPENSEARCH_AWS_REGION")
             if not values.get("aws_service"):
-                raise ValueError("config OPENSEARCH_AWS_SERVICE is required for AWS_MANAGED_IAM auth method")
+                raise ValueError("AWS_MANAGED_IAM 认证方式需要配置 OPENSEARCH_AWS_SERVICE")
         if not values.get("OPENSEARCH_SECURE") and values.get("OPENSEARCH_VERIFY_CERTS"):
-            raise ValueError("verify_certs=True requires secure (HTTPS) connection")
+            raise ValueError("verify_certs=True 需要安全（HTTPS）连接")
         return values
 
     def create_aws_managed_iam_auth(self) -> Urllib3AWSV4SignerAuth:
@@ -173,11 +173,11 @@ class OpenSearchVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         # Make sure query_vector is a list
         if not isinstance(query_vector, list):
-            raise ValueError("query_vector should be a list of floats")
+            raise ValueError("query_vector 应为浮点数列表")
 
         # Check whether query_vector is a floating-point number list
         if not all(isinstance(x, float) for x in query_vector):
-            raise ValueError("All elements in query_vector should be floats")
+            raise ValueError("query_vector 中所有元素必须为浮点数")
 
         query = {
             "size": kwargs.get("top_k", 4),

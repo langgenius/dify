@@ -26,7 +26,7 @@ class UnstructuredPPTExtractor(BaseExtractor):
 
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
-            raise NotImplementedError("Unstructured API Url is not configured")
+            raise NotImplementedError("Unstructured API URL 未配置")
         text_by_page: dict[int, str] = {}
         for element in elements:
             page = element.metadata.page_number

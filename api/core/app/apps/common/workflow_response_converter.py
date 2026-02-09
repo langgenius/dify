@@ -134,7 +134,7 @@ class WorkflowResponseConverter:
         if workflow_run_id is not None:
             self._workflow_execution_id = workflow_run_id
         if not self._workflow_execution_id:
-            raise ValueError("workflow_run_id missing before streaming workflow events")
+            raise ValueError("流式工作流事件前缺少 workflow_run_id")
         return self._workflow_execution_id
 
     # ------------------------------------------------------------------
@@ -560,7 +560,7 @@ class WorkflowResponseConverter:
 
         snapshot = self._get_snapshot(event.node_execution_id)
         if snapshot is None:
-            raise AssertionError("node retry event arrived without a stored snapshot")
+            raise AssertionError("节点重试事件到达但没有存储的快照")
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - event.start_at).total_seconds()
 

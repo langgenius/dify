@@ -79,11 +79,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         :param streaming: is stream
         """
         if not args.get("query"):
-            raise ValueError("query is required")
+            raise ValueError("查询为必填项")
 
         query = args["query"]
         if not isinstance(query, str):
-            raise ValueError("query must be a string")
+            raise ValueError("查询必须为字符串")
 
         query = query.replace("\x00", "")
         inputs = args["inputs"]
@@ -104,7 +104,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         override_model_config_dict = None
         if args.get("model_config"):
             if invoke_from != InvokeFrom.DEBUGGER:
-                raise ValueError("Only in App debug mode can override model config")
+                raise ValueError("仅在应用调试模式下可覆盖模型配置")
 
             # validate config
             override_model_config_dict = ChatAppConfigManager.config_validate(

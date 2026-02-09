@@ -121,7 +121,7 @@ class PluginTriggerClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("No response received from plugin daemon for invoke trigger")
+        raise ValueError("未从插件守护进程收到调用触发器的响应")
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, credentials: Mapping[str, str]
@@ -152,7 +152,7 @@ class PluginTriggerClient(BasePluginClient):
         for resp in response:
             return resp.result
 
-        raise ValueError("No response received from plugin daemon for validate provider credentials")
+        raise ValueError("未从插件守护进程收到验证提供商凭据的响应")
 
     def dispatch_event(
         self,
@@ -189,7 +189,7 @@ class PluginTriggerClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("No response received from plugin daemon for dispatch event")
+        raise ValueError("未从插件守护进程收到分发事件的响应")
 
     def subscribe(
         self,
@@ -228,7 +228,7 @@ class PluginTriggerClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("No response received from plugin daemon for subscribe")
+        raise ValueError("未从插件守护进程收到订阅的响应")
 
     def unsubscribe(
         self,
@@ -265,7 +265,7 @@ class PluginTriggerClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("No response received from plugin daemon for unsubscribe")
+        raise ValueError("未从插件守护进程收到取消订阅的响应")
 
     def refresh(
         self,
@@ -302,4 +302,4 @@ class PluginTriggerClient(BasePluginClient):
         for resp in response:
             return resp
 
-        raise ValueError("No response received from plugin daemon for refresh")
+        raise ValueError("未从插件守护进程收到刷新的响应")

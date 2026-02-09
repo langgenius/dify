@@ -116,15 +116,15 @@ class GraphExecution:
     def start(self) -> None:
         """Mark the graph execution as started."""
         if self.started:
-            raise RuntimeError("Graph execution already started")
+            raise RuntimeError("图执行已启动")
         self.started = True
 
     def complete(self) -> None:
         """Mark the graph execution as completed."""
         if not self.started:
-            raise RuntimeError("Cannot complete execution that hasn't started")
+            raise RuntimeError("无法完成未开始的执行")
         if self.completed:
-            raise RuntimeError("Graph execution already completed")
+            raise RuntimeError("图执行已完成")
         self.completed = True
 
     def abort(self, reason: str) -> None:
@@ -135,9 +135,9 @@ class GraphExecution:
     def pause(self, reason: PauseReason) -> None:
         """Pause the graph execution without marking it complete."""
         if self.completed:
-            raise RuntimeError("Cannot pause execution that has completed")
+            raise RuntimeError("无法暂停已完成的执行")
         if self.aborted:
-            raise RuntimeError("Cannot pause execution that has been aborted")
+            raise RuntimeError("无法暂停已中止的执行")
         self.paused = True
         self.pause_reasons.append(reason)
 
@@ -214,7 +214,7 @@ class GraphExecution:
             raise ValueError(f"Unsupported serialized version: {state.version}")
 
         if self.workflow_id != state.workflow_id:
-            raise ValueError("Serialized workflow_id does not match aggregate identity")
+            raise ValueError("序列化的 workflow_id 与聚合标识不匹配")
 
         self.started = state.started
         self.completed = state.completed

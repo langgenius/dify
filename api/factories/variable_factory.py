@@ -74,19 +74,19 @@ SEGMENT_TO_VARIABLE_MAP = {
 
 def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
-        raise VariableError("missing name")
+        raise VariableError("缺少名称")
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 
 def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
-        raise VariableError("missing name")
+        raise VariableError("缺少名称")
     return _build_variable_from_mapping(mapping=mapping, selector=[ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]])
 
 
 def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("variable"):
-        raise VariableError("missing variable")
+        raise VariableError("缺少变量")
     return mapping["variable"]
 
 
@@ -96,9 +96,9 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     not support the File type.
     """
     if (value_type := mapping.get("value_type")) is None:
-        raise VariableError("missing value type")
+        raise VariableError("缺少值类型")
     if (value := mapping.get("value")) is None:
-        raise VariableError("missing value")
+        raise VariableError("缺少值")
 
     result: VariableBase
     match value_type:

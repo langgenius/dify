@@ -165,7 +165,7 @@ class PluginTriggerProviderController:
         # First validate against schema
         subscription_constructor: SubscriptionConstructor | None = self.entity.subscription_constructor
         if not subscription_constructor:
-            raise ValueError("Subscription constructor not found")
+            raise ValueError("订阅构造函数未找到")
         for config in subscription_constructor.credentials_schema or []:
             if config.required and config.name not in credentials:
                 raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
@@ -181,7 +181,7 @@ class PluginTriggerProviderController:
         )
         if not response:
             raise TriggerProviderCredentialValidationError(
-                "Invalid credentials",
+                "无效的凭据",
             )
 
     def get_supported_credential_types(self) -> list[CredentialType]:

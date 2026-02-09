@@ -166,7 +166,7 @@ def normalize_uuid(value: str | UUID) -> str:
     try:
         return uuid_value(value)
     except ValueError as exc:
-        raise ValueError("must be a valid UUID") from exc
+        raise ValueError("必须为有效的 UUID") from exc
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
@@ -365,7 +365,7 @@ class TokenManager:
         additional_data: dict | None = None,
     ) -> str:
         if account is None and email is None:
-            raise ValueError("Account or email must be provided")
+            raise ValueError("必须提供账户或邮箱")
 
         account_id = account.id if account else None
         account_email = account.email if account else email

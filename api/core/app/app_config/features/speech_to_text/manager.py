@@ -25,12 +25,12 @@ class SpeechToTextConfigManager:
             config["speech_to_text"] = {"enabled": False}
 
         if not isinstance(config["speech_to_text"], dict):
-            raise ValueError("speech_to_text must be of dict type")
+            raise ValueError("speech_to_text 必须为字典类型")
 
         if "enabled" not in config["speech_to_text"] or not config["speech_to_text"]["enabled"]:
             config["speech_to_text"]["enabled"] = False
 
         if not isinstance(config["speech_to_text"]["enabled"], bool):
-            raise ValueError("enabled in speech_to_text must be of boolean type")
+            raise ValueError("speech_to_text 中的 enabled 必须为布尔类型")
 
         return config, ["speech_to_text"]

@@ -33,18 +33,18 @@ class AudioService:
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
-                raise ValueError("Speech to text is not enabled")
+                raise ValueError("语音转文字未启用")
 
             features_dict = workflow.features_dict
             if "speech_to_text" not in features_dict or not features_dict["speech_to_text"].get("enabled"):
-                raise ValueError("Speech to text is not enabled")
+                raise ValueError("语音转文字未启用")
         else:
             app_model_config = app_model.app_model_config
             if not app_model_config:
-                raise ValueError("Speech to text is not enabled")
+                raise ValueError("语音转文字未启用")
 
             if not app_model_config.speech_to_text_dict["enabled"]:
-                raise ValueError("Speech to text is not enabled")
+                raise ValueError("语音转文字未启用")
 
         if file is None:
             raise NoAudioUploadedServiceError()
@@ -94,17 +94,17 @@ class AudioService:
                         or "text_to_speech" not in workflow.features_dict
                         or not workflow.features_dict["text_to_speech"].get("enabled")
                     ):
-                        raise ValueError("TTS is not enabled")
+                        raise ValueError("文字转语音未启用")
 
                     voice = workflow.features_dict["text_to_speech"].get("voice")
                 else:
                     if not is_draft:
                         if app_model.app_model_config is None:
-                            raise ValueError("AppModelConfig not found")
+                            raise ValueError("未找到 AppModelConfig")
                         text_to_speech_dict = app_model.app_model_config.text_to_speech_dict
 
                         if not text_to_speech_dict.get("enabled"):
-                            raise ValueError("TTS is not enabled")
+                            raise ValueError("文字转语音未启用")
 
                         voice = text_to_speech_dict.get("voice")
 
@@ -118,9 +118,9 @@ class AudioService:
                     if voices:
                         voice = voices[0].get("value")
                         if not voice:
-                            raise ValueError("Sorry, no voice available.")
+                            raise ValueError("抱歉，没有可用的语音。")
                     else:
-                        raise ValueError("Sorry, no voice available.")
+                        raise ValueError("抱歉，没有可用的语音。")
 
                 return model_instance.invoke_tts(
                     content_text=text_content.strip(), user=end_user, tenant_id=app_model.tenant_id, voice=voice
@@ -146,7 +146,7 @@ class AudioService:
                 return response
         else:
             if text is None:
-                raise ValueError("Text is required")
+                raise ValueError("文本为必填项")
             response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
             if isinstance(response, Generator):
                 return Response(stream_with_context(response), content_type="audio/mpeg")

@@ -331,13 +331,13 @@ class AppGenerateService:
             workflow = workflow_service.get_draft_workflow(app_model=app_model)
 
             if not workflow:
-                raise ValueError("Workflow not initialized")
+                raise ValueError("工作流未初始化")
         else:
             # fetch published workflow by app_model
             workflow = workflow_service.get_published_workflow(app_model=app_model)
 
             if not workflow:
-                raise ValueError("Workflow not published")
+                raise ValueError("工作流未发布")
 
         return workflow
 

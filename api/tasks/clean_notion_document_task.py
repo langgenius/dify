@@ -29,7 +29,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
         dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise Exception("Document has no dataset")
+            raise Exception("文档没有关联的知识库")
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 

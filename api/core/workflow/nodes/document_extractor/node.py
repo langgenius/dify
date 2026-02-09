@@ -352,7 +352,7 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
     from unstructured.partition.api import partition_via_api
 
     if not unstructured_api_config.api_url:
-        raise TextExtractionError("Unstructured API URL is not configured for DOC file processing.")
+        raise TextExtractionError("Unstructured API URL 未配置，无法处理 DOC 文件。")
     api_key = unstructured_api_config.api_key or ""
 
     try:
@@ -444,7 +444,7 @@ def _download_file_content(file: File) -> bytes:
     try:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
             if file.remote_url is None:
-                raise FileDownloadError("Missing URL for remote file")
+                raise FileDownloadError("远程文件缺少 URL")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
             return response.content
@@ -469,7 +469,7 @@ def _extract_text_from_file(file: File, *, unstructured_api_config: Unstructured
             unstructured_api_config=unstructured_api_config,
         )
     else:
-        raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
+        raise UnsupportedFileTypeError("无法确定文件类型：缺少 MIME 类型或文件扩展名")
     return extracted_text
 
 

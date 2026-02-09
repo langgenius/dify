@@ -25,17 +25,17 @@ class TriggerEventNodeData(BaseNodeData):
                 return type
 
             if type == "mixed" and not isinstance(value, str):
-                raise ValueError("value must be a string")
+                raise ValueError("值必须为字符串")
 
             if type == "variable":
                 if not isinstance(value, list):
-                    raise ValueError("value must be a list")
+                    raise ValueError("值必须为列表")
                 for val in value:
                     if not isinstance(val, str):
-                        raise ValueError("value must be a list of strings")
+                        raise ValueError("值必须为字符串列表")
 
             if type == "constant" and not isinstance(value, str | int | float | bool | dict | list):
-                raise ValueError("value must be a string, int, float, bool or dict")
+                raise ValueError("值必须为字符串、整数、浮点数、布尔值或字典")
             return type
 
     title: str

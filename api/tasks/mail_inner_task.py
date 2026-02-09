@@ -24,7 +24,7 @@ class SandboxedEnvironment(ImmutableSandboxedEnvironment):
 
     def call(self, context: Context, obj: Any, *args: Any, **kwargs: Any) -> Any:
         if time.time() > self._timeout_time:
-            raise TimeoutError("Template rendering timeout")
+            raise TimeoutError("模板渲染超时")
         return super().call(context, obj, *args, **kwargs)
 
 

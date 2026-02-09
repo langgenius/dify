@@ -161,7 +161,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
             self._get(f"/api/v1/core/crawl-requests/{item_id}/status/", stream=True, query_params=query_params),
         )
         if not isinstance(generator, Generator):
-            raise ValueError("Generator expected")
+            raise ValueError("期望生成器")
         yield from generator
 
     def get_crawl_request_results(

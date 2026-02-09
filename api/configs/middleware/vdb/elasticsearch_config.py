@@ -60,15 +60,15 @@ class ElasticsearchConfig(BaseSettings):
         """Validate Elasticsearch configuration based on deployment type."""
         if self.ELASTICSEARCH_USE_CLOUD:
             if not self.ELASTICSEARCH_CLOUD_URL:
-                raise ValueError("ELASTICSEARCH_CLOUD_URL is required when using Elastic Cloud")
+                raise ValueError("使用 Elastic Cloud 时需要 ELASTICSEARCH_CLOUD_URL")
             if not self.ELASTICSEARCH_API_KEY:
-                raise ValueError("ELASTICSEARCH_API_KEY is required when using Elastic Cloud")
+                raise ValueError("使用 Elastic Cloud 时需要 ELASTICSEARCH_API_KEY")
         else:
             if not self.ELASTICSEARCH_HOST:
-                raise ValueError("ELASTICSEARCH_HOST is required for self-hosted Elasticsearch")
+                raise ValueError("自托管 Elasticsearch 需要 ELASTICSEARCH_HOST")
             if not self.ELASTICSEARCH_USERNAME:
-                raise ValueError("ELASTICSEARCH_USERNAME is required for self-hosted Elasticsearch")
+                raise ValueError("自托管 Elasticsearch 需要 ELASTICSEARCH_USERNAME")
             if not self.ELASTICSEARCH_PASSWORD:
-                raise ValueError("ELASTICSEARCH_PASSWORD is required for self-hosted Elasticsearch")
+                raise ValueError("自托管 Elasticsearch 需要 ELASTICSEARCH_PASSWORD")
 
         return self

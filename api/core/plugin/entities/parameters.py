@@ -146,21 +146,21 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
             case PluginParameterType.FILE:
                 if isinstance(value, list):
                     if len(value) != 1:
-                        raise ValueError("This parameter only accepts one file but got multiple files while invoking.")
+                        raise ValueError("此参数仅接受一个文件，但调用时收到了多个文件。")
                     else:
                         return value[0]
                 return value
             case PluginParameterType.MODEL_SELECTOR | PluginParameterType.APP_SELECTOR:
                 if not isinstance(value, dict):
-                    raise ValueError("The selector must be a dictionary.")
+                    raise ValueError("选择器必须为字典。")
                 return value
             case PluginParameterType.TOOLS_SELECTOR:
                 if value and not isinstance(value, list):
-                    raise ValueError("The tools selector must be a list.")
+                    raise ValueError("工具选择器必须为列表。")
                 return value
             case PluginParameterType.ANY:
                 if value and not isinstance(value, str | dict | list | int | float):
-                    raise ValueError("The var selector must be a string, dictionary, list or number.")
+                    raise ValueError("变量选择器必须为字符串、字典、列表或数字。")
                 return value
             case PluginParameterType.ARRAY:
                 if not isinstance(value, list):

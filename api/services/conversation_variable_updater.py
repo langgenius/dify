@@ -20,7 +20,7 @@ class ConversationVariableUpdater:
         with self._session_maker() as session:
             row = session.scalar(stmt)
             if not row:
-                raise ConversationVariableNotFoundError("conversation variable not found in the database")
+                raise ConversationVariableNotFoundError("数据库中未找到会话变量")
             row.data = variable.model_dump_json()
             session.commit()
 

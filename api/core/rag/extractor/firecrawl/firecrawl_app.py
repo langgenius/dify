@@ -12,7 +12,7 @@ class FirecrawlApp:
         self.api_key = api_key
         self.base_url = base_url or "https://api.firecrawl.dev"
         if self.api_key is None and self.base_url == "https://api.firecrawl.dev":
-            raise ValueError("No API key provided")
+            raise ValueError("未提供 API 密钥")
 
     def scrape_url(self, url, params=None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/scrape
@@ -75,7 +75,7 @@ class FirecrawlApp:
             if crawl_status_response.get("status") == "completed":
                 total = crawl_status_response.get("total", 0)
                 if total == 0:
-                    raise Exception("Failed to check crawl status. Error: No page found")
+                    raise Exception("检查爬取状态失败：未找到页面")
                 data = crawl_status_response.get("data", [])
                 url_data_list = []
                 for item in data:

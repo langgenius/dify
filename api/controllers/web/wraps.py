@@ -45,7 +45,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
     try:
         tk = extract_webapp_passport(app_code, request)
         if not tk:
-            raise Unauthorized("App token is missing.")
+            raise Unauthorized("缺少应用令牌。")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
@@ -55,9 +55,9 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
             if not app_model:
                 raise NotFound()
             if not app_code or not site:
-                raise BadRequest("Site URL is no longer valid.")
+                raise BadRequest("站点地址已失效。")
             if app_model.enable_site is False:
-                raise BadRequest("Site is disabled.")
+                raise BadRequest("站点已禁用。")
             end_user_id = decoded.get("end_user_id")
             end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
             if not end_user:
@@ -65,7 +65,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
 
             # Validate user_id against end_user's session_id if provided
             if user_id is not None and end_user.session_id != user_id:
-                raise Unauthorized("Authentication has expired.")
+                raise Unauthorized("身份验证已过期。")
 
         # for enterprise webapp auth
         app_web_auth_enabled = False
@@ -74,7 +74,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
             app_id = AppService.get_app_id_by_code(app_code)
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
-                raise NotFound("Web app settings not found.")
+                raise NotFound("未找到 Web 应用设置。")
             app_web_auth_enabled = webapp_settings.access_mode != "public"
 
         _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
@@ -86,7 +86,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
             if not app_code:
-                raise Unauthorized("Please re-login to access the web app.")
+                raise Unauthorized("请重新登录以访问 Web 应用。")
             app_id = AppService.get_app_id_by_code(app_code)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode != "public"
@@ -110,7 +110,7 @@ def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_au
     if not system_webapp_auth_enabled or not app_web_auth_enabled:
         source = decoded.get("token_source")
         if source and source == "webapp":
-            raise Unauthorized("webapp token expired.")
+            raise Unauthorized("Web 应用令牌已过期。")
 
 
 def _validate_user_accessibility(
@@ -127,7 +127,7 @@ def _validate_user_accessibility(
             raise WebAppAuthRequiredError()
 
         if not webapp_settings:
-            raise WebAppAuthRequiredError("Web app settings not found.")
+            raise WebAppAuthRequiredError("未找到 Web 应用设置。")
 
         if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
             app_id = AppService.get_app_id_by_code(app_code)
@@ -137,18 +137,18 @@ def _validate_user_accessibility(
         auth_type = decoded.get("auth_type")
         granted_at = decoded.get("granted_at")
         if not auth_type:
-            raise WebAppAuthAccessDeniedError("Missing auth_type in the token.")
+            raise WebAppAuthAccessDeniedError("令牌中缺少 auth_type。")
         if not granted_at:
-            raise WebAppAuthAccessDeniedError("Missing granted_at in the token.")
+            raise WebAppAuthAccessDeniedError("令牌中缺少 granted_at。")
         # check if sso has been updated
         if auth_type == "external":
             last_update_time = EnterpriseService.get_app_sso_settings_last_update_time()
             if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
-                raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
+                raise WebAppAuthAccessDeniedError("SSO 设置已更新，请重新登录。")
         elif auth_type == "internal":
             last_update_time = EnterpriseService.get_workspace_sso_settings_last_update_time()
             if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
-                raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
+                raise WebAppAuthAccessDeniedError("SSO 设置已更新，请重新登录。")
 
 
 class WebApiResource(Resource):

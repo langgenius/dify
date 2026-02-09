@@ -50,14 +50,14 @@ def load_user_from_request(request_from_flask_login):
 
     if request.blueprint in {"console", "inner_api"}:
         if not auth_token:
-            raise Unauthorized("Invalid Authorization token.")
+            raise Unauthorized("无效的授权令牌。")
         decoded = PassportService().verify(auth_token)
         user_id = decoded.get("user_id")
         source = decoded.get("token_source")
         if source:
-            raise Unauthorized("Invalid Authorization token.")
+            raise Unauthorized("无效的授权令牌。")
         if not user_id:
-            raise Unauthorized("Invalid Authorization token.")
+            raise Unauthorized("无效的授权令牌。")
 
         logged_in_account = AccountService.load_logged_in_account(account_id=user_id)
         return logged_in_account
@@ -69,35 +69,35 @@ def load_user_from_request(request_from_flask_login):
             decoded = PassportService().verify(webapp_token)
             end_user_id = decoded.get("end_user_id")
             if not end_user_id:
-                raise Unauthorized("Invalid Authorization token.")
+                raise Unauthorized("无效的授权令牌。")
             end_user = db.session.query(EndUser).where(EndUser.id == end_user_id).first()
             if not end_user:
-                raise NotFound("End user not found.")
+                raise NotFound("终端用户未找到。")
             return end_user
         else:
             if not auth_token:
-                raise Unauthorized("Invalid Authorization token.")
+                raise Unauthorized("无效的授权令牌。")
             decoded = PassportService().verify(auth_token)
             end_user_id = decoded.get("end_user_id")
             if end_user_id:
                 end_user = db.session.query(EndUser).where(EndUser.id == end_user_id).first()
                 if not end_user:
-                    raise NotFound("End user not found.")
+                    raise NotFound("终端用户未找到。")
                 return end_user
             else:
-                raise Unauthorized("Invalid Authorization token for web API.")
+                raise Unauthorized("Web API 授权令牌无效。")
     elif request.blueprint == "mcp":
         server_code = request.view_args.get("server_code") if request.view_args else None
         if not server_code:
-            raise Unauthorized("Invalid Authorization token.")
+            raise Unauthorized("无效的授权令牌。")
         app_mcp_server = db.session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
         if not app_mcp_server:
-            raise NotFound("App MCP server not found.")
+            raise NotFound("应用 MCP 服务器未找到。")
         end_user = (
             db.session.query(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").first()
         )
         if not end_user:
-            raise NotFound("End user not found.")
+            raise NotFound("终端用户未找到。")
         return end_user
 
 

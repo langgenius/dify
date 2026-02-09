@@ -270,7 +270,7 @@ class AliyunDataTrace(BaseTraceInstance):
     def get_workflow_node_executions(self, trace_info: WorkflowTraceInfo) -> Sequence[WorkflowNodeExecution]:
         app_id = trace_info.metadata.get("app_id")
         if not app_id:
-            raise ValueError("No app_id found in trace_info metadata")
+            raise ValueError("trace_info 元数据中未找到 app_id")
 
         service_account = self.get_service_account_with_tenant(app_id)
 

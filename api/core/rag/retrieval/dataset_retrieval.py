@@ -1166,7 +1166,7 @@ class DatasetRetrieval:
             from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 
             if retrieve_config.reranking_model is None:
-                raise ValueError("Reranking model is required for multiple retrieval")
+                raise ValueError("多路检索需要重排序模型")
 
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
@@ -1355,7 +1355,7 @@ class DatasetRetrieval:
                     conditions=conditions,
                 )
         else:
-            raise ValueError("Invalid metadata filtering mode")
+            raise ValueError("无效的元数据过滤模式")
         if filters:
             if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  # type: ignore
                 document_query = document_query.where(and_(*filters))
@@ -1391,7 +1391,7 @@ class DatasetRetrieval:
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:
-            raise ValueError("metadata_model_config is required")
+            raise ValueError("metadata_model_config 为必填项")
         # get metadata model instance
         # fetch model config
         model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config)
@@ -1522,7 +1522,7 @@ class DatasetRetrieval:
         Fetch model config
         """
         if model is None:
-            raise ValueError("single_retrieval_config is required")
+            raise ValueError("single_retrieval_config 为必填项")
         model_name = model.name
         provider_name = model.provider
 
@@ -1562,7 +1562,7 @@ class DatasetRetrieval:
         # get model mode
         model_mode = model.mode
         if not model_mode:
-            raise ValueError("LLM mode is required.")
+            raise ValueError("LLM 模式为必填项。")
 
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
 

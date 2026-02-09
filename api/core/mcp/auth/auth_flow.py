@@ -203,7 +203,7 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
     state_data = redis_client.get(redis_key)
 
     if not state_data:
-        raise ValueError("State parameter has expired or does not exist")
+        raise ValueError("状态参数已过期或不存在")
 
     # Delete the state data from Redis immediately after retrieval to prevent reuse
     redis_client.delete(redis_key)
@@ -504,7 +504,7 @@ def register_client(
     """Performs OAuth 2.0 Dynamic Client Registration."""
     if metadata:
         if not metadata.registration_endpoint:
-            raise ValueError("Incompatible auth server: does not support dynamic client registration")
+            raise ValueError("不兼容的认证服务器：不支持动态客户端注册")
         registration_url = metadata.registration_endpoint
     else:
         registration_url = urljoin(server_url, "/register")
@@ -559,7 +559,7 @@ def auth(
 
     # Determine grant type based on server metadata
     if not server_metadata:
-        raise ValueError("Failed to discover OAuth metadata from server")
+        raise ValueError("从服务器发现 OAuth 元数据失败")
 
     supported_grant_types = server_metadata.grant_types_supported or []
 
@@ -578,12 +578,12 @@ def auth(
 
     if not client_information:
         if authorization_code is not None:
-            raise ValueError("Existing OAuth client information is required when exchanging an authorization code")
+            raise ValueError("交换授权码时需要现有的 OAuth 客户端信息")
 
         # For client credentials flow, we don't need to register client dynamically
         if effective_grant_type == MCPSupportGrantType.CLIENT_CREDENTIALS.value:
             # Client should provide client_id and client_secret directly
-            raise ValueError("Client credentials flow requires client_id and client_secret to be provided")
+            raise ValueError("客户端凭据流需要提供 client_id 和 client_secret")
 
         try:
             full_information = register_client(server_url, server_metadata, client_metadata)
@@ -636,7 +636,7 @@ def auth(
     # Exchange authorization code for tokens (Authorization Code flow)
     if authorization_code is not None:
         if not state_param:
-            raise ValueError("State parameter is required when exchanging authorization code")
+            raise ValueError("交换授权码时需要状态参数")
 
         try:
             # Retrieve state data from Redis using state key
@@ -646,7 +646,7 @@ def auth(
             redirect_uri = full_state_data.redirect_uri
 
             if not code_verifier or not redirect_uri:
-                raise ValueError("Missing code_verifier or redirect_uri in state data")
+                raise ValueError("状态数据中缺少 code_verifier 或 redirect_uri")
 
         except (json.JSONDecodeError, ValueError) as e:
             raise ValueError(f"Invalid state parameter: {e}")

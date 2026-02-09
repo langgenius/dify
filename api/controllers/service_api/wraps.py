@@ -52,19 +52,19 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             app_model = db.session.query(App).where(App.id == api_token.app_id).first()
             if not app_model:
-                raise Forbidden("The app no longer exists.")
+                raise Forbidden("应用已不存在。")
 
             if app_model.status != "normal":
-                raise Forbidden("The app's status is abnormal.")
+                raise Forbidden("应用状态异常。")
 
             if not app_model.enable_api:
-                raise Forbidden("The app's API service has been disabled.")
+                raise Forbidden("应用的 API 服务已禁用。")
 
             tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
             if tenant is None:
-                raise ValueError("Tenant does not exist.")
+                raise ValueError("租户不存在。")
             if tenant.status == TenantStatus.ARCHIVE:
-                raise Forbidden("The workspace's status is archived.")
+                raise Forbidden("工作空间已归档。")
 
             kwargs["app_model"] = app_model
 
@@ -80,7 +80,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                         user_id = request.form.get("user")
 
                 if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
+                    raise ValueError("必须提供 user 参数。")
 
                 if user_id:
                     user_id = str(user_id)
@@ -112,7 +112,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
-                    raise Unauthorized("Tenant owner account not found or tenant is not active.")
+                    raise Unauthorized("未找到租户所有者账户或租户未激活。")
 
             return view_func(*args, **kwargs)
 
@@ -137,13 +137,13 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == "members" and 0 < members.limit <= members.size:
-                    raise Forbidden("The number of members has reached the limit of your subscription.")
+                    raise Forbidden("成员数量已达订阅上限。")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    raise Forbidden("The number of apps has reached the limit of your subscription.")
+                    raise Forbidden("应用数量已达订阅上限。")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
+                    raise Forbidden("向量存储空间已达订阅上限。")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    raise Forbidden("The number of documents has reached the limit of your subscription.")
+                    raise Forbidden("文档数量已达订阅上限。")
                 else:
                     return view(*args, **kwargs)
 
@@ -164,7 +164,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
                 if resource == "add_segment":
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise Forbidden(
-                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
+                            "需要升级到付费套餐才能使用该功能。"
                         )
                 else:
                     return view(*args, **kwargs)
@@ -204,7 +204,7 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
                         db.session.add(rate_limit_log)
                         db.session.commit()
                         raise Forbidden(
-                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                            "已达到当前订阅的知识库请求速率限制。"
                         )
             return view(*args, **kwargs)
 
@@ -264,9 +264,9 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     .first()
                 )
                 if not dataset:
-                    raise NotFound("Dataset not found.")
+                    raise NotFound("知识库未找到。")
                 if not dataset.enable_api:
-                    raise Forbidden("Dataset api access is not enabled.")
+                    raise Forbidden("知识库 API 访问未启用。")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
@@ -284,9 +284,9 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
-                    raise Unauthorized("Tenant owner account does not exist.")
+                    raise Unauthorized("租户所有者账户不存在。")
             else:
-                raise Unauthorized("Tenant does not exist.")
+                raise Unauthorized("租户不存在。")
             return view(api_token.tenant_id, *args, **kwargs)
 
         return decorated
@@ -312,13 +312,13 @@ def validate_and_get_api_token(scope: str | None = None):
     """
     auth_header = request.headers.get("Authorization")
     if auth_header is None or " " not in auth_header:
-        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
+        raise Unauthorized("授权头必须以 'Bearer' 开头")
 
     auth_scheme, auth_token = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
 
     if auth_scheme != "bearer":
-        raise Unauthorized("Authorization scheme must be 'Bearer'")
+        raise Unauthorized("授权方案必须是 'Bearer'")
 
     # Try to get token from cache first
     # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
@@ -341,6 +341,6 @@ class DatasetApiResource(Resource):
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
 
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("知识库未找到。")
 
         return dataset

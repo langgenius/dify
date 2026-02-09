@@ -125,7 +125,7 @@ class EnumText(TypeDecorator[_E | None], Generic[_E]):
         max_enum_value_len = max(len(e.value) for e in enum_class)
         if length is not None:
             if length < max_enum_value_len:
-                raise ValueError("length should be greater than enum value length.")
+                raise ValueError("长度应大于枚举值长度。")
             self._length = length
         else:
             # leave some rooms for future longer enum values.
