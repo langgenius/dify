@@ -81,7 +81,7 @@ class TestPassportService:
 
         with pytest.raises(Unauthorized) as exc_info:
             another_passport_service.verify(token)
-        assert str(exc_info.value) == "401 Unauthorized: Invalid token signature."
+        assert str(exc_info.value) == "401 Unauthorized: 无效的令牌签名。"
 
     def test_should_use_hs256_algorithm(self, passport_service):
         """Test that HS256 algorithm is used for signing"""
@@ -107,21 +107,21 @@ class TestPassportService:
         # InvalidAlgorithmError is now caught by PyJWTError handler
         with pytest.raises(Unauthorized) as exc_info:
             passport_service.verify(wrong_alg_token)
-        assert str(exc_info.value) == "401 Unauthorized: Invalid token."
+        assert str(exc_info.value) == "401 Unauthorized: 无效的令牌。"
 
     # Exception handling tests
     def test_should_handle_invalid_tokens(self, passport_service):
         """Test handling of various invalid token formats"""
         invalid_tokens = [
-            ("not.a.token", "Invalid token."),
-            ("invalid-jwt-format", "Invalid token."),
-            ("xxx.yyy.zzz", "Invalid token."),
-            ("a.b", "Invalid token."),  # Missing signature
-            ("", "Invalid token."),  # Empty string
-            ("   ", "Invalid token."),  # Whitespace
-            (None, "Invalid token."),  # None value
+            ("not.a.token", "无效的令牌。"),
+            ("invalid-jwt-format", "无效的令牌。"),
+            ("xxx.yyy.zzz", "无效的令牌。"),
+            ("a.b", "无效的令牌。"),  # Missing signature
+            ("", "无效的令牌。"),  # Empty string
+            ("   ", "无效的令牌。"),  # Whitespace
+            (None, "无效的令牌。"),  # None value
             # Malformed base64
-            ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.INVALID_BASE64!@#$.signature", "Invalid token."),
+            ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.INVALID_BASE64!@#$.signature", "无效的令牌。"),
         ]
 
         for invalid_token, expected_message in invalid_tokens:
@@ -140,7 +140,7 @@ class TestPassportService:
 
         with pytest.raises(Unauthorized) as exc_info:
             passport_service.verify(token)
-        assert str(exc_info.value) == "401 Unauthorized: Token has expired."
+        assert str(exc_info.value) == "401 Unauthorized: 令牌已过期。"
 
     # Configuration tests
     def test_should_handle_empty_secret_key(self):
@@ -202,4 +202,4 @@ class TestPassportService:
 
             with pytest.raises(Unauthorized) as exc_info:
                 passport_service.verify("some-token")
-            assert str(exc_info.value) == "401 Unauthorized: Invalid token."
+            assert str(exc_info.value) == "401 Unauthorized: 无效的令牌。"

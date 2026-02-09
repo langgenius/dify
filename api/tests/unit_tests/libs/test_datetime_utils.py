@@ -90,7 +90,7 @@ class TestParseTimeRange:
 
     def test_parse_time_range_start_after_end(self):
         """Test parsing with start time after end time."""
-        with pytest.raises(ValueError, match="start must be earlier than or equal to end"):
+        with pytest.raises(ValueError, match="start 必须早于或等于 end"):
             parse_time_range("2024-01-01 18:00", "2024-01-01 10:00", "UTC")
 
     def test_parse_time_range_start_equals_end(self):

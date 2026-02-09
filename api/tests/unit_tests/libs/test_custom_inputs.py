@@ -59,10 +59,10 @@ class TestTimeDuration:
 
     def test_empty_string(self):
         """Test empty string."""
-        with pytest.raises(ValueError, match="Time duration cannot be empty"):
+        with pytest.raises(ValueError, match="时间间隔不能为空"):
             time_duration("")
 
     def test_none(self):
         """Test None value."""
-        with pytest.raises(ValueError, match="Time duration cannot be empty"):
+        with pytest.raises(ValueError, match="时间间隔不能为空"):
             time_duration(None)
