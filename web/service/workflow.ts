@@ -14,7 +14,6 @@ import type {
 import { get, post } from './base'
 import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
-import { sanitizeWorkflowDraftPayload } from './workflow-payload'
 
 export type { WorkflowDraftFeaturesPayload } from '@/contract/console/workflow'
 
@@ -31,8 +30,7 @@ export const syncWorkflowDraft = ({ url, params, canNotSaveEmpty }: {
   if (params.graph.nodes.length === 0 && canNotSaveEmpty) {
     throw new Error('Cannot sync workflow draft with zero nodes.')
   }
-  const sanitized = sanitizeWorkflowDraftPayload(params)
-  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: sanitized }, { silent: true })
+  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {
