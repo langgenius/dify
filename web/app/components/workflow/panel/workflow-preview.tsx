@@ -71,6 +71,10 @@ const WorkflowPreview = () => {
     return 'TRACING'
   })()
 
+  const shouldShowTracingLoading = effectiveTab === 'TRACING'
+    && !workflowRunningData?.tracing?.length
+    && (workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result)
+
   const handleTabChange = (tab: string) => {
     setUserSelectedTab(tab)
   }
@@ -285,7 +289,7 @@ const WorkflowPreview = () => {
                 />
               )
             : null}
-          {effectiveTab === 'TRACING' && !workflowRunningData?.tracing?.length
+          {shouldShowTracingLoading
             ? (
                 <div className="flex h-full items-center justify-center !bg-background-section-burn">
                   <Loading />

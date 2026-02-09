@@ -20,6 +20,7 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import type { Node as WorkflowNode } from '@/app/components/workflow/types'
 import type { EventPayload } from '@/context/event-emitter'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
@@ -38,6 +39,8 @@ import {
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { Trans } from 'react-i18next'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { FileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
 import { FilePreviewContextProvider } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/preview-context'
 import FileReferenceReplacementBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/replacement-block'
@@ -169,6 +172,30 @@ const EnterCommandPlugin: FC<{ onEnter?: (event: KeyboardEvent) => void }> = ({ 
   return null
 }
 
+type WorkflowAvailableNodesProps = {
+  nodeId?: string
+  isSupportSandbox?: boolean
+  children: (availableNodes: WorkflowNode[]) => React.ReactNode
+}
+
+const WorkflowAvailableNodes: FC<WorkflowAvailableNodesProps> = ({
+  nodeId,
+  isSupportSandbox,
+  children,
+}) => {
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const availableNodes = React.useMemo(
+    () => nodeId && isSupportSandbox ? getBeforeNodesInSameBranch(nodeId || '') : [],
+    [getBeforeNodesInSameBranch, isSupportSandbox, nodeId],
+  )
+
+  return (
+    <>
+      {children(availableNodes)}
+    </>
+  )
+}
+
 export type PromptEditorProps = {
   instanceId?: string
   nodeId?: string
@@ -204,7 +231,11 @@ export type PromptEditorProps = {
   shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void }> }>
 }
 
-const PromptEditor: FC<PromptEditorProps> = ({
+type PromptEditorContentProps = PromptEditorProps & {
+  availableNodes: WorkflowNode[]
+}
+
+const PromptEditorContent: FC<PromptEditorContentProps> = ({
   instanceId,
   nodeId,
   compact,
@@ -237,6 +268,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   disableToolBlocks,
   onEnter,
   shortcutPopups = [],
+  availableNodes,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -287,12 +319,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
       payload: historyBlock?.history,
     } as EventPayload)
   }, [eventEmitter, historyBlock?.history])
-
-  const { getBeforeNodesInSameBranch } = useWorkflow()
-  const availableNodes = React.useMemo(
-    () => nodeId && isSupportSandbox ? getBeforeNodesInSameBranch(nodeId || '') : [],
-    [getBeforeNodesInSameBranch, isSupportSandbox, nodeId],
-  )
 
   const toolBlockContextValue = React.useMemo(() => {
     if (!onToolMetadataChange)
@@ -546,6 +572,35 @@ const PromptEditor: FC<PromptEditorProps> = ({
         </FilePreviewContextProvider>
       </ToolBlockContextProvider>
     </LexicalComposer>
+  )
+}
+
+const PromptEditor: FC<PromptEditorProps> = (props) => {
+  const workflowStore = React.useContext(WorkflowContext)
+  const hooksStore = React.useContext(HooksStoreContext)
+  const hasWorkflowContext = Boolean(workflowStore && hooksStore)
+
+  if (!hasWorkflowContext) {
+    return (
+      <PromptEditorContent
+        {...props}
+        availableNodes={[]}
+      />
+    )
+  }
+
+  return (
+    <WorkflowAvailableNodes
+      nodeId={props.nodeId}
+      isSupportSandbox={props.isSupportSandbox}
+    >
+      {availableNodes => (
+        <PromptEditorContent
+          {...props}
+          availableNodes={availableNodes}
+        />
+      )}
+    </WorkflowAvailableNodes>
   )
 }
 
