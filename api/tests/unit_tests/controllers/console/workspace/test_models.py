@@ -71,7 +71,7 @@ class TestDefaultModelApi:
 
         assert result["result"] == "success"
 
-    def test_get_success(self, app):
+    def test_get_returns_empty_when_no_default(self, app):
         api = DefaultModelApi()
         method = unwrap(api.get)
 
@@ -153,7 +153,7 @@ class TestModelProviderModelApi:
 
         assert status == 204
 
-    def test_get_models_success(self, app):
+    def test_get_models_returns_empty(self, app):
         api = ModelProviderModelApi()
         method = unwrap(api.get)
 

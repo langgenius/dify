@@ -329,6 +329,12 @@ class TestCheckEmailUniqueApi:
 
         with (
             app.test_request_context("/", json=payload),
+            patch.object(
+                type(console_ns),
+                "payload",
+                new_callable=PropertyMock,
+                return_value=payload,
+            ),
             patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=True),
         ):
             with pytest.raises(AccountInFreezeError):

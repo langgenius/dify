@@ -207,6 +207,74 @@ class TestBuiltinProviderApis:
             response = method(api, "provider")
             assert response.mimetype == "image/png"
 
+    def test_credentials_schema(self, app):
+        api = ToolBuiltinProviderCredentialsSchemaApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.tool_providers.current_account_with_tenant",
+                return_value=(MagicMock(), "t"),
+            ),
+            patch(
+                "controllers.console.workspace.tool_providers.BuiltinToolManageService.list_builtin_provider_credentials_schema",
+                return_value={"schema": {}},
+            ),
+        ):
+            assert method(api, "provider", "oauth2") == {"schema": {}}
+
+    def test_set_default_credential(self, app):
+        api = ToolBuiltinProviderSetDefaultApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", json={"id": "c1"}),
+            patch(
+                "controllers.console.workspace.tool_providers.current_account_with_tenant",
+                return_value=(MagicMock(id="u"), "t"),
+            ),
+            patch(
+                "controllers.console.workspace.tool_providers.BuiltinToolManageService.set_default_provider",
+                return_value={"ok": True},
+            ),
+        ):
+            assert method(api, "provider")["ok"]
+
+    def test_get_credential_info(self, app):
+        api = ToolBuiltinProviderGetCredentialInfoApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.tool_providers.current_account_with_tenant",
+                return_value=(MagicMock(), "t"),
+            ),
+            patch(
+                "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credential_info",
+                return_value={"info": "x"},
+            ),
+        ):
+            assert method(api, "provider") == {"info": "x"}
+
+    def test_get_oauth_client_schema(self, app):
+        api = ToolBuiltinProviderGetOauthClientSchemaApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.tool_providers.current_account_with_tenant",
+                return_value=(MagicMock(), "t"),
+            ),
+            patch(
+                "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_oauth_client_schema",
+                return_value={"schema": {}},
+            ),
+        ):
+            assert method(api, "provider") == {"schema": {}}
+            
 
 class TestApiProviderApis:
     def test_add(self, app):
@@ -519,76 +587,6 @@ class TestOAuth:
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
                 method(api, "provider")
-
-
-class TestBuiltinProviderApis:
-    def test_credentials_schema(self, app):
-        api = ToolBuiltinProviderCredentialsSchemaApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.tool_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "t"),
-            ),
-            patch(
-                "controllers.console.workspace.tool_providers.BuiltinToolManageService.list_builtin_provider_credentials_schema",
-                return_value={"schema": {}},
-            ),
-        ):
-            assert method(api, "provider", "oauth2") == {"schema": {}}
-
-    def test_set_default_credential(self, app):
-        api = ToolBuiltinProviderSetDefaultApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"id": "c1"}),
-            patch(
-                "controllers.console.workspace.tool_providers.current_account_with_tenant",
-                return_value=(MagicMock(id="u"), "t"),
-            ),
-            patch(
-                "controllers.console.workspace.tool_providers.BuiltinToolManageService.set_default_provider",
-                return_value={"ok": True},
-            ),
-        ):
-            assert method(api, "provider")["ok"]
-
-    def test_get_credential_info(self, app):
-        api = ToolBuiltinProviderGetCredentialInfoApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.tool_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "t"),
-            ),
-            patch(
-                "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credential_info",
-                return_value={"info": "x"},
-            ),
-        ):
-            assert method(api, "provider") == {"info": "x"}
-
-    def test_get_oauth_client_schema(self, app):
-        api = ToolBuiltinProviderGetOauthClientSchemaApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.tool_providers.current_account_with_tenant",
-                return_value=(MagicMock(), "t"),
-            ),
-            patch(
-                "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_oauth_client_schema",
-                return_value={"schema": {}},
-            ),
-        ):
-            assert method(api, "provider") == {"schema": {}}
 
 
 class TestOAuthCustomClient:
