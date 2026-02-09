@@ -675,6 +675,7 @@ export const useWorkflowRun = () => {
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {
       const {
+        workflowRunningData,
         setWorkflowRunningData,
         setIsListening,
         setShowVariableInspectPanel,
@@ -682,16 +683,27 @@ export const useWorkflowRun = () => {
         setListeningTriggerNodeId,
       } = workflowStore.getState()
 
-      setWorkflowRunningData({
-        result: {
-          status: WorkflowRunningStatus.Stopped,
-          inputs_truncated: false,
-          process_data_truncated: false,
-          outputs_truncated: false,
-        },
-        tracing: [],
-        resultText: '',
-      })
+      if (workflowRunningData) {
+        setWorkflowRunningData({
+          ...workflowRunningData,
+          result: {
+            ...workflowRunningData.result,
+            status: WorkflowRunningStatus.Stopped,
+          },
+        })
+      }
+      else {
+        setWorkflowRunningData({
+          result: {
+            status: WorkflowRunningStatus.Stopped,
+            inputs_truncated: false,
+            process_data_truncated: false,
+            outputs_truncated: false,
+          },
+          tracing: [],
+          resultText: '',
+        })
+      }
       setIsListening(false)
       setListeningTriggerType(null)
       setListeningTriggerNodeId(null)
