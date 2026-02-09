@@ -1,6 +1,5 @@
-import type { FlatNamespace } from 'i18next'
-import type { KebabCase } from 'string-ts'
-import { kebabCase } from 'es-toolkit/string'
+import { kebabCase } from 'string-ts'
+import { ObjectKeys } from '@/utils/object'
 import appAnnotation from '../i18n/en-US/app-annotation.json'
 import appApi from '../i18n/en-US/app-api.json'
 import appDebug from '../i18n/en-US/app-debug.json'
@@ -67,8 +66,11 @@ const resources = {
 }
 
 export type Resources = typeof resources
-export type NamespaceCamelCase = FlatNamespace
-export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
 
-export const namespacesCamelCase = Object.keys(resources) as NamespaceCamelCase[]
-export const namespacesKebabCase = namespacesCamelCase.map(ns => kebabCase(ns)) as NamespaceKebabCase[]
+export const namespacesCamelCase = ObjectKeys(resources)
+export type NamespaceCamelCase = typeof namespacesCamelCase[number]
+export const namespaces = namespacesCamelCase
+export type Namespace = NamespaceCamelCase
+
+export const namespacesKebabCase = namespacesCamelCase.map(ns => kebabCase(ns))
+export type NamespaceKebabCase = typeof namespacesKebabCase[number]
