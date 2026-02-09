@@ -27,6 +27,77 @@ import { Type } from '../../../llm/types'
 import ManageInputField from './manage-input-field'
 import { isSpecialVar, varTypeToStructType } from './utils'
 
+const isStructuredOutputChildren = (children?: Var['children']): children is StructuredOutput => {
+  return !!(children as StructuredOutput | undefined)?.schema?.properties
+}
+
+const matchesPath = (segments: string[], query: string) => {
+  return segments.join('.').toLowerCase().includes(query)
+}
+
+const matchesStructuredProperties = (
+  properties: Record<string, Field>,
+  query: string,
+  prefix: string[],
+): boolean => {
+  return Object.keys(properties).some((key) => {
+    const field = properties[key]
+    const nextPath = [...prefix, key]
+    if (matchesPath(nextPath, query))
+      return true
+
+    if (field.type === Type.object && field.properties)
+      return matchesStructuredProperties(field.properties, query, nextPath)
+
+    if (field.type === Type.array && field.items?.type === Type.object && field.items?.properties)
+      return matchesStructuredProperties(field.items.properties, query, nextPath)
+
+    return false
+  })
+}
+
+const matchesStructuredOutput = (
+  structuredOutput: StructuredOutput,
+  query: string,
+  prefix: string[],
+): boolean => {
+  return matchesStructuredProperties(structuredOutput.schema.properties, query, prefix)
+}
+
+const matchesVarChildren = (children: Var[], query: string, prefix: string[]): boolean => {
+  return children.some((child) => {
+    const nextPath = [...prefix, child.variable]
+    if (matchesPath(nextPath, query))
+      return true
+
+    const childChildren = child.children
+    if (!childChildren)
+      return false
+
+    if (Array.isArray(childChildren))
+      return matchesVarChildren(childChildren, query, nextPath)
+
+    if (isStructuredOutputChildren(childChildren))
+      return matchesStructuredOutput(childChildren, query, nextPath)
+
+    return false
+  })
+}
+
+const matchesNestedVar = (itemData: Var, query: string): boolean => {
+  const children = itemData.children
+  if (!children)
+    return false
+
+  if (Array.isArray(children))
+    return matchesVarChildren(children, query, [itemData.variable])
+
+  if (isStructuredOutputChildren(children))
+    return matchesStructuredOutput(children, query, [itemData.variable])
+
+  return false
+}
+
 type ItemProps = {
   nodeId: string
   title: string
@@ -362,7 +433,11 @@ const VarReferenceVars: FC<Props> = ({
       const matchedByTitle = titleLower.includes(normalizedSearchTextLower)
       const nodeVars = matchedByTitle
         ? node.vars
-        : node.vars.filter(v => v.variable.toLowerCase().includes(normalizedSearchTextLower))
+        : node.vars.filter((v) => {
+          if (v.variable.toLowerCase().includes(normalizedSearchTextLower))
+            return true
+          return matchesNestedVar(v, normalizedSearchTextLower)
+        })
       if (nodeVars.length === 0)
         return
       res.push({
