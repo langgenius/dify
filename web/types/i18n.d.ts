@@ -1,4 +1,4 @@
-import type { NamespaceCamelCase, Resources } from '../i18n-config/resources'
+import type { Namespace, Resources } from '../i18n-config/resources'
 import 'i18next'
 
 declare module 'i18next' {
@@ -10,7 +10,7 @@ declare module 'i18next' {
 }
 
 export type I18nKeysByPrefix<
-  NS extends NamespaceCamelCase,
+  NS extends Namespace,
   Prefix extends string = '',
 > = Prefix extends ''
   ? keyof Resources[NS]
@@ -21,7 +21,7 @@ export type I18nKeysByPrefix<
     : never
 
 export type I18nKeysWithPrefix<
-  NS extends NamespaceCamelCase,
+  NS extends Namespace,
   Prefix extends string = '',
 > = Prefix extends ''
   ? keyof Resources[NS]

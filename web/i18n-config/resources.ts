@@ -67,10 +67,8 @@ const resources = {
 
 export type Resources = typeof resources
 
-export const namespacesCamelCase = ObjectKeys(resources)
-export type NamespaceCamelCase = typeof namespacesCamelCase[number]
-export const namespaces = namespacesCamelCase
-export type Namespace = NamespaceCamelCase
+export const namespaces = ObjectKeys(resources)
+export type Namespace = typeof namespaces[number]
 
-export const namespacesKebabCase = namespacesCamelCase.map(ns => kebabCase(ns))
-export type NamespaceKebabCase = typeof namespacesKebabCase[number]
+export const namespacesInFileName = namespaces.map(ns => kebabCase(ns))
+export type NamespaceInFileName = typeof namespacesInFileName[number]
