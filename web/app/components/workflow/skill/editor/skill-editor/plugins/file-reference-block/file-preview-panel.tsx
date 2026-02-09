@@ -8,9 +8,11 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
+import SkillEditor from '@/app/components/workflow/skill/editor/skill-editor'
+import { useFileTypeInfo } from '@/app/components/workflow/skill/hooks/use-file-type-info'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
-import { useGetAppAssetFileDownloadUrl } from '@/service/use-app-asset'
+import { useGetAppAssetFileContent, useGetAppAssetFileDownloadUrl } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 
 type FilePreviewPanelProps = {
@@ -27,9 +29,33 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
 
   const isFolder = currentNode?.node_type === 'folder'
   const isPreviewEnabled = !isFolder && Boolean(appId && resourceId)
-  const { data: downloadUrlData, isLoading, error } = useGetAppAssetFileDownloadUrl(appId, resourceId, {
-    enabled: isPreviewEnabled,
+  const { isMarkdown } = useFileTypeInfo(isPreviewEnabled ? currentNode : undefined)
+  const isMarkdownPreview = isPreviewEnabled && isMarkdown
+  const isReadOnlyPreview = isPreviewEnabled && !isMarkdown
+
+  const {
+    data: fileContent,
+    isLoading: isContentLoading,
+    error: contentError,
+  } = useGetAppAssetFileContent(appId, resourceId, {
+    enabled: isMarkdownPreview,
   })
+
+  const {
+    data: downloadUrlData,
+    isLoading: isDownloadLoading,
+    error: downloadError,
+  } = useGetAppAssetFileDownloadUrl(appId, resourceId, {
+    enabled: isReadOnlyPreview,
+  })
+
+  const content = useMemo(() => {
+    if (!isMarkdownPreview || !fileContent)
+      return ''
+    if (typeof fileContent?.content === 'string')
+      return fileContent.content
+    return JSON.stringify(fileContent, null, 2)
+  }, [fileContent, isMarkdownPreview])
 
   const pathSegments = useMemo(
     () => (currentNode?.path ?? '').split('/').filter(Boolean),
@@ -125,17 +151,37 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
             {t('skillEditor.previewUnavailable')}
           </div>
         )}
-        {isPreviewEnabled && isLoading && (
+        {isMarkdownPreview && isContentLoading && (
           <div className="flex w-full items-center justify-center py-6">
             <Loading type="area" />
           </div>
         )}
-        {isPreviewEnabled && error && (
+        {isMarkdownPreview && contentError && (
           <div className="system-sm-regular text-text-tertiary">
             {t('skillSidebar.loadError')}
           </div>
         )}
-        {isPreviewEnabled && !isLoading && !error && downloadUrl && (
+        {isMarkdownPreview && !isContentLoading && !contentError && (
+          <SkillEditor
+            value={content}
+            editable={false}
+            compact
+            showLineNumbers
+            className="text-[14px] leading-[22px] text-text-primary"
+            placeholderClassName="hidden"
+          />
+        )}
+        {isReadOnlyPreview && isDownloadLoading && (
+          <div className="flex w-full items-center justify-center py-6">
+            <Loading type="area" />
+          </div>
+        )}
+        {isReadOnlyPreview && downloadError && (
+          <div className="system-sm-regular text-text-tertiary">
+            {t('skillSidebar.loadError')}
+          </div>
+        )}
+        {isReadOnlyPreview && !isDownloadLoading && !downloadError && downloadUrl && (
           <ReadOnlyFilePreview
             downloadUrl={downloadUrl}
             fileName={displayFileName}
@@ -143,7 +189,7 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
             fileSize={currentNode?.size ?? undefined}
           />
         )}
-        {isPreviewEnabled && !isLoading && !error && !downloadUrl && (
+        {isReadOnlyPreview && !isDownloadLoading && !downloadError && !downloadUrl && (
           <div className="system-sm-regular text-text-tertiary">
             {t('skillSidebar.loadError')}
           </div>
