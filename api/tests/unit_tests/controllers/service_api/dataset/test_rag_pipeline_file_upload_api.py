@@ -11,7 +11,7 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
 )
 
 
-def test_file_upload_response_serializes_created_at_to_unix_timestamp() -> None:
+def test_file_upload_response_serializes_created_at_to_isoformat() -> None:
     app = Flask(__name__)
     created_at = datetime(2026, 2, 9, 0, 0, tzinfo=UTC)
     upload_file = SimpleNamespace(
@@ -53,4 +53,4 @@ def test_file_upload_response_serializes_created_at_to_unix_timestamp() -> None:
             response, status_code = KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
 
     assert status_code == 201
-    assert response["created_at"] == int(created_at.timestamp())
+    assert response["created_at"] == created_at.isoformat()
