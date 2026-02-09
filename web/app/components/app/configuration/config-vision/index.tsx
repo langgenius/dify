@@ -100,7 +100,7 @@ const ConfigVision: FC = () => {
                     selected={file?.image?.detail === Resolution.high}
                     onSelect={noop}
                     className={cn(
-                      'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
                       file?.image?.detail !== Resolution.high && 'hover:border-components-option-card-option-border',
                     )}
                   />
@@ -109,7 +109,7 @@ const ConfigVision: FC = () => {
                     selected={file?.image?.detail === Resolution.low}
                     onSelect={noop}
                     className={cn(
-                      'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
                       file?.image?.detail !== Resolution.low && 'hover:border-components-option-card-option-border',
                     )}
                   />

@@ -61,7 +61,7 @@ const Switch = (
         setEnabled(checked)
         onChange?.(checked)
       }}
-      className={cn(wrapStyle[size], enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex  shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
+      className={cn(wrapStyle[size], enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
     >
       <span
         aria-hidden="true"

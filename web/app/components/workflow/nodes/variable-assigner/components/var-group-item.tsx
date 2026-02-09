@@ -148,7 +148,7 @@ const VarGroupItem: FC<Props> = ({
           )
         : t(`${i18nPrefix}.title`, { ns: 'workflow' })!}
       operations={(
-        <div className="flex h-6 items-center  space-x-2">
+        <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (
             <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary">{payload.output_type}</div>
           )}

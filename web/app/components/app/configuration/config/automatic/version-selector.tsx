@@ -65,7 +65,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({
             {value + 1}
             {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
           </div>
-          {moreThanOneVersion && <RiArrowDownSLine className="size-3 " />}
+          {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(

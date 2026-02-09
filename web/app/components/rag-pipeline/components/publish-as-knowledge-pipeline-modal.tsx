@@ -115,7 +115,7 @@ const PublishAsKnowledgePipelineModal = ({
             />
           </div>
           <div>
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary ">
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
               {t('common.publishAsPipeline.description', { ns: 'pipeline' })}
             </div>
             <Textarea

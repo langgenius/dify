@@ -33,7 +33,7 @@ const ExtractInput: FC<Props> = ({
   })
 
   return (
-    <div className="flex items-start  space-x-1">
+    <div className="flex items-start space-x-1">
       <Input
         instanceId="http-extract-number"
         className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}

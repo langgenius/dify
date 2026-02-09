@@ -59,7 +59,7 @@ const ResultText: FC<ResultTextProps> = ({
           )}
           {!!allFiles?.length && allFiles.map(item => (
             <div key={item.varName} className="system-xs-regular flex flex-col gap-1 px-4 py-2">
-              <div className="py-1 text-text-tertiary ">{item.varName}</div>
+              <div className="py-1 text-text-tertiary">{item.varName}</div>
               <FileList
                 files={item.list}
                 showDeleteAction={false}

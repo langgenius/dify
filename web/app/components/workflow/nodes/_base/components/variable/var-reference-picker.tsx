@@ -604,7 +604,7 @@ const VarReferencePicker: FC<Props> = ({
                       )}
                       {!hasValue && valueTypePlaceHolder && (
                         <Badge
-                          className=" absolute right-1 top-[50%] translate-y-[-50%] capitalize"
+                          className="absolute right-1 top-[50%] translate-y-[-50%] capitalize"
                           text={valueTypePlaceHolder}
                           uppercase={false}
                         />

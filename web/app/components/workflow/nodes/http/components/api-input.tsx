@@ -48,7 +48,7 @@ const ApiInput: FC<Props> = ({
   })
 
   return (
-    <div className="flex items-start  space-x-1">
+    <div className="flex items-start space-x-1">
       <Selector
         value={method}
         onChange={onMethodChange}

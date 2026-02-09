@@ -82,7 +82,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
       {/* Noise Effect */}
       {STYLE_MAP[plan].noise}
       <div className="flex flex-col px-5 py-4">
-        <div className=" flex flex-col gap-y-6 px-1 pt-10">
+        <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
             <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>

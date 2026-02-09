@@ -64,7 +64,7 @@ const SubVariablePicker: FC<Props> = ({
                   </div>
                 )
               : (
-                  <div className="system-sm-regular flex pl-1 text-components-input-text-placeholder  group-hover/sub-variable-picker:text-text-tertiary">
+                  <div className="system-sm-regular flex pl-1 text-components-input-text-placeholder group-hover/sub-variable-picker:text-text-tertiary">
                     <Variable02 className="mr-1 h-4 w-4 shrink-0" />
                     <span>{t('placeholder.select', { ns: 'common' })}</span>
                   </div>

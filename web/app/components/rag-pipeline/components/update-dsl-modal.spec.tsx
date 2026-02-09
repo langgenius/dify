@@ -145,22 +145,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
 
-// Mock FileReader
-class MockFileReader {
-  result: string | null = null
-  onload: ((e: { target: { result: string | null } }) => void) | null = null
-
-  readAsText(_file: File) {
-    // Simulate async file reading using queueMicrotask for more reliable async behavior
-    queueMicrotask(() => {
-      this.result = 'test file content'
-      if (this.onload) {
-        this.onload({ target: { result: this.result } })
-      }
-    })
-  }
-}
-
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -170,8 +154,6 @@ describe('UpdateDSLModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnBackup = vi.fn()
   const mockOnImport = vi.fn()
-  let originalFileReader: typeof FileReader
-
   const defaultProps = {
     onCancel: mockOnCancel,
     onBackup: mockOnBackup,
@@ -186,14 +168,6 @@ describe('UpdateDSLModal', () => {
       pipeline_id: 'test-pipeline-id',
     })
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-    // Mock FileReader
-    originalFileReader = globalThis.FileReader
-    globalThis.FileReader = MockFileReader as unknown as typeof FileReader
-  })
-
-  afterEach(() => {
-    globalThis.FileReader = originalFileReader
   })
 
   describe('rendering', () => {

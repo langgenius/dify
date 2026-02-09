@@ -35,7 +35,7 @@ const Alert: React.FC<Props> = ({
       <div
         className="relative flex space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg"
       >
-        <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-r  opacity-[0.4]', bgVariants({ type }))}>
+        <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-r opacity-[0.4]', bgVariants({ type }))}>
         </div>
         <div className="flex h-6 w-6 items-center justify-center">
           <RiInformation2Fill className="text-text-accent" />

@@ -199,7 +199,7 @@ const TextGeneration: FC<Props> = ({
       )}
       >
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? ' p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
               size={isPC ? 'large' : 'small'}

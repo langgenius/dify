@@ -347,7 +347,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {!isAdd && onRemove && (
                 <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
               )}
-              <div className="flex space-x-2 ">
+              <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button
                   variant="primary"

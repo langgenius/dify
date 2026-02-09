@@ -32,7 +32,7 @@ const Options: FC<Props> = ({
     }
   }, [payload, onChange])
   return (
-    <div className={cn(className, ' space-y-2')}>
+    <div className={cn(className, 'space-y-2')}>
       <CheckboxWithLabel
         label={t(`${I18N_PREFIX}.crawlSubPage`, { ns: 'datasetCreation' })}
         isChecked={payload.crawl_sub_pages}

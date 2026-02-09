@@ -27,7 +27,7 @@ const IdeaOutput: FC<Props> = ({
   return (
     <div className="mt-4 text-[0px]">
       <div
-        className="mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary"
+        className="mb-1.5 flex cursor-pointer items-center text-sm font-medium leading-5 text-text-primary"
         onClick={toggleFoldIdeaOutput}
       >
         <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}</div>

@@ -22,7 +22,7 @@ const InputHasSetMultipleValue: FC<Props> = ({
         {!readOnly && (
           <div className="cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary">
             <RiCloseLine
-              className="size-3.5 "
+              className="size-3.5"
               onClick={onClear}
             />
           </div>

@@ -42,7 +42,7 @@ const Item: FC<Props> = ({
       />
       <div className="ml-2 flex w-0 grow">
         <div className="w-0 grow">
-          <div className="system-sm-medium h-4 truncate leading-4 text-text-primary ">{getLocalizedText(payload.label)}</div>
+          <div className="system-sm-medium h-4 truncate leading-4 text-text-primary">{getLocalizedText(payload.label)}</div>
           <div className="system-xs-regular h-5 truncate leading-5 text-text-tertiary">{getLocalizedText(payload.brief)}</div>
           <div className="system-xs-regular flex space-x-1 text-text-tertiary">
             <div>{payload.org}</div>

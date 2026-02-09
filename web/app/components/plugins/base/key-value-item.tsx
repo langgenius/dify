@@ -51,7 +51,7 @@ const KeyValueItem: FC<Props> = ({
     <div className="flex items-center gap-1">
       <span className={cn('system-xs-medium flex flex-col items-start justify-center text-text-tertiary', labelWidthClassName)}>{label}</span>
       <div className="flex items-center justify-center gap-0.5">
-        <span className={cn(valueMaxWidthClassName, ' system-xs-medium truncate text-text-secondary')}>
+        <span className={cn(valueMaxWidthClassName, 'system-xs-medium truncate text-text-secondary')}>
           {maskedValue || value}
         </span>
         <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">

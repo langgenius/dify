@@ -130,7 +130,7 @@ const Tools = () => {
           className="flex h-7 cursor-pointer items-center px-3 text-xs font-medium text-gray-700"
           onClick={() => handleOpenExternalDataToolModal({}, -1)}
         >
-          <RiAddLine className="mr-[5px] h-3.5 w-3.5 " />
+          <RiAddLine className="mr-[5px] h-3.5 w-3.5" />
           {t('operation.add', { ns: 'common' })}
         </div>
       </div>
