@@ -48,6 +48,7 @@ export const useBillingPay = () => {
 }
 
 export const useCheckNotion = () => {
+  const { t } = useTranslation()
   const router = useRouter()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const [canBinding, setCanBinding] = useState(false)
@@ -64,16 +65,18 @@ export const useCheckNotion = () => {
   useEffect(() => {
     if (type === 'notion') {
       if (notionError) {
+        const errorKey = `error.${notionError}`
+        const translated = t(errorKey, { ns: 'common', defaultValue: '' })
         setConfirm({
           type: 'warning',
-          title: notionError,
+          title: translated || notionError,
         })
       }
       else if (notionCode) {
         setCanBinding(true)
       }
     }
-  }, [type, notionCode, notionError])
+  }, [type, notionCode, notionError, t])
 
   return confirm
 }

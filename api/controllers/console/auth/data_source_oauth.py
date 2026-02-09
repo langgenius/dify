@@ -107,7 +107,7 @@ class OAuthDataSourceCallback(Resource):
 
             return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error={error}")
         else:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error=访问被拒绝")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error=access_denied")
 
 
 @console_ns.route("/oauth/data-source/binding/<string:provider>")

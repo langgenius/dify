@@ -644,5 +644,6 @@
   "error.billing_documents_limit_exceeded": "文档数量已达订阅上限。",
   "error.billing_workspace_custom_limit_exceeded": "工作区自定义功能已达订阅上限。",
   "error.billing_annotation_quota_exceeded": "标注配额已达订阅上限。",
+  "error.access_denied": "访问被拒绝。",
   "error.billing_not_enabled": "计费功能未启用。"
 }
