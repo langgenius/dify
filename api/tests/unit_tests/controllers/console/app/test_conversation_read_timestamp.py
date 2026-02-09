@@ -21,9 +21,14 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged():
         _get_conversation(app_model, "conversation-id")
 
         statement = mock_session.execute.call_args[0][0]
-        sql_text = str(statement).lower()
+        compiled = statement.compile()
+        sql_text = str(compiled).lower()
+        compact_sql_text = sql_text.replace(" ", "")
+        params = compiled.params
 
-        assert "updated_at=current_timestamp" not in sql_text
-        assert "updated_at=conversations.updated_at" in sql_text
-        assert "read_at" in sql_text
-        assert "read_account_id" in sql_text
+        assert "updated_at=current_timestamp" not in compact_sql_text
+        assert "updated_at=conversations.updated_at" in compact_sql_text
+        assert "read_at=:read_at" in compact_sql_text
+        assert "read_account_id=:read_account_id" in compact_sql_text
+        assert params["read_at"] == datetime(2026, 2, 9, 0, 0, 0)
+        assert params["read_account_id"] == "account-id"
