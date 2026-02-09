@@ -2,6 +2,7 @@
 import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
+import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import dify from './eslint-rules/index.js'
@@ -80,7 +81,47 @@ export default antfu(
     },
   },
   {
-    plugins: { dify },
+    name: 'dify/custom/setup',
+    plugins: {
+      dify,
+      hyoban,
+    },
+  },
+  {
+    files: ['**/*.tsx'],
+    rules: {
+      'hyoban/prefer-tailwind-icons': ['warn', {
+        prefix: 'i-',
+        propMappings: {
+          size: 'size',
+          width: 'w',
+          height: 'h',
+        },
+        libraries: [
+          {
+            prefix: 'i-custom-',
+            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
+            name: '^(?<name>.*)$',
+          },
+          {
+            source: '^@remixicon/react$',
+            name: '^(?<set>Ri)(?<name>.+)$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/24/outline$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
+            name: '^(?<name>.*)Icon$',
+          },
+        ],
+      }],
+    },
   },
   {
     files: ['i18n/**/*.json'],
@@ -89,7 +130,7 @@ export default antfu(
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
-      'dify/valid-i18n-keys': 'error',
+      'hyoban/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
       'dify/consistent-placeholders': 'error',
     },
@@ -97,7 +138,7 @@ export default antfu(
   {
     files: ['**/package.json'],
     rules: {
-      'dify/no-version-prefix': 'error',
+      'hyoban/no-dependency-version-prefix': 'error',
     },
   },
 )

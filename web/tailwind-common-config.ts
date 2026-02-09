@@ -1,6 +1,8 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
+import { importSvgCollections } from 'iconify-import-svg'
 // @ts-expect-error workaround for turbopack issue
 import { cssAsPlugin } from './tailwind-css-plugin.ts'
 // @ts-expect-error workaround for turbopack issue
@@ -158,6 +160,26 @@ const config = {
   },
   plugins: [
     tailwindTypography,
+    iconsPlugin({
+      collections: {
+        ...getIconCollections(['heroicons', 'ri']),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
+          prefix: 'custom-public',
+          ignoreImportErrors: true,
+        }),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
+          prefix: 'custom-vender',
+          ignoreImportErrors: true,
+        }),
+      },
+      extraProperties: {
+        width: '1rem',
+        height: '1rem',
+        display: 'block',
+      },
+    }),
     cssAsPlugin([
       path.resolve(_dirname, './app/styles/globals.css'),
     ]),
