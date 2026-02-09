@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.file import File
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 
@@ -62,6 +63,7 @@ class MessageListItem(ResponseModel):
     status: str
     error: str | None = None
     generation_detail: JSONValueType | None = Field(default=None, validation_alias="generation_detail_dict")
+    extra_contents: list[ExecutionExtraContentDomainModel] = Field(default_factory=list)
 
     @field_validator("inputs", mode="before")
     @classmethod
