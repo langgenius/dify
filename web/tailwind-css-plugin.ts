@@ -1,14 +1,11 @@
 import type { PluginCreator } from 'tailwindcss/types/config'
-import fs from 'node:fs'
-import postcss from 'postcss'
-import postcssJs from 'postcss-js'
+import { readFileSync } from 'node:fs'
+import { parse } from 'postcss'
+import { objectify } from 'postcss-js'
 
 export const cssAsPlugin: (cssPath: string[]) => PluginCreator = (cssPath: string[]) => {
   return ({ addUtilities, addComponents, addBase }) => {
-    const jssList = cssPath.map((p) => {
-      const css = fs.readFileSync(p, 'utf8')
-      return postcssJs.objectify(postcss.parse(css))
-    })
+    const jssList = cssPath.map(p => objectify(parse(readFileSync(p, 'utf8'))))
 
     for (const jss of jssList) {
       if (jss['@layer utilities'])
