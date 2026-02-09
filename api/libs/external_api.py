@@ -16,6 +16,22 @@ def http_status_message(code):
     return HTTP_STATUS_CODES.get(code, "")
 
 
+def abort_with_code(status: int, message: str, error_code: str) -> None:
+    """Abort with a custom error_code that survives through Flask-RESTX's error handler.
+
+    Flask's abort(code=) conflicts with kwargs named 'code', and Flask-RESTX
+    bypasses custom handlers when e.data is set. This helper works around both
+    issues by setting error_code as a custom attribute on the exception.
+    """
+    from flask import abort
+
+    try:
+        abort(status, message)
+    except HTTPException as e:
+        e.error_code = error_code
+        raise
+
+
 def register_external_error_handlers(api: Api):
     @api.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
@@ -36,15 +52,19 @@ def register_external_error_handlers(api: Api):
         if default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)":
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
-        # Merge e.data if it contains code/message from abort() or custom exceptions
+        # Check for custom error_code attribute (set by abort_with_code helper)
+        custom_error_code = getattr(e, "error_code", None)
+        has_custom_code = False
+        if custom_error_code:
+            default_data["code"] = custom_error_code
+            has_custom_code = True
+
+        # Merge e.data if it contains message from abort() or custom exceptions
         extra = getattr(e, "data", None)
         if isinstance(extra, dict):
             # message from abort(..., message="...") takes priority
             if "message" in extra and extra["message"]:
                 default_data["message"] = extra["message"]
-            # code from abort(..., code="...") takes priority
-            if "code" in extra and extra["code"]:
-                default_data["code"] = extra["code"]
             # optionally pass through params field
             if "params" in extra:
                 default_data["params"] = extra["params"]
@@ -61,9 +81,9 @@ def register_external_error_handlers(api: Api):
             return data, status_code, headers
         elif status_code == 400:
             msg = default_data["message"]
-            if isinstance(msg, Mapping) and msg and "code" not in default_data:
+            if isinstance(msg, Mapping) and msg and not has_custom_code:
                 # Convert param errors like {"field": "reason"} into a friendly shape
-                # Only apply this when no explicit code was provided via abort()
+                # Only apply this when no explicit error_code was provided via abort()
                 param_key, param_value = next(iter(msg.items()))
                 data = {
                     "code": "invalid_param",
