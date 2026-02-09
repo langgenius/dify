@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator, Mapping
 from typing import Union
 
@@ -11,6 +12,7 @@ from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
 from models import Account
@@ -101,6 +103,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             if not workflow:
                 raise ValueError("unexpected app type")
 
+            pause_config = PauseStateLayerConfig(
+                session_factory=db.engine,
+                state_owner_user_id=workflow.created_by,
+            )
+
             return AdvancedChatAppGenerator().generate(
                 app_model=app,
                 workflow=workflow,
@@ -112,7 +119,9 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
+                workflow_run_id=str(uuid.uuid4()),
                 streaming=stream,
+                pause_state_config=pause_config,
             )
         elif app.mode == AppMode.AGENT_CHAT:
             return AgentChatAppGenerator().generate(
@@ -159,6 +168,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if not workflow:
             raise ValueError("unexpected app type")
 
+        pause_config = PauseStateLayerConfig(
+            session_factory=db.engine,
+            state_owner_user_id=workflow.created_by,
+        )
+
         return WorkflowAppGenerator().generate(
             app_model=app,
             workflow=workflow,
@@ -167,6 +181,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
             call_depth=1,
+            pause_state_config=pause_config,
         )
 
     @classmethod

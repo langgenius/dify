@@ -58,5 +58,15 @@
   "generation.tabs.create": "Zaženi enkrat",
   "generation.tabs.saved": "Shranjeno",
   "generation.title": "AI Zaključek",
+  "humanInput.completed": "Videti je, da je bila ta zahteva obravnavana drugje.",
+  "humanInput.expirationTimeNowOrFuture": "To dejanje bo poteklo {{relativeTime}}.",
+  "humanInput.expired": "Videti je, da je ta zahteva potekla.",
+  "humanInput.expiredTip": "To dejanje je poteklo.",
+  "humanInput.formNotFound": "Obrazec ni bil najden.",
+  "humanInput.rateLimitExceeded": "Preveč zahtev, poskusite znova kasneje.",
+  "humanInput.recorded": "Vaš vnos je bil zabeležen.",
+  "humanInput.sorry": "Oprostite!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Hvala!",
   "login.backToHome": "Nazaj na začetno stran"
 }

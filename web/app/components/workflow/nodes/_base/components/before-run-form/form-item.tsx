@@ -82,7 +82,7 @@ const FormItem: FC<Props> = ({
               <div className="p-[1px]">
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
-              <div className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-gray-700" title={nodeName}>
+              <div className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-text-secondary" title={nodeName}>
                 {nodeName}
               </div>
               <Line3 className="mr-0.5"></Line3>

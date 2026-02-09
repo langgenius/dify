@@ -40,7 +40,7 @@ const WorkflowVariableBlockReplacementBlock = ({
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
     return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], ragVariables))
-  }, [onInsert, workflowNodesMap, getVarType, variables])
+  }, [onInsert, workflowNodesMap, getVarType, variables, ragVariables])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

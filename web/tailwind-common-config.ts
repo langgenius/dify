@@ -104,6 +104,7 @@ const config = {
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'workflow-process-paused-bg': 'var(--color-workflow-process-paused-bg)',
         'workflow-run-failed-bg': 'var(--color-workflow-run-failed-bg)',
         'workflow-batch-failed-bg': 'var(--color-workflow-batch-failed-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
@@ -140,6 +141,7 @@ const config = {
         'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
         'knowledge-pipeline-creation-footer-bg': 'var(--color-knowledge-pipeline-creation-footer-bg)',
         'progress-bar-indeterminate-stripe': 'var(--color-progress-bar-indeterminate-stripe)',
+        'chat-answer-human-input-form-divider-bg': 'var(--color-chat-answer-human-input-form-divider-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

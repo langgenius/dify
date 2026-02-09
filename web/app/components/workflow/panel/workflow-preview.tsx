@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import {
@@ -25,6 +26,8 @@ import {
   WorkflowRunningStatus,
 } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
+import HumanInputFilledFormList from './human-input-filled-form-list'
+import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 
 const WorkflowPreview = () => {
@@ -37,6 +40,8 @@ const WorkflowPreview = () => {
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
+  const humanInputFormDataList = useStore(s => s.workflowRunningData?.humanInputFormDataList)
+  const humanInputFilledFormDataList = useStore(s => s.workflowRunningData?.humanInputFilledFormDataList)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
   const switchTab = async (tab: string) => {
@@ -45,7 +50,7 @@ const WorkflowPreview = () => {
 
   useEffect(() => {
     if (showDebugAndPreviewPanel && showInputsPanel)
-      setCurrentTab('INPUT')
+      switchTab('INPUT')
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
@@ -60,6 +65,8 @@ const WorkflowPreview = () => {
 
     if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
+    if (status === WorkflowRunningStatus.Paused)
+      switchTab('RESULT')
   }, [workflowRunningData])
 
   const [isResizing, setIsResizing] = useState(false)
@@ -93,6 +100,10 @@ const WorkflowPreview = () => {
       window.removeEventListener('mouseup', stopResizing)
     }
   }, [resize, stopResizing])
+
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+    await submitHumanInputForm(formToken, formData)
+  }, [])
 
   return (
     <div
@@ -174,9 +185,21 @@ const WorkflowPreview = () => {
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
           {currentTab === 'RESULT' && (
-            <>
+            <div className="p-2">
+              {humanInputFormDataList && humanInputFormDataList.length > 0 && (
+                <HumanInputFormList
+                  humanInputFormDataList={humanInputFormDataList}
+                  onHumanInputFormSubmit={handleSubmitHumanInputForm}
+                />
+              )}
+              {humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
+                <HumanInputFilledFormList
+                  humanInputFilledFormDataList={humanInputFilledFormDataList}
+                />
+              )}
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
                 outputs={workflowRunningData?.resultText}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
@@ -198,7 +221,7 @@ const WorkflowPreview = () => {
                   <div>{t('operation.copy', { ns: 'common' })}</div>
                 </Button>
               )}
-            </>
+            </div>
           )}
           {currentTab === 'DETAIL' && (
             <ResultPanel
