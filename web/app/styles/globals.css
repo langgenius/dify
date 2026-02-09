@@ -659,9 +659,8 @@ button:focus-within {
     border-radius: 64px;
   }
 
+  /* border radius end */
 }
-
-/* border radius end */
 
 .link {
   @apply text-blue-600 cursor-pointer hover:opacity-80 transition-opacity duration-200 ease-in-out;

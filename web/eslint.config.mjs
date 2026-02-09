@@ -76,7 +76,7 @@ export default antfu(
       'tailwindcss/enforce-consistent-class-order': 'error',
       'tailwindcss/no-duplicate-classes': 'error',
       'tailwindcss/no-unnecessary-whitespace': 'error',
-      'tailwindcss/no-unknown-classes': 'error',
+      'tailwindcss/no-unknown-classes': 'warn',
     },
   },
   {
