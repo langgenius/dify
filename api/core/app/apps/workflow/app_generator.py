@@ -25,8 +25,8 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
-from core.app.layers.sandbox_layer import SandboxLayer
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.layers.sandbox_layer import SandboxLayer
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError

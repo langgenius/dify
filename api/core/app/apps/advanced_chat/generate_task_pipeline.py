@@ -78,7 +78,6 @@ from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, LLMGenerationDetail, Message, MessageFile
-from models.enums import CreatorUserRole
 from models.enums import CreatorUserRole, MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.workflow import Workflow

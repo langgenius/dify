@@ -1879,7 +1879,7 @@ def setup_sandbox_system_config(provider_type: str, config: str):
         flask setup-sandbox-system-config --provider-type docker --config '{"docker_sock": "unix:///var/run/docker.sock"}'
         flask setup-sandbox-system-config --provider-type local --config '{}'
         flask setup-sandbox-system-config --provider-type ssh --config \
-        '{"ssh_host": "agentbox", "ssh_port": "22", "ssh_username": "agentbox", "ssh_password": "agentbox", "base_working_path": "/workspace/sandboxes"}'
+        '{"ssh_host": "agentbox", "ssh_port": "22", "ssh_username": "agentbox", "ssh_password": "agentbox"}'
     """
     from models.sandbox import SandboxProviderSystemConfig
 
