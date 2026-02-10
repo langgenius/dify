@@ -105,6 +105,8 @@ class SSHSandboxEnvironment(VirtualEnvironment):
                 self._run_command(client, f"mkdir -p {shlex.quote(working_path)}")
                 arch_stdout = self._run_command(client, "uname -m")
                 os_stdout = self._run_command(client, "uname -s")
+        except SandboxConfigValidationError as e:
+            raise ValueError(f"SSH configuration validation failed, please check sandbox provider: {e}") from e
         except Exception as e:
             raise VirtualEnvironmentLaunchFailedError(f"Failed to construct SSH environment: {e}") from e
 

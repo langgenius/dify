@@ -91,7 +91,11 @@ class SandboxBashTool(Tool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         command = tool_parameters.get("bash", "")
         if not command:
-            yield self.create_text_message("Error: No command provided")
+            sandbox_debug("bash_tool", "parameters", tool_parameters)
+            yield self.create_text_message(
+                'Error: No command provided. The "bash" parameter is required and must contain '
+                'the shell command to execute. Example: {"bash": "ls -la"}'
+            )
             return
 
         try:
