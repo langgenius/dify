@@ -259,9 +259,18 @@ class CeleryConfig(DatabaseConfig):
         description="Password of the Redis Sentinel master.",
         default=None,
     )
+
     CELERY_SENTINEL_SOCKET_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
+    )
+
+    CELERY_TASK_ANNOTATIONS: dict[str, Any] | None = Field(
+        description=(
+            "Annotations for Celery tasks as a JSON mapping of task name -> options "
+            "(for example, rate limits or other task-specific settings)."
+        ),
+        default=None,
     )
 
     @computed_field
