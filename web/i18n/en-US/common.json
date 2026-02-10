@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Write your prompt word here, enter '{' to insert a variable, enter '/' to insert a prompt content block",
   "promptEditor.query.item.desc": "Insert user query template",
   "promptEditor.query.item.title": "Query",
+  "promptEditor.requestURL.item.desc": "Insert request URL",
+  "promptEditor.requestURL.item.title": "Request URL",
   "promptEditor.variable.item.desc": "Insert Variables & External Tools",
   "promptEditor.variable.item.title": "Variables & External Tools",
   "promptEditor.variable.modal.add": "New variable",

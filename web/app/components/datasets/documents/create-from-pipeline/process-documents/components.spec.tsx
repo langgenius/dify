@@ -1,7 +1,7 @@
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { z } from 'zod'
+import * as z from 'zod'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'
 import Actions from './actions'
@@ -53,7 +53,7 @@ const createFailingSchema = () => {
         issues: [{ path: ['field1'], message: 'is required' }],
       },
     }),
-  } as unknown as z.ZodSchema
+  } as unknown as z.ZodType
 }
 
 // ==========================================
