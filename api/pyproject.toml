@@ -14,6 +14,7 @@ dependencies = [
     "celery~=5.5.2",
     "charset-normalizer>=3.4.4",
     "daytona==0.128.1",
+    "fastopenapi[flask]>=0.7.0",
     "flask~=3.1.2",
     "flask-compress>=1.17,<1.18",
     "flask-cors~=6.0.0",
