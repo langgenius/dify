@@ -26,6 +26,7 @@ from controllers.console.datasets.datasets_document import (
 from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
+    IndexingEstimateError,
     InvalidActionError,
     InvalidMetadataError,
 )
@@ -846,18 +847,33 @@ class TestDocumentIndexingEstimateApi:
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
             doc_form="text",
+            dataset_process_rule=None,
         )
 
-        # Mock file to return None so it raises NotFound before trying IndexingRunner
+        upload_file = MagicMock()
+
+        mock_indexing_runner = MagicMock()
+        mock_indexing_runner.indexing_estimate.side_effect = RuntimeError("Some indexing error")
+
         with (
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
                 "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(where=lambda *a: MagicMock(first=lambda: None)),
+                return_value=MagicMock(
+                    where=MagicMock(return_value=MagicMock(first=MagicMock(return_value=upload_file)))
+                ),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.ExtractSetting",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.IndexingRunner",
+                return_value=mock_indexing_runner,
             ),
         ):
-            with pytest.raises(NotFound):
+            with pytest.raises(IndexingEstimateError):
                 method(api, "ds-1", "doc-1")
 
     def test_get_finished(self, app, patch_tenant):

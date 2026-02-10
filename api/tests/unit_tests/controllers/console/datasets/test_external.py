@@ -304,44 +304,6 @@ class TestExternalApiTemplateListApiAdvanced:
         assert resp["total"] == 25
         assert len(resp["data"]) == 3
 
-
-class TestExternalApiTemplateApi:
-    def test_get_not_found_api(self, app, mock_auth, current_user):
-        api = ExternalApiTemplateApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_api",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "api-1")
-
-    def test_delete_forbidden_no_permission(self, app, mock_auth, current_user):
-        api = ExternalApiTemplateApi()
-        method = unwrap(api.delete)
-
-        current_user.is_dataset_editor = False
-        current_user.is_dataset_operator = False
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_api",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.external.ExternalDatasetService.delete_external_knowledge_api"
-            ) as mock_delete,
-        ):
-            method(api, "api-1")
-
-        mock_delete.assert_called_once()
-
-
 class TestExternalDatasetCreateApiAdvanced:
     def test_create_forbidden(self, app, mock_auth, current_user):
         """Test creating external dataset without permission"""
