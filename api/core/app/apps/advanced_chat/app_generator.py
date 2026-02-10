@@ -510,14 +510,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     sandbox = SandboxService.create_draft(
                         tenant_id=application_generate_entity.app_config.tenant_id,
                         app_id=application_generate_entity.app_config.app_id,
-                        user_id=application_generate_entity.user_id,
+                        user_id=user.id,
                         sandbox_provider=sandbox_provider,
                     )
                 else:
                     sandbox = SandboxService.create(
                         tenant_id=application_generate_entity.app_config.tenant_id,
                         app_id=application_generate_entity.app_config.app_id,
-                        user_id=application_generate_entity.user_id,
+                        user_id=user.id,
                         sandbox_id=conversation.id,
                         sandbox_provider=sandbox_provider,
                     )

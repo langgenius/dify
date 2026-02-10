@@ -326,14 +326,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     sandbox = SandboxService.create_draft(
                         tenant_id=application_generate_entity.app_config.tenant_id,
                         app_id=application_generate_entity.app_config.app_id,
-                        user_id=application_generate_entity.user_id,
+                        user_id=user.id,
                         sandbox_provider=sandbox_provider,
                     )
                 else:
                     sandbox = SandboxService.create(
                         tenant_id=application_generate_entity.app_config.tenant_id,
                         app_id=application_generate_entity.app_config.app_id,
-                        user_id=application_generate_entity.user_id,
+                        user_id=user.id,
                         sandbox_id=application_generate_entity.workflow_execution_id,
                         sandbox_provider=sandbox_provider,
                     )
