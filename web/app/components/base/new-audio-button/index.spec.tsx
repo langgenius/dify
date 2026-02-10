@@ -25,29 +25,15 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip-wrapper" data-popup={popupContent}>
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  ActionButtonState: { Active: 'active', Default: 'default' },
-  default: ({ children, onClick, state, disabled }: { children: React.ReactNode, onClick: () => void, state: string, disabled: boolean }) => (
-    <button
-      data-testid="action-button"
-      data-state={state}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 describe('AudioBtn', () => {
+  const getButton = () => screen.getByRole('button')
+
+  const hoverAndCheckTooltip = async (expectedText: string) => {
+    const button = getButton()
+    await userEvent.hover(button)
+    expect(await screen.findByText(expectedText)).toBeInTheDocument()
+  }
+
   const getAudioCallback = () => {
     const lastCall = mockGetAudioPlayer.mock.calls[mockGetAudioPlayer.mock.calls.length - 1]
     const callback = lastCall?.find((arg: unknown) => typeof arg === 'function') as ((event: string) => void) | undefined
@@ -71,7 +57,7 @@ describe('AudioBtn', () => {
       ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ token: 'test-token' })
 
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       expect(mockGetAudioPlayer.mock.calls[0][0]).toBe('/text-to-audio')
@@ -83,7 +69,7 @@ describe('AudioBtn', () => {
       ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/apps/123/chat')
 
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       expect(mockGetAudioPlayer.mock.calls[0][0]).toBe('/apps/123/text-to-audio')
@@ -95,7 +81,7 @@ describe('AudioBtn', () => {
       ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/explore/installed/app')
 
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       expect(mockGetAudioPlayer.mock.calls[0][0]).toBe('/installed-apps/456/text-to-audio')
@@ -103,31 +89,29 @@ describe('AudioBtn', () => {
   })
 
   describe('State Management', () => {
-    it('should start in initial state', () => {
+    it('should start in initial state', async () => {
       render(<AudioBtn value="test" />)
 
-      expect(screen.getByTestId('tooltip-wrapper')).toHaveAttribute('data-popup', 'play')
-      expect(screen.getByTestId('action-button')).toHaveAttribute('data-state', 'default')
-      expect(screen.getByTestId('action-button')).not.toBeDisabled()
+      await hoverAndCheckTooltip('play')
+      expect(getButton()).toHaveClass('action-btn')
+      expect(getButton()).not.toBeDisabled()
     })
 
     it('should transition to playing state', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       act(() => {
         getAudioCallback()('play')
       })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('tooltip-wrapper')).toHaveAttribute('data-popup', 'playing'),
-      )
-      expect(screen.getByTestId('action-button')).toHaveAttribute('data-state', 'active')
+      await hoverAndCheckTooltip('playing')
+      expect(getButton()).toHaveClass('action-btn-active')
     })
 
     it('should transition to ended state', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       act(() => {
         getAudioCallback()('play')
@@ -136,15 +120,13 @@ describe('AudioBtn', () => {
         getAudioCallback()('ended')
       })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('tooltip-wrapper')).toHaveAttribute('data-popup', 'play'),
-      )
-      expect(screen.getByTestId('action-button')).toHaveAttribute('data-state', 'default')
+      await hoverAndCheckTooltip('play')
+      expect(getButton()).not.toHaveClass('action-btn-active')
     })
 
     it('should handle paused event', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       act(() => {
         getAudioCallback()('play')
@@ -153,70 +135,64 @@ describe('AudioBtn', () => {
         getAudioCallback()('paused')
       })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('tooltip-wrapper')).toHaveAttribute('data-popup', 'play'),
-      )
+      await hoverAndCheckTooltip('play')
     })
 
     it('should handle error event', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       act(() => {
         getAudioCallback()('error')
       })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('tooltip-wrapper')).toHaveAttribute('data-popup', 'play'),
-      )
+      await hoverAndCheckTooltip('play')
     })
 
     it('should handle loaded event', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       act(() => {
         getAudioCallback()('loaded')
       })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('tooltip-wrapper')).toHaveAttribute('data-popup', 'loading'),
-      )
+      await hoverAndCheckTooltip('loading')
     })
   })
 
   describe('Play/Pause', () => {
     it('should call playAudio when clicked', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       await waitFor(() => expect(mockPlayAudio).toHaveBeenCalled())
     })
 
     it('should call pauseAudio when clicked while playing', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       act(() => {
         getAudioCallback()('play')
       })
 
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
       await waitFor(() => expect(mockPauseAudio).toHaveBeenCalled())
     })
 
     it('should disable button when loading', async () => {
       render(<AudioBtn value="test" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
-      await waitFor(() => expect(screen.getByTestId('action-button')).toBeDisabled())
+      await waitFor(() => expect(getButton()).toBeDisabled())
     })
   })
 
   describe('Props', () => {
     it('should pass props to audio player', async () => {
       render(<AudioBtn value="hello" id="msg-1" voice="en-US" />)
-      await userEvent.click(screen.getByTestId('action-button'))
+      await userEvent.click(getButton())
 
       await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
       const call = mockGetAudioPlayer.mock.calls[0]
