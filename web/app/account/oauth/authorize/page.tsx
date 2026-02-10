@@ -7,7 +7,6 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import dayjs from 'dayjs'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
@@ -29,7 +28,7 @@ import {
 function setItemWithExpiry(key: string, value: string, ttl: number) {
   const item = {
     value,
-    expiry: dayjs().add(ttl, 'seconds').unix(),
+    expiry: Math.floor((Date.now() + ttl * 1000) / 1000),
   }
   localStorage.setItem(key, JSON.stringify(item))
 }
