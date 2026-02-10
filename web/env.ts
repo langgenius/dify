@@ -9,7 +9,7 @@ const CLIENT_ENV_PREFIX = 'NEXT_PUBLIC_'
 type ClientSchema = Record<`${typeof CLIENT_ENV_PREFIX}${string}`, z.ZodType>
 
 const coercedBoolean = z.string().transform(s => s !== 'false' && s !== '0')
-const coercedNumber = z.coerce.number().int().positive()
+const coercedNumber = z.string().transform(s => Number.parseInt(s, 10)).pipe(z.number())
 
 /// keep-sorted
 const clientSchema = {
