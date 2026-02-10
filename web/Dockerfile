@@ -65,8 +65,8 @@ RUN pnpm add -g pm2
 ARG dify_uid=1001
 RUN addgroup -S -g ${dify_uid} dify && \
     adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
-    mkdir /app && \
-    mkdir /.pm2 && \
+    mkdir -p /app && \
+    mkdir -p /.pm2 && \
     chown -R dify:dify /app /.pm2
 
 
