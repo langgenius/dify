@@ -365,7 +365,7 @@ class TestDatasourceAuth:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
         ):
@@ -428,7 +428,7 @@ class TestDatasourceAuthDeleteApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
         ):
@@ -470,7 +470,7 @@ class TestDatasourceAuthUpdateApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch.object(
@@ -494,7 +494,7 @@ class TestDatasourceAuthUpdateApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch.object(
@@ -560,7 +560,7 @@ class TestDatasourceAuthListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch.object(
@@ -581,7 +581,7 @@ class TestDatasourceAuthListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch.object(
@@ -672,7 +672,7 @@ class TestDatasourceAuthOauthCustomClient:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
             patch.object(
@@ -747,7 +747,7 @@ class TestDatasourceAuthDefaultApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(MagicMock(), "tenant-1"),
             ),
         ):

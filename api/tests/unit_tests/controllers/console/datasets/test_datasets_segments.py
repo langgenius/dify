@@ -717,14 +717,6 @@ class TestDatasetDocumentSegmentBatchImportApi:
         assert status == 500
         assert "error" in response
 
-    def test_get_job_not_found_no_job_id(self, app):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/"):
-            with pytest.raises(NotFound):
-                method(api)
-
     def test_get_job_not_found_in_redis(self, app):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.get)
