@@ -11,7 +11,7 @@ type ClientSchema = Record<`${typeof CLIENT_ENV_PREFIX}${string}`, z.ZodType>
 const coercedBoolean = z.string()
   .refine(s => s === 'true' || s === 'false' || s === '0' || s === '1')
   .transform(s => s === 'true' || s === '1')
-const coercedNumber = z.coerce.number().positive()
+const coercedNumber = z.coerce.number().int().positive()
 
 /// keep-sorted
 const clientSchema = {
