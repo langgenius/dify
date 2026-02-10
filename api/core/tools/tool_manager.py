@@ -272,58 +272,67 @@ class ToolManager:
                 lock = redis_client.lock(lock_key, timeout=30)
                 if lock.acquire(blocking=False):
                     try:
-                        # double-check after acquiring lock: another request may have already refreshed
-                        db.session.refresh(builtin_provider)
-                        if builtin_provider.expires_at != -1 and (
-                            builtin_provider.expires_at - 60
-                        ) < int(time.time()):
-                            # TODO: circular import
-                            from core.plugin.impl.oauth import OAuthHandler
-                            from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+                        # Use an explicit session to ensure commit persistence in
+                        # Celery worker and gevent greenlet contexts where the
+                        # Flask-SQLAlchemy scoped db.session does not reliably persist.
+                        with Session(db.engine) as session:
+                            # double-check after acquiring lock: re-read from DB
+                            bp = session.get(BuiltinToolProvider, builtin_provider.id)
+                            if bp is not None and bp.expires_at != -1 and (
+                                bp.expires_at - 60
+                            ) < int(time.time()):
+                                # TODO: circular import
+                                from core.plugin.impl.oauth import OAuthHandler
+                                from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-                            # refresh the credentials
-                            tool_provider = ToolProviderID(provider_id)
-                            provider_name = tool_provider.provider_name
-                            redirect_uri = (
-                                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
-                                f"{provider_id}/tool/callback"
-                            )
-                            system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+                                # refresh the credentials
+                                tool_provider = ToolProviderID(provider_id)
+                                provider_name = tool_provider.provider_name
+                                redirect_uri = (
+                                    f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
+                                    f"{provider_id}/tool/callback"
+                                )
+                                system_credentials = BuiltinToolManageService.get_oauth_client(
+                                    tenant_id, provider_id
+                                )
 
-                            oauth_handler = OAuthHandler()
-                            refreshed_credentials = oauth_handler.refresh_credentials(
-                                tenant_id=tenant_id,
-                                user_id=builtin_provider.user_id,
-                                plugin_id=tool_provider.plugin_id,
-                                provider=provider_name,
-                                redirect_uri=redirect_uri,
-                                system_credentials=system_credentials or {},
-                                credentials=decrypted_credentials,
-                            )
-                            # update the credentials
-                            builtin_provider.encrypted_credentials = json.dumps(
-                                encrypter.encrypt(refreshed_credentials.credentials)
-                            )
-                            builtin_provider.expires_at = refreshed_credentials.expires_at
-                            db.session.commit()
-                            decrypted_credentials = refreshed_credentials.credentials
-                            cache.delete()
-                        else:
-                            decrypted_credentials = encrypter.decrypt(builtin_provider.credentials)
+                                oauth_handler = OAuthHandler()
+                                refreshed_credentials = oauth_handler.refresh_credentials(
+                                    tenant_id=tenant_id,
+                                    user_id=bp.user_id,
+                                    plugin_id=tool_provider.plugin_id,
+                                    provider=provider_name,
+                                    redirect_uri=redirect_uri,
+                                    system_credentials=system_credentials or {},
+                                    credentials=decrypted_credentials,
+                                )
+                                # update the credentials
+                                bp.encrypted_credentials = json.dumps(
+                                    encrypter.encrypt(refreshed_credentials.credentials)
+                                )
+                                bp.expires_at = refreshed_credentials.expires_at
+                                session.commit()
+                                decrypted_credentials = refreshed_credentials.credentials
+                                cache.delete()
+                            elif bp is not None:
+                                decrypted_credentials = encrypter.decrypt(bp.credentials)
                     finally:
                         lock.release()
                 else:
                     # another request is refreshing; poll DB until credentials are fresh
                     backoff = 0.1
+                    bp = None
                     for _ in range(5):
                         time.sleep(backoff)
-                        db.session.refresh(builtin_provider)
-                        if builtin_provider.expires_at != -1 and (
-                            builtin_provider.expires_at - 60
+                        with Session(db.engine) as session:
+                            bp = session.get(BuiltinToolProvider, builtin_provider.id)
+                        if bp is not None and bp.expires_at != -1 and (
+                            bp.expires_at - 60
                         ) >= int(time.time()):
                             break
                         backoff = min(backoff * 2, 1.0)
-                    decrypted_credentials = encrypter.decrypt(builtin_provider.credentials)
+                    if bp is not None:
+                        decrypted_credentials = encrypter.decrypt(bp.credentials)
 
             return builtin_tool.fork_tool_runtime(
                 runtime=ToolRuntime(

@@ -3,6 +3,10 @@
 These tests verify the non-blocking Redis lock + double-check pattern that
 prevents concurrent OAuth token refresh race conditions (e.g., QuickBooks
 refresh token rotation causing invalid_grant errors).
+
+The refresh block uses an explicit SQLAlchemy Session(db.engine) instead of
+the Flask-SQLAlchemy scoped db.session, to ensure commits persist reliably
+in Celery worker and gevent greenlet contexts.
 """
 
 import json
@@ -56,6 +60,27 @@ def _make_provider_controller():
     return ctrl
 
 
+def _make_mock_session(get_return_value=None, get_side_effect=None):
+    """Create mocks for the explicit SQLAlchemy Session used in the refresh block.
+
+    Returns (mock_Session_cls, mock_session) where:
+    - mock_Session_cls patches ``core.tools.tool_manager.Session``
+    - mock_session is the session object inside ``with Session(...) as session:``
+    """
+    mock_session = MagicMock()
+    if get_side_effect is not None:
+        mock_session.get.side_effect = get_side_effect
+    else:
+        mock_session.get.return_value = get_return_value
+
+    mock_session_ctx = MagicMock()
+    mock_session_ctx.__enter__ = MagicMock(return_value=mock_session)
+    mock_session_ctx.__exit__ = MagicMock(return_value=False)
+
+    mock_Session_cls = MagicMock(return_value=mock_session_ctx)
+    return mock_Session_cls, mock_session
+
+
 def _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider,
                   bp, enc, cache, lock_acquired=True):
     mock_db.session.scalar.return_value = bp
@@ -105,9 +130,13 @@ class TestOAuthRefreshLockAcquired:
         new_expires_at = int(time.time()) + 3600
         bp = _make_builtin_provider(expires_at=expired_at)
         enc, cache = _make_encrypter_and_cache()
-        mock_db.session.refresh.side_effect = lambda obj: None
         mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
                                   mock_get_provider, bp, enc, cache, lock_acquired=True)
+
+        # session.get() returns bp still expired (double-check confirms refresh needed)
+        bp_in_session = _make_builtin_provider(expires_at=expired_at)
+        mock_Session_cls, mock_session = _make_mock_session(get_return_value=bp_in_session)
+
         refreshed = _make_refreshed_response(expires_at=new_expires_at)
 
         with (
@@ -115,6 +144,7 @@ class TestOAuthRefreshLockAcquired:
             patch("services.tools.builtin_tools_manage_service.BuiltinToolManageService") as mock_svc,
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
             patch("core.tools.tool_manager.dify_config", CONSOLE_API_URL="https://app.dify.ai"),
+            patch("core.tools.tool_manager.Session", mock_Session_cls),
         ):
             mock_svc.get_oauth_client.return_value = {"client_id": "cid"}
             mock_oauth = MagicMock()
@@ -125,8 +155,8 @@ class TestOAuthRefreshLockAcquired:
         mock_lock.acquire.assert_called_once_with(blocking=False)
         mock_lock.release.assert_called_once()
         mock_oauth.refresh_credentials.assert_called_once()
-        mock_db.session.commit.assert_called_once()
-        assert bp.expires_at == new_expires_at
+        mock_session.commit.assert_called_once()
+        assert bp_in_session.expires_at == new_expires_at
         cache.delete.assert_called_once()
 
 
@@ -149,19 +179,23 @@ class TestOAuthRefreshDoubleCheck:
         fresh_at = int(time.time()) + 3600
         bp = _make_builtin_provider(expires_at=expired_at)
         enc, cache = _make_encrypter_and_cache()
-        mock_db.session.refresh.side_effect = lambda obj: setattr(obj, 'expires_at', fresh_at)
         mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
                                   mock_get_provider, bp, enc, cache, lock_acquired=True)
+
+        # session.get() returns bp already refreshed by another thread
+        bp_fresh = _make_builtin_provider(expires_at=fresh_at)
+        mock_Session_cls, mock_session = _make_mock_session(get_return_value=bp_fresh)
 
         with (
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
             patch("core.tools.tool_manager.dify_config", CONSOLE_API_URL="https://app.dify.ai"),
+            patch("core.tools.tool_manager.Session", mock_Session_cls),
         ):
             _call_get_tool_runtime()
 
         mock_lock.acquire.assert_called_once_with(blocking=False)
         mock_lock.release.assert_called_once()
-        mock_db.session.commit.assert_not_called()
+        mock_session.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -190,27 +224,29 @@ class TestOAuthRefreshLockNotAcquired:
         mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
                                   mock_get_provider, bp, enc, cache, lock_acquired=False)
 
-        # Simulate: 2nd db.session.refresh makes credentials fresh
-        refresh_count = 0
-        def _fake_refresh(obj):
-            nonlocal refresh_count
-            refresh_count += 1
-            if refresh_count >= 2:
-                obj.expires_at = now + 3600
+        # Simulate: 2nd session.get() returns fresh credentials
+        call_count = 0
+        def _get_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                return _make_builtin_provider(expires_at=now + 3600)
+            return _make_builtin_provider(expires_at=now - 100)
 
-        mock_db.session.refresh.side_effect = _fake_refresh
+        mock_Session_cls, mock_session = _make_mock_session(get_side_effect=_get_side_effect)
 
         with (
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
             patch("core.tools.tool_manager.dify_config", CONSOLE_API_URL="https://app.dify.ai"),
+            patch("core.tools.tool_manager.Session", mock_Session_cls),
         ):
             _call_get_tool_runtime()
 
         mock_lock.acquire.assert_called_once_with(blocking=False)
         mock_lock.release.assert_not_called()
         assert mock_time.sleep.call_count >= 1
-        assert mock_db.session.refresh.call_count >= 2
-        mock_db.session.commit.assert_not_called()
+        assert mock_session.get.call_count >= 2
+        mock_session.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -230,15 +266,19 @@ class TestOAuthRefreshLockRelease:
     ):
         bp = _make_builtin_provider(expires_at=int(time.time()) - 100)
         enc, cache = _make_encrypter_and_cache()
-        mock_db.session.refresh.side_effect = lambda obj: None
         mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
                                   mock_get_provider, bp, enc, cache, lock_acquired=True)
+
+        # session.get() returns expired bp so refresh is attempted
+        bp_in_session = _make_builtin_provider(expires_at=int(time.time()) - 100)
+        mock_Session_cls, mock_session = _make_mock_session(get_return_value=bp_in_session)
 
         with (
             patch("core.plugin.impl.oauth.OAuthHandler") as mock_oauth_cls,
             patch("services.tools.builtin_tools_manage_service.BuiltinToolManageService") as mock_svc,
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
             patch("core.tools.tool_manager.dify_config", CONSOLE_API_URL="https://app.dify.ai"),
+            patch("core.tools.tool_manager.Session", mock_Session_cls),
         ):
             mock_svc.get_oauth_client.return_value = {}
             mock_oauth = MagicMock()
@@ -248,7 +288,7 @@ class TestOAuthRefreshLockRelease:
                 _call_get_tool_runtime()
 
         mock_lock.release.assert_called_once()
-        mock_db.session.commit.assert_not_called()
+        mock_session.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
