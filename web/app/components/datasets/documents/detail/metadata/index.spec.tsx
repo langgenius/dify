@@ -1,7 +1,6 @@
 import type { FullDocumentDetail } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Metadata, { FieldInfo } from './index'
 
 // Mock document context
@@ -121,7 +120,6 @@ vi.mock('@/hooks/use-metadata', () => ({
   }),
 }))
 
-// Mock getTextWidthWithCanvas
 vi.mock('@/utils', () => ({
   asyncRunSafe: async (promise: Promise<unknown>) => {
     try {
@@ -135,25 +133,25 @@ vi.mock('@/utils', () => ({
   getTextWidthWithCanvas: () => 100,
 }))
 
+const createMockDocDetail = (overrides = {}): FullDocumentDetail => ({
+  id: 'doc-1',
+  name: 'Test Document',
+  doc_type: 'book',
+  doc_metadata: {
+    title: 'Test Book',
+    author: 'Test Author',
+    language: 'en',
+  },
+  data_source_type: 'upload_file',
+  segment_count: 10,
+  hit_count: 5,
+  ...overrides,
+} as FullDocumentDetail)
+
 describe('Metadata', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
-
-  const createMockDocDetail = (overrides = {}): FullDocumentDetail => ({
-    id: 'doc-1',
-    name: 'Test Document',
-    doc_type: 'book',
-    doc_metadata: {
-      title: 'Test Book',
-      author: 'Test Author',
-      language: 'en',
-    },
-    data_source_type: 'upload_file',
-    segment_count: 10,
-    hit_count: 5,
-    ...overrides,
-  } as FullDocumentDetail)
 
   const defaultProps = {
     docDetail: createMockDocDetail(),
@@ -161,7 +159,6 @@ describe('Metadata', () => {
     onUpdate: vi.fn(),
   }
 
-  // Rendering tests
   describe('Rendering', () => {
     it('should render without crashing', () => {
       // Arrange & Act
@@ -191,7 +188,7 @@ describe('Metadata', () => {
       // Arrange & Act
       render(<Metadata {...defaultProps} loading={true} />)
 
-      // Assert - Loading component should be rendered
+      // Assert - Loading component should be rendered, title should not
       expect(screen.queryByText(/metadata\.title/i)).not.toBeInTheDocument()
     })
 
@@ -204,7 +201,7 @@ describe('Metadata', () => {
     })
   })
 
-  // Edit mode tests
+  // Edit mode (tests useMetadataState hook integration)
   describe('Edit Mode', () => {
     it('should enter edit mode when edit button is clicked', () => {
       // Arrange
@@ -303,7 +300,7 @@ describe('Metadata', () => {
     })
   })
 
-  // Document type selection
+  // Document type selection (tests DocTypeSelector sub-component integration)
   describe('Document Type Selection', () => {
     it('should show doc type selection when no doc_type exists', () => {
       // Arrange
@@ -353,13 +350,13 @@ describe('Metadata', () => {
     })
   })
 
-  // Origin info and technical parameters
+  // Fixed fields (tests MetadataFieldList sub-component integration)
   describe('Fixed Fields', () => {
     it('should render origin info fields', () => {
       // Arrange & Act
       render(<Metadata {...defaultProps} />)
 
-      // Assert - Origin info fields should be displayed
+      // Assert
       expect(screen.getByText('Data Source Type')).toBeInTheDocument()
     })
 
@@ -382,7 +379,7 @@ describe('Metadata', () => {
       // Act
       const { container } = render(<Metadata {...defaultProps} docDetail={docDetail} />)
 
-      // Assert - should render without crashing
+      // Assert
       expect(container.firstChild).toBeInTheDocument()
     })
 
@@ -390,7 +387,7 @@ describe('Metadata', () => {
       // Arrange & Act
       const { container } = render(<Metadata {...defaultProps} docDetail={undefined} loading={false} />)
 
-      // Assert - should render without crashing
+      // Assert
       expect(container.firstChild).toBeInTheDocument()
     })
 
@@ -425,7 +422,6 @@ describe('Metadata', () => {
   })
 })
 
-// FieldInfo component tests
 describe('FieldInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -540,6 +536,152 @@ describe('FieldInfo', () => {
       // Assert
       const input = screen.getByRole('textbox')
       expect(input).toHaveAttribute('placeholder')
+    })
+  })
+})
+
+// --- useMetadataState hook coverage tests (via component interactions) ---
+describe('useMetadataState coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const defaultProps = {
+    docDetail: createMockDocDetail(),
+    loading: false,
+    onUpdate: vi.fn(),
+  }
+
+  describe('cancelDocType', () => {
+    it('should cancel doc type change and return to edit mode', () => {
+      // Arrange
+      render(<Metadata {...defaultProps} />)
+
+      // Enter edit mode → click change to open doc type selector
+      fireEvent.click(screen.getByText(/operation\.edit/i))
+      fireEvent.click(screen.getByText(/operation\.change/i))
+
+      // Now in doc type selector mode — should show cancel button
+      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+
+      // Act — cancel the doc type change
+      fireEvent.click(screen.getByText(/operation\.cancel/i))
+
+      // Assert — should be back to edit mode (cancel + save buttons visible)
+      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('confirmDocType', () => {
+    it('should confirm same doc type and return to edit mode keeping metadata', () => {
+      // Arrange — useEffect syncs tempDocType='book' from docDetail
+      render(<Metadata {...defaultProps} />)
+
+      // Enter edit mode → click change to open doc type selector
+      fireEvent.click(screen.getByText(/operation\.edit/i))
+      fireEvent.click(screen.getByText(/operation\.change/i))
+
+      // DocTypeSelector shows save/cancel buttons
+      expect(screen.getByText(/metadata\.docTypeChangeTitle/i)).toBeInTheDocument()
+
+      // Act — click save to confirm same doc type (tempDocType='book')
+      fireEvent.click(screen.getByText(/operation\.save/i))
+
+      // Assert — should return to edit mode with metadata fields visible
+      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('cancelEdit when no docType', () => {
+    it('should show doc type selection when cancel is clicked with doc_type others', () => {
+      // Arrange — doc with 'others' type normalizes to '' internally.
+      // The useEffect sees doc_type='others' (truthy) and syncs state,
+      // so the component initially shows view mode. Enter edit → cancel to trigger cancelEdit.
+      const docDetail = createMockDocDetail({ doc_type: 'others' })
+      render(<Metadata {...defaultProps} docDetail={docDetail} />)
+
+      // 'others' is normalized to '' → useEffect fires (doc_type truthy) → view mode
+      // The rendered type uses default 'book' fallback for display
+      expect(screen.getByText(/operation\.edit/i)).toBeInTheDocument()
+
+      // Enter edit mode
+      fireEvent.click(screen.getByText(/operation\.edit/i))
+      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
+
+      // Act — cancel edit; internally docType is '' so cancelEdit goes to showDocTypes
+      fireEvent.click(screen.getByText(/operation\.cancel/i))
+
+      // Assert — should show doc type selection since normalized docType was ''
+      expect(screen.getByText(/metadata\.docTypeSelectTitle/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('updateMetadataField', () => {
+    it('should update metadata field value via input', () => {
+      // Arrange
+      render(<Metadata {...defaultProps} />)
+
+      // Enter edit mode
+      fireEvent.click(screen.getByText(/operation\.edit/i))
+
+      // Act — find an input and change its value (Title field)
+      const inputs = screen.getAllByRole('textbox')
+      expect(inputs.length).toBeGreaterThan(0)
+      fireEvent.change(inputs[0], { target: { value: 'Updated Title' } })
+
+      // Assert — the input should have the new value
+      expect(inputs[0]).toHaveValue('Updated Title')
+    })
+  })
+
+  describe('saveMetadata calls modifyDocMetadata with correct body', () => {
+    it('should pass doc_type and doc_metadata in save request', async () => {
+      // Arrange
+      mockModifyDocMetadata.mockResolvedValueOnce({})
+      render(<Metadata {...defaultProps} />)
+
+      // Enter edit mode
+      fireEvent.click(screen.getByText(/operation\.edit/i))
+
+      // Act — save
+      fireEvent.click(screen.getByText(/operation\.save/i))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockModifyDocMetadata).toHaveBeenCalledWith(
+          expect.objectContaining({
+            datasetId: 'test-dataset-id',
+            documentId: 'test-document-id',
+            body: expect.objectContaining({
+              doc_type: 'book',
+            }),
+          }),
+        )
+      })
+    })
+  })
+
+  describe('useEffect sync', () => {
+    it('should handle doc_metadata being null in effect sync', () => {
+      // Arrange — first render with null metadata
+      const { rerender } = render(
+        <Metadata
+          {...defaultProps}
+          docDetail={createMockDocDetail({ doc_metadata: null })}
+        />,
+      )
+
+      // Act — rerender with a different doc_type to trigger useEffect sync
+      rerender(
+        <Metadata
+          {...defaultProps}
+          docDetail={createMockDocDetail({ doc_type: 'paper', doc_metadata: null })}
+        />,
+      )
+
+      // Assert — should render without crashing, showing Paper type
+      expect(screen.getByText('Paper')).toBeInTheDocument()
     })
   })
 })

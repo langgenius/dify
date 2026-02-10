@@ -217,6 +217,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
     def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
+            api_token = validate_and_get_api_token("dataset")
+
             # get url path dataset_id from positional args or kwargs
             # Flask passes URL path parameters as positional arguments
             dataset_id = None
@@ -253,12 +255,18 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
             # Validate dataset if dataset_id is provided
             if dataset_id:
                 dataset_id = str(dataset_id)
-                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+                dataset = (
+                    db.session.query(Dataset)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == api_token.tenant_id,
+                    )
+                    .first()
+                )
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
-            api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
