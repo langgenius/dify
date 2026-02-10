@@ -16,6 +16,7 @@ x-shared-env: &shared-api-worker-env
   LANG: ${LANG:-C.UTF-8}
   LC_ALL: ${LC_ALL:-C.UTF-8}
   PYTHONIOENCODING: ${PYTHONIOENCODING:-utf-8}
+  UV_CACHE_DIR: ${UV_CACHE_DIR:-/tmp/.uv-cache}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
   LOG_FILE: ${LOG_FILE:-/app/logs/server.log}
