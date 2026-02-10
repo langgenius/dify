@@ -322,10 +322,9 @@ describe('DrawerPlus', () => {
 
       const drawer = screen.getByTestId('mock-drawer')
       const closeDiv = drawer.querySelector('div.cursor-pointer')
-      if (closeDiv) {
-        fireEvent.click(closeDiv)
-        expect(handleHide).toHaveBeenCalledTimes(1)
-      }
+      expect(closeDiv).toBeInTheDocument()
+      fireEvent.click(closeDiv!)
+      expect(handleHide).toHaveBeenCalledTimes(1)
     })
   })
 
