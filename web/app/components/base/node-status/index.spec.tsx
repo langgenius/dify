@@ -45,9 +45,9 @@ describe('NodeStatus', () => {
   })
 
   it('applies iconClassName to the icon', () => {
-    render(<NodeStatus iconClassName="custom-icon-class" />)
+    const { container } = render(<NodeStatus iconClassName="custom-icon-class" />)
     // The icon is the first child of the div
-    const icon = document.querySelector('.custom-icon-class')
+    const icon = container.querySelector('.custom-icon-class')
     expect(icon).toBeInTheDocument()
     expect(icon).toHaveClass('h-3.5')
     expect(icon).toHaveClass('w-3.5')
