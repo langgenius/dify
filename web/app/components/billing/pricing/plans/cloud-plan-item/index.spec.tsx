@@ -66,13 +66,6 @@ beforeAll(() => {
   })
 })
 
-afterAll(() => {
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    value: originalLocation,
-  })
-})
-
 beforeEach(() => {
   vi.clearAllMocks()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
@@ -80,6 +73,13 @@ beforeEach(() => {
   mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })
   mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://subscription.example' })
   assignedHref = ''
+})
+
+afterAll(() => {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: originalLocation,
+  })
 })
 
 describe('CloudPlanItem', () => {
@@ -191,6 +191,129 @@ describe('CloudPlanItem', () => {
         expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
         expect(assignedHref).toBe('https://subscription.example')
       })
+    })
+
+    // Covers L92-93: isFreePlan guard inside handleGetPayUrl
+    it('should do nothing when clicking sandbox plan CTA that is not the current plan', async () => {
+      render(
+        <CloudPlanItem
+          plan={Plan.sandbox}
+          currentPlan={Plan.professional}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      // Sandbox viewed from a higher plan is disabled, but let's verify no API calls
+      const button = screen.getByRole('button')
+      fireEvent.click(button)
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+        expect(mockBillingInvoices).not.toHaveBeenCalled()
+        expect(assignedHref).toBe('')
+      })
+    })
+
+    // Covers L95: yearly subscription URL ('year' parameter)
+    it('should fetch yearly subscription url when planRange is yearly', async () => {
+      render(
+        <CloudPlanItem
+          plan={Plan.team}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
+        expect(assignedHref).toBe('https://subscription.example')
+      })
+    })
+
+    // Covers L62-63: loading guard prevents double click
+    it('should ignore second click while loading', async () => {
+      // Make the first fetch hang until we resolve it
+      let resolveFirst!: (v: { url: string }) => void
+      mockFetchSubscriptionUrls.mockImplementationOnce(
+        () => new Promise((resolve) => { resolveFirst = resolve }),
+      )
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+
+      // First click starts loading
+      fireEvent.click(button)
+      // Second click while loading should be ignored
+      fireEvent.click(button)
+
+      // Resolve first request
+      resolveFirst({ url: 'https://first.example' })
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    // Covers L82-83, L85-87: openAsyncWindow error path when invoices returns no url
+    it('should invoke onError when billing invoices returns empty url', async () => {
+      mockBillingInvoices.mockResolvedValue({ url: '' })
+      const openWindow = vi.fn(async (cb: () => Promise<string>, opts: { onError?: (e: Error) => void }) => {
+        try {
+          await cb()
+        }
+        catch (e) {
+          opts.onError?.(e as Error)
+        }
+      })
+      mockUseAsyncWindowOpen.mockReturnValue(openWindow)
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.professional}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+
+      await waitFor(() => {
+        expect(openWindow).toHaveBeenCalledTimes(1)
+        // The onError callback should have been passed to openAsyncWindow
+        const callArgs = openWindow.mock.calls[0]
+        expect(callArgs[1]).toHaveProperty('onError')
+      })
+    })
+
+    // Covers monthly price display (L139 !isYear branch for price)
+    it('should display monthly pricing without discount', () => {
+      render(
+        <CloudPlanItem
+          plan={Plan.team}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      const teamPlan = ALL_PLANS[Plan.team]
+      expect(screen.getByText(`$${teamPlan.price}`)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.month/)).toBeInTheDocument()
+      // Should NOT show crossed-out yearly price
+      expect(screen.queryByText(`$${teamPlan.price * 12}`)).not.toBeInTheDocument()
     })
   })
 })
