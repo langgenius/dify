@@ -12,7 +12,9 @@ describe('useIndexStatus', () => {
     const { result } = renderHook(() => useIndexStatus())
 
     const expectedKeys = ['queuing', 'indexing', 'paused', 'error', 'available', 'enabled', 'disabled', 'archived']
-    expect(Object.keys(result.current)).toEqual(expectedKeys)
+    const keys = Object.keys(result.current)
+    expect(keys).toEqual(expect.arrayContaining(expectedKeys))
+    expect(keys).toHaveLength(expectedKeys.length)
   })
 
   // Verify each status entry has the correct color

@@ -69,7 +69,7 @@ describe('ResultItemFooter', () => {
       )
 
       // Act
-      const openButton = screen.getByText(/open/i).closest('.cursor-pointer') as HTMLElement
+      const openButton = screen.getByText(/open/i)
       fireEvent.click(openButton)
 
       // Assert

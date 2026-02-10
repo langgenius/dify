@@ -9,9 +9,8 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('ahooks', () => {
-  // eslint-disable-next-line ts/no-require-imports
-  const { useState } = require('react')
+vi.mock('ahooks', async () => {
+  const { useState } = await import('react')
   return {
     useBoolean: (initial: boolean) => {
       const [val, setVal] = useState(initial)

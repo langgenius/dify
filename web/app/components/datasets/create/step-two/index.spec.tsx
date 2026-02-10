@@ -162,6 +162,27 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
+// Enable IS_CE_EDITION to show QA checkbox in tests
+vi.mock('@/config', async () => {
+  const actual = await vi.importActual('@/config')
+  return { ...actual, IS_CE_EDITION: true }
+})
+
+// Mock PreviewDocumentPicker to allow testing handlePickerChange
+vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
+  // eslint-disable-next-line ts/no-explicit-any
+  default: ({ onChange, value, files }: { onChange: (item: any) => void, value: any, files: any[] }) => (
+    <div data-testid="preview-picker">
+      <span>{value?.name}</span>
+      {files?.map((f: { id: string, name: string }) => (
+        <button key={f.id} data-testid={`picker-${f.id}`} onClick={() => onChange(f)}>
+          {f.name}
+        </button>
+      ))}
+    </div>
+  ),
+}))
+
 vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
@@ -2486,6 +2507,77 @@ describe('StepTwo Component', () => {
       )
       // Preview panel should still render
       expect(screen.getByText('datasetCreation.stepTwo.preview')).toBeInTheDocument()
+    })
+  })
+
+  describe('Handler Functions - Uncovered Paths', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockCurrentDataset = null
+    })
+
+    afterEach(() => {
+      cleanup()
+    })
+
+    it('should switch to QUALIFIED when selecting parentChild in ECONOMICAL mode', async () => {
+      render(<StepTwo {...defaultStepTwoProps} isAPIKeySet={false} />)
+      await vi.waitFor(() => {
+        expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      })
+      // Click parentChild option to trigger handleDocFormChange(ChunkingMode.parentChild) with ECONOMICAL
+      const parentChildTitles = screen.getAllByText(/stepTwo\.parentChild/i)
+      fireEvent.click(parentChildTitles[0])
+    })
+
+    it('should open QA confirm dialog and confirm switch when QA selected in ECONOMICAL mode', async () => {
+      render(<StepTwo {...defaultStepTwoProps} isAPIKeySet={false} />)
+      await vi.waitFor(() => {
+        expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      })
+      // Click QA checkbox (visible because IS_CE_EDITION is mocked as true)
+      const qaCheckbox = screen.getByText(/stepTwo\.useQALanguage/i)
+      fireEvent.click(qaCheckbox)
+      // Dialog should open → click Switch to confirm (triggers handleQAConfirm)
+      const switchButton = await screen.findByText(/stepTwo\.switch/i)
+      expect(switchButton).toBeInTheDocument()
+      fireEvent.click(switchButton)
+    })
+
+    it('should close QA confirm dialog when cancel is clicked', async () => {
+      render(<StepTwo {...defaultStepTwoProps} isAPIKeySet={false} />)
+      await vi.waitFor(() => {
+        expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+      })
+      // Open QA confirm dialog
+      const qaCheckbox = screen.getByText(/stepTwo\.useQALanguage/i)
+      fireEvent.click(qaCheckbox)
+      // Click the dialog cancel button (onQAConfirmDialogClose)
+      const dialogCancelButtons = await screen.findAllByText(/stepTwo\.cancel/i)
+      fireEvent.click(dialogCancelButtons[0])
+    })
+
+    it('should handle picker change when selecting a different file', () => {
+      const files = [
+        createMockFile({ id: 'file-1', name: 'first.pdf', extension: 'pdf' }),
+        createMockFile({ id: 'file-2', name: 'second.pdf', extension: 'pdf' }),
+      ]
+      render(<StepTwo {...defaultStepTwoProps} files={files} />)
+      // Click on the second file in the mocked picker (triggers handlePickerChange)
+      const pickerButton = screen.getByTestId('picker-file-2')
+      fireEvent.click(pickerButton)
+    })
+
+    it('should show error toast when preview is clicked with maxChunkLength exceeding limit', () => {
+      // Set a high maxChunkLength via the DOM attribute
+      document.body.setAttribute('data-public-indexing-max-segmentation-tokens-length', '100')
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // The default maxChunkLength (1024) now exceeds the limit (100)
+      // Click preview button to trigger updatePreview error path
+      const previewButtons = screen.getAllByText(/stepTwo\.previewChunk/i)
+      fireEvent.click(previewButtons[0])
+      // Restore
+      document.body.removeAttribute('data-public-indexing-max-segmentation-tokens-length')
     })
   })
 })

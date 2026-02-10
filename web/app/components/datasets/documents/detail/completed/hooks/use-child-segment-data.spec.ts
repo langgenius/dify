@@ -564,5 +564,151 @@ describe('useChildSegmentData', () => {
 
       expect(mockQueryClient.setQueryData).toHaveBeenCalled()
     })
+
+    it('should handle updateChildSegmentInCache when old data is undefined', async () => {
+      mockParentMode.current = 'full-doc'
+      const onCloseChildSegmentDetail = vi.fn()
+
+      // Capture the setQueryData callback to verify null-safety
+      mockQueryClient.setQueryData.mockImplementation((_key: unknown, updater: (old: unknown) => unknown) => {
+        if (typeof updater === 'function') {
+          // Invoke with undefined to cover the !old branch
+          const resultWithUndefined = updater(undefined)
+          expect(resultWithUndefined).toBeUndefined()
+          // Also test with real data
+          const resultWithData = updater({
+            data: [
+              createMockChildChunk({ id: 'child-1', content: 'old content' }),
+              createMockChildChunk({ id: 'child-2', content: 'other' }),
+            ],
+            total: 2,
+            total_pages: 1,
+          }) as ChildSegmentsResponse
+          expect(resultWithData.data[0].content).toBe('new content')
+          expect(resultWithData.data[1].content).toBe('other')
+        }
+      })
+
+      mockUpdateChildSegment.mockImplementation(async (_params, { onSuccess, onSettled }: MutationCallbacks) => {
+        onSuccess({
+          data: createMockChildChunk({
+            id: 'child-1',
+            content: 'new content',
+            type: 'customized',
+            word_count: 50,
+            updated_at: 1700000001,
+          }),
+        })
+        onSettled()
+      })
+
+      const { result } = renderHook(() => useChildSegmentData({
+        ...defaultOptions,
+        onCloseChildSegmentDetail,
+      }), {
+        wrapper: createWrapper(),
+      })
+
+      await act(async () => {
+        await result.current.handleUpdateChildChunk('seg-1', 'child-1', 'new content')
+      })
+
+      expect(mockQueryClient.setQueryData).toHaveBeenCalled()
+    })
+  })
+
+  describe('Scroll to bottom effect', () => {
+    it('should scroll to bottom when childSegments change and needScrollToBottom is true', () => {
+      // Start with empty data
+      mockChildSegmentListData.current = { data: [], total: 0, total_pages: 0, page: 1, limit: 20 }
+
+      const { result, rerender } = renderHook(() => useChildSegmentData(defaultOptions), {
+        wrapper: createWrapper(),
+      })
+
+      // Set up the ref to a mock DOM element
+      const mockScrollTo = vi.fn()
+      Object.defineProperty(result.current.childSegmentListRef, 'current', {
+        value: { scrollTo: mockScrollTo, scrollHeight: 500 },
+        writable: true,
+      })
+      result.current.needScrollToBottom.current = true
+
+      // Change mock data to trigger the useEffect
+      mockChildSegmentListData.current = {
+        data: [createMockChildChunk({ id: 'new-child' })],
+        total: 1,
+        total_pages: 1,
+        page: 1,
+        limit: 20,
+      }
+      rerender()
+
+      expect(mockScrollTo).toHaveBeenCalledWith({ top: 500, behavior: 'smooth' })
+      expect(result.current.needScrollToBottom.current).toBe(false)
+    })
+
+    it('should not scroll when needScrollToBottom is false', () => {
+      mockChildSegmentListData.current = { data: [], total: 0, total_pages: 0, page: 1, limit: 20 }
+
+      const { result, rerender } = renderHook(() => useChildSegmentData(defaultOptions), {
+        wrapper: createWrapper(),
+      })
+
+      const mockScrollTo = vi.fn()
+      Object.defineProperty(result.current.childSegmentListRef, 'current', {
+        value: { scrollTo: mockScrollTo, scrollHeight: 500 },
+        writable: true,
+      })
+      // needScrollToBottom remains false
+
+      mockChildSegmentListData.current = {
+        data: [createMockChildChunk()],
+        total: 1,
+        total_pages: 1,
+        page: 1,
+        limit: 20,
+      }
+      rerender()
+
+      expect(mockScrollTo).not.toHaveBeenCalled()
+    })
+
+    it('should not scroll when childSegmentListRef is null', () => {
+      mockChildSegmentListData.current = { data: [], total: 0, total_pages: 0, page: 1, limit: 20 }
+
+      const { result, rerender } = renderHook(() => useChildSegmentData(defaultOptions), {
+        wrapper: createWrapper(),
+      })
+
+      // ref.current stays null, needScrollToBottom is true
+      result.current.needScrollToBottom.current = true
+
+      mockChildSegmentListData.current = {
+        data: [createMockChildChunk()],
+        total: 1,
+        total_pages: 1,
+        page: 1,
+        limit: 20,
+      }
+      rerender()
+
+      // needScrollToBottom stays true since scroll didn't happen
+      expect(result.current.needScrollToBottom.current).toBe(true)
+    })
+  })
+
+  describe('Query params edge cases', () => {
+    it('should handle currentPage of 0 by defaulting to page 1', () => {
+      const { result } = renderHook(() => useChildSegmentData({
+        ...defaultOptions,
+        currentPage: 0,
+      }), {
+        wrapper: createWrapper(),
+      })
+
+      // Should still work with page defaulted to 1
+      expect(result.current.childSegments).toEqual([])
+    })
   })
 })

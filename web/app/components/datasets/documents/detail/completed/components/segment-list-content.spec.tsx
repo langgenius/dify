@@ -1,5 +1,5 @@
 import type { SegmentDetailModel } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FullDocModeContent, GeneralModeContent } from './segment-list-content'
 
@@ -16,8 +16,8 @@ vi.mock('../child-segment-list', () => ({
 }))
 
 vi.mock('../segment-card', () => ({
-  default: ({ detail }: { detail: { id: string } }) => (
-    <div data-testid="segment-card">{detail?.id}</div>
+  default: ({ detail, onClick }: { detail: { id: string }, onClick?: () => void }) => (
+    <div data-testid="segment-card" onClick={onClick}>{detail?.id}</div>
   ),
 }))
 
@@ -74,6 +74,13 @@ describe('FullDocModeContent', () => {
   it('should apply overflow-y-auto when not loading', () => {
     const { container } = render(<FullDocModeContent {...defaultProps} />)
     expect(container.firstChild).toHaveClass('overflow-y-auto')
+  })
+
+  it('should call onClickCard with first segment when segment card is clicked', () => {
+    const onClickCard = vi.fn()
+    render(<FullDocModeContent {...defaultProps} onClickCard={onClickCard} />)
+    fireEvent.click(screen.getByTestId('segment-card'))
+    expect(onClickCard).toHaveBeenCalledWith(defaultProps.segments[0])
   })
 })
 
