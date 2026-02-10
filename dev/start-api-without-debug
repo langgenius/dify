@@ -1,11 +1,28 @@
 #!/bin/bash
 
+set -euo pipefail
 set -x
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-cd "$SCRIPT_DIR/../api"
+API_DIR="$SCRIPT_DIR/../api"
+WORKER_SCRIPT="$SCRIPT_DIR/start-worker"
+WORKER_QUEUES="${WORKER_QUEUES:-workflow,workflow_professional,workflow_team,workflow_sandbox,workflow_storage,workflow_based_app_execution,triggered_workflow_dispatcher,trigger_refresh_executor}"
+
+cleanup() {
+  if [[ -n "${WORKER_PID:-}" ]] && kill -0 "${WORKER_PID}" >/dev/null 2>&1; then
+    kill "${WORKER_PID}"
+    wait "${WORKER_PID}" || true
+  fi
+}
+
+trap cleanup EXIT
+
+cd "$API_DIR"
 
 uv run flask db upgrade
+
+"$WORKER_SCRIPT" --queues "$WORKER_QUEUES" --loglevel INFO &
+WORKER_PID=$!
 
 uv run \
   flask run --host 0.0.0.0 --port=5001
