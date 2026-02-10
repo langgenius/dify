@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type {
   Edge,
@@ -20,7 +21,7 @@ vi.mock('reactflow', async () => {
   const reactflow = await vi.importActual('reactflow')
   return {
     ...reactflow,
-    Handle: ({ children }: { children?: React.ReactNode }) => <div data-testid="handle">{children}</div>,
+    Handle: ({ children }: { children?: ReactNode }) => <div data-testid="handle">{children}</div>,
   }
 })
 
@@ -232,7 +233,7 @@ describe('DSL Import with Human Input Node', () => {
         />,
       )
 
-      // Delivery method type labels are rendered as capitalize text
+      // Delivery method type labels are rendered in lowercase
       expect(screen.getByText('webapp')).toBeInTheDocument()
       expect(screen.getByText('email')).toBeInTheDocument()
     })
