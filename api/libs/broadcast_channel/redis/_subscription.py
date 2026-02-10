@@ -28,6 +28,7 @@ class RedisSubscriptionBase(Subscription):
         topic: str,
     ):
         # The _pubsub is None only if the subscription is closed.
+        _logger.info("Client type for redis connection: type=%s, topic=%s", type(client), topic)
         self._client = client
         self._pubsub: PubSub | None = pubsub
         self._topic = topic
@@ -81,6 +82,7 @@ class RedisSubscriptionBase(Subscription):
                 break
 
             if raw_message is None:
+                _logger.info("Message is none for subscription: topic=%s", self._topic)
                 continue
 
             if raw_message.get("type") != self._get_message_type():

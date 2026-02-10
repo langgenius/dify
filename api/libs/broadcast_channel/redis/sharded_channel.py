@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis, RedisCluster
 
@@ -75,6 +77,8 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
             #
             # Here we specify the `target_node` to mitigate this problem.
             node = self._client.get_node_from_key(self._topic)
+            logger = logging.getLogger(__name__)
+            logger.info("node retrieved from client: %s", node)
             return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
                 ignore_subscribe_messages=False,
                 timeout=1,

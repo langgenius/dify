@@ -255,12 +255,15 @@ def init_app(app: DifyApp):
     # Initialize the wrapper and attach to app
     redis_client.initialize(client)
     app.extensions["redis"] = redis_client
+    logger.info("intialize redis with client, client=%s, params=%s", client, redis_params)
 
     pubsub_client = client
     if dify_config.normalized_pubsub_redis_url:
         pubsub_client = _create_pubsub_client(
             dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
         )
+    logger.info("intialize pubsub redis with client, client=%s", pubsub_client)
+
     pubsub_redis_client.initialize(pubsub_client)
 
 
