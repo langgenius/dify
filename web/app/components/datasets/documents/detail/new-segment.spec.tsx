@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
@@ -498,6 +499,236 @@ describe('NewSegmentModal', () => {
 
       // Assert
       expect(screen.getByTestId('answer-input')).toBeInTheDocument()
+    })
+  })
+
+  describe('CustomButton in success notification', () => {
+    it('should call viewNewlyAddedChunk when custom button is clicked', async () => {
+      // Arrange
+      const mockViewNewlyAddedChunk = vi.fn()
+      mockNotify.mockImplementation(() => {})
+
+      mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
+        options.onSuccess()
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(
+        <NewSegmentModal
+          {...defaultProps}
+          docForm={ChunkingMode.text}
+          viewNewlyAddedChunk={mockViewNewlyAddedChunk}
+        />,
+      )
+
+      // Enter content and save
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test content' } })
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'success',
+            customComponent: expect.anything(),
+          }),
+        )
+      })
+
+      // Extract customComponent from the notify call args
+      const notifyCallArgs = mockNotify.mock.calls[0][0] as { customComponent?: React.ReactElement }
+      expect(notifyCallArgs.customComponent).toBeDefined()
+      const customComponent = notifyCallArgs.customComponent!
+      const { container: btnContainer } = render(customComponent)
+      const viewButton = btnContainer.querySelector('.system-xs-semibold.text-text-accent') as HTMLElement
+      expect(viewButton).toBeInTheDocument()
+      fireEvent.click(viewButton)
+
+      // Assert that viewNewlyAddedChunk was called via the onClick handler (lines 66-67)
+      expect(mockViewNewlyAddedChunk).toHaveBeenCalled()
+    })
+  })
+
+  describe('QA mode save with content', () => {
+    it('should save with both question and answer in QA mode', async () => {
+      // Arrange
+      mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
+        options.onSuccess()
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.qa} />)
+
+      // Enter question and answer
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'My Question' } })
+      fireEvent.change(screen.getByTestId('answer-input'), { target: { value: 'My Answer' } })
+
+      // Act - save
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert - should call addSegment with both content and answer
+      await waitFor(() => {
+        expect(mockAddSegment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: expect.objectContaining({
+              content: 'My Question',
+              answer: 'My Answer',
+            }),
+          }),
+          expect.any(Object),
+        )
+      })
+    })
+  })
+
+  describe('Keywords in save params', () => {
+    it('should include keywords in save params when keywords are provided', async () => {
+      // Arrange
+      mockIndexingTechnique = IndexingType.ECONOMICAL
+      mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
+        options.onSuccess()
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.text} />)
+
+      // Enter content
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Content with keywords' } })
+      // Enter keywords
+      fireEvent.change(screen.getByTestId('keywords-input'), { target: { value: 'kw1,kw2' } })
+
+      // Act - save
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockAddSegment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: expect.objectContaining({
+              content: 'Content with keywords',
+              keywords: ['kw1', 'kw2'],
+            }),
+          }),
+          expect.any(Object),
+        )
+      })
+    })
+  })
+
+  describe('Save with attachments', () => {
+    it('should include attachment_ids in save params when images are uploaded', async () => {
+      // Arrange
+      mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
+        options.onSuccess()
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.text} />)
+
+      // Enter content
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Content with images' } })
+      // Upload an image
+      fireEvent.click(screen.getByTestId('upload-image-btn'))
+
+      // Act - save
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockAddSegment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: expect.objectContaining({
+              content: 'Content with images',
+              attachment_ids: ['img-1'],
+            }),
+          }),
+          expect.any(Object),
+        )
+      })
+    })
+  })
+
+  describe('handleCancel with addAnother unchecked', () => {
+    it('should call onCancel when addAnother is unchecked and save succeeds', async () => {
+      // Arrange
+      const mockOnCancel = vi.fn()
+      mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
+        options.onSuccess()
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewSegmentModal {...defaultProps} onCancel={mockOnCancel} docForm={ChunkingMode.text} />)
+
+      // Uncheck "add another"
+      const checkbox = screen.getByTestId('add-another-checkbox')
+      fireEvent.click(checkbox)
+
+      // Enter content and save
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test' } })
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert - should call onCancel since addAnother is false
+      await waitFor(() => {
+        expect(mockOnCancel).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('onSave delayed call', () => {
+    it('should call onSave after timeout in success handler', async () => {
+      // Arrange
+      vi.useFakeTimers()
+      const mockOnSave = vi.fn()
+      mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
+        options.onSuccess()
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewSegmentModal {...defaultProps} onSave={mockOnSave} docForm={ChunkingMode.text} />)
+
+      // Enter content and save
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test content' } })
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Fast-forward timer
+      vi.advanceTimersByTime(3000)
+
+      expect(mockOnSave).toHaveBeenCalled()
+      vi.useRealTimers()
+    })
+  })
+
+  describe('Word count display', () => {
+    it('should display character count for QA mode (question + answer)', () => {
+      // Arrange
+      render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.qa} />)
+
+      // Enter question and answer
+      fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'abc' } })
+      fireEvent.change(screen.getByTestId('answer-input'), { target: { value: 'de' } })
+
+      // Assert - should show count of 5 (3 + 2)
+      // The component uses formatNumber and shows "X characters"
+      expect(screen.getByText(/5/)).toBeInTheDocument()
+    })
+  })
+
+  describe('Non-fullscreen footer', () => {
+    it('should render footer with AddAnother and ActionButtons when not in fullScreen', () => {
+      // Arrange
+      mockFullScreen = false
+
+      // Act
+      render(<NewSegmentModal {...defaultProps} />)
+
+      // Assert - footer should have both AddAnother and ActionButtons
+      expect(screen.getByTestId('add-another')).toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
     })
   })
 })

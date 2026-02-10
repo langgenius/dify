@@ -7,6 +7,11 @@ vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
+vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
+  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) =>
+    isShow ? <div data-testid="secret-key-modal"><button onClick={onClose}>close</button></div> : null,
+}))
+
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -95,13 +100,26 @@ describe('Card (Service API)', () => {
     it('should open secret key modal when API key button is clicked', () => {
       renderWithProviders(<Card {...defaultProps} />)
 
+      // Modal should not be visible before clicking
+      expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
+
       const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
       fireEvent.click(apiKeyButton!)
 
-      // SecretKeyModal should appear with isShow=true
-      // The modal renders when isSecretKeyModalVisible becomes true
-      // We verify the modal is rendered in the DOM
-      expect(screen.getByText(/serviceApi\.card\.apiKey/)).toBeInTheDocument()
+      // Modal should appear after clicking
+      expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
+    })
+
+    it('should close secret key modal when onClose is called', () => {
+      renderWithProviders(<Card {...defaultProps} />)
+
+      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
+      fireEvent.click(apiKeyButton!)
+      expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
+
+      // Click the close button inside the mocked modal
+      fireEvent.click(screen.getByText('close'))
+      expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
     })
 
     it('should render API reference as a link', () => {

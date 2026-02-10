@@ -1,10 +1,12 @@
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import DatasetCardFooter from './components/dataset-card-footer'
 import Description from './components/description'
+import DatasetCard from './index'
 import OperationItem from './operation-item'
 import Operations from './operations'
 
@@ -16,6 +18,60 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
       return `${date.toLocaleDateString()}`
     },
   }),
+}))
+
+const mockPush = vi.fn()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) => selector({ isCurrentWorkspaceDatasetOperator: false }),
+}))
+
+vi.mock('ahooks', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...(actual as Record<string, unknown>),
+    useHover: () => false,
+  }
+})
+
+vi.mock('./hooks/use-dataset-card-state', () => ({
+  useDatasetCardState: () => ({
+    tags: [],
+    setTags: vi.fn(),
+    modalState: {
+      showRenameModal: false,
+      showConfirmDelete: false,
+      confirmMessage: '',
+    },
+    openRenameModal: vi.fn(),
+    closeRenameModal: vi.fn(),
+    closeConfirmDelete: vi.fn(),
+    handleExportPipeline: vi.fn(),
+    detectIsUsedByApp: vi.fn(),
+    onConfirmDelete: vi.fn(),
+  }),
+}))
+
+vi.mock('./components/corner-labels', () => ({
+  default: () => <div data-testid="corner-labels" />,
+}))
+vi.mock('./components/dataset-card-header', () => ({
+  default: ({ dataset }: { dataset: DataSet }) => <div data-testid="card-header">{dataset.name}</div>,
+}))
+vi.mock('./components/dataset-card-modals', () => ({
+  default: () => <div data-testid="card-modals" />,
+}))
+vi.mock('./components/tag-area', () => ({
+  default: React.forwardRef<HTMLDivElement, { onClick: (e: React.MouseEvent) => void }>(({ onClick }, ref) => (
+    <div ref={ref} data-testid="tag-area" onClick={onClick} />
+  )),
+}))
+vi.mock('./components/operations-popover', () => ({
+  default: () => <div data-testid="operations-popover" />,
 }))
 
 // Factory function for DataSet mock data
@@ -330,5 +386,45 @@ describe('DatasetCard Integration', () => {
         expect(container.querySelector('.bg-divider-subtle')).toBeNull()
       })
     })
+  })
+})
+
+describe('DatasetCard Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render and navigate to documents when clicked', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+
+    fireEvent.click(screen.getByText('Test Dataset'))
+    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
+  })
+
+  it('should navigate to hitTesting for external provider', () => {
+    const dataset = createMockDataset({ provider: 'external' })
+    render(<DatasetCard dataset={dataset} />)
+
+    fireEvent.click(screen.getByText('Test Dataset'))
+    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/hitTesting')
+  })
+
+  it('should navigate to pipeline for unpublished pipeline', () => {
+    const dataset = createMockDataset({ runtime_mode: 'rag_pipeline', is_published: false })
+    render(<DatasetCard dataset={dataset} />)
+
+    fireEvent.click(screen.getByText('Test Dataset'))
+    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
+  })
+
+  it('should stop propagation when tag area is clicked', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+
+    const tagArea = screen.getByTestId('tag-area')
+    fireEvent.click(tagArea)
+    // Tag area click should not trigger card navigation
+    expect(mockPush).not.toHaveBeenCalled()
   })
 })

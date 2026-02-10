@@ -11,6 +11,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('@remixicon/react', () => ({
   RiSearchLine: () => <span data-testid="search-icon" />,
   RiCloseLine: () => <span data-testid="close-icon" />,
+  RiCloseCircleFill: (props: Record<string, unknown>) => <span data-testid="clear-circle-icon" {...props} />,
 }))
 
 vi.mock('../display-toggle', () => ({
@@ -76,5 +77,32 @@ describe('MenuBar', () => {
     render(<MenuBar {...defaultProps} />)
     fireEvent.click(screen.getByTestId('display-toggle'))
     expect(defaultProps.toggleCollapsed).toHaveBeenCalled()
+  })
+
+  it('should call onInputChange with empty string when input is cleared', () => {
+    render(<MenuBar {...defaultProps} inputValue="some text" />)
+    const clearButton = screen.getByTestId('input-clear')
+    fireEvent.click(clearButton)
+    expect(defaultProps.onInputChange).toHaveBeenCalledWith('')
+  })
+
+  it('should render select with status items via renderOption', () => {
+    render(<MenuBar {...defaultProps} />)
+    expect(screen.getByText('All')).toBeInTheDocument()
+  })
+
+  it('should call renderOption for each item when dropdown is opened', async () => {
+    render(<MenuBar {...defaultProps} />)
+
+    // Click the ListboxButton to open the SimpleSelect dropdown
+    const selectButton = screen.getByRole('button', { name: /All/i })
+    fireEvent.click(selectButton)
+
+    // After opening, renderOption is called for each item, rendering the mocked StatusItem
+    const statusItems = await screen.findAllByTestId('status-item')
+    expect(statusItems.length).toBe(3)
+    expect(statusItems[0]).toHaveTextContent('All')
+    expect(statusItems[1]).toHaveTextContent('Enabled')
+    expect(statusItems[2]).toHaveTextContent('Disabled')
   })
 })

@@ -109,4 +109,18 @@ describe('QueryInput', () => {
     render(<QueryInput {...defaultProps} isExternal={true} />)
     expect(screen.getByText('settingTitle')).toBeInTheDocument()
   })
+
+  it('should disable submit button when text exceeds 200 characters', () => {
+    const props = {
+      ...defaultProps,
+      queries: [{ content: 'a'.repeat(201), content_type: 'text_query', file_info: null }] satisfies Query[],
+    }
+    render(<QueryInput {...props} />)
+    expect(screen.getByTestId('submit-button')).toBeDisabled()
+  })
+
+  it('should disable submit button when loading', () => {
+    render(<QueryInput {...defaultProps} loading={true} />)
+    expect(screen.getByTestId('submit-button')).toBeDisabled()
+  })
 })

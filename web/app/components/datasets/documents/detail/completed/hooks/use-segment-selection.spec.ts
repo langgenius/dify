@@ -105,4 +105,55 @@ describe('useSegmentSelection', () => {
     expect(result.current.isAllSelected).toBe(false)
     expect(result.current.isSomeSelected).toBe(false)
   })
+
+  it('should allow multiple selections', () => {
+    const { result } = renderHook(() => useSegmentSelection(segments))
+
+    act(() => {
+      result.current.onSelected('seg-1')
+    })
+    act(() => {
+      result.current.onSelected('seg-2')
+    })
+
+    expect(result.current.selectedSegmentIds).toEqual(['seg-1', 'seg-2'])
+    expect(result.current.isSomeSelected).toBe(true)
+    expect(result.current.isAllSelected).toBe(false)
+  })
+
+  it('should preserve selection of segments not in current list', () => {
+    const { result, rerender } = renderHook(
+      ({ segs }) => useSegmentSelection(segs),
+      { initialProps: { segs: segments } },
+    )
+
+    act(() => {
+      result.current.onSelected('seg-1')
+    })
+
+    // Rerender with different segment list (simulating page change)
+    const newSegments = [
+      { id: 'seg-4', content: 'D' },
+      { id: 'seg-5', content: 'E' },
+    ] as unknown as SegmentDetailModel[]
+
+    rerender({ segs: newSegments })
+
+    // Previously selected segment should still be in selectedSegmentIds
+    expect(result.current.selectedSegmentIds).toContain('seg-1')
+  })
+
+  it('should select remaining unselected segments when onSelectedAll is called with partial selection', () => {
+    const { result } = renderHook(() => useSegmentSelection(segments))
+
+    act(() => {
+      result.current.onSelected('seg-1')
+    })
+    act(() => {
+      result.current.onSelectedAll()
+    })
+
+    expect(result.current.selectedSegmentIds).toEqual(expect.arrayContaining(['seg-1', 'seg-2', 'seg-3']))
+    expect(result.current.isAllSelected).toBe(true)
+  })
 })

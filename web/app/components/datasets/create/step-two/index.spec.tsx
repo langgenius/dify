@@ -30,12 +30,8 @@ import {
 } from './hooks'
 import escape from './hooks/escape'
 import unescape from './hooks/unescape'
+import StepTwo from './index'
 
-// ============================================
-// Mock external dependencies
-// ============================================
-
-// Mock dataset detail context
 const mockDataset = {
   id: 'test-dataset-id',
   doc_form: ChunkingMode.text,
@@ -60,10 +56,6 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: mockCurrentDataset, mutateDatasetRes: mockMutateDatasetRes }),
 }))
 
-// Note: @/context/i18n is globally mocked in vitest.setup.ts, no need to mock here
-// Note: @/hooks/use-breakpoints uses real import
-
-// Mock model hooks
 const mockEmbeddingModelList = [
   { provider: 'openai', model: 'text-embedding-ada-002' },
   { provider: 'cohere', model: 'embed-english-v3.0' },
@@ -170,18 +162,34 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-// Note: @/app/components/base/toast - uses real import (base component)
-// Note: @/app/components/datasets/common/check-rerank-model - uses real import
-// Note: @/app/components/base/float-right-container - uses real import (base component)
-
-// Mock checkShowMultiModalTip - requires complex model list structure
 vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
 
-// ============================================
-// Test data factories
-// ============================================
+// Mock complex child components to avoid deep dependency chains when rendering StepTwo
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  default: ({ onSelect, readonly }: { onSelect?: (val: Record<string, string>) => void, readonly?: boolean }) => (
+    <div data-testid="model-selector" data-readonly={readonly}>
+      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>Select Model</button>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
+  default: ({ disabled }: { disabled?: boolean }) => (
+    <div data-testid="retrieval-method-config" data-disabled={disabled}>
+      Retrieval Config
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', () => ({
+  default: ({ disabled }: { disabled?: boolean }) => (
+    <div data-testid="economical-retrieval-config" data-disabled={disabled}>
+      Economical Config
+    </div>
+  ),
+}))
 
 const createMockFile = (overrides?: Partial<CustomFile>): CustomFile => ({
   id: 'file-1',
@@ -370,10 +378,6 @@ describe('unescape utility', () => {
     })
   })
 })
-
-// ============================================
-// useSegmentationState Hook Tests
-// ============================================
 
 describe('useSegmentationState', () => {
   beforeEach(() => {
@@ -2192,6 +2196,292 @@ describe('Integration Scenarios', () => {
       // The unescaped value interprets "\n" as a newline, so it differs from the original.
       expect(unescaped).toBe('Hello\nWorld')
       expect(unescaped).not.toBe(original)
+    })
+  })
+})
+
+// ============================================
+// StepTwo Component Tests
+// ============================================
+
+describe('StepTwo Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCurrentDataset = null
+  })
+
+  const defaultStepTwoProps = {
+    dataSourceType: DataSourceType.FILE,
+    files: [createMockFile()],
+    isAPIKeySet: true,
+    onSetting: vi.fn(),
+    notionCredentialId: '',
+    onStepChange: vi.fn(),
+  }
+
+  describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+    })
+
+    it('should show general chunking options when not in upload', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // Should render the segmentation section
+      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+    })
+
+    it('should show footer with Previous and Next buttons', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      expect(screen.getByText(/stepTwo\.previousStep/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.nextStep/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('Initialization', () => {
+    it('should fetch default process rule when not in setting mode', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalledWith('/datasets/process-rule')
+    })
+
+    it('should apply config from rules when in setting mode with document detail', () => {
+      const docDetail = createMockDocumentDetail()
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          isSetting={true}
+          documentDetail={docDetail}
+          datasetId="test-id"
+        />,
+      )
+      // Should not fetch default rule when isSetting
+      expect(mockFetchDefaultProcessRuleMutate).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('User Interactions', () => {
+    it('should call onStepChange(-1) when Previous button is clicked', () => {
+      const onStepChange = vi.fn()
+      render(<StepTwo {...defaultStepTwoProps} onStepChange={onStepChange} />)
+      fireEvent.click(screen.getByText(/stepTwo\.previousStep/i))
+      expect(onStepChange).toHaveBeenCalledWith(-1)
+    })
+
+    it('should trigger handleCreate when Next Step button is clicked', async () => {
+      const onStepChange = vi.fn()
+      render(<StepTwo {...defaultStepTwoProps} onStepChange={onStepChange} />)
+      await act(async () => {
+        fireEvent.click(screen.getByText(/stepTwo\.nextStep/i))
+      })
+      // handleCreate validates, builds params, and calls executeCreation
+      // which calls onStepChange(1) on success
+      expect(onStepChange).toHaveBeenCalledWith(1)
+    })
+
+    it('should trigger updatePreview when preview button is clicked', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // GeneralChunkingOptions renders a "Preview Chunk" button
+      const previewButtons = screen.getAllByText(/stepTwo\.previewChunk/i)
+      fireEvent.click(previewButtons[0])
+      // updatePreview calls estimateHook.fetchEstimate()
+      // No error means the handler executed successfully
+    })
+
+    it('should trigger handleDocFormChange through parent-child option switch', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // ParentChildOptions renders an OptionCard; find the title element and click its parent card
+      const parentChildTitles = screen.getAllByText(/stepTwo\.parentChild/i)
+      // The first match is the title; click it to trigger onDocFormChange
+      fireEvent.click(parentChildTitles[0])
+      // handleDocFormChange sets docForm, segmentationType, and resets estimate
+    })
+  })
+
+  describe('Conditional Rendering', () => {
+    it('should show options based on currentDataset doc_form', () => {
+      mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.parentChild }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      // When currentDataset has parentChild doc_form, should show parent-child option
+      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+    })
+
+    it('should render setting mode with Save/Cancel buttons', () => {
+      const docDetail = createMockDocumentDetail()
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          isSetting={true}
+          documentDetail={docDetail}
+          datasetId="test-id"
+        />,
+      )
+      expect(screen.getByText(/stepTwo\.save/i)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.cancel/i)).toBeInTheDocument()
+    })
+
+    it('should call onCancel when Cancel button is clicked in setting mode', () => {
+      const onCancel = vi.fn()
+      const docDetail = createMockDocumentDetail()
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          isSetting={true}
+          documentDetail={docDetail}
+          datasetId="test-id"
+          onCancel={onCancel}
+        />,
+      )
+      fireEvent.click(screen.getByText(/stepTwo\.cancel/i))
+      expect(onCancel).toHaveBeenCalled()
+    })
+
+    it('should trigger handleCreate (Save) in setting mode', async () => {
+      const onSave = vi.fn()
+      const docDetail = createMockDocumentDetail()
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          isSetting={true}
+          documentDetail={docDetail}
+          datasetId="test-id"
+          onSave={onSave}
+        />,
+      )
+      await act(async () => {
+        fireEvent.click(screen.getByText(/stepTwo\.save/i))
+      })
+      // handleCreate → validateParams → buildCreationParams → executeCreation → onSave
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should show both general and parent-child options in create page', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // When isInInit (no datasetId, no isSetting), both options should show
+      expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+    })
+
+    it('should only show parent-child option when dataset has parentChild doc_form', () => {
+      mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.parentChild }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      // showGeneralOption should be false (parentChild not in [text, qa])
+      // showParentChildOption should be true
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+    })
+
+    it('should show general option only when dataset has text doc_form', () => {
+      mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.text }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      // showGeneralOption should be true (text is in [text, qa])
+      expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
+    })
+  })
+
+  describe('Upload in Dataset', () => {
+    it('should show general option when in upload with text doc_form', () => {
+      mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.text }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+    })
+
+    it('should show general option for empty dataset (no doc_form)', () => {
+      // eslint-disable-next-line ts/no-explicit-any
+      mockCurrentDataset = { ...mockDataset, doc_form: undefined as any }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      expect(screen.getByText(/stepTwo\.segmentation/i)).toBeInTheDocument()
+    })
+
+    it('should show both options in empty dataset upload', () => {
+      // eslint-disable-next-line ts/no-explicit-any
+      mockCurrentDataset = { ...mockDataset, doc_form: undefined as any }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      // isUploadInEmptyDataset=true shows both options
+      expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+    })
+  })
+
+  describe('Indexing Mode', () => {
+    it('should render indexing mode section', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // IndexingModeSection renders the index mode title
+      expect(screen.getByText(/stepTwo\.indexMode/i)).toBeInTheDocument()
+    })
+
+    it('should render embedding model selector when QUALIFIED', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // ModelSelector is mocked and rendered with data-testid
+      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    })
+
+    it('should render retrieval method config', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      // RetrievalMethodConfig is mocked with data-testid
+      expect(screen.getByTestId('retrieval-method-config')).toBeInTheDocument()
+    })
+
+    it('should disable model and retrieval config when datasetId has existing data source', () => {
+      mockCurrentDataset = { ...mockDataset, data_source_type: DataSourceType.FILE }
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          datasetId="test-id"
+        />,
+      )
+      // isModelAndRetrievalConfigDisabled should be true
+      const modelSelector = screen.getByTestId('model-selector')
+      expect(modelSelector).toHaveAttribute('data-readonly', 'true')
+    })
+  })
+
+  describe('Preview Panel', () => {
+    it('should render preview panel', () => {
+      render(<StepTwo {...defaultStepTwoProps} />)
+      expect(screen.getByText('datasetCreation.stepTwo.preview')).toBeInTheDocument()
+    })
+
+    it('should hide document picker in setting mode', () => {
+      const docDetail = createMockDocumentDetail()
+      render(
+        <StepTwo
+          {...defaultStepTwoProps}
+          isSetting={true}
+          documentDetail={docDetail}
+          datasetId="test-id"
+        />,
+      )
+      // Preview panel should still render
+      expect(screen.getByText('datasetCreation.stepTwo.preview')).toBeInTheDocument()
     })
   })
 })

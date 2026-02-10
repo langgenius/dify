@@ -103,5 +103,17 @@ describe('PreviewPanel', () => {
       fireEvent.click(screen.getByTestId('close-modal'))
       expect(defaultProps.hidePlanUpgradeModal).toHaveBeenCalledOnce()
     })
+
+    it('should call hideNotionPagePreview when notion preview close clicked', () => {
+      render(<PreviewPanel {...defaultProps} currentNotionPage={{ page_name: 'My Page' } as unknown as NotionPage} />)
+      fireEvent.click(screen.getByTestId('close-notion'))
+      expect(defaultProps.hideNotionPagePreview).toHaveBeenCalledOnce()
+    })
+
+    it('should call hideWebsitePreview when website preview close clicked', () => {
+      render(<PreviewPanel {...defaultProps} currentWebsite={{ title: 'My Site' } as unknown as CrawlResultItem} />)
+      fireEvent.click(screen.getByTestId('close-website'))
+      expect(defaultProps.hideWebsitePreview).toHaveBeenCalledOnce()
+    })
   })
 })

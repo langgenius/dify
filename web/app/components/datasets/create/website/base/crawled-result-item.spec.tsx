@@ -31,11 +31,17 @@ describe('CrawledResultItem', () => {
     expect((container.firstChild as HTMLElement).className).toContain('bg-state-base-active')
   })
 
-  it('should call onCheckChange when checkbox area clicked', () => {
-    render(<CrawledResultItem {...defaultProps} isChecked={false} />)
-    // The Checkbox component renders a div wrapper, click on the title to trigger
-    const wrapper = screen.getByText('Example Page').closest('.cursor-pointer')!
-    fireEvent.click(wrapper)
-    // onCheckChange is triggered through the Checkbox onCheck handler
+  it('should call onCheckChange with true when unchecked checkbox is clicked', () => {
+    render(<CrawledResultItem {...defaultProps} isChecked={false} testId="crawl-item" />)
+    const checkbox = screen.getByTestId('checkbox-crawl-item')
+    fireEvent.click(checkbox)
+    expect(defaultProps.onCheckChange).toHaveBeenCalledWith(true)
+  })
+
+  it('should call onCheckChange with false when checked checkbox is clicked', () => {
+    render(<CrawledResultItem {...defaultProps} isChecked={true} testId="crawl-item" />)
+    const checkbox = screen.getByTestId('checkbox-crawl-item')
+    fireEvent.click(checkbox)
+    expect(defaultProps.onCheckChange).toHaveBeenCalledWith(false)
   })
 })

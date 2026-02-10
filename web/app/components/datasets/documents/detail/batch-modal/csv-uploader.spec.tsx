@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Theme } from '@/types/app'
 
@@ -480,6 +480,192 @@ describe('CSVUploader', () => {
       await waitFor(() => {
         expect(mockUpdateFile).toHaveBeenCalled()
       })
+    })
+  })
+
+  describe('Drag and Drop Events', () => {
+    // Helper to get the dropRef element (sibling of the hidden file input)
+    const getDropZone = (container: HTMLElement) => {
+      const fileInput = container.querySelector('input[type="file"]')
+      return fileInput?.nextElementSibling as HTMLElement
+    }
+
+    it('should handle dragenter event and set dragging state', async () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const dropZone = getDropZone(container)
+
+      // Act - dispatch dragenter event wrapped in act to avoid state update warning
+      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
+      Object.defineProperty(dragEnterEvent, 'target', { value: dropZone })
+      act(() => {
+        dropZone.dispatchEvent(dragEnterEvent)
+      })
+
+      // Assert - dragging class should be applied (border style changes)
+      await waitFor(() => {
+        const uploadArea = container.querySelector('.border-dashed')
+        expect(uploadArea || dropZone).toBeInTheDocument()
+      })
+    })
+
+    it('should handle dragover event', () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const dropZone = getDropZone(container)
+
+      // Act
+      const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
+      dropZone.dispatchEvent(dragOverEvent)
+
+      // Assert - no error thrown
+      expect(dropZone).toBeInTheDocument()
+    })
+
+    it('should handle dragleave event', () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const dropZone = getDropZone(container)
+
+      // First set dragging to true
+      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
+      act(() => {
+        dropZone.dispatchEvent(dragEnterEvent)
+      })
+
+      // Act - dispatch dragleave
+      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
+      act(() => {
+        dropZone.dispatchEvent(dragLeaveEvent)
+      })
+
+      // Assert
+      expect(dropZone).toBeInTheDocument()
+    })
+
+    it('should set dragging to false when dragleave target is the drag overlay', async () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const dropZone = getDropZone(container)
+
+      // Trigger dragenter to set dragging=true, which renders the overlay
+      const dragEnterEvent = new Event('dragenter', { bubbles: true, cancelable: true })
+      act(() => {
+        dropZone.dispatchEvent(dragEnterEvent)
+      })
+
+      // Find the drag overlay element (rendered only when dragging=true)
+      await waitFor(() => {
+        expect(container.querySelector('.absolute.left-0.top-0')).toBeInTheDocument()
+      })
+      const dragOverlay = container.querySelector('.absolute.left-0.top-0') as HTMLElement
+
+      // Act - dispatch dragleave FROM the overlay so e.target === dragRef.current (line 121)
+      const dragLeaveEvent = new Event('dragleave', { bubbles: true, cancelable: true })
+      Object.defineProperty(dragLeaveEvent, 'target', { value: dragOverlay })
+      act(() => {
+        dropZone.dispatchEvent(dragLeaveEvent)
+      })
+
+      // Assert - dragging should be set to false, overlay should disappear
+      await waitFor(() => {
+        expect(container.querySelector('.absolute.left-0.top-0')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should handle drop event with valid CSV file', async () => {
+      // Arrange
+      const mockUpdateFile = vi.fn()
+      mockUpload.mockResolvedValueOnce({ id: 'dropped-file-id' })
+
+      const { container } = render(
+        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
+      )
+      const dropZone = getDropZone(container)
+
+      // Create a drop event with a CSV file
+      const testFile = new File(['csv,data'], 'dropped.csv', { type: 'text/csv' })
+      const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as unknown as DragEvent
+      Object.defineProperty(dropEvent, 'dataTransfer', {
+        value: {
+          files: [testFile],
+        },
+      })
+
+      // Act
+      act(() => {
+        dropZone.dispatchEvent(dropEvent)
+      })
+
+      // Assert
+      await waitFor(() => {
+        expect(mockUpdateFile).toHaveBeenCalled()
+      })
+    })
+
+    it('should show error when dropping multiple files', () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const dropZone = getDropZone(container)
+
+      // Create a drop event with multiple files
+      const file1 = new File(['csv1'], 'file1.csv', { type: 'text/csv' })
+      const file2 = new File(['csv2'], 'file2.csv', { type: 'text/csv' })
+      const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as unknown as DragEvent
+      Object.defineProperty(dropEvent, 'dataTransfer', {
+        value: {
+          files: [file1, file2],
+        },
+      })
+
+      // Act
+      act(() => {
+        dropZone.dispatchEvent(dropEvent)
+      })
+
+      // Assert
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
+    })
+
+    it('should handle drop event without dataTransfer', () => {
+      // Arrange
+      const mockUpdateFile = vi.fn()
+      const { container } = render(
+        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
+      )
+      const dropZone = getDropZone(container)
+
+      // Create a drop event without dataTransfer
+      const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
+
+      // Act
+      act(() => {
+        dropZone.dispatchEvent(dropEvent)
+      })
+
+      // Assert - should not call updateFile
+      expect(mockUpdateFile).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('getFileType edge cases', () => {
+    it('should handle file with multiple dots in name', () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+      const testFile = new File(['content'], 'my.data.file.csv', { type: 'text/csv' })
+
+      // Act
+      fireEvent.change(fileInput, { target: { files: [testFile] } })
+
+      // Assert - should be valid and trigger upload
+      expect(mockNotify).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
   })
 })

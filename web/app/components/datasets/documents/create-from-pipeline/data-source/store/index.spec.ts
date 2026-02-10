@@ -1,6 +1,9 @@
 import type { FileItem } from '@/models/datasets'
+import { render, renderHook } from '@testing-library/react'
+import * as React from 'react'
 import { describe, expect, it } from 'vitest'
-import { createDataSourceStore } from './'
+import { createDataSourceStore, useDataSourceStore, useDataSourceStoreWithSelector } from './'
+import DataSourceProvider from './provider'
 
 describe('createDataSourceStore', () => {
   it('should create a store with all slices combined', () => {
@@ -44,5 +47,50 @@ describe('createDataSourceStore', () => {
 
     store1.getState().setCurrentCredentialId('cred-1')
     expect(store2.getState().currentCredentialId).toBe('')
+  })
+})
+
+describe('useDataSourceStoreWithSelector', () => {
+  it('should throw when used outside provider', () => {
+    expect(() => {
+      renderHook(() => useDataSourceStoreWithSelector(s => s.currentCredentialId))
+    }).toThrow('Missing DataSourceContext.Provider in the tree')
+  })
+
+  it('should return selected state when used inside provider', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(DataSourceProvider, null, children)
+    const { result } = renderHook(
+      () => useDataSourceStoreWithSelector(s => s.currentCredentialId),
+      { wrapper },
+    )
+    expect(result.current).toBe('')
+  })
+})
+
+describe('useDataSourceStore', () => {
+  it('should throw when used outside provider', () => {
+    expect(() => {
+      renderHook(() => useDataSourceStore())
+    }).toThrow('Missing DataSourceContext.Provider in the tree')
+  })
+
+  it('should return store when used inside provider', () => {
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(DataSourceProvider, null, children)
+    const { result } = renderHook(
+      () => useDataSourceStore(),
+      { wrapper },
+    )
+    expect(result.current).toBeDefined()
+    expect(typeof result.current.getState).toBe('function')
+  })
+})
+
+describe('DataSourceProvider', () => {
+  it('should render children', () => {
+    const child = React.createElement('div', null, 'Child Content')
+    const { getByText } = render(React.createElement(DataSourceProvider, null, child))
+    expect(getByText('Child Content')).toBeInTheDocument()
   })
 })

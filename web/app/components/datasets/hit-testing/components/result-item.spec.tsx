@@ -1,5 +1,5 @@
 import type { HitTesting } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ResultItem from './result-item'
 
@@ -130,5 +130,38 @@ describe('ResultItem', () => {
     })
     render(<ResultItem payload={payload} />)
     expect(screen.getByTestId('image-list')).toBeInTheDocument()
+  })
+
+  it('should not render keywords when child_chunks are present', () => {
+    const payload = makePayload({
+      segment: { keywords: ['k1'] },
+      child_chunks: [{ id: 'c1' }],
+    })
+    render(<ResultItem payload={payload} />)
+    expect(screen.queryByTestId('tag')).not.toBeInTheDocument()
+  })
+
+  it('should not render keywords section when keywords array is empty', () => {
+    const payload = makePayload({
+      segment: { keywords: [] },
+    })
+    render(<ResultItem payload={payload} />)
+    expect(screen.queryByTestId('tag')).not.toBeInTheDocument()
+  })
+
+  it('should toggle child chunks fold state', async () => {
+    const payload = makePayload({
+      child_chunks: [{ id: 'c1' }],
+    })
+    render(<ResultItem payload={payload} />)
+    expect(screen.getByTestId('child-chunk')).toBeInTheDocument()
+
+    // Click the hitChunks header to toggle fold
+    const header = screen.getByText(/hitChunks/i)
+    fireEvent.click(header.closest('div')!)
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('child-chunk')).not.toBeInTheDocument()
+    })
   })
 })

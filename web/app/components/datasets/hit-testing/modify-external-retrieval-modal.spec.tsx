@@ -31,7 +31,9 @@ vi.mock('../external-knowledge-base/create/RetrievalSettings', () => ({
     <div data-testid="retrieval-settings">
       <span data-testid="top-k">{topK}</span>
       <span data-testid="score-threshold">{scoreThreshold}</span>
-      <button data-testid="change-top-k" onClick={() => onChange({ top_k: 10 })}>change</button>
+      <button data-testid="change-top-k" onClick={() => onChange({ top_k: 10 })}>change top k</button>
+      <button data-testid="change-score" onClick={() => onChange({ score_threshold: 0.9 })}>change score</button>
+      <button data-testid="change-enabled" onClick={() => onChange({ score_threshold_enabled: true })}>change enabled</button>
     </div>
   ),
 }))
@@ -90,5 +92,45 @@ describe('ModifyExternalRetrievalModal', () => {
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.objectContaining({ top_k: 10 }),
     )
+  })
+
+  it('should save updated score threshold', () => {
+    render(<ModifyExternalRetrievalModal {...defaultProps} />)
+    fireEvent.click(screen.getByTestId('change-score'))
+    fireEvent.click(screen.getByTestId('save-button'))
+    expect(defaultProps.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ score_threshold: 0.9 }),
+    )
+  })
+
+  it('should save updated score threshold enabled', () => {
+    render(<ModifyExternalRetrievalModal {...defaultProps} />)
+    fireEvent.click(screen.getByTestId('change-enabled'))
+    fireEvent.click(screen.getByTestId('save-button'))
+    expect(defaultProps.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ score_threshold_enabled: true }),
+    )
+  })
+
+  it('should save multiple updated values at once', () => {
+    render(<ModifyExternalRetrievalModal {...defaultProps} />)
+    fireEvent.click(screen.getByTestId('change-top-k'))
+    fireEvent.click(screen.getByTestId('change-score'))
+    fireEvent.click(screen.getByTestId('save-button'))
+    expect(defaultProps.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ top_k: 10, score_threshold: 0.9 }),
+    )
+  })
+
+  it('should render with different initial values', () => {
+    const props = {
+      ...defaultProps,
+      initialTopK: 10,
+      initialScoreThreshold: 0.8,
+      initialScoreThresholdEnabled: true,
+    }
+    render(<ModifyExternalRetrievalModal {...props} />)
+    expect(screen.getByTestId('top-k')).toHaveTextContent('10')
+    expect(screen.getByTestId('score-threshold')).toHaveTextContent('0.8')
   })
 })
