@@ -266,8 +266,7 @@ class AliyunLogStore:
             except Exception as e:
                 # Non-socket exceptions are not retried
                 raise ConnectionError(
-                    f"Cannot connect to {hostname}:{port} (timeout={timeout}s): "
-                    f"[{type(e).__name__}] {e}"
+                    f"Cannot connect to {hostname}:{port} (timeout={timeout}s): [{type(e).__name__}] {e}"
                 ) from e
             finally:
                 if sock:
@@ -279,8 +278,7 @@ class AliyunLogStore:
         # All attempts exhausted
         error_type = type(last_error).__name__ if last_error else "Unknown"
         raise ConnectionError(
-            f"Cannot connect to {hostname}:{port} after {max_retries} attempts: "
-            f"[{error_type}] {last_error}"
+            f"Cannot connect to {hostname}:{port} after {max_retries} attempts: [{error_type}] {last_error}"
         ) from last_error
 
     @property
