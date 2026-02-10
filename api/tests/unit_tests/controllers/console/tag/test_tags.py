@@ -276,5 +276,3 @@ class TestTagBindingDeleteApi:
             ):
                 with pytest.raises(Forbidden):
                     method(api)
-
-
