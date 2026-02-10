@@ -6,7 +6,7 @@ WORKDIR /app/api
 # Install uv
 ENV UV_VERSION=0.8.9
 
-RUN pip3 install --no-cache-dir uv==${UV_VERSION}
+RUN pip3 install --no-cache-dir uv==${UV_VERSION} setuptools==82.0.0
 
 # production stage
 FROM base AS production
