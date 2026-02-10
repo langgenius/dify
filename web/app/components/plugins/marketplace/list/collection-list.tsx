@@ -12,7 +12,7 @@ import { useMarketplaceMoreClick } from '../atoms'
 import Empty from '../empty'
 import { getItemKeyByField } from '../utils'
 import Carousel from './carousel'
-import { CAROUSEL_COLUMN_CLASS, GRID_CLASS, GRID_DISPLAY_LIMIT } from './collection-constants'
+import { CAROUSEL_COLUMN_CLASS, CAROUSEL_MAX_VISIBLE_COLUMNS, GRID_CLASS, GRID_DISPLAY_LIMIT } from './collection-constants'
 
 type ViewMoreButtonProps = {
   searchParams?: SearchParamsFromCollection
@@ -80,9 +80,15 @@ export function CarouselCollection<TItem>({
   renderCard,
   cardContainerClassName,
 }: CarouselCollectionProps<TItem>) {
-  const rows: TItem[][] = []
-  for (let i = 0; i < items.length; i += 2)
-    rows.push(items.slice(i, i + 2))
+  const useDoubleRow = items.length > CAROUSEL_MAX_VISIBLE_COLUMNS
+  const numColumns = useDoubleRow ? Math.ceil(items.length / 2) : items.length
+  const columns: TItem[][] = []
+  for (let i = 0; i < numColumns; i++) {
+    const column: TItem[] = [items[i]]
+    if (useDoubleRow && i + numColumns < items.length)
+      column.push(items[i + numColumns])
+    columns.push(column)
+  }
 
   return (
     <Carousel
@@ -92,7 +98,7 @@ export function CarouselCollection<TItem>({
       autoPlay={items.length > 8}
       autoPlayInterval={5000}
     >
-      {rows.map((columnItems, idx) => (
+      {columns.map((columnItems, idx) => (
         <div
           key={columnItems[0] ? getItemKey(columnItems[0]) : idx}
           className={CAROUSEL_COLUMN_CLASS}

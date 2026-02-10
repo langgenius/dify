@@ -14,6 +14,7 @@ import {
 import { cn } from '@/utils/classnames'
 import {
   searchModeAtom,
+  useSearchTab,
   useSearchText,
 } from '../atoms'
 import { useMarketplaceUnifiedSearch } from '../query'
@@ -30,6 +31,7 @@ const SearchBoxWrapper = ({
 }: SearchBoxWrapperProps) => {
   const { t } = useTranslation()
   const [searchText, handleSearchTextChange] = useSearchText()
+  const [, setSearchTab] = useSearchTab()
   const setSearchMode = useSetAtom(searchModeAtom)
   const committedSearch = searchText || ''
   const [draftSearch, setDraftSearch] = useState(committedSearch)
@@ -67,6 +69,7 @@ const SearchBoxWrapper = ({
     if (!trimmed)
       return
     handleSearchTextChange(trimmed)
+    setSearchTab('all')
     setSearchMode(true)
     setIsFocused(false)
   }

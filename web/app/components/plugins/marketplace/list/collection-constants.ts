@@ -4,6 +4,9 @@ export const GRID_DISPLAY_LIMIT = 8
 
 export const CAROUSEL_COLUMN_CLASS = 'flex w-[calc((100%-0px)/1)] shrink-0 flex-col gap-3 sm:w-[calc((100%-12px)/2)] lg:w-[calc((100%-24px)/3)] xl:w-[calc((100%-36px)/4)]'
 
+/** Max visible columns at the widest (xl) breakpoint; used to decide 1-row vs 2-row carousel layout. */
+export const CAROUSEL_MAX_VISIBLE_COLUMNS = 4
+
 /** Collection name key that triggers carousel display (plugins: partners, templates: featured) */
 export const CAROUSEL_COLLECTION_NAMES = {
   partners: 'partners',

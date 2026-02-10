@@ -20,6 +20,7 @@ import { getPluginFilterType, mapTemplateDetailToTemplate } from '../utils'
 import CreatorCard from './creator-card'
 
 const PAGE_SIZE = 40
+const ALL_TAB_PREVIEW_SIZE = 8
 const ZERO_WIDTH_SPACE = '\u200B'
 
 type SortValue = { sortBy: string, sortOrder: string }
@@ -50,7 +51,7 @@ const SearchPage = () => {
       return undefined
     return {
       query,
-      page_size: searchTab === 'all' ? 6 : PAGE_SIZE,
+      page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
       sort_by: sort.sortBy,
       sort_order: sort.sortOrder,
       type: getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.all),
@@ -63,7 +64,7 @@ const SearchPage = () => {
     const { sort_by, sort_order } = mapSortForTemplates(sort)
     return {
       query,
-      page_size: searchTab === 'all' ? 6 : PAGE_SIZE,
+      page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
       sort_by,
       sort_order,
     }
@@ -75,7 +76,7 @@ const SearchPage = () => {
     const { sort_by, sort_order } = mapSortForCreators(sort)
     return {
       query,
-      page_size: searchTab === 'all' ? 6 : PAGE_SIZE,
+      page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
       sort_by,
       sort_order,
     }
@@ -172,7 +173,7 @@ const SearchPage = () => {
           <h3 className="title-xl-semi-bold mb-3 text-text-primary">
             {t('templates', { ns: 'plugin' })}
           </h3>
-          {renderTemplatesSection(templates, 6)}
+          {renderTemplatesSection(templates, ALL_TAB_PREVIEW_SIZE)}
         </section>
       )}
       {plugins.length > 0 && (
@@ -180,7 +181,7 @@ const SearchPage = () => {
           <h3 className="title-xl-semi-bold mb-3 text-text-primary">
             {t('plugins', { ns: 'plugin' })}
           </h3>
-          {renderPluginsSection(plugins, 6)}
+          {renderPluginsSection(plugins, ALL_TAB_PREVIEW_SIZE)}
         </section>
       )}
       {creators.length > 0 && (
@@ -188,7 +189,7 @@ const SearchPage = () => {
           <h3 className="title-xl-semi-bold mb-3 text-text-primary">
             {t('marketplace.searchFilterCreators', { ns: 'plugin' })}
           </h3>
-          {renderCreatorsSection(creators, 6)}
+          {renderCreatorsSection(creators, ALL_TAB_PREVIEW_SIZE)}
         </section>
       )}
       {!isLoading && plugins.length === 0 && templates.length === 0 && creators.length === 0 && (
