@@ -23,6 +23,23 @@ describe('buildSigninUrlWithRedirect', () => {
     })
   })
 
+  describe('Non-OAuth redirect handling', () => {
+    it('should return plain signin URL without oauth_redirect_url for generic pages', () => {
+      // Arrange
+      const currentLocation = {
+        origin: 'https://example.com',
+        pathname: '/apps',
+        search: '?tab=all',
+      } as const
+
+      // Act
+      const signinUrl = buildSigninUrlWithRedirect(currentLocation, '')
+
+      // Assert
+      expect(signinUrl).toBe('https://example.com/signin')
+    })
+  })
+
   describe('Signin self-redirect guard', () => {
     it('should return plain signin URL when current path is already signin', () => {
       // Arrange
@@ -41,12 +58,12 @@ describe('buildSigninUrlWithRedirect', () => {
   })
 
   describe('basePath support', () => {
-    it('should respect basePath when building signin URL', () => {
+    it('should respect basePath for OAuth authorize path', () => {
       // Arrange
       const currentLocation = {
         origin: 'https://example.com',
-        pathname: '/console/apps',
-        search: '?tab=all',
+        pathname: '/console/account/oauth/authorize',
+        search: '?client_id=abc',
       } as const
 
       // Act
@@ -55,7 +72,7 @@ describe('buildSigninUrlWithRedirect', () => {
       // Assert
       expect(signinUrl.startsWith('https://example.com/console/signin?')).toBe(true)
       const encodedRedirect = new URL(signinUrl).searchParams.get('oauth_redirect_url')
-      expect(decodeURIComponent(encodedRedirect || '')).toBe('https://example.com/console/apps?tab=all')
+      expect(decodeURIComponent(encodedRedirect || '')).toBe('https://example.com/console/account/oauth/authorize?client_id=abc')
     })
   })
 })

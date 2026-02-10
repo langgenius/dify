@@ -38,6 +38,7 @@ import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 const SIGNIN_REDIRECT_URL_KEY = 'oauth_redirect_url'
+const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
 
 export type IconObject = {
   background: string
@@ -160,9 +161,15 @@ function jumpTo(url: string) {
 export function buildSigninUrlWithRedirect(currentLocation: Pick<Location, 'origin' | 'pathname' | 'search'>, currentBasePath: string) {
   const signinPath = `${currentBasePath}/signin`
   const signinUrl = `${currentLocation.origin}${signinPath}`
+  const oauthAuthorizePath = `${currentBasePath}${OAUTH_AUTHORIZE_PATH}`
 
   // Keep signin as-is to avoid redirect loops.
   if (currentLocation.pathname === signinPath)
+    return signinUrl
+
+  // Only OAuth authorization flow requires preserving the full original URL.
+  // For generic 401 redirects (e.g. manual logout), keep signin URL clean.
+  if (currentLocation.pathname !== oauthAuthorizePath)
     return signinUrl
 
   const currentUrl = `${currentLocation.origin}${currentLocation.pathname}${currentLocation.search}`
