@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
-from uuid import uuid4
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
@@ -77,8 +76,8 @@ class SystemVariable(BaseModel):
         return data
 
     @classmethod
-    def default(cls) -> SystemVariable:
-        return cls(workflow_execution_id=str(uuid4()))
+    def empty(cls) -> SystemVariable:
+        return cls()
 
     def to_dict(self) -> dict[SystemVariableKey, Any]:
         # NOTE: This method is provided for compatibility with legacy code.

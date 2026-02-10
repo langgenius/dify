@@ -21,7 +21,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
-from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
