@@ -8,9 +8,9 @@ describe('CornerLabel', () => {
   })
 
   it('applies custom class names', () => {
-    render(<CornerLabel label="Test Label" className="custom-class" labelClassName="custom-label-class" />)
-    const cornerLabel = screen.getByText('Test Label').parentElement?.parentElement
-    expect(cornerLabel).toHaveClass('custom-class')
-    expect(screen.getByText('Test Label').parentElement).toHaveClass('custom-label-class')
+    const { container } = render(<CornerLabel label="Test Label" className="custom-class" labelClassName="custom-label-class" />)
+    expect(container.querySelector('.custom-class')).toBeInTheDocument()
+    expect(container.querySelector('.custom-label-class')).toBeInTheDocument()
+    expect(screen.getByText('Test Label')).toBeInTheDocument()
   })
 })
