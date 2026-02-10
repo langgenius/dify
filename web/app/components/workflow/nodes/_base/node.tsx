@@ -9,6 +9,7 @@ import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiLoader2Line,
+  RiPauseCircleFill,
 } from '@remixicon/react'
 import {
   cloneElement,
@@ -107,7 +108,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     showExceptionBorder,
   } = useMemo(() => {
     return {
-      showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
+      showRunningBorder: (data._runningStatus === NodeRunningStatus.Running || data._runningStatus === NodeRunningStatus.Paused) && !showSelectedBorder,
       showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
@@ -118,9 +119,9 @@ const BaseNode: FC<BaseNodeProps> = ({
     let text = ''
 
     if (data._runningStatus === NodeRunningStatus.Running)
-      text = t('workflow.nodes.loop.currentLoopCount', { count: data._loopIndex })
+      text = t('nodes.loop.currentLoopCount', { ns: 'workflow', count: data._loopIndex })
     if (data._runningStatus === NodeRunningStatus.Succeeded || data._runningStatus === NodeRunningStatus.Failed)
-      text = t('workflow.nodes.loop.totalLoopCount', { count: data._loopIndex })
+      text = t('nodes.loop.totalLoopCount', { ns: 'workflow', count: data._loopIndex })
 
     if (text) {
       return (
@@ -167,7 +168,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         data.type === BlockEnum.DataSource && (
           <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
             <div className="system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary">
-              {t('workflow.blocks.datasource')}
+              {t('blocks.datasource', { ns: 'workflow' })}
             </div>
           </div>
         )
@@ -221,7 +222,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._isCandidate && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -261,21 +262,21 @@ const BaseNode: FC<BaseNodeProps> = ({
                 <Tooltip popupContent={(
                   <div className="w-[180px]">
                     <div className="font-extrabold">
-                      {t('workflow.nodes.iteration.parallelModeEnableTitle')}
+                      {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
                     </div>
-                    {t('workflow.nodes.iteration.parallelModeEnableDesc')}
+                    {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
                   </div>
                 )}
                 >
                   <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning ">
-                    {t('workflow.nodes.iteration.parallelModeUpper')}
+                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
                   </div>
                 </Tooltip>
               )
             }
           </div>
           {
-            data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
+            !!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (
               <div className="mr-1.5 text-xs font-medium text-text-accent">
                 {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}
                 /
@@ -284,18 +285,30 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
+            !!(data.type === BlockEnum.Loop && data._loopIndex) && LoopIndex
           }
           {
-            isLoading
-              ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
-              : data._runningStatus === NodeRunningStatus.Failed
-                ? <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
-                : data._runningStatus === NodeRunningStatus.Exception
-                  ? <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
-                  : (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)
-                      ? <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
-                      : null
+            isLoading && <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Failed && (
+              <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Exception && (
+              <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+            )
+          }
+          {
+            !isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && (
+              <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Paused && (
+              <RiPauseCircleFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+            )
           }
         </div>
         {
@@ -327,7 +340,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
+          !!(data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && (
             <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
               {data.desc}
             </div>

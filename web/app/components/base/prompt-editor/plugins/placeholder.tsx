@@ -21,7 +21,7 @@ const Placeholder = ({
       className,
     )}
     >
-      {value || t('common.promptEditor.placeholder')}
+      {value || t('promptEditor.placeholder', { ns: 'common' })}
     </div>
   )
 }

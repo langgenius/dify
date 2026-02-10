@@ -13,7 +13,7 @@ import type { VarInInspect } from '@/types/workflow'
 import {
   useEventListener,
 } from 'ahooks'
-import { isEqual } from 'es-toolkit/compat'
+import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
 import dynamic from 'next/dynamic'
 import {
@@ -35,6 +35,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   useAllBuiltInTools,
@@ -94,6 +95,7 @@ import {
 import SyncingDataModal from './syncing-data-modal'
 import {
   ControlMode,
+  WorkflowRunningStatus,
 } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
 import { WorkflowHistoryProvider } from './workflow-history-store'
@@ -230,11 +232,20 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (document.visibilityState === 'hidden')
+    if (document.visibilityState === 'hidden') {
       syncWorkflowDraftWhenPageClose()
+      return
+    }
 
-    else if (document.visibilityState === 'visible')
+    if (document.visibilityState === 'visible') {
+      const { isListening, workflowRunningData } = workflowStore.getState()
+      const status = workflowRunningData?.result?.status
+      // Avoid resetting UI state when user comes back while a run is active or listening for triggers
+      if (isListening || status === WorkflowRunningStatus.Running)
+        return
+
       setTimeout(() => handleRefreshWorkflowDraft(), 500)
+    }
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 
   // Also add beforeunload handler as additional safety net for tab close
@@ -361,7 +372,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [schemaTypeDefinitions, fetchInspectVars, isLoadedVars, vars, customTools, buildInTools, workflowTools, mcpTools, dataSourceList])
 
-  if (process.env.NODE_ENV === 'development') {
+  if (IS_DEV) {
     store.getState().onError = (code, message) => {
       if (code === '002')
         return

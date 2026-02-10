@@ -9,6 +9,7 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 
 type ResultTextProps = {
   isRunning?: boolean
+  isPaused?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
@@ -17,6 +18,7 @@ type ResultTextProps = {
 
 const ResultText: FC<ResultTextProps> = ({
   isRunning,
+  isPaused,
   outputs,
   error,
   onClick,
@@ -37,14 +39,14 @@ const ResultText: FC<ResultTextProps> = ({
           </StatusContainer>
         </div>
       )}
-      {!isRunning && !outputs && !error && !allFiles?.length && (
+      {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500">
           <ImageIndentLeft className="h-6 w-6 text-gray-400" />
-          <div className="mr-2">{t('runLog.resultEmpty.title')}</div>
+          <div className="mr-2">{t('resultEmpty.title', { ns: 'runLog' })}</div>
           <div>
-            {t('runLog.resultEmpty.tipLeft')}
-            <span onClick={onClick} className="cursor-pointer text-primary-600">{t('runLog.resultEmpty.link')}</span>
-            {t('runLog.resultEmpty.tipRight')}
+            {t('resultEmpty.tipLeft', { ns: 'runLog' })}
+            <span onClick={onClick} className="cursor-pointer text-primary-600">{t('resultEmpty.link', { ns: 'runLog' })}</span>
+            {t('resultEmpty.tipRight', { ns: 'runLog' })}
           </div>
         </div>
       )}

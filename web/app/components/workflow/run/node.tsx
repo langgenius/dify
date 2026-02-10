@@ -11,8 +11,9 @@ import {
   RiAlertFill,
   RiArrowRightSLine,
   RiCheckboxCircleFill,
-  RiErrorWarningLine,
+  RiErrorWarningFill,
   RiLoader2Line,
+  RiPauseCircleFill,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -98,16 +99,16 @@ const NodePanel: FC<Props> = ({
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
-    let text = t('workflow.common.input')
+    let text = t('common.input', { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('workflow.nodes.loop.initialLoopVariables')
+      text = t('nodes.loop.initialLoopVariables', { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
-  const processDataTitle = t('workflow.common.processData').toLocaleUpperCase()
+  const processDataTitle = t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t('workflow.common.output')
+    let text = t('common.output', { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('workflow.nodes.loop.finalLoopVariables')
+      text = t('nodes.loop.finalLoopVariables', { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
@@ -144,7 +145,7 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.title}
             </div>
           </Tooltip>
-          {nodeInfo.status !== 'running' && !hideInfo && (
+          {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="system-xs-regular shrink-0 text-text-tertiary">
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
@@ -154,10 +155,13 @@ const NodePanel: FC<Props> = ({
             <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-text-warning" />
+            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+          )}
+          {nodeInfo.status === 'paused' && (
+            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
@@ -204,18 +208,18 @@ const NodePanel: FC<Props> = ({
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status="stopped">
-                  {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                  {t('tracing.stopBy', { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
                 </StatusContainer>
               )}
               {(nodeInfo.status === 'exception') && (
                 <StatusContainer status="stopped">
                   {nodeInfo.error}
                   <a
-                    href={docLink('/guides/workflow/error-handling/error-type')}
+                    href={docLink('/use-dify/debug/error-type')}
                     target="_blank"
                     className="text-text-accent"
                   >
-                    {t('workflow.common.learnMore')}
+                    {t('common.learnMore', { ns: 'workflow' })}
                   </a>
                 </StatusContainer>
               )}
@@ -227,6 +231,11 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.status === 'retry' && (
                 <StatusContainer status="failed">
                   {nodeInfo.error}
+                </StatusContainer>
+              )}
+              {(nodeInfo.status === 'paused') && (
+                <StatusContainer status="paused">
+                  <div className="system-xs-regular text-text-warning">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
                 </StatusContainer>
               )}
             </div>

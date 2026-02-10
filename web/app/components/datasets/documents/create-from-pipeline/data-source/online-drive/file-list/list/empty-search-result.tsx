@@ -18,7 +18,7 @@ const EmptySearchResult = ({
     <div className="flex size-full flex-col items-center justify-center gap-y-2 rounded-[10px] bg-background-section p-6">
       <SearchMenu className="size-8 text-text-tertiary" />
       <div className="system-sm-regular text-text-secondary">
-        {t('datasetPipeline.onlineDrive.emptySearchResult')}
+        {t('onlineDrive.emptySearchResult', { ns: 'datasetPipeline' })}
       </div>
       <Button
         variant="secondary-accent"
@@ -26,7 +26,7 @@ const EmptySearchResult = ({
         onClick={onResetKeywords}
         className="px-1.5"
       >
-        <span className="px-[3px]">{t('datasetPipeline.onlineDrive.resetKeywords')}</span>
+        <span className="px-[3px]">{t('onlineDrive.resetKeywords', { ns: 'datasetPipeline' })}</span>
       </Button>
     </div>
   )

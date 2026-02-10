@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ActivePluginType } from '../../marketplace/constants'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ import {
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
 import NoDataPlaceholder from './no-data-placeholder'
 import ToolItem from './tool-item'
@@ -41,39 +42,39 @@ const ToolPicker: FC<Props> = ({
   const tabs = [
     {
       key: PLUGIN_TYPE_SEARCH_MAP.all,
-      name: t('plugin.category.all'),
+      name: t('category.all', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.model,
-      name: t('plugin.category.models'),
+      name: t('category.models', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.tool,
-      name: t('plugin.category.tools'),
+      name: t('category.tools', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.agent,
-      name: t('plugin.category.agents'),
+      name: t('category.agents', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.extension,
-      name: t('plugin.category.extensions'),
+      name: t('category.extensions', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      name: t('plugin.category.datasources'),
+      name: t('category.datasources', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      name: t('plugin.category.triggers'),
+      name: t('category.triggers', { ns: 'plugin' }),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      name: t('plugin.category.bundles'),
+      name: t('category.bundles', { ns: 'plugin' }),
     },
   ]
 
-  const [pluginType, setPluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
+  const [pluginType, setPluginType] = useState<ActivePluginType>(PLUGIN_TYPE_SEARCH_MAP.all)
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const { data, isLoading } = useInstalledPluginList()
@@ -141,7 +142,7 @@ const ToolPicker: FC<Props> = ({
               onSearchChange={setQuery}
               tags={tags}
               onTagsChange={setTags}
-              placeholder={t('plugin.searchTools')!}
+              placeholder={t('searchTools', { ns: 'plugin' })!}
               inputClassName="w-full"
             />
           </div>

@@ -15,6 +15,7 @@ import type { QuestionClassifierNodeType } from '../../../question-classifier/ty
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { ToolNodeType } from '../../../tool/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
@@ -33,13 +34,15 @@ import type {
 import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import { isArray, uniq } from 'es-toolkit/compat'
+import { uniq } from 'es-toolkit/array'
+import { isArray } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
   getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
+  HUMAN_INPUT_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
   PARAMETER_EXTRACTOR_COMMON_STRUCT,
@@ -49,6 +52,7 @@ import {
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import {
@@ -352,7 +356,7 @@ const formatItem = (
         try {
           if (type === VarType.object && v.json_schema) {
             varRes.children = {
-              schema: JSON.parse(v.json_schema),
+              schema: typeof v.json_schema === 'string' ? JSON.parse(v.json_schema) : v.json_schema,
             }
           }
         }
@@ -473,7 +477,6 @@ const formatItem = (
       break
     }
 
-    // eslint-disable-next-line sonarjs/no-duplicated-branches
     case BlockEnum.VariableAggregator: {
       const { output_type, advanced_settings }
         = data as VariableAssignerNodeType
@@ -627,6 +630,17 @@ const formatItem = (
         { schemaTypeDefinitions },
       ) || []
       res.vars = outputSchema
+      break
+    }
+
+    case BlockEnum.HumanInput: {
+      const outputSchema = HumanInputNodeDefault.getOutputVars?.(
+        data as HumanInputNodeType,
+        allPluginInfoList,
+        [],
+        { schemaTypeDefinitions },
+      ) || []
+      res.vars = [...outputSchema, ...HUMAN_INPUT_OUTPUT_STRUCT]
       break
     }
 
@@ -1233,7 +1247,7 @@ export const toNodeAvailableVars = ({
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: t('workflow.nodes.iteration.currentIteration'),
+      title: t('nodes.iteration.currentIteration', { ns: 'workflow' }),
       vars: [
         {
           variable: 'item',
@@ -1487,6 +1501,13 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = valueSelectors
       break
     }
+
+    case BlockEnum.HumanInput: {
+      const payload = data as HumanInputNodeType
+      const formContent = payload.form_content
+      res = matchNotSystemVars([formContent])
+      break
+    }
   }
   return res || []
 }
@@ -1583,6 +1604,11 @@ export const getNodeUsedVarPassToServerKey = (
 
     case BlockEnum.ParameterExtractor: {
       res = 'query'
+      break
+    }
+
+    case BlockEnum.HumanInput: {
+      res = `#${valueSelector.join('.')}#`
       break
     }
   }
@@ -1874,7 +1900,7 @@ export const updateNodeVars = (
         }
         break
       }
-      // eslint-disable-next-line sonarjs/no-duplicated-branches
+
       case BlockEnum.VariableAggregator: {
         const payload = data as VariableAssignerNodeType
         if (payload.variables) {
@@ -1919,6 +1945,15 @@ export const updateNodeVars = (
         const payload = data as ListFilterNodeType
         if (payload.variable.join('.') === oldVarSelector.join('.'))
           payload.variable = newVarSelector
+        break
+      }
+      case BlockEnum.HumanInput: {
+        const payload = data as HumanInputNodeType
+        payload.form_content = replaceOldVarInText(
+          payload.form_content,
+          oldVarSelector,
+          newVarSelector,
+        )
         break
       }
     }

@@ -66,7 +66,7 @@ const ImageUploaderInRetrievalTesting = ({
         <div
           className="absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent"
         >
-          <div>{t('datasetHitTesting.imageUploader.dropZoneTip')}</div>
+          <div>{t('imageUploader.dropZoneTip', { ns: 'datasetHitTesting' })}</div>
           <div ref={dragRef} className="absolute inset-0" />
         </div>
       )}

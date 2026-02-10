@@ -14,6 +14,7 @@ type Props = {
   showFileUpload?: boolean
   disabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
+  hideEditEntrance?: boolean
 }
 
 const FeatureBar = ({
@@ -21,6 +22,7 @@ const FeatureBar = ({
   showFileUpload = true,
   disabled,
   onFeatureBarClick,
+  hideEditEntrance = false,
 }: Props) => {
   const { t } = useTranslation()
   const features = useFeatures(s => s.features)
@@ -41,7 +43,7 @@ const FeatureBar = ({
       {noFeatureEnabled && (
         <div className="flex cursor-pointer items-end gap-1" onClick={() => onFeatureBarClick?.(true)}>
           <RiApps2AddLine className="h-3.5 w-3.5 text-text-accent" />
-          <div className="body-xs-medium text-text-accent">{t('appDebug.feature.bar.empty')}</div>
+          <div className="body-xs-medium text-text-accent">{t('feature.bar.empty', { ns: 'appDebug' })}</div>
           <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
         </div>
       )}
@@ -50,7 +52,7 @@ const FeatureBar = ({
           <div className="flex shrink-0 items-center gap-0.5">
             {!!features.moreLikeThis?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.moreLikeThis.title')}
+                popupContent={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
                   <RiSparklingFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -59,7 +61,7 @@ const FeatureBar = ({
             )}
             {!!features.opening?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.conversationOpener.title')}
+                popupContent={t('feature.conversationOpener.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
                   <LoveMessage className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -68,7 +70,7 @@ const FeatureBar = ({
             )}
             {!!features.moderation?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.moderation.title')}
+                popupContent={t('feature.moderation.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
                   <ContentModeration className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -77,7 +79,7 @@ const FeatureBar = ({
             )}
             {!!features.speech2text?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.speechToText.title')}
+                popupContent={t('feature.speechToText.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
                   <Microphone01 className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -87,7 +89,7 @@ const FeatureBar = ({
             {!!features.text2speech?.enabled && (
               <VoiceSettings placementLeft={false} open={modalOpen && !disabled} onOpen={setModalOpen}>
                 <Tooltip
-                  popupContent={t('appDebug.feature.textToSpeech.title')}
+                  popupContent={t('feature.textToSpeech.title', { ns: 'appDebug' })}
                 >
                   <div className={cn('shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs', !disabled && 'cursor-pointer')}>
                     <TextToAudio className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -97,7 +99,7 @@ const FeatureBar = ({
             )}
             {showFileUpload && !!features.file?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.fileUpload.title')}
+                popupContent={t('feature.fileUpload.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-600 p-1 shadow-xs">
                   <FolderUpload className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -106,7 +108,7 @@ const FeatureBar = ({
             )}
             {!!features.suggested?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
+                popupContent={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
                   <VirtualAssistant className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -115,7 +117,7 @@ const FeatureBar = ({
             )}
             {isChatMode && !!features.citation?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.citation.title')}
+                popupContent={t('feature.citation.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs">
                   <Citations className="h-4 w-4 text-text-primary-on-surface" />
@@ -124,7 +126,7 @@ const FeatureBar = ({
             )}
             {isChatMode && !!features.annotationReply?.enabled && (
               <Tooltip
-                popupContent={t('appDebug.feature.annotation.title')}
+                popupContent={t('feature.annotation.title', { ns: 'appDebug' })}
               >
                 <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
                   <MessageFast className="h-3.5 w-3.5 text-text-primary-on-surface" />
@@ -132,11 +134,15 @@ const FeatureBar = ({
               </Tooltip>
             )}
           </div>
-          <div className="body-xs-regular grow text-text-tertiary">{t('appDebug.feature.bar.enableText')}</div>
-          <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
-            <div className="mx-1">{t('appDebug.feature.bar.manage')}</div>
-            <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
-          </Button>
+          <div className="body-xs-regular grow text-text-tertiary">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
+          {
+            !hideEditEntrance && (
+              <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
+                <div className="mx-1">{t('feature.bar.manage', { ns: 'appDebug' })}</div>
+                <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
+              </Button>
+            )
+          }
         </div>
       )}
     </div>

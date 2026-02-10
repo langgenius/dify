@@ -3,9 +3,8 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
@@ -17,7 +16,7 @@ const UninstalledItem = ({
   payload,
 }: UninstalledItemProps) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
@@ -46,7 +45,7 @@ const UninstalledItem = ({
           className="system-xs-medium cursor-pointer pl-1.5 text-components-button-secondary-accent-text"
           onClick={showInstallModal}
         >
-          {t('plugin.installAction')}
+          {t('installAction', { ns: 'plugin' })}
         </div>
         {isShowInstallModal && (
           <InstallFromMarketplace

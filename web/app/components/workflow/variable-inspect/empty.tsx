@@ -1,9 +1,11 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { useDocLink } from '@/context/i18n'
 
 const Empty: FC = () => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   return (
     <div className="flex h-full flex-col gap-3 rounded-xl bg-background-section p-8">
@@ -11,15 +13,15 @@ const Empty: FC = () => {
         <Variable02 className="h-5 w-5 text-text-accent" />
       </div>
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold text-text-secondary">{t('workflow.debug.variableInspect.title')}</div>
-        <div className="system-xs-regular text-text-tertiary">{t('workflow.debug.variableInspect.emptyTip')}</div>
+        <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+        <div className="system-xs-regular text-text-tertiary">{t('debug.variableInspect.emptyTip', { ns: 'workflow' })}</div>
         <a
           className="system-xs-regular cursor-pointer text-text-accent"
-          href="https://docs.dify.ai/en/guides/workflow/debug-and-preview/variable-inspect"
+          href={docLink('/use-dify/debug/variable-inspect')}
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t('workflow.debug.variableInspect.emptyLink')}
+          {t('debug.variableInspect.emptyLink', { ns: 'workflow' })}
         </a>
       </div>
     </div>

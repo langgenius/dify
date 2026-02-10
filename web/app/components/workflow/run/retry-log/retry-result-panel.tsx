@@ -31,12 +31,12 @@ const RetryResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 h-4 w-4" />
-        {t('workflow.singleRun.back')}
+        {t('singleRun.back', { ns: 'workflow' })}
       </div>
       <TracingPanel
         list={list.map((item, index) => ({
           ...item,
-          title: `${t('workflow.nodes.common.retry.retry')} ${index + 1}`,
+          title: `${t('nodes.common.retry.retry', { ns: 'workflow' })} ${index + 1}`,
         }))}
         className="bg-background-section-burn"
       />

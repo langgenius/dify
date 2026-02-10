@@ -100,7 +100,7 @@ const RetrievalConfig: FC<Props> = ({
       score_threshold: configs.score_threshold_enabled ? (configs.score_threshold ?? DATASET_DEFAULT.score_threshold) : null,
       reranking_model: retrieval_mode === RETRIEVE_TYPE.oneWay
         ? undefined
-        // eslint-disable-next-line sonarjs/no-nested-conditional
+
         : (!configs.reranking_model?.reranking_provider_name
             ? undefined
             : {
@@ -136,7 +136,7 @@ const RetrievalConfig: FC<Props> = ({
           className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
         >
           <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-          {t('dataset.retrievalSettings')}
+          {t('retrievalSettings', { ns: 'dataset' })}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>

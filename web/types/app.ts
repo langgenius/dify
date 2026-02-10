@@ -316,7 +316,7 @@ export type SiteConfig = {
   use_icon_as_answer_icon: boolean
 }
 
-export type AppIconType = 'image' | 'emoji'
+export type AppIconType = 'image' | 'emoji' | 'link'
 
 /**
  * App

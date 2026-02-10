@@ -1,6 +1,7 @@
+import type { InputValueTypes } from '../types'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
-import type { VisionSettings } from '@/types/app'
+import type { VisionFile, VisionSettings } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -15,31 +16,42 @@ vi.mock('@/hooks/use-breakpoints', () => {
   }
   const mockUseBreakpoints = vi.fn(() => MediaType.pc)
   return {
-    __esModule: true,
     default: mockUseBreakpoints,
     MediaType,
   }
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  __esModule: true,
   default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
     <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
   ),
 }))
 
 vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
-  function TextGenerationImageUploaderMock({ onFilesChange }: { onFilesChange: (files: any[]) => void }) {
+  function TextGenerationImageUploaderMock({ onFilesChange }: { onFilesChange: (files: VisionFile[]) => void }) {
     useEffect(() => {
       onFilesChange([])
     }, [onFilesChange])
     return <div data-testid="vision-uploader-mock" />
   }
   return {
-    __esModule: true,
     default: TextGenerationImageUploaderMock,
   }
 })
+
+// Mock FileUploaderInAttachmentWrapper as it requires context providers not available in tests
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: object[], onChange: (files: object[]) => void }) => (
+    <div data-testid="file-uploader-mock">
+      <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
+      <span>
+        {value?.length || 0}
+        {' '}
+        files
+      </span>
+    </div>
+  ),
+}))
 
 const createPromptVariable = (overrides: Partial<PromptVariable>): PromptVariable => ({
   key: 'input',
@@ -98,11 +110,11 @@ const setup = (overrides: {
   const onInputsChange = vi.fn()
   const onSend = vi.fn()
   const onVisionFilesChange = vi.fn()
-  let inputsRefCapture: React.MutableRefObject<Record<string, any>> | null = null
+  let inputsRefCapture: React.MutableRefObject<Record<string, InputValueTypes>> | null = null
 
   const Wrapper = () => {
-    const [inputs, setInputs] = useState<Record<string, any>>({})
-    const inputsRef = useRef<Record<string, any>>({})
+    const [inputs, setInputs] = useState<Record<string, InputValueTypes>>({})
+    const inputsRef = useRef<Record<string, InputValueTypes>>({})
     inputsRefCapture = inputsRef
     return (
       <RunOnce
@@ -238,5 +250,249 @@ describe('RunOnce', () => {
     })
     const stopButton = screen.getByTestId('stop-button')
     expect(stopButton).toBeDisabled()
+  })
+
+  describe('select input type', () => {
+    it('should render select input and handle selection', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'selectInput',
+            name: 'Select Input',
+            type: 'select',
+            options: ['Option A', 'Option B', 'Option C'],
+            default: 'Option A',
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          selectInput: 'Option A',
+        })
+      })
+      // The Select component should be rendered
+      expect(screen.getByText('Select Input')).toBeInTheDocument()
+    })
+  })
+
+  describe('file input types', () => {
+    it('should render file uploader for single file input', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'fileInput',
+            name: 'File Input',
+            type: 'file',
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          fileInput: undefined,
+        })
+      })
+      expect(screen.getByText('File Input')).toBeInTheDocument()
+    })
+
+    it('should render file uploader for file-list input', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'fileListInput',
+            name: 'File List Input',
+            type: 'file-list',
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          fileListInput: [],
+        })
+      })
+      expect(screen.getByText('File List Input')).toBeInTheDocument()
+    })
+  })
+
+  describe('json_object input type', () => {
+    it('should render code editor for json_object input', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'jsonInput',
+            name: 'JSON Input',
+            type: 'json_object' as PromptVariable['type'],
+            json_schema: '{"type": "object"}',
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          jsonInput: undefined,
+        })
+      })
+      expect(screen.getByText('JSON Input')).toBeInTheDocument()
+      expect(screen.getByTestId('code-editor-mock')).toBeInTheDocument()
+    })
+
+    it('should update json_object input when code editor changes', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'jsonInput',
+            name: 'JSON Input',
+            type: 'json_object' as PromptVariable['type'],
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      onInputsChange.mockClear()
+
+      const codeEditor = screen.getByTestId('code-editor-mock')
+      fireEvent.change(codeEditor, { target: { value: '{"key": "value"}' } })
+
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          jsonInput: '{"key": "value"}',
+        })
+      })
+    })
+  })
+
+  describe('hidden and optional fields', () => {
+    it('should not render hidden variables', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'hiddenInput',
+            name: 'Hidden Input',
+            type: 'string',
+            hide: true,
+          }),
+          createPromptVariable({
+            key: 'visibleInput',
+            name: 'Visible Input',
+            type: 'string',
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      expect(screen.queryByText('Hidden Input')).not.toBeInTheDocument()
+      expect(screen.getByText('Visible Input')).toBeInTheDocument()
+    })
+
+    it('should show optional label for non-required fields', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'optionalInput',
+            name: 'Optional Input',
+            type: 'string',
+            required: false,
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      expect(screen.getByText('workflow.panel.optional')).toBeInTheDocument()
+    })
+  })
+
+  describe('vision uploader', () => {
+    it('should not render vision uploader when disabled', async () => {
+      const { onInputsChange } = setup({ visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      expect(screen.queryByText('common.imageUploader.imageUpload')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('clear with different input types', () => {
+    it('should clear select input to undefined', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'selectInput',
+            name: 'Select Input',
+            type: 'select',
+            options: ['Option A', 'Option B'],
+            default: 'Option A',
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      onInputsChange.mockClear()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+      expect(onInputsChange).toHaveBeenCalledWith({
+        selectInput: undefined,
+      })
+    })
+  })
+
+  describe('maxLength behavior', () => {
+    it('should not have maxLength attribute when max_length is not set', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'textInput',
+            name: 'Text Input',
+            type: 'string',
+            // max_length is not set
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      const input = screen.getByPlaceholderText('Text Input')
+      expect(input).not.toHaveAttribute('maxLength')
+    })
+
+    it('should have maxLength attribute when max_length is set', async () => {
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'textInput',
+            name: 'Text Input',
+            type: 'string',
+            max_length: 100,
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalled()
+      })
+      const input = screen.getByPlaceholderText('Text Input')
+      expect(input).toHaveAttribute('maxLength', '100')
+    })
   })
 })

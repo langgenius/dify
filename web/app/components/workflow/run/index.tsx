@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
-import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -130,7 +129,7 @@ const RunPanel: FC<RunProps> = ({
             )}
             onClick={() => switchTab('RESULT')}
           >
-            {t('runLog.result')}
+            {t('result', { ns: 'runLog' })}
           </div>
         )}
         <div
@@ -140,7 +139,7 @@ const RunPanel: FC<RunProps> = ({
           )}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('runLog.detail')}
+          {t('detail', { ns: 'runLog' })}
         </div>
         <div
           className={cn(
@@ -149,7 +148,7 @@ const RunPanel: FC<RunProps> = ({
           )}
           onClick={() => switchTab('TRACING')}
         >
-          {t('runLog.tracing')}
+          {t('tracing', { ns: 'runLog' })}
         </div>
       </div>
       {/* panel detail */}
@@ -182,6 +181,7 @@ const RunPanel: FC<RunProps> = ({
             steps={runDetail.total_steps}
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
+            workflowRunId={runDetail.id}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (

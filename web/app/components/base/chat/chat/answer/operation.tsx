@@ -69,6 +69,7 @@ const Operation: FC<OperationProps> = ({
     feedback,
     adminFeedback,
     agent_thoughts,
+    humanInputFormDataList,
   } = item
   const [userLocalFeedback, setUserLocalFeedback] = useState(feedback)
   const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
@@ -92,8 +93,8 @@ const Operation: FC<OperationProps> = ({
   const shouldShowUserFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !config?.supportAnnotation
   const shouldShowAdminFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !!config?.supportAnnotation
 
-  const userFeedbackLabel = t('appLog.table.header.userRate') || 'User feedback'
-  const adminFeedbackLabel = t('appLog.table.header.adminRate') || 'Admin feedback'
+  const userFeedbackLabel = t('table.header.userRate', { ns: 'appLog' }) || 'User feedback'
+  const adminFeedbackLabel = t('table.header.adminRate', { ns: 'appLog' }) || 'Admin feedback'
   const feedbackTooltipClassName = 'max-w-[260px]'
 
   const buildFeedbackTooltip = (feedbackData?: Feedback | null, label = userFeedbackLabel) => {
@@ -101,8 +102,8 @@ const Operation: FC<OperationProps> = ({
       return label
 
     const ratingLabel = feedbackData.rating === 'like'
-      ? (t('appLog.detail.operation.like') || 'like')
-      : (t('appLog.detail.operation.dislike') || 'dislike')
+      ? (t('detail.operation.like', { ns: 'appLog' }) || 'like')
+      : (t('detail.operation.dislike', { ns: 'appLog' }) || 'dislike')
     const feedbackText = feedbackData.content?.trim()
 
     if (feedbackText)
@@ -186,7 +187,7 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {shouldShowUserFeedbackBar && (
+        {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
             hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
@@ -226,7 +227,7 @@ const Operation: FC<OperationProps> = ({
                 )}
           </div>
         )}
-        {shouldShowAdminFeedbackBar && (
+        {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
             (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
@@ -305,26 +306,28 @@ const Operation: FC<OperationProps> = ({
         )}
         {!isOpeningStatement && (
           <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex">
-            {(config?.text_to_speech?.enabled) && (
+            {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}
                 value={content}
                 voice={config?.text_to_speech?.voice}
               />
             )}
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-            }}
-            >
-              <RiClipboardLine className="h-4 w-4" />
-            </ActionButton>
+            {!humanInputFormDataList?.length && (
+              <ActionButton onClick={() => {
+                copy(content)
+                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              }}
+              >
+                <RiClipboardLine className="h-4 w-4" />
+              </ActionButton>
+            )}
             {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
                 <RiResetLeftLine className="h-4 w-4" />
               </ActionButton>
             )}
-            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
+            {config?.supportAnnotation && config.annotation_reply?.enabled && !humanInputFormDataList?.length && (
               <AnnotationCtrlButton
                 appId={config?.appId || ''}
                 messageId={id}
@@ -353,23 +356,23 @@ const Operation: FC<OperationProps> = ({
       />
       {isShowFeedbackModal && (
         <Modal
-          title={t('common.feedback.title') || 'Provide Feedback'}
-          subTitle={t('common.feedback.subtitle') || 'Please tell us what went wrong with this response'}
+          title={t('feedback.title', { ns: 'common' }) || 'Provide Feedback'}
+          subTitle={t('feedback.subtitle', { ns: 'common' }) || 'Please tell us what went wrong with this response'}
           onClose={handleFeedbackCancel}
           onConfirm={handleFeedbackSubmit}
           onCancel={handleFeedbackCancel}
-          confirmButtonText={t('common.operation.submit') || 'Submit'}
-          cancelButtonText={t('common.operation.cancel') || 'Cancel'}
+          confirmButtonText={t('operation.submit', { ns: 'common' }) || 'Submit'}
+          cancelButtonText={t('operation.cancel', { ns: 'common' }) || 'Cancel'}
         >
           <div className="space-y-3">
             <div>
               <label className="system-sm-semibold mb-2 block text-text-secondary">
-                {t('common.feedback.content') || 'Feedback Content'}
+                {t('feedback.content', { ns: 'common' }) || 'Feedback Content'}
               </label>
               <Textarea
                 value={feedbackContent}
                 onChange={e => setFeedbackContent(e.target.value)}
-                placeholder={t('common.feedback.placeholder') || 'Please describe what went wrong or how we can improve...'}
+                placeholder={t('feedback.placeholder', { ns: 'common' }) || 'Please describe what went wrong or how we can improve...'}
                 rows={4}
                 className="w-full"
               />

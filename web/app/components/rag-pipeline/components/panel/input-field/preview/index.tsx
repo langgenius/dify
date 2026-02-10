@@ -35,7 +35,7 @@ const PreviewPanel = () => {
       <div className="flex items-center gap-x-2 px-4 pt-1">
         <div className="grow py-1">
           <Badge className="border-text-accent-secondary bg-components-badge-bg-dimm text-text-accent-secondary">
-            {t('datasetPipeline.operations.preview')}
+            {t('operations.preview', { ns: 'datasetPipeline' })}
           </Badge>
         </div>
         <button

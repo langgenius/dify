@@ -51,7 +51,7 @@ const ConfigCredential: FC<Props> = ({
       isShow
       positionCenter={positionCenter}
       onHide={onHide}
-      title={t('tools.createTool.authMethod.title')!}
+      title={t('createTool.authMethod.title', { ns: 'tools' })!}
       dialogClassName="z-[60]"
       dialogBackdropClassName="z-[70]"
       panelClassName="mt-2 !w-[520px] h-fit z-[80]"
@@ -62,10 +62,10 @@ const ConfigCredential: FC<Props> = ({
         <div className="px-6 pt-2">
           <div className="space-y-4">
             <div>
-              <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.authMethod.type')}</div>
+              <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.type', { ns: 'tools' })}</div>
               <div className="flex space-x-3">
                 <SelectItem
-                  text={t('tools.createTool.authMethod.types.none')}
+                  text={t('createTool.authMethod.types.none', { ns: 'tools' })}
                   value={AuthType.none}
                   isChecked={tempCredential.auth_type === AuthType.none}
                   onClick={value => setTempCredential({
@@ -73,7 +73,7 @@ const ConfigCredential: FC<Props> = ({
                   })}
                 />
                 <SelectItem
-                  text={t('tools.createTool.authMethod.types.api_key_header')}
+                  text={t('createTool.authMethod.types.api_key_header', { ns: 'tools' })}
                   value={AuthType.apiKeyHeader}
                   isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
                   onClick={value => setTempCredential({
@@ -84,7 +84,7 @@ const ConfigCredential: FC<Props> = ({
                   })}
                 />
                 <SelectItem
-                  text={t('tools.createTool.authMethod.types.api_key_query')}
+                  text={t('createTool.authMethod.types.api_key_query', { ns: 'tools' })}
                   value={AuthType.apiKeyQuery}
                   isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
                   onClick={value => setTempCredential({
@@ -98,22 +98,22 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKeyHeader && (
               <>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.authHeaderPrefix.title')}</div>
+                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authHeaderPrefix.title', { ns: 'tools' })}</div>
                   <div className="flex space-x-3">
                     <SelectItem
-                      text={t('tools.createTool.authHeaderPrefix.types.basic')}
+                      text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
                       value={AuthHeaderPrefix.basic}
                       isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic}
                       onClick={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value as AuthHeaderPrefix })}
                     />
                     <SelectItem
-                      text={t('tools.createTool.authHeaderPrefix.types.bearer')}
+                      text={t('createTool.authHeaderPrefix.types.bearer', { ns: 'tools' })}
                       value={AuthHeaderPrefix.bearer}
                       isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer}
                       onClick={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value as AuthHeaderPrefix })}
                     />
                     <SelectItem
-                      text={t('tools.createTool.authHeaderPrefix.types.custom')}
+                      text={t('createTool.authHeaderPrefix.types.custom', { ns: 'tools' })}
                       value={AuthHeaderPrefix.custom}
                       isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}
                       onClick={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value as AuthHeaderPrefix })}
@@ -122,11 +122,11 @@ const ConfigCredential: FC<Props> = ({
                 </div>
                 <div>
                   <div className="system-sm-medium flex items-center py-2 text-text-primary">
-                    {t('tools.createTool.authMethod.key')}
+                    {t('createTool.authMethod.key', { ns: 'tools' })}
                     <Tooltip
                       popupContent={(
                         <div className="w-[261px] text-text-tertiary">
-                          {t('tools.createTool.authMethod.keyTooltip')}
+                          {t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
                         </div>
                       )}
                       triggerClassName="ml-0.5 w-4 h-4"
@@ -135,15 +135,15 @@ const ConfigCredential: FC<Props> = ({
                   <Input
                     value={tempCredential.api_key_header}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                    placeholder={t('tools.createTool.authMethod.types.apiKeyPlaceholder')!}
+                    placeholder={t('createTool.authMethod.types.apiKeyPlaceholder', { ns: 'tools' })!}
                   />
                 </div>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.authMethod.value')}</div>
+                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                    placeholder={t('tools.createTool.authMethod.types.apiValuePlaceholder')!}
+                    placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
                   />
                 </div>
               </>
@@ -152,11 +152,11 @@ const ConfigCredential: FC<Props> = ({
               <>
                 <div>
                   <div className="system-sm-medium flex items-center py-2 text-text-primary">
-                    {t('tools.createTool.authMethod.queryParam')}
+                    {t('createTool.authMethod.queryParam', { ns: 'tools' })}
                     <Tooltip
                       popupContent={(
                         <div className="w-[261px] text-text-tertiary">
-                          {t('tools.createTool.authMethod.queryParamTooltip')}
+                          {t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
                         </div>
                       )}
                       triggerClassName="ml-0.5 w-4 h-4"
@@ -165,15 +165,15 @@ const ConfigCredential: FC<Props> = ({
                   <Input
                     value={tempCredential.api_key_query_param}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_query_param: e.target.value })}
-                    placeholder={t('tools.createTool.authMethod.types.queryParamPlaceholder')!}
+                    placeholder={t('createTool.authMethod.types.queryParamPlaceholder', { ns: 'tools' })!}
                   />
                 </div>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.authMethod.value')}</div>
+                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                    placeholder={t('tools.createTool.authMethod.types.apiValuePlaceholder')!}
+                    placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
                   />
                 </div>
               </>
@@ -182,7 +182,7 @@ const ConfigCredential: FC<Props> = ({
           </div>
 
           <div className="mt-4 flex shrink-0 justify-end space-x-2 py-4">
-            <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+            <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
             <Button
               variant="primary"
               onClick={() => {
@@ -190,7 +190,7 @@ const ConfigCredential: FC<Props> = ({
                 onHide()
               }}
             >
-              {t('common.operation.save')}
+              {t('operation.save', { ns: 'common' })}
             </Button>
           </div>
         </div>

@@ -13,10 +13,10 @@ const Footer: FC<YearAndMonthPickerFooterProps> = ({
   return (
     <div className="grid grid-cols-2 gap-x-1 p-2">
       <Button size="small" onClick={handleYearMonthCancel}>
-        {t('time.operation.cancel')}
+        {t('operation.cancel', { ns: 'time' })}
       </Button>
       <Button variant="primary" size="small" onClick={handleYearMonthConfirm}>
-        {t('time.operation.ok')}
+        {t('operation.ok', { ns: 'time' })}
       </Button>
     </div>
   )

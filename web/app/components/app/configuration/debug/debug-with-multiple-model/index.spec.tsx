@@ -7,6 +7,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
@@ -21,9 +22,7 @@ type PromptVariableWithMeta = Omit<PromptVariable, 'type' | 'required'> & {
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseFeaturesSelector = vi.fn()
 const mockUseEventEmitterContext = vi.fn()
-const mockUseAppStoreSelector = vi.fn()
 const mockEventEmitter = { emit: vi.fn() }
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
 let capturedChatInputProps: MockChatInputAreaProps | null = null
 let modelIdCounter = 0
 let featureState: FeatureStoreState
@@ -52,27 +51,18 @@ const mockFiles: FileEntity[] = [
 ]
 
 vi.mock('@/context/debug-configuration', () => ({
-  __esModule: true,
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  __esModule: true,
   useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeaturesSelector(selector),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
-  __esModule: true,
   useEventEmitterContextContext: () => mockUseEventEmitterContext(),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  __esModule: true,
-  useStore: (selector: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => mockUseAppStoreSelector(selector),
-}))
-
 vi.mock('./debug-item', () => ({
-  __esModule: true,
   default: ({
     modelAndParameter,
     className,
@@ -95,7 +85,6 @@ vi.mock('./debug-item', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
-  __esModule: true,
   default: (props: MockChatInputAreaProps) => {
     capturedChatInputProps = props
     return (
@@ -197,7 +186,6 @@ describe('DebugWithMultipleModel', () => {
     featureState = createFeatureState()
     mockUseFeaturesSelector.mockImplementation(selector => selector(featureState))
     mockUseEventEmitterContext.mockReturnValue({ eventEmitter: mockEventEmitter })
-    mockUseAppStoreSelector.mockImplementation(selector => selector({ setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal }))
     mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration())
   })
 
@@ -444,7 +432,7 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.showFileUpload).toBe(false)
       expect(capturedChatInputProps?.speechToTextConfig).toEqual(featureState.features.speech2text)
       expect(capturedChatInputProps?.visionConfig).toEqual(featureState.features.file)
-      expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
+      expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
     })
 
     it('should render chat input in agent chat mode', () => {

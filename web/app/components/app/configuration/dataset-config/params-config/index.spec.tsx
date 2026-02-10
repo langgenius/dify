@@ -65,13 +65,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   )
 
   return {
-    __esModule: true,
     default: MockModelSelector,
   }
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 

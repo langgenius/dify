@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useDownloadPlugin } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import { downloadFile } from '@/utils/format'
+import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
@@ -67,7 +67,7 @@ const OperationDropdown: FC<Props> = ({
     if (!needDownload || !blob)
       return
     const fileName = `${author}-${name}_${version}.zip`
-    downloadFile({ data: blob, fileName })
+    downloadBlob({ data: blob, fileName })
     setNeedDownload(false)
     queryClient.removeQueries({
       queryKey: ['plugins', 'downloadPlugin', downloadInfo],
@@ -91,8 +91,8 @@ const OperationDropdown: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[9999]">
         <div className="min-w-[176px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          <div onClick={handleDownload} className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">{t('common.operation.download')}</div>
-          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">{t('common.operation.viewDetails')}</a>
+          <div onClick={handleDownload} className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">{t('operation.download', { ns: 'common' })}</div>
+          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">{t('operation.viewDetails', { ns: 'common' })}</a>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

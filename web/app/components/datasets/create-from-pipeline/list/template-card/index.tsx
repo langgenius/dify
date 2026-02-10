@@ -16,7 +16,7 @@ import {
   useInvalidCustomizedTemplateList,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
-import { downloadFile } from '@/utils/format'
+import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
 import Details from './details'
@@ -52,7 +52,7 @@ const TemplateCard = ({
     if (!pipelineTemplateInfo) {
       Toast.notify({
         type: 'error',
-        message: t('datasetPipeline.creation.errorTip'),
+        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
       })
       return
     }
@@ -63,7 +63,7 @@ const TemplateCard = ({
       onSuccess: async (newDataset) => {
         Toast.notify({
           type: 'success',
-          message: t('datasetPipeline.creation.successTip'),
+          message: t('creation.successTip', { ns: 'datasetPipeline' }),
         })
         invalidDatasetList()
         if (newDataset.pipeline_id)
@@ -78,7 +78,7 @@ const TemplateCard = ({
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.creation.errorTip'),
+          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -108,19 +108,16 @@ const TemplateCard = ({
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadFile({
-          data: blob,
-          fileName: `${pipeline.name}.pipeline`,
-        })
+        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
         Toast.notify({
           type: 'success',
-          message: t('datasetPipeline.exportDSL.successTip'),
+          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
         })
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.exportDSL.errorTip'),
+          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -176,8 +173,8 @@ const TemplateCard = ({
       )}
       {showDeleteConfirm && (
         <Confirm
-          title={t('datasetPipeline.deletePipeline.title')}
-          content={t('datasetPipeline.deletePipeline.content')}
+          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
+          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
           isShow={showDeleteConfirm}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}

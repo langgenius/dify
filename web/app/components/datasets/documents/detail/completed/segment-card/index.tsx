@@ -19,13 +19,14 @@ import { useDocumentContext } from '../../context'
 import ChildSegmentList from '../child-segment-list'
 import Dot from '../common/dot'
 import { SegmentIndexTag } from '../common/segment-index-tag'
+import SummaryLabel from '../common/summary-label'
 import Tag from '../common/tag'
 import ParentChunkCardSkeleton from '../skeleton/parent-chunk-card-skeleton'
 import ChunkContent from './chunk-content'
 
 type ISegmentCardProps = {
   loading: boolean
-  detail?: SegmentDetailModel & { document?: { name: string } }
+  detail?: SegmentDetailModel & { document?: { name: string }, status?: string }
   onClick?: () => void
   onChangeSwitch?: (enabled: boolean, segId?: string) => Promise<void>
   onDelete?: (segId: string) => Promise<void>
@@ -43,7 +44,7 @@ type ISegmentCardProps = {
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({
-  detail = {},
+  detail = { status: '' },
   onClick,
   onChangeSwitch,
   onDelete,
@@ -67,6 +68,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     word_count,
     hit_count,
     answer,
+    summary,
     keywords,
     child_chunks = [],
     created_at,
@@ -110,11 +112,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   const wordCountText = useMemo(() => {
     const total = formatNumber(word_count)
-    return `${total} ${t('datasetDocuments.segment.characters', { count: word_count })}`
+    return `${total} ${t('segment.characters', { ns: 'datasetDocuments', count: word_count })}`
   }, [word_count, t])
 
   const labelPrefix = useMemo(() => {
-    return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+    return isParentChildMode ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
   }, [isParentChildMode, t])
 
   const images = useMemo(() => {
@@ -155,11 +157,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             <Dot />
             <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{wordCountText}</div>
             <Dot />
-            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t('datasetDocuments.segment.hitCount')}`}</div>
+            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t('segment.hitCount', { ns: 'datasetDocuments' })}`}</div>
             {chunkEdited && (
               <>
                 <Dot />
-                <Badge text={t('datasetDocuments.segment.edited') as string} uppercase className={contentOpacity} />
+                <Badge text={t('segment.edited', { ns: 'datasetDocuments' }) as string} uppercase className={contentOpacity} />
               </>
             )}
           </div>
@@ -237,6 +239,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         className={contentOpacity}
       />
       {images.length > 0 && <ImageList images={images} size="md" className="py-1" />}
+      {
+        summary && (
+          <SummaryLabel summary={summary} className="mt-2" />
+        )
+      }
       {isGeneralMode && (
         <div className={cn('flex flex-wrap items-center gap-2 py-1.5', contentOpacity)}>
           {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
@@ -250,7 +257,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 className="system-xs-semibold-uppercase mb-2 mt-0.5 text-text-accent"
                 onClick={() => onClick?.()}
               >
-                {t('common.operation.viewMore')}
+                {t('operation.viewMore', { ns: 'common' })}
               </button>
             )
           : null
@@ -273,8 +280,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         && (
           <Confirm
             isShow={showModal}
-            title={t('datasetDocuments.segment.delete')}
-            confirmText={t('common.operation.sure')}
+            title={t('segment.delete', { ns: 'datasetDocuments' })}
+            confirmText={t('operation.sure', { ns: 'common' })}
             onConfirm={async () => { await onDelete?.(id) }}
             onCancel={() => setShowModal(false)}
           />

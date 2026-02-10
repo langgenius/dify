@@ -1,10 +1,10 @@
 import type { createDocumentResponse, FullDocumentDetail, IconInfo } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
+import { RETRIEVE_METHOD } from '@/types/app'
 import StepThree from './index'
 
 // Mock the EmbeddingProcess component since it has complex async logic
 vi.mock('../embedding-process', () => ({
-  __esModule: true,
   default: vi.fn(({ datasetId, batchId, documents, indexingType, retrievalMethod }) => (
     <div data-testid="embedding-process">
       <span data-testid="ep-dataset-id">{datasetId}</span>
@@ -19,7 +19,6 @@ vi.mock('../embedding-process', () => ({
 // Mock useBreakpoints hook
 let mockMediaType = 'pc'
 vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
   MediaType: {
     mobile: 'mobile',
     tablet: 'tablet',
@@ -191,7 +190,7 @@ describe('StepThree', () => {
 
       // Assert
       const link = screen.getByText('datasetPipeline.addDocuments.stepThree.learnMore')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/guides/knowledge-base/integrate-knowledge-within-application')
+      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/use-dify/knowledge/integrate-knowledge-within-application')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     })
@@ -321,7 +320,7 @@ describe('StepThree', () => {
     describe('retrievalMethod prop', () => {
       it('should pass retrievalMethod to EmbeddingProcess', () => {
         // Arrange & Act
-        renderStepThree({ retrievalMethod: 'semantic_search' })
+        renderStepThree({ retrievalMethod: RETRIEVE_METHOD.semantic })
 
         // Assert
         expect(screen.getByTestId('ep-retrieval-method')).toHaveTextContent('semantic_search')

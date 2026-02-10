@@ -11,7 +11,6 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import Item from './index'
 
 vi.mock('../settings-modal', () => ({
-  __esModule: true,
   default: ({ onSave, onCancel, currentDataset }: any) => (
     <div>
       <div>Mock settings modal</div>
@@ -24,7 +23,6 @@ vi.mock('../settings-modal', () => ({
 vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
   return {
-    __esModule: true,
     ...actual,
     default: vi.fn(() => actual.MediaType.pc),
   }
@@ -185,7 +183,7 @@ describe('dataset-config/card-item', () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
     })
     await waitFor(() => {
-      expect(screen.getByText('Mock settings modal')).not.toBeVisible()
+      expect(screen.queryByText('Mock settings modal')).not.toBeInTheDocument()
     })
   })
 

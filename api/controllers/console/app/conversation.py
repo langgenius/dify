@@ -13,7 +13,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from fields.conversation_fields import MessageTextField
 from fields.raws import FilesContainedField
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import TimestampField
@@ -90,6 +89,7 @@ status_count_model = console_ns.model(
         "success": fields.Integer,
         "failed": fields.Integer,
         "partial_success": fields.Integer,
+        "paused": fields.Integer,
     },
 )
 
@@ -176,6 +176,12 @@ annotation_hit_history_model = console_ns.model(
         "created_at": TimestampField,
     },
 )
+
+
+class MessageTextField(fields.Raw):
+    def format(self, value):
+        return value[0]["text"] if value else ""
+
 
 # Simple message detail model
 simple_message_detail_model = console_ns.model(
@@ -343,10 +349,13 @@ class CompletionConversationApi(Resource):
         )
 
         if args.keyword:
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(args.keyword)
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
-                    Message.query.ilike(f"%{args.keyword}%"),
-                    Message.answer.ilike(f"%{args.keyword}%"),
+                    Message.query.ilike(f"%{escaped_keyword}%", escape="\\"),
+                    Message.answer.ilike(f"%{escaped_keyword}%", escape="\\"),
                 )
             )
 
@@ -455,7 +464,10 @@ class ChatConversationApi(Resource):
         query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args.keyword:
-            keyword_filter = f"%{args.keyword}%"
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(args.keyword)
+            keyword_filter = f"%{escaped_keyword}%"
             query = (
                 query.join(
                     Message,
@@ -464,11 +476,11 @@ class ChatConversationApi(Resource):
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
                 .where(
                     or_(
-                        Message.query.ilike(keyword_filter),
-                        Message.answer.ilike(keyword_filter),
-                        Conversation.name.ilike(keyword_filter),
-                        Conversation.introduction.ilike(keyword_filter),
-                        subquery.c.from_end_user_session_id.ilike(keyword_filter),
+                        Message.query.ilike(keyword_filter, escape="\\"),
+                        Message.answer.ilike(keyword_filter, escape="\\"),
+                        Conversation.name.ilike(keyword_filter, escape="\\"),
+                        Conversation.introduction.ilike(keyword_filter, escape="\\"),
+                        subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
                     ),
                 )
                 .group_by(Conversation.id)
@@ -497,16 +509,19 @@ class ChatConversationApi(Resource):
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
-        if args.annotation_status == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
-                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-            )
-        elif args.annotation_status == "not_annotated":
-            query = (
-                query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                .group_by(Conversation.id)
-                .having(func.count(MessageAnnotation.id) == 0)
-            )
+        match args.annotation_status:
+            case "annotated":
+                query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
+                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                )
+            case "not_annotated":
+                query = (
+                    query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
+                    .group_by(Conversation.id)
+                    .having(func.count(MessageAnnotation.id) == 0)
+                )
+            case "all":
+                pass
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
@@ -581,9 +596,12 @@ def _get_conversation(app_model, conversation_id):
     if not conversation:
         raise NotFound("Conversation Not Exists.")
 
-    if not conversation.read_at:
-        conversation.read_at = naive_utc_now()
-        conversation.read_account_id = current_user.id
-        db.session.commit()
+    db.session.execute(
+        sa.update(Conversation)
+        .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
+        .values(read_at=naive_utc_now(), read_account_id=current_user.id)
+    )
+    db.session.commit()
+    db.session.refresh(conversation)
 
     return conversation

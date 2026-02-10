@@ -13,6 +13,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
@@ -29,7 +30,6 @@ type FeaturedToolsProps = {
   providerMap: Map<string, ToolWithProvider>
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
   isLoading?: boolean
   onInstallSuccess?: () => void
 }
@@ -41,7 +41,6 @@ const FeaturedTools = ({
   providerMap,
   onSelect,
   selectedTools,
-  canChooseMCPTool,
   isLoading = false,
   onInstallSuccess,
 }: FeaturedToolsProps) => {
@@ -49,14 +48,14 @@ const FeaturedTools = ({
   const language = useGetLanguage()
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return false
     const stored = window.localStorage.getItem(STORAGE_KEY)
     return stored === 'true'
   })
 
   useEffect(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored !== null)
@@ -64,7 +63,7 @@ const FeaturedTools = ({
   }, [])
 
   useEffect(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
   }, [isCollapsed])
@@ -133,7 +132,7 @@ const FeaturedTools = ({
         className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('workflow.tabs.featuredTools')}</span>
+        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
         <ArrowDownRoundFill className={`ml-0.5 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
 
@@ -148,7 +147,7 @@ const FeaturedTools = ({
           {showEmptyState && (
             <p className="system-xs-regular py-2 text-text-tertiary">
               <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'tool' })} target="_blank" rel="noopener noreferrer">
-                {t('workflow.tabs.noFeaturedPlugins')}
+                {t('tabs.noFeaturedPlugins', { ns: 'workflow' })}
               </Link>
             </p>
           )}
@@ -165,7 +164,6 @@ const FeaturedTools = ({
                   viewType={ViewType.flat}
                   hasSearchText={false}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                 />
               )}
 
@@ -210,7 +208,7 @@ const FeaturedTools = ({
                     )}
               </div>
               <div className="system-xs-regular">
-                {t(isExpanded ? 'workflow.tabs.showLessFeatured' : 'workflow.tabs.showMoreFeatured')}
+                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', { ns: 'workflow' })}
               </div>
             </div>
           )}
@@ -235,7 +233,7 @@ function FeaturedToolUninstalledItem({
 }: FeaturedToolUninstalledItemProps) {
   const label = plugin.label?.[language] || plugin.name
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
-  const installCountLabel = t('plugin.install', { num: formatNumber(plugin.install_count || 0) })
+  const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
   const [actionOpen, setActionOpen] = useState(false)
   const [isActionHovered, setIsActionHovered] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
@@ -299,7 +297,7 @@ function FeaturedToolUninstalledItem({
                   setIsActionHovered(true)
                 }}
               >
-                {t('plugin.installAction')}
+                {t('installAction', { ns: 'plugin' })}
               </button>
               <Action
                 open={actionOpen}

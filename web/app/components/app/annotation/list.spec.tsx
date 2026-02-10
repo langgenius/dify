@@ -6,7 +6,6 @@ import List from './list'
 const mockFormatTime = vi.fn(() => 'formatted-time')
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: () => ({
     formatTime: mockFormatTime,
   }),

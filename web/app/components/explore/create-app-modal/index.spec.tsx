@@ -17,8 +17,12 @@ vi.mock('react-i18next', () => ({
         return override
       if (options?.returnObjects)
         return [`${key}-feature-1`, `${key}-feature-2`]
-      if (options)
-        return `${key}:${JSON.stringify(options)}`
+      if (options) {
+        const { ns, ...rest } = options
+        const prefix = ns ? `${ns}.` : ''
+        const suffix = Object.keys(rest).length > 0 ? `:${JSON.stringify(rest)}` : ''
+        return `${prefix}${key}${suffix}`
+      }
       return key
     },
     i18n: {
@@ -39,7 +43,6 @@ vi.mock('emoji-mart', () => ({
   SearchIndex: { search: vi.fn().mockResolvedValue([]) },
 }))
 vi.mock('@emoji-mart/data', () => ({
-  __esModule: true,
   default: {
     categories: [
       { id: 'people', emojis: ['😀'] },
@@ -135,7 +138,7 @@ describe('CreateAppModal', () => {
       setup({ appName: 'My App', isEditModal: false })
 
       expect(screen.getByText('explore.appCustomize.title:{"name":"My App"}')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
 
@@ -143,7 +146,7 @@ describe('CreateAppModal', () => {
       setup({ isEditModal: true, appMode: AppModeEnum.CHAT, max_active_requests: 5 })
 
       expect(screen.getByText('app.editAppTitle')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.save/ })).toBeInTheDocument()
       expect(screen.getByRole('switch')).toBeInTheDocument()
       expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('5')
     })
@@ -163,7 +166,7 @@ describe('CreateAppModal', () => {
     it('should not render modal content when hidden', () => {
       setup({ show: false })
 
-      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /common\.operation\.create/ })).not.toBeInTheDocument()
     })
   })
 
@@ -172,13 +175,13 @@ describe('CreateAppModal', () => {
     it('should disable confirm action when confirmDisabled is true', () => {
       setup({ confirmDisabled: true })
 
-      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
     })
 
     it('should disable confirm action when appName is empty', () => {
       setup({ appName: '   ' })
 
-      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
     })
   })
 
@@ -192,8 +195,8 @@ describe('CreateAppModal', () => {
 
     it('should fall back to empty placeholders when translations return empty string', () => {
       mockTranslationOverrides = {
-        'app.newApp.appNamePlaceholder': '',
-        'app.newApp.appDescriptionPlaceholder': '',
+        'newApp.appNamePlaceholder': '',
+        'newApp.appDescriptionPlaceholder': '',
       }
 
       setup()
@@ -242,7 +245,7 @@ describe('CreateAppModal', () => {
       setup({ isEditModal: false })
 
       expect(screen.getByText('billing.apps.fullTip2')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
     })
 
     it('should allow saving when apps quota is reached in edit mode', () => {
@@ -254,7 +257,7 @@ describe('CreateAppModal', () => {
       setup({ isEditModal: true })
 
       expect(screen.queryByText('billing.apps.fullTip2')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /common\.operation\.save/ })).toBeEnabled()
     })
   })
 
@@ -381,7 +384,7 @@ describe('CreateAppModal', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
-        fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+        fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
         act(() => {
           vi.advanceTimersByTime(300)
         })
@@ -430,7 +433,7 @@ describe('CreateAppModal', () => {
         expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
 
         // Submit and verify the payload uses the original icon (cancel reverts to props)
-        fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+        fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
         act(() => {
           vi.advanceTimersByTime(300)
         })
@@ -468,7 +471,7 @@ describe('CreateAppModal', () => {
         appIconBackground: '#000000',
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
       act(() => {
         vi.advanceTimersByTime(300)
       })
@@ -492,7 +495,7 @@ describe('CreateAppModal', () => {
       const { onConfirm } = setup({ appDescription: 'Old description' })
 
       fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), { target: { value: 'Updated description' } })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
       act(() => {
         vi.advanceTimersByTime(300)
       })
@@ -509,7 +512,7 @@ describe('CreateAppModal', () => {
         appIconBackground: null,
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
       act(() => {
         vi.advanceTimersByTime(300)
       })
@@ -533,7 +536,7 @@ describe('CreateAppModal', () => {
       fireEvent.click(screen.getByRole('switch'))
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '12' } })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
       act(() => {
         vi.advanceTimersByTime(300)
       })
@@ -548,7 +551,7 @@ describe('CreateAppModal', () => {
     it('should omit max_active_requests when input is empty', () => {
       const { onConfirm } = setup({ isEditModal: true, max_active_requests: null })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
       act(() => {
         vi.advanceTimersByTime(300)
       })
@@ -561,7 +564,7 @@ describe('CreateAppModal', () => {
       const { onConfirm } = setup({ isEditModal: true, max_active_requests: null })
 
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: 'abc' } })
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
       act(() => {
         vi.advanceTimersByTime(300)
       })
@@ -573,7 +576,7 @@ describe('CreateAppModal', () => {
     it('should show toast error and not submit when name becomes empty before debounced submit runs', () => {
       const { onConfirm, onHide } = setup({ appName: 'My App' })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
       fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), { target: { value: '   ' } })
 
       act(() => {

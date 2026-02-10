@@ -42,11 +42,11 @@ const ConditionDate = ({
           {
             value
               ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : t('workflow.nodes.knowledgeRetrieval.metadata.panel.datePlaceholder')
+              : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
           }
         </div>
         {
-          value && (
+          !!value && (
             <RiCloseCircleFill
               className={cn(
                 'hidden h-4 w-4 shrink-0 cursor-pointer hover:text-components-input-text-filled group-hover:block',

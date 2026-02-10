@@ -23,7 +23,7 @@ import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
 
-const I18N_PREFIX = 'app.tracing'
+const I18N_PREFIX = 'tracing'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
@@ -45,7 +45,7 @@ const Panel: FC = () => {
     if (!noToast) {
       Toast.notify({
         type: 'success',
-        message: t('common.api.success'),
+        message: t('api.success', { ns: 'common' }),
       })
     }
   }
@@ -254,7 +254,7 @@ const Panel: FC = () => {
             )}
           >
             <TracingIcon size="md" />
-            <div className="system-sm-semibold mx-2 text-text-secondary">{t(`${I18N_PREFIX}.title`)}</div>
+            <div className="system-sm-semibold mx-2 text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
               <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
@@ -295,7 +295,7 @@ const Panel: FC = () => {
             <div className="ml-4 mr-1 flex items-center">
               <Indicator color={enabled ? 'green' : 'gray'} />
               <div className="system-xs-semibold-uppercase ml-1.5 text-text-tertiary">
-                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
               </div>
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}

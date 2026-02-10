@@ -21,13 +21,11 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
@@ -129,7 +127,7 @@ const ChatVariablePanel = () => {
       )}
     >
       <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
-        {t('workflow.chatVariable.panelTitle')}
+        {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
             <RiBookOpenLine className="h-4 w-4" />
@@ -147,18 +145,7 @@ const ChatVariablePanel = () => {
           <div className="radius-2xl relative bg-background-section-burn p-3">
             <div className="system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">TIPS</div>
             <div className="system-sm-regular mb-4 mt-1 text-text-secondary">
-              {t('workflow.chatVariable.panelDescription')}
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-accent"
-                href={docLink('/guides/workflow/variables#conversation-variables', {
-                  'zh-Hans': '/guides/workflow/variables#会话变量',
-                  'ja-JP': '/guides/workflow/variables#会話変数',
-                })}
-              >
-                {t('workflow.chatVariable.docLink')}
-              </a>
+              {t('chatVariable.panelDescription', { ns: 'workflow' })}
             </div>
             <div className="flex items-center gap-2">
               <div className="radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
@@ -173,7 +160,7 @@ const ChatVariablePanel = () => {
                     <div className="system-2xs-medium shrink-0 text-text-tertiary">WRITE</div>
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('workflow.blocks.assigner')}</div>
+                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.assigner', { ns: 'workflow' })}</div>
                 </div>
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
@@ -181,7 +168,7 @@ const ChatVariablePanel = () => {
                     <LongArrowRight className="h-2 grow text-text-quaternary" />
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('workflow.blocks.llm')}</div>
+                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.llm', { ns: 'workflow' })}</div>
                 </div>
               </div>
             </div>

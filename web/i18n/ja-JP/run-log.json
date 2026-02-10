@@ -1,0 +1,23 @@
+{
+  "actionLogs": "操作ログ",
+  "circularInvocationTip": "現在のワークフローにツール/ノードの循環呼び出しが検出されました",
+  "detail": "詳細情報",
+  "input": "入力",
+  "meta.executor": "実行者",
+  "meta.startTime": "開始時刻",
+  "meta.status": "状態",
+  "meta.steps": "処理ステップ数",
+  "meta.time": "総処理時間",
+  "meta.title": "メタデータ",
+  "meta.tokens": "トークン総数",
+  "meta.version": "バージョン",
+  "result": "結果",
+  "resultEmpty.link": "詳細情報パネル",
+  "resultEmpty.tipLeft": "詳細を確認するには",
+  "resultEmpty.tipRight": "へ移動してください",
+  "resultEmpty.title": "今回の実行では JSON 形式のみが出力されました",
+  "resultPanel.status": "ステータス",
+  "resultPanel.time": "処理時間",
+  "resultPanel.tokens": "トークン総数",
+  "tracing": "実行追跡"
+}

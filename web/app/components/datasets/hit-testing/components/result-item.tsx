@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
+import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import { cn } from '@/utils/classnames'
@@ -16,7 +17,7 @@ import ChunkDetailModal from './chunk-detail-modal'
 import ResultItemFooter from './result-item-footer'
 import ResultItemMeta from './result-item-meta'
 
-const i18nPrefix = 'datasetHitTesting'
+const i18nPrefix = ''
 type ResultItemProps = {
   payload: HitTesting
 }
@@ -25,7 +26,7 @@ const ResultItem = ({
   payload,
 }: ResultItemProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, files } = payload
+  const { segment, score, child_chunks, files, summary } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
@@ -78,7 +79,7 @@ const ResultItem = ({
               }}
             >
               <Icon className={cn('h-4 w-4', isFold && 'opacity-50')} />
-              <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+              <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
             </div>
             {!isFold && (
               <div className="space-y-2">
@@ -97,6 +98,9 @@ const ResultItem = ({
               <Tag key={keyword} text={keyword} className="mr-2" />
             ))}
           </div>
+        )}
+        {summary && (
+          <SummaryLabel summary={summary} className="mt-2" />
         )}
       </div>
       {/* Foot */}

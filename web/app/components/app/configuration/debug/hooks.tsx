@@ -6,7 +6,7 @@ import type {
   ChatConfig,
   ChatItem,
 } from '@/app/components/base/chat/types'
-import { cloneDeep } from 'es-toolkit/compat'
+import { cloneDeep } from 'es-toolkit/object'
 import {
   useCallback,
   useRef,

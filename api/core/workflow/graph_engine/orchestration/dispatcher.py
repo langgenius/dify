@@ -44,6 +44,7 @@ class Dispatcher:
         event_queue: queue.Queue[GraphNodeEventBase],
         event_handler: "EventHandler",
         execution_coordinator: ExecutionCoordinator,
+        stop_event: threading.Event,
         event_emitter: EventManager | None = None,
     ) -> None:
         """
@@ -61,7 +62,7 @@ class Dispatcher:
         self._event_emitter = event_emitter
 
         self._thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
+        self._stop_event = stop_event
         self._start_time: float | None = None
 
     def start(self) -> None:
@@ -69,27 +70,25 @@ class Dispatcher:
         if self._thread and self._thread.is_alive():
             return
 
-        self._stop_event.clear()
         self._start_time = time.time()
         self._thread = threading.Thread(target=self._dispatcher_loop, name="GraphDispatcher", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
         """Stop the dispatcher thread."""
-        self._stop_event.set()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=10.0)
+            self._thread.join(timeout=2.0)
 
     def _dispatcher_loop(self) -> None:
         """Main dispatcher loop."""
         try:
             self._process_commands()
+            paused = False
             while not self._stop_event.is_set():
-                if (
-                    self._execution_coordinator.aborted
-                    or self._execution_coordinator.paused
-                    or self._execution_coordinator.execution_complete
-                ):
+                if self._execution_coordinator.aborted or self._execution_coordinator.execution_complete:
+                    break
+                if self._execution_coordinator.paused:
+                    paused = True
                     break
 
                 self._execution_coordinator.check_scaling()
@@ -102,13 +101,10 @@ class Dispatcher:
                     time.sleep(0.1)
 
             self._process_commands()
-            while True:
-                try:
-                    event = self._event_queue.get(block=False)
-                    self._event_handler.dispatch(event)
-                    self._event_queue.task_done()
-                except queue.Empty:
-                    break
+            if paused:
+                self._drain_events_until_idle()
+            else:
+                self._drain_event_queue()
 
         except Exception as e:
             logger.exception("Dispatcher error")
@@ -123,3 +119,24 @@ class Dispatcher:
     def _process_commands(self, event: GraphNodeEventBase | None = None):
         if event is None or isinstance(event, self._COMMAND_TRIGGER_EVENTS):
             self._execution_coordinator.process_commands()
+
+    def _drain_event_queue(self) -> None:
+        while True:
+            try:
+                event = self._event_queue.get(block=False)
+                self._event_handler.dispatch(event)
+                self._event_queue.task_done()
+            except queue.Empty:
+                break
+
+    def _drain_events_until_idle(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                event = self._event_queue.get(timeout=0.1)
+                self._event_handler.dispatch(event)
+                self._event_queue.task_done()
+                self._process_commands(event)
+            except queue.Empty:
+                if not self._execution_coordinator.has_executing_nodes():
+                    break
+        self._drain_event_queue()

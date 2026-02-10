@@ -32,6 +32,7 @@ type QuestionProps = {
   theme: Theme | null | undefined
   enableEdit?: boolean
   switchSibling?: (siblingMessageId: string) => void
+  hideAvatar?: boolean
 }
 
 const Question: FC<QuestionProps> = ({
@@ -40,6 +41,7 @@ const Question: FC<QuestionProps> = ({
   theme,
   enableEdit = true,
   switchSibling,
+  hideAvatar,
 }) => {
   const { t } = useTranslation()
 
@@ -110,7 +112,7 @@ const Question: FC<QuestionProps> = ({
           >
             <ActionButton onClick={() => {
               copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
             }}
             >
               <RiClipboardLine className="h-4 w-4" />
@@ -157,8 +159,8 @@ const Question: FC<QuestionProps> = ({
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={handleCancelEditing}>{t('common.operation.cancel')}</Button>
-                    <Button variant="primary" onClick={handleResend}>{t('common.chat.resend')}</Button>
+                    <Button variant="ghost" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button variant="primary" onClick={handleResend}>{t('chat.resend', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}
@@ -174,15 +176,17 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className="mt-1 h-[18px]" />
       </div>
-      <div className="h-10 w-10 shrink-0">
-        {
-          questionIcon || (
-            <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-              <User className="h-full w-full" />
-            </div>
-          )
-        }
-      </div>
+      {!hideAvatar && (
+        <div className="h-10 w-10 shrink-0">
+          {
+            questionIcon || (
+              <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
+                <User className="h-full w-full" />
+              </div>
+            )
+          }
+        </div>
+      )}
     </div>
   )
 }

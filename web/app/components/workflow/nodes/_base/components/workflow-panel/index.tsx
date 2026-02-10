@@ -324,7 +324,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const currentDataSource = useMemo(() => {
     if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
       return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
-  }, [dataSourceList, data.provider_id, data.type, data.provider_type])
+  }, [data.type, data.provider_type, data.plugin_id, dataSourceList])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -445,6 +445,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   {...passedLogParams}
                   existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
                   filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+                  handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
                 />
               )}
 
@@ -492,7 +493,7 @@ const BasePanel: FC<BasePanelProps> = ({
               {
                 isSupportSingleRun && !nodesReadOnly && (
                   <Tooltip
-                    popupContent={t('workflow.panel.runThisStep')}
+                    popupContent={t('panel.runThisStep', { ns: 'workflow' })}
                     popupClassName="mr-1"
                     disabled={isSingleRunning}
                   >
@@ -642,10 +643,10 @@ const BasePanel: FC<BasePanelProps> = ({
               !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
                   <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
-                    {t('workflow.panel.nextStep').toLocaleUpperCase()}
+                    {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
                   <div className="system-xs-regular mb-2 text-text-tertiary">
-                    {t('workflow.panel.addNextStep')}
+                    {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />
                 </div>

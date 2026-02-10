@@ -5,7 +5,7 @@ import type { Model, ModelProvider } from '@/app/components/header/account-setti
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
@@ -64,6 +64,7 @@ export type ProviderContextState = {
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
+  humanInputEmailDeliveryEnabled: boolean
 }
 
 export const baseProviderContextValue: ProviderContextState = {
@@ -96,6 +97,7 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
 }
 
 const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)
@@ -134,9 +136,10 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo, isFetchedAfterMount: isEducationDataFetchedAfterMount } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
   const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
+  const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
   const refreshModelProviders = () => {
     queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
@@ -173,6 +176,8 @@ export const ProviderContextProvider = ({
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
       if (data.knowledge_pipeline?.publish_enabled)
         setIsAllowPublishAsCustomKnowledgePipelineTemplate(data.knowledge_pipeline?.publish_enabled)
+      if (data.human_input_email_delivery_enabled)
+        setHumanInputEmailDeliveryEnabled(data.human_input_email_delivery_enabled)
     }
     catch (error) {
       console.error('Failed to fetch plan info:', error)
@@ -213,7 +218,7 @@ export const ProviderContextProvider = ({
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
           Toast.notify({
             type: 'info',
-            message: t('common.provider.anthropicHosted.trialQuotaTip'),
+            message: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
             duration: 60000,
             onClose: () => {
               localStorage.setItem('anthropic_quota_notice', 'true')
@@ -240,9 +245,9 @@ export const ProviderContextProvider = ({
       datasetOperatorEnabled,
       enableEducationPlan,
       isEducationWorkspace,
-      isEducationAccount: educationAccountInfo?.is_student || false,
-      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
-      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
+      isEducationAccount: isEducationDataFetchedAfterMount ? (educationAccountInfo?.is_student ?? false) : false,
+      allowRefreshEducationVerify: isEducationDataFetchedAfterMount ? (educationAccountInfo?.allow_refresh ?? false) : false,
+      educationAccountExpireAt: isEducationDataFetchedAfterMount ? (educationAccountInfo?.expire_at ?? null) : null,
       isLoadingEducationAccountInfo,
       isFetchingEducationAccountInfo,
       webappCopyrightEnabled,
@@ -250,6 +255,7 @@ export const ProviderContextProvider = ({
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
       isAllowPublishAsCustomKnowledgePipelineTemplate,
+      humanInputEmailDeliveryEnabled,
     }}
     >
       {children}

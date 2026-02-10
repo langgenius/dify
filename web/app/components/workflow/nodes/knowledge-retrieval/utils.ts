@@ -3,10 +3,8 @@ import type {
   DataSet,
   SelectedDatasetsMode,
 } from '@/models/datasets'
-import {
-  uniq,
-  xorBy,
-} from 'es-toolkit/compat'
+import { uniq } from 'es-toolkit/array'
+import { xorBy } from 'es-toolkit/compat'
 import { DATASET_DEFAULT } from '@/config'
 import {
   DEFAULT_WEIGHTED_SCORE,
@@ -137,7 +135,7 @@ export const getMultipleRetrievalConfig = (
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
           ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic
-          // eslint-disable-next-line sonarjs/no-nested-conditional
+
           : allHighQualityFullTextSearch
             ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
             : DEFAULT_WEIGHTED_SCORE.other.semantic,
@@ -147,7 +145,7 @@ export const getMultipleRetrievalConfig = (
       keyword_setting: {
         keyword_weight: allHighQualityVectorSearch
           ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.keyword
-          // eslint-disable-next-line sonarjs/no-nested-conditional
+
           : allHighQualityFullTextSearch
             ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.keyword
             : DEFAULT_WEIGHTED_SCORE.other.keyword,
@@ -234,7 +232,6 @@ export const getMultipleRetrievalConfig = (
         result.reranking_mode = RerankingModeEnum.RerankingModel
         result.reranking_enable = true
 
-        // eslint-disable-next-line sonarjs/nested-control-flow
         if ((!result.reranking_model?.provider || !result.reranking_model?.model) && isFallbackRerankModelValid) {
           result.reranking_model = {
             provider: fallbackRerankModel.provider || '',

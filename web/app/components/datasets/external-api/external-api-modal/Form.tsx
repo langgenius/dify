@@ -57,13 +57,13 @@ const Form: FC<FormProps> = React.memo(({
           </label>
           {variable === 'endpoint' && (
             <a
-              href={docLink('/guides/knowledge-base/connect-external-knowledge-base') || '/'}
+              href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
               target="_blank"
               rel="noopener noreferrer"
               className="body-xs-regular flex items-center text-text-accent"
             >
               <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
-              {t('dataset.externalAPIPanelDocumentation')}
+              {t('externalAPIPanelDocumentation', { ns: 'dataset' })}
             </a>
           )}
         </div>

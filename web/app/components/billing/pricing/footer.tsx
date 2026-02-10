@@ -22,8 +22,8 @@ const Footer = ({
       <div className={cn('flex max-w-[1680px] grow border-x border-divider-accent p-6', currentCategory === CategoryEnum.CLOUD ? 'justify-between' : 'justify-end')}>
         {currentCategory === CategoryEnum.CLOUD && (
           <div className="flex flex-col text-text-tertiary">
-            <span className="system-xs-regular">{t('billing.plansCommon.taxTip')}</span>
-            <span className="system-xs-regular">{t('billing.plansCommon.taxTipSecond')}</span>
+            <span className="system-xs-regular">{t('plansCommon.taxTip', { ns: 'billing' })}</span>
+            <span className="system-xs-regular">{t('plansCommon.taxTipSecond', { ns: 'billing' })}</span>
           </div>
         )}
         <span className="flex h-fit items-center gap-x-1 text-saas-dify-blue-accessible">
@@ -32,7 +32,7 @@ const Footer = ({
             className="system-md-regular"
             target="_blank"
           >
-            {t('billing.plansCommon.comparePlanAndFeatures')}
+            {t('plansCommon.comparePlanAndFeatures', { ns: 'billing' })}
           </Link>
           <RiArrowRightUpLine className="size-4" />
         </span>

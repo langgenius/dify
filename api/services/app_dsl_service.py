@@ -32,7 +32,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig
+from models.model import AppModelConfig, IconType
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -44,7 +44,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.5.0"
+CURRENT_DSL_VERSION = "0.6.0"
 
 
 class ImportMode(StrEnum):
@@ -428,10 +428,10 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in ["emoji", "link", "image"]:
+        if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
             icon_type = icon_type_value
         else:
-            icon_type = "emoji"
+            icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
@@ -521,12 +521,10 @@ class AppDslService:
                 raise ValueError("Missing model_config for chat/agent-chat/completion app")
             # Initialize or update model config
             if not app.app_model_config:
-                app_model_config = AppModelConfig().from_model_config_dict(model_config)
+                app_model_config = AppModelConfig(
+                    app_id=app.id, created_by=account.id, updated_by=account.id
+                ).from_model_config_dict(model_config)
                 app_model_config.id = str(uuid4())
-                app_model_config.app_id = app.id
-                app_model_config.created_by = account.id
-                app_model_config.updated_by = account.id
-
                 app.app_model_config_id = app_model_config.id
 
                 self._session.add(app_model_config)
@@ -783,15 +781,16 @@ class AppDslService:
         return dependencies
 
     @classmethod
-    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
+    def get_leaked_dependencies(
+        cls, tenant_id: str, dsl_dependencies: list[PluginDependency]
+    ) -> list[PluginDependency]:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
-        if not dependencies:
+        if not dsl_dependencies:
             return []
 
-        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dsl_dependencies)
 
     @staticmethod
     def _generate_aes_key(tenant_id: str) -> bytes:

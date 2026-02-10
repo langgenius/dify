@@ -3,7 +3,7 @@ import {
   RiErrorWarningFill,
   RiMoreLine,
 } from '@remixicon/react'
-import { capitalize } from 'es-toolkit/compat'
+import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
@@ -27,7 +27,7 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
-  const isHideNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
+  const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
   return (
     <div
       className={cn(
@@ -37,7 +37,7 @@ const VariableLabel = ({
       onClick={onClick}
       ref={ref}
     >
-      { isHideNodeLabel && (
+      {isShowNodeLabel && (
         <VariableNodeLabel
           nodeType={nodeType}
           nodeTitle={nodeTitle}
@@ -61,7 +61,7 @@ const VariableLabel = ({
         notShowFullPath={notShowFullPath}
       />
       {
-        variableType && (
+        !!variableType && (
           <div className="system-xs-regular shrink-0 text-text-tertiary">
             {capitalize(variableType)}
           </div>

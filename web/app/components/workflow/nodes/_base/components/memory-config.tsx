@@ -12,7 +12,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { cn } from '@/utils/classnames'
 import { MemoryRole } from '../../../types'
 
-const i18nPrefix = 'workflow.nodes.common.memory'
+const i18nPrefix = 'nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
 const WINDOW_SIZE_MAX = 100
 const WINDOW_SIZE_DEFAULT = 50
@@ -132,8 +132,8 @@ const MemoryConfig: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.memory`)}
-        tooltip={t(`${i18nPrefix}.memoryTip`)!}
+        title={t(`${i18nPrefix}.memory`, { ns: 'workflow' })}
+        tooltip={t(`${i18nPrefix}.memoryTip`, { ns: 'workflow' })!}
         operations={(
           <Switch
             defaultValue={!!payload}
@@ -154,7 +154,7 @@ const MemoryConfig: FC<Props> = ({
                   size="md"
                   disabled={readonly}
                 />
-                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.windowSize`)}</div>
+                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })}</div>
               </div>
               <div className="flex h-8 items-center space-x-2">
                 <Slider
@@ -182,17 +182,17 @@ const MemoryConfig: FC<Props> = ({
             </div>
             {canSetRoleName && (
               <div className="mt-4">
-                <div className="text-xs font-medium uppercase leading-6 text-text-tertiary">{t(`${i18nPrefix}.conversationRoleName`)}</div>
+                <div className="text-xs font-medium uppercase leading-6 text-text-tertiary">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
                 <div className="mt-1 space-y-2">
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.user`)}
+                    title={t(`${i18nPrefix}.user`, { ns: 'workflow' })}
                     value={payload.role_prefix?.user || ''}
                     onChange={handleRolePrefixChange(MemoryRole.user)}
                   />
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.assistant`)}
+                    title={t(`${i18nPrefix}.assistant`, { ns: 'workflow' })}
                     value={payload.role_prefix?.assistant || ''}
                     onChange={handleRolePrefixChange(MemoryRole.assistant)}
                   />

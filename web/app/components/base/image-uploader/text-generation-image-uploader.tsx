@@ -55,7 +55,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
         `}
         >
           <Link03 className="mr-2 h-4 w-4" />
-          {t('common.imageUploader.pasteImageLink')}
+          {t('imageUploader.pasteImageLink', { ns: 'common' })}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">
@@ -70,10 +70,12 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 type TextGenerationImageUploaderProps = {
   settings: VisionSettings
   onFilesChange: (files: ImageFile[]) => void
+  disabled?: boolean
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   settings,
   onFilesChange,
+  disabled,
 }) => {
   const { t } = useTranslation()
 
@@ -93,7 +95,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const localUpload = (
     <Uploader
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
       limit={+settings.image_file_size_limit!}
     >
       {
@@ -105,7 +107,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           `}
           >
             <ImagePlus className="mr-2 h-4 w-4" />
-            {t('common.imageUploader.uploadFromComputer')}
+            {t('imageUploader.uploadFromComputer', { ns: 'common' })}
           </div>
         )
       }
@@ -115,7 +117,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const urlUpload = (
     <PasteImageLinkButton
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
     />
   )
 

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
@@ -62,7 +63,7 @@ const ChunkPreview = ({
     <PreviewContainer
       header={(
         <PreviewHeader
-          title={t('datasetCreation.stepTwo.preview')}
+          title={t('stepTwo.preview', { ns: 'datasetCreation' })}
         >
           <div className="flex items-center gap-1">
             {dataSourceType === DatasourceType.localFile
@@ -149,7 +150,8 @@ const ChunkPreview = ({
             {
               currentDocForm !== ChunkingMode.qa
               && (
-                <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
+                <Badge text={t('stepTwo.previewChunkCount', {
+                  ns: 'datasetCreation',
                   count: estimateData?.total_segments || 0,
                 }) as string}
                 />
@@ -180,6 +182,7 @@ const ChunkPreview = ({
             characterCount={item.content.length}
           >
             {item.content}
+            {item.summary && <SummaryLabel summary={item.summary} />}
           </ChunkContainer>
         ))
       )}
@@ -206,6 +209,7 @@ const ChunkPreview = ({
                     />
                   )
                 })}
+                {item.summary && <SummaryLabel summary={item.summary} />}
               </FormattedText>
             </ChunkContainer>
           )
@@ -216,10 +220,10 @@ const ChunkPreview = ({
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
             <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
-              {t('datasetCreation.stepTwo.previewChunkTip')}
+              {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
             </p>
             <Button onClick={onPreview}>
-              {t('datasetPipeline.addDocuments.stepTwo.previewChunks')}
+              {t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}
             </Button>
           </div>
         </div>

@@ -12,7 +12,7 @@ const ToolsList: FC = () => {
   const router = useRouter()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const { t } = useTranslation()
-  useDocumentTitle(t('common.menus.tools'))
+  useDocumentTitle(t('menus.tools', { ns: 'common' }))
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)

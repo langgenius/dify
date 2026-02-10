@@ -1,7 +1,7 @@
 import type {
   FileEntity,
 } from './types'
-import { isEqual } from 'es-toolkit/compat'
+import { isEqual } from 'es-toolkit/predicate'
 import {
   createContext,
   useContext,

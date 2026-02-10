@@ -19,6 +19,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
 
@@ -146,26 +147,14 @@ const MoreActions: FC = () => {
         }
       }
 
+      const fileName = `${filename}.${type}`
+
       if (currentWorkflow) {
         setPreviewUrl(dataUrl)
-        setPreviewTitle(`${filename}.${type}`)
+        setPreviewTitle(fileName)
+      }
 
-        const link = document.createElement('a')
-        link.href = dataUrl
-        link.download = `${filename}.${type}`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-      else {
-        // For current view, just download
-        const link = document.createElement('a')
-        link.href = dataUrl
-        link.download = `${filename}.${type}`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
+      downloadUrl({ url: dataUrl, fileName })
     }
     catch (error) {
       console.error('Export image failed:', error)
@@ -191,7 +180,7 @@ const MoreActions: FC = () => {
         }}
       >
         <PortalToFollowElemTrigger>
-          <TipPopup title={t('workflow.common.moreActions')}>
+          <TipPopup title={t('common.moreActions', { ns: 'workflow' })}>
             <div
               className={cn(
                 'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
@@ -208,52 +197,52 @@ const MoreActions: FC = () => {
             <div className="p-1">
               <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
                 <RiExportLine className="h-3 w-3" />
-                {t('workflow.common.exportImage')}
+                {t('common.exportImage', { ns: 'workflow' })}
               </div>
               <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
-                {t('workflow.common.currentView')}
+                {t('common.currentView', { ns: 'workflow' })}
               </div>
               <div
                 className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png')}
               >
-                {t('workflow.common.exportPNG')}
+                {t('common.exportPNG', { ns: 'workflow' })}
               </div>
               <div
                 className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg')}
               >
-                {t('workflow.common.exportJPEG')}
+                {t('common.exportJPEG', { ns: 'workflow' })}
               </div>
               <div
                 className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg')}
               >
-                {t('workflow.common.exportSVG')}
+                {t('common.exportSVG', { ns: 'workflow' })}
               </div>
 
               <div className="border-border-divider mx-2 my-1 border-t" />
 
               <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
-                {t('workflow.common.currentWorkflow')}
+                {t('common.currentWorkflow', { ns: 'workflow' })}
               </div>
               <div
                 className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png', true)}
               >
-                {t('workflow.common.exportPNG')}
+                {t('common.exportPNG', { ns: 'workflow' })}
               </div>
               <div
                 className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg', true)}
               >
-                {t('workflow.common.exportJPEG')}
+                {t('common.exportJPEG', { ns: 'workflow' })}
               </div>
               <div
                 className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg', true)}
               >
-                {t('workflow.common.exportSVG')}
+                {t('common.exportSVG', { ns: 'workflow' })}
               </div>
             </div>
           </div>

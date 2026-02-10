@@ -1,4 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -42,9 +43,9 @@ export const useAvailableNodesMetaData = () => {
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
-    const title = t(`workflow.blocks.${metaData.type}` as any) as string
-    const description = t(`workflow.blocksAbout.${metaData.type}` as any) as string
-    const helpLinkPath = `guides/workflow/node/${metaData.helpLinkUri}`
+    const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
+    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
+    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
     return {
       ...node,
       metaData: {

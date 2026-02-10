@@ -28,16 +28,16 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
       <div className={cn('px-3 pt-2', hasHeaderBottomBorder && 'border-b border-divider-subtle')} data-testid="feature-panel-header">
         <div className="flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center space-x-1">
-            {headerIcon && <div className="flex h-6 w-6 items-center justify-center">{headerIcon}</div>}
+            {!!headerIcon && <div className="flex h-6 w-6 items-center justify-center">{headerIcon}</div>}
             <div className="system-sm-semibold text-text-secondary">{title}</div>
           </div>
           <div className="flex items-center gap-2">
-            {headerRight && <div>{headerRight}</div>}
+            {!!headerRight && <div>{headerRight}</div>}
           </div>
         </div>
       </div>
       {/* Body */}
-      {children && (
+      {!!children && (
         <div className={cn(!noBodySpacing && 'mt-1 px-3')} data-testid="feature-panel-body">
           {children}
         </div>

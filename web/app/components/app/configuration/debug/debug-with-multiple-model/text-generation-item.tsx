@@ -4,7 +4,8 @@ import type {
   OnSend,
   TextGenerationConfig,
 } from '@/app/components/base/text-generation/types'
-import { cloneDeep, noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
+import { cloneDeep } from 'es-toolkit/object'
 import { memo } from 'react'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { TransferMethod } from '@/app/components/base/chat/types'
@@ -14,6 +15,7 @@ import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import { AppSourceType } from '@/service/share'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 
@@ -129,11 +131,11 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
 
   return (
     <TextGeneration
+      appSourceType={AppSourceType.webApp}
       className="flex h-full flex-col overflow-y-auto border-none"
       content={completion}
       isLoading={!completion && isResponding}
       isResponding={isResponding}
-      isInstalledApp={false}
       siteInfo={null}
       messageId={messageId}
       isError={false}

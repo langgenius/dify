@@ -7,10 +7,11 @@ import PreviewDocumentPicker from './preview-document-picker'
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
-      if (key === 'dataset.preprocessDocument' && params?.num)
+      if (key === 'preprocessDocument' && params?.num)
         return `${params.num} files`
 
-      return key
+      const prefix = params?.ns ? `${params.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
@@ -359,6 +360,18 @@ describe('PreviewDocumentPicker', () => {
       })
 
       expect(screen.getByText('--')).toBeInTheDocument()
+    })
+
+    it('should render when value prop is omitted (optional)', () => {
+      const files = createMockDocumentList(2)
+      const onChange = vi.fn()
+      // Do not pass `value` at all to verify optional behavior
+      render(<PreviewDocumentPicker files={files} onChange={onChange} />)
+
+      // Renders placeholder for missing name
+      expect(screen.getByText('--')).toBeInTheDocument()
+      // Portal wrapper renders
+      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
     })
 
     it('should handle empty files array', () => {

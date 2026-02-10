@@ -104,7 +104,7 @@ const InfoGroup: FC<Props> = ({
                     </div>
                   </div>
                 )
-              : (<div className="system-xs-regular py-1 text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('datasetDocuments.metadata.dateTimeFormat')) : item.value}</div>)}
+              : (<div className="system-xs-regular py-1 text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}
           </Field>
         ))}
       </div>

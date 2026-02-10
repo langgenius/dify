@@ -64,7 +64,6 @@ vi.mock('i18next', () => ({
 
 // Mock the useConfig hook
 vi.mock('@/app/components/workflow/nodes/iteration/use-config', () => ({
-  __esModule: true,
   default: () => ({
     inputs: {
       is_parallel: true,

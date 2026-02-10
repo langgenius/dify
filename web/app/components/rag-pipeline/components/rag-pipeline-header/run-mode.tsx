@@ -4,9 +4,9 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
@@ -61,31 +61,24 @@ const RunMode = ({
         {!isDisabled && (
           <>
             <RiPlayLargeLine className="mr-1 size-4" />
-            {workflowRunningData ? t('pipeline.common.reRun') : (text ?? t('pipeline.common.testRun'))}
+            {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
           <>
             <RiLoader2Line className="mr-1 size-4 animate-spin" />
-            {t('pipeline.common.processing')}
+            {t('common.processing', { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
             <RiDatabase2Line className="mr-1 size-4" />
-            {t('pipeline.common.preparingDataSource')}
+            {t('common.preparingDataSource', { ns: 'pipeline' })}
           </>
         )}
         {
           !isDisabled && (
-            <div className="system-kbd flex items-center gap-x-0.5 text-text-tertiary">
-              <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
-                {getKeyboardKeyNameBySystem('alt')}
-              </div>
-              <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
-                R
-              </div>
-            </div>
+            <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
           )
         }
       </button>

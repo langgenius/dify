@@ -7,7 +7,7 @@ import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid
 import Textarea from '@/app/components/base/textarea'
 import { cn } from '@/utils/classnames'
 
-const i18nPrefix = 'appDebug.generate'
+const i18nPrefix = 'generate'
 
 type Props = {
   value: string
@@ -30,10 +30,10 @@ const IdeaOutput: FC<Props> = ({
         className="mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary"
         onClick={toggleFoldIdeaOutput}
       >
-        <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.idealOutput`)}</div>
+        <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}</div>
         <div className="system-xs-regular text-text-tertiary">
           (
-          {t(`${i18nPrefix}.optional`)}
+          {t(`${i18nPrefix}.optional`, { ns: 'appDebug' })}
           )
         </div>
         <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
@@ -41,7 +41,7 @@ const IdeaOutput: FC<Props> = ({
       {!isFoldIdeaOutput && (
         <Textarea
           className="h-[80px]"
-          placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`)}
+          placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`, { ns: 'appDebug' })}
           value={value}
           onChange={e => onChange(e.target.value)}
         />

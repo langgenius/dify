@@ -18,7 +18,7 @@ import Version from '../../base/version'
 import useInstallPluginLimit from '../../hooks/use-install-plugin-limit'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'installModal'
 
 type Props = {
   uniqueIdentifier: string
@@ -134,10 +134,10 @@ const Installed: FC<Props> = ({
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
-          <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
+          <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           {!isDifyVersionCompatible && (
             <p className="system-md-regular text-text-warning">
-              {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
+              {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}
         </div>
@@ -160,7 +160,7 @@ const Installed: FC<Props> = ({
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
           <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
         )}
         <Button
@@ -170,7 +170,7 @@ const Installed: FC<Props> = ({
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>
     </>

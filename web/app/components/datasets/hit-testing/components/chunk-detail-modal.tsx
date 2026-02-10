@@ -12,11 +12,12 @@ import { cn } from '@/utils/classnames'
 import ImageList from '../../common/image-list'
 import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
+import SummaryText from '../../documents/detail/completed/common/summary-text'
 import ChildChunksItem from './child-chunks-item'
 import Mask from './mask'
 import Score from './score'
 
-const i18nPrefix = 'datasetHitTesting'
+const i18nPrefix = ''
 
 type ChunkDetailModalProps = {
   payload: HitTesting
@@ -28,12 +29,12 @@ const ChunkDetailModal = ({
   onHide,
 }: ChunkDetailModalProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, files } = payload
+  const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
-  const labelPrefix = isParentChildRetrieval ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+  const labelPrefix = isParentChildRetrieval ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
 
   const images = useMemo(() => {
     if (!files)
@@ -52,7 +53,7 @@ const ChunkDetailModal = ({
 
   return (
     <Modal
-      title={t(`${i18nPrefix}.chunkDetail`)}
+      title={t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
       isShow
       closable
       onClose={onHide}
@@ -104,14 +105,17 @@ const ChunkDetailModal = ({
             {/* Mask */}
             <Mask className="absolute inset-x-0 bottom-0" />
           </div>
-          {(showImages || showKeywords) && (
+          {(showImages || showKeywords || !!summary) && (
             <div className="flex flex-col gap-y-3 pt-3">
               {showImages && (
                 <ImageList images={images} size="md" className="py-1" />
               )}
+              {!!summary && (
+                <SummaryText value={summary} disabled />
+              )}
               {showKeywords && (
                 <div className="flex flex-col gap-y-1">
-                  <div className="text-xs font-medium uppercase text-text-tertiary">{t(`${i18nPrefix}.keyword`)}</div>
+                  <div className="text-xs font-medium uppercase text-text-tertiary">{t(`${i18nPrefix}keyword`, { ns: 'datasetHitTesting' })}</div>
                   <div className="flex flex-wrap gap-x-2">
                     {keywords.map(keyword => (
                       <Tag key={keyword} text={keyword} />
@@ -125,7 +129,7 @@ const ChunkDetailModal = ({
 
         {isParentChildRetrieval && (
           <div className="flex-1 pb-6 pl-6">
-            <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+            <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
             <div className={cn('mt-1 space-y-2', heighClassName)}>
               {child_chunks.map(item => (
                 <ChildChunksItem key={item.id} payload={item} isShowAll />

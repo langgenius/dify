@@ -48,13 +48,13 @@ const Item: FC<ItemProps> = ({
           onClick={handleOpenApiBasedExtensionModal}
         >
           <RiEditLine className="mr-1 h-4 w-4" />
-          {t('common.operation.edit')}
+          {t('operation.edit', { ns: 'common' })}
         </Button>
         <Button
           onClick={() => setShowDeleteConfirm(true)}
         >
           <RiDeleteBinLine className="mr-1 h-4 w-4" />
-          {t('common.operation.delete')}
+          {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>
       {
@@ -63,9 +63,9 @@ const Item: FC<ItemProps> = ({
           <Confirm
             isShow={showDeleteConfirm}
             onCancel={() => setShowDeleteConfirm(false)}
-            title={`${t('common.operation.delete')} “${data.name}”?`}
+            title={`${t('operation.delete', { ns: 'common' })} “${data.name}”?`}
             onConfirm={handleDeleteApiBasedExtension}
-            confirmText={t('common.operation.delete') || ''}
+            confirmText={t('operation.delete', { ns: 'common' }) || ''}
           />
         )
       }

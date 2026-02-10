@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
+import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
@@ -17,7 +19,6 @@ const mockUseFeatures = vi.fn()
 const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
-const mockUseAppStoreSelector = vi.fn()
 
 const mockNotify = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
@@ -27,7 +28,6 @@ const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
-const mockSetAppDetail = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -48,7 +48,6 @@ const mockWorkflowStore = {
 }
 
 vi.mock('@/app/components/workflow/hooks', () => ({
-  __esModule: true,
   useChecklist: (...args: unknown[]) => mockUseChecklist(...args),
   useChecklistBeforePublish: () => mockUseChecklistBeforePublish(),
   useNodesReadOnly: () => mockUseNodesReadOnly(),
@@ -57,7 +56,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  __esModule: true,
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state: Record<string, unknown> = {
       publishedAt: null,
@@ -71,27 +69,22 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  __esModule: true,
   useFeatures: (selector: (state: Record<string, unknown>) => unknown) => mockUseFeatures(selector),
 }))
 
 vi.mock('@/context/provider-context', () => ({
-  __esModule: true,
   useProviderContext: () => mockUseProviderContext(),
 }))
 
 vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  __esModule: true,
   default: () => mockUseNodes(),
 }))
 
 vi.mock('reactflow', () => ({
-  __esModule: true,
   useEdges: () => mockUseEdges(),
 }))
 
 vi.mock('@/app/components/app/app-publisher', () => ({
-  __esModule: true,
   default: (props: AppPublisherProps) => {
     const inputs = props.inputs ?? []
     return (
@@ -124,31 +117,24 @@ vi.mock('@/app/components/app/app-publisher', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  __esModule: true,
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
   usePublishWorkflow: () => ({ mutateAsync: mockPublishWorkflow }),
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
 vi.mock('@/service/use-tools', () => ({
-  __esModule: true,
   useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
 vi.mock('@/service/apps', () => ({
-  __esModule: true,
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
-  __esModule: true,
   default: () => mockUseTheme(),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  __esModule: true,
-  useStore: (selector: (state: { appDetail?: { id: string }, setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
-}))
+// Use real app store - global zustand mock will auto-reset between tests
 
 const createProviderContext = ({
   type = Plan.sandbox,
@@ -190,7 +176,8 @@ describe('FeaturesTrigger', () => {
     mockUseProviderContext.mockReturnValue(createProviderContext({}))
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
-    mockUseAppStoreSelector.mockImplementation(selector => selector({ appDetail: { id: 'app-id' }, setAppDetail: mockSetAppDetail }))
+    // Set up app store state
+    useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
     mockFetchAppDetail.mockResolvedValue({ id: 'app-id' })
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
@@ -436,7 +423,7 @@ describe('FeaturesTrigger', () => {
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
         expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(mockSetAppDetail).toHaveBeenCalled()
+        expect(useAppStore.getState().appDetail).toBeDefined()
       })
     })
 

@@ -33,10 +33,10 @@ const AddAnnotationModal: FC<Props> = ({
 
   const isValid = (payload: AnnotationItemBasic) => {
     if (!payload.question)
-      return t('appAnnotation.errorMessage.queryRequired')
+      return t('errorMessage.queryRequired', { ns: 'appAnnotation' })
 
     if (!payload.answer)
-      return t('appAnnotation.errorMessage.answerRequired')
+      return t('errorMessage.answerRequired', { ns: 'appAnnotation' })
 
     return true
   }
@@ -76,7 +76,7 @@ const AddAnnotationModal: FC<Props> = ({
         isShow={isShow}
         onHide={onHide}
         maxWidthClassName="!max-w-[480px]"
-        title={t('appAnnotation.addModal.title') as string}
+        title={t('addModal.title', { ns: 'appAnnotation' }) as string}
         body={(
           <div className="space-y-6 p-6 pb-4">
             <EditItem
@@ -104,11 +104,11 @@ const AddAnnotationModal: FC<Props> = ({
                   className="flex items-center space-x-2"
                 >
                   <Checkbox id="create-next-checkbox" checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
-                  <div>{t('appAnnotation.addModal.createNext')}</div>
+                  <div>{t('addModal.createNext', { ns: 'appAnnotation' })}</div>
                 </div>
                 <div className="mt-2 flex space-x-2">
-                  <Button className="h-7 text-xs" onClick={onHide}>{t('common.operation.cancel')}</Button>
-                  <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('common.operation.add')}</Button>
+                  <Button className="h-7 text-xs" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                  <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('operation.add', { ns: 'common' })}</Button>
                 </div>
               </div>
             </div>

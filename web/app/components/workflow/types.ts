@@ -17,7 +17,13 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
+import type {
+  FileResponse,
+  HumanInputFilledFormData,
+  HumanInputFormData,
+  NodeTracing,
+  PanelProps,
+} from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -43,6 +49,7 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  HumanInput = 'human-input',
   DataSource = 'datasource',
   DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
@@ -191,7 +198,6 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
-  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
@@ -201,6 +207,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  checkbox = 'checkbox',
 }
 
 export type InputVar = {
@@ -223,7 +230,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
-  json_schema?: string // for jsonObject type
+  json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -350,6 +357,7 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export enum WorkflowVersion {
@@ -367,6 +375,7 @@ export enum NodeRunningStatus {
   Exception = 'exception',
   Retry = 'retry',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export type OnNodeAdd = (
@@ -426,6 +435,8 @@ export type WorkflowRunningData = {
     exceptions_count?: number
   }
   tracing?: NodeTracing[]
+  humanInputFormDataList?: HumanInputFormData[]
+  humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
 export type HistoryWorkflowData = {
@@ -469,6 +480,7 @@ export enum SupportUploadFileTypes {
 
 export type UploadFileSetting = {
   allowed_file_upload_methods: TransferMethod[]
+  allowed_upload_methods?: TransferMethod[]
   allowed_file_types: SupportUploadFileTypes[]
   allowed_file_extensions?: string[]
   max_length: number

@@ -46,7 +46,7 @@ const NotFoundWarn = (props: {
           </p>
           <p>
             <Link href="/plugins" className="tracking-tight text-text-accent">
-              {t('workflow.nodes.agent.linkToPlugin')}
+              {t('nodes.agent.linkToPlugin', { ns: 'workflow' })}
             </Link>
           </p>
         </div>
@@ -92,13 +92,12 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy
   onChange: (value?: Strategy) => void
-  canChooseMCPTool: boolean
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
-  const { value, onChange, canChooseMCPTool } = props
+  const { value, onChange } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -174,7 +173,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           <p
             className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
           >
-            {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
+            {value?.agent_strategy_label || t('nodes.agent.strategy.selectTip', { ns: 'workflow' })}
           </p>
           <div className="ml-auto flex items-center gap-1">
             {showInstallButton && value && (
@@ -187,15 +186,15 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             {showPluginNotInstalledWarn
               ? (
                   <NotFoundWarn
-                    title={t('workflow.nodes.agent.pluginNotInstalled')}
-                    description={t('workflow.nodes.agent.pluginNotInstalledDesc')}
+                    title={t('nodes.agent.pluginNotInstalled', { ns: 'workflow' })}
+                    description={t('nodes.agent.pluginNotInstalledDesc', { ns: 'workflow' })}
                   />
                 )
               : showUnsupportedStrategy
                 ? (
                     <NotFoundWarn
-                      title={t('workflow.nodes.agent.unsupportedStrategy')}
-                      description={t('workflow.nodes.agent.strategyNotFoundDesc')}
+                      title={t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
+                      description={t('nodes.agent.strategyNotFoundDesc', { ns: 'workflow' })}
                     />
                   )
                 : <RiArrowDownSLine className="size-4 text-text-tertiary" />}
@@ -204,9 +203,9 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 uniqueIdentifier={value.plugin_unique_identifier}
                 tooltip={(
                   <ToolTipContent
-                    title={t('workflow.nodes.agent.unsupportedStrategy')}
+                    title={t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
                   >
-                    {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
+                    {t('nodes.agent.strategyNotFoundDescAndSwitchVersion', { ns: 'workflow' })}
                   </ToolTipContent>
                 )}
                 onChange={() => {
@@ -220,7 +219,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       <PortalToFollowElemContent className="z-10">
         <div className="w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">
-            <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className="w-full" />
+            <SearchInput placeholder={t('nodes.agent.strategy.searchPlaceholder', { ns: 'workflow' })} value={query} onChange={setQuery} className="w-full" />
             <ViewTypeSelect viewType={viewType} onChange={setViewType} />
           </header>
           <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
@@ -242,7 +241,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               indexBarClassName="top-0 xl:top-36"
               hasSearchText={false}
               canNotSelectMultiple
-              canChooseMCPTool={canChooseMCPTool}
               isAgent
             />
             {enable_marketplace && (

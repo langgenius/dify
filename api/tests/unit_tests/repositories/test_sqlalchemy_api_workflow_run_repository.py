@@ -1,17 +1,24 @@
 """Unit tests for DifyAPISQLAlchemyWorkflowRunRepository implementation."""
 
+import secrets
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReasonType
 from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
+from models.human_input import BackstageRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
+    _build_human_input_required_reason,
     _PrivateWorkflowPauseEntity,
     _WorkflowRunError,
 )
@@ -104,6 +111,42 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         return pause
 
 
+class TestGetRunsBatchByTimeRange(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_get_runs_batch_by_time_range_filters_terminal_statuses(
+        self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock
+    ):
+        scalar_result = Mock()
+        scalar_result.all.return_value = []
+        mock_session.scalars.return_value = scalar_result
+
+        repository.get_runs_batch_by_time_range(
+            start_from=None,
+            end_before=datetime(2024, 1, 1),
+            last_seen=None,
+            batch_size=50,
+        )
+
+        stmt = mock_session.scalars.call_args[0][0]
+        compiled_sql = str(
+            stmt.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        )
+
+        assert "workflow_runs.status" in compiled_sql
+        for status in (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.STOPPED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        ):
+            assert f"'{status.value}'" in compiled_sql
+
+        assert "'running'" not in compiled_sql
+        assert "'paused'" not in compiled_sql
+
+
 class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
     """Test create_workflow_pause method."""
 
@@ -168,17 +211,72 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
     ):
         """Test workflow pause creation when workflow not in RUNNING status."""
         # Arrange
-        sample_workflow_run.status = WorkflowExecutionStatus.PAUSED
+        sample_workflow_run.status = WorkflowExecutionStatus.SUCCEEDED
         mock_session.get.return_value = sample_workflow_run
 
         # Act & Assert
-        with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING status can be paused"):
+        with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING or PAUSED status can be paused"):
             repository.create_workflow_pause(
                 workflow_run_id="workflow-run-123",
                 state_owner_user_id="user-123",
                 state='{"test": "state"}',
                 pause_reasons=[],
             )
+
+
+class TestDeleteRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_uses_trigger_log_repository(self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock):
+        node_ids_result = Mock()
+        node_ids_result.all.return_value = []
+        pause_ids_result = Mock()
+        pause_ids_result.all.return_value = []
+        mock_session.scalars.side_effect = [node_ids_result, pause_ids_result]
+
+        # app_logs delete, runs delete
+        mock_session.execute.side_effect = [Mock(rowcount=0), Mock(rowcount=1)]
+
+        fake_trigger_repo = Mock()
+        fake_trigger_repo.delete_by_run_ids.return_value = 3
+
+        run = Mock(id="run-1", tenant_id="t1", app_id="a1", workflow_id="w1", triggered_from="tf")
+        counts = repository.delete_runs_with_related(
+            [run],
+            delete_node_executions=lambda session, runs: (2, 1),
+            delete_trigger_logs=lambda session, run_ids: fake_trigger_repo.delete_by_run_ids(run_ids),
+        )
+
+        fake_trigger_repo.delete_by_run_ids.assert_called_once_with(["run-1"])
+        assert counts["node_executions"] == 2
+        assert counts["offloads"] == 1
+        assert counts["trigger_logs"] == 3
+        assert counts["runs"] == 1
+
+
+class TestCountRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_uses_trigger_log_repository(self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock):
+        pause_ids_result = Mock()
+        pause_ids_result.all.return_value = ["pause-1", "pause-2"]
+        mock_session.scalars.return_value = pause_ids_result
+        mock_session.scalar.side_effect = [5, 2]
+
+        fake_trigger_repo = Mock()
+        fake_trigger_repo.count_by_run_ids.return_value = 3
+
+        run = Mock(id="run-1", tenant_id="t1", app_id="a1", workflow_id="w1", triggered_from="tf")
+        counts = repository.count_runs_with_related(
+            [run],
+            count_node_executions=lambda session, runs: (2, 1),
+            count_trigger_logs=lambda session, run_ids: fake_trigger_repo.count_by_run_ids(run_ids),
+        )
+
+        fake_trigger_repo.count_by_run_ids.assert_called_once_with(["run-1"])
+        assert counts["node_executions"] == 2
+        assert counts["offloads"] == 1
+        assert counts["trigger_logs"] == 3
+        assert counts["app_logs"] == 5
+        assert counts["pauses"] == 2
+        assert counts["pause_reasons"] == 2
+        assert counts["runs"] == 1
 
 
 class TestResumeWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
@@ -203,6 +301,7 @@ class TestResumeWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
         sample_workflow_pause.resumed_at = None
 
         mock_session.scalar.return_value = sample_workflow_run
+        mock_session.scalars.return_value.all.return_value = []
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.naive_utc_now") as mock_now:
             mock_now.return_value = datetime.now(UTC)
@@ -363,3 +462,53 @@ class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository)
             assert result1 == expected_state
             assert result2 == expected_state
             mock_storage.load.assert_called_once()  # Only called once due to caching
+
+
+class TestBuildHumanInputRequiredReason:
+    def test_prefers_backstage_token_when_available(self):
+        expiration_time = datetime.now(UTC)
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+        form_model = HumanInputForm(
+            id="form-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        reason_model = WorkflowPauseReason(
+            pause_id="pause-1",
+            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            form_id="form-1",
+            node_id="node-1",
+            message="",
+        )
+        access_token = secrets.token_urlsafe(8)
+        backstage_recipient = HumanInputFormRecipient(
+            form_id="form-1",
+            delivery_id="delivery-1",
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token=access_token,
+        )
+
+        reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient])
+
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.form_token == access_token
+        assert reason.node_title == "Ask Name"
+        assert reason.form_content == "content"
+        assert reason.inputs[0].output_variable_name == "name"
+        assert reason.actions[0].id == "approve"

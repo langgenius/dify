@@ -34,7 +34,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   return (
     <div className="space-y-2">
       <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t('workflow.nodes.triggerSchedule.days')}
+        {t('nodes.triggerSchedule.days', { ns: 'workflow' })}
       </label>
 
       <div className="space-y-1.5">
@@ -56,9 +56,9 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                 {day === 'last'
                   ? (
                       <div className="flex items-center justify-center gap-1">
-                        <span>{t('workflow.nodes.triggerSchedule.lastDay')}</span>
+                        <span>{t('nodes.triggerSchedule.lastDay', { ns: 'workflow' })}</span>
                         <Tooltip
-                          popupContent={t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+                          popupContent={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
                         >
                           <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
                         </Tooltip>
@@ -81,7 +81,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
           <div className="col-span-7 text-xs text-gray-500">
-            {t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+            {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
           </div>
         </div>
       )}

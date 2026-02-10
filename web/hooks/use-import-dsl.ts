@@ -79,8 +79,8 @@ export const useImportDSL = () => {
 
         notify({
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
-          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
+          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
+          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
         })
         onSuccess?.()
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
@@ -96,12 +96,12 @@ export const useImportDSL = () => {
         onPending?.(response)
       }
       else {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
         onFailed?.()
       }
     }
     catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       onFailed?.()
     }
     finally {
@@ -134,19 +134,19 @@ export const useImportDSL = () => {
         onSuccess?.()
         notify({
           type: 'success',
-          message: t('app.newApp.appCreated'),
+          message: t('newApp.appCreated', { ns: 'app' }),
         })
         await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
         onFailed?.()
       }
     }
     catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       onFailed?.()
     }
     finally {

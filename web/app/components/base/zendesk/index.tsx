@@ -1,13 +1,13 @@
 import { headers } from 'next/headers'
 import Script from 'next/script'
 import { memo } from 'react'
-import { IS_CE_EDITION, ZENDESK_WIDGET_KEY } from '@/config'
+import { IS_CE_EDITION, IS_PROD, ZENDESK_WIDGET_KEY } from '@/config'
 
 const Zendesk = async () => {
   if (IS_CE_EDITION || !ZENDESK_WIDGET_KEY)
     return null
 
-  const nonce = process.env.NODE_ENV === 'production' ? (await headers()).get('x-nonce') ?? '' : ''
+  const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? '' : ''
 
   return (
     <>

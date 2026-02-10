@@ -37,7 +37,7 @@ const TTSParamsPanel = ({
     <>
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
-          {t('appDebug.voice.voiceSettings.language')}
+          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
         </div>
         <PortalSelect
           triggerClassName="h-8"
@@ -50,7 +50,7 @@ const TTSParamsPanel = ({
       </div>
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
-          {t('appDebug.voice.voiceSettings.voice')}
+          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <PortalSelect
           triggerClassName="h-8"

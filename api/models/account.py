@@ -8,7 +8,7 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask_login import UserMixin
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, validates
 from typing_extensions import deprecated
 
 from .base import TypeBase
@@ -115,6 +115,12 @@ class Account(UserMixin, TypeBase):
 
     role: TenantAccountRole | None = field(default=None, init=False)
     _current_tenant: "Tenant | None" = field(default=None, init=False)
+
+    @validates("status")
+    def _normalize_status(self, _key: str, value: str | AccountStatus) -> str:
+        if isinstance(value, AccountStatus):
+            return value.value
+        return value
 
     @property
     def is_password_set(self):

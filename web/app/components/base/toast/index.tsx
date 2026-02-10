@@ -7,7 +7,7 @@ import {
   RiErrorWarningFill,
   RiInformation2Fill,
 } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -80,7 +80,7 @@ const Toast = ({
             <div className="system-sm-semibold text-text-primary [word-break:break-word]">{message}</div>
             {customComponent}
           </div>
-          {children && (
+          {!!children && (
             <div className="system-xs-regular text-text-secondary">
               {children}
             </div>

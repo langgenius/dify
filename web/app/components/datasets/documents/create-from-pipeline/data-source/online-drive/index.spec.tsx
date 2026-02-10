@@ -57,7 +57,6 @@ const { mockToastNotify } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: {
     notify: mockToastNotify,
   },
@@ -328,7 +327,7 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       // Assert
-      expect(mockDocLink).toHaveBeenCalledWith('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')
+      expect(mockDocLink).toHaveBeenCalledWith('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')
     })
   })
 

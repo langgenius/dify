@@ -47,7 +47,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout, shareCode])
+  }, [getSigninUrl, router, shareCode])
 
   if (appInfoError) {
     return (
@@ -81,7 +81,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
         <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
-        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('common.userProfile.logout')}</span>
+        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
       </div>
     )
   }

@@ -11,7 +11,8 @@ import {
   RiSparklingFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { cloneDeep, noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
+import { cloneDeep } from 'es-toolkit/object'
 import { produce, setAutoFreeze } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -37,6 +38,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { sendCompletionMessage } from '@/service/debug'
+import { AppSourceType } from '@/service/share'
 import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
 import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import GroupName from '../base/group-name'
@@ -71,6 +73,7 @@ const Debug: FC<IDebug> = ({
 }) => {
   const { t } = useTranslation()
   const {
+    readonly,
     appId,
     mode,
     modelModeType,
@@ -147,11 +150,11 @@ const Debug: FC<IDebug> = ({
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
       }
@@ -172,12 +175,12 @@ const Debug: FC<IDebug> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -202,7 +205,7 @@ const Debug: FC<IDebug> = ({
 
   const sendTextCompletion = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -391,7 +394,7 @@ const Debug: FC<IDebug> = ({
     <>
       <div className="shrink-0">
         <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <div className="system-xl-semibold text-text-primary">{t('appDebug.inputs.title')}</div>
+          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -403,7 +406,7 @@ const Debug: FC<IDebug> = ({
                         disabled={multipleModelConfigs.length >= 4}
                       >
                         <RiAddLine className="mr-1 h-3.5 w-3.5" />
-                        {t('common.modelProvider.addModel')}
+                        {t('modelProvider.addModel', { ns: 'common' })}
                         (
                         {multipleModelConfigs.length}
                         /4)
@@ -415,25 +418,33 @@ const Debug: FC<IDebug> = ({
             }
             {mode !== AppModeEnum.COMPLETION && (
               <>
-                <TooltipPlus
-                  popupContent={t('common.operation.refresh')}
-                >
-                  <ActionButton onClick={clearConversation}>
-                    <RefreshCcw01 className="h-4 w-4" />
-                  </ActionButton>
-                </TooltipPlus>
-                {varList.length > 0 && (
-                  <div className="relative ml-1 mr-2">
+                {
+                  !readonly && (
                     <TooltipPlus
-                      popupContent={t('workflow.panel.userInputField')}
+                      popupContent={t('operation.refresh', { ns: 'common' })}
                     >
-                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className="h-4 w-4" />
+                      <ActionButton onClick={clearConversation}>
+                        <RefreshCcw01 className="h-4 w-4" />
                       </ActionButton>
+
                     </TooltipPlus>
-                    {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
-                  </div>
-                )}
+                  )
+                }
+
+                {
+                  varList.length > 0 && (
+                    <div className="relative ml-1 mr-2">
+                      <TooltipPlus
+                        popupContent={t('panel.userInputField', { ns: 'workflow' })}
+                      >
+                        <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}>
+                          <RiEqualizer2Line className="h-4 w-4" />
+                        </ActionButton>
+                      </TooltipPlus>
+                      {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+                    </div>
+                  )
+                }
               </>
             )}
           </div>
@@ -443,19 +454,21 @@ const Debug: FC<IDebug> = ({
             <ChatUserInput inputs={inputs} />
           </div>
         )}
-        {mode === AppModeEnum.COMPLETION && (
-          <PromptValuePanel
-            appType={mode as AppModeEnum}
-            onSend={handleSendTextCompletion}
-            inputs={inputs}
-            visionConfig={{
-              ...features.file! as VisionSettings,
-              transfer_methods: features.file!.allowed_file_upload_methods || [],
-              image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
-            }}
-            onVisionFilesChange={setCompletionFiles}
-          />
-        )}
+        {
+          mode === AppModeEnum.COMPLETION && (
+            <PromptValuePanel
+              appType={mode as AppModeEnum}
+              onSend={handleSendTextCompletion}
+              inputs={inputs}
+              visionConfig={{
+                ...features.file! as VisionSettings,
+                transfer_methods: features.file!.allowed_file_upload_methods || [],
+                image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
+              }}
+              onVisionFilesChange={setCompletionFiles}
+            />
+          )
+        }
       </div>
       {
         debugWithMultipleModel && (
@@ -506,15 +519,15 @@ const Debug: FC<IDebug> = ({
               <>
                 {(completionRes || isResponding) && (
                   <>
-                    <div className="mx-4 mt-3"><GroupName name={t('appDebug.result')} /></div>
+                    <div className="mx-4 mt-3"><GroupName name={t('result', { ns: 'appDebug' })} /></div>
                     <div className="mx-3 mb-8">
                       <TextGeneration
+                        appSourceType={AppSourceType.webApp}
                         className="mt-2"
                         content={completionRes}
                         isLoading={!completionRes && isResponding}
                         isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                         isResponding={isResponding}
-                        isInstalledApp={false}
                         messageId={messageId}
                         isError={false}
                         onRetry={noop}
@@ -526,7 +539,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
-                    <div className="system-sm-regular text-text-quaternary">{t('appDebug.noResult')}</div>
+                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>
@@ -549,13 +562,15 @@ const Debug: FC<IDebug> = ({
           </div>
         )
       }
-      {isShowFormattingChangeConfirm && (
-        <FormattingChanged
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-        />
-      )}
-      {!isAPIKeySet && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
+      {
+        isShowFormattingChangeConfirm && (
+          <FormattingChanged
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        )
+      }
+      {!isAPIKeySet && !readonly && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
 }

@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import NodeGroupItem from './components/node-group-item'
 
-const i18nPrefix = 'workflow.nodes.variableAssigner'
+const i18nPrefix = 'nodes.variableAssigner'
 
 const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
@@ -22,7 +22,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
       return [{
         groupEnabled: false,
         targetHandleId: 'target',
-        title: t(`${i18nPrefix}.title`),
+        title: t(`${i18nPrefix}.title`, { ns: 'workflow' }),
         type: data.output_type,
         variables: data.variables,
         variableAssignerNodeId: id,

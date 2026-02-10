@@ -111,6 +111,10 @@ const FeaturesTrigger = () => {
     return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
   }, [nodes, plan.type, isFetchedPlan])
 
+  const hasHumanInputNode = useMemo(() => {
+    return nodes.some(node => node.data.type === BlockEnum.HumanInput)
+  }, [nodes])
+
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
 
@@ -146,7 +150,7 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       throw new Error('Checklist has unresolved items')
     }
 
@@ -159,7 +163,7 @@ const FeaturesTrigger = () => {
       })
 
       if (res) {
-        notify({ type: 'success', message: t('common.api.actionSuccess') })
+        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -171,7 +175,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -188,13 +192,13 @@ const FeaturesTrigger = () => {
       {isChatMode && (
         <Button
           className={cn(
-            'text-components-button-secondary-text',
-            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+            'rounded-lg border border-transparent text-components-button-secondary-text',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
           onClick={handleShowFeatures}
         >
           <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
-          {t('workflow.common.features')}
+          {t('common.features', { ns: 'workflow' })}
         </Button>
       )}
       <AppPublisher
@@ -214,6 +218,7 @@ const FeaturesTrigger = () => {
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          hasHumanInputNode,
         }}
       />
     </>

@@ -17,7 +17,7 @@ const ConfigDocument: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowDocumentConfig } = useContext(ConfigContext)
+  const { isShowDocumentConfig, readonly } = useContext(ConfigContext)
 
   const isDocumentEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.document) ?? false
 
@@ -45,7 +45,7 @@ const ConfigDocument: FC = () => {
     setFeatures(newFeatures)
   }, [featuresStore])
 
-  if (!isShowDocumentConfig)
+  if (!isShowDocumentConfig || (readonly && !isDocumentEnabled))
     return null
 
   return (
@@ -56,23 +56,25 @@ const ConfigDocument: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.feature.documentUpload.title')}</div>
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('feature.documentUpload.title', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
-              {t('appDebug.feature.documentUpload.description')}
+              {t('feature.documentUpload.description', { ns: 'appDebug' })}
             </div>
           )}
         />
       </div>
-      <div className="flex shrink-0 items-center">
-        <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
-        <Switch
-          defaultValue={isDocumentEnabled}
-          onChange={handleChange}
-          size="md"
-        />
-      </div>
+      {!readonly && (
+        <div className="flex shrink-0 items-center">
+          <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
+          <Switch
+            defaultValue={isDocumentEnabled}
+            onChange={handleChange}
+            size="md"
+          />
+        </div>
+      )}
     </div>
   )
 }

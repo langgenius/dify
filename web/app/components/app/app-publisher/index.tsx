@@ -1,5 +1,6 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   RiArrowDownSLine,
@@ -48,12 +49,15 @@ import Divider from '../../base/divider'
 import Loading from '../../base/loading'
 import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
+import ShortcutsName from '../../workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 
-const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
+type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
+
+const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
     label: 'organization',
     icon: RiBuildingLine,
@@ -84,7 +88,7 @@ const AccessModeDisplay: React.FC<{ mode?: AccessMode }> = ({ mode }) => {
     <>
       <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
       <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">{t(`app.accessControlDialog.accessItems.${label}` as any) as string}</span>
+        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
     </>
   )
@@ -111,6 +115,7 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean // Whether workflow currently contains any trigger nodes (used to hide missing-start CTA when triggers exist).
   startNodeLimitExceeded?: boolean
+  hasHumanInputNode?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -134,13 +139,14 @@ const AppPublisher = ({
   missingStartNode = false,
   hasTriggerNode = false,
   startNodeLimitExceeded = false,
+  hasHumanInputNode = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
 
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
+
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   const appDetail = useAppStore(state => state.appDetail)
@@ -157,34 +163,29 @@ const AppPublisher = ({
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   const openAsyncWindow = useAsyncWindowOpen()
 
+  const isAppAccessSet = useMemo(() => {
+    if (appDetail && appAccessSubjects) {
+      return !(appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
+    }
+    return true
+  }, [appAccessSubjects, appDetail])
+
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
 
   const disabledFunctionTooltip = useMemo(() => {
     if (!publishedAt)
-      return t('app.notPublishedYet')
+      return t('notPublishedYet', { ns: 'app' })
     if (missingStartNode)
-      return t('app.noUserInputNode')
+      return t('noUserInputNode', { ns: 'app' })
     if (noAccessPermission)
-      return t('app.noAccessPermission')
-  }, [missingStartNode, noAccessPermission, publishedAt])
+      return t('noAccessPermission', { ns: 'app' })
+  }, [missingStartNode, noAccessPermission, publishedAt, t])
 
   useEffect(() => {
     if (systemFeatures.webapp_auth.enabled && open && appDetail)
       refetch()
   }, [open, appDetail, refetch, systemFeatures])
-
-  useEffect(() => {
-    if (appDetail && appAccessSubjects) {
-      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-        setIsAppAccessSet(false)
-      else
-        setIsAppAccessSet(true)
-    }
-    else {
-      setIsAppAccessSet(true)
-    }
-  }, [appAccessSubjects, appDetail])
 
   const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
     try {
@@ -256,7 +257,7 @@ const AppPublisher = ({
 
   const hasPublishedVersion = !!publishedAt
   const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable
-  const workflowToolMessage = workflowToolDisabled ? t('workflow.common.workflowAsToolDisabledHint') : undefined
+  const workflowToolMessage = workflowToolDisabled ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' }) : undefined
   const showStartNodeLimitHint = Boolean(startNodeLimitExceeded)
   const upgradeHighlightStyle = useMemo(() => ({
     background: 'linear-gradient(97deg, var(--components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -3.64%, var(--components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45.14%)',
@@ -282,7 +283,7 @@ const AppPublisher = ({
             className="py-2 pl-3 pr-2"
             disabled={disabled}
           >
-            {t('workflow.common.publish')}
+            {t('common.publish', { ns: 'workflow' })}
             <RiArrowDownSLine className="h-4 w-4 text-components-button-primary-text" />
           </Button>
         </PortalToFollowElemTrigger>
@@ -290,13 +291,13 @@ const AppPublisher = ({
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <div className="p-4 pt-3">
               <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
-                {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
+                {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
               </div>
               {publishedAt
                 ? (
                     <div className="flex items-center justify-between">
                       <div className="system-sm-medium flex items-center text-text-secondary">
-                        {t('workflow.common.publishedAt')}
+                        {t('common.publishedAt', { ns: 'workflow' })}
                         {' '}
                         {formatTimeFromNow(publishedAt)}
                       </div>
@@ -307,14 +308,14 @@ const AppPublisher = ({
                           onClick={handleRestore}
                           disabled={published}
                         >
-                          {t('workflow.common.restore')}
+                          {t('common.restore', { ns: 'workflow' })}
                         </Button>
                       )}
                     </div>
                   )
                 : (
                     <div className="system-sm-medium flex items-center text-text-secondary">
-                      {t('workflow.common.autoSaved')}
+                      {t('common.autoSaved', { ns: 'workflow' })}
                       {' '}
                       ·
                       {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
@@ -338,17 +339,11 @@ const AppPublisher = ({
                       >
                         {
                           published
-                            ? t('workflow.common.published')
+                            ? t('common.published', { ns: 'workflow' })
                             : (
                                 <div className="flex gap-1">
-                                  <span>{t('workflow.common.publishUpdate')}</span>
-                                  <div className="flex gap-0.5">
-                                    {PUBLISH_SHORTCUT.map(key => (
-                                      <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
-                                        {getKeyboardKeyNameBySystem(key)}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
+                                  <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
                                 </div>
                               )
                         }
@@ -359,11 +354,11 @@ const AppPublisher = ({
                             className="text-sm font-semibold leading-5 text-transparent"
                             style={upgradeHighlightStyle}
                           >
-                            <span className="block">{t('workflow.publishLimit.startNodeTitlePrefix')}</span>
-                            <span className="block">{t('workflow.publishLimit.startNodeTitleSuffix')}</span>
+                            <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
+                            <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
                           </p>
                           <p className="mt-1 text-xs leading-4 text-text-secondary">
-                            {t('workflow.publishLimit.startNodeDesc')}
+                            {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
                           </p>
                           <UpgradeBtn
                             isShort
@@ -382,7 +377,7 @@ const AppPublisher = ({
                     {systemFeatures.webapp_auth.enabled && (
                       <div className="p-4 pt-3">
                         <div className="flex h-6 items-center">
-                          <p className="system-xs-medium text-text-tertiary">{t('app.publishApp.title')}</p>
+                          <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
                         </div>
                         <div
                           className="flex h-8 cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
@@ -393,12 +388,12 @@ const AppPublisher = ({
                           <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
                             <AccessModeDisplay mode={appDetail?.access_mode} />
                           </div>
-                          {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('app.publishApp.notSet')}</p>}
+                          {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
                           <div className="flex h-4 w-4 shrink-0 items-center justify-center">
                             <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
                           </div>
                         </div>
-                        {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('app.publishApp.notSetDesc')}</p>}
+                        {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
                       </div>
                     )}
                     {
@@ -412,7 +407,7 @@ const AppPublisher = ({
                               link={appURL}
                               icon={<RiPlayCircleLine className="h-4 w-4" />}
                             >
-                              {t('workflow.common.runApp')}
+                              {t('common.runApp', { ns: 'workflow' })}
                             </SuggestedAction>
                           </Tooltip>
                           {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
@@ -424,7 +419,7 @@ const AppPublisher = ({
                                     link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                                     icon={<RiPlayList2Line className="h-4 w-4" />}
                                   >
-                                    {t('workflow.common.batchRunApp')}
+                                    {t('common.batchRunApp', { ns: 'workflow' })}
                                   </SuggestedAction>
                                 </Tooltip>
                               )
@@ -437,7 +432,7 @@ const AppPublisher = ({
                                   disabled={!publishedAt}
                                   icon={<CodeBrowser className="h-4 w-4" />}
                                 >
-                                  {t('workflow.common.embedIntoSite')}
+                                  {t('common.embedIntoSite', { ns: 'workflow' })}
                                 </SuggestedAction>
                               )}
                           <Tooltip triggerClassName="flex" disabled={!disabledFunctionButton} popupContent={disabledFunctionTooltip} asChild={false}>
@@ -450,20 +445,20 @@ const AppPublisher = ({
                               disabled={disabledFunctionButton}
                               icon={<RiPlanetLine className="h-4 w-4" />}
                             >
-                              {t('workflow.common.openInExplore')}
+                              {t('common.openInExplore', { ns: 'workflow' })}
                             </SuggestedAction>
                           </Tooltip>
-                          <Tooltip triggerClassName="flex" disabled={!!publishedAt && !missingStartNode} popupContent={!publishedAt ? t('app.notPublishedYet') : t('app.noUserInputNode')} asChild={false}>
+                          <Tooltip triggerClassName="flex" disabled={!!publishedAt && !missingStartNode} popupContent={!publishedAt ? t('notPublishedYet', { ns: 'app' }) : t('noUserInputNode', { ns: 'app' })} asChild={false}>
                             <SuggestedAction
                               className="flex-1"
                               disabled={!publishedAt || missingStartNode}
                               link="./develop"
                               icon={<RiTerminalBoxLine className="h-4 w-4" />}
                             >
-                              {t('workflow.common.accessAPIReference')}
+                              {t('common.accessAPIReference', { ns: 'workflow' })}
                             </SuggestedAction>
                           </Tooltip>
-                          {appDetail?.mode === AppModeEnum.WORKFLOW && (
+                          {appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && (
                             <WorkflowToolConfigureButton
                               disabled={workflowToolDisabled}
                               published={!!toolPublished}

@@ -154,7 +154,7 @@ const PageSelector = ({
   if (!currentDataList.length) {
     return (
       <div className="flex h-[296px] items-center justify-center text-[13px] text-text-tertiary">
-        {t('common.dataSource.notion.selector.noSearchResult')}
+        {t('dataSource.notion.selector.noSearchResult', { ns: 'common' })}
       </div>
     )
   }

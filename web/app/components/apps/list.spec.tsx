@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { AppModeEnum } from '@/types/app'
 
 // Import after mocks
@@ -10,6 +11,7 @@ const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
 vi.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
+  useSearchParams: () => new URLSearchParams(''),
 }))
 
 // Mock app context
@@ -39,7 +41,6 @@ const mockQueryState = {
   isCreatedByMe: false,
 }
 vi.mock('./hooks/use-apps-query-state', () => ({
-  __esModule: true,
   default: () => ({
     query: mockQueryState,
     setQuery: mockSetQuery,
@@ -57,8 +58,13 @@ vi.mock('./hooks/use-dsl-drag-drop', () => ({
 }))
 
 const mockSetActiveTab = vi.fn()
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => ['all', mockSetActiveTab],
+vi.mock('nuqs', () => ({
+  useQueryState: () => ['all', mockSetActiveTab],
+  parseAsString: {
+    withDefault: () => ({
+      withOptions: () => ({}),
+    }),
+  },
 }))
 
 // Mock service hooks - use object for mutable state (vi.mock is hoisted)
@@ -118,18 +124,7 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-// Mock tag store
-vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: (selector: (state: { tagList: any[], setTagList: any, showTagManagementModal: boolean, setShowTagManagementModal: any }) => any) => {
-    const state = {
-      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app' }],
-      setTagList: vi.fn(),
-      showTagManagementModal: false,
-      setShowTagManagementModal: vi.fn(),
-    }
-    return selector(state)
-  },
-}))
+// Use real tag store - global zustand mock will auto-reset between tests
 
 // Mock tag service to avoid API calls in TagFilter
 vi.mock('@/service/tag', () => ({
@@ -139,7 +134,6 @@ vi.mock('@/service/tag', () => ({
 // Store TagFilter onChange callback for testing
 let mockTagFilterOnChange: ((value: string[]) => void) | null = null
 vi.mock('@/app/components/base/tag-management/filter', () => ({
-  __esModule: true,
   default: ({ onChange }: { onChange: (value: string[]) => void }) => {
     mockTagFilterOnChange = onChange
     return React.createElement('div', { 'data-testid': 'tag-filter' }, 'common.tag.placeholder')
@@ -195,7 +189,6 @@ vi.mock('next/dynamic', () => ({
  * Each child component (AppCard, NewAppCard, Empty, Footer) has its own dedicated tests.
  */
 vi.mock('./app-card', () => ({
-  __esModule: true,
   default: ({ app }: any) => {
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
@@ -208,14 +201,12 @@ vi.mock('./new-app-card', () => ({
 }))
 
 vi.mock('./empty', () => ({
-  __esModule: true,
   default: () => {
     return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
   },
 }))
 
 vi.mock('./footer', () => ({
-  __esModule: true,
   default: () => {
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },
@@ -246,6 +237,11 @@ beforeAll(() => {
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Set up tag store state
+    useTagStore.setState({
+      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
+      showTagManagementModal: false,
+    })
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockDragging = false

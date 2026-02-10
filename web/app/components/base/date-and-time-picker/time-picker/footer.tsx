@@ -19,7 +19,7 @@ const Footer: FC<TimePickerFooterProps> = ({
         className="mr-1 flex-1"
         onClick={handleSelectCurrentTime}
       >
-        {t('time.operation.now')}
+        {t('operation.now', { ns: 'time' })}
       </Button>
       {/* Confirm Button */}
       <Button
@@ -28,7 +28,7 @@ const Footer: FC<TimePickerFooterProps> = ({
         className="ml-1 flex-1"
         onClick={handleConfirm.bind(null)}
       >
-        {t('time.operation.ok')}
+        {t('operation.ok', { ns: 'time' })}
       </Button>
     </div>
   )

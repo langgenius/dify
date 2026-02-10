@@ -62,7 +62,7 @@ const ConditionCommonVariableSelector = ({
               <>
                 <div className="system-sm-regular flex grow items-center text-components-input-text-placeholder">
                   <Variable02 className="mr-1 h-4 w-4" />
-                  {t('workflow.nodes.knowledgeRetrieval.metadata.panel.select')}
+                  {t('nodes.knowledgeRetrieval.metadata.panel.select', { ns: 'workflow' })}
                 </div>
                 <div className="system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary">
                   {varType}

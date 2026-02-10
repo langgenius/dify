@@ -8,7 +8,8 @@ import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
 import Button from '../../base/button'
 import Tooltip from '../../base/tooltip'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../utils'
+import ShortcutsName from '../shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '../utils'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown
@@ -21,18 +22,9 @@ const PopupContent = React.memo(() => {
   return (
     <div className="flex items-center gap-x-1">
       <div className="system-xs-medium px-0.5 text-text-secondary">
-        {t('workflow.common.versionHistory')}
+        {t('common.versionHistory', { ns: 'workflow' })}
       </div>
-      <div className="flex items-center gap-x-0.5">
-        {VERSION_HISTORY_SHORTCUT.map(key => (
-          <span
-            key={key}
-            className="system-kbd rounded-[4px] bg-components-kbd-bg-white px-[1px] text-text-tertiary"
-          >
-            {getKeyboardKeyNameBySystem(key)}
-          </span>
-        ))}
-      </div>
+      <ShortcutsName keys={VERSION_HISTORY_SHORTCUT} bgColor="gray" textColor="secondary" />
     </div>
   )
 })
@@ -61,8 +53,8 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
     >
       <Button
         className={cn(
-          'p-2',
-          theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+          'rounded-lg border border-transparent p-2',
+          theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
         )}
         onClick={handleViewVersionHistory}
       >
