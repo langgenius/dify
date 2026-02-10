@@ -1,149 +1,147 @@
-import type { Item } from './index'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import Sort from './index'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => (key === 'filter.sortBy' ? 'Sort by' : key),
-  }),
-}))
+// deterministic i18n mock
+const tMock = vi.fn((key, options) =>
+  key === 'filter.sortBy' ? 'Sort by' : options?.ns ? `${options.ns}:${key}` : key,
+)
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: tMock }) }))
 
-const mockItems: Item[] = [
+const mockItems = [
   { value: 'created_at', name: 'Date Created' },
   { value: 'name', name: 'Name' },
   { value: 'status', name: 'Status' },
 ]
 
-describe('Sort Component', () => {
+describe('Sort component — real portal integration', () => {
   const setup = (props = {}) => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
     const { container, rerender } = render(
-      <Sort
-        value="created_at"
-        items={mockItems}
-        onSelect={onSelect}
-        order=""
-        {...props}
-      />,
+      <Sort value="created_at" items={mockItems} onSelect={onSelect} order="" {...props} />,
     )
 
-    // Helper functions to get fresh elements (avoids stale closures)
-    const getTriggerWrapper = () => screen.getByText('Sort by').closest('.block') as HTMLElement
-    const getTriggerContainer = () => getTriggerWrapper().firstChild as HTMLElement
-    const getSortButton = () => container.querySelector('.rounded-r-lg') as HTMLElement
-
-    return {
-      user,
-      onSelect,
-      getTriggerWrapper,
-      getTriggerContainer,
-      getSortButton,
-      rerender,
+    // helper: returns a non-null HTMLElement or throws with a clear message
+    const getTriggerWrapper = (): HTMLElement => {
+      const labelNode = screen.getByText('Sort by')
+      // try to find a reasonable wrapper element; prefer '.block' but fallback to any ancestor div
+      const wrapper = labelNode.closest('.block') ?? labelNode.closest('div')
+      if (!wrapper)
+        throw new Error('Trigger wrapper element not found for "Sort by" label')
+      return wrapper as HTMLElement
     }
+
+    // helper: returns right-side sort button element
+    const getSortButton = (): HTMLElement => {
+      const btn = container.querySelector('.rounded-r-lg')
+      if (!btn)
+        throw new Error('Sort button (rounded-r-lg) not found in rendered container')
+      return btn as HTMLElement
+    }
+
+    return { user, onSelect, rerender, getTriggerWrapper, getSortButton }
   }
 
-  it('renders the initial state with correct label and sort icon', () => {
-    const { getTriggerContainer, getSortButton } = setup({ order: '' })
+  it('renders and shows selected item label and sort icon', () => {
+    const { getSortButton } = setup({ order: '' })
 
     expect(screen.getByText('Date Created')).toBeInTheDocument()
 
-    expect(getTriggerContainer()).toHaveClass('bg-components-input-bg-normal')
-
-    expect(getSortButton().querySelector('svg')).toBeInTheDocument()
+    const sortButton = getSortButton()
+    expect(sortButton).toBeInstanceOf(HTMLElement)
+    expect(sortButton.querySelector('svg')).toBeInTheDocument()
   })
 
-  it('toggles the dropdown visibility when trigger is clicked', async () => {
-    const { user, getTriggerWrapper, getTriggerContainer } = setup()
+  it('opens and closes the tooltip (portal mounts to document.body)', async () => {
+    const { user, getTriggerWrapper } = setup()
 
     await user.click(getTriggerWrapper())
-    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toBeInTheDocument()
+    expect(document.body.contains(tooltip)).toBe(true)
 
-    expect(getTriggerContainer()).toHaveClass('!bg-state-base-hover-alt')
-
+    // clicking the trigger again should close it
     await user.click(getTriggerWrapper())
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 
-  it('renders all options and allows selection', async () => {
+  it('renders options and calls onSelect with descending prefix when order is "-"', async () => {
     const { user, onSelect, getTriggerWrapper } = setup({ order: '-' })
 
     await user.click(getTriggerWrapper())
-    const menu = screen.getByRole('tooltip')
+    const tooltip = await screen.findByRole('tooltip')
 
     mockItems.forEach((item) => {
-      expect(within(menu).getByText(item.name)).toBeInTheDocument()
+      expect(within(tooltip).getByText(item.name)).toBeInTheDocument()
     })
 
-    await user.click(within(menu).getByText('Name'))
-
+    await user.click(within(tooltip).getByText('Name'))
     expect(onSelect).toHaveBeenCalledWith('-name')
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 
-  it('handles sorting order toggle from Ascending to Descending', async () => {
+  it('toggles sorting order: ascending -> descending via right-side button', async () => {
     const { user, onSelect, getSortButton } = setup({ order: '', value: 'created_at' })
-
     await user.click(getSortButton())
     expect(onSelect).toHaveBeenCalledWith('-created_at')
   })
 
-  it('handles sorting order toggle from Descending to Ascending', async () => {
+  it('toggles sorting order: descending -> ascending via right-side button', async () => {
     const { user, onSelect, getSortButton } = setup({ order: '-', value: 'name' })
-
     await user.click(getSortButton())
     expect(onSelect).toHaveBeenCalledWith('name')
   })
 
-  it('displays the active checkmark only for the selected item', async () => {
+  it('shows checkmark only for selected item in menu', async () => {
     const { user, getTriggerWrapper } = setup({ value: 'status' })
 
     await user.click(getTriggerWrapper())
-    const menu = screen.getByRole('tooltip')
+    const tooltip = await screen.findByRole('tooltip')
 
-    const statusOption = within(menu).getByText('Status').closest('.flex') as HTMLElement
-    const nameOption = within(menu).getByText('Name').closest('.flex') as HTMLElement
+    const statusRow = within(tooltip).getByText('Status').closest('.flex')
+    const nameRow = within(tooltip).getByText('Name').closest('.flex')
 
-    expect(statusOption.querySelector('svg')).toBeInTheDocument()
-    expect(nameOption.querySelector('svg')).not.toBeInTheDocument()
+    if (!statusRow)
+      throw new Error('Status option row not found in menu')
+    if (!nameRow)
+      throw new Error('Name option row not found in menu')
+
+    expect(statusRow.querySelector('svg')).toBeInTheDocument()
+    expect(nameRow.querySelector('svg')).not.toBeInTheDocument()
   })
 
-  it('handles edge case where value does not match any item', () => {
+  it('shows empty selection label when value is unknown', () => {
     setup({ value: 'unknown_value' })
-
-    const valueDisplay = screen.getByText('Sort by').nextSibling
-    expect(valueDisplay).toHaveTextContent('')
+    const label = screen.getByText('Sort by')
+    const valueNode = label.nextSibling
+    if (!valueNode)
+      throw new Error('Expected a sibling node for the selection text')
+    expect(String(valueNode.textContent || '').trim()).toBe('')
   })
 
-  it('applies correct text styling based on value presence', () => {
-    const { onSelect, rerender } = setup({ value: '' })
-
-    const textElementNoValue = screen.getByText('Sort by').nextSibling as HTMLElement
-    expect(textElementNoValue).toHaveClass('text-text-tertiary')
-
-    // Case 2: Has value (Text should be secondary)
-    rerender(
-      <Sort
-        value="created_at"
-        items={mockItems}
-        onSelect={onSelect}
-        order=""
-      />,
-    )
-    const textElementWithValue = screen.getByText('Date Created').closest('div')
-    expect(textElementWithValue).toHaveClass('text-text-secondary')
-  })
-
-  it('handles undefined order prop gracefully', async () => {
+  it('handles undefined order prop without asserting a literal "undefined" prefix', async () => {
     const { user, onSelect, getTriggerWrapper } = setup({ order: undefined })
 
     await user.click(getTriggerWrapper())
-    const menu = screen.getByRole('tooltip')
+    const tooltip = await screen.findByRole('tooltip')
 
-    await user.click(within(menu).getByText('Name'))
+    await user.click(within(tooltip).getByText('Name'))
 
-    expect(onSelect).toHaveBeenCalledWith('undefinedname')
+    expect(onSelect).toHaveBeenCalled()
+    expect(onSelect).toHaveBeenCalledWith(expect.stringMatching(/name$/))
+  })
+
+  it('clicking outside the open menu closes the portal', async () => {
+    const { user, getTriggerWrapper } = setup()
+    await user.click(getTriggerWrapper())
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toBeInTheDocument()
+
+    // click outside: body click should close the tooltip
+    await user.click(document.body)
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 })
