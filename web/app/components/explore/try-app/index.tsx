@@ -4,10 +4,8 @@ import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
 import * as React from 'react'
 import { useState } from 'react'
-import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import Button from '../../base/button'
@@ -33,10 +31,15 @@ const TryApp: FC<Props> = ({
 }) => {
   const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
-  const canUseTryTab = IS_CLOUD_EDITION && (app ? isTrialApp : true)
-  const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
-  const activeType = canUseTryTab ? type : TypeEnum.DETAIL
-  const { data: appDetail, isLoading, isError, error } = useGetTryAppInfo(appId)
+  const [type, setType] = useState<TypeEnum>(() => (app && !isTrialApp ? TypeEnum.DETAIL : TypeEnum.TRY))
+  const { data: appDetail, isLoading, isError } = useGetTryAppInfo(appId)
+
+  React.useEffect(() => {
+    if (app && !isTrialApp && type !== TypeEnum.DETAIL)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setType(TypeEnum.DETAIL)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app, isTrialApp])
 
   return (
     <Modal
@@ -48,19 +51,16 @@ const TryApp: FC<Props> = ({
         <div className="flex h-full items-center justify-center">
           <Loading type="area" />
         </div>
-      ) : isError ? (
-        <div className="flex h-full items-center justify-center">
-          <AppUnavailable className="h-auto w-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
-        </div>
-      ) : !appDetail ? (
-        <div className="flex h-full items-center justify-center">
-          <AppUnavailable className="h-auto w-auto" isUnknownReason />
+      ) : isError || !appDetail ? (
+        <div className="flex h-full flex-col items-center justify-center gap-4">
+          <p className="text-text-tertiary">App not found.</p>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
         </div>
       ) : (
         <div className="flex h-full flex-col">
           <div className="flex shrink-0 justify-between pl-4">
             <Tab
-              value={activeType}
+              value={type}
               onChange={setType}
               disableTry={app ? !isTrialApp : false}
             />
@@ -75,7 +75,7 @@ const TryApp: FC<Props> = ({
           </div>
           {/* Main content */}
           <div className="mt-2 flex h-0 grow justify-between space-x-2">
-            {activeType === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail} /> : <Preview appId={appId} appDetail={appDetail} />}
+            {type === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail} /> : <Preview appId={appId} appDetail={appDetail} />}
             <AppInfo
               className="w-[360px] shrink-0"
               appDetail={appDetail}
