@@ -32,7 +32,7 @@ describe('copy icon component', () => {
 
   it('renders normally', () => {
     const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    expect(screen.getByTestId('tooltip-mock'))
+    expect(screen.getByTestId('tooltip-mock')).toBeInTheDocument()
     expect(container.querySelector('svg')).not.toBeNull()
   })
 
