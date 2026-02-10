@@ -266,7 +266,7 @@ class PluginConfig(BaseSettings):
     )
 
     PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
-        description="Maximum allowed file size in bytes for plugin generated file",
+        description="Maximum allowed size (bytes) for plugin-generated files",
         default=50 * 1024 * 1024,
     )
 
