@@ -38,6 +38,7 @@ class DifyCliInitializer(AsyncSandboxInitializer):
 
     def initialize(self, sandbox: Sandbox) -> None:
         vm = sandbox.vm
+        # FIXME(Mairuis): should be more robust, effectively.
         binary = self._locator.resolve(vm.metadata.os, vm.metadata.arch)
 
         pipeline(vm).add(

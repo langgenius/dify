@@ -4,6 +4,7 @@ import type { CodeNodeType } from '../../../code/types'
 import type { CommandNodeType } from '../../../command/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
 import type { EndNodeType } from '../../../end/types'
+import type { FileUploadNodeType } from '../../../file-upload/types'
 import type { HttpNodeType } from '../../../http/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { IterationNodeType } from '../../../iteration/types'
@@ -42,6 +43,7 @@ import {
   AGENT_OUTPUT_STRUCT,
   COMMAND_OUTPUT_STRUCT,
   FILE_STRUCT,
+  FILE_UPLOAD_OUTPUT_STRUCT,
   getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
   HUMAN_INPUT_OUTPUT_STRUCT,
@@ -468,6 +470,22 @@ const formatItem = (
 
     case BlockEnum.Command: {
       res.vars = COMMAND_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.FileUpload: {
+      res.vars = (data as FileUploadNodeType).is_array_file
+        ? [
+            {
+              variable: 'sandbox_path',
+              type: VarType.arrayString,
+            },
+            {
+              variable: 'file_name',
+              type: VarType.arrayString,
+            },
+          ]
+        : FILE_UPLOAD_OUTPUT_STRUCT
       break
     }
 
@@ -1538,6 +1556,11 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       ])
       break
     }
+    case BlockEnum.FileUpload: {
+      const payload = data as FileUploadNodeType
+      res = [payload.variable_selector]
+      break
+    }
     case BlockEnum.QuestionClassifier: {
       const payload = data as QuestionClassifierNodeType
       res = [payload.query_variable_selector]
@@ -1933,6 +1956,12 @@ export const updateNodeVars = (
         )
         break
       }
+      case BlockEnum.FileUpload: {
+        const payload = data as FileUploadNodeType
+        if (payload.variable_selector.join('.') === oldVarSelector.join('.'))
+          payload.variable_selector = newVarSelector
+        break
+      }
       case BlockEnum.QuestionClassifier: {
         const payload = data as QuestionClassifierNodeType
         if (
@@ -2229,6 +2258,17 @@ export const getNodeOutputVars = (
 
     case BlockEnum.Command: {
       varsToValueSelectorList(COMMAND_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.FileUpload: {
+      if ((data as FileUploadNodeType).is_array_file) {
+        res.push([id, 'sandbox_path'])
+        res.push([id, 'file_name'])
+      }
+      else {
+        varsToValueSelectorList(FILE_UPLOAD_OUTPUT_STRUCT, [id], res)
+      }
       break
     }
 

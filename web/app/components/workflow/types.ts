@@ -59,6 +59,7 @@ export enum BlockEnum {
   TriggerWebhook = 'trigger-webhook',
   TriggerPlugin = 'trigger-plugin',
   Command = 'command',
+  FileUpload = 'file-upload',
 }
 
 export enum ControlMode {

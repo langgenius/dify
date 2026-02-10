@@ -2,8 +2,9 @@ import agentDefault from '@/app/components/workflow/nodes/agent/default'
 import assignerDefault from '@/app/components/workflow/nodes/assigner/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
 import commandDefault from '@/app/components/workflow/nodes/command/default'
-
 import documentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
+
+import fileUploadDefault from '@/app/components/workflow/nodes/file-upload/default'
 
 import httpRequestDefault from '@/app/components/workflow/nodes/http/default'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
@@ -36,6 +37,7 @@ export const WORKFLOW_COMMON_NODES = [
   loopEndDefault,
   codeDefault,
   commandDefault,
+  fileUploadDefault,
   templateTransformDefault,
   variableAggregatorDefault,
   documentExtractorDefault,

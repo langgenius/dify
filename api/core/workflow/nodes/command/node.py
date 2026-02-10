@@ -17,7 +17,8 @@ from core.workflow.nodes.command.exc import CommandExecutionError
 
 logger = logging.getLogger(__name__)
 
-COMMAND_NODE_TIMEOUT_SECONDS = 60
+# FIXME(Mairuis): The timeout value is currently hardcoded and should be made configurable in the future.
+COMMAND_NODE_TIMEOUT_SECONDS = 60 * 10
 
 
 class CommandNode(Node[CommandNodeData]):
@@ -71,8 +72,6 @@ class CommandNode(Node[CommandNodeData]):
                 error_type="CommandNodeError",
             )
 
-        timeout = COMMAND_NODE_TIMEOUT_SECONDS if COMMAND_NODE_TIMEOUT_SECONDS > 0 else None
-
         try:
             sandbox.wait_ready(timeout=SANDBOX_READY_TIMEOUT)
             with with_connection(sandbox.vm) as conn:
@@ -81,7 +80,7 @@ class CommandNode(Node[CommandNodeData]):
                 sandbox_debug("command_node", "command", command)
 
                 future = submit_command(sandbox.vm, conn, command, cwd=working_directory)
-                result = future.result(timeout=timeout)
+                result = future.result(timeout=COMMAND_NODE_TIMEOUT_SECONDS)
 
                 outputs: dict[str, Any] = {
                     "stdout": result.stdout.decode("utf-8", errors="replace"),

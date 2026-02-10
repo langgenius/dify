@@ -118,6 +118,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Code,
   BlockEnum.TemplateTransform,
   BlockEnum.Command,
+  BlockEnum.FileUpload,
   BlockEnum.HttpRequest,
   BlockEnum.Tool,
   BlockEnum.VariableAssigner,
@@ -212,6 +213,17 @@ export const COMMAND_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'pid',
+    type: VarType.string,
+  },
+]
+
+export const FILE_UPLOAD_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'sandbox_path',
+    type: VarType.string,
+  },
+  {
+    variable: 'file_name',
     type: VarType.string,
   },
 ]

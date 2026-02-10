@@ -16,6 +16,8 @@ import DocExtractorNode from './document-extractor/node'
 import DocExtractorPanel from './document-extractor/panel'
 import EndNode from './end/node'
 import EndPanel from './end/panel'
+import FileUploadNode from './file-upload/node'
+import FileUploadPanel from './file-upload/panel'
 import GroupNode from './group/node'
 import GroupPanel from './group/panel'
 import HttpNode from './http/node'
@@ -83,6 +85,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
   [BlockEnum.Command]: CommandNode,
+  [BlockEnum.FileUpload]: FileUploadNode,
   [BlockEnum.Group]: GroupNode,
 }
 
@@ -114,5 +117,6 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
   [BlockEnum.Command]: CommandPanel,
+  [BlockEnum.FileUpload]: FileUploadPanel,
   [BlockEnum.Group]: GroupPanel,
 }

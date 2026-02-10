@@ -153,6 +153,11 @@ export const BLOCKS = [
     title: 'Command',
   },
   {
+    classification: BlockClassificationEnum.Utilities,
+    type: BlockEnum.FileUpload,
+    title: 'File Upload',
+  },
+  {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Agent,
     title: 'Agent',

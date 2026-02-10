@@ -24,6 +24,7 @@ import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVar
 import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
+import FileUploadDefault from '@/app/components/workflow/nodes/file-upload/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
@@ -70,6 +71,7 @@ const { checkValid: checkAssignerValid } = Assigner
 const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
+const { checkValid: checkFileUploadValid } = FileUploadDefault
 const { checkValid: checkLoopValid } = LoopDefault
 const { checkValid: checkHumanInputValid } = HumanInputDefault
 
@@ -88,6 +90,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.ParameterExtractor]: checkParameterExtractorValid,
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
+  [BlockEnum.FileUpload]: checkFileUploadValid,
   [BlockEnum.Loop]: checkLoopValid,
   [BlockEnum.HumanInput]: checkHumanInputValid,
 }

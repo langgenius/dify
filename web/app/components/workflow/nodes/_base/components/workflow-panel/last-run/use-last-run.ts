@@ -20,6 +20,7 @@ import useAgentSingleRunFormParams from '@/app/components/workflow/nodes/agent/u
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
+import useFileUploadSingleRunFormParams from '@/app/components/workflow/nodes/file-upload/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
 import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
@@ -51,6 +52,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.KnowledgeRetrieval]: useKnowledgeRetrievalSingleRunFormParams,
   [BlockEnum.Code]: useCodeSingleRunFormParams,
   [BlockEnum.Command]: undefined,
+  [BlockEnum.FileUpload]: useFileUploadSingleRunFormParams,
   [BlockEnum.TemplateTransform]: useTemplateTransformSingleRunFormParams,
   [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
   [BlockEnum.HttpRequest]: useHttpRequestSingleRunFormParams,
@@ -93,6 +95,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.KnowledgeRetrieval]: undefined,
   [BlockEnum.Code]: undefined,
   [BlockEnum.Command]: undefined,
+  [BlockEnum.FileUpload]: undefined,
   [BlockEnum.TemplateTransform]: undefined,
   [BlockEnum.QuestionClassifier]: undefined,
   [BlockEnum.HttpRequest]: undefined,

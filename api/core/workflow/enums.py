@@ -64,6 +64,7 @@ class NodeType(StrEnum):
     TRIGGER_PLUGIN = "trigger-plugin"
     HUMAN_INPUT = "human-input"
     COMMAND = "command"
+    FILE_UPLOAD = "file-upload"
     GROUP = "group"
 
     @property
