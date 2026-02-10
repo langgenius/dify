@@ -1,19 +1,36 @@
+from io import BytesIO
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import controllers.console.explore.trial as module
-from controllers.console.app.error import AppUnavailableError
+from controllers.console.app.error import (
+    AppUnavailableError,
+    CompletionRequestError,
+    ConversationCompletedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.explore.error import (
     NotChatAppError,
     NotCompletionAppError,
     NotWorkflowAppError,
 )
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
+from core.model_runtime.errors.invoke import InvokeError
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
+from services.errors.conversation import ConversationNotExistsError
+from services.errors.llm import InvokeRateLimitError
 
 
 def unwrap(func):
@@ -94,9 +111,6 @@ class TestTrialAppWorkflowRunApi:
         assert result is not None
 
     def test_workflow_provider_not_init(self, app, trial_app_workflow, account):
-        from controllers.console.app.error import ProviderNotInitializeError
-        from core.errors.error import ProviderTokenNotInitError
-
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -113,9 +127,6 @@ class TestTrialAppWorkflowRunApi:
                 method(trial_app_workflow)
 
     def test_workflow_quota_exceeded(self, app, trial_app_workflow, account):
-        from controllers.console.app.error import ProviderQuotaExceededError
-        from core.errors.error import QuotaExceededError
-
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -132,9 +143,6 @@ class TestTrialAppWorkflowRunApi:
                 method(trial_app_workflow)
 
     def test_workflow_model_not_support(self, app, trial_app_workflow, account):
-        from controllers.console.app.error import ProviderModelCurrentlyNotSupportError
-        from core.errors.error import ModelCurrentlyNotSupportError
-
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -151,9 +159,6 @@ class TestTrialAppWorkflowRunApi:
                 method(trial_app_workflow)
 
     def test_workflow_invoke_error(self, app, trial_app_workflow, account):
-        from controllers.console.app.error import CompletionRequestError
-        from core.model_runtime.errors.invoke import InvokeError
-
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -170,9 +175,6 @@ class TestTrialAppWorkflowRunApi:
                 method(trial_app_workflow)
 
     def test_workflow_rate_limit_error(self, app, trial_app_workflow, account):
-        from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-        from services.errors.llm import InvokeRateLimitError
-
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -205,8 +207,6 @@ class TestTrialAppWorkflowRunApi:
                 method(trial_app_workflow)
 
     def test_workflow_generic_exception(self, app, trial_app_workflow, account):
-        from werkzeug.exceptions import InternalServerError
-
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -259,14 +259,10 @@ class TestTrialChatApi:
                 side_effect=module.services.errors.conversation.ConversationNotExistsError(),
             ),
         ):
-            from werkzeug.exceptions import NotFound
-
             with pytest.raises(NotFound):
                 method(api, trial_app_chat)
 
     def test_chat_conversation_completed(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ConversationCompletedError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -299,9 +295,6 @@ class TestTrialChatApi:
                 method(api, trial_app_chat)
 
     def test_chat_provider_not_init(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ProviderNotInitializeError
-        from core.errors.error import ProviderTokenNotInitError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -318,9 +311,6 @@ class TestTrialChatApi:
                 method(api, trial_app_chat)
 
     def test_chat_quota_exceeded(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ProviderQuotaExceededError
-        from core.errors.error import QuotaExceededError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -337,9 +327,6 @@ class TestTrialChatApi:
                 method(api, trial_app_chat)
 
     def test_chat_model_not_support(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ProviderModelCurrentlyNotSupportError
-        from core.errors.error import ModelCurrentlyNotSupportError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -356,9 +343,6 @@ class TestTrialChatApi:
                 method(api, trial_app_chat)
 
     def test_chat_invoke_error(self, app, trial_app_chat, account):
-        from controllers.console.app.error import CompletionRequestError
-        from core.model_runtime.errors.invoke import InvokeError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -375,9 +359,6 @@ class TestTrialChatApi:
                 method(api, trial_app_chat)
 
     def test_chat_rate_limit_error(self, app, trial_app_chat, account):
-        from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-        from services.errors.llm import InvokeRateLimitError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -410,8 +391,6 @@ class TestTrialChatApi:
                 method(api, trial_app_chat)
 
     def test_chat_generic_exception(self, app, trial_app_chat, account):
-        from werkzeug.exceptions import InternalServerError
-
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -468,9 +447,6 @@ class TestTrialCompletionApi:
                 method(api, trial_app_completion)
 
     def test_completion_provider_not_init(self, app, trial_app_completion, account):
-        from controllers.console.app.error import ProviderNotInitializeError
-        from core.errors.error import ProviderTokenNotInitError
-
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -487,9 +463,6 @@ class TestTrialCompletionApi:
                 method(api, trial_app_completion)
 
     def test_completion_quota_exceeded(self, app, trial_app_completion, account):
-        from controllers.console.app.error import ProviderQuotaExceededError
-        from core.errors.error import QuotaExceededError
-
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -506,9 +479,6 @@ class TestTrialCompletionApi:
                 method(api, trial_app_completion)
 
     def test_completion_model_not_support(self, app, trial_app_completion, account):
-        from controllers.console.app.error import ProviderModelCurrentlyNotSupportError
-        from core.errors.error import ModelCurrentlyNotSupportError
-
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -525,9 +495,6 @@ class TestTrialCompletionApi:
                 method(api, trial_app_completion)
 
     def test_completion_invoke_error(self, app, trial_app_completion, account):
-        from controllers.console.app.error import CompletionRequestError
-        from core.model_runtime.errors.invoke import InvokeError
-
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -544,10 +511,6 @@ class TestTrialCompletionApi:
                 method(api, trial_app_completion)
 
     def test_completion_rate_limit_error(self, app, trial_app_completion, account):
-        from werkzeug.exceptions import InternalServerError
-
-        from services.errors.llm import InvokeRateLimitError
-
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -580,8 +543,6 @@ class TestTrialCompletionApi:
                 method(api, trial_app_completion)
 
     def test_completion_generic_exception(self, app, trial_app_completion, account):
-        from werkzeug.exceptions import InternalServerError
-
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -625,10 +586,6 @@ class TestTrialMessageSuggestedQuestionApi:
         assert result == {"data": ["q1", "q2"]}
 
     def test_conversation_not_exists(self, app, trial_app_chat, account):
-        from werkzeug.exceptions import NotFound
-
-        from services.errors.conversation import ConversationNotExistsError
-
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
@@ -681,8 +638,6 @@ class TestTrialAppParameterApi:
 
 class TestTrialChatAudioApi:
     def test_success(self, app, trial_app_chat, account):
-        from io import BytesIO
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -702,8 +657,6 @@ class TestTrialChatAudioApi:
         assert result == {"text": "hello"}
 
     def test_app_config_broken(self, app, trial_app_chat, account):
-        from io import BytesIO
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -725,8 +678,6 @@ class TestTrialChatAudioApi:
                 method(api, trial_app_chat)
 
     def test_no_audio_uploaded(self, app, trial_app_chat, account):
-        from io import BytesIO
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -748,8 +699,6 @@ class TestTrialChatAudioApi:
                 method(api, trial_app_chat)
 
     def test_audio_too_large(self, app, trial_app_chat, account):
-        from io import BytesIO
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -771,8 +720,6 @@ class TestTrialChatAudioApi:
                 method(api, trial_app_chat)
 
     def test_unsupported_audio_type(self, app, trial_app_chat, account):
-        from io import BytesIO
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -794,8 +741,6 @@ class TestTrialChatAudioApi:
                 method(api, trial_app_chat)
 
     def test_provider_not_support_tts(self, app, trial_app_chat, account):
-        from io import BytesIO
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -817,11 +762,6 @@ class TestTrialChatAudioApi:
                 method(api, trial_app_chat)
 
     def test_provider_not_init(self, app, trial_app_chat, account):
-        from io import BytesIO
-
-        from controllers.console.app.error import ProviderNotInitializeError
-        from core.errors.error import ProviderTokenNotInitError
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -839,11 +779,6 @@ class TestTrialChatAudioApi:
                 method(api, trial_app_chat)
 
     def test_quota_exceeded(self, app, trial_app_chat, account):
-        from io import BytesIO
-
-        from controllers.console.app.error import ProviderQuotaExceededError
-        from core.errors.error import QuotaExceededError
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -941,9 +876,6 @@ class TestTrialChatTextApi:
                 method(api, trial_app_chat)
 
     def test_provider_not_init(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ProviderNotInitializeError
-        from core.errors.error import ProviderTokenNotInitError
-
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -956,9 +888,6 @@ class TestTrialChatTextApi:
                 method(api, trial_app_chat)
 
     def test_quota_exceeded(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ProviderQuotaExceededError
-        from core.errors.error import QuotaExceededError
-
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -971,9 +900,6 @@ class TestTrialChatTextApi:
                 method(api, trial_app_chat)
 
     def test_model_not_support(self, app, trial_app_chat, account):
-        from controllers.console.app.error import ProviderModelCurrentlyNotSupportError
-        from core.errors.error import ModelCurrentlyNotSupportError
-
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -986,9 +912,6 @@ class TestTrialChatTextApi:
                 method(api, trial_app_chat)
 
     def test_invoke_error(self, app, trial_app_chat, account):
-        from controllers.console.app.error import CompletionRequestError
-        from core.model_runtime.errors.invoke import InvokeError
-
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1081,11 +1004,6 @@ class TestTrialSitApi:
 
 class TestTrialChatAudioApiExceptionHandlers:
     def test_provider_not_init(self, app, trial_app_chat, account):
-        from io import BytesIO
-
-        from controllers.console.app.error import ProviderNotInitializeError
-        from core.errors.error import ProviderTokenNotInitError
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1107,11 +1025,6 @@ class TestTrialChatAudioApiExceptionHandlers:
                 method(api, trial_app_chat)
 
     def test_quota_exceeded(self, app, trial_app_chat, account):
-        from io import BytesIO
-
-        from controllers.console.app.error import ProviderQuotaExceededError
-        from core.errors.error import QuotaExceededError
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1133,11 +1046,6 @@ class TestTrialChatAudioApiExceptionHandlers:
                 method(api, trial_app_chat)
 
     def test_invoke_error(self, app, trial_app_chat, account):
-        from io import BytesIO
-
-        from controllers.console.app.error import CompletionRequestError
-        from core.model_runtime.errors.invoke import InvokeError
-
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 

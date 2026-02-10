@@ -48,10 +48,11 @@ def audio_file():
 
 
 class TestChatAudioApi:
-    def test_post_success(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
+    def setup_method(self):
+        self.api = audio_module.ChatAudioApi()
+        self.method = unwrap(self.api.post)
 
+    def test_post_success(self, app, installed_app, audio_file):
         with (
             app.test_request_context(
                 "/",
@@ -64,14 +65,11 @@ class TestChatAudioApi:
                 return_value={"text": "ok"},
             ),
         ):
-            resp = method(installed_app)
+            resp = self.method(installed_app)
 
         assert resp == {"text": "ok"}
 
     def test_app_unavailable(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -85,12 +83,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(AppUnavailableError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_no_audio_uploaded(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -104,12 +99,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(NoAudioUploadedError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_audio_too_large(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -123,12 +115,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(AudioTooLargeError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_provider_quota_exceeded(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -142,12 +131,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_unknown_exception(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -161,12 +147,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_unsupported_audio_type(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -180,12 +163,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(audio_module.UnsupportedAudioTypeError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_provider_not_support_speech_to_text(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -199,12 +179,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_provider_not_initialized(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -218,12 +195,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_model_currently_not_supported(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -237,12 +211,9 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_invoke_error_asr(self, app, installed_app, audio_file):
-        api = audio_module.ChatAudioApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -256,14 +227,15 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(installed_app)
+                self.method(installed_app)
 
 
 class TestChatTextApi:
-    def test_post_success(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
+    def setup_method(self):
+        self.api = audio_module.ChatTextApi()
+        self.method = unwrap(self.api.post)
 
+    def test_post_success(self, app, installed_app):
         with (
             app.test_request_context(
                 "/",
@@ -275,14 +247,11 @@ class TestChatTextApi:
                 return_value={"audio": "ok"},
             ),
         ):
-            resp = method(installed_app)
+            resp = self.method(installed_app)
 
         assert resp == {"audio": "ok"}
 
     def test_provider_not_initialized(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -295,12 +264,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_model_not_supported(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -313,12 +279,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_invoke_error(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -331,12 +294,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_unknown_exception(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -349,12 +309,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_app_unavailable_tts(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -367,12 +324,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(AppUnavailableError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_no_audio_uploaded_tts(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -385,12 +339,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(NoAudioUploadedError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_audio_too_large_tts(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -403,12 +354,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(AudioTooLargeError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_unsupported_audio_type_tts(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -421,12 +369,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(audio_module.UnsupportedAudioTypeError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_provider_not_support_speech_to_text_tts(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -439,12 +384,9 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
-                method(installed_app)
+                self.method(installed_app)
 
     def test_quota_exceeded_tts(self, app, installed_app):
-        api = audio_module.ChatTextApi()
-        method = unwrap(api.post)
-
         with (
             app.test_request_context(
                 "/",
@@ -457,4 +399,4 @@ class TestChatTextApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(installed_app)
+                self.method(installed_app)

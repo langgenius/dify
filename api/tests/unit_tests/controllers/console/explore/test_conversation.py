@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.conversation as conversation_module
@@ -78,7 +77,6 @@ class TestConversationListApi:
 
         with (
             app.test_request_context("/?limit=20"),
-            patch.object(conversation_module, "request") as mock_request,
             patch.object(conversation_module, "current_user", user),
             patch.object(
                 conversation_module.WebConversationService,
@@ -86,7 +84,6 @@ class TestConversationListApi:
                 return_value=pagination,
             ),
         ):
-            mock_request.args = MultiDict([("limit", "20")])
             result = method(chat_app)
 
         assert result["limit"] == 20
@@ -99,7 +96,6 @@ class TestConversationListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(conversation_module, "request") as mock_request,
             patch.object(conversation_module, "current_user", user),
             patch.object(
                 conversation_module.WebConversationService,
@@ -107,7 +103,6 @@ class TestConversationListApi:
                 side_effect=LastConversationNotExistsError(),
             ),
         ):
-            mock_request.args = MultiDict()
             with pytest.raises(NotFound):
                 method(chat_app)
 
@@ -173,10 +168,6 @@ class TestConversationRenameApi:
 
         with (
             app.test_request_context("/", json={"name": "new"}),
-            patch(
-                "controllers.console.explore.conversation.request.get_json",
-                return_value={"name": "new", "auto_generate": False},
-            ),
             patch.object(conversation_module, "current_user", user),
             patch.object(
                 conversation_module.ConversationService,
@@ -194,10 +185,6 @@ class TestConversationRenameApi:
 
         with (
             app.test_request_context("/", json={"name": "new"}),
-            patch(
-                "controllers.console.explore.conversation.request.get_json",
-                return_value={"name": "new", "auto_generate": False},
-            ),
             patch.object(conversation_module, "current_user", user),
             patch.object(
                 conversation_module.ConversationService,
