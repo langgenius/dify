@@ -3,15 +3,15 @@ import AnswerIcon from '.'
 
 describe('AnswerIcon', () => {
   it('renders default emoji when no icon or image is provided', () => {
-    render(<AnswerIcon />)
-    const emojiElement = document.querySelector('em-emoji')
+    const { container } = render(<AnswerIcon />)
+    const emojiElement = container.querySelector('em-emoji')
     expect(emojiElement).toBeInTheDocument()
     expect(emojiElement?.getAttribute('id')).toBe('🤖')
   })
 
   it('renders with custom emoji when icon is provided', () => {
-    render(<AnswerIcon icon="smile" />)
-    const emojiElement = document.querySelector('em-emoji')
+    const { container } = render(<AnswerIcon icon="smile" />)
+    const emojiElement = container.querySelector('em-emoji')
     expect(emojiElement).toBeInTheDocument()
     expect(emojiElement?.getAttribute('id')).toBe('smile')
   })
