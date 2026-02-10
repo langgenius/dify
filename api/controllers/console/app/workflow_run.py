@@ -463,8 +463,9 @@ class WorkflowRunNodeExecutionListApi(Resource):
 class ConsoleWorkflowPauseDetailsApi(Resource):
     """Console API for getting workflow pause details."""
 
-    @account_initialization_required
+    @setup_required
     @login_required
+    @account_initialization_required
     def get(self, workflow_run_id: str):
         """
         Get workflow pause details.
@@ -477,8 +478,12 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         # Query WorkflowRun to determine if workflow is suspended
         session_maker = sessionmaker(bind=db.engine)
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_maker)
+
         workflow_run = db.session.get(WorkflowRun, workflow_run_id)
         if not workflow_run:
+            raise NotFoundError("Workflow run not found")
+
+        if workflow_run.tenant_id != current_user.current_tenant_id:
             raise NotFoundError("Workflow run not found")
 
         # Check if workflow is suspended

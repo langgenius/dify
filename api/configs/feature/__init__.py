@@ -93,9 +93,9 @@ class AppExecutionConfig(BaseSettings):
         default=0,
     )
 
-    HITL_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+    HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
         description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
-        default=int(timedelta(days=3).total_seconds()),
+        default=int(timedelta(days=7).total_seconds()),
         ge=1,
     )
 
@@ -1178,6 +1178,16 @@ class CeleryScheduleTasksConfig(BaseSettings):
     WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
         description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
         default=0,
+    )
+
+    # API token last_used_at batch update
+    ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK: bool = Field(
+        description="Enable periodic batch update of API token last_used_at timestamps",
+        default=True,
+    )
+    API_TOKEN_LAST_USED_UPDATE_INTERVAL: int = Field(
+        description="Interval in minutes for batch updating API token last_used_at (default 30)",
+        default=30,
     )
 
     # Trigger provider refresh (simple version)
