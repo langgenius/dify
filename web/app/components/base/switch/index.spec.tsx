@@ -44,30 +44,25 @@ describe('Switch', () => {
     expect(switchElement).toHaveClass('!cursor-not-allowed', '!opacity-50')
 
     await user.click(switchElement)
-    // Note: aria-checked might still change due to HeadlessUI behavior
-    // The important part is onChange shouldn't be called
     expect(onChange).not.toHaveBeenCalled()
   })
 
   it('should apply correct size classes', () => {
     const { rerender } = render(<Switch size="xs" />)
-    let switchElement = screen.getByRole('switch')
+    // We only need to find the element once
+    const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'rounded-sm')
 
     rerender(<Switch size="sm" />)
-    switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('h-3', 'w-5')
 
     rerender(<Switch size="md" />)
-    switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('h-4', 'w-7')
 
     rerender(<Switch size="l" />)
-    switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('h-5', 'w-9')
 
     rerender(<Switch size="lg" />)
-    switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('h-6', 'w-11')
   })
 
@@ -76,7 +71,6 @@ describe('Switch', () => {
     expect(screen.getByRole('switch')).toHaveClass('custom-test-class')
   })
 
-  // NEW: Test background color changes
   it('should apply correct background colors based on state', async () => {
     const user = userEvent.setup()
     render(<Switch />)
