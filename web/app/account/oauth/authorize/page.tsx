@@ -19,6 +19,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { useAppContext } from '@/context/app-context'
 import { useIsLogin } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
+import { storage } from '@/utils/storage'
 import {
   OAUTH_AUTHORIZE_PENDING_KEY,
   OAUTH_AUTHORIZE_PENDING_TTL,
@@ -30,7 +31,7 @@ function setItemWithExpiry(key: string, value: string, ttl: number) {
     value,
     expiry: Math.floor((Date.now() + ttl * 1000) / 1000),
   }
-  localStorage.setItem(key, JSON.stringify(item))
+  storage.set(key, item)
 }
 
 function buildReturnUrl(pathname: string, search: string) {
