@@ -1217,6 +1217,8 @@
   "skillEditor.openInSkillEditor": "Open in Skill Editor",
   "skillEditor.previewUnavailable": "Preview unavailable",
   "skillEditor.referenceFiles": "Reference files",
+  "skillEditor.toolMissing": "Tool missing",
+  "skillEditor.toolMissingDesc": "Go to <Plugins>Plugins</Plugins> to install",
   "skillEditor.unsupportedPreview": "This file type is not supported for preview",
   "skillSidebar.addFile": "Upload File",
   "skillSidebar.addFolder": "New Folder",

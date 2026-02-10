@@ -4,15 +4,17 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppAssetTreeView } from '@/types/app-asset'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import Link from 'next/link'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppIcon from '@/app/components/base/app-icon'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
+import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
@@ -207,6 +209,8 @@ const ToolBlockComponent = ({
     const resultMetadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
     return resultMetadata?.tools?.[configId]
   }, [activeTabId, configId, fileMetadata, isUsingExternalMetadata, metadata])
+  const isToolMissing = !currentProvider || !currentTool
+  const missingFieldCount = toolConfigFromMetadata?.configuration?.fields?.length ?? 0
 
   const isInteractive = editor.isEditable()
 
@@ -350,6 +354,13 @@ const ToolBlockComponent = ({
   }, [currentProvider])
 
   const renderIcon = () => {
+    if (isToolMissing) {
+      return (
+        <span className="flex size-4 items-center justify-center p-px">
+          <span className="i-ri-equalizer-2-line h-[14px] w-[14px] text-text-warning" />
+        </span>
+      )
+    }
     if (!resolvedIcon)
       return null
     const iconNode = (() => {
@@ -407,6 +418,27 @@ const ToolBlockComponent = ({
       </span>
     )
   }
+
+  const missingTooltipContent = useMemo(() => {
+    if (!isToolMissing)
+      return null
+    return (
+      <div className="rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg backdrop-blur-[10px]">
+        <div className="text-text-secondary system-xs-medium">
+          {t('skillEditor.toolMissing', { ns: 'workflow' })}
+        </div>
+        <div className="mt-0.5 text-text-tertiary system-xs-regular">
+          <Trans
+            i18nKey="skillEditor.toolMissingDesc"
+            ns="workflow"
+            components={{
+              Plugins: <Link href="/plugins" className="text-text-accent" />,
+            }}
+          />
+        </div>
+      </div>
+    )
+  }, [isToolMissing, t])
 
   const handleToolValueChange = (nextValue: ToolValue) => {
     setToolValue(nextValue)
@@ -562,36 +594,55 @@ const ToolBlockComponent = ({
 
   return (
     <>
-      <span
-        ref={ref}
-        className={cn(
-          'group/tool inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
-          isInteractive ? 'cursor-pointer' : 'cursor-default',
-          needAuthorization ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
-          isSelected && 'border-text-accent',
-        )}
-        title={`${provider}.${tool}`}
-        data-tool-config-id={configId}
-        onMouseDown={() => {
-          if (!isInteractive)
-            return
-          if (!currentProvider || !currentTool)
-            return
-          if (configuredToolValue)
-            setToolValue(configuredToolValue)
-          setIsSettingOpen(true)
-        }}
-      >
-        {renderIcon()}
-        <span className={cn('max-w-[180px] truncate system-xs-medium', needAuthorization ? 'text-text-warning' : 'text-text-accent')}>
-          {displayLabel}
-        </span>
-        {needAuthorization && (
-          <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
-            {authBadgeLabel}
-            <span className="i-ri-alert-fill h-3 w-3" />
+      <span ref={ref} className="inline-flex">
+        <Tooltip
+          disabled={!isToolMissing}
+          offset={4}
+          noDecoration
+          popupClassName="bg-transparent p-0"
+          popupContent={missingTooltipContent}
+        >
+          <span
+            className={cn(
+              'group/tool inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
+              isInteractive ? 'cursor-pointer' : 'cursor-default',
+              (needAuthorization || isToolMissing) ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
+              isSelected && 'border-text-accent',
+            )}
+            title={`${provider}.${tool}`}
+            data-tool-config-id={configId}
+            onMouseDown={() => {
+              if (!isInteractive)
+                return
+              if (!currentProvider || !currentTool)
+                return
+              if (configuredToolValue)
+                setToolValue(configuredToolValue)
+              setIsSettingOpen(true)
+            }}
+          >
+            {renderIcon()}
+            <span className={cn('max-w-[180px] truncate system-xs-medium', (needAuthorization || isToolMissing) ? 'text-text-warning' : 'text-text-accent')}>
+              {displayLabel}
+            </span>
+            {isToolMissing && (
+              <>
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-text-tertiary system-2xs-medium-uppercase">
+                  {missingFieldCount}
+                </span>
+                <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
+                  <span className="i-ri-alert-fill h-3 w-3" />
+                </span>
+              </>
+            )}
+            {!isToolMissing && needAuthorization && (
+              <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
+                {authBadgeLabel}
+                <span className="i-ri-alert-fill h-3 w-3" />
+              </span>
+            )}
           </span>
-        )}
+        </Tooltip>
       </span>
       {useModalValue && (
         <Modal

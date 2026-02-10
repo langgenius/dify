@@ -1149,6 +1149,8 @@
   "singleRun.testRunIteration": "測試運行迭代",
   "singleRun.testRunLoop": "測試運行循環",
   "skillEditor.referenceFiles": "參考檔案",
+  "skillEditor.toolMissing": "工具遺失",
+  "skillEditor.toolMissingDesc": "前往 <Plugins>外掛</Plugins> 安裝",
   "subGraphModal.canvasPlaceholder": "點擊配置內部結構",
   "subGraphModal.defaultValueHint": "返回以下值",
   "subGraphModal.internalStructure": "內部結構",
