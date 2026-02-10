@@ -88,8 +88,5 @@ def test_annotation_reply_status_query_disable():
 
 def test_annotation_file_payload_valid():
     """Test AnnotationFilePayload with valid message ID."""
-    payload = annotation_module.AnnotationFilePayload(
-        message_id="550e8400-e29b-41d4-a716-446655440000"
-    )
+    payload = annotation_module.AnnotationFilePayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.message_id == "550e8400-e29b-41d4-a716-446655440000"
-

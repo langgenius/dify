@@ -47,9 +47,7 @@ def _install_common(monkeypatch: pytest.MonkeyPatch) -> None:
         "parse_time_range",
         lambda *_args, **_kwargs: (None, None),
     )
-    monkeypatch.setattr(
-        statistic_module, "convert_datetime_to_date", lambda field: field
-    )
+    monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
 
 def test_daily_message_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -135,12 +133,11 @@ def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytes
         lambda: (SimpleNamespace(timezone="UTC"), "t1"),
     )
     monkeypatch.setattr(statistic_module, "parse_time_range", mock_parse)
-    monkeypatch.setattr(
-        statistic_module, "convert_datetime_to_date", lambda field: field
-    )
+    monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
         from werkzeug.exceptions import BadRequest
+
         with pytest.raises(BadRequest):
             method(app_model=SimpleNamespace(id="app-1"))
 
@@ -193,9 +190,7 @@ def test_daily_conversation_statistic_with_time_range(app, monkeypatch: pytest.M
         "parse_time_range",
         lambda *_args, **_kwargs: ("s", "e"),
     )
-    monkeypatch.setattr(
-        statistic_module, "convert_datetime_to_date", lambda field: field
-    )
+    monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-conversations", method="GET"):
         response = method(app_model=SimpleNamespace(id="app-1"))

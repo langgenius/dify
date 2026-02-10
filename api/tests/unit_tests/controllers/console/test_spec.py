@@ -20,9 +20,7 @@ class TestSpecSchemaDefinitionsApi:
             spec_module,
             "SchemaManager",
         ) as schema_manager_cls:
-            schema_manager_cls.return_value.get_all_schema_definitions.return_value = (
-                schema_definitions
-            )
+            schema_manager_cls.return_value.get_all_schema_definitions.return_value = schema_definitions
 
             resp, status = method(api)
 
@@ -33,14 +31,17 @@ class TestSpecSchemaDefinitionsApi:
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
-        with patch.object(
-            spec_module,
-            "SchemaManager",
-            side_effect=Exception("boom"),
-        ), patch.object(
-            spec_module.logger,
-            "exception",
-        ) as log_exception:
+        with (
+            patch.object(
+                spec_module,
+                "SchemaManager",
+                side_effect=Exception("boom"),
+            ),
+            patch.object(
+                spec_module.logger,
+                "exception",
+            ) as log_exception,
+        ):
             resp, status = method(api)
 
         assert status == 200
