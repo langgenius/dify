@@ -304,6 +304,7 @@ class TestExternalApiTemplateListApiAdvanced:
         assert resp["total"] == 25
         assert len(resp["data"]) == 3
 
+
 class TestExternalDatasetCreateApiAdvanced:
     def test_create_forbidden(self, app, mock_auth, current_user):
         """Test creating external dataset without permission"""

@@ -2,7 +2,7 @@ import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound, BadRequest
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.console import console_ns

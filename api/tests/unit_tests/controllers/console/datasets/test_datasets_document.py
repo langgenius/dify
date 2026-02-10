@@ -678,6 +678,7 @@ class TestDocumentRetryApi:
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [])
 
+
 class TestDocumentPipelineExecutionLogApi:
     def test_get_log_success(self, app, patch_tenant, patch_dataset):
         api = DocumentPipelineExecutionLogApi()
