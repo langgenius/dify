@@ -366,6 +366,7 @@ class EnterpriseOtelTrace:
                 "dify.node.loop_index": info.loop_index,
                 "dify.plugin.name": metadata.get("plugin_name"),
                 "dify.credential.name": metadata.get("credential_name"),
+                "dify.credential.id": metadata.get("credential_id"),
                 "dify.dataset.ids": self._maybe_json(metadata.get("dataset_ids")),
                 "dify.dataset.names": self._maybe_json(metadata.get("dataset_names")),
             }
