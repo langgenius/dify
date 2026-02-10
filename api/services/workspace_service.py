@@ -58,10 +58,7 @@ class WorkspaceService:
             if (
                 feature.billing.subscription.plan != CloudPlan.SANDBOX
                 and paid_pool is not None
-                and (
-                    paid_pool.quota_limit == -1
-                    or paid_pool.quota_limit > paid_pool.quota_used
-                )
+                and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used)
             ):
                 tenant_info["trial_credits"] = paid_pool.quota_limit
                 tenant_info["trial_credits_used"] = paid_pool.quota_used
