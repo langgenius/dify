@@ -363,6 +363,7 @@ class LLMNode(Node[LLMNodeData]):
                 finish_reason,
                 structured_output,
                 generation_data,
+                tool_calls,
             ) = yield from self._stream_llm_events(generator, model_instance=model_instance)
 
             # Extract variables from generation_data if available
@@ -426,7 +427,7 @@ class LLMNode(Node[LLMNodeData]):
                 generation = {
                     "content": generation_content,
                     "reasoning_content": [generation_reasoning] if generation_reasoning else [],
-                    "tool_calls": [],
+                    "tool_calls": tool_calls or [],
                     "sequence": sequence,
                 }
                 files_to_output = self._file_outputs
@@ -535,18 +536,25 @@ class LLMNode(Node[LLMNodeData]):
             # Collect the tool_call_ids we have results for
             result_ids = {getattr(r, "tool_call_id", None) for r in tool_results if getattr(r, "tool_call_id", None)}
 
-            # Sanitize history: strip tool_calls from assistant messages whose
-            # tool_call_ids are NOT in the current result set.  This prevents
-            # the "tool_calls must be followed by tool messages" error when
-            # previous turns had unresolved tool calls (e.g. retries).
+            # Sanitize history: strip tool_calls (and their corresponding
+            # ToolPromptMessages) from assistant messages whose tool_call_ids
+            # are NOT in the current result set.
+            orphaned_tc_ids: set[str] = set()
             for i, msg in enumerate(current_prompt_messages):
                 if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
                     has_match = any(tc.id in result_ids for tc in msg.tool_calls)
                     if not has_match:
+                        orphaned_tc_ids.update(tc.id for tc in msg.tool_calls if tc.id)
                         current_prompt_messages[i] = AssistantPromptMessage(
                             content=msg.content,
                             tool_calls=[],
                         )
+            # Remove ToolPromptMessages whose tool_call_id was orphaned
+            if orphaned_tc_ids:
+                current_prompt_messages = [
+                    msg for msg in current_prompt_messages
+                    if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
+                ]
 
             for result in tool_results:
                 tool_call_id = getattr(result, "tool_call_id", None)
@@ -559,24 +567,28 @@ class LLMNode(Node[LLMNodeData]):
                         )
                     )
         else:
-            # Even without tool_results, strip any orphaned tool_calls from
-            # history that don't have matching ToolPromptMessages following them.
-            # This prevents "tool_calls must be followed by tool messages" errors
-            # when a new user query arrives after a previous turn ended with
-            # unresolved tool_calls (e.g. openclaw compaction or user interruption).
+            # Even without tool_results, strip any orphaned tool_calls and
+            # their corresponding ToolPromptMessages from history.
             existing_tool_msg_ids = {
                 msg.tool_call_id
                 for msg in current_prompt_messages
                 if isinstance(msg, ToolPromptMessage) and msg.tool_call_id
             }
+            orphaned_tc_ids = set()
             for i, msg in enumerate(current_prompt_messages):
                 if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
                     has_response = any(tc.id in existing_tool_msg_ids for tc in msg.tool_calls)
                     if not has_response:
+                        orphaned_tc_ids.update(tc.id for tc in msg.tool_calls if tc.id)
                         current_prompt_messages[i] = AssistantPromptMessage(
                             content=msg.content,
                             tool_calls=[],
                         )
+            if orphaned_tc_ids:
+                current_prompt_messages = [
+                    msg for msg in current_prompt_messages
+                    if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
+                ]
 
         current_model_parameters = node_data_model.completion_params.copy() if node_data_model.completion_params else {}
         if tool_choice:
@@ -1895,6 +1907,7 @@ class LLMNode(Node[LLMNodeData]):
             str | None,
             LLMStructuredOutput | None,
             LLMGenerationData | None,
+            list | None,
         ],
     ]:
         """
@@ -1909,6 +1922,7 @@ class LLMNode(Node[LLMNodeData]):
         finish_reason: str | None = None
         structured_output: LLMStructuredOutput | None = None
         generation_data: LLMGenerationData | None = None
+        collected_tool_calls: list | None = None
         completed = False
 
         while True:
@@ -1933,6 +1947,7 @@ class LLMNode(Node[LLMNodeData]):
                     finish_reason=finish_reason_event,
                     reasoning_content=reasoning_event,
                     structured_output=structured_raw,
+                    tool_calls=tool_calls_event,
                 ):
                     clean_text = text
                     usage = usage_event
@@ -1940,6 +1955,7 @@ class LLMNode(Node[LLMNodeData]):
                     reasoning_content = reasoning_event or ""
                     generation_reasoning_content = reasoning_content
                     generation_clean_content = clean_text
+                    collected_tool_calls = tool_calls_event or None
 
                     if self.node_data.reasoning_format == "tagged":
                         # Keep tagged text for output; also extract reasoning for generation field
@@ -1974,6 +1990,7 @@ class LLMNode(Node[LLMNodeData]):
             finish_reason,
             structured_output,
             generation_data,
+            collected_tool_calls,
         )
 
     def _extract_tool_dependencies(self) -> ToolDependencies | None:

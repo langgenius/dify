@@ -517,6 +517,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         # Check if this is a tool call chunk
         if event.from_variable_selector and event.from_variable_selector[-1] == "tool_calls":
+            # Record external tool calls to stream buffer for generation_detail persistence
+            try:
+                for tc in json.loads(delta_text):
+                    if tc.get("id"):
+                        self._stream_buffer.record_tool_call(
+                            tool_call_id=tc["id"],
+                            tool_name=tc.get("function", {}).get("name", ""),
+                            tool_arguments=tc.get("function", {}).get("arguments", ""),
+                        )
+            except (json.JSONDecodeError, TypeError):
+                pass
             yield MessageToolCallChunkStreamResponse(
                 task_id=self._application_generate_entity.task_id,
                 data=MessageToolCallChunkStreamResponse.Data(tool_call_chunks=delta_text),
