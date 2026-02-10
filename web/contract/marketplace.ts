@@ -7,7 +7,7 @@ import type {
   CreatorSearchParams,
   CreatorSearchResponse,
   GetCollectionTemplatesRequest,
-  MarketplaceCollection,
+  PluginCollection,
   PluginsSearchParams,
   SyncCreatorProfileRequest,
   TemplateCollection,
@@ -21,7 +21,7 @@ import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/pl
 import { type } from '@orpc/contract'
 import { base } from './base'
 
-export const collectionsContract = base
+export const pluginCollectionsContract = base
   .route({
     path: '/collections',
     method: 'GET',
@@ -34,7 +34,7 @@ export const collectionsContract = base
   .output(
     type<{
       data?: {
-        collections?: MarketplaceCollection[]
+        collections?: PluginCollection[]
       }
     }>(),
   )

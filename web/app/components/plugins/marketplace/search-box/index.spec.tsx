@@ -32,6 +32,7 @@ vi.mock('#i18n', () => ({
       return translations[fullKey] || key
     },
   }),
+  useLocale: () => 'en-US',
 }))
 
 vi.mock('ahooks', () => ({
@@ -647,6 +648,30 @@ describe('SearchBoxWrapper', () => {
       fireEvent.keyDown(input, { key: 'Enter' })
 
       expect(mockHandleSearchTextChange).toHaveBeenCalledWith('new search')
+    })
+
+    it('should clear committed search when input is emptied and blurred', () => {
+      render(<SearchBoxWrapper />)
+
+      const input = screen.getByRole('textbox')
+      // Focus, type something, then clear and blur
+      fireEvent.focus(input)
+      fireEvent.change(input, { target: { value: 'test query' } })
+      fireEvent.change(input, { target: { value: '' } })
+      fireEvent.blur(input)
+
+      expect(mockHandleSearchTextChange).toHaveBeenCalledWith('')
+    })
+
+    it('should not clear committed search when input has content and blurred', () => {
+      render(<SearchBoxWrapper />)
+
+      const input = screen.getByRole('textbox')
+      fireEvent.focus(input)
+      fireEvent.change(input, { target: { value: 'still has text' } })
+      fireEvent.blur(input)
+
+      expect(mockHandleSearchTextChange).not.toHaveBeenCalled()
     })
   })
 

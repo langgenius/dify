@@ -24,7 +24,6 @@ import {
   batchAddTemplatesToCollectionContract,
   clearCollectionTemplatesContract,
   collectionPluginsContract,
-  collectionsContract,
   createTemplateCollectionContract,
   deleteTemplateCollectionContract,
   getCollectionTemplatesContract,
@@ -36,6 +35,7 @@ import {
   getTemplateCollectionContract,
   getTemplateDslFileContract,
   getTemplatesListContract,
+  pluginCollectionsContract,
   searchAdvancedContract,
   searchCreatorsAdvancedContract,
   searchTemplatesAdvancedContract,
@@ -48,7 +48,7 @@ import {
 
 export const marketplaceRouterContract = {
   plugins: {
-    collections: collectionsContract,
+    collections: pluginCollectionsContract,
     collectionPlugins: collectionPluginsContract,
     searchAdvanced: searchAdvancedContract,
     getPublisherPlugins: getPublisherPluginsContract,

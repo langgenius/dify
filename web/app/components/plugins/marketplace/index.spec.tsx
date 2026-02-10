@@ -1,4 +1,4 @@
-import type { MarketplaceCollection } from './types'
+import type { PluginCollection } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { act, render, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,9 +12,9 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
-  getMarketplaceListCondition,
-  getMarketplaceListFilterType,
+  getPluginCondition,
   getPluginDetailLinkInMarketplace,
+  getPluginFilterType,
   getPluginIconInMarketplace,
   getPluginLinkInMarketplace,
 } from './utils'
@@ -386,7 +386,7 @@ const createMockPluginList = (count: number): Plugin[] =>
       install_count: 1000 - i * 10,
     }))
 
-const createMockCollection = (overrides?: Partial<MarketplaceCollection>): MarketplaceCollection => ({
+const createMockCollection = (overrides?: Partial<PluginCollection>): PluginCollection => ({
   name: 'test-collection',
   label: { 'en-US': 'Test Collection' },
   description: { 'en-US': 'Test collection description' },
@@ -540,57 +540,57 @@ describe('utils', () => {
     })
   })
 
-  describe('getMarketplaceListCondition', () => {
+  describe('getPluginCondition', () => {
     it('should return category condition for tool', () => {
-      expect(getMarketplaceListCondition(PluginCategoryEnum.tool)).toBe('category=tool')
+      expect(getPluginCondition(PluginCategoryEnum.tool)).toBe('category=tool')
     })
 
     it('should return category condition for model', () => {
-      expect(getMarketplaceListCondition(PluginCategoryEnum.model)).toBe('category=model')
+      expect(getPluginCondition(PluginCategoryEnum.model)).toBe('category=model')
     })
 
     it('should return category condition for agent', () => {
-      expect(getMarketplaceListCondition(PluginCategoryEnum.agent)).toBe('category=agent-strategy')
+      expect(getPluginCondition(PluginCategoryEnum.agent)).toBe('category=agent-strategy')
     })
 
     it('should return category condition for datasource', () => {
-      expect(getMarketplaceListCondition(PluginCategoryEnum.datasource)).toBe('category=datasource')
+      expect(getPluginCondition(PluginCategoryEnum.datasource)).toBe('category=datasource')
     })
 
     it('should return category condition for trigger', () => {
-      expect(getMarketplaceListCondition(PluginCategoryEnum.trigger)).toBe('category=trigger')
+      expect(getPluginCondition(PluginCategoryEnum.trigger)).toBe('category=trigger')
     })
 
     it('should return endpoint category for extension', () => {
-      expect(getMarketplaceListCondition(PluginCategoryEnum.extension)).toBe('category=endpoint')
+      expect(getPluginCondition(PluginCategoryEnum.extension)).toBe('category=endpoint')
     })
 
     it('should return type condition for bundle', () => {
-      expect(getMarketplaceListCondition('bundle')).toBe('type=bundle')
+      expect(getPluginCondition('bundle')).toBe('type=bundle')
     })
 
     it('should return empty string for all', () => {
-      expect(getMarketplaceListCondition('all')).toBe('')
+      expect(getPluginCondition('all')).toBe('')
     })
 
     it('should return empty string for unknown type', () => {
-      expect(getMarketplaceListCondition('unknown')).toBe('')
+      expect(getPluginCondition('unknown')).toBe('')
     })
   })
 
-  describe('getMarketplaceListFilterType', () => {
+  describe('getPluginFilterType', () => {
     it('should return undefined for all', () => {
-      expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.all)).toBeUndefined()
+      expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.all)).toBeUndefined()
     })
 
     it('should return bundle for bundle', () => {
-      expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.bundle)).toBe('bundle')
+      expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.bundle)).toBe('bundle')
     })
 
     it('should return plugin for other categories', () => {
-      expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
-      expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
-      expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
+      expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
+      expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
+      expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
     })
   })
 })

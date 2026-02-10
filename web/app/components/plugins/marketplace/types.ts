@@ -76,6 +76,7 @@ export type Template = {
   name: string
   description: Record<string, string>
   icon: string
+  icon_background?: string
   tags: string[]
   author: string
   created_at: string
@@ -207,6 +208,7 @@ export type UnifiedTemplateItem = {
   index_id: string
   template_name: string
   icon: string
+  icon_background?: string
   icon_file_key: string
   categories: string[]
   overview: string

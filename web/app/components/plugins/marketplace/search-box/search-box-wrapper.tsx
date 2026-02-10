@@ -97,8 +97,13 @@ const SearchBoxWrapper = ({
               setIsFocused(true)
             }}
             onBlur={() => {
-              if (!isHoveringDropdown)
+              if (!isHoveringDropdown) {
+                if (!draftSearch.trim()) {
+                  handleSearchTextChange('')
+                  setSearchMode(null)
+                }
                 setIsFocused(false)
+              }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter')

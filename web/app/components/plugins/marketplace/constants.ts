@@ -23,6 +23,7 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
 type ValueOf<T> = T[keyof T]
 
 export type ActivePluginType = ValueOf<typeof PLUGIN_TYPE_SEARCH_MAP>
+const VALID_PLUGIN_CATEGORIES = new Set<ActivePluginType>(Object.values(PLUGIN_TYPE_SEARCH_MAP))
 
 export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set<ActivePluginType>(
   [
@@ -30,7 +31,6 @@ export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set<ActivePluginType>(
     PLUGIN_TYPE_SEARCH_MAP.tool,
   ],
 )
-
 
 export const TEMPLATE_CATEGORY_MAP = {
   all: CATEGORY_ALL,
@@ -46,8 +46,10 @@ export const TEMPLATE_CATEGORY_MAP = {
 export type ActiveTemplateCategory = typeof TEMPLATE_CATEGORY_MAP[keyof typeof TEMPLATE_CATEGORY_MAP]
 
 export function getValidatedPluginCategory(category: string): ActivePluginType {
-  const key = (category in PLUGIN_TYPE_SEARCH_MAP ? category : CATEGORY_ALL) as keyof typeof PLUGIN_TYPE_SEARCH_MAP
-  return PLUGIN_TYPE_SEARCH_MAP[key]
+  if (VALID_PLUGIN_CATEGORIES.has(category as ActivePluginType))
+    return category as ActivePluginType
+
+  return CATEGORY_ALL
 }
 
 export function getValidatedTemplateCategory(category: string): ActiveTemplateCategory {

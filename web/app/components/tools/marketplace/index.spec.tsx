@@ -4,7 +4,7 @@ import { act, render, renderHook, screen, waitFor } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
-import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
+import { getPluginCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -289,7 +289,7 @@ describe('useMarketplace', () => {
       await waitFor(() => {
         expect(mockQueryMarketplaceCollectionsAndPlugins).toHaveBeenCalledWith({
           category: PluginCategoryEnum.tool,
-          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
+          condition: getPluginCondition(PluginCategoryEnum.tool),
           exclude: ['plugin-c'],
           type: 'plugin',
         })
