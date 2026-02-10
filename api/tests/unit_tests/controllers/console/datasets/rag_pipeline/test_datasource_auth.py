@@ -89,7 +89,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasource_auth.current_account_with_tenant",
+                "controllers.console.datasets.rag_pipeline.datasource_auth.current_account_with_tenant",
                 return_value=(user, "tenant-1"),
             ),
             patch.object(

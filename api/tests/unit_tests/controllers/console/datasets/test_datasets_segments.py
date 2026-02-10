@@ -1137,6 +1137,7 @@ class TestSegmentOperationCases:
         dataset = MagicMock()
         document = MagicMock()
         upload_file = MagicMock(spec=UploadFile, extension="csv", id="file-1")
+        upload_file.name = "test.csv"
 
         payload = {"upload_file_id": "file-1"}
 
