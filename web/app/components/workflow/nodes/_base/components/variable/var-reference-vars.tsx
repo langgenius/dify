@@ -434,10 +434,10 @@ const VarReferenceVars: FC<Props> = ({
       const nodeVars = matchedByTitle
         ? node.vars
         : node.vars.filter((v) => {
-          if (v.variable.toLowerCase().includes(normalizedSearchTextLower))
-            return true
-          return matchesNestedVar(v, normalizedSearchTextLower)
-        })
+            if (v.variable.toLowerCase().includes(normalizedSearchTextLower))
+              return true
+            return matchesNestedVar(v, normalizedSearchTextLower)
+          })
       if (nodeVars.length === 0)
         return
       res.push({

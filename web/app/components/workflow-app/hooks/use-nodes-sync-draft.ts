@@ -1,6 +1,5 @@
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { produce } from 'immer'
-import { useParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -10,6 +9,7 @@ import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
@@ -19,7 +19,6 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const params = useParams()
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const getPostParams = useCallback(() => {
@@ -104,13 +103,9 @@ export const useNodesSyncDraft = () => {
 
     const postParams = getPostParams()
 
-    if (postParams) {
-      navigator.sendBeacon(
-        `${API_PREFIX}/apps/${params.appId}/workflows/draft`,
-        JSON.stringify(postParams.params),
-      )
-    }
-  }, [getPostParams, params.appId, getNodesReadOnly, isCollaborationEnabled])
+    if (postParams)
+      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,

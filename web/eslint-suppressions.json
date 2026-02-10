@@ -1414,11 +1414,6 @@
       "count": 1
     }
   },
-  "app/components/base/param-item/top-k-item.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "app/components/base/portal-to-follow-elem/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
@@ -1988,14 +1983,6 @@
   "app/components/datasets/documents/detail/context.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/metadata/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/detail/new-segment.tsx": {
@@ -2705,11 +2692,6 @@
   "app/components/rag-pipeline/components/rag-pipeline-main.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/rag-pipeline/components/update-dsl-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/rag-pipeline/hooks/use-DSL.ts": {
@@ -3558,11 +3540,6 @@
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/hooks.tsx": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {

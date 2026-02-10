@@ -1,10 +1,8 @@
 import type { NextConfig } from 'next'
-import process from 'node:process'
-import withBundleAnalyzerInit from '@next/bundle-analyzer'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
+import { env } from './env'
 
-const isDev = process.env.NODE_ENV === 'development'
 const parseBooleanEnv = (value: string | undefined): boolean | undefined => {
   if (value === 'true')
     return true
@@ -14,9 +12,10 @@ const parseBooleanEnv = (value: string | undefined): boolean | undefined => {
   return undefined
 }
 
-const enableSourceMap = parseBooleanEnv(process.env.ENABLE_SOURCE_MAP)
-const enableProdSourceMapsFallback = parseBooleanEnv(process.env.ENABLE_PROD_SOURCEMAP) ?? false
+const enableSourceMap = parseBooleanEnv(env.ENABLE_SOURCE_MAP)
+const enableProdSourceMapsFallback = parseBooleanEnv(env.ENABLE_PROD_SOURCEMAP) ?? false
 const enableProdSourceMaps = enableSourceMap ?? enableProdSourceMapsFallback
+const isDev = env.NODE_ENV === 'development'
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
@@ -29,20 +28,17 @@ const withMDX = createMDX({
     // providerImportSource: "@mdx-js/react",
   },
 })
-const withBundleAnalyzer = withBundleAnalyzerInit({
-  enabled: process.env.ANALYZE === 'true',
-})
 
 // the default url to prevent parse url error when running jest
-const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
-const port = process.env.PORT || 3000
+const hasSetWebPrefix = env.NEXT_PUBLIC_WEB_PREFIX
+const port = env.PORT
 const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
-const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
+const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
 
 const nextConfig: NextConfig = {
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  basePath: env.NEXT_PUBLIC_BASE_PATH,
   serverExternalPackages: ['esbuild'],
-  transpilePackages: ['echarts', 'zrender'],
+  transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
@@ -97,4 +93,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withBundleAnalyzer(withMDX(nextConfig))
+export default withMDX(nextConfig)

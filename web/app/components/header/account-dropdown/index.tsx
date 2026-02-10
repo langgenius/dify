@@ -28,6 +28,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { env } from '@/env'
 import { useLogout } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 import AccountAbout from '../account-about'
@@ -178,7 +179,7 @@ export default function AppSelector() {
                           </Link>
                         </MenuItem>
                         {
-                          document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
+                          env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
                             <MenuItem>
                               <div
                                 className={cn(itemClassName, 'justify-between', 'data-[active]:bg-state-base-hover')}

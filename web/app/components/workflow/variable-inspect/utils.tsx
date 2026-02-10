@@ -1,6 +1,6 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
-import { z } from 'zod'
+import * as z from 'zod'
 import { VarType } from '@/app/components/workflow/types'
 import { VarInInspectType } from '@/types/workflow'
 
@@ -11,11 +11,10 @@ const arrayNumberSchemaParttern = z.array(z.number())
 const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
 type Literal = z.infer<typeof literalSchema>
 type Json = Literal | { [key: string]: Json } | Json[]
-const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))
+const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(z.string(), jsonSchema)]))
 const arrayJsonSchema: z.ZodType<Json[]> = z.lazy(() => z.array(jsonSchema))
 
 type JsonSchemaType = 'array[string]' | 'array[number]' | 'object' | 'array[object]' | 'array[message]'
-type JsonSchemaValue = Json | Json[] | string[] | number[]
 
 const isJsonSchemaType = (value: string): value is JsonSchemaType => {
   return value === 'array[string]'
@@ -25,7 +24,7 @@ const isJsonSchemaType = (value: string): value is JsonSchemaType => {
     || value === 'array[message]'
 }
 
-const validateKnownJSONSchema = (schema: unknown, type: JsonSchemaType): z.SafeParseReturnType<unknown, JsonSchemaValue> => {
+const validateKnownJSONSchema = (schema: unknown, type: JsonSchemaType) => {
   if (type === 'array[string]')
     return arrayStringSchemaParttern.safeParse(schema)
   if (type === 'array[number]')
@@ -63,7 +62,7 @@ export const toEnvVarInInspect = (envVar: EnvironmentVariable): VarInInspect => 
   }
 }
 
-export const validateJSONSchema = (schema: unknown, type: string): z.SafeParseReturnType<unknown, unknown> => {
+export const validateJSONSchema = (schema: unknown, type: string) => {
   if (!isJsonSchemaType(type))
     return z.unknown().safeParse(schema)
   return validateKnownJSONSchema(schema, type)

@@ -4,9 +4,20 @@ import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { useEventEmitter } from 'ahooks'
 import { createContext, useContext } from 'use-context-selector'
 
-export type EventPayload = string | ({ type: string } & Record<string, unknown>)
+/**
+ * Typed event object emitted via the shared EventEmitter.
+ * Covers workflow updates, prompt-editor commands, DSL export checks, etc.
+ */
+export type EventEmitterMessage = {
+  type: string
+  payload?: unknown
+  instanceId?: string
+}
 
-const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<EventPayload> | null }>({
+export type EventEmitterValue = string | EventEmitterMessage
+export type EventPayload = EventEmitterValue
+
+const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<EventEmitterValue> | null }>({
   eventEmitter: null,
 })
 
@@ -18,7 +29,7 @@ type EventEmitterContextProviderProps = {
 export const EventEmitterContextProvider = ({
   children,
 }: EventEmitterContextProviderProps) => {
-  const eventEmitter = useEventEmitter<EventPayload>()
+  const eventEmitter = useEventEmitter<EventEmitterValue>()
 
   return (
     <EventEmitterContext.Provider value={{ eventEmitter }}>

@@ -54,9 +54,8 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "preinstall": "npx only-allow pnpm",
-    "analyze": "ANALYZE=true pnpm build",
-    "knip": "knip",
-    "fetch-skill-templates": "tsx ./scripts/fetch-skill-templates.ts"
+    "analyze": "next experimental-analyze",
+    "knip": "knip"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",
@@ -83,6 +82,7 @@
     "@remixicon/react": "4.7.0",
     "@sentry/react": "8.55.0",
     "@svgdotjs/svg.js": "3.2.5",
+    "@t3-oss/env-nextjs": "0.13.10",
     "@tailwindcss/typography": "0.5.19",
     "@tanstack/react-form": "1.23.7",
     "@tanstack/react-query": "5.90.5",
@@ -166,7 +166,7 @@
     "use-context-selector": "2.0.0",
     "uuid": "10.0.0",
     "wa-sqlite": "1.0.0",
-    "zod": "3.25.76",
+    "zod": "4.3.6",
     "zundo": "2.3.0",
     "zustand": "5.0.9"
   },
@@ -179,7 +179,6 @@
     "@iconify-json/ri": "1.2.9",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
-    "@next/bundle-analyzer": "16.1.5",
     "@next/eslint-plugin-next": "16.1.6",
     "@next/mdx": "16.1.5",
     "@rgrove/parse-xml": "4.2.0",
