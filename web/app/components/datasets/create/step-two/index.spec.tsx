@@ -10,7 +10,7 @@ import type {
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -2208,6 +2208,10 @@ describe('StepTwo Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockCurrentDataset = null
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   const defaultStepTwoProps = {
