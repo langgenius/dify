@@ -41,47 +41,49 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
     tooltips: z.string().optional(),
   })
   if (type === PipelineInputVarType.textInput || type === PipelineInputVarType.paragraph) {
-    return z.looseObject({
+    return z.object({
       maxLength: z.number().min(1).max(TEXT_MAX_LENGTH),
       default: z.string().optional(),
-    }).extend(commonSchema.shape)
+    }).merge(commonSchema).passthrough()
   }
   if (type === PipelineInputVarType.number) {
-    return z.looseObject({
+    return z.object({
       default: z.number().optional(),
       unit: z.string().optional(),
       placeholder: z.string().optional(),
-    }).extend(commonSchema.shape)
+    }).merge(commonSchema).passthrough()
   }
   if (type === PipelineInputVarType.select) {
-    return z.looseObject({
-      options: z.tuple([z.string()], z.string()).refine(
+    return z.object({
+      options: z.array(z.string()).nonempty({
+        message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }),
+      }).refine(
         arr => new Set(arr).size === arr.length,
         {
           message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }),
         },
       ),
       default: z.string().optional(),
-    }).extend(commonSchema.shape)
+    }).merge(commonSchema).passthrough()
   }
   if (type === PipelineInputVarType.singleFile) {
-    return z.looseObject({
+    return z.object({
       allowedFileUploadMethods: z.array(TransferMethod),
-      allowedTypesAndExtensions: z.looseObject({
+      allowedTypesAndExtensions: z.object({
         allowedFileExtensions: z.array(z.string()).optional(),
         allowedFileTypes: z.array(SupportedFileTypes),
       }),
-    }).extend(commonSchema.shape)
+    }).merge(commonSchema).passthrough()
   }
   if (type === PipelineInputVarType.multiFiles) {
-    return z.looseObject({
+    return z.object({
       allowedFileUploadMethods: z.array(TransferMethod),
-      allowedTypesAndExtensions: z.looseObject({
+      allowedTypesAndExtensions: z.object({
         allowedFileExtensions: z.array(z.string()).optional(),
         allowedFileTypes: z.array(SupportedFileTypes),
       }),
       maxLength: z.number().min(1).max(maxFileUploadLimit),
-    }).extend(commonSchema.shape)
+    }).merge(commonSchema).passthrough()
   }
-  return z.looseObject(commonSchema.shape)
+  return commonSchema.passthrough()
 }
