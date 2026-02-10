@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from flask import Flask
 import pytest
+from flask import Flask
 
 from controllers.console.workspace.models import (
     DefaultModelApi,

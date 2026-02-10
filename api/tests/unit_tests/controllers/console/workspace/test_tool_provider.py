@@ -2,15 +2,11 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden
 from flask import Flask
 from flask_restx import Api
+from werkzeug.exceptions import Forbidden
 
-from core.db.session_factory import configure_session_factory
-from extensions.ext_database import db
-from services.tools.mcp_tools_manage_service import ReconnectResult
 from controllers.console.workspace.tool_providers import (
-    ToolProviderMCPApi,
     ToolApiListApi,
     ToolApiProviderAddApi,
     ToolApiProviderDeleteApi,
@@ -35,6 +31,7 @@ from controllers.console.workspace.tool_providers import (
     ToolOAuthCustomClient,
     ToolPluginOAuthApi,
     ToolProviderListApi,
+    ToolProviderMCPApi,
     ToolWorkflowListApi,
     ToolWorkflowProviderCreateApi,
     ToolWorkflowProviderDeleteApi,
@@ -42,6 +39,9 @@ from controllers.console.workspace.tool_providers import (
     ToolWorkflowProviderUpdateApi,
     is_valid_url,
 )
+from core.db.session_factory import configure_session_factory
+from extensions.ext_database import db
+from services.tools.mcp_tools_manage_service import ReconnectResult
 
 
 def unwrap(func):
@@ -134,6 +134,7 @@ def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_
     # 若 transform 后包含 tools 字段，确保非空
     assert isinstance(body.get("tools"), list)
     assert body["tools"]
+
 
 class TestUtils:
     def test_is_valid_url(self):

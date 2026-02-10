@@ -2,8 +2,8 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.plugin import (
     PluginAssetApi,
