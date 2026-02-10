@@ -213,6 +213,7 @@ class EnterpriseMetricHandler:
         attrs = {
             "dify.app.id": payload.get("app_id"),
             "dify.tenant_id": envelope.tenant_id,
+            "dify.event.id": envelope.event_id,
             "dify.app.mode": payload.get("mode"),
         }
 
@@ -249,6 +250,7 @@ class EnterpriseMetricHandler:
         attrs = {
             "dify.app.id": payload.get("app_id"),
             "dify.tenant_id": envelope.tenant_id,
+            "dify.event.id": envelope.event_id,
         }
 
         emit_metric_only_event(
@@ -283,6 +285,7 @@ class EnterpriseMetricHandler:
         attrs = {
             "dify.app.id": payload.get("app_id"),
             "dify.tenant_id": envelope.tenant_id,
+            "dify.event.id": envelope.event_id,
         }
 
         emit_metric_only_event(
@@ -318,6 +321,7 @@ class EnterpriseMetricHandler:
         attrs: dict = {
             "dify.message.id": payload.get("message_id"),
             "dify.tenant_id": envelope.tenant_id,
+            "dify.event.id": envelope.event_id,
             "dify.app_id": payload.get("app_id"),
             "dify.conversation.id": payload.get("conversation_id"),
             "gen_ai.user.id": payload.get("from_end_user_id") or payload.get("from_account_id"),
