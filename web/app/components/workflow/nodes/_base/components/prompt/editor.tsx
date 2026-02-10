@@ -86,6 +86,7 @@ type Props = {
   onBlur?: () => void
   onFocus?: () => void
   disableToolBlocks?: boolean
+  footer?: ReactNode
 }
 
 const Editor: FC<Props> = ({
@@ -131,6 +132,7 @@ const Editor: FC<Props> = ({
   onBlur,
   onFocus,
   disableToolBlocks,
+  footer,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -351,6 +353,11 @@ const Editor: FC<Props> = ({
                     />
                   </div>
                 )}
+            {!!footer && (
+              <div className="px-1 pt-2">
+                {footer}
+              </div>
+            )}
           </div>
         </div>
       </div>

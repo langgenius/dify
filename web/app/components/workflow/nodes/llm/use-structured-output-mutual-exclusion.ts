@@ -49,7 +49,12 @@ export const useStructuredOutputMutualExclusion = ({
   const isStructuredOutputBlocked = readOnly || (hasToolConflict && !isStructuredOutputEnabled)
   const isComputerUseBlocked = readOnly || (isStructuredOutputEnabled && !inputs.computer_use)
   const isToolsBlocked = readOnly || isStructuredOutputEnabled
-  const disableToolBlocks = isStructuredOutputEnabled
+  const shouldEnableComputerUseForPromptTools = isSupportSandbox
+    && !readOnly
+    && !inputs.computer_use
+    && hasToolDependencies
+    && !isComputerUseBlocked
+  const disableToolBlocks = isStructuredOutputEnabled || shouldEnableComputerUseForPromptTools
 
   const structuredOutputDisabledTip = useMemo(() => {
     if (readOnly || !isStructuredOutputBlocked)
@@ -76,6 +81,7 @@ export const useStructuredOutputMutualExclusion = ({
     isComputerUseBlocked,
     isToolsBlocked,
     disableToolBlocks,
+    shouldEnableComputerUseForPromptTools,
     structuredOutputDisabledTip,
     computerUseDisabledTip,
     toolsDisabledTip,

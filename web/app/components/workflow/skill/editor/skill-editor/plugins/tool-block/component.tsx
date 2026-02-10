@@ -133,6 +133,7 @@ const ToolBlockComponent = ({
     metadata,
     onMetadataChange,
     useModal,
+    disableToolBlocks,
     nodeId: contextNodeId,
     nodesOutputVars,
     availableNodes,
@@ -141,6 +142,7 @@ const ToolBlockComponent = ({
       metadata: context?.metadata,
       onMetadataChange: context?.onMetadataChange,
       useModal: context?.useModal,
+      disableToolBlocks: context?.disableToolBlocks,
       nodeId: context?.nodeId,
       nodesOutputVars: context?.nodesOutputVars,
       availableNodes: context?.availableNodes,
@@ -210,8 +212,9 @@ const ToolBlockComponent = ({
     return resultMetadata?.tools?.[configId]
   }, [activeTabId, configId, fileMetadata, isUsingExternalMetadata, metadata])
   const isToolMissing = !currentProvider || !currentTool
-
+  const isToolDisabled = Boolean(disableToolBlocks)
   const isInteractive = editor.isEditable()
+  const isTriggerInteractive = isInteractive && !isToolDisabled
 
   const defaultToolValue = useMemo(() => {
     if (!currentProvider || !currentTool)
@@ -357,6 +360,7 @@ const ToolBlockComponent = ({
       return false
     return !currentProvider.is_team_authorization
   }, [currentProvider])
+  const isWarningStyle = needAuthorization || isToolMissing || isToolDisabled
 
   const renderIcon = () => {
     if (isToolMissing) {
@@ -400,19 +404,19 @@ const ToolBlockComponent = ({
         className={cn(
           'i-ri-equalizer-2-line hidden size-[14px]',
           needAuthorization ? 'text-text-warning' : 'text-text-accent',
-          isInteractive && 'group-hover/tool:block',
+          isTriggerInteractive && 'group-hover/tool:block',
         )}
       />
     )
     const normalIcon = (
-      <span className={cn('flex items-center justify-center', isInteractive && 'group-hover/tool:hidden')}>
+      <span className={cn('flex items-center justify-center', isTriggerInteractive && 'group-hover/tool:hidden')}>
         {iconNode}
       </span>
     )
     const iconContent = (
       <span className="flex size-4 items-center justify-center">
         {normalIcon}
-        {isInteractive && hoverIcon}
+        {isTriggerInteractive && hoverIcon}
       </span>
     )
     if (!needAuthorization)
@@ -601,7 +605,7 @@ const ToolBlockComponent = ({
     <>
       <span ref={ref} className="inline-flex">
         <Tooltip
-          disabled={!isToolMissing}
+          disabled={!isToolMissing || isToolDisabled}
           offset={4}
           noDecoration
           popupClassName="bg-transparent p-0"
@@ -610,14 +614,14 @@ const ToolBlockComponent = ({
           <span
             className={cn(
               'group/tool inline-flex items-center gap-[2px] rounded-[5px] border py-px pl-px pr-[3px] shadow-xs',
-              isInteractive ? 'cursor-pointer' : 'cursor-default',
-              (needAuthorization || isToolMissing) ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
+              isTriggerInteractive ? 'cursor-pointer' : 'cursor-default',
+              isWarningStyle ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
               isSelected && 'border-text-accent',
             )}
             title={`${provider}.${tool}`}
             data-tool-config-id={configId}
             onMouseDown={() => {
-              if (!isInteractive)
+              if (!isTriggerInteractive)
                 return
               if (!currentProvider || !currentTool)
                 return
@@ -627,17 +631,17 @@ const ToolBlockComponent = ({
             }}
           >
             {renderIcon()}
-            <span className={cn('max-w-[180px] truncate system-xs-medium', (needAuthorization || isToolMissing) ? 'text-text-warning' : 'text-text-accent')}>
+            <span className={cn('max-w-[180px] truncate system-xs-medium', isWarningStyle ? 'text-text-warning' : 'text-text-accent')}>
               {isToolMissing ? missingDisplayLabel : displayLabel}
             </span>
-            {isToolMissing && (
+            {(isToolMissing || isToolDisabled) && (
               <>
                 <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
                   <span className="i-ri-alert-fill h-3 w-3" />
                 </span>
               </>
             )}
-            {!isToolMissing && needAuthorization && (
+            {!isToolMissing && !isToolDisabled && needAuthorization && (
               <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
                 {authBadgeLabel}
                 <span className="i-ri-alert-fill h-3 w-3" />

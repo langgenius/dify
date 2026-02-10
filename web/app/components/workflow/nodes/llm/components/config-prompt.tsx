@@ -22,6 +22,7 @@ import { cn } from '@/utils/classnames'
 import { useWorkflowStore } from '../../../store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import ComputerUseTip from './computer-use-tip'
 import ConfigContextItem from './config-context-item'
 import ConfigPromptItem from './config-prompt-item'
 
@@ -67,6 +68,8 @@ type Props = {
   modelConfig: ModelConfig
   onPromptEditorBlur?: () => void
   disableToolBlocks?: boolean
+  showComputerUseTip?: boolean
+  onEnableComputerUse?: () => void
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -84,6 +87,8 @@ const ConfigPrompt: FC<Props> = ({
   modelConfig,
   onPromptEditorBlur,
   disableToolBlocks,
+  showComputerUseTip,
+  onEnableComputerUse,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -284,6 +289,11 @@ const ConfigPrompt: FC<Props> = ({
     }
     return false
   })()
+  const completionEditorValue = ((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type)
+    ? (payload as PromptItem).text
+    : ((payload as PromptItem).jinja2_text || '')
+  const shouldShowCompletionComputerUseTip = !!showComputerUseTip
+    && extractToolConfigIds(completionEditorValue || '').size > 0
 
   return (
     <div>
@@ -364,6 +374,8 @@ const ConfigPrompt: FC<Props> = ({
                             isSupportSandbox={isSupportSandbox}
                             onPromptEditorBlur={onPromptEditorBlur}
                             disableToolBlocks={disableToolBlocks}
+                            showComputerUseTip={showComputerUseTip}
+                            onEnableComputerUse={onEnableComputerUse}
                           />
                         </div>
                       )
@@ -421,7 +433,7 @@ const ConfigPrompt: FC<Props> = ({
                 instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
                 nodeId={nodeId}
                 title={<span className="capitalize">{t(`${i18nPrefix}.prompt`, { ns: 'workflow' })}</span>}
-                value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
+                value={completionEditorValue}
                 onChange={handleCompletionPromptChange}
                 promptMetadata={(payload as PromptItem).metadata}
                 onPromptMetadataChange={handleCompletionMetadataChange}
@@ -443,6 +455,12 @@ const ConfigPrompt: FC<Props> = ({
                 isSupportSandbox={isSupportSandbox}
                 onBlur={onPromptEditorBlur}
                 disableToolBlocks={disableToolBlocks}
+                footer={(
+                  <ComputerUseTip
+                    visible={shouldShowCompletionComputerUseTip}
+                    onEnable={() => onEnableComputerUse?.()}
+                  />
+                )}
               />
             </div>
           )}

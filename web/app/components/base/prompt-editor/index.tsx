@@ -327,11 +327,12 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       metadata: toolMetadata,
       onMetadataChange: onToolMetadataChange,
       useModal: true,
+      disableToolBlocks,
       nodeId,
       nodesOutputVars: workflowVariableBlock?.variables,
       availableNodes,
     }
-  }, [availableNodes, nodeId, onToolMetadataChange, toolMetadata, workflowVariableBlock?.variables])
+  }, [availableNodes, disableToolBlocks, nodeId, onToolMetadataChange, toolMetadata, workflowVariableBlock?.variables])
 
   const filePreviewContextValue = React.useMemo(() => ({
     enabled: Boolean(isSupportSandbox),

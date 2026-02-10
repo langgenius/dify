@@ -118,6 +118,7 @@ const ToolGroupBlockComponent = ({
     metadata,
     onMetadataChange,
     useModal,
+    disableToolBlocks,
     nodeId: contextNodeId,
     nodesOutputVars,
     availableNodes,
@@ -126,6 +127,7 @@ const ToolGroupBlockComponent = ({
       metadata: context?.metadata,
       onMetadataChange: context?.onMetadataChange,
       useModal: context?.useModal,
+      disableToolBlocks: context?.disableToolBlocks,
       nodeId: context?.nodeId,
       nodesOutputVars: context?.nodesOutputVars,
       availableNodes: context?.availableNodes,
@@ -134,6 +136,8 @@ const ToolGroupBlockComponent = ({
   const isUsingExternalMetadata = Boolean(onMetadataChange)
   const useModalValue = Boolean(useModal)
   const isInteractive = editor.isEditable()
+  const isToolDisabled = Boolean(disableToolBlocks)
+  const isTriggerInteractive = isInteractive && !isToolDisabled
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const [expandedToolId, setExpandedToolId] = useState<string | null>(null)
@@ -339,6 +343,7 @@ const ToolGroupBlockComponent = ({
       return false
     return !currentProvider.is_team_authorization
   }, [currentProvider])
+  const isWarningStyle = needAuthorization || isToolMissing || isToolDisabled
 
   const readmeEntrance = useMemo(() => {
     if (!currentProvider)
@@ -588,19 +593,19 @@ const ToolGroupBlockComponent = ({
         className={cn(
           'i-ri-equalizer-2-line hidden size-[14px]',
           (needAuthorization || isToolMissing) ? 'text-text-warning' : 'text-text-accent',
-          isInteractive && 'group-hover:block',
+          isTriggerInteractive && 'group-hover:block',
         )}
       />
     )
     const normalIcon = (
-      <span className={cn('flex items-center justify-center', isInteractive && 'group-hover:hidden')}>
+      <span className={cn('flex items-center justify-center', isTriggerInteractive && 'group-hover:hidden')}>
         {iconNode}
       </span>
     )
     const iconContent = (
       <span className="flex size-4 items-center justify-center">
         {normalIcon}
-        {isInteractive && hoverIcon}
+        {isTriggerInteractive && hoverIcon}
       </span>
     )
     if (!needAuthorization)
@@ -865,12 +870,46 @@ const ToolGroupBlockComponent = ({
   )
 
   const groupPanelContent = expandedToolId && toolDetailContent ? toolDetailContent : groupListContent
+  const toolStatusBadge = (() => {
+    if (isToolMissing) {
+      return (
+        <>
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-text-tertiary system-2xs-medium-uppercase">
+            {missingToolCount}
+          </span>
+          <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
+            <span className="i-ri-alert-fill h-3 w-3" />
+          </span>
+        </>
+      )
+    }
+    if (isToolDisabled) {
+      return (
+        <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
+          <span className="i-ri-alert-fill h-3 w-3" />
+        </span>
+      )
+    }
+    if (needAuthorization) {
+      return (
+        <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
+          {authBadgeLabel}
+          <span className="i-ri-alert-fill h-3 w-3" />
+        </span>
+      )
+    }
+    return (
+      <span className="flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary system-2xs-medium-uppercase">
+        {displayEnabledCount}
+      </span>
+    )
+  })()
 
   return (
     <>
       <span ref={ref} className="inline-flex">
         <Tooltip
-          disabled={!isToolMissing}
+          disabled={!isToolMissing || isToolDisabled}
           offset={4}
           noDecoration
           popupClassName="bg-transparent p-0"
@@ -879,13 +918,13 @@ const ToolGroupBlockComponent = ({
           <span
             className={cn(
               'inline-flex items-center gap-[2px] rounded-[5px] border px-px py-[1px] shadow-xs',
-              isInteractive ? 'group cursor-pointer' : 'cursor-default',
-              (needAuthorization || isToolMissing) ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
+              isTriggerInteractive ? 'group cursor-pointer' : 'cursor-default',
+              isWarningStyle ? 'border-state-warning-active bg-state-warning-hover' : 'border-state-accent-hover-alt bg-state-accent-hover',
               isSelected && 'border-text-accent',
             )}
             title={providerLabel}
             onMouseDown={() => {
-              if (!isInteractive)
+              if (!isTriggerInteractive)
                 return
               if (!toolItems.length)
                 return
@@ -893,32 +932,10 @@ const ToolGroupBlockComponent = ({
             }}
           >
             {renderIcon()}
-            <span className={cn('max-w-[160px] truncate system-xs-medium', (needAuthorization || isToolMissing) ? 'text-text-warning' : 'text-text-accent')}>
+            <span className={cn('max-w-[160px] truncate system-xs-medium', isWarningStyle ? 'text-text-warning' : 'text-text-accent')}>
               {isToolMissing ? missingDisplayLabel : providerLabel}
             </span>
-            {isToolMissing
-              ? (
-                  <>
-                    <span className="flex h-4 min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-text-tertiary system-2xs-medium-uppercase">
-                      {missingToolCount}
-                    </span>
-                    <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
-                      <span className="i-ri-alert-fill h-3 w-3" />
-                    </span>
-                  </>
-                )
-              : needAuthorization
-                ? (
-                    <span className="flex h-4 items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1 text-text-warning system-2xs-medium-uppercase">
-                      {authBadgeLabel}
-                      <span className="i-ri-alert-fill h-3 w-3" />
-                    </span>
-                  )
-                : (
-                    <span className="flex h-4 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 text-text-accent-secondary system-2xs-medium-uppercase">
-                      {displayEnabledCount}
-                    </span>
-                  )}
+            {toolStatusBadge}
           </span>
         </Tooltip>
       </span>

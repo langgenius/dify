@@ -8,6 +8,7 @@ export type ToolBlockContextValue = {
   metadata?: Record<string, unknown>
   onMetadataChange?: (metadata: Record<string, unknown>) => void
   useModal?: boolean
+  disableToolBlocks?: boolean
   nodeId?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]

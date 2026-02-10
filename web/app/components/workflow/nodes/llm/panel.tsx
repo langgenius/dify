@@ -102,6 +102,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     isComputerUseBlocked,
     isToolsBlocked,
     disableToolBlocks,
+    shouldEnableComputerUseForPromptTools,
     structuredOutputDisabledTip,
     computerUseDisabledTip,
     toolsDisabledTip,
@@ -185,6 +186,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             modelConfig={model}
             onPromptEditorBlur={handlePromptEditorBlur}
             disableToolBlocks={disableToolBlocks}
+            showComputerUseTip={shouldEnableComputerUseForPromptTools}
+            onEnableComputerUse={() => handleComputerUseChange(true)}
           />
         )}
 

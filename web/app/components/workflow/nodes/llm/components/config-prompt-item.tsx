@@ -7,9 +7,11 @@ import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
+import { extractToolConfigIds } from '@/app/components/workflow/utils'
 import { PromptRole } from '@/models/debug'
 import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
+import ComputerUseTip from './computer-use-tip'
 
 const i18nPrefix = 'nodes.llm'
 
@@ -44,6 +46,8 @@ type Props = {
   isSupportSandbox?: boolean
   onPromptEditorBlur?: () => void
   disableToolBlocks?: boolean
+  showComputerUseTip?: boolean
+  onEnableComputerUse?: () => void
 }
 
 const roleOptions = [
@@ -90,6 +94,8 @@ const ConfigPromptItem: FC<Props> = ({
   isSupportSandbox,
   onPromptEditorBlur,
   disableToolBlocks,
+  showComputerUseTip,
+  onEnableComputerUse,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -101,6 +107,11 @@ const ConfigPromptItem: FC<Props> = ({
     onPromptChange(prompt)
     setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
   }, [onPromptChange, setControlPromptEditorRerenderKey])
+  const editorValue = payload.edition_type === EditionType.jinja2
+    ? (payload.jinja2_text || '')
+    : payload.text
+  const shouldShowComputerUseTip = !!showComputerUseTip
+    && extractToolConfigIds(editorValue || '').size > 0
 
   return (
     <Editor
@@ -135,7 +146,7 @@ const ConfigPromptItem: FC<Props> = ({
           />
         </div>
       )}
-      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
+      value={editorValue}
       onChange={onPromptChange}
       promptMetadata={payload.metadata}
       onPromptMetadataChange={onMetadataChange}
@@ -162,6 +173,12 @@ const ConfigPromptItem: FC<Props> = ({
       isSupportSandbox={isSupportSandbox}
       disableToolBlocks={disableToolBlocks}
       onBlur={onPromptEditorBlur}
+      footer={(
+        <ComputerUseTip
+          visible={shouldShowComputerUseTip}
+          onEnable={() => onEnableComputerUse?.()}
+        />
+      )}
     />
   )
 }
