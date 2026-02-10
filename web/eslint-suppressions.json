@@ -6800,12 +6800,6 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
