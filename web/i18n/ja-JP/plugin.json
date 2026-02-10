@@ -195,6 +195,7 @@
   "marketplace.discover": "探索",
   "marketplace.empower": "AI 開発をサポートする",
   "marketplace.moreFrom": "マーケットプレイスからのさらなる情報",
+  "marketplace.noCreatorFound": "クリエイターが見つかりません",
   "marketplace.noPluginFound": "プラグインが見つかりません",
   "marketplace.noTemplateFound": "テンプレートが見つかりません",
   "marketplace.partnerTip": "このプラグインは Dify のパートナーによって認証されています",

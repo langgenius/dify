@@ -210,7 +210,7 @@ const SearchPage = () => {
 
   const renderTemplatesTab = () => {
     if (templates.length === 0 && !templatesQuery.isLoading)
-      return <Empty />
+      return <Empty text={t('marketplace.noTemplateFound', { ns: 'plugin' })} />
     return (
       <div className="py-4">
         {renderTemplatesSection(templates)}
@@ -220,7 +220,7 @@ const SearchPage = () => {
 
   const renderCreatorsTab = () => {
     if (creators.length === 0 && !creatorsQuery.isLoading)
-      return <Empty />
+      return <Empty text={t('marketplace.noCreatorFound', { ns: 'plugin' })} />
     return (
       <div className="py-4">
         {renderCreatorsSection(creators)}
