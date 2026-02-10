@@ -210,7 +210,6 @@ const ToolBlockComponent = ({
     return resultMetadata?.tools?.[configId]
   }, [activeTabId, configId, fileMetadata, isUsingExternalMetadata, metadata])
   const isToolMissing = !currentProvider || !currentTool
-  const missingFieldCount = toolConfigFromMetadata?.configuration?.fields?.length ?? 0
 
   const isInteractive = editor.isEditable()
 
@@ -339,6 +338,12 @@ const ToolBlockComponent = ({
   }, [isSettingOpen, portalContainer, ref, useModalValue])
 
   const displayLabel = label || toolMeta?.label || tool
+  const missingDisplayLabel = useMemo(() => {
+    if (!isToolMissing)
+      return displayLabel
+    const firstSegment = displayLabel.split('/').map(item => item.trim()).filter(Boolean)[0]
+    return firstSegment || displayLabel
+  }, [displayLabel, isToolMissing])
   const resolvedIcon = (() => {
     const fromNode = theme === Theme.dark ? iconDark : icon
     if (fromNode)
@@ -623,13 +628,10 @@ const ToolBlockComponent = ({
           >
             {renderIcon()}
             <span className={cn('max-w-[180px] truncate system-xs-medium', (needAuthorization || isToolMissing) ? 'text-text-warning' : 'text-text-accent')}>
-              {displayLabel}
+              {isToolMissing ? missingDisplayLabel : displayLabel}
             </span>
             {isToolMissing && (
               <>
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-text-tertiary system-2xs-medium-uppercase">
-                  {missingFieldCount}
-                </span>
                 <span className="flex h-4 items-center justify-center p-[2px] text-text-warning">
                   <span className="i-ri-alert-fill h-3 w-3" />
                 </span>
