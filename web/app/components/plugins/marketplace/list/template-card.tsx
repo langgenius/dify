@@ -1,13 +1,14 @@
 'use client'
 
 import type { Template } from '../types'
-import { useLocale } from '#i18n'
+import { useLocale, useTranslation } from '#i18n'
 import Image from 'next/image'
+import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import useTheme from '@/hooks/use-theme'
-import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -17,7 +18,7 @@ type TemplateCardProps = {
 }
 
 // Number of tag icons to show before showing "+X"
-const MAX_VISIBLE_TAGS = 7
+const MAX_VISIBLE_DEPS_PLUGINS = 7
 
 // Soft background color palette for avatar
 const AVATAR_BG_COLORS = [
@@ -49,8 +50,9 @@ const TemplateCardComponent = ({
   className,
 }: TemplateCardProps) => {
   const locale = useLocale()
+  const { t } = useTranslation()
   const { theme } = useTheme()
-  const { template_id, name, description, icon, tags, author, used_count, icon_background } = template as Template & { used_count?: number, icon_background?: string }
+  const { id, template_name, overview, icon, publisher_handle, usage_count, icon_background, deps_plugins } = template
   const isIconUrl = !!icon && /^(?:https?:)?\/\//.test(icon)
 
   const avatarBgStyle = useMemo(() => {
@@ -64,24 +66,23 @@ const TemplateCardComponent = ({
     // Only use class-based color if no inline style
     if (icon_background)
       return ''
-    return getAvatarBgClass(template_id)
-  }, [icon_background, template_id])
-
-  const descriptionText = description[getLanguage(locale)] || description.en_US || ''
+    return getAvatarBgClass(id)
+  }, [icon_background, id])
 
   const handleClick = useCallback(() => {
-    const url = getMarketplaceUrl(`/templates/${author}/${name}`, {
+    const url = getMarketplaceUrl(`/templates/${publisher_handle}/${template_name}`, {
       theme,
       language: locale,
-      templateId: template_id,
+      templateId: id,
+      creationType: 'templates',
     })
     window.open(url, '_blank')
-  }, [author, name, theme, locale, template_id])
+  }, [publisher_handle, template_name, theme, locale, id])
 
-  const visibleTags = tags?.slice(0, MAX_VISIBLE_TAGS) || []
-  const remainingTagsCount = tags ? Math.max(0, tags.length - MAX_VISIBLE_TAGS) : 0
+  const visibleDepsPlugins = deps_plugins?.slice(0, MAX_VISIBLE_DEPS_PLUGINS) || []
+  const remainingDepsPluginsCount = deps_plugins ? Math.max(0, deps_plugins.length - MAX_VISIBLE_DEPS_PLUGINS) : 0
 
-  const formattedUsedCount = formatUsedCount(used_count, { precision: 0, rounding: 'floor' })
+  const formattedUsedCount = formatUsedCount(usage_count, { precision: 0, rounding: 'floor' })
 
   return (
     <div
@@ -105,7 +106,7 @@ const TemplateCardComponent = ({
             ? (
                 <Image
                   src={icon}
-                  alt={name}
+                  alt={template_name}
                   width={24}
                   height={24}
                   className="h-6 w-6 object-contain"
@@ -117,22 +118,24 @@ const TemplateCardComponent = ({
         </div>
         {/* Title */}
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-          <p className="system-md-medium truncate text-text-primary">{name}</p>
+          <p className="system-md-medium truncate text-text-primary">{template_name}</p>
           <div className="system-xs-regular flex items-center gap-2 text-text-tertiary">
             <span className="flex shrink-0 items-center gap-1">
-              <span>by</span>
-              <span className="truncate">{author}</span>
+              <span className="shrink-0">{t('marketplace.templateCard.by', { ns: 'plugin' })}</span>
+              <Link
+                href={`/creators/${publisher_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate hover:text-text-secondary hover:underline"
+                onClick={e => e.stopPropagation()}
+              >
+                {publisher_handle}
+              </Link>
             </span>
-            {formattedUsedCount && (
-              <>
-                <span className="shrink-0">·</span>
-                <span className="shrink-0">
-                  {formattedUsedCount}
-                  {' '}
-                  used
-                </span>
-              </>
-            )}
+            <span className="shrink-0">·</span>
+            <span className="shrink-0">
+              {t('usedCount', { ns: 'plugin', num: formattedUsedCount || 0 })}
+            </span>
           </div>
         </div>
       </div>
@@ -141,30 +144,34 @@ const TemplateCardComponent = ({
       <div className="shrink-0 px-4 pb-2 pt-1">
         <p
           className="system-xs-regular line-clamp-2 min-h-[32px] text-text-secondary"
-          title={descriptionText}
+          title={overview}
         >
-          {descriptionText}
+          {overview}
         </p>
       </div>
 
       {/* Bottom Info Bar - Tags as icons */}
       <div className="mt-auto flex min-h-7 shrink-0 items-center gap-1 px-4 py-1">
-        {tags && tags.length > 0 && (
+        {deps_plugins && deps_plugins.length > 0 && (
           <>
-            {visibleTags.map((tag, index) => (
+            {visibleDepsPlugins.map((depsPlugin, index) => (
               <div
-                key={`${template_id}-tag-${index}`}
+                key={`${id}-depsPlugin-${index}`}
                 className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge"
-                title={tag}
+                title={depsPlugin}
               >
-                <span className="text-sm">{tag}</span>
+                <img
+                  className="h-full w-full object-cover"
+                  src={getIconFromMarketPlace(depsPlugin)}
+                  alt={depsPlugin}
+                />
               </div>
             ))}
-            {remainingTagsCount > 0 && (
+            {remainingDepsPluginsCount > 0 && (
               <div className="flex items-center justify-center p-0.5">
                 <span className="system-xs-regular text-text-tertiary">
                   +
-                  {remainingTagsCount}
+                  {remainingDepsPluginsCount}
                 </span>
               </div>
             )}

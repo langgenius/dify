@@ -3,7 +3,7 @@ import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
-import { DEFAULT_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
+import { CATEGORY_ALL, DEFAULT_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
 import { CREATION_TYPE, marketplaceSearchParamsParsers } from './search-params'
 
 const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
@@ -53,12 +53,14 @@ export function useMarketplaceSearchMode() {
   const [searchTab] = useSearchTab()
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginCategory] = useActivePluginCategory()
+  const [activeTemplateCategory] = useActiveTemplateCategory()
   const isPluginsView = creationType === CREATION_TYPE.plugins
 
   const searchMode = useAtomValue(searchModeAtom)
   const isSearchMode = searchTab || searchText
     || (isPluginsView && filterPluginTags.length > 0)
     || (searchMode ?? (isPluginsView && !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginCategory)))
+    || (!isPluginsView && activeTemplateCategory !== CATEGORY_ALL)
   return isSearchMode
 }
 

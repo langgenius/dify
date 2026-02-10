@@ -4,7 +4,7 @@ import type { Template } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
-import { GRID_CLASS } from './collection-list'
+import { GRID_CLASS } from './collection-constants'
 import TemplateCard from './template-card'
 
 type PluginsVariant = {
@@ -44,7 +44,7 @@ const FlatList = (props: FlatListProps) => {
     <div className={GRID_CLASS}>
       {items.map(template => (
         <TemplateCard
-          key={template.template_id}
+          key={template.id}
           template={template}
         />
       ))}

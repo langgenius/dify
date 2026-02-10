@@ -1,19 +1,18 @@
 import type { Creator, Template } from '../../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config/language'
-import { useLocale, useTranslation } from '#i18n'
+import { useTranslation } from '#i18n'
 import { RiArrowRightLine } from '@remixicon/react'
 import { Fragment } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useCategories } from '@/app/components/plugins/hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
+import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
 import { MARKETPLACE_TYPE_ICON_COMPONENTS } from '../../plugin-type-icons'
 import { getCreatorAvatarUrl, getPluginDetailLinkInMarketplace } from '../../utils'
 
-const DROPDOWN_PANEL = 'w-[472px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-sm'
+const DROPDOWN_PANEL = 'w-[472px] max-h-[710px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-sm'
 const ICON_BOX_BASE = 'flex shrink-0 items-center justify-center overflow-hidden border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
 
 const SectionDivider = () => (
@@ -87,7 +86,6 @@ const SearchDropdown = ({
   isLoading = false,
 }: SearchDropdownProps) => {
   const { t } = useTranslation()
-  const locale = useLocale()
   const getValueFromI18nObject = useRenderI18nObject()
   const { categoriesMap } = useCategories(true)
 
@@ -101,7 +99,6 @@ const SearchDropdown = ({
       <TemplatesSection
         key="templates"
         templates={templates}
-        locale={locale}
         t={t}
       />,
     )
@@ -168,22 +165,23 @@ const SearchDropdown = ({
 
 /* ---------- Templates Section ---------- */
 
-function TemplatesSection({ templates, locale, t }: {
+function TemplatesSection({ templates, t }: {
   templates: Template[]
-  locale: Locale
   t: ReturnType<typeof useTranslation>['t']
 }) {
   return (
     <DropdownSection title={t('templates', { ns: 'plugin' })}>
       {templates.map((template) => {
-        const descriptionText = template.description[getLanguage(locale)] || template.description.en_US || ''
+        const descriptionText = template.overview
+        const formattedUsedCount = formatUsedCount(template.usage_count, { precision: 0, rounding: 'floor' })
+        const usedLabel = t('usedCount', { ns: 'plugin', num: formattedUsedCount || 0 })
         const iconBgStyle = template.icon_background
           ? { backgroundColor: template.icon_background }
           : undefined
         return (
           <DropdownItem
-            key={template.template_id}
-            href={getMarketplaceUrl(`/templates/${template.template_id}`)}
+            key={template.id}
+            href={getMarketplaceUrl(`/templates/${template.publisher_handle}/${template.template_name}`, { templateId: template.id })}
             icon={(
               <div className="flex shrink-0 items-start py-1">
                 <IconBox shape="rounded-lg" style={iconBgStyle}>
@@ -192,16 +190,14 @@ function TemplatesSection({ templates, locale, t }: {
               </div>
             )}
           >
-            <div className="system-md-medium truncate text-text-primary">{template.name}</div>
+            <div className="system-md-medium truncate text-text-primary">{template.template_name}</div>
             {!!descriptionText && (
               <div className="system-xs-regular line-clamp-2 text-text-tertiary">{descriptionText}</div>
             )}
             <ItemMeta
               items={[
-                t('marketplace.searchDropdown.byAuthor', { ns: 'plugin', author: template.author }),
-                ...(template.tags.length > 0
-                  ? [<span key="tags" className="system-xs-regular truncate">{template.tags.join(', ')}</span>]
-                  : []),
+                t('marketplace.searchDropdown.byAuthor', { ns: 'plugin', author: template.publisher_handle }),
+                usedLabel,
               ]}
             />
           </DropdownItem>

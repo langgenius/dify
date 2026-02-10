@@ -9,7 +9,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 // ================================
 
 // Note: Import after mocks are set up
-import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { DEFAULT_SORT, DEFAULT_TEMPLATE_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
   getPluginCondition,
@@ -420,6 +420,23 @@ describe('constants', () => {
 
       expect(DEFAULT_SORT.sortBy).toBe(originalSortBy)
       expect(DEFAULT_SORT.sortOrder).toBe(originalSortOrder)
+    })
+  })
+
+  describe('DEFAULT_TEMPLATE_SORT', () => {
+    it('should have correct default sort values for templates', () => {
+      expect(DEFAULT_TEMPLATE_SORT).toEqual({
+        sortBy: 'usage_count',
+        sortOrder: 'DESC',
+      })
+    })
+
+    it('should be immutable at runtime', () => {
+      const originalSortBy = DEFAULT_TEMPLATE_SORT.sortBy
+      const originalSortOrder = DEFAULT_TEMPLATE_SORT.sortOrder
+
+      expect(DEFAULT_TEMPLATE_SORT.sortBy).toBe(originalSortBy)
+      expect(DEFAULT_TEMPLATE_SORT.sortOrder).toBe(originalSortOrder)
     })
   })
 

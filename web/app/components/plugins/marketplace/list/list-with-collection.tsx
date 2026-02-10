@@ -3,7 +3,8 @@
 import type { PluginCollection, Template, TemplateCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import CardWrapper from './card-wrapper'
-import CollectionList, { CAROUSEL_COLLECTION_NAMES } from './collection-list'
+import { CAROUSEL_COLLECTION_NAMES } from './collection-constants'
+import CollectionList from './collection-list'
 import TemplateCard from './template-card'
 
 type BaseProps = {
@@ -71,7 +72,7 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
     <CollectionList
       collections={collections}
       collectionItemsMap={collectionItemsMap}
-      itemKeyField="template_id"
+      itemKeyField="id"
       renderCard={renderTemplateCard}
       carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.featured]}
       viewMoreSearchTab="templates"

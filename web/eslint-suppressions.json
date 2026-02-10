@@ -2820,16 +2820,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/marketplace/list/card-wrapper.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/list-with-collection.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/plugins/marketplace/sort-dropdown/index.spec.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1

@@ -2,42 +2,24 @@
 
 import type { SearchTab } from '../search-params'
 import type { SearchParamsFromCollection } from '../types'
+import type { BaseCollection } from './collection-constants'
 import type { Locale } from '@/i18n-config/language'
 import { useLocale, useTranslation } from '#i18n'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 import { useMarketplaceMoreClick } from '../atoms'
-import { getItemKeyByField } from '../utils'
 import Empty from '../empty'
+import { getItemKeyByField } from '../utils'
 import Carousel from './carousel'
-
-export const GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-
-export const GRID_DISPLAY_LIMIT = 8
-
-export const CAROUSEL_COLUMN_CLASS = 'flex w-[calc((100%-0px)/1)] shrink-0 flex-col gap-3 sm:w-[calc((100%-12px)/2)] lg:w-[calc((100%-24px)/3)] xl:w-[calc((100%-36px)/4)]'
-
-/** Collection name key that triggers carousel display (plugins: partners, templates: featured) */
-export const CAROUSEL_COLLECTION_NAMES = {
-  partners: 'partners',
-  featured: 'featured',
-} as const
-
-export type BaseCollection = {
-  name: string
-  label: Record<string, string>
-  description: Record<string, string>
-  searchable?: boolean
-  search_params?: { query?: string, sort_by?: string, sort_order?: string }
-}
+import { CAROUSEL_COLUMN_CLASS, GRID_CLASS, GRID_DISPLAY_LIMIT } from './collection-constants'
 
 type ViewMoreButtonProps = {
   searchParams?: SearchParamsFromCollection
   searchTab?: SearchTab
 }
 
-function ViewMoreButton({ searchParams, searchTab }: ViewMoreButtonProps) {
+export function ViewMoreButton({ searchParams, searchTab }: ViewMoreButtonProps) {
   const { t } = useTranslation()
   const onMoreClick = useMarketplaceMoreClick()
 
@@ -52,8 +34,6 @@ function ViewMoreButton({ searchParams, searchTab }: ViewMoreButtonProps) {
   )
 }
 
-export { ViewMoreButton }
-
 type CollectionHeaderProps<TCollection extends BaseCollection> = {
   collection: TCollection
   itemsLength: number
@@ -62,7 +42,7 @@ type CollectionHeaderProps<TCollection extends BaseCollection> = {
   viewMore: React.ReactNode
 }
 
-function CollectionHeader<TCollection extends BaseCollection>({
+export function CollectionHeader<TCollection extends BaseCollection>({
   collection,
   itemsLength,
   locale,
@@ -87,8 +67,6 @@ function CollectionHeader<TCollection extends BaseCollection>({
   )
 }
 
-export { CarouselCollection, CollectionHeader }
-
 type CarouselCollectionProps<TItem> = {
   items: TItem[]
   getItemKey: (item: TItem) => string
@@ -96,7 +74,7 @@ type CarouselCollectionProps<TItem> = {
   cardContainerClassName?: string
 }
 
-function CarouselCollection<TItem>({
+export function CarouselCollection<TItem>({
   items,
   getItemKey,
   renderCard,
@@ -132,7 +110,7 @@ function CarouselCollection<TItem>({
 type CollectionListProps<TItem, TCollection extends BaseCollection> = {
   collections: TCollection[]
   collectionItemsMap: Record<string, TItem[]>
-  /** Field name to use as item key (e.g. 'plugin_id', 'template_id'). */
+  /** Field name to use as item key (e.g. 'plugin_id', 'id'). */
   itemKeyField: keyof TItem
   renderCard: (item: TItem) => React.ReactNode
   /** Collection names that use carousel layout (e.g. ['partners'], ['featured']). */
@@ -186,22 +164,22 @@ function CollectionList<TItem, TCollection extends BaseCollection>({
               />
               {isCarouselCollection
                 ? (
-                  <CarouselCollection
-                    items={items}
-                    getItemKey={(item) => getItemKeyByField(item, itemKeyField)}
-                    renderCard={renderCard}
-                    cardContainerClassName={cardContainerClassName}
-                  />
-                )
+                    <CarouselCollection
+                      items={items}
+                      getItemKey={item => getItemKeyByField(item, itemKeyField)}
+                      renderCard={renderCard}
+                      cardContainerClassName={cardContainerClassName}
+                    />
+                  )
                 : (
-                  <div className={cn(gridClassName, cardContainerClassName)}>
-                    {items.slice(0, GRID_DISPLAY_LIMIT).map(item => (
-                      <div key={getItemKeyByField(item, itemKeyField)}>
-                        {renderCard(item)}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                    <div className={cn(gridClassName, cardContainerClassName)}>
+                      {items.slice(0, GRID_DISPLAY_LIMIT).map(item => (
+                        <div key={getItemKeyByField(item, itemKeyField)}>
+                          {renderCard(item)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
             </div>
           )
         })

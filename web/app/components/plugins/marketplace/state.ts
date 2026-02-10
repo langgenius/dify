@@ -89,10 +89,11 @@ export function useTemplatesMarketplaceData(enabled = true) {
   const queryParams = useMemo((): TemplateSearchParams | undefined => {
     if (!isSearchMode)
       return undefined
+    const sortBy = sort.sortBy === 'install_count' ? 'usage_count' : sort.sortBy === 'version_updated_at' ? 'updated_at' : sort.sortBy
     return {
       query: searchText,
       categories: activeTemplateCategory === CATEGORY_ALL ? undefined : [activeTemplateCategory],
-      sort_by: sort.sortBy,
+      sort_by: sortBy,
       sort_order: sort.sortOrder,
     }
   }, [isSearchMode, searchText, activeTemplateCategory, sort])

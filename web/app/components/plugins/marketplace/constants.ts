@@ -5,6 +5,11 @@ export const DEFAULT_SORT = {
   sortOrder: 'DESC',
 }
 
+export const DEFAULT_TEMPLATE_SORT = {
+  sortBy: 'usage_count',
+  sortOrder: 'DESC',
+}
+
 export const SCROLL_BOTTOM_THRESHOLD = 100
 
 export const CATEGORY_ALL = 'all'

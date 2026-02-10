@@ -5,7 +5,7 @@ import type { PluginCollection } from '../types'
 import { cn } from '@/utils/classnames'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
-import { GRID_CLASS } from './collection-list'
+import { GRID_CLASS } from './collection-constants'
 import ListWithCollection from './list-with-collection'
 
 type ListProps = {

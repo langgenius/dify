@@ -72,13 +72,23 @@ export type TemplateCollection = {
 }
 
 export type Template = {
-  template_id: string
-  name: string
-  description: Record<string, string>
+  id: string
+  index_id: string
+  template_name: string
   icon: string
   icon_background?: string
-  tags: string[]
-  author: string
+  icon_file_key: string
+  categories: string[]
+  overview: string
+  readme: string
+  partner_link: string
+  deps_plugins: string[]
+  preferred_languages: string[]
+  publisher_handle: string
+  publisher_type: string
+  kind: string
+  status: string
+  usage_count: number
   created_at: string
   updated_at: string
 }
@@ -150,25 +160,12 @@ export type SyncCreatorProfileRequest = {
   status?: 'active' | 'inactive'
 }
 
-// Template Detail (full template info from API)
-export type TemplateDetail = {
-  id: string
-  publisher_type: 'individual' | 'organization'
+// Template Detail (full template info from API, extends Template with extra fields)
+export type TemplateDetail = Template & {
   publisher_unique_handle: string
   creator_email: string
-  template_name: string
-  icon: string
-  icon_background: string
-  icon_file_key: string
   dsl_file_key: string
-  categories: string[]
-  overview: string
-  readme: string
-  partner_link: string
-  status: 'published' | 'draft' | 'pending' | 'rejected'
   review_comment: string
-  created_at: string
-  updated_at: string
 }
 
 export type TemplatesListResponse = {
@@ -202,25 +199,8 @@ export type UnifiedPluginItem = Plugin & {
   index_id: string
 }
 
-// Template item shape from /search/unified (differs from TemplateDetail)
-export type UnifiedTemplateItem = {
-  id: string
-  index_id: string
-  template_name: string
-  icon: string
-  icon_background?: string
-  icon_file_key: string
-  categories: string[]
-  overview: string
-  readme: string
-  partner_link: string
-  publisher_handle: string
-  publisher_type: 'individual' | 'organization'
-  status: string
-  usage_count: number
-  created_at: string
-  updated_at: string
-}
+// Template item shape from /search/unified (same as Template)
+export type UnifiedTemplateItem = Template
 
 // Creator item shape from /search/unified (superset of Creator with index_id)
 export type UnifiedCreatorItem = Creator & {

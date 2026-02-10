@@ -13,7 +13,6 @@ import type {
   UnifiedPluginItem,
   UnifiedSearchParams,
   UnifiedSearchResponse,
-  UnifiedTemplateItem,
 } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -28,7 +27,7 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
-/** Get a string key from an item by field name (e.g. plugin_id, template_id). */
+/** Get a string key from an item by field name (e.g. plugin_id, id). */
 export function getItemKeyByField<T>(item: T, field: keyof T): string {
   return String((item as Record<string, unknown>)[field as string])
 }
@@ -133,20 +132,11 @@ export const getMarketplaceCollectionsAndPlugins = async (
 }
 
 export function mapTemplateDetailToTemplate(template: TemplateDetail): Template {
-  const descriptionText = template.overview || template.readme || ''
+  // TemplateDetail extends Template; just override publisher_handle from the detail-specific field
   return {
-    template_id: template.id,
-    name: template.template_name,
-    description: {
-      en_US: descriptionText,
-      zh_Hans: descriptionText,
-    },
-    icon: template.icon || '',
-    icon_background: template.icon_background || undefined,
-    tags: template.categories || [],
-    author: template.publisher_unique_handle || template.creator_email || '',
-    created_at: template.created_at,
-    updated_at: template.updated_at,
+    ...template,
+    publisher_handle: template.publisher_handle || template.publisher_unique_handle || template.creator_email || '',
+    index_id: template.index_id || template.id,
   }
 }
 
@@ -437,24 +427,10 @@ export function mapUnifiedPluginToPlugin(item: UnifiedPluginItem): Plugin {
 }
 
 /**
- * Map unified search template item to Template type
+ * Map unified search template item to Template type (identity since UnifiedTemplateItem = Template)
  */
-export function mapUnifiedTemplateToTemplate(item: UnifiedTemplateItem): Template {
-  const descriptionText = item.overview || item.readme || ''
-  return {
-    template_id: item.id,
-    name: item.template_name,
-    description: {
-      en_US: descriptionText,
-      zh_Hans: descriptionText,
-    },
-    icon: item.icon || '',
-    icon_background: item.icon_background || undefined,
-    tags: item.categories || [],
-    author: item.publisher_handle || '',
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-  }
+export function mapUnifiedTemplateToTemplate(item: Template): Template {
+  return item
 }
 
 /**

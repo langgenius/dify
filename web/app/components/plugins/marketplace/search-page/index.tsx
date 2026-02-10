@@ -144,7 +144,7 @@ const SearchPage = () => {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {toShow.map(template => (
-          <div key={template.template_id}>
+          <div key={template.id}>
             <TemplateCard template={template} />
           </div>
         ))}

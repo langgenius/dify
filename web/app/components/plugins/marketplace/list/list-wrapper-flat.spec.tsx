@@ -64,7 +64,7 @@ describe('ListWrapper flat rendering', () => {
 
   it('renders template flat list when template items exist', () => {
     mockMarketplaceData.creationType = 'templates'
-    mockMarketplaceData.templates = [{ template_id: 't1' } as Template]
+    mockMarketplaceData.templates = [{ id: 't1' } as Template]
 
     render(<ListWrapper />)
 
