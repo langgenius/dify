@@ -1,5 +1,5 @@
 # base image
-FROM node:24-alpine AS base
+FROM langgenius/node:24-alpine3.23-sfw-dev AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
