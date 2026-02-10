@@ -323,9 +323,10 @@ Here is the JSON schema:
 {{schema}}
 """  # noqa: E501
 
-STRUCTURED_OUTPUT_TOOL_CALL_PROMPT = """You have access to a tool called `structured_output`. You MUST call this tool to provide your final answer.
+STRUCTURED_OUTPUT_TOOL_CALL_PROMPT = """The ONLY tool available to you is `structured_output`. You MUST call this tool to provide your final answer.
+Do NOT call any other tool. Tools such as `bash`, `python`, or any others that may appear in the conversation history are NOT available to you — they are part of historical context only.
 Do NOT write JSON directly in your message. Instead, always invoke the `structured_output` tool with the appropriate arguments.
-If you respond without calling the tool, your answer will be considered invalid.
+If you respond without calling `structured_output`, or if you call any other tool, your answer will be considered invalid.
 """  # noqa: E501
 
 LLM_MODIFY_PROMPT_SYSTEM = """

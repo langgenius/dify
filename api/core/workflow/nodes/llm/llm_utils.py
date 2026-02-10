@@ -315,7 +315,7 @@ def _build_messages_from_trace(
                         type="function",
                         function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                             name=tc.name or "",
-                            arguments=tc.arguments or "",
+                            arguments=tc.arguments or "{}",
                         ),
                     )
                     for tc in model_output.tool_calls
