@@ -34,6 +34,7 @@ def patch_current_account(user_and_tenant):
         yield
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointCreateApi:
     def test_create_success(self, app):
         api = EndpointCreateApi()
@@ -45,11 +46,8 @@ class TestEndpointCreateApi:
             "settings": {"a": 1},
         }
 
-        user = MagicMock(id="u1")
-
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.endpoint.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.endpoint.EndpointService.create_endpoint", return_value=True),
         ):
             result = method(api)
@@ -68,10 +66,6 @@ class TestEndpointCreateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
             patch(
                 "controllers.console.workspace.endpoint.EndpointService.create_endpoint",
                 side_effect=PluginPermissionDeniedError("denied"),
@@ -92,25 +86,19 @@ class TestEndpointCreateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointListApi:
     def test_list_success(self, app):
         api = EndpointListApi()
         method = unwrap(api.get)
 
-        user = MagicMock(id="u1")
-
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.endpoint.current_account_with_tenant", return_value=(user, "t1")),
             patch("controllers.console.workspace.endpoint.EndpointService.list_endpoints", return_value=[{"id": "e1"}]),
         ):
             result = method(api)
@@ -124,25 +112,19 @@ class TestEndpointListApi:
 
         with (
             app.test_request_context("/?page=0&page_size=10"),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointListForSinglePluginApi:
     def test_list_for_plugin_success(self, app):
         api = EndpointListForSinglePluginApi()
         method = unwrap(api.get)
 
-        user = MagicMock(id="u1")
-
         with (
             app.test_request_context("/?page=1&page_size=10&plugin_id=p1"),
-            patch("controllers.console.workspace.endpoint.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.endpoint.EndpointService.list_endpoints_for_single_plugin",
                 return_value=[{"id": "e1"}],
@@ -158,15 +140,12 @@ class TestEndpointListForSinglePluginApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointDeleteApi:
     def test_delete_success(self, app):
         api = EndpointDeleteApi()
@@ -176,10 +155,6 @@ class TestEndpointDeleteApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
             patch("controllers.console.workspace.endpoint.EndpointService.delete_endpoint", return_value=True),
         ):
             result = method(api)
@@ -192,15 +167,11 @@ class TestEndpointDeleteApi:
 
         with (
             app.test_request_context("/", json={}),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_delete_service_failure(self, app, patch_current_account):
+    def test_delete_service_failure(self, app):
         api = EndpointDeleteApi()
         method = unwrap(api.post)
 
@@ -215,6 +186,7 @@ class TestEndpointDeleteApi:
         assert result["success"] is False
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointUpdateApi:
     def test_update_success(self, app):
         api = EndpointUpdateApi()
@@ -228,10 +200,6 @@ class TestEndpointUpdateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
             patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=True),
         ):
             result = method(api)
@@ -246,15 +214,11 @@ class TestEndpointUpdateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_update_service_failure(self, app, patch_current_account):
+    def test_update_service_failure(self, app):
         api = EndpointUpdateApi()
         method = unwrap(api.post)
 
@@ -273,6 +237,7 @@ class TestEndpointUpdateApi:
         assert result["success"] is False
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointEnableApi:
     def test_enable_success(self, app):
         api = EndpointEnableApi()
@@ -282,10 +247,6 @@ class TestEndpointEnableApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
             patch("controllers.console.workspace.endpoint.EndpointService.enable_endpoint", return_value=True),
         ):
             result = method(api)
@@ -298,15 +259,11 @@ class TestEndpointEnableApi:
 
         with (
             app.test_request_context("/", json={}),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_enable_service_failure(self, app, patch_current_account):
+    def test_enable_service_failure(self, app):
         api = EndpointEnableApi()
         method = unwrap(api.post)
 
@@ -321,6 +278,7 @@ class TestEndpointEnableApi:
         assert result["success"] is False
 
 
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointDisableApi:
     def test_disable_success(self, app):
         api = EndpointDisableApi()
@@ -330,10 +288,6 @@ class TestEndpointDisableApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
             patch("controllers.console.workspace.endpoint.EndpointService.disable_endpoint", return_value=True),
         ):
             result = method(api)
@@ -346,10 +300,6 @@ class TestEndpointDisableApi:
 
         with (
             app.test_request_context("/", json={}),
-            patch(
-                "controllers.console.workspace.endpoint.current_account_with_tenant",
-                return_value=(MagicMock(id="u1"), "t1"),
-            ),
         ):
             with pytest.raises(ValueError):
                 method(api)

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
+import pytest
 
 from controllers.console.workspace.models import (
     DefaultModelApi,
@@ -352,12 +353,13 @@ class TestModelProviderModelValidateApi:
 
         assert result["result"] == "success"
 
-    def test_validate_failure(self, app: Flask):
+    @pytest.mark.parametrize("model_name", ["gpt-4", "gpt"])
+    def test_validate_failure(self, app: Flask, model_name: str):
         api = ModelProviderModelValidateApi()
         method = unwrap(api.post)
 
         payload = {
-            "model": "gpt-4",
+            "model": model_name,
             "model_type": ModelType.LLM.value,
             "credentials": {},
         }
@@ -376,28 +378,7 @@ class TestModelProviderModelValidateApi:
 
         assert result["result"] == "error"
 
-    def test_validate_error(self, app):
-        api = ModelProviderModelValidateApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "model": "gpt",
-            "model_type": ModelType.LLM.value,
-            "credentials": {},
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
-            patch("controllers.console.workspace.models.ModelProviderService") as service,
-        ):
-            service.return_value.validate_model_credentials.side_effect = CredentialsValidateFailedError("bad")
-
-            result = method(api, "openai")
-
-        assert result["result"] == "error"
-
-
+        
 class TestParameterAndAvailableModels:
     def test_parameter_rules(self, app: Flask):
         api = ModelProviderModelParameterRuleApi()

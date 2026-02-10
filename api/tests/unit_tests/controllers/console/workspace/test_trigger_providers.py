@@ -541,7 +541,9 @@ class TestTriggerSubscriptionVerifyApi:
         ):
             assert method(api, "github", "s1") == {"ok": True}
 
-    def test_verify_error(self, app):
+    @pytest.mark.parametrize("raised_exception", [ValueError("bad"), Exception("boom")])
+    def test_verify_errors(self, app, raised_exception):
+
         api = TriggerSubscriptionVerifyApi()
         method = unwrap(api.post)
 
@@ -550,22 +552,7 @@ class TestTriggerSubscriptionVerifyApi:
             patch("controllers.console.workspace.trigger_providers.current_user", mock_user()),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.verify_subscription_credentials",
-                side_effect=ValueError("bad"),
-            ),
-        ):
-            with pytest.raises(BadRequest):
-                method(api, "github", "s1")
-
-    def test_subscription_verify_generic_error(self, app):
-        api = TriggerSubscriptionVerifyApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"credentials": {}}),
-            patch("controllers.console.workspace.trigger_providers.current_user", mock_user()),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.verify_subscription_credentials",
-                side_effect=Exception("boom"),
+                side_effect=raised_exception,
             ),
         ):
             with pytest.raises(BadRequest):

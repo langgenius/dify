@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from werkzeug.exceptions import Forbidden
+from werkzeug.datastructures import FileStorage
 
 from controllers.console.workspace.plugin import (
     PluginAssetApi,
@@ -61,22 +62,6 @@ def tenant():
 
 class TestPluginListLatestVersionsApi:
     def test_success(self, app):
-        api = PluginListLatestVersionsApi()
-        method = unwrap(api.post)
-
-        payload = {"plugin_ids": ["p1"]}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.plugin.PluginService.list_latest_versions", return_value={"p1": "1.0"}
-            ),
-        ):
-            result = method(api)
-
-        assert "versions" in result
-
-    def test_plugin_list_latest_versions(self, app):
         api = PluginListLatestVersionsApi()
         method = unwrap(api.post)
 
@@ -422,9 +407,11 @@ class TestPluginUploadFromBundleApi:
         api = PluginUploadFromBundleApi()
         method = unwrap(api.post)
 
-        file = MagicMock()
-        file.content_length = 1
-        file.read.return_value = b"x"
+        file = FileStorage(
+            stream=io.BytesIO(b"x"),
+            filename="test.bundle",
+            content_type="application/octet-stream",
+        )
 
         with (
             app.test_request_context(
@@ -443,8 +430,11 @@ class TestPluginUploadFromBundleApi:
         api = PluginUploadFromBundleApi()
         method = unwrap(api.post)
 
-        file = MagicMock()
-        file.content_length = 10**9
+        file = FileStorage(
+            stream=io.BytesIO(b"x" * 10**9),
+            filename="test.bundle",
+            content_type="application/octet-stream",
+        )
 
         with (
             app.test_request_context(
