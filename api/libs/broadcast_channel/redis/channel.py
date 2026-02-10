@@ -42,6 +42,7 @@ class Topic:
 
     def subscribe(self) -> Subscription:
         return _RedisSubscription(
+            client=self._client,
             pubsub=self._client.pubsub(),
             topic=self._topic,
         )
@@ -63,7 +64,7 @@ class _RedisSubscription(RedisSubscriptionBase):
 
     def _get_message(self) -> dict | None:
         assert self._pubsub is not None
-        return self._pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
+        return self._pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
 
     def _get_message_type(self) -> str:
         return "message"
