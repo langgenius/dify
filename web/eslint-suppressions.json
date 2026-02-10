@@ -3822,14 +3822,6 @@
       "count": 3
     }
   },
-  "app/components/datasets/documents/detail/metadata/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/documents/detail/new-segment.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -5664,10 +5656,12 @@
   },
   "app/components/rag-pipeline/components/update-dsl-modal.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
-    "ts/no-explicit-any": {
-      "count": 1
+      "count": 3
+    }
+  },
+  "app/components/rag-pipeline/components/version-mismatch-modal.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
     }
   },
   "app/components/rag-pipeline/hooks/use-DSL.ts": {
