@@ -69,7 +69,7 @@ const clientSchema = {
   /**
    * Github Access Token, used for invoking Github API
    */
-  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().default(''),
+  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().optional(),
   /**
    * The maximum number of tokens for segmentation
    */
