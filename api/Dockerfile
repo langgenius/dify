@@ -88,7 +88,7 @@ RUN \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
         # Debugging utility
-        htop strace ltrace lsof procps \
+        htop strace lsof procps \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
