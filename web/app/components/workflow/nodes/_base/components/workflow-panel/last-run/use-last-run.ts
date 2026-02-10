@@ -454,8 +454,11 @@ const useLastRun = <T>({
       return
     }
     const vars = dependentVars
+    const canDirectRun = isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)
+    const singleRunForms = Array.isArray(singleRunParams?.forms) ? singleRunParams.forms as FormProps[] : []
+    const canAutoRunWithFilteredForms = getFilteredExistVarForms(singleRunForms).length === 0
     // no need to input params
-    if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
+    if (canDirectRun || canAutoRunWithFilteredForms) {
       callRunApi({}, async () => {
         setIsRunAfterSingleRun(true)
         setNodeRunning()
