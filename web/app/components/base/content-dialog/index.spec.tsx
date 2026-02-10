@@ -1,40 +1,16 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ContentDialog from './index'
 
-vi.mock('@headlessui/react', () => {
-  return {
-    __esModule: true,
-    Transition: ({ show, as: Component = 'div', children, ...rest }: { show?: boolean, as?: React.ElementType, children?: React.ReactNode, [key: string]: unknown }) => {
-      if (!show)
-        return null
-      return React.createElement(Component, rest, children)
-    },
-    TransitionChild: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  }
-})
-
-// Mock classname util to deterministic behavior
-vi.mock('@/utils/classnames', () => {
-  return {
-    cn: (...args: Array<string | undefined | false>) => args.filter(Boolean).join(' '),
-  }
-})
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
-
 describe('ContentDialog', () => {
-  it('renders children when show is true', () => {
+  it('renders children when show is true', async () => {
     render(
       <ContentDialog show={true}>
         <div>Dialog body</div>
       </ContentDialog>,
     )
 
+    await screen.findByText('Dialog body')
     expect(screen.getByText('Dialog body')).toBeInTheDocument()
 
     const backdrop = document.querySelector('.bg-app-detail-overlay-bg')
