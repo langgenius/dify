@@ -16,15 +16,28 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { initialNodes, preprocessNodesAndEdges } from '@/app/components/workflow/utils/workflow-init'
 
 // Mock reactflow which is needed by initialNodes and NodeSourceHandle
-vi.mock('reactflow', () => ({
-  getConnectedEdges: vi.fn(() => []),
-  Handle: ({ children }: { children?: React.ReactNode }) => <div data-testid="handle">{children}</div>,
-  Position: { Left: 'left', Right: 'right', Top: 'top', Bottom: 'bottom' },
-}))
+vi.mock('reactflow', async () => {
+  const reactflow = await vi.importActual('reactflow')
+  return {
+    ...reactflow,
+    Handle: ({ children }: { children?: React.ReactNode }) => <div data-testid="handle">{children}</div>,
+  }
+})
+
+// Minimal store state mirroring the fields that NodeSourceHandle selects
+const mockStoreState = {
+  shouldAutoOpenStartNodeSelector: false,
+  setShouldAutoOpenStartNodeSelector: vi.fn(),
+  setHasSelectedStartNode: vi.fn(),
+}
 
 // Mock workflow store used by NodeSourceHandle
+// useStore accepts a selector and applies it to the state, so tests break
+// if the component starts selecting fields that aren't provided here.
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: vi.fn(() => false),
+  useStore: vi.fn((selector?: (s: typeof mockStoreState) => unknown) =>
+    selector ? selector(mockStoreState) : mockStoreState,
+  ),
   useWorkflowStore: vi.fn(() => ({
     getState: () => ({
       getNodes: () => [],
