@@ -14,8 +14,8 @@ def _is_pg(conn):
 
 
 # revision identifiers, used by Alembic.
-revision = 'fix_tenant_default_model_unique'
-down_revision = '9d77545f524e'
+revision = 'f55813ffe2c8'
+down_revision = 'c3df22613c99'
 branch_labels = None
 depends_on = None
 
