@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SimpleSelect } from '@/app/components/base/select'
+import { useAppContext } from '@/context/app-context'
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -16,19 +17,20 @@ type Props = {
   queryDateFormat: string
 }
 
-const today = dayjs()
-
 const LongTimeRangePicker: FC<Props> = ({
   periodMapping,
   onSelect,
   queryDateFormat,
 }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
 
   const handleSelect = React.useCallback((item: Item) => {
     const id = item.value
     const value = periodMapping[id]?.value ?? '-1'
     const name = item.name || t('filter.period.allTime', { ns: 'appLog' })
+    const today = dayjs().tz(userProfile?.timezone)
+
     if (value === -1) {
       onSelect({ name: t('filter.period.allTime', { ns: 'appLog' }), query: undefined })
     }
@@ -52,7 +54,7 @@ const LongTimeRangePicker: FC<Props> = ({
         },
       })
     }
-  }, [onSelect, periodMapping, queryDateFormat, t])
+  }, [onSelect, periodMapping, queryDateFormat, t, userProfile?.timezone])
 
   return (
     <SimpleSelect

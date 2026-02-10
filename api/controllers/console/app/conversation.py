@@ -14,7 +14,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
-from libs.datetime_utils import naive_utc_now, parse_time_range
+from libs.datetime_utils import parse_time_range
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
@@ -596,12 +596,7 @@ def _get_conversation(app_model, conversation_id):
     if not conversation:
         raise NotFound("Conversation Not Exists.")
 
-    db.session.execute(
-        sa.update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
-        .values(read_at=naive_utc_now(), read_account_id=current_user.id)
-    )
-    db.session.commit()
+    ConversationService.mark_as_read(conversation_id, current_user)
     db.session.refresh(conversation)
 
     return conversation

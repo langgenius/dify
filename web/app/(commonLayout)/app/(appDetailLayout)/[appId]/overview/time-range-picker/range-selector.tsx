@@ -10,8 +10,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SimpleSelect } from '@/app/components/base/select'
 import { cn } from '@/utils/classnames'
-
-const today = dayjs()
+import { useAppContext } from '@/context/app-context'
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -27,9 +26,11 @@ const RangeSelector: FC<Props> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
 
   const handleSelectRange = useCallback((item: Item) => {
     const { name, value } = item
+    const today = dayjs().tz(userProfile?.timezone)
     let period: TimeRange | null = null
     if (value === 0) {
       const startOfToday = today.startOf('day')
@@ -40,7 +41,7 @@ const RangeSelector: FC<Props> = ({
       period = { start: today.subtract(item.value as number, 'day').startOf('day'), end: today.endOf('day') }
     }
     onSelect({ query: period!, name })
-  }, [onSelect])
+  }, [onSelect, userProfile?.timezone])
 
   const renderTrigger = useCallback((item: Item | null, isOpen: boolean) => {
     return (
