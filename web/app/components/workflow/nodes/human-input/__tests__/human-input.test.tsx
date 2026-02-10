@@ -7,6 +7,10 @@ import type {
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
+import {
+  createHooksStore,
+  HooksStoreContext,
+} from '@/app/components/workflow/hooks-store'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import HumanInputNode from '@/app/components/workflow/nodes/human-input/node'
 import {
@@ -136,6 +140,19 @@ const createEdge = (source: string, target: string, sourceHandle = 'source', tar
   data: {},
 } as Edge)
 
+const renderHumanInputNode = (node: Node) => {
+  const hooksStore = createHooksStore({})
+
+  return render(
+    <HooksStoreContext.Provider value={hooksStore}>
+      <HumanInputNode
+        id={node.id}
+        data={node.data as HumanInputNodeType}
+      />
+    </HooksStoreContext.Provider>,
+  )
+}
+
 describe('DSL Import with Human Input Node', () => {
   // ── preprocessNodesAndEdges: human-input nodes pass through without error ──
   describe('preprocessNodesAndEdges', () => {
@@ -214,24 +231,14 @@ describe('DSL Import with Human Input Node', () => {
       const node = createHumanInputNode()
 
       expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
+        renderHumanInputNode(node)
       }).not.toThrow()
     })
 
     it('should display delivery method labels when methods are present', () => {
       const node = createHumanInputNode()
 
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
+      renderHumanInputNode(node)
 
       // Delivery method type labels are rendered in lowercase
       expect(screen.getByText('webapp')).toBeInTheDocument()
@@ -241,12 +248,7 @@ describe('DSL Import with Human Input Node', () => {
     it('should display user action IDs', () => {
       const node = createHumanInputNode()
 
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
+      renderHumanInputNode(node)
 
       expect(screen.getByText('approve')).toBeInTheDocument()
       expect(screen.getByText('reject')).toBeInTheDocument()
@@ -255,12 +257,7 @@ describe('DSL Import with Human Input Node', () => {
     it('should always display Timeout handle', () => {
       const node = createHumanInputNode()
 
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
+      renderHumanInputNode(node)
 
       expect(screen.getByText('Timeout')).toBeInTheDocument()
     })
@@ -269,12 +266,7 @@ describe('DSL Import with Human Input Node', () => {
       const node = createHumanInputNode({ delivery_methods: [] })
 
       expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
+        renderHumanInputNode(node)
       }).not.toThrow()
 
       // Delivery method section should not be rendered
@@ -286,12 +278,7 @@ describe('DSL Import with Human Input Node', () => {
       const node = createHumanInputNode({ user_actions: [] })
 
       expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
+        renderHumanInputNode(node)
       }).not.toThrow()
 
       // Timeout handle should still exist
@@ -307,12 +294,7 @@ describe('DSL Import with Human Input Node', () => {
       })
 
       expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
+        renderHumanInputNode(node)
       }).not.toThrow()
     })
 
@@ -323,12 +305,7 @@ describe('DSL Import with Human Input Node', () => {
         ],
       })
 
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
+      renderHumanInputNode(node)
 
       expect(screen.getByText('webapp')).toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
@@ -343,12 +320,7 @@ describe('DSL Import with Human Input Node', () => {
         ],
       })
 
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
+      renderHumanInputNode(node)
 
       expect(screen.getByText('action_1')).toBeInTheDocument()
       expect(screen.getByText('action_2')).toBeInTheDocument()
