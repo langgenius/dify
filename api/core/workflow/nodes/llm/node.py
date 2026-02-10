@@ -2292,7 +2292,7 @@ class LLMNode(Node[LLMNodeData]):
         if output.log_type == AgentLog.LogType.TOOL_CALL and output.status == AgentLog.LogStatus.START:
             tool_name = payload.tool_name
             tool_call_id = payload.tool_call_id
-            tool_arguments = json.dumps(payload.tool_args) if payload.tool_args else ""
+            tool_arguments = json.dumps(payload.tool_args or {})
 
             # Get icon from metadata (available at START)
             tool_icon = output.metadata.get(AgentLog.LogMetadata.ICON) if output.metadata else None
@@ -2323,7 +2323,7 @@ class LLMNode(Node[LLMNodeData]):
             tool_call_id = payload.tool_call_id
             tool_files = payload.files if isinstance(payload.files, list) else []
             tool_error = payload.tool_error
-            tool_arguments = json.dumps(payload.tool_args) if payload.tool_args else ""
+            tool_arguments = json.dumps(payload.tool_args or {})
 
             if tool_call_id and tool_call_id not in trace_state.tool_call_index_map:
                 trace_state.tool_call_index_map[tool_call_id] = len(trace_state.tool_call_index_map)
