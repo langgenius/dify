@@ -47,6 +47,7 @@ from .node import (
     NodeRunSucceededEvent,
     ToolCall,
     ToolResult,
+    is_node_result_event,
 )
 
 __all__ = [
@@ -79,4 +80,5 @@ __all__ = [
     "NodeRunSucceededEvent",
     "ToolCall",
     "ToolResult",
+    "is_node_result_event",
 ]
