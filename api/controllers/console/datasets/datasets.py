@@ -55,6 +55,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
+from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 # Register models for flask_restx to avoid dict type issues in Swagger
@@ -819,6 +820,11 @@ class DatasetApiDeleteApi(Resource):
 
         if key is None:
             console_ns.abort(404, message="API key not found")
+
+        # Invalidate cache before deleting from database
+        # Type assertion: key is guaranteed to be non-None here because abort() raises
+        assert key is not None  # nosec - for type checker only
+        ApiTokenCache.delete(key.token, key.type)
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

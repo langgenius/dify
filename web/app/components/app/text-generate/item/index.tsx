@@ -8,7 +8,7 @@ import {
   RiClipboardLine,
   RiFileList3Line,
   RiPlayList2Line,
-  RiReplay15Line,
+  RiResetLeftLine,
   RiSparklingFill,
   RiSparklingLine,
   RiThumbDownLine,
@@ -18,10 +18,12 @@ import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import HumanInputFilledFormList from '@/app/components/base/chat/chat/answer/human-input-filled-form-list'
+import HumanInputFormList from '@/app/components/base/chat/chat/answer/human-input-form-list'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
@@ -29,7 +31,8 @@ import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Toast from '@/app/components/base/toast'
 import { fetchTextGenerationMessage } from '@/service/debug'
-import { AppSourceType, fetchMoreLikeThis, updateFeedback } from '@/service/share'
+import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
+import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import ResultTab from './result-tab'
 
@@ -121,7 +124,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {
-    isInWebApp: true,
+    isInWebApp,
     content: completionRes,
     messageId: childMessageId,
     depth: depth + 1,
@@ -202,16 +205,22 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
-  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length
+  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length || (workflowProcessData?.humanInputFormDataList && workflowProcessData?.humanInputFormDataList.length > 0) || (workflowProcessData?.humanInputFilledFormDataList && workflowProcessData?.humanInputFilledFormDataList.length > 0)
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
   }
   useEffect(() => {
-    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length)
+    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length || (workflowProcessData?.humanInputFormDataList && workflowProcessData?.humanInputFormDataList.length > 0) || (workflowProcessData?.humanInputFilledFormDataList && workflowProcessData?.humanInputFilledFormDataList.length > 0))
       switchTab('RESULT')
     else
       switchTab('DETAIL')
-  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText])
+  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText, workflowProcessData?.humanInputFormDataList, workflowProcessData?.humanInputFilledFormDataList])
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: { inputs: Record<string, string>, action: string }) => {
+    if (appSourceType === AppSourceType.installedApp)
+      await submitHumanInputFormService(formToken, formData)
+    else
+      await submitHumanInputForm(formToken, formData)
+  }, [appSourceType])
 
   return (
     <>
@@ -275,7 +284,24 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     )}
                   </div>
                   {!isError && (
-                    <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
+                    <>
+                      {currentTab === 'RESULT' && workflowProcessData.humanInputFormDataList && workflowProcessData.humanInputFormDataList.length > 0 && (
+                        <div className="px-4 pt-4">
+                          <HumanInputFormList
+                            humanInputFormDataList={workflowProcessData.humanInputFormDataList}
+                            onHumanInputFormSubmit={handleSubmitHumanInputForm}
+                          />
+                        </div>
+                      )}
+                      {currentTab === 'RESULT' && workflowProcessData.humanInputFilledFormDataList && workflowProcessData.humanInputFilledFormDataList.length > 0 && (
+                        <div className="px-4 pt-4">
+                          <HumanInputFilledFormList
+                            humanInputFilledFormDataList={workflowProcessData.humanInputFilledFormDataList}
+                          />
+                        </div>
+                      )}
+                      <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
+                    </>
                   )}
                 </>
               )}
@@ -348,7 +374,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   )}
                   {isInWebApp && isError && (
                     <ActionButton onClick={onRetry}>
-                      <RiReplay15Line className="h-4 w-4" />
+                      <RiResetLeftLine className="h-4 w-4" />
                     </ActionButton>
                   )}
                   {isInWebApp && !isWorkflow && !isTryApp && (

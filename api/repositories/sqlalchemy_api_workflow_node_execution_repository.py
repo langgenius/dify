@@ -5,6 +5,7 @@ This module provides a concrete implementation of the service repository protoco
 using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
+import json
 from collections.abc import Sequence
 from datetime import datetime
 from typing import cast
@@ -13,11 +14,12 @@ from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import (
-    WorkflowNodeExecutionModel,
-    WorkflowNodeExecutionOffload,
+from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
+from repositories.api_workflow_node_execution_repository import (
+    DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionSnapshot,
 )
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 
 class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):
@@ -79,6 +81,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                 WorkflowNodeExecutionModel.app_id == app_id,
                 WorkflowNodeExecutionModel.workflow_id == workflow_id,
                 WorkflowNodeExecutionModel.node_id == node_id,
+                WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
             )
             .order_by(desc(WorkflowNodeExecutionModel.created_at))
             .limit(1)
@@ -116,6 +119,80 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
+
+    def get_execution_snapshots_by_workflow_run(
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        triggered_from: str,
+        workflow_run_id: str,
+    ) -> Sequence[WorkflowNodeExecutionSnapshot]:
+        stmt = (
+            select(
+                WorkflowNodeExecutionModel.id,
+                WorkflowNodeExecutionModel.node_execution_id,
+                WorkflowNodeExecutionModel.node_id,
+                WorkflowNodeExecutionModel.node_type,
+                WorkflowNodeExecutionModel.title,
+                WorkflowNodeExecutionModel.index,
+                WorkflowNodeExecutionModel.status,
+                WorkflowNodeExecutionModel.elapsed_time,
+                WorkflowNodeExecutionModel.created_at,
+                WorkflowNodeExecutionModel.finished_at,
+                WorkflowNodeExecutionModel.execution_metadata,
+            )
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.workflow_id == workflow_id,
+                WorkflowNodeExecutionModel.triggered_from == triggered_from,
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            )
+            .order_by(
+                asc(WorkflowNodeExecutionModel.created_at),
+                asc(WorkflowNodeExecutionModel.index),
+            )
+        )
+
+        with self._session_maker() as session:
+            rows = session.execute(stmt).all()
+
+        return [self._row_to_snapshot(row) for row in rows]
+
+    @staticmethod
+    def _row_to_snapshot(row: object) -> WorkflowNodeExecutionSnapshot:
+        metadata: dict[str, object] = {}
+        execution_metadata = getattr(row, "execution_metadata", None)
+        if execution_metadata:
+            try:
+                metadata = json.loads(execution_metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+        iteration_id = metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
+        loop_id = metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
+        execution_id = getattr(row, "node_execution_id", None) or row.id
+        elapsed_time = getattr(row, "elapsed_time", None)
+        created_at = row.created_at
+        finished_at = getattr(row, "finished_at", None)
+        if elapsed_time is None:
+            if finished_at is not None and created_at is not None:
+                elapsed_time = (finished_at - created_at).total_seconds()
+            else:
+                elapsed_time = 0.0
+        return WorkflowNodeExecutionSnapshot(
+            execution_id=str(execution_id),
+            node_id=row.node_id,
+            node_type=row.node_type,
+            title=row.title,
+            index=row.index,
+            status=row.status,
+            elapsed_time=float(elapsed_time),
+            created_at=created_at,
+            finished_at=finished_at,
+            iteration_id=str(iteration_id) if iteration_id else None,
+            loop_id=str(loop_id) if loop_id else None,
+        )
 
     def get_execution_by_id(
         self,

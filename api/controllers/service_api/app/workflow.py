@@ -33,8 +33,9 @@ from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import OptionalTimestampField, TimestampField
 from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -63,17 +64,32 @@ class WorkflowLogQuery(BaseModel):
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
 
+
+class WorkflowRunStatusField(fields.Raw):
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        return obj.status.value
+
+
+class WorkflowRunOutputsField(fields.Raw):
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        if obj.status == WorkflowExecutionStatus.PAUSED:
+            return {}
+
+        outputs = obj.outputs_dict
+        return outputs or {}
+
+
 workflow_run_fields = {
     "id": fields.String,
     "workflow_id": fields.String,
-    "status": fields.String,
+    "status": WorkflowRunStatusField,
     "inputs": fields.Raw,
-    "outputs": fields.Raw,
+    "outputs": WorkflowRunOutputsField,
     "error": fields.String,
     "total_steps": fields.Integer,
     "total_tokens": fields.Integer,
     "created_at": TimestampField,
-    "finished_at": TimestampField,
+    "finished_at": OptionalTimestampField,
     "elapsed_time": fields.Float,
 }
 

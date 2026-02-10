@@ -492,3 +492,45 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         # Assert
         added_user = mock_session.add.call_args[0][0]
         assert added_user.type == invoke_type
+
+
+class TestEndUserServiceGetEndUserById:
+    """Unit tests for EndUserService.get_end_user_by_id."""
+
+    @patch("services.end_user_service.Session")
+    @patch("services.end_user_service.db")
+    def test_get_end_user_by_id_returns_end_user(self, mock_db, mock_session_class):
+        tenant_id = "tenant-123"
+        app_id = "app-456"
+        end_user_id = "end-user-789"
+        existing_user = MagicMock(spec=EndUser)
+
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+
+        mock_query = MagicMock()
+        mock_session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = existing_user
+
+        result = EndUserService.get_end_user_by_id(tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id)
+
+        assert result == existing_user
+        mock_session.query.assert_called_once_with(EndUser)
+        mock_query.where.assert_called_once()
+        assert len(mock_query.where.call_args[0]) == 3
+
+    @patch("services.end_user_service.Session")
+    @patch("services.end_user_service.db")
+    def test_get_end_user_by_id_returns_none(self, mock_db, mock_session_class):
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+
+        mock_query = MagicMock()
+        mock_session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = None
+
+        result = EndUserService.get_end_user_by_id(tenant_id="tenant", app_id="app", end_user_id="end-user")
+
+        assert result is None

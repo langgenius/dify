@@ -7,6 +7,7 @@ import type {
   CompletionConversationsRequest,
   CompletionConversationsResponse,
   WorkflowLogsResponse,
+  WorkflowPausedDetailsResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
 import { get } from './base'
@@ -85,5 +86,20 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
     queryKey: [NAME_SPACE, 'workflow-logs', appId, params],
     queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
     enabled: !!appId,
+  })
+}
+
+// ============ Workflow Pause Details ============
+
+type WorkflowPausedDetailsParams = {
+  workflowRunId: string
+  enabled?: boolean
+}
+
+export const useWorkflowPausedDetails = ({ workflowRunId, enabled = true }: WorkflowPausedDetailsParams) => {
+  return useQuery<WorkflowPausedDetailsResponse>({
+    queryKey: [NAME_SPACE, 'workflow-paused-details', workflowRunId],
+    queryFn: () => get<WorkflowPausedDetailsResponse>(`/workflow/${workflowRunId}/pause-details`),
+    enabled: enabled && !!workflowRunId,
   })
 }

@@ -3,7 +3,6 @@ import type { CSSProperties, ReactNode } from 'react'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
-import './index.css'
 
 enum BadgeState {
   Warning = 'warning',

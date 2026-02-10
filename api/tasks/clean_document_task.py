@@ -28,6 +28,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
     """
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
+    total_attachment_files = []
 
     with session_factory.create_session() as session:
         try:
@@ -47,78 +48,91 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                     SegmentAttachmentBinding.document_id == document_id,
                 )
             ).all()
-            # check segment is exist
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
-                index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+
+            attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
+            binding_ids = [binding.id for binding, _ in attachments_with_bindings]
+            total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
+
+            index_node_ids = [segment.index_node_id for segment in segments]
+            segment_contents = [segment.content for segment in segments]
+        except Exception:
+            logger.exception("Cleaned document when document deleted failed")
+            return
+
+    # check segment is exist
+    if index_node_ids:
+        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+        with session_factory.create_session() as session:
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            if dataset:
                 index_processor.clean(
                     dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
                 )
 
-                for segment in segments:
-                    image_upload_file_ids = get_image_upload_file_ids(segment.content)
-                    image_files = session.scalars(
-                        select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
-                    ).all()
-                    for image_file in image_files:
-                        if image_file is None:
-                            continue
-                        try:
-                            storage.delete(image_file.key)
-                        except Exception:
-                            logger.exception(
-                                "Delete image_files failed when storage deleted, \
-                                                  image_upload_file_is: %s",
-                                image_file.id,
-                            )
+    total_image_files = []
+    with session_factory.create_session() as session, session.begin():
+        for segment_content in segment_contents:
+            image_upload_file_ids = get_image_upload_file_ids(segment_content)
+            image_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))).all()
+            total_image_files.extend([image_file.key for image_file in image_files])
+            image_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
+            session.execute(image_file_delete_stmt)
 
-                    image_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
-                    session.execute(image_file_delete_stmt)
-                    session.delete(segment)
+    with session_factory.create_session() as session, session.begin():
+        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+        session.execute(segment_delete_stmt)
 
-                session.commit()
-            if file_id:
-                file = session.query(UploadFile).where(UploadFile.id == file_id).first()
-                if file:
-                    try:
-                        storage.delete(file.key)
-                    except Exception:
-                        logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
-                    session.delete(file)
-            # delete segment attachments
-            if attachments_with_bindings:
-                attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
-                binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-                for binding, attachment_file in attachments_with_bindings:
-                    try:
-                        storage.delete(attachment_file.key)
-                    except Exception:
-                        logger.exception(
-                            "Delete attachment_file failed when storage deleted, \
-                                            attachment_file_id: %s",
-                            binding.attachment_id,
-                        )
-                attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                session.execute(attachment_file_delete_stmt)
-
-                binding_delete_stmt = delete(SegmentAttachmentBinding).where(
-                    SegmentAttachmentBinding.id.in_(binding_ids)
-                )
-                session.execute(binding_delete_stmt)
-
-            # delete dataset metadata binding
-            session.query(DatasetMetadataBinding).where(
-                DatasetMetadataBinding.dataset_id == dataset_id,
-                DatasetMetadataBinding.document_id == document_id,
-            ).delete()
-            session.commit()
-
-            end_at = time.perf_counter()
-            logger.info(
-                click.style(
-                    f"Cleaned document when document deleted: {document_id} latency: {end_at - start_at}",
-                    fg="green",
-                )
-            )
+    for image_file_key in total_image_files:
+        try:
+            storage.delete(image_file_key)
         except Exception:
-            logger.exception("Cleaned document when document deleted failed")
+            logger.exception(
+                "Delete image_files failed when storage deleted, \
+                                          image_upload_file_is: %s",
+                image_file_key,
+            )
+
+    with session_factory.create_session() as session, session.begin():
+        if file_id:
+            file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            if file:
+                try:
+                    storage.delete(file.key)
+                except Exception:
+                    logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
+                session.delete(file)
+
+    with session_factory.create_session() as session, session.begin():
+        # delete segment attachments
+        if attachment_ids:
+            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
+            session.execute(attachment_file_delete_stmt)
+
+        if binding_ids:
+            binding_delete_stmt = delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids))
+            session.execute(binding_delete_stmt)
+
+    for attachment_file_key in total_attachment_files:
+        try:
+            storage.delete(attachment_file_key)
+        except Exception:
+            logger.exception(
+                "Delete attachment_file failed when storage deleted, \
+                                    attachment_file_id: %s",
+                attachment_file_key,
+            )
+
+    with session_factory.create_session() as session, session.begin():
+        # delete dataset metadata binding
+        session.query(DatasetMetadataBinding).where(
+            DatasetMetadataBinding.dataset_id == dataset_id,
+            DatasetMetadataBinding.document_id == document_id,
+        ).delete()
+
+    end_at = time.perf_counter()
+    logger.info(
+        click.style(
+            f"Cleaned document when document deleted: {document_id} latency: {end_at - start_at}",
+            fg="green",
+        )
+    )

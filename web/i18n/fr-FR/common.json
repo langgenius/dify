@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Écrivez votre mot d'invite ici, entrez '{' pour insérer une variable, entrez '/' pour insérer un bloc de contenu d'invite",
   "promptEditor.query.item.desc": "Insérez le modèle de requête utilisateur",
   "promptEditor.query.item.title": "Requête",
+  "promptEditor.requestURL.item.desc": "Insérer l'URL de la requête",
+  "promptEditor.requestURL.item.title": "URL de la Requête",
   "promptEditor.variable.item.desc": "Insérer des Variables & Outils Externes",
   "promptEditor.variable.item.title": "Variables & Outils Externes",
   "promptEditor.variable.modal.add": "Nouvelle variable",

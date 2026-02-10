@@ -47,7 +47,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout, shareCode])
+  }, [getSigninUrl, router, shareCode])
 
   if (appInfoError) {
     return (

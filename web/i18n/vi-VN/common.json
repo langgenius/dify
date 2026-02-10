@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Viết từ khóa của bạn ở đây, nhập '{' để chèn một biến, nhập '/' để chèn một khối nội dung nhắc nhở",
   "promptEditor.query.item.desc": "Chèn mẫu truy vấn người dùng",
   "promptEditor.query.item.title": "Truy vấn",
+  "promptEditor.requestURL.item.desc": "Chèn URL yêu cầu",
+  "promptEditor.requestURL.item.title": "URL yêu cầu",
   "promptEditor.variable.item.desc": "Chèn Biến & Công cụ Bên ngoài",
   "promptEditor.variable.item.title": "Biến & Công cụ Bên ngoài",
   "promptEditor.variable.modal.add": "Biến mới",

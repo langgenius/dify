@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "अपना प्रॉम्प्ट शब्द यहां लिखें, वेरिएबल डालने के लिए '{' दर्ज करें, प्रॉम्प्ट सामग्री ब्लॉक डालने के लिए '/' दर्ज करें",
   "promptEditor.query.item.desc": "उपयोगकर्ता क्वेरी टेम्पलेट डालें",
   "promptEditor.query.item.title": "क्वेरी",
+  "promptEditor.requestURL.item.desc": "अनुरोध URL डालें",
+  "promptEditor.requestURL.item.title": "अनुरोध URL",
   "promptEditor.variable.item.desc": "वेरिएबल और बाहरी उपकरण डालें",
   "promptEditor.variable.item.title": "वेरिएबल और बाहरी उपकरण",
   "promptEditor.variable.modal.add": "नया वेरिएबल",

@@ -83,12 +83,12 @@ class Dispatcher:
         """Main dispatcher loop."""
         try:
             self._process_commands()
+            paused = False
             while not self._stop_event.is_set():
-                if (
-                    self._execution_coordinator.aborted
-                    or self._execution_coordinator.paused
-                    or self._execution_coordinator.execution_complete
-                ):
+                if self._execution_coordinator.aborted or self._execution_coordinator.execution_complete:
+                    break
+                if self._execution_coordinator.paused:
+                    paused = True
                     break
 
                 self._execution_coordinator.check_scaling()
@@ -101,13 +101,10 @@ class Dispatcher:
                     time.sleep(0.1)
 
             self._process_commands()
-            while True:
-                try:
-                    event = self._event_queue.get(block=False)
-                    self._event_handler.dispatch(event)
-                    self._event_queue.task_done()
-                except queue.Empty:
-                    break
+            if paused:
+                self._drain_events_until_idle()
+            else:
+                self._drain_event_queue()
 
         except Exception as e:
             logger.exception("Dispatcher error")
@@ -122,3 +119,24 @@ class Dispatcher:
     def _process_commands(self, event: GraphNodeEventBase | None = None):
         if event is None or isinstance(event, self._COMMAND_TRIGGER_EVENTS):
             self._execution_coordinator.process_commands()
+
+    def _drain_event_queue(self) -> None:
+        while True:
+            try:
+                event = self._event_queue.get(block=False)
+                self._event_handler.dispatch(event)
+                self._event_queue.task_done()
+            except queue.Empty:
+                break
+
+    def _drain_events_until_idle(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                event = self._event_queue.get(timeout=0.1)
+                self._event_handler.dispatch(event)
+                self._event_queue.task_done()
+                self._process_commands(event)
+            except queue.Empty:
+                if not self._execution_coordinator.has_executing_nodes():
+                    break
+        self._drain_event_queue()

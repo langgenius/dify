@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { Plan } from '../type'
 import PlanComp from './index'
@@ -188,7 +188,9 @@ describe('PlanComp', () => {
     expect(lastCall.onCancel).toBeDefined()
 
     // Call onConfirm to close modal
-    lastCall.onConfirm()
-    lastCall.onCancel()
+    act(() => {
+      lastCall.onConfirm()
+      lastCall.onCancel()
+    })
   })
 })

@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。",
   "promptEditor.query.item.desc": "ユーザークエリテンプレートを挿入",
   "promptEditor.query.item.title": "クエリ",
+  "promptEditor.requestURL.item.desc": "リクエストURLを挿入",
+  "promptEditor.requestURL.item.title": "リクエストURL",
   "promptEditor.variable.item.desc": "変数＆外部ツールを挿入",
   "promptEditor.variable.item.title": "変数＆外部ツール",
   "promptEditor.variable.modal.add": "新しい変数",

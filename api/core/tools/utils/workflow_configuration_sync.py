@@ -3,6 +3,8 @@ from typing import Any
 
 from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.errors import WorkflowToolHumanInputNotSupportedError
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import OutputVariableEntity
 
 
@@ -44,6 +46,13 @@ class WorkflowToolConfigurationUtils:
                 outputs_by_variable[variable] = entity
 
         return [outputs_by_variable[variable] for variable in variable_order]
+
+    @classmethod
+    def ensure_no_human_input_nodes(cls, graph: Mapping[str, Any]) -> None:
+        nodes = graph.get("nodes", [])
+        for node in nodes:
+            if node.get("data", {}).get("type") == NodeType.HUMAN_INPUT:
+                raise WorkflowToolHumanInputNotSupportedError()
 
     @classmethod
     def check_is_synced(

@@ -6,9 +6,6 @@ import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from './index'
 
-// ==================== Mock Setup ====================
-
-// Mock shared state for portal
 let mockPortalOpenState = false
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
@@ -36,21 +33,18 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   },
 }))
 
-// Mock Toast
 vi.mock('@/app/components/base/toast', () => ({
   default: {
     notify: vi.fn(),
   },
 }))
 
-// Mock zustand store
 let mockStoreDetail: SimpleDetail | undefined
 vi.mock('../../store', () => ({
   usePluginStore: (selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined) =>
     selector({ detail: mockStoreDetail }),
 }))
 
-// Mock subscription list hook
 const mockSubscriptions: TriggerSubscription[] = []
 const mockRefetch = vi.fn()
 vi.mock('../use-subscription-list', () => ({
@@ -60,7 +54,6 @@ vi.mock('../use-subscription-list', () => ({
   }),
 }))
 
-// Mock trigger service hooks
 let mockProviderInfo: { data: TriggerProviderApiEntity | undefined } = { data: undefined }
 let mockOAuthConfig: { data: TriggerOAuthConfig | undefined, refetch: () => void } = { data: undefined, refetch: vi.fn() }
 const mockInitiateOAuth = vi.fn()
@@ -73,14 +66,12 @@ vi.mock('@/service/use-triggers', () => ({
   }),
 }))
 
-// Mock OAuth popup
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn((url: string, callback: (data?: unknown) => void) => {
     callback({ success: true, subscriptionId: 'test-subscription' })
   }),
 }))
 
-// Mock child modals
 vi.mock('./common-modal', () => ({
   CommonCreateModal: ({ createType, onClose, builder }: {
     createType: SupportedCreationMethods
@@ -128,7 +119,6 @@ vi.mock('./oauth-client', () => ({
   ),
 }))
 
-// Mock CustomSelect
 vi.mock('@/app/components/base/select/custom', () => ({
   default: ({ options, value, onChange, CustomTrigger, CustomOption, containerProps }: {
     options: Array<{ value: string, label: string, show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
@@ -160,11 +150,6 @@ vi.mock('@/app/components/base/select/custom', () => ({
   ),
 }))
 
-// ==================== Test Utilities ====================
-
-/**
- * Factory function to create a TriggerProviderApiEntity with defaults
- */
 const createProviderInfo = (overrides: Partial<TriggerProviderApiEntity> = {}): TriggerProviderApiEntity => ({
   author: 'test-author',
   name: 'test-provider',
@@ -179,9 +164,6 @@ const createProviderInfo = (overrides: Partial<TriggerProviderApiEntity> = {}): 
   ...overrides,
 })
 
-/**
- * Factory function to create a TriggerOAuthConfig with defaults
- */
 const createOAuthConfig = (overrides: Partial<TriggerOAuthConfig> = {}): TriggerOAuthConfig => ({
   configured: false,
   custom_configured: false,
@@ -196,9 +178,6 @@ const createOAuthConfig = (overrides: Partial<TriggerOAuthConfig> = {}): Trigger
   ...overrides,
 })
 
-/**
- * Factory function to create a SimpleDetail with defaults
- */
 const createStoreDetail = (overrides: Partial<SimpleDetail> = {}): SimpleDetail => ({
   plugin_id: 'test-plugin',
   name: 'Test Plugin',
@@ -209,9 +188,6 @@ const createStoreDetail = (overrides: Partial<SimpleDetail> = {}): SimpleDetail 
   ...overrides,
 })
 
-/**
- * Factory function to create a TriggerSubscription with defaults
- */
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'test-subscription',
   name: 'Test Subscription',
@@ -225,16 +201,10 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   ...overrides,
 })
 
-/**
- * Factory function to create default props
- */
 const createDefaultProps = (overrides: Partial<Parameters<typeof CreateSubscriptionButton>[0]> = {}) => ({
   ...overrides,
 })
 
-/**
- * Helper to set up mock data for testing
- */
 const setupMocks = (config: {
   providerInfo?: TriggerProviderApiEntity
   oauthConfig?: TriggerOAuthConfig
@@ -249,8 +219,6 @@ const setupMocks = (config: {
     mockSubscriptions.push(...config.subscriptions)
 }
 
-// ==================== Tests ====================
-
 describe('CreateSubscriptionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -258,7 +226,6 @@ describe('CreateSubscriptionButton', () => {
     setupMocks()
   })
 
-  // ==================== Rendering Tests ====================
   describe('Rendering', () => {
     it('should render null when supportedMethods is empty', () => {
       // Arrange
@@ -322,7 +289,6 @@ describe('CreateSubscriptionButton', () => {
     })
   })
 
-  // ==================== Props Testing ====================
   describe('Props', () => {
     it('should apply default buttonType as FULL_BUTTON', () => {
       // Arrange
@@ -355,7 +321,6 @@ describe('CreateSubscriptionButton', () => {
     })
   })
 
-  // ==================== State Management ====================
   describe('State Management', () => {
     it('should show CommonCreateModal when selectedCreateInfo is set', async () => {
       // Arrange
@@ -474,7 +439,6 @@ describe('CreateSubscriptionButton', () => {
     })
   })
 
-  // ==================== Memoization Logic ====================
   describe('Memoization - buttonTextMap', () => {
     it('should display correct button text for OAUTH method', () => {
       // Arrange

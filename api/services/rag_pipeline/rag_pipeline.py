@@ -1329,10 +1329,24 @@ class RagPipelineService:
         """
         Get datasource plugins
         """
-        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = (
+            db.session.query(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = (
+            db.session.query(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -1413,10 +1427,24 @@ class RagPipelineService:
         """
         Get pipeline
         """
-        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = (
+            db.session.query(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = (
+            db.session.query(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not pipeline:
             raise ValueError("Pipeline not found")
         return pipeline

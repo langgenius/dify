@@ -18,6 +18,7 @@ import {
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { IS_CE_EDITION } from '@/config'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'
@@ -172,7 +173,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 {
                   data.indexing_technique === IndexMethodEnum.QUALIFIED
                   && [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(data.chunk_structure)
-                  && (
+                  && IS_CE_EDITION && (
                     <>
                       <SummaryIndexSetting
                         summaryIndexSetting={data.summary_index_setting}

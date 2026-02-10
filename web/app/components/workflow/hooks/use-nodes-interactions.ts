@@ -299,6 +299,7 @@ export const useNodesInteractions = () => {
                   || connectingNode.data.type === BlockEnum.VariableAggregator)
                 && node.data.type !== BlockEnum.IfElse
                 && node.data.type !== BlockEnum.QuestionClassifier
+                && node.data.type !== BlockEnum.HumanInput
               ) {
                 n.data._isEntering = true
               }
@@ -1017,6 +1018,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
+          && nodeType !== BlockEnum.HumanInput
         ) {
           newNode.data._connectedSourceHandleIds = [sourceHandle]
         }
@@ -1053,6 +1055,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
+          && nodeType !== BlockEnum.HumanInput
           && nodeType !== BlockEnum.LoopEnd
         ) {
           newEdge = {
@@ -1244,6 +1247,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
+          && nodeType !== BlockEnum.HumanInput
           && nodeType !== BlockEnum.LoopEnd
         ) {
           newNextEdge = {

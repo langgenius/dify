@@ -1,5 +1,8 @@
 import json
+from collections.abc import Sequence
 from typing import Union
+
+from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -14,6 +17,10 @@ from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
+from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
+from repositories.sqlalchemy_execution_extra_content_repository import (
+    SQLAlchemyExecutionExtraContentRepository,
+)
 from services.conversation_service import ConversationService
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -22,6 +29,23 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.workflow_service import WorkflowService
+
+
+def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+    return SQLAlchemyExecutionExtraContentRepository(session_maker=session_maker)
+
+
+def attach_message_extra_contents(messages: Sequence[Message]) -> None:
+    if not messages:
+        return
+
+    repository = _create_execution_extra_content_repository()
+    extra_contents_lists = repository.get_by_message_ids([message.id for message in messages])
+
+    for index, message in enumerate(messages):
+        contents = extra_contents_lists[index] if index < len(extra_contents_lists) else []
+        message.set_extra_contents([content.model_dump(mode="json", exclude_none=True) for content in contents])
 
 
 class MessageService:
@@ -84,6 +108,8 @@ class MessageService:
 
         if order == "asc":
             history_messages = list(reversed(history_messages))
+
+        attach_message_extra_contents(history_messages)
 
         return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 

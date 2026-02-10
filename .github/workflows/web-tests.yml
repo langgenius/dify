@@ -39,7 +39,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm test:coverage
+        run: pnpm test:ci
 
       - name: Coverage Summary
         if: always()

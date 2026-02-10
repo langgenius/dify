@@ -28,8 +28,8 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from models.engine import db
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,

@@ -1,12 +1,12 @@
 from urllib import parse
 
 from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import BaseModel, Field, TypeAdapter
 
 import services
 from configs import dify_config
-from controllers.common.schema import get_or_create_model, register_enum_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -25,7 +25,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_with_role_fields, account_with_role_list_fields
+from fields.member_fields import AccountWithRole, AccountWithRoleList
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountRole
@@ -69,12 +69,7 @@ reg(OwnerTransferEmailPayload)
 reg(OwnerTransferCheckPayload)
 reg(OwnerTransferPayload)
 register_enum_models(console_ns, TenantAccountRole)
-
-account_with_role_model = get_or_create_model("AccountWithRole", account_with_role_fields)
-
-account_with_role_list_fields_copy = account_with_role_list_fields.copy()
-account_with_role_list_fields_copy["accounts"] = fields.List(fields.Nested(account_with_role_model))
-account_with_role_list_model = get_or_create_model("AccountWithRoleList", account_with_role_list_fields_copy)
+register_schema_models(console_ns, AccountWithRole, AccountWithRoleList)
 
 
 @console_ns.route("/workspaces/current/members")
@@ -84,13 +79,15 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_with_role_list_model)
+    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
-        return {"result": "success", "accounts": members}, 200
+        member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
+        response = AccountWithRoleList(accounts=member_models)
+        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/workspaces/current/members/invite-email")
@@ -235,13 +232,15 @@ class DatasetOperatorMemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_with_role_list_model)
+    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
     def get(self):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
-        return {"result": "success", "accounts": members}, 200
+        member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
+        response = AccountWithRoleList(accounts=member_models)
+        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")

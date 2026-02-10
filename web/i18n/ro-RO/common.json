@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Scrieți aici prompt-ul, introduceți '{}' pentru a insera o variabilă, introduceți '/' pentru a insera un bloc de conținut prompt",
   "promptEditor.query.item.desc": "Inserați șablon de interogare utilizator",
   "promptEditor.query.item.title": "Interogare",
+  "promptEditor.requestURL.item.desc": "Inserați URL-ul cererii",
+  "promptEditor.requestURL.item.title": "URL cerere",
   "promptEditor.variable.item.desc": "Inserați variabile și instrumente externe",
   "promptEditor.variable.item.title": "Variabile și instrumente externe",
   "promptEditor.variable.modal.add": "Nouă variabilă",

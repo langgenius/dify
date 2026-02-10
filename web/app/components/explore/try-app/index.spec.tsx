@@ -16,6 +16,14 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal() as object
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const mockUseGetTryAppInfo = vi.fn()
 
 vi.mock('@/service/use-try-app', () => ({

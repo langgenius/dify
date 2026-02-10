@@ -341,8 +341,10 @@ export const VAR_REGEX
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
-export const DISABLE_UPLOAD_IMAGE_AS_ICON
-  = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
+export const HITL_INPUT_REG = /\{\{(#\$output\.(?:[a-z_]\w{0,29}){1,10}#)\}\}/gi
+export const resetHITLInputReg = () => HITL_INPUT_REG.lastIndex = 0
+
+export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
 
 export const GITHUB_ACCESS_TOKEN
   = process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN || ''

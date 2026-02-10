@@ -38,6 +38,11 @@ pnpm lint:tss
 
 This command lints the entire project and is intended for final verification before committing or pushing changes.
 
+### Introducing New Plugins or Rules
+
+If a new rule causes many existing code errors or automatic fixes generate too many diffs, do not use the `--fix` option for automatic fixes.
+You can introduce the rule first, then use the `--suppress-all` option to temporarily suppress these errors, and gradually fix them in subsequent changes.
+
 ## Type Check
 
 You should be able to see suggestions from TypeScript in your editor for all open files.

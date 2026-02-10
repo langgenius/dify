@@ -2,7 +2,11 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { FileResponse } from '@/types/workflow'
+import type {
+  FileResponse,
+  HumanInputFilledFormData,
+  HumanInputFormData,
+} from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -64,6 +68,19 @@ export type CitationItem = {
   word_count: number
 }
 
+export type ExtraContent
+  = {
+    type: 'human_input'
+    submitted: false
+    form_definition: HumanInputFormData
+    workflow_run_id: string
+  }
+  | {
+    type: 'human_input'
+    submitted: true
+    form_submission_data: HumanInputFilledFormData
+  }
+
 export type IChatItem = {
   id: string
   content: string
@@ -104,6 +121,10 @@ export type IChatItem = {
   siblingIndex?: number
   prevSibling?: string
   nextSibling?: string
+  // for human input
+  humanInputFormDataList?: HumanInputFormData[]
+  humanInputFilledFormDataList?: HumanInputFilledFormData[]
+  extra_contents?: ExtraContent[]
 }
 
 export type Metadata = {
