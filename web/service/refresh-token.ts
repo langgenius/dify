@@ -2,16 +2,55 @@ import { API_PREFIX } from '@/config'
 import { fetchWithRetry } from '@/utils'
 
 const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
+const LAST_REFRESH_TIME_KEY = 'last_refresh_time'
+const REFRESH_LOCK_MAX_AGE_MS = 10 * 1000
+const REFRESH_LOCK_POLL_INTERVAL_MS = 200
 
 let isRefreshing = false
-function waitUntilTokenRefreshed() {
+let refreshLockToken: string | null = null
+
+const getCurrentTime = () => Date.now()
+
+function getRefreshLockAge() {
+  const lastTime = globalThis.localStorage.getItem(LAST_REFRESH_TIME_KEY) || '0'
+  const parsedLastTime = Number.parseInt(lastTime, 10)
+  if (Number.isNaN(parsedLastTime) || parsedLastTime <= 0)
+    return Number.POSITIVE_INFINITY
+
+  return getCurrentTime() - parsedLastTime
+}
+
+function hasValidRefreshLock() {
+  const refreshLock = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
+  if (!refreshLock)
+    return false
+
+  if (getRefreshLockAge() <= REFRESH_LOCK_MAX_AGE_MS)
+    return true
+
+  // stale lock from another tab/session: clean it up to avoid deadlock
+  globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+  globalThis.localStorage.removeItem(LAST_REFRESH_TIME_KEY)
+  return false
+}
+
+function waitUntilTokenRefreshed(maxWaitMs: number) {
+  const startedAt = getCurrentTime()
   return new Promise<void>((resolve) => {
     function _check() {
-      const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-      if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
+      if (getCurrentTime() - startedAt >= maxWaitMs) {
+        if (!isRefreshing) {
+          globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+          globalThis.localStorage.removeItem(LAST_REFRESH_TIME_KEY)
+        }
+        resolve()
+        return
+      }
+
+      if (hasValidRefreshLock() || isRefreshing) {
         setTimeout(() => {
           _check()
-        }, 1000)
+        }, REFRESH_LOCK_POLL_INTERVAL_MS)
       }
       else {
         resolve()
@@ -21,45 +60,46 @@ function waitUntilTokenRefreshed() {
   })
 }
 
-const isRefreshingSignAvailable = function (delta: number) {
-  const nowTime = new Date().getTime()
-  const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
-  return nowTime - Number.parseInt(lastTime) <= delta
+function acquireRefreshLock() {
+  refreshLockToken = `${getCurrentTime()}-${Math.random().toString(36).slice(2)}`
+  globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, refreshLockToken)
+  globalThis.localStorage.setItem(LAST_REFRESH_TIME_KEY, getCurrentTime().toString())
 }
 
 // only one request can send
 async function getNewAccessToken(timeout: number): Promise<void> {
+  let lockAcquired = false
+
   try {
-    const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-    if ((isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) || isRefreshing) {
-      await waitUntilTokenRefreshed()
+    if (hasValidRefreshLock() || isRefreshing) {
+      await waitUntilTokenRefreshed(Math.min(timeout, REFRESH_LOCK_MAX_AGE_MS))
+      return
+    }
+
+    isRefreshing = true
+    acquireRefreshLock()
+    lockAcquired = true
+    globalThis.addEventListener('beforeunload', releaseRefreshLock)
+
+    // Do not use baseFetch to refresh tokens.
+    // If a 401 response occurs and baseFetch itself attempts to refresh the token,
+    // it can lead to an infinite loop if the refresh attempt also returns 401.
+    // To avoid this, handle token refresh separately in a dedicated function
+    // that does not call baseFetch and uses a single retry mechanism.
+    const [error, ret] = await fetchWithRetry(globalThis.fetch(`${API_PREFIX}/refresh-token`, {
+      method: 'POST',
+      credentials: 'include', // Important: include cookies in the request
+      headers: {
+        'Content-Type': 'application/json;utf-8',
+      },
+      // No body needed - refresh token is in cookie
+    }))
+    if (error) {
+      return Promise.reject(error)
     }
     else {
-      isRefreshing = true
-      globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
-      globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
-      globalThis.addEventListener('beforeunload', releaseRefreshLock)
-
-      // Do not use baseFetch to refresh tokens.
-      // If a 401 response occurs and baseFetch itself attempts to refresh the token,
-      // it can lead to an infinite loop if the refresh attempt also returns 401.
-      // To avoid this, handle token refresh separately in a dedicated function
-      // that does not call baseFetch and uses a single retry mechanism.
-      const [error, ret] = await fetchWithRetry(globalThis.fetch(`${API_PREFIX}/refresh-token`, {
-        method: 'POST',
-        credentials: 'include', // Important: include cookies in the request
-        headers: {
-          'Content-Type': 'application/json;utf-8',
-        },
-        // No body needed - refresh token is in cookie
-      }))
-      if (error) {
-        return Promise.reject(error)
-      }
-      else {
-        if (ret.status === 401)
-          return Promise.reject(ret)
-      }
+      if (ret.status === 401)
+        return Promise.reject(ret)
     }
   }
   catch (error) {
@@ -67,16 +107,21 @@ async function getNewAccessToken(timeout: number): Promise<void> {
     return Promise.reject(error)
   }
   finally {
-    releaseRefreshLock()
+    if (lockAcquired)
+      releaseRefreshLock()
   }
 }
 
 function releaseRefreshLock() {
-  // Always clear the refresh lock to avoid cross-tab deadlocks.
-  // This is safe to call multiple times and from tabs that were only waiting.
+  const currentLockToken = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
+
   isRefreshing = false
-  globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
-  globalThis.localStorage.removeItem('last_refresh_time')
+  if (refreshLockToken && currentLockToken === refreshLockToken) {
+    globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+    globalThis.localStorage.removeItem(LAST_REFRESH_TIME_KEY)
+  }
+
+  refreshLockToken = null
   globalThis.removeEventListener('beforeunload', releaseRefreshLock)
 }
 

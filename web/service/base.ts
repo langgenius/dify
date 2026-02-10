@@ -37,6 +37,7 @@ import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
+const SIGNIN_REDIRECT_URL_KEY = 'oauth_redirect_url'
 
 export type IconObject = {
   background: string
@@ -154,6 +155,20 @@ function jumpTo(url: string) {
   if (targetPath === globalThis.location.pathname)
     return
   globalThis.location.href = url
+}
+
+export function buildSigninUrlWithRedirect(currentLocation: Pick<Location, 'origin' | 'pathname' | 'search'>, currentBasePath: string) {
+  const signinPath = `${currentBasePath}/signin`
+  const signinUrl = `${currentLocation.origin}${signinPath}`
+
+  // Keep signin as-is to avoid redirect loops.
+  if (currentLocation.pathname === signinPath)
+    return signinUrl
+
+  const currentUrl = `${currentLocation.origin}${currentLocation.pathname}${currentLocation.search}`
+  const params = new URLSearchParams()
+  params.set(SIGNIN_REDIRECT_URL_KEY, encodeURIComponent(currentUrl))
+  return `${signinUrl}?${params.toString()}`
 }
 
 function unicodeToChar(text: string) {
@@ -781,7 +796,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
     const errResp: Response = err as any
     if (errResp.status === 401) {
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+      const loginUrl = buildSigninUrlWithRedirect(globalThis.location, basePath)
       if (parseErr) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
