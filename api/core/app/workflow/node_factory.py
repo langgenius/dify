@@ -8,7 +8,9 @@ from core.file.file_manager import file_manager
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.rag.summary_index.summary_index import SummaryIndex
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType
@@ -17,6 +19,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.nodes.http_request.node import HttpRequestNode
+from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
@@ -141,6 +144,16 @@ class DifyNodeFactory(NodeFactory):
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
+            )
+
+        if node_type == NodeType.KNOWLEDGE_INDEX:
+            return KnowledgeIndexNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                index_processor=IndexProcessor(),
+                summary_index_service=SummaryIndex(),
             )
 
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
