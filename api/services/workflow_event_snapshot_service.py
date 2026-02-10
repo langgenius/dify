@@ -137,7 +137,7 @@ def build_workflow_event_stream(
                                 "No workflow events received for %s seconds, keeping stream open",
                                 idle_timeout,
                             )
-                            last_msg_time = current_time
+                            return
                         if current_time - last_ping_time >= ping_interval:
                             yield StreamEvent.PING.value
                             last_ping_time = current_time
