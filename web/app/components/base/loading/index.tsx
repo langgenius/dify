@@ -1,21 +1,25 @@
 'use client'
 
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { cn } from '@/utils/classnames'
 import './style.css'
 
 type ILoadingProps = {
   type?: 'area' | 'app'
+  className?: string
 }
-const Loading = (
-  { type = 'area' }: ILoadingProps = { type: 'area' },
-) => {
+
+const Loading = (props?: ILoadingProps) => {
+  const { type = 'area', className } = props || {}
   const { t } = useTranslation()
 
   return (
     <div
-      className={`flex w-full items-center justify-center ${type === 'app' ? 'h-full' : ''}`}
+      className={cn(
+        'flex w-full items-center justify-center',
+        type === 'app' && 'h-full',
+        className,
+      )}
       role="status"
       aria-live="polite"
       aria-label={t('loading', { ns: 'appApi' })}
@@ -37,4 +41,5 @@ const Loading = (
     </div>
   )
 }
+
 export default Loading

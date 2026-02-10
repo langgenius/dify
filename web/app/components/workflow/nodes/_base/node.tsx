@@ -9,6 +9,7 @@ import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiLoader2Line,
+  RiPauseCircleFill,
 } from '@remixicon/react'
 import {
   cloneElement,
@@ -107,7 +108,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     showExceptionBorder,
   } = useMemo(() => {
     return {
-      showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
+      showRunningBorder: (data._runningStatus === NodeRunningStatus.Running || data._runningStatus === NodeRunningStatus.Paused) && !showSelectedBorder,
       showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
@@ -221,7 +222,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._isCandidate && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -275,7 +276,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             }
           </div>
           {
-            data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
+            !!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (
               <div className="mr-1.5 text-xs font-medium text-text-accent">
                 {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}
                 /
@@ -284,18 +285,30 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
+            !!(data.type === BlockEnum.Loop && data._loopIndex) && LoopIndex
           }
           {
-            isLoading
-              ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
-              : data._runningStatus === NodeRunningStatus.Failed
-                ? <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
-                : data._runningStatus === NodeRunningStatus.Exception
-                  ? <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
-                  : (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)
-                      ? <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
-                      : null
+            isLoading && <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Failed && (
+              <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Exception && (
+              <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+            )
+          }
+          {
+            !isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && (
+              <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Paused && (
+              <RiPauseCircleFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+            )
           }
         </div>
         {
@@ -327,7 +340,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
+          !!(data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && (
             <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
               {data.desc}
             </div>

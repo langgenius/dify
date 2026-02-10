@@ -92,6 +92,16 @@ vi.mock('@/app/components/workflow/store', () => {
     useWorkflowStore: () => ({
       getState: () => ({
         pipelineId: 'test-pipeline-id',
+        knowledgeName: 'Test Knowledge',
+        knowledgeIcon: {
+          icon_type: 'emoji' as const,
+          icon: '📚',
+          icon_background: '#FFFFFF',
+          icon_url: '',
+        },
+        setShowInputFieldPanel: mockSetShowInputFieldPanel,
+        setShowEnvPanel: mockSetShowEnvPanel,
+        setShowImportDSLModal: mockSetShowImportDSLModal,
         setIsPreparingDataSource: mockSetIsPreparingDataSource,
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
         setPublishedAt: mockSetPublishedAt,
@@ -285,6 +295,8 @@ vi.mock('@/utils/var', () => ({
 // Mock provider context
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => createMockProviderContextValue(),
+  useProviderContextSelector: <T,>(selector: (state: ReturnType<typeof createMockProviderContextValue>) => T): T =>
+    selector(createMockProviderContextValue()),
 }))
 
 // Mock WorkflowWithInnerContext

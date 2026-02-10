@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TypeAlias
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.file import File
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 
@@ -20,8 +22,8 @@ class SimpleFeedback(ResponseModel):
 
 
 class RetrieverResource(ResponseModel):
-    id: str
-    message_id: str
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    message_id: str = Field(default_factory=lambda: str(uuid4()))
     position: int
     dataset_id: str | None = None
     dataset_name: str | None = None
@@ -35,6 +37,7 @@ class RetrieverResource(ResponseModel):
     segment_position: int | None = None
     index_node_hash: str | None = None
     content: str | None = None
+    summary: str | None = None
     created_at: int | None = None
 
     @field_validator("created_at", mode="before")
@@ -59,6 +62,7 @@ class MessageListItem(ResponseModel):
     message_files: list[MessageFile]
     status: str
     error: str | None = None
+    extra_contents: list[ExecutionExtraContentDomainModel]
 
     @field_validator("inputs", mode="before")
     @classmethod
