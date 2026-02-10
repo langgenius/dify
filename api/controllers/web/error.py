@@ -117,6 +117,12 @@ class InvokeRateLimitError(BaseHTTPException):
     code = 429
 
 
+class WebFormRateLimitExceededError(BaseHTTPException):
+    error_code = "web_form_rate_limit_exceeded"
+    description = "Too many form requests. Please try again later."
+    code = 429
+
+
 class NotFoundError(BaseHTTPException):
     error_code = "not_found"
     code = 404
