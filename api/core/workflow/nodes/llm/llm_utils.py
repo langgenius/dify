@@ -288,20 +288,27 @@ def _build_messages_from_trace(
 
     Processes trace in order to reconstruct the conversation flow:
     - Model segments with tool_calls -> AssistantPromptMessage with tool_calls
+    - Model segments without tool_calls -> AssistantPromptMessage with text only
     - Tool segments -> ToolPromptMessage with result
-    - Final response -> AssistantPromptMessage with assistant_response (with optional file_suffix)
+
+    assistant_response is the accumulated text from all model turns (see LLMGenerationData.text).
+    Each model trace segment already contains its own text portion; to avoid duplication we track
+    how much text has been covered by trace segments and only append the remaining portion (if any)
+    along with file_suffix as the final assistant message.
     """
     from core.workflow.nodes.llm.entities import ModelTraceSegment, ToolTraceSegment
 
     messages: list[PromptMessage] = []
+    # Track total text length already present in model trace segments
+    covered_text_len = 0
 
     for segment in generation_data.trace:
         if segment.type == "model" and isinstance(segment.output, ModelTraceSegment):
             model_output = segment.output
             segment_content = model_output.text or ""
+            covered_text_len += len(segment_content)
 
             if model_output.tool_calls:
-                # Build tool_calls for AssistantPromptMessage
                 tool_calls = [
                     AssistantPromptMessage.ToolCall(
                         id=tc.id or "",
@@ -314,6 +321,9 @@ def _build_messages_from_trace(
                     for tc in model_output.tool_calls
                 ]
                 messages.append(AssistantPromptMessage(content=segment_content, tool_calls=tool_calls))
+            elif segment_content:
+                # Model response without tool calls (e.g., final text-only turn)
+                messages.append(AssistantPromptMessage(content=segment_content))
 
         elif segment.type == "tool" and isinstance(segment.output, ToolTraceSegment):
             tool_output = segment.output
@@ -325,8 +335,11 @@ def _build_messages_from_trace(
                 )
             )
 
-    # Add final assistant response as the authoritative text (with file info if present)
-    messages.append(AssistantPromptMessage(content=assistant_response + file_suffix))
+    # Append only the portion of assistant_response not already covered by trace segments
+    remaining_text = assistant_response[covered_text_len:]
+    final_content = remaining_text + file_suffix
+    if final_content:
+        messages.append(AssistantPromptMessage(content=final_content))
 
     return messages
 
