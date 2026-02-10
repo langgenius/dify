@@ -282,9 +282,10 @@ describe('useDocumentListQueryState', () => {
       })
 
       const pushedUrl = mockPush.mock.calls[0][0] as string
-      // updateSearchParams calls encodeURIComponent, then URLSearchParams.toString() encodes again
+      // Source code applies encodeURIComponent before setting in URLSearchParams
       expect(pushedUrl).toContain('keyword=')
       const params = new URLSearchParams(pushedUrl.split('?')[1])
+      // params.get decodes one layer, but the value was pre-encoded with encodeURIComponent
       expect(decodeURIComponent(params.get('keyword')!)).toBe('test query')
     })
 

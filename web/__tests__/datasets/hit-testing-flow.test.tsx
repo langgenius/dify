@@ -1,37 +1,60 @@
 /**
  * Integration Test: Hit Testing Flow
  *
- * Tests the query submission → API response → results rendering → modal interaction flow.
- * Validates cross-component data contracts in the hit testing module.
+ * Tests the query submission → API response → callback chain flow
+ * by rendering the actual QueryInput component and triggering user interactions.
+ * Validates that the production onSubmit logic correctly constructs payloads
+ * and invokes callbacks on success/failure.
  */
 
-import type { HitTestingResponse } from '@/models/datasets'
+import type {
+  HitTestingResponse,
+  Query,
+} from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import QueryInput from '@/app/components/datasets/hit-testing/components/query-input'
+import { RETRIEVE_METHOD } from '@/types/app'
 
-const mocks = vi.hoisted(() => ({
-  hitTestingMutateAsync: vi.fn(),
-  isHitTestingPending: false,
-  externalMutateAsync: vi.fn(),
-  isExternalPending: false,
-  recordsData: null as { data: { id: string, content: string, source: string, created_at: number }[] } | null,
-  recordsRefetch: vi.fn(),
-  isRecordsLoading: false,
+// --- Mocks ---
+
+vi.mock('@/context/dataset-detail', () => ({
+  default: {},
+  useDatasetDetailContext: vi.fn(() => ({ dataset: undefined })),
+  useDatasetDetailContextWithSelector: vi.fn(() => false),
 }))
 
-vi.mock('@/service/knowledge/use-hit-testing', () => ({
-  useHitTesting: () => ({
-    mutateAsync: mocks.hitTestingMutateAsync,
-    isPending: mocks.isHitTestingPending,
-  }),
-  useExternalKnowledgeBaseHitTesting: () => ({
-    mutateAsync: mocks.externalMutateAsync,
-    isPending: mocks.isExternalPending,
-  }),
-  useDatasetTestingRecords: () => ({
-    data: mocks.recordsData,
-    refetch: mocks.recordsRefetch,
-    isLoading: mocks.isRecordsLoading,
-  }),
+vi.mock('use-context-selector', () => ({
+  useContext: vi.fn(() => ({})),
+  useContextSelector: vi.fn(() => false),
+  createContext: vi.fn(() => ({})),
 }))
+
+vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing', () => ({
+  default: ({ textArea, actionButton }: { textArea: React.ReactNode, actionButton: React.ReactNode }) => (
+    <div data-testid="image-uploader-mock">
+      {textArea}
+      {actionButton}
+    </div>
+  ),
+}))
+
+// --- Factories ---
+
+const createRetrievalConfig = (overrides = {}): RetrievalConfig => ({
+  search_method: RETRIEVE_METHOD.semantic,
+  reranking_enable: false,
+  reranking_mode: undefined,
+  reranking_model: {
+    reranking_provider_name: '',
+    reranking_model_name: '',
+  },
+  weights: undefined,
+  top_k: 3,
+  score_threshold_enabled: false,
+  score_threshold: 0.5,
+  ...overrides,
+} as RetrievalConfig)
 
 const createHitTestingResponse = (numResults: number): HitTestingResponse => ({
   query: {
@@ -82,61 +105,164 @@ const createHitTestingResponse = (numResults: number): HitTestingResponse => ({
   })),
 })
 
+const createTextQuery = (content: string): Query[] => [
+  { content, content_type: 'text_query', file_info: null },
+]
+
+// --- Helpers ---
+
+const findSubmitButton = () => {
+  const buttons = screen.getAllByRole('button')
+  const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
+  expect(submitButton).toBeTruthy()
+  return submitButton!
+}
+
+// --- Tests ---
+
 describe('Hit Testing Flow', () => {
+  const mockHitTestingMutation = vi.fn()
+  const mockExternalMutation = vi.fn()
+  const mockSetHitResult = vi.fn()
+  const mockSetExternalHitResult = vi.fn()
+  const mockOnUpdateList = vi.fn()
+  const mockSetQueries = vi.fn()
+  const mockOnClickRetrievalMethod = vi.fn()
+  const mockOnSubmit = vi.fn()
+
+  const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
+    onUpdateList: mockOnUpdateList,
+    setHitResult: mockSetHitResult,
+    setExternalHitResult: mockSetExternalHitResult,
+    loading: false,
+    queries: [] as Query[],
+    setQueries: mockSetQueries,
+    isExternal: false,
+    onClickRetrievalMethod: mockOnClickRetrievalMethod,
+    retrievalConfig: createRetrievalConfig(),
+    isEconomy: false,
+    onSubmit: mockOnSubmit,
+    hitTestingMutation: mockHitTestingMutation,
+    externalKnowledgeBaseHitTestingMutation: mockExternalMutation,
+    ...overrides,
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.hitTestingMutateAsync.mockReset()
-    mocks.externalMutateAsync.mockReset()
-    mocks.recordsData = null
-    mocks.isHitTestingPending = false
   })
 
   describe('Query Submission → API Call', () => {
-    it('should call hitTesting mutation with correct params for text query', async () => {
-      const queryContent = 'How does RAG work?'
-      const expectedPayload = {
-        datasetId: 'ds-1',
-        params: {
-          query: queryContent,
-          retrieval_model: {
-            search_method: 'semantic_search',
-            reranking_enable: false,
-            reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-            top_k: 3,
-            score_threshold_enabled: false,
-          },
-        },
-      }
+    it('should call hitTestingMutation with correct payload including retrieval model', async () => {
+      const retrievalConfig = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.semantic,
+        top_k: 3,
+        score_threshold_enabled: false,
+      })
+      mockHitTestingMutation.mockResolvedValue(createHitTestingResponse(3))
 
-      mocks.hitTestingMutateAsync.mockResolvedValue(createHitTestingResponse(3))
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('How does RAG work?'),
+          retrievalConfig,
+        })}
+        />,
+      )
 
-      await mocks.hitTestingMutateAsync(expectedPayload)
+      fireEvent.click(findSubmitButton())
 
-      expect(mocks.hitTestingMutateAsync).toHaveBeenCalledWith(expectedPayload)
+      await waitFor(() => {
+        expect(mockHitTestingMutation).toHaveBeenCalledWith(
+          expect.objectContaining({
+            query: 'How does RAG work?',
+            attachment_ids: [],
+            retrieval_model: expect.objectContaining({
+              search_method: RETRIEVE_METHOD.semantic,
+              top_k: 3,
+              score_threshold_enabled: false,
+            }),
+          }),
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+          }),
+        )
+      })
     })
 
-    it('should handle empty results gracefully', async () => {
-      mocks.hitTestingMutateAsync.mockResolvedValue(createHitTestingResponse(0))
+    it('should override search_method to keywordSearch when isEconomy is true', async () => {
+      const retrievalConfig = createRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic })
+      mockHitTestingMutation.mockResolvedValue(createHitTestingResponse(1))
 
-      const result = await mocks.hitTestingMutateAsync({
-        datasetId: 'ds-1',
-        params: { query: 'nonexistent topic' },
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('test query'),
+          retrievalConfig,
+          isEconomy: true,
+        })}
+        />,
+      )
+
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockHitTestingMutation).toHaveBeenCalledWith(
+          expect.objectContaining({
+            retrieval_model: expect.objectContaining({
+              search_method: RETRIEVE_METHOD.keywordSearch,
+            }),
+          }),
+          expect.anything(),
+        )
+      })
+    })
+
+    it('should handle empty results by calling setHitResult with empty records', async () => {
+      const emptyResponse = createHitTestingResponse(0)
+      mockHitTestingMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
+        options?.onSuccess?.(emptyResponse)
+        return emptyResponse
       })
 
-      expect(result.records).toHaveLength(0)
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('nonexistent topic'),
+        })}
+        />,
+      )
+
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockSetHitResult).toHaveBeenCalledWith(
+          expect.objectContaining({ records: [] }),
+        )
+      })
     })
 
-    it('should handle API errors', async () => {
-      mocks.hitTestingMutateAsync.mockRejectedValue(new Error('Network error'))
+    it('should not call success callbacks when mutation resolves without onSuccess', async () => {
+      // Simulate a mutation that resolves but does not invoke the onSuccess callback
+      mockHitTestingMutation.mockResolvedValue(undefined)
 
-      await expect(
-        mocks.hitTestingMutateAsync({ datasetId: 'ds-1', params: { query: 'test' } }),
-      ).rejects.toThrow('Network error')
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('test'),
+        })}
+        />,
+      )
+
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockHitTestingMutation).toHaveBeenCalled()
+      })
+      // Success callbacks should not fire when onSuccess is not invoked
+      expect(mockSetHitResult).not.toHaveBeenCalled()
+      expect(mockOnUpdateList).not.toHaveBeenCalled()
+      expect(mockOnSubmit).not.toHaveBeenCalled()
     })
   })
 
   describe('API Response → Results Data Contract', () => {
-    it('should produce results with required segment fields for rendering', async () => {
+    it('should produce results with required segment fields for rendering', () => {
       const response = createHitTestingResponse(3)
 
       // Validate each result has the fields needed by ResultItem component
@@ -169,47 +295,110 @@ describe('Hit Testing Flow', () => {
     })
   })
 
-  describe('Records History → Query Resubmission', () => {
-    it('should return records data for history display', () => {
-      mocks.recordsData = {
-        data: [
-          { id: 'q-1', content: 'Previous query 1', source: 'console', created_at: Date.now() },
-          { id: 'q-2', content: 'Previous query 2', source: 'console', created_at: Date.now() },
-        ],
-      }
+  describe('Successful Submission → Callback Chain', () => {
+    it('should call setHitResult, onUpdateList, and onSubmit after successful submission', async () => {
+      const response = createHitTestingResponse(3)
+      mockHitTestingMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
+        options?.onSuccess?.(response)
+        return response
+      })
 
-      expect(mocks.recordsData.data).toHaveLength(2)
-      expect(mocks.recordsData.data[0].content).toBe('Previous query 1')
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('Test query'),
+        })}
+        />,
+      )
+
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockSetHitResult).toHaveBeenCalledWith(response)
+        expect(mockOnUpdateList).toHaveBeenCalledTimes(1)
+        expect(mockOnSubmit).toHaveBeenCalledTimes(1)
+      })
     })
 
-    it('should refetch records after new query', async () => {
-      mocks.hitTestingMutateAsync.mockResolvedValue(createHitTestingResponse(1))
+    it('should trigger records list refresh via onUpdateList after query', async () => {
+      const response = createHitTestingResponse(1)
+      mockHitTestingMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
+        options?.onSuccess?.(response)
+        return response
+      })
 
-      await mocks.hitTestingMutateAsync({ datasetId: 'ds-1', params: { query: 'new query' } })
-      mocks.recordsRefetch()
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('new query'),
+        })}
+        />,
+      )
 
-      expect(mocks.recordsRefetch).toHaveBeenCalled()
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockOnUpdateList).toHaveBeenCalledTimes(1)
+      })
     })
   })
 
   describe('External KB Hit Testing', () => {
-    it('should use external mutation for external datasets', async () => {
-      mocks.externalMutateAsync.mockResolvedValue({ records: [] })
-
-      await mocks.externalMutateAsync({
-        datasetId: 'ext-ds-1',
-        params: {
-          query: 'test',
-          external_retrieval_model: {
-            top_k: 3,
-            score_threshold: 0.5,
-            score_threshold_enabled: true,
-          },
-        },
+    it('should use external mutation with correct payload for external datasets', async () => {
+      mockExternalMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: { records: never[] }) => void }) => {
+        const response = { records: [] }
+        options?.onSuccess?.(response)
+        return response
       })
 
-      expect(mocks.externalMutateAsync).toHaveBeenCalled()
-      expect(mocks.hitTestingMutateAsync).not.toHaveBeenCalled()
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('test'),
+          isExternal: true,
+        })}
+        />,
+      )
+
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockExternalMutation).toHaveBeenCalledWith(
+          expect.objectContaining({
+            query: 'test',
+            external_retrieval_model: expect.objectContaining({
+              top_k: 4,
+              score_threshold: 0.5,
+              score_threshold_enabled: false,
+            }),
+          }),
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+          }),
+        )
+        // Internal mutation should NOT be called
+        expect(mockHitTestingMutation).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should call setExternalHitResult and onUpdateList on successful external submission', async () => {
+      const externalResponse = { records: [] }
+      mockExternalMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: { records: never[] }) => void }) => {
+        options?.onSuccess?.(externalResponse)
+        return externalResponse
+      })
+
+      render(
+        <QueryInput {...createDefaultProps({
+          queries: createTextQuery('external query'),
+          isExternal: true,
+        })}
+        />,
+      )
+
+      fireEvent.click(findSubmitButton())
+
+      await waitFor(() => {
+        expect(mockSetExternalHitResult).toHaveBeenCalledWith(externalResponse)
+        expect(mockOnUpdateList).toHaveBeenCalledTimes(1)
+      })
     })
   })
 })

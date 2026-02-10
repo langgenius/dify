@@ -317,19 +317,11 @@ describe('DocumentDetail', () => {
 
     it('should preserve query params when navigating back', () => {
       const origLocation = window.location
-      Object.defineProperty(window, 'location', {
-        value: { ...origLocation, search: '?page=2&status=active' },
-        writable: true,
-        configurable: true,
-      })
+      window.history.pushState({}, '', '?page=2&status=active')
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('back-arrow').parentElement!)
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
-      Object.defineProperty(window, 'location', {
-        value: origLocation,
-        writable: true,
-        configurable: true,
-      })
+      window.history.pushState({}, '', origLocation.href)
     })
   })
 
