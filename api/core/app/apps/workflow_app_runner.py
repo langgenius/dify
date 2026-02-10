@@ -25,7 +25,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -54,6 +53,7 @@ from core.workflow.graph_events import (
 )
 from core.workflow.graph_events.graph import GraphRunAbortedEvent
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -157,7 +157,7 @@ class WorkflowBasedAppRunner:
         # Create initial runtime state with variable pool containing environment variables
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(
-                system_variables=SystemVariable.default(),
+                system_variables=SystemVariable.empty(),
                 user_inputs={},
                 environment_variables=workflow.environment_variables,
             ),
@@ -166,22 +166,18 @@ class WorkflowBasedAppRunner:
 
         # Determine which type of single node execution and get graph/variable_pool
         if single_iteration_run:
-            graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=workflow,
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="iteration_id",
-                node_type_label="iteration",
             )
         elif single_loop_run:
-            graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
                 workflow=workflow,
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                node_type_filter_key="loop_id",
-                node_type_label="loop",
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -272,9 +268,7 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(
-            graph_config=graph_config, node_factory=node_factory, root_node_id=node_id, skip_validation=True
-        )
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -319,6 +313,44 @@ class WorkflowBasedAppRunner:
         )
 
         return graph, variable_pool
+
+    def _get_graph_and_variable_pool_of_single_iteration(
+        self,
+        workflow: Workflow,
+        node_id: str,
+        user_inputs: dict[str, Any],
+        graph_runtime_state: GraphRuntimeState,
+    ) -> tuple[Graph, VariablePool]:
+        """
+        Get variable pool of single iteration
+        """
+        return self._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="iteration_id",
+            node_type_label="iteration",
+        )
+
+    def _get_graph_and_variable_pool_of_single_loop(
+        self,
+        workflow: Workflow,
+        node_id: str,
+        user_inputs: dict[str, Any],
+        graph_runtime_state: GraphRuntimeState,
+    ) -> tuple[Graph, VariablePool]:
+        """
+        Get variable pool of single loop
+        """
+        return self._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="loop_id",
+            node_type_label="loop",
+        )
 
     def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """

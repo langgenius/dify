@@ -60,7 +60,6 @@ register_schema_models(
     service_api_ns,
     SegmentCreatePayload,
     SegmentListQuery,
-    SegmentUpdateArgs,
     SegmentUpdatePayload,
     ChildChunkCreatePayload,
     ChildChunkListQuery,

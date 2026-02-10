@@ -35,7 +35,6 @@ class SchemaRegistry:
                     registry.load_all_versions()
 
                     cls._default_instance = registry
-            return cls._default_instance
 
         return cls._default_instance
 

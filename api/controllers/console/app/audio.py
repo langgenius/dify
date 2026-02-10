@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -34,6 +33,7 @@ from services.errors.audio import (
 )
 
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class TextToSpeechPayload(BaseModel):
@@ -47,11 +47,13 @@ class TextToSpeechVoiceQuery(BaseModel):
     language: str = Field(..., description="Language code")
 
 
-class AudioTranscriptResponse(BaseModel):
-    text: str = Field(description="Transcribed text from audio")
-
-
-register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
+console_ns.schema_model(
+    TextToSpeechPayload.__name__, TextToSpeechPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    TextToSpeechVoiceQuery.__name__,
+    TextToSpeechVoiceQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
@@ -62,7 +64,7 @@ class ChatMessageAudioApi(Resource):
     @console_ns.response(
         200,
         "Audio transcription successful",
-        console_ns.models[AudioTranscriptResponse.__name__],
+        console_ns.model("AudioTranscriptResponse", {"text": fields.String(description="Transcribed text from audio")}),
     )
     @console_ns.response(400, "Bad request - No audio uploaded or unsupported type")
     @console_ns.response(413, "Audio file too large")

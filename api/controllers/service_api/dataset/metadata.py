@@ -11,9 +11,7 @@ from controllers.service_api.wraps import DatasetApiResource, cloud_edition_bill
 from fields.dataset_fields import dataset_metadata_fields
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
-    DocumentMetadataOperation,
     MetadataArgs,
-    MetadataDetail,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
@@ -24,13 +22,7 @@ class MetadataUpdatePayload(BaseModel):
 
 
 register_schema_model(service_api_ns, MetadataUpdatePayload)
-register_schema_models(
-    service_api_ns,
-    MetadataArgs,
-    MetadataDetail,
-    DocumentMetadataOperation,
-    MetadataOperationData,
-)
+register_schema_models(service_api_ns, MetadataArgs, MetadataOperationData)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -168,11 +160,10 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        match action:
-            case "enable":
-                MetadataService.enable_built_in_field(dataset)
-            case "disable":
-                MetadataService.disable_built_in_field(dataset)
+        if action == "enable":
+            MetadataService.enable_built_in_field(dataset)
+        elif action == "disable":
+            MetadataService.disable_built_in_field(dataset)
         return {"result": "success"}, 200
 
 

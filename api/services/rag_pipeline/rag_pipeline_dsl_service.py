@@ -343,9 +343,6 @@ class RagPipelineDslService:
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
                     elif knowledge_configuration.indexing_technique == "economy":
                         dataset.keyword_number = knowledge_configuration.keyword_number
-                    # Update summary_index_setting if provided
-                    if knowledge_configuration.summary_index_setting is not None:
-                        dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
                     self._session.commit()
@@ -480,9 +477,6 @@ class RagPipelineDslService:
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
                     elif knowledge_configuration.indexing_technique == "economy":
                         dataset.keyword_number = knowledge_configuration.keyword_number
-                    # Update summary_index_setting if provided
-                    if knowledge_configuration.summary_index_setting is not None:
-                        dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
                     self._session.commit()
@@ -876,16 +870,15 @@ class RagPipelineDslService:
         return dependencies
 
     @classmethod
-    def get_leaked_dependencies(
-        cls, tenant_id: str, dsl_dependencies: list[PluginDependency]
-    ) -> list[PluginDependency]:
+    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
         """
         Returns the leaked dependencies in current workspace
         """
-        if not dsl_dependencies:
+        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
+        if not dependencies:
             return []
 
-        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dsl_dependencies)
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
 
     def _generate_aes_key(self, tenant_id: str) -> bytes:
         """Generate AES key based on tenant_id"""

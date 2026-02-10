@@ -2,11 +2,9 @@ import logging
 
 import httpx
 from flask import current_app, redirect, request
-from flask_restx import Resource
-from pydantic import BaseModel, Field
+from flask_restx import Resource, fields
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
@@ -14,26 +12,6 @@ from .. import console_ns
 from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 
 logger = logging.getLogger(__name__)
-
-
-class OAuthDataSourceResponse(BaseModel):
-    data: str = Field(description="Authorization URL or 'internal' for internal setup")
-
-
-class OAuthDataSourceBindingResponse(BaseModel):
-    result: str = Field(description="Operation result")
-
-
-class OAuthDataSourceSyncResponse(BaseModel):
-    result: str = Field(description="Operation result")
-
-
-register_schema_models(
-    console_ns,
-    OAuthDataSourceResponse,
-    OAuthDataSourceBindingResponse,
-    OAuthDataSourceSyncResponse,
-)
 
 
 def get_oauth_providers():
@@ -56,7 +34,10 @@ class OAuthDataSource(Resource):
     @console_ns.response(
         200,
         "Authorization URL or internal setup success",
-        console_ns.models[OAuthDataSourceResponse.__name__],
+        console_ns.model(
+            "OAuthDataSourceResponse",
+            {"data": fields.Raw(description="Authorization URL or 'internal' for internal setup")},
+        ),
     )
     @console_ns.response(400, "Invalid provider")
     @console_ns.response(403, "Admin privileges required")
@@ -120,7 +101,7 @@ class OAuthDataSourceBinding(Resource):
     @console_ns.response(
         200,
         "Data source binding success",
-        console_ns.models[OAuthDataSourceBindingResponse.__name__],
+        console_ns.model("OAuthDataSourceBindingResponse", {"result": fields.String(description="Operation result")}),
     )
     @console_ns.response(400, "Invalid provider or code")
     def get(self, provider: str):
@@ -152,7 +133,7 @@ class OAuthDataSourceSync(Resource):
     @console_ns.response(
         200,
         "Data source sync success",
-        console_ns.models[OAuthDataSourceSyncResponse.__name__],
+        console_ns.model("OAuthDataSourceSyncResponse", {"result": fields.String(description="Operation result")}),
     )
     @console_ns.response(400, "Invalid provider or sync failed")
     @setup_required

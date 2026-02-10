@@ -49,5 +49,4 @@ segment_fields = {
     "stopped_at": TimestampField,
     "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
     "attachments": fields.List(fields.Nested(attachment_fields)),
-    "summary": fields.String,  # Summary content for the segment
 }

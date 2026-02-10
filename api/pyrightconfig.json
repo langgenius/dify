@@ -8,7 +8,6 @@
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
-    "fastopenapi",
     "flask_restx",
     "flask_login",
     "opentelemetry.instrumentation.celery",

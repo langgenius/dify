@@ -81,7 +81,6 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_compress,
         ext_database,
-        ext_fastopenapi,
         ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
@@ -129,7 +128,6 @@ def initialize_extensions(app: DifyApp):
         ext_proxy_fix,
         ext_blueprints,
         ext_commands,
-        ext_fastopenapi,
         ext_otel,
         ext_request_logging,
         ext_session_factory,
@@ -149,7 +147,7 @@ def initialize_extensions(app: DifyApp):
             logger.info("Loaded %s (%s ms)", short_name, round((end_time - start_time) * 1000, 2))
 
 
-def create_migrations_app() -> DifyApp:
+def create_migrations_app():
     app = create_flask_app_with_configs()
     from extensions import ext_database, ext_migrate
 

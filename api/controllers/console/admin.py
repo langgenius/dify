@@ -243,13 +243,15 @@ class InsertExploreBannerApi(Resource):
     def post(self):
         payload = InsertExploreBannerPayload.model_validate(console_ns.payload)
 
+        content = {
+            "category": payload.category,
+            "title": payload.title,
+            "description": payload.description,
+            "img-src": payload.img_src,
+        }
+
         banner = ExporleBanner(
-            content={
-                "category": payload.category,
-                "title": payload.title,
-                "description": payload.description,
-                "img-src": payload.img_src,
-            },
+            content=content,
             link=payload.link,
             sort=payload.sort,
             language=payload.language,

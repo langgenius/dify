@@ -1,7 +1,4 @@
-"""Word (.docx) document extractor used for RAG ingestion.
-
-Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
-"""
+"""Abstract interface for document loader implementations."""
 
 import logging
 import mimetypes
@@ -11,6 +8,7 @@ import tempfile
 import uuid
 from urllib.parse import urlparse
 
+import httpx
 from docx import Document as DocxDocument
 from docx.oxml.ns import qn
 from docx.text.run import Run
@@ -46,7 +44,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = ssrf_proxy.get(self.file_path)
+            response = httpx.get(self.file_path, timeout=None)
 
             if response.status_code != 200:
                 response.close()
@@ -57,7 +55,6 @@ class WordExtractor(BaseExtractor):
             self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
             try:
                 self.temp_file.write(response.content)
-                self.temp_file.flush()
             finally:
                 response.close()
             self.file_path = self.temp_file.name

@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 import contextvars
 import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Union, overload
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -45,9 +43,6 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow_features import WorkflowFeatures
 from services.sandbox.sandbox_provider_service import SandboxProviderService
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
-
-if TYPE_CHECKING:
-    from controllers.console.app.workflow import LoopNodeRunPayload
 
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 
@@ -390,7 +385,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
-        args: LoopNodeRunPayload,
+        args: Mapping[str, Any],
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
@@ -406,7 +401,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         if not node_id:
             raise ValueError("node_id is required")
 
-        if args.inputs is None:
+        if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
         # convert to app config
@@ -422,7 +417,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
-            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs or {}),
+            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
             workflow_execution_id=str(uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})

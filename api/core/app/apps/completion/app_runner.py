@@ -184,10 +184,5 @@ class CompletionAppRunner(AppRunner):
 
         # handle invoke result
         self._handle_invoke_result(
-            invoke_result=invoke_result,
-            queue_manager=queue_manager,
-            stream=application_generate_entity.stream,
-            message_id=message.id,
-            user_id=application_generate_entity.user_id,
-            tenant_id=app_config.tenant_id,
+            invoke_result=invoke_result, queue_manager=queue_manager, stream=application_generate_entity.stream
         )

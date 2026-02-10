@@ -119,7 +119,6 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
-    summary_index_setting: dict | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None
@@ -142,7 +141,6 @@ class SegmentUpdateArgs(BaseModel):
     regenerate_child_chunks: bool = False
     enabled: bool | None = None
     attachment_ids: list[str] | None = None
-    summary: str | None = None  # Summary content for summary index
 
 
 class ChildChunkUpdateArgs(BaseModel):
