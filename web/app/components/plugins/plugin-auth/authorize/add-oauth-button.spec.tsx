@@ -1,0 +1,132 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AuthCategory } from '../types'
+
+// Mock dependencies
+const mockGetPluginOAuthUrl = vi.fn().mockResolvedValue({ authorization_url: 'https://auth.example.com' })
+const mockOpenOAuthPopup = vi.fn()
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
+vi.mock('@/hooks/use-i18n', () => ({
+  useRenderI18nObject: () => (obj: Record<string, string> | string) => typeof obj === 'string' ? obj : obj.en_US || '',
+}))
+
+vi.mock('@/hooks/use-oauth', () => ({
+  openOAuthPopup: (...args: unknown[]) => mockOpenOAuthPopup(...args),
+}))
+
+vi.mock('../hooks/use-credential', () => ({
+  useGetPluginOAuthUrlHook: () => ({
+    mutateAsync: mockGetPluginOAuthUrl,
+  }),
+  useGetPluginOAuthClientSchemaHook: () => ({
+    data: {
+      schema: [],
+      is_oauth_custom_client_enabled: false,
+      is_system_oauth_params_exists: true,
+      client_params: {},
+      redirect_uri: 'https://redirect.example.com',
+    },
+    isLoading: false,
+  }),
+}))
+
+// Mock sub-components
+vi.mock('./oauth-client-settings', () => ({
+  default: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="oauth-settings-modal">
+      <button data-testid="oauth-settings-close" onClick={onClose}>Close</button>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/base/action-button', () => ({
+  default: ({ children, ...props }: { children: React.ReactNode, [key: string]: unknown }) => <button {...props}>{children}</button>,
+}))
+
+vi.mock('@/app/components/base/badge', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+}))
+
+vi.mock('@/app/components/base/button', () => ({
+  default: ({ children, onClick, disabled, ...props }: { children: React.ReactNode, onClick?: () => void, disabled?: boolean, [key: string]: unknown }) => (
+    <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
+  ),
+}))
+
+vi.mock('@/app/components/base/form/types', () => ({
+  FormTypeEnum: { radio: 'radio' },
+}))
+
+vi.mock('@/utils/classnames', () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+}))
+
+vi.mock('@remixicon/react', () => ({
+  RiClipboardLine: () => <span data-testid="icon-clipboard" />,
+  RiEqualizer2Line: () => <span data-testid="icon-equalizer" />,
+  RiInformation2Fill: () => <span data-testid="icon-info" />,
+}))
+
+const basePayload = {
+  category: AuthCategory.tool,
+  provider: 'test-provider',
+}
+
+describe('AddOAuthButton', () => {
+  let AddOAuthButton: (typeof import('./add-oauth-button'))['default']
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    const mod = await import('./add-oauth-button')
+    AddOAuthButton = mod.default
+  })
+
+  it('should render OAuth button when configured (system params exist)', () => {
+    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    expect(screen.getByText('Use OAuth')).toBeInTheDocument()
+  })
+
+  it('should open OAuth settings modal when settings icon clicked', () => {
+    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+
+    expect(screen.getByTestId('oauth-settings-modal')).toBeInTheDocument()
+  })
+
+  it('should close OAuth settings modal', () => {
+    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByTestId('oauth-settings-close'))
+
+    expect(screen.queryByTestId('oauth-settings-modal')).not.toBeInTheDocument()
+  })
+
+  it('should trigger OAuth flow on main button click', async () => {
+    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    // Find the left side of the button (the OAuth trigger part)
+    const button = screen.getByText('Use OAuth').closest('button')
+    if (button)
+      fireEvent.click(button)
+
+    // OAuth should be triggered via getPluginOAuthUrl
+    expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
+  })
+
+  it('should be disabled when disabled prop is true', () => {
+    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" disabled />)
+
+    const button = screen.getByText('Use OAuth').closest('button')
+    expect(button).toBeDisabled()
+  })
+})

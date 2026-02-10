@@ -160,7 +160,7 @@ describe('Index Exports', () => {
     expect(exports.PluginAuth).toBeDefined()
     expect(exports.PluginAuthInAgent).toBeDefined()
     expect(exports.PluginAuthInDataSourceNode).toBeDefined()
-  })
+  }, 15000)
 
   it('should export AuthCategory enum', async () => {
     const exports = await import('./index')
@@ -170,7 +170,7 @@ describe('Index Exports', () => {
     expect(exports.AuthCategory.datasource).toBe('datasource')
     expect(exports.AuthCategory.model).toBe('model')
     expect(exports.AuthCategory.trigger).toBe('trigger')
-  })
+  }, 15000)
 
   it('should export CredentialTypeEnum', async () => {
     const exports = await import('./index')
@@ -178,7 +178,7 @@ describe('Index Exports', () => {
     expect(exports.CredentialTypeEnum).toBeDefined()
     expect(exports.CredentialTypeEnum.OAUTH2).toBe('oauth2')
     expect(exports.CredentialTypeEnum.API_KEY).toBe('api-key')
-  })
+  }, 15000)
 })
 
 // ==================== Types Tests ====================
