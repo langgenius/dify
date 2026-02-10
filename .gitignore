@@ -236,3 +236,6 @@ scripts/stress-test/reports/
 # settings
 *.local.json
 *.local.md
+
+.github/workflows/*
+!.github/workflows/build.yml
