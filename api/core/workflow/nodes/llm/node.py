@@ -30,7 +30,6 @@ from core.llm_generator.output_parser.file_ref import (
 )
 from core.llm_generator.output_parser.structured_output import (
     invoke_llm_with_structured_output,
-    parse_structured_output_text,
 )
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
@@ -342,8 +341,6 @@ class LLMNode(Node[LLMNodeData]):
                     stop=stop,
                     variable_pool=variable_pool,
                     tool_dependencies=tool_dependencies,
-                    structured_output_schema=structured_output_schema,
-                    structured_output_file_paths=structured_output_file_paths,
                 )
             elif self.tool_call_enabled:
                 generator = self._invoke_llm_with_tools(
@@ -568,6 +565,7 @@ class LLMNode(Node[LLMNodeData]):
         if not model_schema:
             raise ValueError(f"Model schema not found for {node_data_model.name}")
 
+        invoke_result: LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None]
         if structured_output_schema:
             request_start_time = time.perf_counter()
 
@@ -1708,18 +1706,6 @@ class LLMNode(Node[LLMNodeData]):
             )
         return saved_file
 
-    def _parse_structured_output_from_text(
-        self,
-        *,
-        result_text: str,
-        structured_output_schema: Mapping[str, Any],
-    ) -> dict[str, Any]:
-        """Parse structured output from tool-run text using the provided schema."""
-        try:
-            return parse_structured_output_text(result_text=result_text, json_schema=structured_output_schema)
-        except OutputParserError as exc:
-            raise LLMNodeError(f"Failed to parse structured output: {exc}") from exc
-
     @staticmethod
     def _normalize_sandbox_file_path(path: str) -> str:
         raw = path.strip()
@@ -2058,9 +2044,7 @@ class LLMNode(Node[LLMNodeData]):
         stop: Sequence[str] | None,
         variable_pool: VariablePool,
         tool_dependencies: ToolDependencies | None,
-        structured_output_schema: Mapping[str, Any] | None,
-        structured_output_file_paths: Sequence[str] | None,
-    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, LLMGenerationData]:
+    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
 
         # FIXME(Mairuis): Async processing for bash session.
@@ -2086,36 +2070,6 @@ class LLMNode(Node[LLMNodeData]):
             )
 
             result = yield from self._process_tool_outputs(outputs)
-
-            if result is not None and structured_output_schema:
-                structured_output = self._parse_structured_output_from_text(
-                    result_text=result.text,
-                    structured_output_schema=structured_output_schema,
-                )
-
-                file_paths = list(structured_output_file_paths or [])
-                if file_paths:
-                    resolved_count = 0
-
-                    def resolve_file(path: str) -> File:
-                        nonlocal resolved_count
-                        if resolved_count >= MAX_OUTPUT_FILES:
-                            raise LLMNodeError("Structured output files exceed the sandbox output limit")
-                        resolved_count += 1
-                        return self._resolve_sandbox_file_path(sandbox=sandbox, path=path)
-
-                    structured_output, structured_output_files = convert_sandbox_file_paths_in_output(
-                        output=structured_output,
-                        file_path_fields=file_paths,
-                        file_resolver=resolve_file,
-                    )
-                else:
-                    structured_output_files = []
-
-                if structured_output_files:
-                    result.files.extend(structured_output_files)
-
-                yield LLMStructuredOutput(structured_output=structured_output)
 
         if result is None:
             raise LLMNodeError("SandboxSession exited unexpectedly")

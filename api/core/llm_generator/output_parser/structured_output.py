@@ -9,7 +9,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.file_ref import detect_file_path_fields
-from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
+from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT, STRUCTURED_OUTPUT_TOOL_CALL_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
@@ -88,6 +88,7 @@ def invoke_llm_with_structured_output(
 
     # Determine structured output strategy
 
+    use_tool_call = False
     if model_schema.support_structure_output:
         # Priority 1: Native JSON schema support
         model_parameters_with_json_schema = _handle_native_json_schema(
@@ -97,12 +98,14 @@ def invoke_llm_with_structured_output(
         # Priority 2: Tool call based structured output
         structured_output_tool = _create_structured_output_tool(json_schema)
         tools = [structured_output_tool]
+        use_tool_call = True
     else:
         # Priority 3: Prompt-based fallback
         _set_response_format(model_parameters_with_json_schema, model_schema.parameter_rules)
     prompt_messages = _handle_prompt_based_schema(
         prompt_messages=prompt_messages,
         structured_output_schema=json_schema,
+        use_tool_call=use_tool_call,
     )
 
     llm_result = model_instance.invoke_llm(
@@ -354,36 +357,45 @@ def _set_response_format(model_parameters: dict[str, Any], rules: list[Parameter
 
 
 def _handle_prompt_based_schema(
-    prompt_messages: Sequence[PromptMessage], structured_output_schema: Mapping[str, Any]
+    prompt_messages: Sequence[PromptMessage],
+    structured_output_schema: Mapping[str, Any],
+    *,
+    use_tool_call: bool = False,
 ) -> list[PromptMessage]:
     """
-    Handle structured output for models without native JSON schema support.
-    This function modifies the prompt messages to include schema-based output requirements.
+    Inject structured output instructions into the system prompt.
+
+    When use_tool_call is True, the prompt explicitly instructs the model to call the
+    `structured_output` tool instead of outputting raw JSON, which significantly
+    improves tool-call compliance for models that otherwise tend to respond with
+    plain text.
 
     Args:
         prompt_messages: Original sequence of prompt messages
+        structured_output_schema: JSON schema for the expected output
+        use_tool_call: If True, use tool-call-specific prompt that forces the model
+            to invoke the structured_output tool rather than emitting JSON text.
 
     Returns:
         list[PromptMessage]: Updated prompt messages with structured output requirements
     """
-    # Convert schema to string format
-    schema_str = json.dumps(structured_output_schema, ensure_ascii=False)
+    if use_tool_call:
+        # Tool call mode: schema is already in the tool definition, no need to duplicate
+        structured_output_prompt = STRUCTURED_OUTPUT_TOOL_CALL_PROMPT
+    else:
+        schema_str = json.dumps(structured_output_schema, ensure_ascii=False)
+        structured_output_prompt = STRUCTURED_OUTPUT_PROMPT.replace("{{schema}}", schema_str)
 
-    # Find existing system prompt with schema placeholder
     system_prompt = next(
         (prompt for prompt in prompt_messages if isinstance(prompt, SystemPromptMessage)),
         None,
     )
-    structured_output_prompt = STRUCTURED_OUTPUT_PROMPT.replace("{{schema}}", schema_str)
-    # Prepare system prompt content
     system_prompt_content = (
         structured_output_prompt + "\n\n" + system_prompt.content
         if system_prompt and isinstance(system_prompt.content, str)
         else structured_output_prompt
     )
     system_prompt = SystemPromptMessage(content=system_prompt_content)
-
-    # Extract content from the last user message
 
     filtered_prompts = [prompt for prompt in prompt_messages if not isinstance(prompt, SystemPromptMessage)]
     updated_prompt = [system_prompt] + filtered_prompts

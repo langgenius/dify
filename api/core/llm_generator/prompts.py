@@ -323,6 +323,11 @@ Here is the JSON schema:
 {{schema}}
 """  # noqa: E501
 
+STRUCTURED_OUTPUT_TOOL_CALL_PROMPT = """You have access to a tool called `structured_output`. You MUST call this tool to provide your final answer.
+Do NOT write JSON directly in your message. Instead, always invoke the `structured_output` tool with the appropriate arguments.
+If you respond without calling the tool, your answer will be considered invalid.
+"""  # noqa: E501
+
 LLM_MODIFY_PROMPT_SYSTEM = """
 Both your input and output should be in JSON format.
 
