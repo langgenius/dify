@@ -617,12 +617,12 @@ class TestDocumentRetryApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document",
-                return_value=None,
-            ),
+            ) as retry_mock,
         ):
             resp, status = method(api, "ds-1")
 
         assert status == 204
+        retry_mock.assert_called_once_with("ds-1", [])
 
     def test_retry_success(self, app, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
@@ -646,11 +646,12 @@ class TestDocumentRetryApi:
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document",
                 return_value=None,
-            ),
+            ) as retry_mock,
         ):
             response, status = method(api, "ds-1")
 
         assert status == 204
+        retry_mock.assert_called_once_with("ds-1", [document])
 
     def test_retry_skips_completed_document(self, app, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
@@ -670,12 +671,12 @@ class TestDocumentRetryApi:
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document",
                 return_value=None,
-            ),
+            ) as retry_mock,
         ):
             response, status = method(api, "ds-1")
 
         assert status == 204
-
+        retry_mock.assert_called_once_with("ds-1", [])
 
 class TestDocumentPipelineExecutionLogApi:
     def test_get_log_success(self, app, patch_tenant, patch_dataset):
