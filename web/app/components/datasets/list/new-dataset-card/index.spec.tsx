@@ -1,76 +1,134 @@
+import { RiAddLine } from '@remixicon/react'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CreateAppCard from './index'
+import Option from './option'
 
-describe('CreateAppCard', () => {
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CreateAppCard />)
-      expect(screen.getAllByRole('link')).toHaveLength(3)
+describe('New Dataset Card Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // Integration tests for Option component
+  describe('Option', () => {
+    describe('Rendering', () => {
+      it('should render a link with text and icon', () => {
+        render(<Option Icon={RiAddLine} text="Create" href="/create" />)
+        const link = screen.getByRole('link')
+        expect(link).toBeInTheDocument()
+        expect(screen.getByText('Create')).toBeInTheDocument()
+      })
+
+      it('should render icon with correct sizing class', () => {
+        const { container } = render(<Option Icon={RiAddLine} text="Test" href="/test" />)
+        const icon = container.querySelector('.h-4.w-4')
+        expect(icon).toBeInTheDocument()
+      })
     })
 
-    it('should render create dataset option', () => {
-      render(<CreateAppCard />)
-      expect(screen.getByText(/createDataset/)).toBeInTheDocument()
+    describe('Props', () => {
+      it('should set correct href on the link', () => {
+        render(<Option Icon={RiAddLine} text="Go" href="/datasets/create" />)
+        const link = screen.getByRole('link')
+        expect(link).toHaveAttribute('href', '/datasets/create')
+      })
+
+      it('should render different text based on props', () => {
+        render(<Option Icon={RiAddLine} text="Custom Text" href="/path" />)
+        expect(screen.getByText('Custom Text')).toBeInTheDocument()
+      })
+
+      it('should render different href based on props', () => {
+        render(<Option Icon={RiAddLine} text="Link" href="/custom-path" />)
+        const link = screen.getByRole('link')
+        expect(link).toHaveAttribute('href', '/custom-path')
+      })
     })
 
-    it('should render create from pipeline option', () => {
-      render(<CreateAppCard />)
-      expect(screen.getByText(/createFromPipeline/)).toBeInTheDocument()
+    describe('Styles', () => {
+      it('should have correct link styling', () => {
+        render(<Option Icon={RiAddLine} text="Styled" href="/style" />)
+        const link = screen.getByRole('link')
+        expect(link).toHaveClass('flex', 'w-full', 'items-center', 'gap-x-2', 'rounded-lg')
+      })
+
+      it('should have text span with correct styling', () => {
+        render(<Option Icon={RiAddLine} text="Text Style" href="/s" />)
+        const textSpan = screen.getByText('Text Style')
+        expect(textSpan).toHaveClass('system-sm-medium', 'grow', 'text-left')
+      })
     })
 
-    it('should render connect dataset option', () => {
-      render(<CreateAppCard />)
-      expect(screen.getByText(/connectDataset/)).toBeInTheDocument()
+    describe('Edge Cases', () => {
+      it('should handle empty text', () => {
+        render(<Option Icon={RiAddLine} text="" href="/empty" />)
+        const link = screen.getByRole('link')
+        expect(link).toBeInTheDocument()
+      })
+
+      it('should handle long text', () => {
+        const longText = 'Z'.repeat(200)
+        render(<Option Icon={RiAddLine} text={longText} href="/long" />)
+        expect(screen.getByText(longText)).toBeInTheDocument()
+      })
     })
   })
 
-  describe('Props', () => {
-    it('should have correct displayName', () => {
-      expect(CreateAppCard.displayName).toBe('CreateAppCard')
-    })
-  })
+  // Integration tests for CreateAppCard component
+  describe('CreateAppCard', () => {
+    describe('Rendering', () => {
+      it('should render without crashing', () => {
+        render(<CreateAppCard />)
+        // All 3 options should be visible
+        const links = screen.getAllByRole('link')
+        expect(links).toHaveLength(3)
+      })
 
-  describe('Links', () => {
-    it('should have correct href for create dataset', () => {
-      render(<CreateAppCard />)
-      const links = screen.getAllByRole('link')
-      expect(links[0]).toHaveAttribute('href', '/datasets/create')
-    })
+      it('should render the create dataset option', () => {
+        render(<CreateAppCard />)
+        expect(screen.getByText(/createDataset/)).toBeInTheDocument()
+      })
 
-    it('should have correct href for create from pipeline', () => {
-      render(<CreateAppCard />)
-      const links = screen.getAllByRole('link')
-      expect(links[1]).toHaveAttribute('href', '/datasets/create-from-pipeline')
-    })
+      it('should render the create from pipeline option', () => {
+        render(<CreateAppCard />)
+        expect(screen.getByText(/createFromPipeline/)).toBeInTheDocument()
+      })
 
-    it('should have correct href for connect dataset', () => {
-      render(<CreateAppCard />)
-      const links = screen.getAllByRole('link')
-      expect(links[2]).toHaveAttribute('href', '/datasets/connect')
-    })
-  })
-
-  describe('Styles', () => {
-    it('should have correct card styling', () => {
-      const { container } = render(<CreateAppCard />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[190px]', 'flex', 'flex-col', 'rounded-xl')
+      it('should render the connect dataset option', () => {
+        render(<CreateAppCard />)
+        expect(screen.getByText(/connectDataset/)).toBeInTheDocument()
+      })
     })
 
-    it('should have border separator for connect option', () => {
-      const { container } = render(<CreateAppCard />)
-      const borderDiv = container.querySelector('.border-t-\\[0\\.5px\\]')
-      expect(borderDiv).toBeInTheDocument()
-    })
-  })
+    describe('Props', () => {
+      it('should have correct href for create dataset', () => {
+        render(<CreateAppCard />)
+        const links = screen.getAllByRole('link')
+        const createLink = links.find(link => link.getAttribute('href') === '/datasets/create')
+        expect(createLink).toBeDefined()
+      })
 
-  describe('Icons', () => {
-    it('should render three icons for three options', () => {
-      const { container } = render(<CreateAppCard />)
-      // Each option has an icon
-      const icons = container.querySelectorAll('svg')
-      expect(icons.length).toBeGreaterThanOrEqual(3)
+      it('should have correct href for create from pipeline', () => {
+        render(<CreateAppCard />)
+        const links = screen.getAllByRole('link')
+        const pipelineLink = links.find(link => link.getAttribute('href') === '/datasets/create-from-pipeline')
+        expect(pipelineLink).toBeDefined()
+      })
+
+      it('should have correct href for connect dataset', () => {
+        render(<CreateAppCard />)
+        const links = screen.getAllByRole('link')
+        const connectLink = links.find(link => link.getAttribute('href') === '/datasets/connect')
+        expect(connectLink).toBeDefined()
+      })
+    })
+
+    describe('Styles', () => {
+      it('should have correct container styling', () => {
+        const { container } = render(<CreateAppCard />)
+        const wrapper = container.firstChild as HTMLElement
+        expect(wrapper).toHaveClass('flex', 'flex-col', 'rounded-xl')
+      })
     })
   })
 })

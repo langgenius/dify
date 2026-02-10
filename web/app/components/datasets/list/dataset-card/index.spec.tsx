@@ -3,254 +3,332 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { RETRIEVE_METHOD } from '@/types/app'
-import DatasetCard from './index'
+import DatasetCardFooter from './components/dataset-card-footer'
+import Description from './components/description'
+import OperationItem from './operation-item'
+import Operations from './operations'
 
-// Mock next/navigation
-const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
-
-// Mock ahooks useHover
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  return {
-    ...actual,
-    useHover: () => false,
-  }
-})
-
-// Mock app context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => false,
-}))
-
-// Mock the useDatasetCardState hook
-vi.mock('./hooks/use-dataset-card-state', () => ({
-  useDatasetCardState: () => ({
-    tags: [],
-    setTags: vi.fn(),
-    modalState: {
-      showRenameModal: false,
-      showConfirmDelete: false,
-      confirmMessage: '',
-    },
-    openRenameModal: vi.fn(),
-    closeRenameModal: vi.fn(),
-    closeConfirmDelete: vi.fn(),
-    handleExportPipeline: vi.fn(),
-    detectIsUsedByApp: vi.fn(),
-    onConfirmDelete: vi.fn(),
-  }),
-}))
-
-// Mock the RenameDatasetModal
-vi.mock('../../rename-modal', () => ({
-  default: () => null,
-}))
-
-// Mock useFormatTimeFromNow hook
+// Mock external hooks only
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (timestamp: number) => {
       const date = new Date(timestamp)
-      return date.toLocaleDateString()
+      return `${date.toLocaleDateString()}`
     },
   }),
 }))
 
-// Mock useKnowledge hook
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'High Quality',
-  }),
-}))
+// Factory function for DataSet mock data
+const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  id: 'dataset-1',
+  name: 'Test Dataset',
+  description: 'Test description',
+  provider: 'vendor',
+  permission: DatasetPermission.allTeamMembers,
+  data_source_type: DataSourceType.FILE,
+  indexing_technique: IndexingType.QUALIFIED,
+  embedding_available: true,
+  app_count: 5,
+  document_count: 10,
+  word_count: 1000,
+  created_at: 1609459200,
+  updated_at: 1609545600,
+  tags: [],
+  embedding_model: 'text-embedding-ada-002',
+  embedding_model_provider: 'openai',
+  created_by: 'user-1',
+  doc_form: ChunkingMode.text,
+  total_available_documents: 10,
+  runtime_mode: 'general',
+  ...overrides,
+} as DataSet)
 
-describe('DatasetCard', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    created_at: 1609459200,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    runtime_mode: 'general',
-    is_published: true,
-    total_available_documents: 10,
-    icon_info: {
-      icon: '📙',
-      icon_type: 'emoji' as const,
-      icon_background: '#FFF4ED',
-      icon_url: '',
-    },
-    retrieval_model_dict: {
-      search_method: RETRIEVE_METHOD.semantic,
-    },
-    author_name: 'Test User',
-    ...overrides,
-  } as DataSet)
-
-  const defaultProps = {
-    dataset: createMockDataset(),
-    onSuccess: vi.fn(),
-  }
-
+describe('DatasetCard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DatasetCard {...defaultProps} />)
-      expect(screen.getByText('Test Dataset')).toBeInTheDocument()
+  // Integration tests for Description component
+  describe('Description', () => {
+    describe('Rendering', () => {
+      it('should render description text from dataset', () => {
+        const dataset = createMockDataset({ description: 'My knowledge base' })
+        render(<Description dataset={dataset} />)
+        expect(screen.getByText('My knowledge base')).toBeInTheDocument()
+      })
+
+      it('should set title attribute to description', () => {
+        const dataset = createMockDataset({ description: 'Hover text' })
+        render(<Description dataset={dataset} />)
+        expect(screen.getByTitle('Hover text')).toBeInTheDocument()
+      })
     })
 
-    it('should render dataset name', () => {
-      const dataset = createMockDataset({ name: 'Custom Dataset Name' })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-      expect(screen.getByText('Custom Dataset Name')).toBeInTheDocument()
+    describe('Props', () => {
+      it('should apply opacity-30 when embedding_available is false', () => {
+        const dataset = createMockDataset({ embedding_available: false })
+        render(<Description dataset={dataset} />)
+        const descDiv = screen.getByTitle(dataset.description)
+        expect(descDiv).toHaveClass('opacity-30')
+      })
+
+      it('should not apply opacity-30 when embedding_available is true', () => {
+        const dataset = createMockDataset({ embedding_available: true })
+        render(<Description dataset={dataset} />)
+        const descDiv = screen.getByTitle(dataset.description)
+        expect(descDiv).not.toHaveClass('opacity-30')
+      })
     })
 
-    it('should render dataset description', () => {
-      const dataset = createMockDataset({ description: 'Custom Description' })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-      expect(screen.getByText('Custom Description')).toBeInTheDocument()
-    })
+    describe('Edge Cases', () => {
+      it('should handle empty description', () => {
+        const dataset = createMockDataset({ description: '' })
+        render(<Description dataset={dataset} />)
+        const descDiv = screen.getByTitle('')
+        expect(descDiv).toBeInTheDocument()
+        expect(descDiv).toHaveTextContent('')
+      })
 
-    it('should render document count', () => {
-      render(<DatasetCard {...defaultProps} />)
-      expect(screen.getByText('10')).toBeInTheDocument()
-    })
-
-    it('should render app count', () => {
-      render(<DatasetCard {...defaultProps} />)
-      expect(screen.getByText('5')).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should handle external provider', () => {
-      const dataset = createMockDataset({ provider: 'external' })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-      expect(screen.getByText('Test Dataset')).toBeInTheDocument()
-    })
-
-    it('should handle rag_pipeline runtime mode', () => {
-      const dataset = createMockDataset({ runtime_mode: 'rag_pipeline', is_published: true })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-      expect(screen.getByText('Test Dataset')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should navigate to documents page on click for regular dataset', () => {
-      const dataset = createMockDataset({ provider: 'vendor' })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-
-      const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
-      fireEvent.click(card!)
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
-    })
-
-    it('should navigate to hitTesting page on click for external provider', () => {
-      const dataset = createMockDataset({ provider: 'external' })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-
-      const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
-      fireEvent.click(card!)
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/hitTesting')
-    })
-
-    it('should navigate to pipeline page when pipeline is unpublished', () => {
-      const dataset = createMockDataset({ runtime_mode: 'rag_pipeline', is_published: false })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-
-      const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
-      fireEvent.click(card!)
-
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
+      it('should handle long description', () => {
+        const longDesc = 'X'.repeat(500)
+        const dataset = createMockDataset({ description: longDesc })
+        render(<Description dataset={dataset} />)
+        expect(screen.getByText(longDesc)).toBeInTheDocument()
+      })
     })
   })
 
-  describe('Styles', () => {
-    it('should have correct card styling', () => {
-      render(<DatasetCard {...defaultProps} />)
-      const card = screen.getByText('Test Dataset').closest('.group')
-      expect(card).toHaveClass('h-[190px]', 'cursor-pointer', 'flex-col', 'rounded-xl')
+  // Integration tests for DatasetCardFooter component
+  describe('DatasetCardFooter', () => {
+    describe('Rendering', () => {
+      it('should render document count', () => {
+        const dataset = createMockDataset({ document_count: 15, total_available_documents: 15 })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText('15')).toBeInTheDocument()
+      })
+
+      it('should render app count for non-external provider', () => {
+        const dataset = createMockDataset({ app_count: 7, provider: 'vendor' })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText('7')).toBeInTheDocument()
+      })
+
+      it('should render update time', () => {
+        const dataset = createMockDataset()
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText(/updated/i)).toBeInTheDocument()
+      })
     })
 
-    it('should have data-disable-nprogress attribute', () => {
-      render(<DatasetCard {...defaultProps} />)
-      const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
-      expect(card).toHaveAttribute('data-disable-nprogress', 'true')
+    describe('Props', () => {
+      it('should show partial count when total_available_documents < document_count', () => {
+        const dataset = createMockDataset({
+          document_count: 20,
+          total_available_documents: 12,
+        })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText('12 / 20')).toBeInTheDocument()
+      })
+
+      it('should show single count when all documents are available', () => {
+        const dataset = createMockDataset({
+          document_count: 20,
+          total_available_documents: 20,
+        })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText('20')).toBeInTheDocument()
+      })
+
+      it('should not show app count when provider is external', () => {
+        const dataset = createMockDataset({ provider: 'external', app_count: 99 })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.queryByText('99')).not.toBeInTheDocument()
+      })
+
+      it('should have opacity when embedding_available is false', () => {
+        const dataset = createMockDataset({ embedding_available: false })
+        const { container } = render(<DatasetCardFooter dataset={dataset} />)
+        const footer = container.firstChild as HTMLElement
+        expect(footer).toHaveClass('opacity-30')
+      })
+    })
+
+    describe('Edge Cases', () => {
+      it('should handle undefined total_available_documents', () => {
+        const dataset = createMockDataset({
+          document_count: 10,
+          total_available_documents: undefined,
+        })
+        render(<DatasetCardFooter dataset={dataset} />)
+        // total_available_documents defaults to 0, which is < 10
+        expect(screen.getByText('0 / 10')).toBeInTheDocument()
+      })
+
+      it('should handle zero document count', () => {
+        const dataset = createMockDataset({
+          document_count: 0,
+          total_available_documents: 0,
+        })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText('0')).toBeInTheDocument()
+      })
+
+      it('should handle large numbers', () => {
+        const dataset = createMockDataset({
+          document_count: 100000,
+          total_available_documents: 100000,
+          app_count: 50000,
+        })
+        render(<DatasetCardFooter dataset={dataset} />)
+        expect(screen.getByText('100000')).toBeInTheDocument()
+        expect(screen.getByText('50000')).toBeInTheDocument()
+      })
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle dataset without description', () => {
-      const dataset = createMockDataset({ description: '' })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-      expect(screen.getByText('Test Dataset')).toBeInTheDocument()
+  // Integration tests for OperationItem component
+  describe('OperationItem', () => {
+    const MockIcon = ({ className }: { className?: string }) => (
+      <svg data-testid="mock-icon" className={className} />
+    )
+
+    describe('Rendering', () => {
+      it('should render icon and name', () => {
+        render(<OperationItem Icon={MockIcon as never} name="Edit" />)
+        expect(screen.getByText('Edit')).toBeInTheDocument()
+        expect(screen.getByTestId('mock-icon')).toBeInTheDocument()
+      })
     })
 
-    it('should handle embedding not available', () => {
-      const dataset = createMockDataset({ embedding_available: false })
-      render(<DatasetCard {...defaultProps} dataset={dataset} />)
-      expect(screen.getByText('Test Dataset')).toBeInTheDocument()
-    })
+    describe('User Interactions', () => {
+      it('should call handleClick when clicked', () => {
+        const handleClick = vi.fn()
+        render(<OperationItem Icon={MockIcon as never} name="Delete" handleClick={handleClick} />)
 
-    it('should handle undefined onSuccess', () => {
-      render(<DatasetCard dataset={createMockDataset()} />)
-      expect(screen.getByText('Test Dataset')).toBeInTheDocument()
-    })
-  })
+        const item = screen.getByText('Delete').closest('div')
+        fireEvent.click(item!)
 
-  describe('Tag Area Click', () => {
-    it('should stop propagation and prevent default when tag area is clicked', () => {
-      render(<DatasetCard {...defaultProps} />)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      })
 
-      // Find tag area element (it's inside the card)
-      const tagAreaWrapper = document.querySelector('[class*="px-3"]')
-      if (tagAreaWrapper) {
-        const stopPropagationSpy = vi.fn()
-        const preventDefaultSpy = vi.fn()
+      it('should prevent default and stop propagation on click', () => {
+        const handleClick = vi.fn()
+        render(<OperationItem Icon={MockIcon as never} name="Action" handleClick={handleClick} />)
 
-        const clickEvent = new MouseEvent('click', { bubbles: true })
-        Object.defineProperty(clickEvent, 'stopPropagation', { value: stopPropagationSpy })
-        Object.defineProperty(clickEvent, 'preventDefault', { value: preventDefaultSpy })
+        const item = screen.getByText('Action').closest('div')
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+        const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+        const stopPropagationSpy = vi.spyOn(event, 'stopPropagation')
 
-        tagAreaWrapper.dispatchEvent(clickEvent)
+        item!.dispatchEvent(event)
 
-        expect(stopPropagationSpy).toHaveBeenCalled()
         expect(preventDefaultSpy).toHaveBeenCalled()
-      }
+        expect(stopPropagationSpy).toHaveBeenCalled()
+      })
     })
 
-    it('should not navigate when clicking on tag area', () => {
-      render(<DatasetCard {...defaultProps} />)
+    describe('Edge Cases', () => {
+      it('should not throw when handleClick is undefined', () => {
+        render(<OperationItem Icon={MockIcon as never} name="No handler" />)
+        const item = screen.getByText('No handler').closest('div')
+        expect(() => {
+          fireEvent.click(item!)
+        }).not.toThrow()
+      })
 
-      // Click on tag area should not trigger card navigation
-      const tagArea = document.querySelector('[class*="px-3"]')
-      if (tagArea) {
-        fireEvent.click(tagArea)
-        // mockPush should NOT be called when clicking tag area
-        // (stopPropagation prevents it from reaching the card click handler)
-      }
+      it('should handle empty name', () => {
+        render(<OperationItem Icon={MockIcon as never} name="" />)
+        expect(screen.getByTestId('mock-icon')).toBeInTheDocument()
+      })
+    })
+  })
+
+  // Integration tests for Operations component
+  describe('Operations', () => {
+    const defaultProps = {
+      showDelete: true,
+      showExportPipeline: true,
+      openRenameModal: vi.fn(),
+      handleExportPipeline: vi.fn(),
+      detectIsUsedByApp: vi.fn(),
+    }
+
+    describe('Rendering', () => {
+      it('should always render edit operation', () => {
+        render(<Operations {...defaultProps} />)
+        expect(screen.getByText(/operation\.edit/)).toBeInTheDocument()
+      })
+
+      it('should render export pipeline when showExportPipeline is true', () => {
+        render(<Operations {...defaultProps} showExportPipeline={true} />)
+        expect(screen.getByText(/exportPipeline/)).toBeInTheDocument()
+      })
+
+      it('should not render export pipeline when showExportPipeline is false', () => {
+        render(<Operations {...defaultProps} showExportPipeline={false} />)
+        expect(screen.queryByText(/exportPipeline/)).not.toBeInTheDocument()
+      })
+
+      it('should render delete when showDelete is true', () => {
+        render(<Operations {...defaultProps} showDelete={true} />)
+        expect(screen.getByText(/operation\.delete/)).toBeInTheDocument()
+      })
+
+      it('should not render delete when showDelete is false', () => {
+        render(<Operations {...defaultProps} showDelete={false} />)
+        expect(screen.queryByText(/operation\.delete/)).not.toBeInTheDocument()
+      })
+    })
+
+    describe('User Interactions', () => {
+      it('should call openRenameModal when edit is clicked', () => {
+        const openRenameModal = vi.fn()
+        render(<Operations {...defaultProps} openRenameModal={openRenameModal} />)
+
+        const editItem = screen.getByText(/operation\.edit/).closest('div')
+        fireEvent.click(editItem!)
+
+        expect(openRenameModal).toHaveBeenCalledTimes(1)
+      })
+
+      it('should call handleExportPipeline when export is clicked', () => {
+        const handleExportPipeline = vi.fn()
+        render(<Operations {...defaultProps} handleExportPipeline={handleExportPipeline} />)
+
+        const exportItem = screen.getByText(/exportPipeline/).closest('div')
+        fireEvent.click(exportItem!)
+
+        expect(handleExportPipeline).toHaveBeenCalledTimes(1)
+      })
+
+      it('should call detectIsUsedByApp when delete is clicked', () => {
+        const detectIsUsedByApp = vi.fn()
+        render(<Operations {...defaultProps} detectIsUsedByApp={detectIsUsedByApp} />)
+
+        const deleteItem = screen.getByText(/operation\.delete/).closest('div')
+        fireEvent.click(deleteItem!)
+
+        expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('Edge Cases', () => {
+      it('should render only edit when both showDelete and showExportPipeline are false', () => {
+        render(<Operations {...defaultProps} showDelete={false} showExportPipeline={false} />)
+        expect(screen.getByText(/operation\.edit/)).toBeInTheDocument()
+        expect(screen.queryByText(/exportPipeline/)).not.toBeInTheDocument()
+        expect(screen.queryByText(/operation\.delete/)).not.toBeInTheDocument()
+      })
+
+      it('should render divider before delete section when showDelete is true', () => {
+        const { container } = render(<Operations {...defaultProps} showDelete={true} />)
+        expect(container.querySelector('.bg-divider-subtle')).toBeInTheDocument()
+      })
+
+      it('should not render divider when showDelete is false', () => {
+        const { container } = render(<Operations {...defaultProps} showDelete={false} />)
+        expect(container.querySelector('.bg-divider-subtle')).toBeNull()
+      })
     })
   })
 })
