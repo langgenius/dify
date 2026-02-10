@@ -133,7 +133,7 @@ class DefaultModelApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserGetDefault.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserGetDefault.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
@@ -261,7 +261,7 @@ class ModelProviderModelCredentialApi(Resource):
     def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
@@ -513,7 +513,7 @@ class ModelProviderModelParameterRuleApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        args = ParserParameter.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserParameter.model_validate(request.args.to_dict(flat=True))
         _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()

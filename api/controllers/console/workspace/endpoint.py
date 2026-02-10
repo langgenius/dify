@@ -138,7 +138,7 @@ class EndpointListApi(Resource):
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        args = EndpointListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = EndpointListQuery.model_validate(request.args.to_dict(flat=True))
 
         page = args.page
         page_size = args.page_size
@@ -171,7 +171,7 @@ class EndpointListForSinglePluginApi(Resource):
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        args = EndpointListForPluginQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = EndpointListForPluginQuery.model_validate(request.args.to_dict(flat=True))
 
         page = args.page
         page_size = args.page_size

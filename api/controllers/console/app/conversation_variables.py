@@ -55,7 +55,7 @@ class ConversationVariablesApi(Resource):
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     @marshal_with(paginated_conversation_variable_model)
     def get(self, app_model):
-        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))
 
         stmt = (
             select(ConversationVariable)

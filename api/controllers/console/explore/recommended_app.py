@@ -63,7 +63,7 @@ class RecommendedAppListApi(Resource):
     @marshal_with(recommended_app_list_model)
     def get(self):
         # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
         language = args.language
         if language and language in languages:
             language_prefix = language

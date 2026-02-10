@@ -49,7 +49,7 @@ class CodeBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        query = CodeBasedExtensionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        query = CodeBasedExtensionQuery.model_validate(request.args.to_dict(flat=True))
 
         return {"module": query.module, "data": CodeBasedExtensionService.get_code_based_extension(query.module)}
 

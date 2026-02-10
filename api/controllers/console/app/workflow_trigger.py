@@ -60,7 +60,7 @@ class WebhookTriggerApi(Resource):
     @marshal_with(webhook_trigger_model)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = Parser.model_validate(request.args.to_dict(flat=True))
 
         node_id = args.node_id
 

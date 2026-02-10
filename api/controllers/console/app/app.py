@@ -472,7 +472,7 @@ class AppListApi(Resource):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppListQuery.model_validate(request.args.to_dict(flat=True))
         args_dict = args.model_dump()
 
         # get app list
@@ -682,7 +682,7 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
         payload = AppExportResponse(
             data=AppDslService.export_dsl(

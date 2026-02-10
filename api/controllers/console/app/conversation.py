@@ -342,7 +342,7 @@ class CompletionConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
@@ -451,7 +451,7 @@ class ChatConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
         subquery = (
             db.session.query(

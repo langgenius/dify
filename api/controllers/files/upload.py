@@ -69,7 +69,7 @@ class PluginUploadFileApi(Resource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))
 
         file = request.files.get("file")
         if file is None:
