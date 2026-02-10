@@ -8,28 +8,12 @@ type OAuthPendingRedirect = {
   expiry?: number
 }
 
-function getLegacyOAuthPendingRedirect(): OAuthPendingRedirect | null {
-  try {
-    const itemStr = localStorage.getItem(OAUTH_AUTHORIZE_PENDING_KEY)
-    return itemStr ? JSON.parse(itemStr) : null
-  }
-  catch {
-    return null
-  }
-}
-
 function removeOAuthPendingRedirect() {
   storage.remove(OAUTH_AUTHORIZE_PENDING_KEY)
-  try {
-    localStorage.removeItem(OAUTH_AUTHORIZE_PENDING_KEY)
-  }
-  catch {
-    // ignore legacy key cleanup failures
-  }
 }
 
 function getOAuthPendingRedirect(): string | null {
-  const item = storage.get<OAuthPendingRedirect>(OAUTH_AUTHORIZE_PENDING_KEY) ?? getLegacyOAuthPendingRedirect()
+  const item = storage.get<OAuthPendingRedirect>(OAUTH_AUTHORIZE_PENDING_KEY)
   if (!item)
     return null
 

@@ -85,7 +85,8 @@ export default function OAuthAuthorize() {
   const isLoading = isOAuthLoading || isIsLoginLoading
   const onLoginSwitchClick = () => {
     try {
-      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
+      const authorizeQuery = searchParams.toString()
+      const returnUrl = buildReturnUrl('/account/oauth/authorize', authorizeQuery ? `?${authorizeQuery}` : '')
       setItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY, returnUrl, OAUTH_AUTHORIZE_PENDING_TTL)
       router.push(`/signin?${REDIRECT_URL_KEY}=${encodeURIComponent(returnUrl)}`)
     }
