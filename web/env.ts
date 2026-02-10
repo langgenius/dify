@@ -32,7 +32,7 @@ const clientSchema = {
    * different from api or web app domain.
    * example: http://cloud.dify.ai/console/api
    */
-  NEXT_PUBLIC_API_PREFIX: z.url().optional(),
+  NEXT_PUBLIC_API_PREFIX: z.string().optional(),
   /**
    * The base path for the application
    */
@@ -109,7 +109,7 @@ const clientSchema = {
    * console or api domain.
    * example: http://udify.app/api
    */
-  NEXT_PUBLIC_PUBLIC_API_PREFIX: z.url().optional(),
+  NEXT_PUBLIC_PUBLIC_API_PREFIX: z.string().optional(),
   /**
    * SENTRY
    */
