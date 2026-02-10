@@ -488,7 +488,7 @@ def _is_file_valid_with_config(
     if (
         input_file_type == FileType.CUSTOM
         and config.allowed_file_extensions is not None
-        and file_extension not in config.allowed_file_extensions
+        and file_extension.lower() not in {ext.lower() for ext in config.allowed_file_extensions}
     ):
         return False
 
