@@ -429,10 +429,8 @@ class WorkflowGenerator:
         # Collect all validation warnings
         all_warnings = [h.message for h in validation_hints]
 
-        # Add stability warning (as requested by user)
+        # Add stability warning
         stability_warning = "The generated workflow may require debugging."
-        if preferred_language and preferred_language.startswith("zh"):
-            stability_warning = "生成的 Workflow 可能需要调试。"
         all_warnings.append(stability_warning)
 
         # Ensure workflow_data is not None before returning
