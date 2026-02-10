@@ -1,12 +1,12 @@
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM langgenius/python:3-debian13-sfw-ent-dev AS base
 
 WORKDIR /app/api
 
 # Install uv
 ENV UV_VERSION=0.8.9
 
-RUN pip install --no-cache-dir uv==${UV_VERSION}
+RUN pip3 install --no-cache-dir uv==${UV_VERSION}
 
 
 FROM base AS packages
@@ -31,7 +31,7 @@ FROM base AS production
 ENV FLASK_APP=app.py
 ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
-ENV CONSOLE_API_URL=http://127.0.0.1:5001
+Env CONSOLE_API_URL=http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL=http://127.0.0.1:3000
 ENV SERVICE_API_URL=http://127.0.0.1:5001
 ENV APP_WEB_URL=http://127.0.0.1:3000
@@ -51,8 +51,14 @@ WORKDIR /app/api
 # Create non-root user
 ARG dify_uid=1001
 ARG NODE_MAJOR=22
-ARG NODE_PACKAGE_VERSION=22.21.0-1nodesource1
+ARG NODE_PACKAGE_VERSION=22.22.0-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
+
+RUN \
+    apt-get update \
+    && apt-get install -y --no-install-recommends \
+        passwd
+
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
@@ -80,7 +86,7 @@ RUN \
         # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
         # For Security
-        expat libldap-2.5-0=2.5.13+dfsg-5 perl libsqlite3-0=3.40.1-2+deb12u2 zlib1g=1:1.2.13.dfsg-1 \
+        expat libldap-dev perl libsqlite3-dev zlib1g \
         # install fonts to support the use of tools like pypdfium2
         fonts-noto-cjk \
         # install a package to improve the accuracy of guessing mime type and file extension
@@ -92,8 +98,14 @@ RUN \
 
 # Copy Python environment and packages
 ENV VIRTUAL_ENV=/app/api/.venv
-COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
+# Copy source code
+COPY --chown=dify:dify . /app/api
+# Prepare entrypoint script
+COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
+
+RUN uv sync --frozen --no-dev
 
 # Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
@@ -105,11 +117,6 @@ ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
-# Copy source code
-COPY --chown=dify:dify . /app/api/
-
-# Prepare entrypoint script
-COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
 
 
 ARG COMMIT_SHA
