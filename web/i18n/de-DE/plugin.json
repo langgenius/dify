@@ -196,6 +196,7 @@
   "marketplace.empower": "Unterstützen Sie Ihre KI-Entwicklung",
   "marketplace.moreFrom": "Mehr aus dem Marketplace",
   "marketplace.noPluginFound": "Kein Plugin gefunden",
+  "marketplace.noTemplateFound": "Keine Vorlage gefunden",
   "marketplace.partnerTip": "Von einem Dify-Partner verifiziert",
   "marketplace.pluginsResult": "{{num}} Ergebnisse",
   "marketplace.sortBy": "Sortieren nach",

@@ -196,6 +196,7 @@
   "marketplace.empower": "Hỗ trợ phát triển AI của bạn",
   "marketplace.moreFrom": "Các ứng dụng khác từ Marketplace",
   "marketplace.noPluginFound": "Không tìm thấy plugin nào",
+  "marketplace.noTemplateFound": "Không tìm thấy mẫu nào",
   "marketplace.partnerTip": "Được xác nhận bởi một đối tác của Dify",
   "marketplace.pluginsResult": "{{num}} kết quả",
   "marketplace.sortBy": "Thành phố đen",

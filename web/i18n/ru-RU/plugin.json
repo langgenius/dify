@@ -196,6 +196,7 @@
   "marketplace.empower": "Расширьте возможности разработки ИИ",
   "marketplace.moreFrom": "Больше из Marketplace",
   "marketplace.noPluginFound": "Плагин не найден",
+  "marketplace.noTemplateFound": "Шаблон не найден",
   "marketplace.partnerTip": "Подтверждено партнером Dify",
   "marketplace.pluginsResult": "Результаты {{num}}",
   "marketplace.sortBy": "Черный город",

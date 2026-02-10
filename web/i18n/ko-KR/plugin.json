@@ -196,6 +196,7 @@
   "marketplace.empower": "AI 개발 역량 강화",
   "marketplace.moreFrom": "Marketplace 에서 더 보기",
   "marketplace.noPluginFound": "플러그인을 찾을 수 없습니다.",
+  "marketplace.noTemplateFound": "템플릿을 찾을 수 없습니다.",
   "marketplace.partnerTip": "Dify 파트너에 의해 확인됨",
   "marketplace.pluginsResult": "{{num}} 결과",
   "marketplace.sortBy": "정렬",

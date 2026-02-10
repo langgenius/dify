@@ -196,6 +196,7 @@
   "marketplace.empower": "เพิ่มศักยภาพในการพัฒนา AI ของคุณ",
   "marketplace.moreFrom": "แอปเพิ่มเติมจาก Marketplace",
   "marketplace.noPluginFound": "ไม่พบปลั๊กอิน",
+  "marketplace.noTemplateFound": "ไม่พบเทมเพลต",
   "marketplace.partnerTip": "ได้รับการตรวจสอบโดยพันธมิตรของ Dify",
   "marketplace.pluginsResult": "{{num}} ผลลัพธ์",
   "marketplace.sortBy": "เมืองสีดํา",

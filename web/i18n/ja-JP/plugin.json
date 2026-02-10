@@ -196,6 +196,7 @@
   "marketplace.empower": "AI 開発をサポートする",
   "marketplace.moreFrom": "マーケットプレイスからのさらなる情報",
   "marketplace.noPluginFound": "プラグインが見つかりません",
+  "marketplace.noTemplateFound": "テンプレートが見つかりません",
   "marketplace.partnerTip": "このプラグインは Dify のパートナーによって認証されています",
   "marketplace.pluginsResult": "{{num}} 件の結果",
   "marketplace.sortBy": "並べ替え",

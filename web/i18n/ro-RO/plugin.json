@@ -196,6 +196,7 @@
   "marketplace.empower": "Îmbunătățește-ți dezvoltarea AI",
   "marketplace.moreFrom": "Mai multe din Marketplace",
   "marketplace.noPluginFound": "Nu s-a găsit niciun plugin",
+  "marketplace.noTemplateFound": "Nu s-a găsit niciun șablon",
   "marketplace.partnerTip": "Verificat de un partener Dify",
   "marketplace.pluginsResult": "{{num}} rezultate",
   "marketplace.sortBy": "Sortează după",

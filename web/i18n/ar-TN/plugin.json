@@ -196,6 +196,7 @@
   "marketplace.empower": "تمكين تطوير الذكاء الاصطناعي الخاص بك",
   "marketplace.moreFrom": "المزيد من السوق",
   "marketplace.noPluginFound": "لم يتم العثور على إضافة",
+  "marketplace.noTemplateFound": "لم يتم العثور على قالب",
   "marketplace.partnerTip": "تم التحقق بواسطة شريك Dify",
   "marketplace.pluginsResult": "{{num}} نتائج",
   "marketplace.sortBy": "فرز حسب",

@@ -199,6 +199,7 @@
   "marketplace.installs": "installs",
   "marketplace.moreFrom": "More from Marketplace",
   "marketplace.noPluginFound": "No plugin found",
+  "marketplace.noTemplateFound": "No template found",
   "marketplace.ourTopPicks": "Our top picks to get you started",
   "marketplace.partnerTip": "Verified by a Dify partner",
   "marketplace.pluginsHeroSubtitle": "Use community-built plugins to power your AI development.",

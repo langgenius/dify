@@ -199,6 +199,7 @@
   "marketplace.installs": "次安装",
   "marketplace.moreFrom": "更多来自市场",
   "marketplace.noPluginFound": "未找到插件",
+  "marketplace.noTemplateFound": "未找到模板",
   "marketplace.ourTopPicks": "我们精选推荐",
   "marketplace.partnerTip": "此插件由 Dify 合作伙伴认证",
   "marketplace.pluginsHeroSubtitle": "使用社区构建的插件为您的 AI 开发提供动力。",

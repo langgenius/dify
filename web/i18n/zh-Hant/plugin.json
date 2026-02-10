@@ -196,6 +196,7 @@
   "marketplace.empower": "為您的 AI 開發提供支援",
   "marketplace.moreFrom": "來自 Marketplace 的更多內容",
   "marketplace.noPluginFound": "未找到插件",
+  "marketplace.noTemplateFound": "未找到模板",
   "marketplace.partnerTip": "由 Dify 合作夥伴驗證",
   "marketplace.pluginsResult": "{{num}} 個結果",
   "marketplace.sortBy": "排序方式",
