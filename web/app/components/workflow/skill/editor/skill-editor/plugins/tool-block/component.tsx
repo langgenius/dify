@@ -432,7 +432,7 @@ const ToolBlockComponent = ({
             i18nKey="skillEditor.toolMissingDesc"
             ns="workflow"
             components={{
-              Plugins: <Link href="/plugins" className="text-text-accent" />,
+              Plugins: <Link href="/plugins?tab=discover" className="text-text-accent" />,
             }}
           />
         </div>
