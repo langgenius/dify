@@ -6,6 +6,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import HumanInputNode from '@/app/components/workflow/nodes/human-input/node'
 import {
@@ -355,17 +356,15 @@ describe('DSL Import with Human Input Node', () => {
     })
   })
 
-  // ── Node registration: human-input is registered in component maps ──
-  // Lazy-import to avoid pulling every node/panel (and their heavy deps like Monaco) into this test.
+  // ── Node registration: human-input is included in the workflow node registry ──
+  // Verify via WORKFLOW_COMMON_NODES (lightweight metadata-only imports) instead
+  // of NodeComponentMap/PanelComponentMap which pull in every node's heavy UI deps.
   describe('Node Registration', () => {
-    it('should have HumanInput registered in NodeComponentMap', async () => {
-      const { NodeComponentMap } = await import('@/app/components/workflow/nodes/components')
-      expect(NodeComponentMap[BlockEnum.HumanInput]).toBeDefined()
-    })
-
-    it('should have HumanInput registered in PanelComponentMap', async () => {
-      const { PanelComponentMap } = await import('@/app/components/workflow/nodes/components')
-      expect(PanelComponentMap[BlockEnum.HumanInput]).toBeDefined()
+    it('should have HumanInput included in WORKFLOW_COMMON_NODES', () => {
+      const entry = WORKFLOW_COMMON_NODES.find(
+        n => n.metaData.type === BlockEnum.HumanInput,
+      )
+      expect(entry).toBeDefined()
     })
   })
 
