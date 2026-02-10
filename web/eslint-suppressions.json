@@ -2512,11 +2512,6 @@
       "count": 1
     }
   },
-  "app/components/base/param-item/top-k-item.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "app/components/base/portal-to-follow-elem/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
@@ -7266,9 +7261,6 @@
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {
@@ -8582,11 +8574,6 @@
   "app/install/installForm.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "app/install/installForm.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/reset-password/check-code/page.tsx": {
