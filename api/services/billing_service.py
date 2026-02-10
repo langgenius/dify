@@ -398,7 +398,7 @@ class BillingService:
     def read_notification(cls, user_email: str):
         params = {"user_email": user_email}
         return cls._send_request("GET", "/notification/read", params=params)
-    
+
     @classmethod
     def save_notification_user(cls, user_email: str):
         json = {"user_email": user_email}

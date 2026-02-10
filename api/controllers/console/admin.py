@@ -318,9 +318,11 @@ class SaveNotificationContentApi(Resource):
 @console_ns.route("/admin/save_notification_user")
 class SaveNotificationUserApi(Resource):
     @console_ns.doc("save_notification_user")
-    @console_ns.doc(description="Save notification users via JSON body or file upload. "
-                    "JSON: {\"user_email\": [\"a@example.com\", ...]}. "
-                    "File: multipart/form-data with a 'file' field (CSV or TXT, one email per line).")
+    @console_ns.doc(
+        description="Save notification users via JSON body or file upload. "
+        'JSON: {"user_email": ["a@example.com", ...]}. '
+        "File: multipart/form-data with a 'file' field (CSV or TXT, one email per line)."
+    )
     @console_ns.response(200, "Notification users saved successfully")
     @only_edition_cloud
     @admin_required
