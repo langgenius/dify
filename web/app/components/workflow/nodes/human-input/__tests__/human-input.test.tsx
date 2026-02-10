@@ -6,7 +6,6 @@ import type {
 } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { NodeComponentMap, PanelComponentMap } from '@/app/components/workflow/nodes/components'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import HumanInputNode from '@/app/components/workflow/nodes/human-input/node'
 import {
@@ -357,12 +356,15 @@ describe('DSL Import with Human Input Node', () => {
   })
 
   // ── Node registration: human-input is registered in component maps ──
+  // Lazy-import to avoid pulling every node/panel (and their heavy deps like Monaco) into this test.
   describe('Node Registration', () => {
-    it('should have HumanInput registered in NodeComponentMap', () => {
+    it('should have HumanInput registered in NodeComponentMap', async () => {
+      const { NodeComponentMap } = await import('@/app/components/workflow/nodes/components')
       expect(NodeComponentMap[BlockEnum.HumanInput]).toBeDefined()
     })
 
-    it('should have HumanInput registered in PanelComponentMap', () => {
+    it('should have HumanInput registered in PanelComponentMap', async () => {
+      const { PanelComponentMap } = await import('@/app/components/workflow/nodes/components')
       expect(PanelComponentMap[BlockEnum.HumanInput]).toBeDefined()
     })
   })
