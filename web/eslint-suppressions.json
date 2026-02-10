@@ -3462,11 +3462,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/header.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
