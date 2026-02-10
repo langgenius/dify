@@ -2,7 +2,7 @@ import type { ReadonlyURLSearchParams } from 'next/navigation'
 import dayjs from 'dayjs'
 import { OAUTH_AUTHORIZE_PENDING_KEY, REDIRECT_URL_KEY } from '@/app/account/oauth/authorize/constants'
 
-function getItemWithExpiry(key: string): string | null {
+export function getOAuthPendingRedirect(key: string): string | null {
   const itemStr = localStorage.getItem(key)
   if (!itemStr)
     return null
@@ -33,5 +33,5 @@ export const resolvePostLoginRedirect = (searchParams: ReadonlyURLSearchParams) 
     }
   }
 
-  return getItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY)
+  return getOAuthPendingRedirect(OAUTH_AUTHORIZE_PENDING_KEY)
 }

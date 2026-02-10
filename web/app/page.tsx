@@ -1,7 +1,24 @@
-import Link from 'next/link'
-import Loading from '@/app/components/base/loading'
+'use client'
 
-const Home = async () => {
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import Loading from '@/app/components/base/loading'
+import { OAUTH_AUTHORIZE_PENDING_KEY } from '@/app/account/oauth/authorize/constants'
+import { getOAuthPendingRedirect } from '@/app/signin/utils/post-login-redirect'
+
+const Home = () => {
+  const router = useRouter()
+
+  useEffect(() => {
+    const pendingRedirect = getOAuthPendingRedirect(OAUTH_AUTHORIZE_PENDING_KEY)
+    if (pendingRedirect) {
+      router.replace(pendingRedirect)
+      return
+    }
+    router.replace('/apps')
+  }, [router])
+
   return (
     <div className="flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8">
 
