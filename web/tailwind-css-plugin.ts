@@ -7,9 +7,12 @@ import { parse } from 'postcss'
 import { objectify } from 'postcss-js'
 
 export const cssAsPlugin: (cssPath: string[]) => PluginCreator = (cssPath: string[]) => {
-  if (process.env.NODE_ENV === 'production') {
+  const isTailwindCSSIntelliSenseMode = 'TAILWIND_MODE' in process.env
+  if (!isTailwindCSSIntelliSenseMode) {
+    console.warn('[tailwind-css-plugin] This plugin is intended to be used only in Tailwind CSS IntelliSense mode.')
     return () => {}
   }
+
   return ({ addUtilities, addComponents, addBase }) => {
     const jssList = cssPath.map(p => objectify(parse(readFileSync(p, 'utf8'))))
 

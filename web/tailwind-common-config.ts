@@ -182,6 +182,11 @@ const config = {
     }),
     cssAsPlugin([
       path.resolve(_dirname, './app/styles/globals.css'),
+      path.resolve(_dirname, './app/components/base/action-button/index.css'),
+      path.resolve(_dirname, './app/components/base/badge/index.css'),
+      path.resolve(_dirname, './app/components/base/button/index.css'),
+      path.resolve(_dirname, './app/components/base/modal/index.css'),
+      path.resolve(_dirname, './app/components/base/premium-badge/index.css'),
     ]),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
