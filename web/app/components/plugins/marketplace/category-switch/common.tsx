@@ -16,7 +16,7 @@ type CategorySwitchProps = {
   onChange: (value: string) => void
 }
 
-const CategorySwitch = ({
+export const CommonCategorySwitch = ({
   className,
   variant = 'default',
   options,
@@ -62,5 +62,3 @@ const CategorySwitch = ({
     </div>
   )
 }
-
-export default CategorySwitch

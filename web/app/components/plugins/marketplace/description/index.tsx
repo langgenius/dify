@@ -7,8 +7,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import marketPlaceBg from '@/public/marketplace/hero-bg.jpg'
 import marketplaceGradientNoise from '@/public/marketplace/hero-gradient-noise.svg'
 import { cn } from '@/utils/classnames'
-import PluginCategorySwitch from '../plugin-category-switch'
-import TemplateCategorySwitch from '../template-category-switch'
+import { PluginCategorySwitch, TemplateCategorySwitch } from '../category-switch/index'
 import { useMarketplaceData } from '../state'
 
 type DescriptionProps = {

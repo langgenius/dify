@@ -1,18 +1,17 @@
 'use client'
 
 import { useTranslation } from '#i18n'
-import { RiFileList3Line } from '@remixicon/react'
-import { useActiveTemplateCategory } from './atoms'
-import CategorySwitch from './category-switch'
-import { CATEGORY_ALL, TEMPLATE_CATEGORY_MAP } from './constants'
 import { Playground } from '@/app/components/base/icons/src/vender/plugin'
+import { useActiveTemplateCategory } from '../atoms'
+import { CATEGORY_ALL, TEMPLATE_CATEGORY_MAP } from '../constants'
+import { CommonCategorySwitch } from './common'
 
 type TemplateCategorySwitchProps = {
   className?: string
   variant?: 'default' | 'hero'
 }
 
-const TemplateCategorySwitch = ({
+export const TemplateCategorySwitch = ({
   className,
   variant = 'default',
 }: TemplateCategorySwitchProps) => {
@@ -65,7 +64,7 @@ const TemplateCategorySwitch = ({
   ]
 
   return (
-    <CategorySwitch
+    <CommonCategorySwitch
       className={className}
       variant={variant}
       options={options}
@@ -74,5 +73,3 @@ const TemplateCategorySwitch = ({
     />
   )
 }
-
-export default TemplateCategorySwitch
