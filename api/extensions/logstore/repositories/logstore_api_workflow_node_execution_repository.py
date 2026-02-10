@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import dict_to_workflow_node_execution_model
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
@@ -136,8 +137,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 reverse=True,
             )
 
-            if deduplicated_results:
-                return dict_to_workflow_node_execution_model(deduplicated_results[0])
+            for row in deduplicated_results:
+                model = dict_to_workflow_node_execution_model(row)
+                if model.status != WorkflowNodeExecutionStatus.PAUSED:
+                    return model
 
             return None
 
@@ -237,6 +240,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     model = dict_to_workflow_node_execution_model(row)
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
+
+            models = [model for model in models if model.status != WorkflowNodeExecutionStatus.PAUSED]
 
             # Sort by index DESC for trace visualization
             models.sort(key=lambda x: x.index, reverse=True)

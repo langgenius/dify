@@ -128,6 +128,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.ListFilter,
   BlockEnum.Agent,
   BlockEnum.DataSource,
+  BlockEnum.HumanInput,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [
@@ -208,6 +209,17 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
   {
     variable: 'json',
     type: VarType.arrayObject,
+  },
+]
+
+export const HUMAN_INPUT_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: '__action_id',
+    type: VarType.string,
+  },
+  {
+    variable: '__rendered_content',
+    type: VarType.string,
   },
 ]
 

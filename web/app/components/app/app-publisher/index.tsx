@@ -115,6 +115,7 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean // Whether workflow currently contains any trigger nodes (used to hide missing-start CTA when triggers exist).
   startNodeLimitExceeded?: boolean
+  hasHumanInputNode?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -138,13 +139,14 @@ const AppPublisher = ({
   missingStartNode = false,
   hasTriggerNode = false,
   startNodeLimitExceeded = false,
+  hasHumanInputNode = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
 
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
+
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   const appDetail = useAppStore(state => state.appDetail)
@@ -161,6 +163,13 @@ const AppPublisher = ({
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   const openAsyncWindow = useAsyncWindowOpen()
 
+  const isAppAccessSet = useMemo(() => {
+    if (appDetail && appAccessSubjects) {
+      return !(appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
+    }
+    return true
+  }, [appAccessSubjects, appDetail])
+
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
 
@@ -171,24 +180,12 @@ const AppPublisher = ({
       return t('noUserInputNode', { ns: 'app' })
     if (noAccessPermission)
       return t('noAccessPermission', { ns: 'app' })
-  }, [missingStartNode, noAccessPermission, publishedAt])
+  }, [missingStartNode, noAccessPermission, publishedAt, t])
 
   useEffect(() => {
     if (systemFeatures.webapp_auth.enabled && open && appDetail)
       refetch()
   }, [open, appDetail, refetch, systemFeatures])
-
-  useEffect(() => {
-    if (appDetail && appAccessSubjects) {
-      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-        setIsAppAccessSet(false)
-      else
-        setIsAppAccessSet(true)
-    }
-    else {
-      setIsAppAccessSet(true)
-    }
-  }, [appAccessSubjects, appDetail])
 
   const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
     try {
@@ -461,7 +458,7 @@ const AppPublisher = ({
                               {t('common.accessAPIReference', { ns: 'workflow' })}
                             </SuggestedAction>
                           </Tooltip>
-                          {appDetail?.mode === AppModeEnum.WORKFLOW && (
+                          {appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && (
                             <WorkflowToolConfigureButton
                               disabled={workflowToolDisabled}
                               published={!!toolPublished}

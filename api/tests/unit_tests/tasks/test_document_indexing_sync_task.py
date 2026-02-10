@@ -109,25 +109,87 @@ def mock_document_segments(document_id):
 
 @pytest.fixture
 def mock_db_session():
-    """Mock database session via session_factory.create_session()."""
+    """Mock database session via session_factory.create_session().
+
+    After session split refactor, the code calls create_session() multiple times.
+    This fixture creates shared query mocks so all sessions use the same
+    query configuration, simulating database persistence across sessions.
+
+    The fixture automatically converts side_effect to cycle to prevent StopIteration.
+    Tests configure mocks the same way as before, but behind the scenes the values
+    are cycled infinitely for all sessions.
+    """
+    from itertools import cycle
+
     with patch("tasks.document_indexing_sync_task.session_factory") as mock_sf:
-        session = MagicMock()
-        # Ensure tests can observe session.close() via context manager teardown
-        session.close = MagicMock()
-        cm = MagicMock()
-        cm.__enter__.return_value = session
+        sessions = []
 
-        def _exit_side_effect(*args, **kwargs):
-            session.close()
+        # Shared query mocks - all sessions use these
+        shared_query = MagicMock()
+        shared_filter_by = MagicMock()
+        shared_scalars_result = MagicMock()
 
-        cm.__exit__.side_effect = _exit_side_effect
-        mock_sf.create_session.return_value = cm
+        # Create custom first mock that auto-cycles side_effect
+        class CyclicMock(MagicMock):
+            def __setattr__(self, name, value):
+                if name == "side_effect" and value is not None:
+                    # Convert list/tuple to infinite cycle
+                    if isinstance(value, (list, tuple)):
+                        value = cycle(value)
+                super().__setattr__(name, value)
 
-        query = MagicMock()
-        session.query.return_value = query
-        query.where.return_value = query
-        session.scalars.return_value = MagicMock()
-        yield session
+        shared_query.where.return_value.first = CyclicMock()
+        shared_filter_by.first = CyclicMock()
+
+        def _create_session():
+            """Create a new mock session for each create_session() call."""
+            session = MagicMock()
+            session.close = MagicMock()
+            session.commit = MagicMock()
+
+            # Mock session.begin() context manager
+            begin_cm = MagicMock()
+            begin_cm.__enter__.return_value = session
+
+            def _begin_exit_side_effect(exc_type, exc, tb):
+                # commit on success
+                if exc_type is None:
+                    session.commit()
+                # return False to propagate exceptions
+                return False
+
+            begin_cm.__exit__.side_effect = _begin_exit_side_effect
+            session.begin.return_value = begin_cm
+
+            # Mock create_session() context manager
+            cm = MagicMock()
+            cm.__enter__.return_value = session
+
+            def _exit_side_effect(exc_type, exc, tb):
+                session.close()
+                return False
+
+            cm.__exit__.side_effect = _exit_side_effect
+
+            # All sessions use the same shared query mocks
+            session.query.return_value = shared_query
+            shared_query.where.return_value = shared_query
+            shared_query.filter_by.return_value = shared_filter_by
+            session.scalars.return_value = shared_scalars_result
+
+            sessions.append(session)
+            # Attach helpers on the first created session for assertions across all sessions
+            if len(sessions) == 1:
+                session.get_all_sessions = lambda: sessions
+                session.any_close_called = lambda: any(s.close.called for s in sessions)
+                session.any_commit_called = lambda: any(s.commit.called for s in sessions)
+            return cm
+
+        mock_sf.create_session.side_effect = _create_session
+
+        # Create first session and return it
+        _create_session()
+        yield sessions[0]
 
 
 @pytest.fixture
@@ -186,8 +248,8 @@ class TestDocumentIndexingSyncTask:
         # Act
         document_indexing_sync_task(dataset_id, document_id)
 
-        # Assert
-        mock_db_session.close.assert_called_once()
+        # Assert - at least one session should have been closed
+        assert mock_db_session.any_close_called()
 
     def test_missing_notion_workspace_id(self, mock_db_session, mock_document, dataset_id, document_id):
         """Test that task raises error when notion_workspace_id is missing."""
@@ -230,6 +292,7 @@ class TestDocumentIndexingSyncTask:
         """Test that task handles missing credentials by updating document status."""
         # Arrange
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_document
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_datasource_provider_service.get_datasource_credentials.return_value = None
 
         # Act
@@ -239,8 +302,8 @@ class TestDocumentIndexingSyncTask:
         assert mock_document.indexing_status == "error"
         assert "Datasource credential not found" in mock_document.error
         assert mock_document.stopped_at is not None
-        mock_db_session.commit.assert_called()
-        mock_db_session.close.assert_called()
+        assert mock_db_session.any_commit_called()
+        assert mock_db_session.any_close_called()
 
     def test_page_not_updated(
         self,
@@ -254,6 +317,7 @@ class TestDocumentIndexingSyncTask:
         """Test that task does nothing when page has not been updated."""
         # Arrange
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_document
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         # Return same time as stored in document
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-01T00:00:00Z"
 
@@ -263,8 +327,8 @@ class TestDocumentIndexingSyncTask:
         # Assert
         # Document status should remain unchanged
         assert mock_document.indexing_status == "completed"
-        # Session should still be closed via context manager teardown
-        assert mock_db_session.close.called
+        # At least one session should have been closed via context manager teardown
+        assert mock_db_session.any_close_called()
 
     def test_successful_sync_when_page_updated(
         self,
@@ -281,7 +345,20 @@ class TestDocumentIndexingSyncTask:
     ):
         """Test successful sync flow when Notion page has been updated."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
+        # Set exact sequence of returns across calls to `.first()`:
+        # 1) document (initial fetch)
+        # 2) dataset (pre-check)
+        # 3) dataset (cleaning phase)
+        # 4) document (pre-indexing update)
+        # 5) document (indexing runner fetch)
+        mock_db_session.query.return_value.where.return_value.first.side_effect = [
+            mock_document,
+            mock_dataset,
+            mock_dataset,
+            mock_document,
+            mock_document,
+        ]
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_db_session.scalars.return_value.all.return_value = mock_document_segments
         # NotionExtractor returns updated time
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
@@ -299,28 +376,40 @@ class TestDocumentIndexingSyncTask:
         mock_processor.clean.assert_called_once()
 
         # Verify segments were deleted from database in batch (DELETE FROM document_segments)
-        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.execute.call_args_list]
+        # Aggregate execute calls across all created sessions
+        execute_sqls = []
+        for s in mock_db_session.get_all_sessions():
+            execute_sqls.extend([" ".join(str(c[0][0]).split()) for c in s.execute.call_args_list])
         assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
 
         # Verify indexing runner was called
         mock_indexing_runner.run.assert_called_once_with([mock_document])
 
-        # Verify session operations
-        assert mock_db_session.commit.called
-        mock_db_session.close.assert_called_once()
+        # Verify session operations (across any created session)
+        assert mock_db_session.any_commit_called()
+        assert mock_db_session.any_close_called()
 
     def test_dataset_not_found_during_cleaning(
         self,
         mock_db_session,
         mock_datasource_provider_service,
         mock_notion_extractor,
+        mock_indexing_runner,
         mock_document,
         dataset_id,
         document_id,
     ):
         """Test that task handles dataset not found during cleaning phase."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_document, None]
+        # Sequence: document (initial), dataset (pre-check), None (cleaning), document (update), document (indexing)
+        mock_db_session.query.return_value.where.return_value.first.side_effect = [
+            mock_document,
+            mock_dataset,
+            None,
+            mock_document,
+            mock_document,
+        ]
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
 
         # Act
@@ -329,8 +418,8 @@ class TestDocumentIndexingSyncTask:
         # Assert
         # Document should still be set to parsing
         assert mock_document.indexing_status == "parsing"
-        # Session should be closed after error
-        mock_db_session.close.assert_called_once()
+        # At least one session should be closed after error
+        assert mock_db_session.any_close_called()
 
     def test_cleaning_error_continues_to_indexing(
         self,
@@ -346,8 +435,14 @@ class TestDocumentIndexingSyncTask:
     ):
         """Test that indexing continues even if cleaning fails."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
-        mock_db_session.scalars.return_value.all.side_effect = Exception("Cleaning error")
+        from itertools import cycle
+
+        mock_db_session.query.return_value.where.return_value.first.side_effect = cycle([mock_document, mock_dataset])
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
+        # Make the cleaning step fail but not the segment fetch
+        processor = mock_index_processor_factory.return_value.init_index_processor.return_value
+        processor.clean.side_effect = Exception("Cleaning error")
+        mock_db_session.scalars.return_value.all.return_value = []
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
 
         # Act
@@ -356,7 +451,7 @@ class TestDocumentIndexingSyncTask:
         # Assert
         # Indexing should still be attempted despite cleaning error
         mock_indexing_runner.run.assert_called_once_with([mock_document])
-        mock_db_session.close.assert_called_once()
+        assert mock_db_session.any_close_called()
 
     def test_indexing_runner_document_paused_error(
         self,
@@ -373,7 +468,10 @@ class TestDocumentIndexingSyncTask:
     ):
         """Test that DocumentIsPausedError is handled gracefully."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
+        from itertools import cycle
+
+        mock_db_session.query.return_value.where.return_value.first.side_effect = cycle([mock_document, mock_dataset])
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_db_session.scalars.return_value.all.return_value = mock_document_segments
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
         mock_indexing_runner.run.side_effect = DocumentIsPausedError("Document paused")
@@ -383,7 +481,7 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         # Session should be closed after handling error
-        mock_db_session.close.assert_called_once()
+        assert mock_db_session.any_close_called()
 
     def test_indexing_runner_general_error(
         self,
@@ -400,7 +498,10 @@ class TestDocumentIndexingSyncTask:
     ):
         """Test that general exceptions during indexing are handled."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
+        from itertools import cycle
+
+        mock_db_session.query.return_value.where.return_value.first.side_effect = cycle([mock_document, mock_dataset])
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = mock_document
         mock_db_session.scalars.return_value.all.return_value = mock_document_segments
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
         mock_indexing_runner.run.side_effect = Exception("Indexing error")
@@ -410,7 +511,7 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         # Session should be closed after error
-        mock_db_session.close.assert_called_once()
+        assert mock_db_session.any_close_called()
 
     def test_notion_extractor_initialized_with_correct_params(
         self,
@@ -517,7 +618,14 @@ class TestDocumentIndexingSyncTask:
     ):
         """Test that index processor clean is called with correct parameters."""
         # Arrange
-        mock_db_session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
+        # Sequence: document (initial), dataset (pre-check), dataset (cleaning), document (update), document (indexing)
+        mock_db_session.query.return_value.where.return_value.first.side_effect = [
+            mock_document,
+            mock_dataset,
+            mock_dataset,
+            mock_document,
+            mock_document,
+        ]
         mock_db_session.scalars.return_value.all.return_value = mock_document_segments
         mock_notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
 
