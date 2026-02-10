@@ -1,15 +1,16 @@
 @import "preflight.css";
 
-
 @import '../../themes/light.css';
 @import '../../themes/dark.css';
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
 @import "./monaco-sticky-fix.css";
 
-@import "../components/base/button/index.css";
 @import "../components/base/action-button/index.css";
+@import "../components/base/badge/index.css";
+@import "../components/base/button/index.css";
 @import "../components/base/modal/index.css";
+@import "../components/base/premium-badge/index.css";
 
 @tailwind base;
 @tailwind components;
