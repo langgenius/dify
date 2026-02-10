@@ -84,7 +84,7 @@
   "plansCommon.documentProcessingPriorityUpgrade": "以更快的速度、更高的精度處理更多的資料。",
   "plansCommon.documents": "{{count,number}} 知識文件",
   "plansCommon.documentsRequestQuota": "{{count,number}}/分鐘 知識請求速率限制",
-  "plansCommon.documentsRequestQuotaTooltip": "指定工作區在知識基礎中每分鐘可以執行的總操作次數，包括數據集的創建、刪除、更新、文檔上傳、修改、歸檔和知識基礎查詢。這個指標用於評估知識基礎請求的性能。例如，如果一個沙箱用戶在一分鐘內連續執行 10 次命中測試，他們的工作區將在接下來的一分鐘內暫時禁止執行以下操作：數據集的創建、刪除、更新以及文檔上傳或修改。",
+  "plansCommon.documentsRequestQuotaTooltip": "指定工作區在知識基礎中每分鐘可以執行的總操作次數，包括數據集的創建、刪除、更新、文檔上傳、修改、歸檔和知識基礎查詢。這個指標用於評估知識基礎請求的性能。例如，如果一個沙盒用戶在一分鐘內連續執行 10 次命中測試，他們的工作區將在接下來的一分鐘內暫時禁止執行以下操作：數據集的創建、刪除、更新以及文檔上傳或修改。",
   "plansCommon.documentsTooltip": "從知識數據來源導入的文件數量配額。",
   "plansCommon.free": "免費",
   "plansCommon.freeTrialTip": "200 次 OpenAI 通話的免費試用。",
