@@ -72,6 +72,8 @@ RUN \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+RUN npm install -g npm@latest
+
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
