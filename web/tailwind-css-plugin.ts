@@ -9,7 +9,6 @@ import { objectify } from 'postcss-js'
 export const cssAsPlugin: (cssPath: string[]) => PluginCreator = (cssPath: string[]) => {
   const isTailwindCSSIntelliSenseMode = 'TAILWIND_MODE' in process.env
   if (!isTailwindCSSIntelliSenseMode) {
-    console.warn('[tailwind-css-plugin] This plugin is intended to be used only in Tailwind CSS IntelliSense mode.')
     return () => {}
   }
 
