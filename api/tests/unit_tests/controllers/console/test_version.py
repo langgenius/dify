@@ -33,22 +33,27 @@ class TestCheckVersionUpdate:
     def test_no_check_update_url(self):
         query = version_module.VersionQuery(current_version="1.0.0")
 
-        with patch.object(
-            version_module.dify_config,
-            "CHECK_UPDATE_URL",
-            "",
-        ), patch.object(
-            version_module.dify_config.project,
-            "version",
-            "1.0.0",
-        ), patch.object(
-            version_module.dify_config,
-            "CAN_REPLACE_LOGO",
-            True,
-        ), patch.object(
-            version_module.dify_config,
-            "MODEL_LB_ENABLED",
-            False,
+        with (
+            patch.object(
+                version_module.dify_config,
+                "CHECK_UPDATE_URL",
+                "",
+            ),
+            patch.object(
+                version_module.dify_config.project,
+                "version",
+                "1.0.0",
+            ),
+            patch.object(
+                version_module.dify_config,
+                "CAN_REPLACE_LOGO",
+                True,
+            ),
+            patch.object(
+                version_module.dify_config,
+                "MODEL_LB_ENABLED",
+                False,
+            ),
         ):
             result = version_module.check_version_update(query)
 
@@ -60,18 +65,22 @@ class TestCheckVersionUpdate:
     def test_http_error_fallback(self):
         query = version_module.VersionQuery(current_version="1.0.0")
 
-        with patch.object(
-            version_module.dify_config,
-            "CHECK_UPDATE_URL",
-            "http://example.com",
-        ), patch.object(
-            version_module.httpx,
-            "get",
-            side_effect=Exception("boom"),
-        ), patch.object(
-            version_module.logger,
-            "warning",
-        ) as log_warning:
+        with (
+            patch.object(
+                version_module.dify_config,
+                "CHECK_UPDATE_URL",
+                "http://example.com",
+            ),
+            patch.object(
+                version_module.httpx,
+                "get",
+                side_effect=Exception("boom"),
+            ),
+            patch.object(
+                version_module.logger,
+                "warning",
+            ) as log_warning,
+        ):
             result = version_module.check_version_update(query)
 
         assert result.version == "1.0.0"
@@ -88,26 +97,32 @@ class TestCheckVersionUpdate:
             "canAutoUpdate": True,
         }
 
-        with patch.object(
-            version_module.dify_config,
-            "CHECK_UPDATE_URL",
-            "http://example.com",
-        ), patch.object(
-            version_module.httpx,
-            "get",
-            return_value=response,
-        ), patch.object(
-            version_module.dify_config.project,
-            "version",
-            "1.0.0",
-        ), patch.object(
-            version_module.dify_config,
-            "CAN_REPLACE_LOGO",
-            False,
-        ), patch.object(
-            version_module.dify_config,
-            "MODEL_LB_ENABLED",
-            True,
+        with (
+            patch.object(
+                version_module.dify_config,
+                "CHECK_UPDATE_URL",
+                "http://example.com",
+            ),
+            patch.object(
+                version_module.httpx,
+                "get",
+                return_value=response,
+            ),
+            patch.object(
+                version_module.dify_config.project,
+                "version",
+                "1.0.0",
+            ),
+            patch.object(
+                version_module.dify_config,
+                "CAN_REPLACE_LOGO",
+                False,
+            ),
+            patch.object(
+                version_module.dify_config,
+                "MODEL_LB_ENABLED",
+                True,
+            ),
         ):
             result = version_module.check_version_update(query)
 
@@ -124,18 +139,22 @@ class TestCheckVersionUpdate:
             "version": "1.1.0",
         }
 
-        with patch.object(
-            version_module.dify_config,
-            "CHECK_UPDATE_URL",
-            "http://example.com",
-        ), patch.object(
-            version_module.httpx,
-            "get",
-            return_value=response,
-        ), patch.object(
-            version_module.dify_config.project,
-            "version",
-            "1.2.0",
+        with (
+            patch.object(
+                version_module.dify_config,
+                "CHECK_UPDATE_URL",
+                "http://example.com",
+            ),
+            patch.object(
+                version_module.httpx,
+                "get",
+                return_value=response,
+            ),
+            patch.object(
+                version_module.dify_config.project,
+                "version",
+                "1.2.0",
+            ),
         ):
             result = version_module.check_version_update(query)
 

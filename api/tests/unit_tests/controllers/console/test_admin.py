@@ -299,9 +299,7 @@ class TestInsertExploreAppListApi:
 
         # session_factory.create_session → recommended_app lookup
         mock_session = Mock()
-        mock_session.execute = Mock(
-            return_value=Mock(scalar_one_or_none=lambda: None)
-        )
+        mock_session.execute = Mock(return_value=Mock(scalar_one_or_none=lambda: None))
 
         mocker.patch(
             "controllers.console.admin.session_factory.create_session",

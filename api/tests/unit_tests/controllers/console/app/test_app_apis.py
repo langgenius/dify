@@ -206,7 +206,7 @@ class TestOpsTraceEndpoints:
     def test_ops_trace_query_basic(self):
         """Test ops_trace query."""
         from controllers.console.app.ops_trace import TraceProviderQuery
-        
+
         query = TraceProviderQuery(tracing_provider="langfuse")
         assert query.tracing_provider == "langfuse"
 
@@ -274,7 +274,7 @@ class TestSiteEndpoints:
     def test_site_response_structure(self):
         """Test site response structure."""
         from controllers.console.app.site import AppSiteUpdatePayload
-        
+
         payload = AppSiteUpdatePayload(title="My Site", description="Test site")
         assert payload.title == "My Site"
 
@@ -320,9 +320,7 @@ class TestSiteEndpoints:
             "session",
             MagicMock(query=lambda *_args, **_kwargs: query, commit=lambda: None),
         )
-        monkeypatch.setattr(
-            site_module.Site, "generate_code", lambda *_args, **_kwargs: "code"
-        )
+        monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
         monkeypatch.setattr(
             site_module,
             "current_account_with_tenant",
@@ -456,10 +454,7 @@ class TestWorkflowStatisticEndpoints:
         """Test workflow statistic time range query."""
         from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 
-        query = WorkflowStatisticQuery(
-            start="2024-01-01",
-            end="2024-12-31"
-        )
+        query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
         assert query.start == "2024-01-01"
 
     def test_workflow_statistic_blank_to_none(self):
@@ -496,9 +491,7 @@ class TestWorkflowStatisticEndpoints:
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
     def test_workflow_daily_terminals_statistic(self, app, monkeypatch):
-        monkeypatch.setattr(
-            workflow_statistic_module, "db", SimpleNamespace(engine=MagicMock())
-        )
+        monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
             "create_api_workflow_run_repository",
@@ -602,7 +595,7 @@ class TestWrapsEndpoints:
     def test_get_app_model_context(self):
         """Test get_app_model wrapper context."""
         # These are decorator functions, so we test their availability
-        assert hasattr(wraps_module, 'get_app_model')
+        assert hasattr(wraps_module, "get_app_model")
 
 
 # ========== MCP Server Tests ==========
@@ -641,17 +634,10 @@ class TestPayloadIntegration:
         """Test handling of multiple payload types."""
         payloads = [
             annotation_module.AnnotationReplyPayload(
-                score_threshold=0.5,
-                embedding_provider_name="openai",
-                embedding_model_name="text-embedding-3-small"
+                score_threshold=0.5, embedding_provider_name="openai", embedding_model_name="text-embedding-3-small"
             ),
-            message_module.MessageFeedbackPayload(
-                message_id=str(uuid.uuid4()),
-                rating="like"
-            ),
-            statistic_module.StatisticTimeRangeQuery(
-                start="2024-01-01"
-            ),
+            message_module.MessageFeedbackPayload(message_id=str(uuid.uuid4()), rating="like"),
+            statistic_module.StatisticTimeRangeQuery(start="2024-01-01"),
         ]
         assert len(payloads) == 3
         assert all(p is not None for p in payloads)

@@ -119,7 +119,7 @@ class TestBaseApiKeyResource:
         with patch("controllers.console.apikey._get_resource"):
             with pytest.raises(Exception) as exc_info:
                 DummyApiKeyResource.delete(resource, "rid", "kid")
-            
+
             # flask_restx.abort raises HTTPException with message in data attribute
             assert exc_info.value.data["message"] == "API key not found"
 

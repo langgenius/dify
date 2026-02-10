@@ -62,9 +62,7 @@ def test_message_feedback_payload_valid_dislike(app, monkeypatch: pytest.MonkeyP
 
 def test_message_feedback_payload_no_rating(app, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test MessageFeedbackPayload without rating."""
-    payload = message_module.MessageFeedbackPayload(
-        message_id="550e8400-e29b-41d4-a716-446655440000"
-    )
+    payload = message_module.MessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.rating is None
 
 
@@ -119,8 +117,6 @@ def test_annotation_count_response(app, monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_suggested_questions_response(app, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test SuggestedQuestionsResponse creation."""
-    response = message_module.SuggestedQuestionsResponse(
-        data=["What is AI?", "How does ML work?"]
-    )
+    response = message_module.SuggestedQuestionsResponse(data=["What is AI?", "How does ML work?"])
     assert len(response.data) == 2
     assert response.data[0] == "What is AI?"

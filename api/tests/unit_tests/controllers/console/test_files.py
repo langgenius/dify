@@ -49,7 +49,7 @@ def mock_decorators():
         patch("controllers.console.files.cloud_edition_billing_resource_check", return_value=lambda f: f),
     ):
         yield
-    
+
 
 @pytest.fixture
 def mock_current_user():
