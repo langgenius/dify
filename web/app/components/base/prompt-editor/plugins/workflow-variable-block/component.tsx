@@ -70,14 +70,27 @@ const WorkflowVariableBlockComponent = ({
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const [localNodeOutputVars, setLocalNodeOutputVars] = useState<NodeOutPutVar[]>(nodeOutputVars || [])
+  const scopedNodeOutputVars = useMemo(() => {
+    if (!localNodeOutputVars.length)
+      return []
+
+    const candidateNodeIds = [variables[0], variables[1]].filter(Boolean)
+    if (!candidateNodeIds.length)
+      return localNodeOutputVars
+
+    return localNodeOutputVars.filter(item => candidateNodeIds.includes(item.nodeId))
+  }, [localNodeOutputVars, variables])
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
   const isContextVariable = (node?.type === BlockEnum.Agent || node?.type === BlockEnum.LLM)
     && variables[variablesLength - 1] === 'context'
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
-    if (localNodeOutputVars.length)
-      return isValueSelectorInNodeOutputVars(variables, localNodeOutputVars)
+    if (localNodeOutputVars.length) {
+      if (!scopedNodeOutputVars.length)
+        return false
+      return isValueSelectorInNodeOutputVars(variables, scopedNodeOutputVars)
+    }
 
     let variableValid = true
     const isEnv = isENV(variables)
@@ -102,7 +115,7 @@ const WorkflowVariableBlockComponent = ({
       variableValid = !!node
     }
     return variableValid
-  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables, localNodeOutputVars])
+  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables, localNodeOutputVars, scopedNodeOutputVars])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
