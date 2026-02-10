@@ -3,52 +3,57 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import NotionConnector from './index'
 
-// 1. Robust Mock for translations
-const tMock = vi.fn((key, options) => `${options?.ns || 'no-ns'}:${key}`)
+// 1. Mock only the translation side-effect
+const tMock = vi.fn((key, options) => {
+  const ns = options?.ns ? `${options.ns}:` : ''
+  return `${ns}${key}`
+})
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: tMock }),
 }))
 
-// 2. Mock Icons to keep the DOM clean
-vi.mock('../icons/src/public/common', () => ({
-  Notion: () => <div data-testid="icon-notion" />,
-}))
-vi.mock('../icons/src/vender/line/others', () => ({
-  Icon3Dots: () => <div data-testid="icon-dots" />,
-}))
-
-vi.mock('../button', () => ({
-  default: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant: string }) => (
-    <button data-variant={variant} onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 describe('NotionConnector', () => {
-  it('should render with correct translations and structure', () => {
-    render(<NotionConnector onSetting={vi.fn()} />)
+  it('should render the layout and actual sub-components (Icons & Button)', () => {
+    const { container } = render(<NotionConnector onSetting={vi.fn()} />)
 
-    // Verify Icons
-    expect(screen.getByTestId('icon-notion')).toBeInTheDocument()
-    expect(screen.getByTestId('icon-dots')).toBeInTheDocument()
-
-    // Verify Namespaced Translations
+    // Verify Title & Tip translations
     expect(screen.getByText('datasetCreation:stepOne.notionSyncTitle')).toBeInTheDocument()
     expect(screen.getByText('datasetCreation:stepOne.notionSyncTip')).toBeInTheDocument()
 
-    // Verify Button text and variant
-    const button = screen.getByRole('button')
-    expect(button).toHaveTextContent('datasetCreation:stepOne.connect')
-    expect(button).toHaveAttribute('data-variant', 'primary')
+    const notionWrapper = container.querySelector('.h-12.w-12')
+    const dotsWrapper = container.querySelector('.system-md-semibold')
+
+    expect(notionWrapper?.querySelector('svg')).toBeInTheDocument()
+    expect(dotsWrapper?.querySelector('svg')).toBeInTheDocument()
+
+    const button = screen.getByRole('button', {
+      name: /datasetcreation:stepone.connect/i,
+    })
+
+    expect(button).toBeInTheDocument()
+    expect(button).toHaveClass('btn', 'btn-primary')
   })
 
-  it('should trigger onSetting callback on click', async () => {
+  it('should trigger the onSetting callback when the real button is clicked', async () => {
     const onSetting = vi.fn()
     const user = userEvent.setup()
     render(<NotionConnector onSetting={onSetting} />)
 
-    await user.click(screen.getByRole('button'))
+    const button = screen.getByRole('button', {
+      name: /datasetcreation:stepone.connect/i,
+    })
+
+    await user.click(button)
+
     expect(onSetting).toHaveBeenCalledTimes(1)
+  })
+
+  it('should maintain the correct visual hierarchy classes', () => {
+    const { container } = render(<NotionConnector onSetting={vi.fn()} />)
+
+    // Verify the outer container has the specific workflow-process-bg
+    const mainContainer = container.firstChild
+    expect(mainContainer).toHaveClass('bg-workflow-process-bg', 'rounded-2xl', 'p-6')
   })
 })
