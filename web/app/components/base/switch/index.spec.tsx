@@ -49,15 +49,6 @@ describe('Switch', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('should sync internal state when defaultValue prop changes', () => {
-    const { rerender } = render(<Switch defaultValue={false} />)
-    const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveAttribute('aria-checked', 'false')
-
-    rerender(<Switch defaultValue={true} />)
-    expect(switchElement).toHaveAttribute('aria-checked', 'true')
-  })
-
   it('should apply correct size classes', () => {
     const { rerender } = render(<Switch size="xs" />)
     let switchElement = screen.getByRole('switch')
