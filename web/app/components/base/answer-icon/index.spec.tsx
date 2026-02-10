@@ -6,14 +6,14 @@ describe('AnswerIcon', () => {
     const { container } = render(<AnswerIcon />)
     const emojiElement = container.querySelector('em-emoji')
     expect(emojiElement).toBeInTheDocument()
-    expect(emojiElement?.getAttribute('id')).toBe('🤖')
+    expect(emojiElement).toHaveAttribute('id', '🤖')
   })
 
   it('renders with custom emoji when icon is provided', () => {
     const { container } = render(<AnswerIcon icon="smile" />)
     const emojiElement = container.querySelector('em-emoji')
     expect(emojiElement).toBeInTheDocument()
-    expect(emojiElement?.getAttribute('id')).toBe('smile')
+    expect(emojiElement).toHaveAttribute('id', 'smile')
   })
   it('renders image when iconType is image and imageUrl is provided', () => {
     render(<AnswerIcon iconType="image" imageUrl="test-image.jpg" />)
