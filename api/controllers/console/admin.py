@@ -1,6 +1,5 @@
 import csv
 import io
-import re
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
