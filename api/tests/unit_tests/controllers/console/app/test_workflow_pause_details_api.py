@@ -9,6 +9,7 @@ from flask import Flask
 
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow_run as workflow_run_module
+from controllers.web.error import NotFoundError
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes.human_input.entities import FormInput, UserAction
@@ -53,6 +54,7 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
 
     workflow_run = Mock(spec=WorkflowRun)
+    workflow_run.tenant_id = "tenant-123"
     workflow_run.status = WorkflowExecutionStatus.PAUSED
     workflow_run.created_at = datetime(2024, 1, 1, 12, 0, 0)
     fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
@@ -89,3 +91,20 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         == "https://web.example.com/form/backstage-token"
     )
     assert "pending_human_inputs" not in response
+
+
+def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = _make_account()
+    _patch_console_guards(monkeypatch, account)
+    monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
+
+    workflow_run = Mock(spec=WorkflowRun)
+    workflow_run.tenant_id = "tenant-456"
+    workflow_run.status = WorkflowExecutionStatus.PAUSED
+    workflow_run.created_at = datetime(2024, 1, 1, 12, 0, 0)
+    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
+    monkeypatch.setattr(workflow_run_module, "db", fake_db)
+
+    with pytest.raises(NotFoundError):
+        with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+            response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")

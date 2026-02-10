@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.file import helpers as file_helpers
 from core.helper.name_generator import generate_incremental_name
@@ -1389,6 +1390,46 @@ class DocumentService:
         return documents
 
     @staticmethod
+    def update_documents_need_summary(dataset_id: str, document_ids: Sequence[str], need_summary: bool = True) -> int:
+        """
+        Update need_summary field for multiple documents.
+
+        This method handles the case where documents were created when summary_index_setting was disabled,
+        and need to be updated when summary_index_setting is later enabled.
+
+        Args:
+            dataset_id: Dataset ID
+            document_ids: List of document IDs to update
+            need_summary: Value to set for need_summary field (default: True)
+
+        Returns:
+            Number of documents updated
+        """
+        if not document_ids:
+            return 0
+
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+
+        with session_factory.create_session() as session:
+            updated_count = (
+                session.query(Document)
+                .filter(
+                    Document.id.in_(document_id_list),
+                    Document.dataset_id == dataset_id,
+                    Document.doc_form != "qa_model",  # Skip qa_model documents
+                )
+                .update({Document.need_summary: need_summary}, synchronize_session=False)
+            )
+            session.commit()
+            logger.info(
+                "Updated need_summary to %s for %d documents in dataset %s",
+                need_summary,
+                updated_count,
+                dataset_id,
+            )
+            return updated_count
+
+    @staticmethod
     def get_document_download_url(document: Document) -> str:
         """
         Return a signed download URL for an upload-file document.
@@ -1655,12 +1696,17 @@ class DocumentService:
             for document in documents
             if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        if dataset.doc_form is not None:
-            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
+        # Delete documents first, then dispatch cleanup task after commit
+        # to avoid deadlock between main transaction and async task
         for document in documents:
             db.session.delete(document)
         db.session.commit()
+
+        # Dispatch cleanup task after commit to avoid lock contention
+        # Task cleans up segments, files, and vector indexes
+        if dataset.doc_form is not None:
+            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
@@ -2937,14 +2983,15 @@ class DocumentService:
         """
         now = naive_utc_now()
 
-        if action == "enable":
-            return DocumentService._prepare_enable_update(document, now)
-        elif action == "disable":
-            return DocumentService._prepare_disable_update(document, user, now)
-        elif action == "archive":
-            return DocumentService._prepare_archive_update(document, user, now)
-        elif action == "un_archive":
-            return DocumentService._prepare_unarchive_update(document, now)
+        match action:
+            case "enable":
+                return DocumentService._prepare_enable_update(document, now)
+            case "disable":
+                return DocumentService._prepare_disable_update(document, user, now)
+            case "archive":
+                return DocumentService._prepare_archive_update(document, user, now)
+            case "un_archive":
+                return DocumentService._prepare_unarchive_update(document, now)
 
         return None
 
@@ -3581,56 +3628,57 @@ class SegmentService:
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
-        if action == "enable":
-            segments = db.session.scalars(
-                select(DocumentSegment).where(
-                    DocumentSegment.id.in_(segment_ids),
-                    DocumentSegment.dataset_id == dataset.id,
-                    DocumentSegment.document_id == document.id,
-                    DocumentSegment.enabled == False,
-                )
-            ).all()
-            if not segments:
-                return
-            real_deal_segment_ids = []
-            for segment in segments:
-                indexing_cache_key = f"segment_{segment.id}_indexing"
-                cache_result = redis_client.get(indexing_cache_key)
-                if cache_result is not None:
-                    continue
-                segment.enabled = True
-                segment.disabled_at = None
-                segment.disabled_by = None
-                db.session.add(segment)
-                real_deal_segment_ids.append(segment.id)
-            db.session.commit()
+        match action:
+            case "enable":
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.id.in_(segment_ids),
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.enabled == False,
+                    )
+                ).all()
+                if not segments:
+                    return
+                real_deal_segment_ids = []
+                for segment in segments:
+                    indexing_cache_key = f"segment_{segment.id}_indexing"
+                    cache_result = redis_client.get(indexing_cache_key)
+                    if cache_result is not None:
+                        continue
+                    segment.enabled = True
+                    segment.disabled_at = None
+                    segment.disabled_by = None
+                    db.session.add(segment)
+                    real_deal_segment_ids.append(segment.id)
+                db.session.commit()
 
-            enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
-        elif action == "disable":
-            segments = db.session.scalars(
-                select(DocumentSegment).where(
-                    DocumentSegment.id.in_(segment_ids),
-                    DocumentSegment.dataset_id == dataset.id,
-                    DocumentSegment.document_id == document.id,
-                    DocumentSegment.enabled == True,
-                )
-            ).all()
-            if not segments:
-                return
-            real_deal_segment_ids = []
-            for segment in segments:
-                indexing_cache_key = f"segment_{segment.id}_indexing"
-                cache_result = redis_client.get(indexing_cache_key)
-                if cache_result is not None:
-                    continue
-                segment.enabled = False
-                segment.disabled_at = naive_utc_now()
-                segment.disabled_by = current_user.id
-                db.session.add(segment)
-                real_deal_segment_ids.append(segment.id)
-            db.session.commit()
+                enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
+            case "disable":
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.id.in_(segment_ids),
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.enabled == True,
+                    )
+                ).all()
+                if not segments:
+                    return
+                real_deal_segment_ids = []
+                for segment in segments:
+                    indexing_cache_key = f"segment_{segment.id}_indexing"
+                    cache_result = redis_client.get(indexing_cache_key)
+                    if cache_result is not None:
+                        continue
+                    segment.enabled = False
+                    segment.disabled_at = naive_utc_now()
+                    segment.disabled_by = current_user.id
+                    db.session.add(segment)
+                    real_deal_segment_ids.append(segment.id)
+                db.session.commit()
 
-            disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
+                disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
 
     @classmethod
     def create_child_chunk(

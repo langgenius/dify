@@ -1,9 +1,10 @@
 from typing import Any
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -38,15 +39,53 @@ class EndpointListForPluginQuery(EndpointListQuery):
     plugin_id: str
 
 
+class EndpointCreateResponse(BaseModel):
+    success: bool = Field(description="Operation success")
+
+
+class EndpointListResponse(BaseModel):
+    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+
+
+class PluginEndpointListResponse(BaseModel):
+    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+
+
+class EndpointDeleteResponse(BaseModel):
+    success: bool = Field(description="Operation success")
+
+
+class EndpointUpdateResponse(BaseModel):
+    success: bool = Field(description="Operation success")
+
+
+class EndpointEnableResponse(BaseModel):
+    success: bool = Field(description="Operation success")
+
+
+class EndpointDisableResponse(BaseModel):
+    success: bool = Field(description="Operation success")
+
+
 def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
-reg(EndpointCreatePayload)
-reg(EndpointIdPayload)
-reg(EndpointUpdatePayload)
-reg(EndpointListQuery)
-reg(EndpointListForPluginQuery)
+register_schema_models(
+    console_ns,
+    EndpointCreatePayload,
+    EndpointIdPayload,
+    EndpointUpdatePayload,
+    EndpointListQuery,
+    EndpointListForPluginQuery,
+    EndpointCreateResponse,
+    EndpointListResponse,
+    PluginEndpointListResponse,
+    EndpointDeleteResponse,
+    EndpointUpdateResponse,
+    EndpointEnableResponse,
+    EndpointDisableResponse,
+)
 
 
 @console_ns.route("/workspaces/current/endpoints/create")
@@ -57,7 +96,7 @@ class EndpointCreateApi(Resource):
     @console_ns.response(
         200,
         "Endpoint created successfully",
-        console_ns.model("EndpointCreateResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.models[EndpointCreateResponse.__name__],
     )
     @console_ns.response(403, "Admin privileges required")
     @setup_required
@@ -91,9 +130,7 @@ class EndpointListApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.model(
-            "EndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}
-        ),
+        console_ns.models[EndpointListResponse.__name__],
     )
     @setup_required
     @login_required
@@ -126,9 +163,7 @@ class EndpointListForSinglePluginApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.model(
-            "PluginEndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}
-        ),
+        console_ns.models[PluginEndpointListResponse.__name__],
     )
     @setup_required
     @login_required
@@ -163,7 +198,7 @@ class EndpointDeleteApi(Resource):
     @console_ns.response(
         200,
         "Endpoint deleted successfully",
-        console_ns.model("EndpointDeleteResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.models[EndpointDeleteResponse.__name__],
     )
     @console_ns.response(403, "Admin privileges required")
     @setup_required
@@ -190,7 +225,7 @@ class EndpointUpdateApi(Resource):
     @console_ns.response(
         200,
         "Endpoint updated successfully",
-        console_ns.model("EndpointUpdateResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.models[EndpointUpdateResponse.__name__],
     )
     @console_ns.response(403, "Admin privileges required")
     @setup_required
@@ -221,7 +256,7 @@ class EndpointEnableApi(Resource):
     @console_ns.response(
         200,
         "Endpoint enabled successfully",
-        console_ns.model("EndpointEnableResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.models[EndpointEnableResponse.__name__],
     )
     @console_ns.response(403, "Admin privileges required")
     @setup_required
@@ -248,7 +283,7 @@ class EndpointDisableApi(Resource):
     @console_ns.response(
         200,
         "Endpoint disabled successfully",
-        console_ns.model("EndpointDisableResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.models[EndpointDisableResponse.__name__],
     )
     @console_ns.response(403, "Admin privileges required")
     @setup_required

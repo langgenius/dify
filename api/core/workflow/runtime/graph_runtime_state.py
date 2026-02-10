@@ -6,13 +6,13 @@ import threading
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from pydantic import BaseModel, Field
 from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.enums import NodeState
+from core.workflow.enums import NodeExecutionType, NodeState, NodeType
 from core.workflow.runtime.variable_pool import VariablePool
 
 if TYPE_CHECKING:
@@ -64,7 +64,7 @@ class GraphExecutionProtocol(Protocol):
     aborted: bool
     error: Exception | None
     exceptions_count: int
-    pause_reasons: Sequence[PauseReason]
+    pause_reasons: list[PauseReason]
 
     def start(self) -> None:
         """Transition execution into the running state."""
@@ -112,11 +112,18 @@ class NodeProtocol(Protocol):
 
     id: str
     state: NodeState
+    execution_type: NodeExecutionType
+    node_type: ClassVar[NodeType]
+
+    def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool: ...
 
 
 class EdgeProtocol(Protocol):
     id: str
     state: NodeState
+    tail: str
+    head: str
+    source_handle: str
 
 
 class GraphProtocol(Protocol):
@@ -439,7 +446,7 @@ class GraphRuntimeState:
         graph_execution_cls = module.GraphExecution
         workflow_id = self._pending_graph_execution_workflow_id or ""
         self._pending_graph_execution_workflow_id = None
-        return graph_execution_cls(workflow_id=workflow_id)
+        return graph_execution_cls(workflow_id=workflow_id)  # type: ignore[invalid-return-type]
 
     def _build_response_coordinator(self, graph: GraphProtocol) -> ResponseStreamCoordinatorProtocol:
         # Lazily import to keep the runtime domain decoupled from graph_engine modules.

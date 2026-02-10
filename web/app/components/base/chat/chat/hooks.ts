@@ -71,6 +71,7 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
+  const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
@@ -166,7 +167,7 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current)
+    if (stopChat && taskIdRef.current && !pausedStateRef.current)
       stopChat(taskIdRef.current)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
@@ -537,6 +538,7 @@ export const useChat = (
       },
       onWorkflowPaused: ({ data: workflowPausedData }) => {
         const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
+        pausedStateRef.current = true
         sseGet(
           resumeUrl,
           {},
@@ -921,6 +923,8 @@ export const useChat = (
         })
       },
       onWorkflowFinished: ({ data: workflowFinishedData }) => {
+        if (pausedStateRef.current)
+          pausedStateRef.current = false
         responseItem.workflowProcess!.status = workflowFinishedData.status as WorkflowRunningStatus
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -1111,6 +1115,7 @@ export const useChat = (
       },
       onWorkflowPaused: ({ data: workflowPausedData }) => {
         const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
+        pausedStateRef.current = true
         sseGet(
           url,
           {},
