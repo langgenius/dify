@@ -10,10 +10,10 @@ const SentryInitializer = ({
   children,
 }: { children: React.ReactElement }) => {
   useEffect(() => {
-    const sentryDsn = env.NEXT_PUBLIC_SENTRY_DSN
-    if (!IS_DEV && sentryDsn) {
+    const SENTRY_DSN = env.NEXT_PUBLIC_SENTRY_DSN
+    if (!IS_DEV && SENTRY_DSN) {
       Sentry.init({
-        dsn: sentryDsn,
+        dsn: SENTRY_DSN,
         integrations: [
           Sentry.browserTracingIntegration(),
           Sentry.replayIntegration(),
