@@ -97,17 +97,17 @@ const LocaleLayout = async ({
         <PWAProvider>
           <ReactScanLoader />
           <JotaiProvider>
-            <ThemeProvider
-              attribute="data-theme"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-              enableColorScheme={false}
-            >
-              <NuqsAdapter>
-                <BrowserInitializer>
-                  <SentryInitializer>
-                    <TanstackQueryInitializer>
+            <NuqsAdapter>
+              <BrowserInitializer>
+                <SentryInitializer>
+                  <TanstackQueryInitializer>
+                    <ThemeProvider
+                      attribute="data-theme"
+                      defaultTheme="system"
+                      enableSystem
+                      disableTransitionOnChange
+                      enableColorScheme={false}
+                    >
                       <I18nServerProvider>
                         <ToastProvider>
                           <GlobalPublicStoreProvider>
@@ -115,11 +115,11 @@ const LocaleLayout = async ({
                           </GlobalPublicStoreProvider>
                         </ToastProvider>
                       </I18nServerProvider>
-                    </TanstackQueryInitializer>
-                  </SentryInitializer>
-                </BrowserInitializer>
-              </NuqsAdapter>
-            </ThemeProvider>
+                    </ThemeProvider>
+                  </TanstackQueryInitializer>
+                </SentryInitializer>
+              </BrowserInitializer>
+            </NuqsAdapter>
           </JotaiProvider>
           <RoutePrefixHandle />
         </PWAProvider>
