@@ -9,7 +9,7 @@ import dify from './eslint-rules/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
-process.env.TAILWIND_MODE = 'ESLINT'
+process.env.TAILWIND_MODE ??= 'ESLINT'
 
 export default antfu(
   {
