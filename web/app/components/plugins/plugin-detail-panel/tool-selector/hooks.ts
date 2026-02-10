@@ -10,6 +10,5 @@ export const usePluginInstalledCheck = (providerName = '') => {
   return {
     inMarketPlace: !!manifest,
     manifest: manifest?.data.plugin,
-    pluginID,
   }
 }

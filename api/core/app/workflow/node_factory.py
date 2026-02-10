@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, final
 from typing_extensions import override
 
 from configs import dify_config
-from core.file.file_manager import file_manager
+from core.file import file_manager
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
