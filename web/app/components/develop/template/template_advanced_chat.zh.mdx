@@ -50,8 +50,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='tool_call_mode' type='string' key='tool_call_mode'>
         工具调用兼容模式：
         - `structured`（默认）仅接受结构化 `tool_calls`。
-        - `openclaw_text` 从 `answer` 文本解析 OpenClaw 风格工具调用并触发回调。
-        该模式会在消息结束事件时解析代码块或形如 `tool(args)` 的行，生成 `event: tool_call` 事件并继续推理；适用于 OpenClaw 网关/客户端在提示中注入工具语法、模型把工具调用以文本输出的场景。
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，用于定义终端用户的身份，方便检索、统计。
