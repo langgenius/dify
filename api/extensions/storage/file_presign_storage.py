@@ -13,7 +13,7 @@ Usage:
     upload_url = presign_storage.get_upload_url("path/to/file.txt", expires_in=3600)
 
 When the underlying storage doesn't support presigned URLs, the fallback URLs follow the format:
-    {FILES_URL}/files/storage-tickets/{token}
+    {FILES_API_URL}/files/storage-files/{token}  (falls back to FILES_URL)
 
 The token is a UUID that maps to the real storage key in Redis.
 """

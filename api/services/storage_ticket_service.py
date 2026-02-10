@@ -14,7 +14,7 @@ Usage:
     url = StorageTicketService.create_upload_url("path/to/file.txt", expires_in=300, max_bytes=10*1024*1024)
 
 URL format:
-    {FILES_URL}/files/storage-files/{token}
+    {FILES_API_URL}/files/storage-files/{token}  (falls back to FILES_URL)
 
 The token is validated by looking up the Redis key, which contains:
     - op: "download" or "upload"
@@ -138,5 +138,5 @@ class StorageTicketService:
     @classmethod
     def _build_url(cls, token: str) -> str:
         """Build the full URL for a token."""
-        base_url = dify_config.FILES_URL
+        base_url = dify_config.FILES_API_URL
         return f"{base_url}/files/storage-files/{token}"
