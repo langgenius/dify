@@ -1,4 +1,4 @@
-from flask import request
+from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 
@@ -81,4 +81,7 @@ class RecommendedAppApi(Resource):
     @account_initialization_required
     def get(self, app_id):
         app_id = str(app_id)
-        return RecommendedAppService.get_recommend_app_detail(app_id)
+        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        if result is None:
+            abort(404, "App not found.")
+        return result

@@ -645,5 +645,7 @@
   "error.billing_workspace_custom_limit_exceeded": "The workspace custom feature has reached the limit of your subscription.",
   "error.billing_annotation_quota_exceeded": "The annotation quota has reached the limit of your subscription.",
   "error.access_denied": "Access denied.",
-  "error.billing_not_enabled": "Billing feature is not enabled."
+  "error.billing_not_enabled": "Billing feature is not enabled.",
+  "error.trial_app_not_enabled": "Trial app feature is not enabled.",
+  "error.explore_banner_not_enabled": "Explore banner feature is not enabled."
 }

@@ -43,7 +43,9 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result: dict = retrieval_instance.get_recommend_app_detail(app_id)
+        result: dict | None = retrieval_instance.get_recommend_app_detail(app_id)
+        if result is None:
+            return None
         if FeatureService.get_system_features().enable_trial_app:
             app_id = result["id"]
             trial_app_model = db.session.query(TrialApp).where(TrialApp.app_id == app_id).first()

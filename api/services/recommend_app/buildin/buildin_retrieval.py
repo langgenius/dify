@@ -50,7 +50,14 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         :return:
         """
         builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
-        return builtin_data.get("recommended_apps", {}).get(language, {})
+        recommended_apps = builtin_data.get("recommended_apps", {})
+        result = recommended_apps.get(language, {})
+
+        # Fall back to en-US if the requested language has no apps
+        if not result or not result.get("recommended_apps"):
+            result = recommended_apps.get("en-US", {})
+
+        return result
 
     @classmethod
     def fetch_recommended_app_detail_from_builtin(cls, app_id: str) -> dict | None:

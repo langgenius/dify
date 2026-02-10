@@ -7,6 +7,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError, TrialAppLimitExceeded, TrialAppNotAllowed
+from libs.external_api import abort_with_code
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
@@ -110,7 +111,7 @@ def trial_feature_enable(view: Callable[..., R]) -> Callable[..., R]:
     def decorated(*args, **kwargs):
         features = FeatureService.get_system_features()
         if not features.enable_trial_app:
-            abort(403, "试用应用功能未启用。")
+            abort_with_code(403, "试用应用功能未启用。", "trial_app_not_enabled")
         return view(*args, **kwargs)
 
     return decorated
@@ -121,7 +122,7 @@ def explore_banner_enabled(view: Callable[..., R]) -> Callable[..., R]:
     def decorated(*args, **kwargs):
         features = FeatureService.get_system_features()
         if not features.enable_explore_banner:
-            abort(403, "探索横幅功能未启用。")
+            abort_with_code(403, "探索横幅功能未启用。", "explore_banner_not_enabled")
         return view(*args, **kwargs)
 
     return decorated
