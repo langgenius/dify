@@ -49,8 +49,9 @@ export function CollectionHeader<TCollection extends BaseCollection>({
   carouselCollectionNames,
   viewMore,
 }: CollectionHeaderProps<TCollection>) {
-  const showViewMore = collection.searchable
-    && (carouselCollectionNames.includes(collection.name) || itemsLength > GRID_DISPLAY_LIMIT)
+  const showViewMore = (collection.searchable || collection.search_params)
+    && !carouselCollectionNames.includes(collection.name)
+    && itemsLength > GRID_DISPLAY_LIMIT
 
   return (
     <div className="mb-2 flex items-end justify-between">
