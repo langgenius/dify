@@ -80,6 +80,7 @@ def init_app(app: DifyApp) -> Celery:
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
+        task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
     )
 
     if dify_config.CELERY_BACKEND == "redis":
