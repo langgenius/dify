@@ -6,7 +6,6 @@
  */
 
 import type { HitTestingResponse } from '@/models/datasets'
-import '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
   hitTestingMutateAsync: vi.fn(),
