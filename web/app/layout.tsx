@@ -78,6 +78,11 @@ const LocaleLayout = async ({
   return (
     <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=document.documentElement;if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches))d.setAttribute('data-theme','dark');else d.setAttribute('data-theme','light')}catch(e){}})()`,
+          }}
+        />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1C64F2" />
         <meta name="mobile-web-app-capable" content="yes" />
