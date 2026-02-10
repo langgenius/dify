@@ -100,7 +100,7 @@ class MyScaleVector(BaseVector):
                 rows.append(
                     (
                         doc_id,
-                        self.escape_str(doc.page_content),
+                        doc.page_content,
                         embeddings[i],
                         json.dumps(doc.metadata or {}),
                     )
@@ -109,10 +109,6 @@ class MyScaleVector(BaseVector):
         if rows:
             self._client.insert(self._qualified_table, rows, column_names=columns)
         return ids
-
-    @staticmethod
-    def escape_str(value: Any) -> str:
-        return "".join(" " if c in {"\\", "'"} else c for c in str(value))
 
     def text_exists(self, id: str) -> bool:
         results = self._client.query(
