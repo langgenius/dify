@@ -4,7 +4,6 @@ import { PluginCategoryEnum } from './types'
 import { getValidCategoryKeys, getValidTagKeys } from './utils'
 
 describe('plugins/utils', () => {
-  // ─── getValidTagKeys ──────────────────────────────────────────────
   describe('getValidTagKeys', () => {
     it('returns only valid tag keys from the predefined set', () => {
       const input = ['agent', 'rag', 'invalid-tag', 'search'] as TagKey[]
@@ -28,7 +27,6 @@ describe('plugins/utils', () => {
     })
   })
 
-  // ─── getValidCategoryKeys ─────────────────────────────────────────
   describe('getValidCategoryKeys', () => {
     it('returns matching category for valid key', () => {
       expect(getValidCategoryKeys(PluginCategoryEnum.model)).toBe(PluginCategoryEnum.model)

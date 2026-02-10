@@ -2,12 +2,8 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useStore } from '@/app/components/plugins/plugin-page/filter-management/store'
 
-// Integration test: Plugin page filter management store
-// Tests the full filter state management lifecycle
-
 describe('Plugin Page Filter Management Integration', () => {
   beforeEach(() => {
-    // Reset store
     const { result } = renderHook(() => useStore())
     act(() => {
       result.current.setTagList([])
@@ -21,7 +17,6 @@ describe('Plugin Page Filter Management Integration', () => {
     it('should manage full tag lifecycle: add -> update -> clear', () => {
       const { result } = renderHook(() => useStore())
 
-      // Add tags
       const initialTags = [
         { name: 'search', label: { en_US: 'Search' } },
         { name: 'productivity', label: { en_US: 'Productivity' } },
@@ -32,7 +27,6 @@ describe('Plugin Page Filter Management Integration', () => {
       })
       expect(result.current.tagList).toHaveLength(2)
 
-      // Update tags
       const updatedTags = [
         ...initialTags,
         { name: 'image', label: { en_US: 'Image' } },
@@ -43,7 +37,6 @@ describe('Plugin Page Filter Management Integration', () => {
       })
       expect(result.current.tagList).toHaveLength(3)
 
-      // Clear tags
       act(() => {
         result.current.setTagList([])
       })

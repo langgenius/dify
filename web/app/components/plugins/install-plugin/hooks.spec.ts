@@ -2,24 +2,20 @@ import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGitHubReleases, useGitHubUpload } from './hooks'
 
-// Mock Toast
 const mockNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   default: { notify: (...args: unknown[]) => mockNotify(...args) },
 }))
 
-// Mock config
 vi.mock('@/config', () => ({
   GITHUB_ACCESS_TOKEN: '',
 }))
 
-// Mock uploadGitHub service
 const mockUploadGitHub = vi.fn()
 vi.mock('@/service/plugins', () => ({
   uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
 }))
 
-// Mock semver utils
 vi.mock('@/utils/semver', () => ({
   compareVersion: (a: string, b: string) => {
     const parseVersion = (v: string) => v.replace(/^v/, '').split('.').map(Number)
@@ -48,7 +44,6 @@ vi.mock('@/utils/semver', () => ({
   },
 }))
 
-// Mock global fetch
 const mockFetch = vi.fn()
 globalThis.fetch = mockFetch
 
@@ -57,7 +52,6 @@ describe('install-plugin/hooks', () => {
     vi.clearAllMocks()
   })
 
-  // ─── useGitHubReleases ────────────────────────────────────────────
   describe('useGitHubReleases', () => {
     describe('fetchReleases', () => {
       it('fetches releases from GitHub API and formats them', async () => {
@@ -78,7 +72,6 @@ describe('install-plugin/hooks', () => {
         expect(releases).toHaveLength(1)
         expect(releases[0].tag_name).toBe('v1.0.0')
         expect(releases[0].assets[0].name).toBe('plugin.zip')
-        // Verify extra fields are stripped
         expect(releases[0]).not.toHaveProperty('body')
       })
 
@@ -129,7 +122,6 @@ describe('install-plugin/hooks', () => {
     })
   })
 
-  // ─── useGitHubUpload ─────────────────────────────────────────────
   describe('useGitHubUpload', () => {
     it('uploads successfully and calls onSuccess', async () => {
       const mockManifest = { name: 'test-plugin' }

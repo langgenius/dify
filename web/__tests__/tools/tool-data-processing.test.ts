@@ -23,7 +23,6 @@ import {
 describe('Tool Data Processing Pipeline Integration', () => {
   describe('End-to-end: API schema → form schema → form value', () => {
     it('processes tool parameters through the full pipeline', () => {
-      // Step 1: Raw API data (simulating server response)
       const rawParameters = [
         {
           name: 'query',
@@ -49,7 +48,6 @@ describe('Tool Data Processing Pipeline Integration', () => {
         },
       ]
 
-      // Step 2: Convert to form schemas
       const formSchemas = toolParametersToFormSchemas(rawParameters as unknown as Parameters<typeof toolParametersToFormSchemas>[0])
       expect(formSchemas).toHaveLength(2)
       expect(formSchemas[0].variable).toBe('query')
@@ -58,12 +56,10 @@ describe('Tool Data Processing Pipeline Integration', () => {
       expect(formSchemas[1].variable).toBe('limit')
       expect(formSchemas[1].type).toBe('number-input')
 
-      // Step 3: Add default values
       const withDefaults = addDefaultValue({}, formSchemas)
       expect(withDefaults.query).toBe('hello')
       expect(withDefaults.limit).toBe('10')
 
-      // Step 4: Generate form values using the schemas
       const formValues = generateFormValue({}, formSchemas, false)
       expect(formValues).toBeDefined()
       expect(formValues.query).toBeDefined()
@@ -111,9 +107,8 @@ describe('Tool Data Processing Pipeline Integration', () => {
 
       const schemas = triggerEventParametersToFormSchemas(rawParams as unknown as Parameters<typeof triggerEventParametersToFormSchemas>[0])
       expect(schemas).toHaveLength(1)
-      // triggerEventParametersToFormSchemas preserves original 'name' field
       expect(schemas[0].name).toBe('event_type')
-      expect(schemas[0].type).toBe('select') // select stays as select
+      expect(schemas[0].type).toBe('select')
       expect(schemas[0].options).toHaveLength(2)
     })
   })
@@ -143,15 +138,12 @@ describe('Tool Data Processing Pipeline Integration', () => {
 
   describe('Value extraction integration', () => {
     it('wraps values with getStructureValue and extracts inner value with getPlainValue', () => {
-      // getStructureValue wraps each value: key → { value: key_value }
       const plainInput = { query: 'test', limit: 10 }
       const structured = getStructureValue(plainInput)
 
       expect(structured.query).toEqual({ value: 'test' })
       expect(structured.limit).toEqual({ value: 10 })
 
-      // getPlainValue spreads value[key].value as object
-      // So it expects the inner value to be object-like
       const objectStructured = {
         query: { value: { type: 'constant', content: 'test search' } },
         limit: { value: { type: 'constant', content: 10 } },
@@ -167,7 +159,6 @@ describe('Tool Data Processing Pipeline Integration', () => {
         { variable: 'format', type: 'select', default: 'json' },
       ]
 
-      // Empty value + form schemas with defaults → gets configured defaults
       const configured = getConfiguredValue({}, formSchemas)
       expect(configured).toBeDefined()
       expect(configured.query).toBeDefined()
@@ -197,13 +188,11 @@ describe('Tool Data Processing Pipeline Integration', () => {
         { id: 'f2', name: 'summary.pdf', type: 'document' },
       ] as Parameters<typeof addFileInfos>[1]
 
-      // Step 1: Sort by position
       const sorted = sortAgentSorts(thoughts)
       expect(sorted[0].id).toBe('t1')
       expect(sorted[1].id).toBe('t2')
       expect(sorted[2].id).toBe('t3')
 
-      // Step 2: Enrich with file info
       const enriched = addFileInfos(sorted, messageFiles)
       expect(enriched[0].message_files).toBeUndefined()
       expect(enriched[1].message_files).toHaveLength(1)

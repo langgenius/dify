@@ -7,7 +7,6 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock dependencies before imports
 vi.mock('@/config', () => ({
   GITHUB_ACCESS_TOKEN: '',
 }))
@@ -89,17 +88,14 @@ describe('Plugin Installation Flow Integration', () => {
 
       const { fetchReleases, checkForUpdates } = useGitHubReleases()
 
-      // Step 1: Fetch releases
       const releases = await fetchReleases('test-org', 'test-repo')
       expect(releases).toHaveLength(3)
       expect(releases[0].tag_name).toBe('v2.0.0')
 
-      // Step 2: Check for updates (current version is v1.0.0)
       const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
       expect(needUpdate).toBe(true)
       expect(toastProps.message).toContain('v2.0.0')
 
-      // Step 3: Upload the new version
       const { handleUpload } = useGitHubUpload()
       const onSuccess = vi.fn()
       const result = await handleUpload(
@@ -213,7 +209,6 @@ describe('Plugin Installation Flow Integration', () => {
       const { checkTaskStatus: fetchCheckTaskStatus } = await import('@/service/plugins')
       ;(fetchCheckTaskStatus as ReturnType<typeof vi.fn>).mockImplementation(mockCheckTaskStatus)
 
-      // Mock sleep to avoid waiting
       vi.mock('@/utils', () => ({
         sleep: () => Promise.resolve(),
       }))

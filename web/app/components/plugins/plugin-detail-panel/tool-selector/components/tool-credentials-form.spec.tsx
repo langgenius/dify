@@ -21,16 +21,6 @@ vi.mock('@remixicon/react', () => ({
   RiArrowRightUpLine: () => <span data-testid="icon-arrow" />,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant }: { children: React.ReactNode, onClick?: () => void, variant?: string }) => (
-    <button onClick={onClick} data-variant={variant}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading" />,
-}))
-
 vi.mock('@/app/components/base/toast', () => ({
   default: { notify: vi.fn() },
   useToastContext: () => ({ notify: vi.fn() }),

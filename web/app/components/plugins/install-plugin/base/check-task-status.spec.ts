@@ -2,13 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TaskStatus } from '../../types'
 import checkTaskStatus from './check-task-status'
 
-// Mock service
 const mockCheckTaskStatus = vi.fn()
 vi.mock('@/service/plugins', () => ({
   checkTaskStatus: (...args: unknown[]) => mockCheckTaskStatus(...args),
 }))
 
-// Mock sleep to avoid actual waiting
+// Mock sleep to avoid actual waiting in tests
 vi.mock('@/utils', () => ({
   sleep: vi.fn().mockResolvedValue(undefined),
 }))
@@ -116,12 +115,11 @@ describe('checkTaskStatus', () => {
       },
     })
 
-    // checker1 is stopped, checker2 is not
     const result1 = await checker1.check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
     const result2 = await checker2.check({ taskId: 'task-2', pluginUniqueIdentifier: 'test-plugin' })
 
     expect(result1.status).toBe(TaskStatus.success)
     expect(result2.status).toBe(TaskStatus.success)
-    expect(mockCheckTaskStatus).toHaveBeenCalledTimes(1) // Only checker2 made the API call
+    expect(mockCheckTaskStatus).toHaveBeenCalledTimes(1)
   })
 })

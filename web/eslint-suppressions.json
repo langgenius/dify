@@ -5447,7 +5447,7 @@
   },
   "app/components/plugins/reference-setting-modal/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "app/components/plugins/reference-setting-modal/index.tsx": {

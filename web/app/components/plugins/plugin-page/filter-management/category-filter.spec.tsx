@@ -13,23 +13,8 @@ vi.mock('@remixicon/react', () => ({
   RiCloseCircleFill: ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => (
     <span data-testid="icon-clear" onClick={onClick} />
   ),
-}))
-
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked }: { checked: boolean }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} readOnly />
-  ),
-}))
-
-vi.mock('@/app/components/base/input', () => ({
-  default: ({ value, onChange, placeholder }: {
-    value: string
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-    placeholder: string
-    [key: string]: unknown
-  }) => (
-    <input data-testid="search-input" value={value} onChange={onChange} placeholder={placeholder} />
-  ),
+  RiSearchLine: () => <span data-testid="icon-search" />,
+  RiCheckLine: () => <span data-testid="icon-check" />,
 }))
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({

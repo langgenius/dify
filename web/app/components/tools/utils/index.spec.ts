@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { addFileInfos, sortAgentSorts } from './index'
 
 describe('tools/utils', () => {
-  // ─── sortAgentSorts ───────────────────────────────────────────────
   describe('sortAgentSorts', () => {
     it('returns null/undefined input as-is', () => {
       expect(sortAgentSorts(null as unknown as ThoughtItem[])).toBeNull()
@@ -41,7 +40,6 @@ describe('tools/utils', () => {
     })
   })
 
-  // ─── addFileInfos ────────────────────────────────────────────────
   describe('addFileInfos', () => {
     it('returns null/undefined input as-is', () => {
       expect(addFileInfos(null as unknown as ThoughtItem[], [])).toBeNull()

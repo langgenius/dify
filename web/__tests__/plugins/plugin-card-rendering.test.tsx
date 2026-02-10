@@ -8,8 +8,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// ---- Mocks ----
-
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -54,7 +52,6 @@ vi.mock('@/app/components/plugins/base/badges/verified', () => ({
   default: () => <span data-testid="verified-badge">Verified</span>,
 }))
 
-// Real sub-components should be tested as part of integration
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ src, installed, installFailed }: { src: string | object, installed?: boolean, installFailed?: boolean }) => (
     <div data-testid="card-icon" data-installed={installed} data-install-failed={installFailed}>
@@ -197,7 +194,6 @@ describe('Plugin Card Rendering Integration', () => {
   })
 
   it('uses dark icon when theme is dark and icon_dark is provided', () => {
-    // Re-mock useTheme for dark mode
     vi.doMock('@/hooks/use-theme', () => ({
       default: () => ({ theme: 'dark' }),
     }))
@@ -207,8 +203,6 @@ describe('Plugin Card Rendering Integration', () => {
       icon_dark: 'https://example.com/icon-dark.png',
     })
 
-    // Note: due to module caching, this test documents the expected behavior.
-    // In a real scenario, the dark icon would be used.
     render(<Card payload={payload} />)
     expect(screen.getByTestId('card-icon')).toBeInTheDocument()
   })

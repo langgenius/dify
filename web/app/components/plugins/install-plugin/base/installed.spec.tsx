@@ -8,17 +8,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/badge/index', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span data-testid="badge">{children}</span>,
-  BadgeState: { Default: 'default', Warning: 'warning' },
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <button onClick={onClick}>{children}</button>
-  ),
-}))
-
 vi.mock('../../card', () => ({
   default: ({ installed, installFailed, titleLeft }: { installed: boolean, installFailed: boolean, titleLeft?: React.ReactNode }) => (
     <div data-testid="card" data-installed={installed} data-failed={installFailed}>{titleLeft}</div>
@@ -87,7 +76,7 @@ describe('Installed', () => {
     const payload = { version: '1.0.0', name: 'test-plugin' } as never
     render(<Installed payload={payload} isFailed={false} onCancel={vi.fn()} />)
 
-    expect(screen.getByTestId('badge')).toHaveTextContent('1.0.0')
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
   })
 
   it('should not render card when no payload', () => {

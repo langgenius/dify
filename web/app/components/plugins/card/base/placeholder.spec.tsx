@@ -2,13 +2,6 @@ import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/app/components/base/skeleton', () => ({
-  SkeletonContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="skeleton-container">{children}</div>,
-  SkeletonPoint: () => <span data-testid="skeleton-point" />,
-  SkeletonRectangle: ({ className }: { className?: string }) => <div data-testid="skeleton-rectangle" className={className} />,
-  SkeletonRow: ({ children }: { children: React.ReactNode }) => <div data-testid="skeleton-row">{children}</div>,
-}))
-
 vi.mock('./title', () => ({
   default: ({ title }: { title: string }) => <span data-testid="title">{title}</span>,
 }))
@@ -31,9 +24,9 @@ describe('Placeholder', () => {
   })
 
   it('should render skeleton rows', () => {
-    render(<Placeholder wrapClassName="w-full" />)
+    const { container } = render(<Placeholder wrapClassName="w-full" />)
 
-    expect(screen.getAllByTestId('skeleton-row').length).toBeGreaterThanOrEqual(1)
+    expect(container.querySelectorAll('.gap-2').length).toBeGreaterThanOrEqual(1)
   })
 
   it('should render group icon placeholder', () => {
@@ -49,9 +42,9 @@ describe('Placeholder', () => {
   })
 
   it('should render skeleton rectangles when no filename', () => {
-    render(<Placeholder wrapClassName="w-full" />)
+    const { container } = render(<Placeholder wrapClassName="w-full" />)
 
-    expect(screen.getAllByTestId('skeleton-rectangle').length).toBeGreaterThanOrEqual(1)
+    expect(container.querySelectorAll('.bg-text-quaternary').length).toBeGreaterThanOrEqual(1)
   })
 })
 
@@ -67,7 +60,6 @@ describe('LoadingPlaceholder', () => {
   it('should render as a simple div with background', () => {
     const { container } = render(<LoadingPlaceholder />)
 
-    // LoadingPlaceholder is a simple div, not using skeleton components
     expect(container.firstChild).toBeTruthy()
   })
 

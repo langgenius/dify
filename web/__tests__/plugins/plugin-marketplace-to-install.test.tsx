@@ -2,9 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
 import { InstallationScope } from '@/types/feature'
 
-// Integration test: Marketplace browsing -> plugin install limit validation pipeline
-// Tests the full flow from plugin discovery to install permission checks
-
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: () => ({
     plugin_installation_permission: {

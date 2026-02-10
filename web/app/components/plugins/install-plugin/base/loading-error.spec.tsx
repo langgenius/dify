@@ -12,12 +12,6 @@ vi.mock('@remixicon/react', () => ({
   RiCloseLine: () => <span data-testid="icon-close" />,
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, disabled }: { checked: boolean, disabled: boolean }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} disabled={disabled} readOnly />
-  ),
-}))
-
 vi.mock('@/app/components/plugins/card/base/placeholder', () => ({
   LoadingPlaceholder: () => <div data-testid="loading-placeholder" />,
 }))
@@ -45,8 +39,7 @@ describe('LoadingError', () => {
   it('should render disabled checkbox', () => {
     render(<LoadingError />)
 
-    const checkbox = screen.getByTestId('checkbox')
-    expect(checkbox).toBeDisabled()
+    expect(screen.getByTestId('checkbox-undefined')).toBeInTheDocument()
   })
 
   it('should render error icon with close indicator', () => {

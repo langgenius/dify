@@ -15,7 +15,6 @@ import {
 } from './to-form-schema'
 
 describe('to-form-schema utilities', () => {
-  // ─── toType ────────────────────────────────────────────────────────
   describe('toType', () => {
     it('converts "string" to "text-input"', () => {
       expect(toType('string')).toBe('text-input')
@@ -36,7 +35,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── triggerEventParametersToFormSchemas ────────────────────────────
   describe('triggerEventParametersToFormSchemas', () => {
     it('returns empty array for null/undefined parameters', () => {
       expect(triggerEventParametersToFormSchemas(null as unknown as TriggerEventParameter[])).toEqual([])
@@ -79,7 +77,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── toolParametersToFormSchemas ───────────────────────────────────
   describe('toolParametersToFormSchemas', () => {
     it('returns empty array for null parameters', () => {
       expect(toolParametersToFormSchemas(null as unknown as ToolParameter[])).toEqual([])
@@ -151,7 +148,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── toolCredentialToFormSchemas ───────────────────────────────────
   describe('toolCredentialToFormSchemas', () => {
     it('returns empty array for null parameters', () => {
       expect(toolCredentialToFormSchemas(null as unknown as ToolCredential[])).toEqual([])
@@ -215,7 +211,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── addDefaultValue ──────────────────────────────────────────────
   describe('addDefaultValue', () => {
     it('fills in default when value is empty/null/undefined', () => {
       const schemas = [
@@ -261,7 +256,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── generateFormValue ────────────────────────────────────────────
   describe('generateFormValue', () => {
     it('generates constant-type value wrapper for defaults', () => {
       const schemas = [{ variable: 'name', type: 'text-input', default: 'hello' }]
@@ -300,7 +294,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── getPlainValue ────────────────────────────────────────────────
   describe('getPlainValue', () => {
     it('unwraps { value: ... } structure to plain values', () => {
       const input = {
@@ -317,7 +310,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── getStructureValue ────────────────────────────────────────────
   describe('getStructureValue', () => {
     it('wraps plain values into { value: ... } structure', () => {
       const input = { a: 'hello', b: 42 }
@@ -330,7 +322,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── getConfiguredValue ───────────────────────────────────────────
   describe('getConfiguredValue', () => {
     it('fills defaults with correctInitialData for missing values', () => {
       const schemas = [{ variable: 'name', type: 'text-input', default: 'hello' }]
@@ -368,7 +359,6 @@ describe('to-form-schema utilities', () => {
     })
   })
 
-  // ─── generateAgentToolValue ───────────────────────────────────────
   describe('generateAgentToolValue', () => {
     it('generates constant-type values in non-reasoning mode', () => {
       const schemas = [{ variable: 'name', type: 'text-input', default: 'hello' }]

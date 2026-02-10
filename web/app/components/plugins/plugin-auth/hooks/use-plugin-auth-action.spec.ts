@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePluginAuthAction } from '../hooks/use-plugin-auth-action'
 import { AuthCategory } from '../types'
 
-// Mock dependencies
 const mockDeletePluginCredential = vi.fn().mockResolvedValue({})
 const mockSetPluginDefaultCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
@@ -98,7 +97,6 @@ describe('usePluginAuthAction', () => {
       wrapper: createWrapper(),
     })
 
-    // First set the pending credential via edit
     act(() => {
       result.current.handleEdit('cred-1', { key: 'value' })
     })
@@ -115,12 +113,10 @@ describe('usePluginAuthAction', () => {
       wrapper: createWrapper(),
     })
 
-    // Open confirm with credential ID
     act(() => {
       result.current.openConfirm('cred-1')
     })
 
-    // Execute confirm
     await act(async () => {
       await result.current.handleConfirm()
     })
@@ -172,13 +168,11 @@ describe('usePluginAuthAction', () => {
       wrapper: createWrapper(),
     })
 
-    // Manually set doingAction
     act(() => {
       result.current.handleSetDoingAction(true)
     })
     expect(result.current.doingAction).toBe(true)
 
-    // Confirm should not proceed
     act(() => {
       result.current.openConfirm('cred-1')
     })

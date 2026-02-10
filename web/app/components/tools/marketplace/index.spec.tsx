@@ -1,14 +1,12 @@
+import type { useMarketplace } from './hooks'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
-import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { getMarketplaceUrl } from '@/utils/var'
-import { useMarketplace } from './hooks'
 
 import Marketplace from './index'
 
@@ -47,7 +45,7 @@ vi.mock('next-themes', () => ({
 
 const mockGetMarketplaceUrl = vi.mocked(getMarketplaceUrl)
 
-const createToolProvider = (overrides: Partial<Collection> = {}): Collection => ({
+const _createToolProvider = (overrides: Partial<Collection> = {}): Collection => ({
   id: 'provider-1',
   name: 'Provider 1',
   author: 'Author',
@@ -183,178 +181,4 @@ describe('Marketplace', () => {
   })
 })
 
-describe('useMarketplace', () => {
-  const mockQueryMarketplaceCollectionsAndPlugins = vi.fn()
-  const mockQueryPlugins = vi.fn()
-  const mockQueryPluginsWithDebounced = vi.fn()
-  const mockResetPlugins = vi.fn()
-  const mockFetchNextPage = vi.fn()
-
-  const setupHookMocks = (overrides?: {
-    isLoading?: boolean
-    isPluginsLoading?: boolean
-    pluginsPage?: number
-    hasNextPage?: boolean
-    plugins?: Plugin[] | undefined
-  }) => {
-    mockUseMarketplaceCollectionsAndPlugins.mockReturnValue({
-      isLoading: overrides?.isLoading ?? false,
-      marketplaceCollections: [],
-      marketplaceCollectionPluginsMap: {},
-      queryMarketplaceCollectionsAndPlugins: mockQueryMarketplaceCollectionsAndPlugins,
-    })
-    mockUseMarketplacePlugins.mockReturnValue({
-      plugins: overrides?.plugins,
-      resetPlugins: mockResetPlugins,
-      queryPlugins: mockQueryPlugins,
-      queryPluginsWithDebounced: mockQueryPluginsWithDebounced,
-      isLoading: overrides?.isPluginsLoading ?? false,
-      fetchNextPage: mockFetchNextPage,
-      hasNextPage: overrides?.hasNextPage ?? false,
-      page: overrides?.pluginsPage,
-    })
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseAllToolProviders.mockReturnValue({
-      data: [],
-      isSuccess: true,
-    })
-    setupHookMocks()
-  })
-
-  // Query behavior driven by search filters and provider exclusions.
-  describe('Queries', () => {
-    it('should query plugins with debounce when search text is provided', async () => {
-      // Arrange
-      mockUseAllToolProviders.mockReturnValue({
-        data: [
-          createToolProvider({ plugin_id: 'plugin-a' }),
-          createToolProvider({ plugin_id: undefined }),
-        ],
-        isSuccess: true,
-      })
-
-      // Act
-      renderHook(() => useMarketplace('alpha', []))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockQueryPluginsWithDebounced).toHaveBeenCalledWith({
-          category: PluginCategoryEnum.tool,
-          query: 'alpha',
-          tags: [],
-          exclude: ['plugin-a'],
-          type: 'plugin',
-        })
-      })
-      expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
-      expect(mockResetPlugins).not.toHaveBeenCalled()
-    })
-
-    it('should query plugins immediately when only tags are provided', async () => {
-      // Arrange
-      mockUseAllToolProviders.mockReturnValue({
-        data: [createToolProvider({ plugin_id: 'plugin-b' })],
-        isSuccess: true,
-      })
-
-      // Act
-      renderHook(() => useMarketplace('', ['tag-1']))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockQueryPlugins).toHaveBeenCalledWith({
-          category: PluginCategoryEnum.tool,
-          query: '',
-          tags: ['tag-1'],
-          exclude: ['plugin-b'],
-          type: 'plugin',
-        })
-      })
-    })
-
-    it('should query collections and reset plugins when no filters are provided', async () => {
-      // Arrange
-      mockUseAllToolProviders.mockReturnValue({
-        data: [createToolProvider({ plugin_id: 'plugin-c' })],
-        isSuccess: true,
-      })
-
-      // Act
-      renderHook(() => useMarketplace('', []))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockQueryMarketplaceCollectionsAndPlugins).toHaveBeenCalledWith({
-          category: PluginCategoryEnum.tool,
-          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
-          exclude: ['plugin-c'],
-          type: 'plugin',
-        })
-      })
-      expect(mockResetPlugins).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // State derived from hook inputs and loading signals.
-  describe('State', () => {
-    it('should expose combined loading state and fallback page value', () => {
-      // Arrange
-      setupHookMocks({ isLoading: true, isPluginsLoading: false, pluginsPage: undefined })
-
-      // Act
-      const { result } = renderHook(() => useMarketplace('', []))
-
-      // Assert
-      expect(result.current.isLoading).toBe(true)
-      expect(result.current.page).toBe(1)
-    })
-  })
-
-  // Scroll handling that triggers pagination when appropriate.
-  describe('Scroll', () => {
-    it('should fetch next page when scrolling near bottom with filters', () => {
-      // Arrange
-      setupHookMocks({ hasNextPage: true })
-      const { result } = renderHook(() => useMarketplace('search', []))
-      const event = {
-        target: {
-          scrollTop: 100,
-          scrollHeight: 200,
-          clientHeight: 100 + SCROLL_BOTTOM_THRESHOLD,
-        },
-      } as unknown as Event
-
-      // Act
-      act(() => {
-        result.current.handleScroll(event)
-      })
-
-      // Assert
-      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not fetch next page when no filters are applied', () => {
-      // Arrange
-      setupHookMocks({ hasNextPage: true })
-      const { result } = renderHook(() => useMarketplace('', []))
-      const event = {
-        target: {
-          scrollTop: 100,
-          scrollHeight: 200,
-          clientHeight: 100 + SCROLL_BOTTOM_THRESHOLD,
-        },
-      } as unknown as Event
-
-      // Act
-      act(() => {
-        result.current.handleScroll(event)
-      })
-
-      // Assert
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
-    })
-  })
-})
+// useMarketplace hook tests moved to hooks.spec.ts

@@ -11,8 +11,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AuthCategory, CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
-// ---- Mocks ----
-
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -37,13 +35,11 @@ vi.mock('@/utils/classnames', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
-// Mock usePluginAuth hook with configurable return values
 const mockUsePluginAuth = vi.fn()
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
   usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
 }))
 
-// Mock child components
 vi.mock('@/app/components/plugins/plugin-auth/authorize', () => ({
   default: ({ pluginPayload, canOAuth, canApiKey }: {
     pluginPayload: { provider: string }

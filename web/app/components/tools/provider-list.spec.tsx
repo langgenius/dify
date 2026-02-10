@@ -2,7 +2,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProviderList from './provider-list'
 
-// Mock i18n
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -17,7 +16,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-// Mock nuqs for tab state
 let mockActiveTab = 'builtin'
 const mockSetActiveTab = vi.fn((val: string) => {
   mockActiveTab = val
@@ -26,7 +24,6 @@ vi.mock('nuqs', () => ({
   useQueryState: () => [mockActiveTab, mockSetActiveTab],
 }))
 
-// Mock useTags
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: [],
@@ -35,12 +32,10 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-// Mock global public store
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: () => ({ enable_marketplace: false }),
 }))
 
-// Sample collection data
 const mockCollections = [
   {
     id: 'builtin-1',
@@ -94,29 +89,6 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: () => ({ data: null }),
   useInvalidateInstalledPluginList: () => vi.fn(),
-}))
-
-// Mock child components
-vi.mock('@/app/components/base/input', () => ({
-  default: ({ value, onChange, onClear, showLeftIcon: _showLeftIcon, showClearIcon }: {
-    value: string
-    onChange: (e: { target: { value: string } }) => void
-    onClear: () => void
-    showLeftIcon?: boolean
-    showClearIcon?: boolean
-  }) => (
-    <div>
-      <input
-        data-testid="search-input"
-        value={value}
-        onChange={onChange}
-        placeholder="Search"
-      />
-      {showClearIcon && value && (
-        <button data-testid="clear-search" onClick={onClear}>Clear</button>
-      )}
-    </div>
-  ),
 }))
 
 vi.mock('@/app/components/base/tab-slider-new', () => ({
@@ -220,7 +192,6 @@ describe('ProviderList', () => {
     cleanup()
   })
 
-  // ─── Tab Navigation ───────────────────────────────────────────────
   describe('Tab Navigation', () => {
     it('renders all four tabs', () => {
       render(<ProviderList />)
@@ -237,7 +208,6 @@ describe('ProviderList', () => {
     })
   })
 
-  // ─── Filtering ────────────────────────────────────────────────────
   describe('Filtering', () => {
     it('shows only builtin collections by default', () => {
       render(<ProviderList />)
@@ -247,7 +217,7 @@ describe('ProviderList', () => {
 
     it('filters by search keyword', () => {
       render(<ProviderList />)
-      const input = screen.getByTestId('search-input')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'nonexistent' } })
       expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
     })
@@ -259,11 +229,10 @@ describe('ProviderList', () => {
 
     it('renders search input', () => {
       render(<ProviderList />)
-      expect(screen.getByTestId('search-input')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
-  // ─── Custom Tab ───────────────────────────────────────────────────
   describe('Custom Tab', () => {
     it('shows custom create card when on api tab', () => {
       mockActiveTab = 'api'
@@ -272,7 +241,6 @@ describe('ProviderList', () => {
     })
   })
 
-  // ─── Workflow Tab ─────────────────────────────────────────────────
   describe('Workflow Tab', () => {
     it('shows empty state when no workflow collections', () => {
       mockActiveTab = 'workflow'
@@ -282,7 +250,6 @@ describe('ProviderList', () => {
     })
   })
 
-  // ─── MCP Tab ──────────────────────────────────────────────────────
   describe('MCP Tab', () => {
     it('renders MCPList component', () => {
       mockActiveTab = 'mcp'
@@ -291,7 +258,6 @@ describe('ProviderList', () => {
     })
   })
 
-  // ─── Provider Detail ──────────────────────────────────────────────
   describe('Provider Detail', () => {
     it('opens provider detail when a non-plugin collection is clicked', () => {
       render(<ProviderList />)

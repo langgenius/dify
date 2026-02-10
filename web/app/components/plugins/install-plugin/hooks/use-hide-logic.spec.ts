@@ -42,12 +42,10 @@ describe('useHideLogic', () => {
   it('should call doFoldAnimInto when installing', () => {
     const { result } = renderHook(() => useHideLogic(mockOnClose))
 
-    // Start install
     act(() => {
       result.current.handleStartToInstall()
     })
 
-    // Now fold should animate instead of closing
     act(() => {
       result.current.foldAnimInto()
     })

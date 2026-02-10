@@ -17,12 +17,6 @@ vi.mock('@remixicon/react', () => ({
   RiAddLine: () => <span data-testid="add-icon" />,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant, className }: { children: React.ReactNode, onClick?: () => void, variant?: string, className?: string }) => (
-    <button data-testid="button" data-variant={variant} className={className} onClick={onClick}>{children}</button>
-  ),
-}))
-
 describe('PluginAuthInDataSourceNode', () => {
   const mockOnJump = vi.fn()
 
@@ -40,14 +34,14 @@ describe('PluginAuthInDataSourceNode', () => {
     expect(screen.getByTestId('add-icon')).toBeInTheDocument()
   })
 
-  it('renders connect button with primary variant', () => {
+  it('renders connect button', () => {
     render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByTestId('button')).toHaveAttribute('data-variant', 'primary')
+    expect(screen.getByRole('button', { name: /Connect/ })).toBeInTheDocument()
   })
 
   it('calls onJumpToDataSourcePage when connect button is clicked', () => {
     render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
-    fireEvent.click(screen.getByTestId('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Connect/ }))
     expect(mockOnJump).toHaveBeenCalledTimes(1)
   })
 

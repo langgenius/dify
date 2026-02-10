@@ -1,8 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { InstallationScope } from '@/types/feature'
 import { pluginInstallLimit } from './use-install-plugin-limit'
 
-// Only test the pure function, skip the hook (requires React context)
+const mockSystemFeatures = {
+  plugin_installation_permission: {
+    restrict_to_marketplace_only: false,
+    plugin_installation_scope: InstallationScope.ALL,
+  },
+}
+
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: (selector: (state: { systemFeatures: typeof mockSystemFeatures }) => unknown) =>
+    selector({ systemFeatures: mockSystemFeatures }),
+}))
 
 const basePlugin = {
   from: 'marketplace' as const,
@@ -112,5 +123,27 @@ describe('pluginInstallLimit', () => {
     const plugin = { from: 'marketplace' as const }
 
     expect(pluginInstallLimit(plugin as never, features as never).canInstall).toBe(true)
+  })
+
+  it('should fallback to canInstall true for unrecognized scope', () => {
+    const features = {
+      plugin_installation_permission: {
+        restrict_to_marketplace_only: false,
+        plugin_installation_scope: 'unknown-scope' as InstallationScope,
+      },
+    }
+
+    expect(pluginInstallLimit(basePlugin as never, features as never).canInstall).toBe(true)
+  })
+})
+
+describe('usePluginInstallLimit', () => {
+  it('should return canInstall from pluginInstallLimit using global store', async () => {
+    const { default: usePluginInstallLimit } = await import('./use-install-plugin-limit')
+    const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
+
+    const { result } = renderHook(() => usePluginInstallLimit(plugin as never))
+
+    expect(result.current.canInstall).toBe(true)
   })
 })

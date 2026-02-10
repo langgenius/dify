@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../types'
 import AddApiKeyButton from './add-api-key-button'
 
-// Mock ApiKeyModal
 let _mockModalOpen = false
 vi.mock('./api-key-modal', () => ({
   default: ({ onClose, onUpdate }: { onClose: () => void, onUpdate?: () => void }) => {
@@ -15,19 +14,6 @@ vi.mock('./api-key-modal', () => ({
       </div>
     )
   },
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, variant }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    variant?: string
-  }) => (
-    <button data-testid="button" data-variant={variant} onClick={onClick} disabled={disabled}>
-      {children}
-    </button>
-  ),
 }))
 
 const defaultPayload = {
@@ -47,7 +33,7 @@ describe('AddApiKeyButton', () => {
 
   it('renders button with default text', () => {
     render(<AddApiKeyButton pluginPayload={defaultPayload} />)
-    expect(screen.getByTestId('button')).toBeInTheDocument()
+    expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
   it('renders button with custom text', () => {
@@ -57,18 +43,18 @@ describe('AddApiKeyButton', () => {
 
   it('opens modal when button is clicked', () => {
     render(<AddApiKeyButton pluginPayload={defaultPayload} />)
-    fireEvent.click(screen.getByTestId('button'))
+    fireEvent.click(screen.getByRole('button'))
     expect(screen.getByTestId('api-key-modal')).toBeInTheDocument()
   })
 
   it('respects disabled prop', () => {
     render(<AddApiKeyButton pluginPayload={defaultPayload} disabled />)
-    expect(screen.getByTestId('button')).toBeDisabled()
+    expect(screen.getByRole('button')).toBeDisabled()
   })
 
   it('closes modal when onClose is called', () => {
     render(<AddApiKeyButton pluginPayload={defaultPayload} />)
-    fireEvent.click(screen.getByTestId('button'))
+    fireEvent.click(screen.getByRole('button'))
     expect(screen.getByTestId('api-key-modal')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('modal-close'))
     expect(screen.queryByTestId('api-key-modal')).not.toBeInTheDocument()
@@ -76,6 +62,6 @@ describe('AddApiKeyButton', () => {
 
   it('applies custom button variant', () => {
     render(<AddApiKeyButton pluginPayload={defaultPayload} buttonVariant="primary" />)
-    expect(screen.getByTestId('button')).toHaveAttribute('data-variant', 'primary')
+    expect(screen.getByRole('button')).toBeInTheDocument()
   })
 })

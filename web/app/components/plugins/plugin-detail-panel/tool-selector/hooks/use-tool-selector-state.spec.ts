@@ -4,7 +4,6 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useToolSelectorState } from './use-tool-selector-state'
 
-// Mock tool data
 const mockToolParams = [
   { name: 'param1', form: 'llm', type: 'string', required: true, label: { en_US: 'Param 1' } },
   { name: 'param2', form: 'form', type: 'number', required: false, label: { en_US: 'Param 2' } },

@@ -3,13 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PluginAuth from './plugin-auth'
 import { AuthCategory } from './types'
 
-// Mock usePluginAuth hook
 const mockUsePluginAuth = vi.fn()
 vi.mock('./hooks/use-plugin-auth', () => ({
   usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
 }))
 
-// Mock Authorize and Authorized components
 vi.mock('./authorize', () => ({
   default: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
     <div data-testid="authorize">

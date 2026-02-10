@@ -4,7 +4,6 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../types'
 
-// Mock dependencies
 const mockNotify = vi.fn()
 const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
@@ -49,11 +48,6 @@ vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom" />,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading" />,
-}))
-
-// Mock Modal to expose internal buttons for testing
 vi.mock('@/app/components/base/modal/modal', () => ({
   default: ({ children, title, onClose, onConfirm, onExtraButtonClick, showExtraButton, disabled }: {
     children: React.ReactNode
@@ -76,7 +70,6 @@ vi.mock('@/app/components/base/modal/modal', () => ({
   ),
 }))
 
-// Mock AuthForm with ref support
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   default: React.forwardRef((_props: Record<string, unknown>, ref: React.Ref<unknown>) => {
     React.useImperativeHandle(ref, () => ({

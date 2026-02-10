@@ -12,8 +12,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
 
-// ---- Mocks ----
-
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
@@ -122,7 +120,6 @@ vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
-// Mock complex child components
 vi.mock('@/app/components/base/drawer', () => ({
   default: ({ isOpen, children, onClose }: { isOpen: boolean, children: React.ReactNode, onClose: () => void }) => (
     isOpen
@@ -133,31 +130,6 @@ vi.mock('@/app/components/base/drawer', () => ({
           </div>
         )
       : null
-  ),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant, disabled, className }: {
-    children: React.ReactNode
-    onClick?: () => void
-    variant?: string
-    disabled?: boolean
-    className?: string
-  }) => (
-    <button
-      data-testid={`button-${variant || 'default'}`}
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-    >
-      {children}
-    </button>
   ),
 }))
 
@@ -179,10 +151,6 @@ vi.mock('@/app/components/base/confirm', () => ({
         )
       : null
   ),
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">Loading...</div>,
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
@@ -267,8 +235,6 @@ vi.mock('@/app/components/tools/provider/tool-item', () => ({
 }))
 
 const { default: ProviderDetail } = await import('@/app/components/tools/provider/detail')
-
-// ---- Test Helpers ----
 
 const makeCollection = (overrides: Partial<Collection> = {}): Collection => ({
   id: 'test-collection',
@@ -575,7 +541,7 @@ describe('Tool Provider Detail Flow Integration', () => {
         expect(screen.getByTestId('drawer')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('action-button'))
+      fireEvent.click(screen.getByTestId('drawer-close'))
       expect(mockOnHide).toHaveBeenCalled()
     })
   })

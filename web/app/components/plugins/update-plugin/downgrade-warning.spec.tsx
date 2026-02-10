@@ -17,22 +17,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant, destructive }: {
-    children: React.ReactNode
-    onClick?: () => void
-    variant?: string
-    destructive?: boolean
-  }) => (
-    <button
-      data-testid={`btn-${variant}${destructive ? '-destructive' : ''}`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 describe('DowngradeWarningModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnJustDowngrade = vi.fn()

@@ -3,7 +3,6 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../types'
 
-// Mock dependencies
 const mockNotify = vi.fn()
 const mockSetPluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockDeletePluginOAuthCustomClient = vi.fn().mockResolvedValue({})
@@ -40,13 +39,6 @@ vi.mock('../../readme-panel/store', () => ({
   ReadmeShowType: { modal: 'modal' },
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, ..._props }: { children: React.ReactNode, onClick?: () => void, disabled?: boolean, [key: string]: unknown }) => (
-    <button onClick={onClick} disabled={disabled} data-testid={`button-${typeof children === 'string' ? children : 'generic'}`}>{children}</button>
-  ),
-}))
-
-// Mock Modal
 vi.mock('@/app/components/base/modal/modal', () => ({
   default: ({ children, title, onClose: _onClose, onConfirm, onCancel, onExtraButtonClick, footerSlot }: {
     children: React.ReactNode
@@ -69,7 +61,6 @@ vi.mock('@/app/components/base/modal/modal', () => ({
   ),
 }))
 
-// Mock AuthForm with ref support
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   default: React.forwardRef((_props: Record<string, unknown>, ref: React.Ref<unknown>) => {
     React.useImperativeHandle(ref, () => ({
@@ -79,7 +70,6 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   }),
 }))
 
-// Mock @tanstack/react-form
 vi.mock('@tanstack/react-form', () => ({
   useForm: (config: Record<string, unknown>) => ({
     store: { subscribe: vi.fn(), getState: () => ({ values: config.defaultValues || {} }) },
@@ -95,8 +85,8 @@ const basePayload = {
 }
 
 const defaultSchemas = [
-  { name: 'client_id', label: 'Client ID', type: 'text-input' as const, required: true },
-]
+  { name: 'client_id', label: 'Client ID', type: 'text-input', required: true },
+] as never
 
 describe('OAuthClientSettings', () => {
   let OAuthClientSettings: (typeof import('./oauth-client-settings'))['default']

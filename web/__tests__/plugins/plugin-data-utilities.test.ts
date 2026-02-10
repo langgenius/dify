@@ -16,18 +16,15 @@ type TagInput = Parameters<typeof getValidTagKeys>[0]
 describe('Plugin Data Utilities Integration', () => {
   describe('Tag and Category Validation Pipeline', () => {
     it('validates tags and categories in a metadata processing flow', () => {
-      // Simulating plugin metadata received from marketplace
       const pluginMetadata = {
         tags: ['search', 'productivity', 'invalid-tag', 'media-generate'],
         category: 'tool',
       }
 
-      // Step 1: Validate tags
       const validTags = getValidTagKeys(pluginMetadata.tags as TagInput)
       expect(validTags.length).toBeGreaterThan(0)
       expect(validTags.length).toBeLessThanOrEqual(pluginMetadata.tags.length)
 
-      // Step 2: Validate category
       const validCategory = getValidCategoryKeys(pluginMetadata.category)
       expect(validCategory).toBeDefined()
     })
@@ -54,7 +51,6 @@ describe('Plugin Data Utilities Integration', () => {
 
   describe('Credential Secret Masking Pipeline', () => {
     it('masks secrets when displaying credential form data', () => {
-      // Step 1: Original credential values (from API)
       const credentialValues = {
         api_key: 'sk-abc123456789',
         api_endpoint: 'https://api.example.com',
@@ -62,10 +58,8 @@ describe('Plugin Data Utilities Integration', () => {
         description: 'My credential set',
       }
 
-      // Step 2: Secret field names (from schema)
       const secretFields = ['api_key', 'secret_token']
 
-      // Step 3: Transform for display (mask secrets)
       const displayValues = transformFormSchemasSecretInput(secretFields, credentialValues)
 
       expect(displayValues.api_key).toBe('[__HIDDEN__]')
@@ -112,7 +106,6 @@ describe('Plugin Data Utilities Integration', () => {
 
   describe('Combined Plugin Metadata Validation', () => {
     it('processes a complete plugin entry with tags and credentials', () => {
-      // Simulate a full plugin processing pipeline
       const pluginEntry = {
         name: 'test-plugin',
         category: 'tool',
@@ -124,14 +117,12 @@ describe('Plugin Data Utilities Integration', () => {
         secretFields: ['api_key'],
       }
 
-      // Step 1: Validate metadata
       const validCategory = getValidCategoryKeys(pluginEntry.category)
       expect(validCategory).toBe('tool')
 
       const validTags = getValidTagKeys(pluginEntry.tags as TagInput)
       expect(validTags).toContain('search')
 
-      // Step 2: Mask secrets for display
       const displayCredentials = transformFormSchemasSecretInput(
         pluginEntry.secretFields,
         pluginEntry.credentials,
@@ -139,7 +130,6 @@ describe('Plugin Data Utilities Integration', () => {
       expect(displayCredentials.api_key).toBe('[__HIDDEN__]')
       expect(displayCredentials.base_url).toBe('https://api.test.com')
 
-      // Step 3: Verify original data is not modified
       expect(pluginEntry.credentials.api_key).toBe('sk-test-key-123')
     })
 
@@ -155,16 +145,13 @@ describe('Plugin Data Utilities Integration', () => {
         validCategory: getValidCategoryKeys(p.category),
       }))
 
-      // First plugin: has valid tags and category
       expect(results[0].validTags.length).toBeGreaterThan(0)
       expect(results[0].validCategory).toBe('tool')
 
-      // Second plugin: image and design are valid tags, model is valid category
       expect(results[1].validTags).toContain('image')
       expect(results[1].validTags).toContain('design')
       expect(results[1].validCategory).toBe('model')
 
-      // Third plugin: invalid tag, extension is valid category
       expect(results[2].validTags).toHaveLength(0)
       expect(results[2].validCategory).toBe('extension')
     })

@@ -18,12 +18,6 @@ vi.mock('@remixicon/react', () => ({
   RiEqualizer2Line: () => <span data-testid="equalizer-icon" />,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, size }: { children: React.ReactNode, onClick?: () => void, size?: string }) => (
-    <button data-testid="button" data-size={size} onClick={onClick}>{children}</button>
-  ),
-}))
-
 vi.mock('@/app/components/header/indicator', () => ({
   default: ({ color }: { color: string }) => <span data-testid="indicator" data-color={color} />,
 }))
@@ -56,7 +50,7 @@ describe('AuthorizedInDataSourceNode', () => {
 
   it('calls onJumpToDataSourcePage when button is clicked', () => {
     render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    fireEvent.click(screen.getByTestId('button'))
+    fireEvent.click(screen.getByRole('button'))
     expect(mockOnJump).toHaveBeenCalledTimes(1)
   })
 

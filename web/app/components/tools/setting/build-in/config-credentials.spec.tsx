@@ -2,7 +2,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ConfigCredential from './config-credentials'
 
-// Mock i18n
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
@@ -25,7 +24,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => 'en_US',
 }))
 
-// Mock services
 const mockFetchCredentialSchema = vi.fn()
 const mockFetchCredentialValue = vi.fn()
 
@@ -34,7 +32,6 @@ vi.mock('@/service/tools', () => ({
   fetchBuiltInToolCredential: (...args: unknown[]) => mockFetchCredentialValue(...args),
 }))
 
-// Mock to-form-schema utils
 vi.mock('../../utils/to-form-schema', () => ({
   toolCredentialToFormSchemas: (schemas: unknown[]) => (schemas as Record<string, unknown>[]).map(s => ({
     ...s,
@@ -44,7 +41,6 @@ vi.mock('../../utils/to-form-schema', () => ({
   addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
 }))
 
-// Mock child components
 vi.mock('@/app/components/base/drawer-plus', () => ({
   default: ({ body, title, onHide }: { body: React.ReactNode, title: string, onHide: () => void }) => (
     <div data-testid="drawer">
@@ -52,28 +48,6 @@ vi.mock('@/app/components/base/drawer-plus', () => ({
       <button data-testid="drawer-close" onClick={onHide}>Close</button>
       {body}
     </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">Loading...</div>,
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, loading, variant }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    loading?: boolean
-    variant?: string
-  }) => (
-    <button
-      data-testid={`btn-${variant || 'default'}`}
-      onClick={onClick}
-      disabled={disabled || loading}
-    >
-      {children}
-    </button>
   ),
 }))
 
@@ -133,7 +107,7 @@ describe('ConfigCredential', () => {
         onSaved={mockOnSaved}
       />,
     )
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByTestId('form')).toBeInTheDocument()

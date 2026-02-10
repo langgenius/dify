@@ -3,7 +3,6 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../types'
 
-// Mock dependencies
 const mockGetPluginOAuthUrl = vi.fn().mockResolvedValue({ authorization_url: 'https://auth.example.com' })
 const mockOpenOAuthPopup = vi.fn()
 
@@ -37,26 +36,11 @@ vi.mock('../hooks/use-credential', () => ({
   }),
 }))
 
-// Mock sub-components
 vi.mock('./oauth-client-settings', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="oauth-settings-modal">
       <button data-testid="oauth-settings-close" onClick={onClose}>Close</button>
     </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, ...props }: { children: React.ReactNode, [key: string]: unknown }) => <button {...props}>{children}</button>,
-}))
-
-vi.mock('@/app/components/base/badge', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, ...props }: { children: React.ReactNode, onClick?: () => void, disabled?: boolean, [key: string]: unknown }) => (
-    <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
   ),
 }))
 
@@ -114,12 +98,10 @@ describe('AddOAuthButton', () => {
   it('should trigger OAuth flow on main button click', async () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
-    // Find the left side of the button (the OAuth trigger part)
     const button = screen.getByText('Use OAuth').closest('button')
     if (button)
       fireEvent.click(button)
 
-    // OAuth should be triggered via getPluginOAuthUrl
     expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
   })
 

@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '../types'
 import ProviderDetail from './detail'
 
-// Mock i18n
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
@@ -36,7 +35,6 @@ vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
 }))
 
-// Mock contexts
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -59,7 +57,6 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock service
 const mockFetchBuiltInToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomToolList = vi.fn().mockResolvedValue([])
 const mockFetchModelToolList = vi.fn().mockResolvedValue([])
@@ -100,22 +97,9 @@ vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
-// Mock child components
 vi.mock('@/app/components/base/drawer', () => ({
   default: ({ children, isOpen }: { children: React.ReactNode, isOpen: boolean }) =>
     isOpen ? <div data-testid="drawer">{children}</div> : null,
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, variant }: { children: React.ReactNode, onClick?: () => void, disabled?: boolean, variant?: string }) => (
-    <button data-testid={`button-${variant || 'default'}`} onClick={onClick} disabled={disabled}>{children}</button>
-  ),
 }))
 
 vi.mock('@/app/components/base/confirm', () => ({
@@ -129,10 +113,6 @@ vi.mock('@/app/components/base/confirm', () => ({
           </div>
         )
       : null,
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">Loading...</div>,
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
@@ -193,7 +173,6 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
   ),
 }))
 
-// Shared mock collection factory
 const createMockCollection = (overrides?: Partial<Collection>): Collection => ({
   id: 'test-id',
   name: 'test-collection',
@@ -227,7 +206,6 @@ describe('ProviderDetail', () => {
     cleanup()
   })
 
-  // ─── Rendering Tests ──────────────────────────────────────────────
   describe('Rendering', () => {
     it('renders title, org info and description for a builtIn collection', async () => {
       render(
@@ -250,7 +228,7 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('renders tool list after loading for builtIn type', async () => {
@@ -279,7 +257,6 @@ describe('ProviderDetail', () => {
     })
   })
 
-  // ─── BuiltIn Collection Auth ──────────────────────────────────────
   describe('BuiltIn Collection Auth', () => {
     it('shows "Set up credentials" button when not authorized and allow_delete', async () => {
       render(
@@ -308,7 +285,6 @@ describe('ProviderDetail', () => {
     })
   })
 
-  // ─── Custom Collection ────────────────────────────────────────────
   describe('Custom Collection', () => {
     it('fetches custom collection and shows edit button', async () => {
       mockFetchCustomCollection.mockResolvedValue({
@@ -330,7 +306,6 @@ describe('ProviderDetail', () => {
     })
   })
 
-  // ─── Workflow Collection ──────────────────────────────────────────
   describe('Workflow Collection', () => {
     it('fetches workflow tool detail and shows workflow buttons', async () => {
       render(
@@ -350,7 +325,6 @@ describe('ProviderDetail', () => {
     })
   })
 
-  // ─── Model Collection ─────────────────────────────────────────────
   describe('Model Collection', () => {
     it('opens model modal when clicking auth button for model type', async () => {
       mockFetchModelToolList.mockResolvedValue([
@@ -376,7 +350,6 @@ describe('ProviderDetail', () => {
     })
   })
 
-  // ─── Close Action ─────────────────────────────────────────────────
   describe('Close Action', () => {
     it('calls onHide when close button is clicked', () => {
       render(
@@ -386,12 +359,12 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      fireEvent.click(screen.getByTestId('action-button'))
+      const buttons = screen.getAllByRole('button')
+      fireEvent.click(buttons[0])
       expect(mockOnHide).toHaveBeenCalled()
     })
   })
 
-  // ─── Fetch by Type ────────────────────────────────────────────────
   describe('API calls by collection type', () => {
     it('calls fetchBuiltInToolList for builtIn type', async () => {
       render(
