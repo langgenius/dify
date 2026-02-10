@@ -82,6 +82,11 @@ def init_app(app: DifyApp) -> Celery:
         task_ignore_result=True,
     )
 
+    if dify_config.CELERY_BACKEND == "redis":
+        celery_app.conf.update(
+            result_backend_transport_options=broker_transport_options,
+        )
+
     # Apply SSL configuration if enabled
     ssl_options = _get_celery_ssl_options()
     if ssl_options:
