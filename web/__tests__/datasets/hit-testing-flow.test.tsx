@@ -8,7 +8,6 @@
 import type { HitTestingResponse } from '@/models/datasets'
 import '@testing-library/react'
 
-// Mock state for the hit testing hook
 const mocks = vi.hoisted(() => ({
   hitTestingMutateAsync: vi.fn(),
   isHitTestingPending: false,

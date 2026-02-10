@@ -10,7 +10,6 @@ import type { SimpleDocumentDetail } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import { DataSourceType } from '@/models/datasets'
 
-// Mock Next.js navigation for useDocumentListQueryState
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
@@ -18,12 +17,10 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/datasets/ds-1/documents',
 }))
 
-// Import pure utility functions (no dependencies)
 const { sanitizeStatusValue, normalizeStatusForQuery } = await import(
   '@/app/components/datasets/documents/status-filter',
 )
 
-// Import hooks after mocks
 const { useDocumentSort } = await import(
   '@/app/components/datasets/documents/components/document-list/hooks/use-document-sort',
 )
@@ -34,7 +31,6 @@ const { default: useDocumentListQueryState } = await import(
   '@/app/components/datasets/documents/hooks/use-document-list-query-state',
 )
 
-// --- Factory ---
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
 
 const createDoc = (overrides?: Partial<LocalDoc>): LocalDoc => ({

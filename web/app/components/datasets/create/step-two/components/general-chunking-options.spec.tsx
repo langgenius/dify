@@ -10,7 +10,6 @@ vi.mock('next/image', () => ({
   ),
 }))
 
-// Mock SummaryIndexSetting (external domain component)
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
   default: ({ onSummaryIndexSettingChange }: { onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void }) => (
     <div data-testid="summary-index-setting">
@@ -19,7 +18,6 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
   ),
 }))
 
-// Mock IS_CE_EDITION
 vi.mock('@/config', () => ({
   IS_CE_EDITION: true,
 }))

@@ -11,7 +11,6 @@ import { act, renderHook } from '@testing-library/react'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-// Mock service hooks used by useDocumentCreation
 const mockCreateFirstDocument = vi.fn()
 const mockCreateDocument = vi.fn()
 vi.mock('@/service/knowledge/use-create-dataset', () => ({

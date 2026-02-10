@@ -3,14 +3,12 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkContainer, ChunkLabel, QAPreview } from './chunk'
 
-// Mock the SelectionMod icon from base icons
 vi.mock('../base/icons/src/public/knowledge', () => ({
   SelectionMod: (props: React.ComponentProps<'svg'>) => (
     <svg data-testid="selection-mod-icon" {...props} />
   ),
 }))
 
-// Factory for QA test data
 function createQA(overrides: Partial<QA> = {}): QA {
   return {
     question: 'What is Dify?',
@@ -19,7 +17,6 @@ function createQA(overrides: Partial<QA> = {}): QA {
   }
 }
 
-// Tests for ChunkLabel - displays an icon, label, and character count
 describe('ChunkLabel', () => {
   beforeEach(() => {
     vi.clearAllMocks()

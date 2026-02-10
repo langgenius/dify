@@ -10,7 +10,6 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-// Mock UpgradeBtn (external billing module) to render as a plain button
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
   default: ({ onClick, className }: { onClick?: () => void, className?: string }) => (
     <button type="button" className={className} onClick={onClick} data-testid="upgrade-btn">

@@ -7,13 +7,10 @@
 
 import type { SegmentDetailModel } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
-
 import { useModalState } from '@/app/components/datasets/documents/detail/completed/hooks/use-modal-state'
-// Import hooks at module level (no async import)
 import { useSearchFilter } from '@/app/components/datasets/documents/detail/completed/hooks/use-search-filter'
 import { useSegmentSelection } from '@/app/components/datasets/documents/detail/completed/hooks/use-segment-selection'
 
-// --- Factory ---
 const createSegment = (id: string, content = 'Test segment content'): SegmentDetailModel => ({
   id,
   position: 1,
