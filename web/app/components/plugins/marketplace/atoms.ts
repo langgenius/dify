@@ -1,10 +1,10 @@
+import type { SearchTab } from './search-params'
 import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { DEFAULT_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
-import type { SearchTab } from './search-params'
-import { marketplaceSearchParamsParsers } from './search-params'
+import { CREATION_TYPE, marketplaceSearchParamsParsers } from './search-params'
 
 const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
 export function useMarketplaceSort() {
@@ -37,6 +37,10 @@ export function useSearchTab() {
   return useQueryState('searchTab', marketplaceSearchParamsParsers.searchTab)
 }
 
+export function useCreationType() {
+  return useQueryState('creationType', marketplaceSearchParamsParsers.creationType)
+}
+
 /**
  * Not all categories have collections, so we need to
  * force the search mode for those categories.
@@ -44,14 +48,17 @@ export function useSearchTab() {
 export const searchModeAtom = atom<true | null>(null)
 
 export function useMarketplaceSearchMode() {
-  // const [searchText] = useSearchText()
+  const [creationType] = useCreationType()
+  const [searchText] = useSearchText()
   const [searchTab] = useSearchTab()
-  // const [filterPluginTags] = useFilterPluginTags()
+  const [filterPluginTags] = useFilterPluginTags()
   const [activePluginCategory] = useActivePluginCategory()
+  const isPluginsView = creationType === CREATION_TYPE.plugins
 
   const searchMode = useAtomValue(searchModeAtom)
-  const isSearchMode = searchTab
-    || (searchMode ?? (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginCategory)))
+  const isSearchMode = searchTab || searchText
+    || (isPluginsView && filterPluginTags.length > 0)
+    || (searchMode ?? (isPluginsView && !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginCategory)))
   return isSearchMode
 }
 

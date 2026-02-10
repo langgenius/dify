@@ -1,7 +1,7 @@
 'use client'
 
 import Loading from '@/app/components/base/loading'
-import { useMarketplaceData } from '../state'
+import { isPluginsData, useMarketplaceData } from '../state'
 import FlatList from './flat-list'
 import ListWithCollection from './list-with-collection'
 
@@ -11,50 +11,33 @@ type ListWrapperProps = {
 
 const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
   const marketplaceData = useMarketplaceData()
-  const { creationType, isLoading, page, isFetchingNextPage } = marketplaceData
-
-  const isPluginView = creationType === 'plugins'
+  const { isLoading, page, isFetchingNextPage } = marketplaceData
 
   const renderContent = () => {
-    if (!isPluginView) {
-      const { templateCollections, templateCollectionTemplatesMap, templates } = marketplaceData
-      if (templates !== undefined) {
-        return (
-          <FlatList
+    if (isPluginsData(marketplaceData)) {
+      const { pluginCollections, pluginCollectionPluginsMap, plugins } = marketplaceData
+      return plugins !== undefined
+        ? <FlatList variant="plugins" items={plugins} showInstallButton={showInstallButton} />
+        : (
+            <ListWithCollection
+              variant="plugins"
+              collections={pluginCollections || []}
+              collectionItemsMap={pluginCollectionPluginsMap || {}}
+              showInstallButton={showInstallButton}
+            />
+          )
+    }
+
+    const { templateCollections, templateCollectionTemplatesMap, templates } = marketplaceData
+    return templates !== undefined
+      ? <FlatList variant="templates" items={templates} />
+      : (
+          <ListWithCollection
             variant="templates"
-            items={templates}
+            collections={templateCollections || []}
+            collectionItemsMap={templateCollectionTemplatesMap || {}}
           />
         )
-      }
-
-      return (
-        <ListWithCollection
-          variant="templates"
-          collections={templateCollections || []}
-          collectionItemsMap={templateCollectionTemplatesMap || {}}
-        />
-      )
-    }
-
-    const { pluginCollections, pluginCollectionPluginsMap, plugins } = marketplaceData
-    if (plugins !== undefined) {
-      return (
-        <FlatList
-          variant="plugins"
-          items={plugins}
-          showInstallButton={showInstallButton}
-        />
-      )
-    }
-
-    return (
-      <ListWithCollection
-        variant="plugins"
-        collections={pluginCollections || []}
-        collectionItemsMap={pluginCollectionPluginsMap || {}}
-        showInstallButton={showInstallButton}
-      />
-    )
   }
 
   return (

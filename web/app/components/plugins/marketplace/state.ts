@@ -1,11 +1,11 @@
 import type { PluginsSearchParams, TemplateSearchParams } from './types'
 import { useDebounce } from 'ahooks'
-import { useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import { useActivePluginCategory, useActiveTemplateCategory, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchText } from './atoms'
+import { useActivePluginCategory, useActiveTemplateCategory, useCreationType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchText } from './atoms'
 import { CATEGORY_ALL } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
+import { CREATION_TYPE } from './search-params'
 import { getCollectionsParams, getPluginFilterType, mapTemplateDetailToTemplate } from './utils'
 
 const getCategory = (category: string) => {
@@ -121,31 +121,22 @@ export function useTemplatesMarketplaceData(enabled = true) {
   }
 }
 
-type PluginsMarketplaceData = ReturnType<typeof usePluginsMarketplaceData>
-type TemplatesMarketplaceData = ReturnType<typeof useTemplatesMarketplaceData>
-type MarketplaceData
-  = ({ creationType: 'plugins' } & PluginsMarketplaceData)
-    | ({ creationType: 'templates' } & TemplatesMarketplaceData)
+export type PluginsMarketplaceData = ReturnType<typeof usePluginsMarketplaceData>
+export type TemplatesMarketplaceData = ReturnType<typeof useTemplatesMarketplaceData>
+export type MarketplaceData = PluginsMarketplaceData | TemplatesMarketplaceData
+
+export function isPluginsData(data: MarketplaceData): data is PluginsMarketplaceData {
+  return 'pluginCollections' in data
+}
 
 /**
  * Main hook that routes to appropriate data based on creationType
  * Returns either plugins or templates data based on URL parameter
  */
 export function useMarketplaceData(): MarketplaceData {
-  const searchParams = useSearchParams()
-  const creationType = (searchParams.get('creationType') || 'plugins') as 'plugins' | 'templates'
+  const [creationType] = useCreationType()
 
-  const pluginsData = usePluginsMarketplaceData(creationType === 'plugins')
-  const templatesData = useTemplatesMarketplaceData(creationType === 'templates')
-  if (creationType === 'templates') {
-    return {
-      creationType,
-      ...templatesData,
-    }
-  }
-
-  return {
-    creationType,
-    ...pluginsData,
-  }
+  const pluginsData = usePluginsMarketplaceData(creationType === CREATION_TYPE.plugins)
+  const templatesData = useTemplatesMarketplaceData(creationType === CREATION_TYPE.templates)
+  return creationType === CREATION_TYPE.templates ? templatesData : pluginsData
 }

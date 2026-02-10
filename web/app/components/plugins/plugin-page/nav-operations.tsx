@@ -1,7 +1,6 @@
 'use client'
 import { RiAddLine, RiBookOpenLine, RiGithubLine } from '@remixicon/react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -12,8 +11,10 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { CREATION_TYPE } from '@/app/components/plugins/marketplace/search-params'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
+import { useCreationType } from '../marketplace/atoms'
 
 type DropdownItemProps = {
   href: string
@@ -80,23 +81,18 @@ export const SubmitRequestDropdown = () => {
   )
 }
 
-type CreationTypeTabsProps = {
-  creationType?: string
-}
-
-export const CreationTypeTabs = ({ creationType: creationTypeProp }: CreationTypeTabsProps = {}) => {
+export const CreationTypeTabs = () => {
   const { t } = useTranslation()
-  const searchParams = useSearchParams()
-  const creationType = creationTypeProp || searchParams.get('creationType') || 'plugins'
+  const [creationType] = useCreationType()
 
   return (
     <div className="flex items-center gap-1">
       <Link
-        href="/?creationType=plugins"
+        href={`/?creationType=${CREATION_TYPE.plugins}`}
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          creationType === 'plugins' && 'bg-state-base-hover text-text-secondary',
+          creationType === CREATION_TYPE.plugins && 'bg-state-base-hover text-text-secondary',
         )}
       >
         <Plugin className="h-4 w-4 shrink-0" />
@@ -105,11 +101,11 @@ export const CreationTypeTabs = ({ creationType: creationTypeProp }: CreationTyp
         </span>
       </Link>
       <Link
-        href="/?creationType=templates"
+        href={`/?creationType=${CREATION_TYPE.templates}`}
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          creationType === 'templates' && 'bg-state-base-hover text-text-secondary',
+          creationType === CREATION_TYPE.templates && 'bg-state-base-hover text-text-secondary',
         )}
       >
         <Playground className="h-4 w-4 shrink-0" />

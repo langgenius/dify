@@ -7,8 +7,9 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import marketPlaceBg from '@/public/marketplace/hero-bg.jpg'
 import marketplaceGradientNoise from '@/public/marketplace/hero-gradient-noise.svg'
 import { cn } from '@/utils/classnames'
+import { useCreationType } from '../atoms'
 import { PluginCategorySwitch, TemplateCategorySwitch } from '../category-switch/index'
-import { useMarketplaceData } from '../state'
+import { CREATION_TYPE } from '../search-params'
 
 type DescriptionProps = {
   className?: string
@@ -29,8 +30,8 @@ export const Description = ({
   marketplaceNav,
 }: DescriptionProps) => {
   const { t } = useTranslation('plugin')
-  const { creationType } = useMarketplaceData()
-  const isTemplatesView = creationType === 'templates'
+  const [creationType] = useCreationType()
+  const isTemplatesView = creationType === CREATION_TYPE.templates
   const heroTitleKey = isTemplatesView ? 'marketplace.templatesHeroTitle' : 'marketplace.pluginsHeroTitle'
   const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'
   const rafRef = useRef<number | null>(null)
