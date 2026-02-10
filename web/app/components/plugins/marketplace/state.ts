@@ -2,24 +2,31 @@ import type { PluginsSearchParams, TemplateSearchParams } from './types'
 import { useDebounce } from 'ahooks'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchPluginText } from './atoms'
-import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import { useActivePluginCategory, useActiveTemplateCategory, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchText } from './atoms'
+import { CATEGORY_ALL } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
-import { getCollectionsParams, getMarketplaceListFilterType, mapTemplateDetailToTemplate } from './utils'
+import { getCollectionsParams, getPluginFilterType, mapTemplateDetailToTemplate } from './utils'
+
+const getCategory = (category: string) => {
+  if (category === CATEGORY_ALL)
+    return undefined
+  return category
+}
 
 /**
  * Hook for plugins marketplace data
  * Only fetches plugins-related data
  */
-export function usePluginsMarketplaceData() {
-  const [searchPluginTextOriginal] = useSearchPluginText()
-  const searchPluginText = useDebounce(searchPluginTextOriginal, { wait: 500 })
+export function usePluginsMarketplaceData(enabled = true) {
+  const [searchTextOriginal] = useSearchText()
+  const searchText = useDebounce(searchTextOriginal, { wait: 500 })
   const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
+  const [activePluginCategory] = useActivePluginCategory()
 
-  const collectionsQuery = useMarketplaceCollectionsAndPlugins(
-    getCollectionsParams(activePluginType),
+  const pluginsCollectionsQuery = useMarketplaceCollectionsAndPlugins(
+    getCollectionsParams(activePluginCategory),
+    { enabled },
   )
 
   const sort = useMarketplaceSortValue()
@@ -28,16 +35,16 @@ export function usePluginsMarketplaceData() {
     if (!isSearchMode)
       return undefined
     return {
-      query: searchPluginText,
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
+      query: searchText,
+      category: getCategory(activePluginCategory),
       tags: filterPluginTags,
       sort_by: sort.sortBy,
       sort_order: sort.sortOrder,
-      type: getMarketplaceListFilterType(activePluginType),
+      type: getPluginFilterType(activePluginCategory),
     }
-  }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
+  }, [isSearchMode, searchText, activePluginCategory, filterPluginTags, sort])
 
-  const pluginsQuery = useMarketplacePlugins(queryParams)
+  const pluginsQuery = useMarketplacePlugins(queryParams, { enabled })
   const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
@@ -49,12 +56,12 @@ export function usePluginsMarketplaceData() {
   useMarketplaceContainerScroll(handlePageChange)
 
   return {
-    marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
-    marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
+    pluginCollections: pluginsCollectionsQuery.data?.marketplaceCollections,
+    pluginCollectionPluginsMap: pluginsCollectionsQuery.data?.marketplaceCollectionPluginsMap,
     plugins: pluginsQuery.data?.pages.flatMap(page => page.plugins),
     pluginsTotal: pluginsQuery.data?.pages[0]?.total,
     page: pluginsQuery.data?.pages.length || 1,
-    isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
+    isLoading: pluginsCollectionsQuery.isLoading || pluginsQuery.isLoading,
     isFetchingNextPage,
   }
 }
@@ -63,20 +70,20 @@ export function usePluginsMarketplaceData() {
  * Hook for templates marketplace data
  * Only fetches templates-related data
  */
-export function useTemplatesMarketplaceData() {
+export function useTemplatesMarketplaceData(enabled = true) {
   // Reuse existing atoms for search and sort
-  const [searchTextOriginal] = useSearchPluginText()
+  const [searchTextOriginal] = useSearchText()
   const searchText = useDebounce(searchTextOriginal, { wait: 500 })
-  const [activeCategory] = useActivePluginType()
+  const [activeTemplateCategory] = useActiveTemplateCategory()
 
   // Template collections query (for non-search mode)
-  const templateCollectionsQuery = useMarketplaceTemplateCollectionsAndTemplates()
+  const templateCollectionsQuery = useMarketplaceTemplateCollectionsAndTemplates(undefined, { enabled })
 
   // Sort value
   const sort = useMarketplaceSortValue()
 
   // Search mode: when there's search text or non-default category
-  const isSearchMode = !!searchText || (activeCategory !== PLUGIN_TYPE_SEARCH_MAP.all)
+  const isSearchMode = useMarketplaceSearchMode()
 
   // Build query params for search mode
   const queryParams = useMemo((): TemplateSearchParams | undefined => {
@@ -84,14 +91,14 @@ export function useTemplatesMarketplaceData() {
       return undefined
     return {
       query: searchText,
-      categories: activeCategory === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : [activeCategory],
+      categories: activeTemplateCategory === CATEGORY_ALL ? undefined : [activeTemplateCategory],
       sort_by: sort.sortBy,
       sort_order: sort.sortOrder,
     }
-  }, [isSearchMode, searchText, activeCategory, sort])
+  }, [isSearchMode, searchText, activeTemplateCategory, sort])
 
   // Templates search query (for search mode)
-  const templatesQuery = useMarketplaceTemplates(queryParams)
+  const templatesQuery = useMarketplaceTemplates(queryParams, { enabled })
   const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = templatesQuery
 
   // Pagination handler
@@ -103,93 +110,42 @@ export function useTemplatesMarketplaceData() {
   // Scroll pagination
   useMarketplaceContainerScroll(handlePageChange)
 
-  // Compute flat templates list from collection map (for non-search mode)
-  const { collectionTemplates, collectionTemplatesTotal } = useMemo(() => {
-    const templateCollectionTemplatesMap = templateCollectionsQuery.data?.templateCollectionTemplatesMap
-    if (!templateCollectionTemplatesMap) {
-      return { collectionTemplates: undefined, collectionTemplatesTotal: 0 }
-    }
-
-    const allTemplates = Object.values(templateCollectionTemplatesMap).flat()
-    // Deduplicate templates by template_id
-    const uniqueTemplates = allTemplates.filter(
-      (template, index, self) => index === self.findIndex(t => t.template_id === template.template_id),
-    )
-
-    return {
-      collectionTemplates: uniqueTemplates,
-      collectionTemplatesTotal: uniqueTemplates.length,
-    }
-  }, [templateCollectionsQuery.data?.templateCollectionTemplatesMap])
-
-  const searchTemplates = useMemo(() => {
-    const rawTemplates = templatesQuery.data?.pages.flatMap(page => page.templates) || []
-    return rawTemplates.map(mapTemplateDetailToTemplate)
-  }, [templatesQuery.data])
-
-  // Return search results when in search mode, otherwise return collection data
-  if (isSearchMode) {
-    return {
-      isSearchMode,
-      templateCollections: undefined,
-      templateCollectionTemplatesMap: undefined,
-      templates: searchTemplates,
-      templatesTotal: templatesQuery.data?.pages[0]?.total,
-      page: templatesQuery.data?.pages.length || 1,
-      isLoading: templatesQuery.isLoading,
-      isFetchingNextPage,
-    }
-  }
-
   return {
-    isSearchMode,
     templateCollections: templateCollectionsQuery.data?.templateCollections,
     templateCollectionTemplatesMap: templateCollectionsQuery.data?.templateCollectionTemplatesMap,
-    templates: collectionTemplates,
-    templatesTotal: collectionTemplatesTotal,
-    page: 1,
-    isLoading: templateCollectionsQuery.isLoading,
-    isFetchingNextPage: false,
+    templates: templatesQuery.data?.pages.flatMap(page => page.templates).map(mapTemplateDetailToTemplate),
+    templatesTotal: templatesQuery.data?.pages[0]?.total,
+    page: templatesQuery.data?.pages.length || 1,
+    isLoading: templateCollectionsQuery.isLoading || templatesQuery.isLoading,
+    isFetchingNextPage,
   }
 }
+
+type PluginsMarketplaceData = ReturnType<typeof usePluginsMarketplaceData>
+type TemplatesMarketplaceData = ReturnType<typeof useTemplatesMarketplaceData>
+type MarketplaceData
+  = ({ creationType: 'plugins' } & PluginsMarketplaceData)
+    | ({ creationType: 'templates' } & TemplatesMarketplaceData)
 
 /**
  * Main hook that routes to appropriate data based on creationType
  * Returns either plugins or templates data based on URL parameter
  */
-export function useMarketplaceData() {
+export function useMarketplaceData(): MarketplaceData {
   const searchParams = useSearchParams()
   const creationType = (searchParams.get('creationType') || 'plugins') as 'plugins' | 'templates'
 
-  const pluginsData = usePluginsMarketplaceData()
-  const templatesData = useTemplatesMarketplaceData()
-
+  const pluginsData = usePluginsMarketplaceData(creationType === 'plugins')
+  const templatesData = useTemplatesMarketplaceData(creationType === 'templates')
   if (creationType === 'templates') {
     return {
       creationType,
-      isSearchMode: templatesData.isSearchMode,
-      // Templates-specific fields
-      templateCollections: templatesData.templateCollections,
-      templateCollectionTemplatesMap: templatesData.templateCollectionTemplatesMap,
-      templates: templatesData.templates,
-      templatesTotal: templatesData.templatesTotal,
-      page: templatesData.page,
-      isLoading: templatesData.isLoading,
-      isFetchingNextPage: templatesData.isFetchingNextPage,
+      ...templatesData,
     }
   }
 
-  // Default: plugins
   return {
     creationType,
-    isSearchMode: false, // plugins uses useMarketplaceSearchMode separately
-    // Plugins-specific fields
-    marketplaceCollections: pluginsData.marketplaceCollections,
-    marketplaceCollectionPluginsMap: pluginsData.marketplaceCollectionPluginsMap,
-    plugins: pluginsData.plugins,
-    pluginsTotal: pluginsData.pluginsTotal,
-    page: pluginsData.page,
-    isLoading: pluginsData.isLoading,
-    isFetchingNextPage: pluginsData.isFetchingNextPage,
+    ...pluginsData,
   }
 }

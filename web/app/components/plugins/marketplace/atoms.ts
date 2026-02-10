@@ -2,7 +2,8 @@ import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
-import { DEFAULT_SORT, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
+import { DEFAULT_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
+import type { SearchTab } from './search-params'
 import { marketplaceSearchParamsParsers } from './search-params'
 
 const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
@@ -16,14 +17,24 @@ export function useSetMarketplaceSort() {
   return useSetAtom(marketplaceSortAtom)
 }
 
-export function useSearchPluginText() {
+export function useSearchText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
-export function useActivePluginType() {
-  return useQueryState('category', marketplaceSearchParamsParsers.category)
+export function useActivePluginCategory() {
+  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
+  return [getValidatedPluginCategory(category), setCategory] as const
+}
+
+export function useActiveTemplateCategory() {
+  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
+  return [getValidatedTemplateCategory(category), setCategory] as const
 }
 export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
+}
+
+export function useSearchTab() {
+  return useQueryState('searchTab', marketplaceSearchParamsParsers.searchTab)
 }
 
 /**
@@ -33,23 +44,24 @@ export function useFilterPluginTags() {
 export const searchModeAtom = atom<true | null>(null)
 
 export function useMarketplaceSearchMode() {
-  const [searchPluginText] = useSearchPluginText()
-  const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
+  // const [searchText] = useSearchText()
+  const [searchTab] = useSearchTab()
+  // const [filterPluginTags] = useFilterPluginTags()
+  const [activePluginCategory] = useActivePluginCategory()
 
   const searchMode = useAtomValue(searchModeAtom)
-  const isSearchMode = !!searchPluginText
-    || filterPluginTags.length > 0
-    || (searchMode ?? (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType)))
+  const isSearchMode = searchTab
+    || (searchMode ?? (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginCategory)))
   return isSearchMode
 }
 
 export function useMarketplaceMoreClick() {
-  const [,setQ] = useSearchPluginText()
+  const [, setQ] = useSearchText()
+  const [, setSearchTab] = useSearchTab()
   const setSort = useSetAtom(marketplaceSortAtom)
   const setSearchMode = useSetAtom(searchModeAtom)
 
-  return useCallback((searchParams?: SearchParamsFromCollection) => {
+  return useCallback((searchParams?: SearchParamsFromCollection, searchTab?: SearchTab) => {
     if (!searchParams)
       return
     setQ(searchParams?.query || '')
@@ -58,5 +70,7 @@ export function useMarketplaceMoreClick() {
       sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
     })
     setSearchMode(true)
-  }, [setQ, setSort, setSearchMode])
+    if (searchTab)
+      setSearchTab(searchTab)
+  }, [setQ, setSearchTab, setSort, setSearchMode])
 }

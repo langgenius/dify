@@ -199,7 +199,7 @@ const ProviderList = () => {
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (
             <Marketplace
-              searchPluginText={keywords}
+              searchText={keywords}
               filterPluginTags={tagFilterValue}
               isMarketplaceArrowVisible={isMarketplaceArrowVisible}
               showMarketplacePanel={showMarketplacePanel}

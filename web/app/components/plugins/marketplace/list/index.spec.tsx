@@ -1,4 +1,4 @@
-import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
+import type { PluginCollection, SearchParamsFromCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,8 +36,8 @@ const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
     mockMarketplaceData: {
       plugins: undefined as Plugin[] | undefined,
       pluginsTotal: 0,
-      marketplaceCollections: undefined as MarketplaceCollection[] | undefined,
-      marketplaceCollectionPluginsMap: undefined as Record<string, Plugin[]> | undefined,
+      pluginCollections: undefined as PluginCollection[] | undefined,
+      pluginCollectionPluginsMap: undefined as Record<string, Plugin[]> | undefined,
       isLoading: false,
       page: 1,
     },
@@ -207,7 +207,7 @@ const createMockPluginList = (count: number): Plugin[] =>
       label: { 'en-US': `Plugin ${i}` },
     }))
 
-const createMockCollection = (overrides?: Partial<MarketplaceCollection>): MarketplaceCollection => ({
+const createMockCollection = (overrides?: Partial<PluginCollection>): PluginCollection => ({
   name: `collection-${Math.random().toString(36).substring(7)}`,
   label: { 'en-US': 'Test Collection' },
   description: { 'en-US': 'Test collection description' },
@@ -219,7 +219,7 @@ const createMockCollection = (overrides?: Partial<MarketplaceCollection>): Marke
   ...overrides,
 })
 
-const createMockCollectionList = (count: number): MarketplaceCollection[] =>
+const createMockCollectionList = (count: number): PluginCollection[] =>
   Array.from({ length: count }, (_, i) =>
     createMockCollection({
       name: `collection-${i}`,
@@ -232,8 +232,8 @@ const createMockCollectionList = (count: number): MarketplaceCollection[] =>
 // ================================
 describe('List', () => {
   const defaultProps = {
-    marketplaceCollections: [] as MarketplaceCollection[],
-    marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
+    pluginCollections: [] as PluginCollection[],
+    pluginCollectionPluginsMap: {} as Record<string, Plugin[]>,
     plugins: undefined,
     showInstallButton: false,
     cardContainerClassName: '',
@@ -267,8 +267,8 @@ describe('List', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          pluginCollections={collections}
+          pluginCollectionPluginsMap={pluginsMap}
         />,
       )
 
@@ -313,8 +313,8 @@ describe('List', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          pluginCollections={collections}
+          pluginCollectionPluginsMap={pluginsMap}
           plugins={[]}
         />,
       )
@@ -425,12 +425,12 @@ describe('List', () => {
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
-    it('should handle empty marketplaceCollections', () => {
+    it('should handle empty pluginCollections', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
         />,
       )
 
@@ -447,8 +447,8 @@ describe('List', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          pluginCollections={collections}
+          pluginCollectionPluginsMap={pluginsMap}
           plugins={undefined}
         />,
       )
@@ -495,12 +495,12 @@ describe('List', () => {
 // ================================
 describe('ListWithCollection', () => {
   const defaultProps = {
-    marketplaceCollections: [] as MarketplaceCollection[],
-    marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
+    variant: 'plugins' as const,
+    collections: [] as PluginCollection[],
+    collectionItemsMap: {} as Record<string, Plugin[]>,
     showInstallButton: false,
     cardContainerClassName: '',
     cardRender: undefined,
-    onMoreClick: undefined,
   }
 
   beforeEach(() => {
@@ -527,8 +527,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -547,8 +547,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -567,8 +567,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -583,19 +583,19 @@ describe('ListWithCollection', () => {
   describe('View More Button', () => {
     it('should render View More button when collection is searchable', () => {
       const collections = [createMockCollection({
-        name: 'collection-0',
+        name: 'partners',
         searchable: true,
         search_params: { query: 'test' },
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
+        partners: createMockPluginList(1),
       }
 
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -614,8 +614,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -625,19 +625,19 @@ describe('ListWithCollection', () => {
     it('should call moreClick hook with search_params when View More is clicked', () => {
       const searchParams: SearchParamsFromCollection = { query: 'test-query', sort_by: 'install_count' }
       const collections = [createMockCollection({
-        name: 'collection-0',
+        name: 'partners',
         searchable: true,
         search_params: searchParams,
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
+        partners: createMockPluginList(1),
       }
 
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -668,8 +668,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
           cardRender={customCardRender}
         />,
       )
@@ -692,8 +692,8 @@ describe('ListWithCollection', () => {
       const { container } = render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
           cardContainerClassName="custom-container"
         />,
       )
@@ -710,8 +710,8 @@ describe('ListWithCollection', () => {
       const { container } = render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
           showInstallButton={true}
         />,
       )
@@ -729,8 +729,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          collections={[]}
+          collectionItemsMap={{}}
         />,
       )
 
@@ -745,8 +745,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -763,8 +763,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -783,8 +783,8 @@ describe('ListWrapper', () => {
     // Reset mock data
     mockMarketplaceData.plugins = undefined
     mockMarketplaceData.pluginsTotal = 0
-    mockMarketplaceData.marketplaceCollections = undefined
-    mockMarketplaceData.marketplaceCollectionPluginsMap = undefined
+    mockMarketplaceData.pluginCollections = undefined
+    mockMarketplaceData.pluginCollectionPluginsMap = undefined
     mockMarketplaceData.isLoading = false
     mockMarketplaceData.page = 1
   })
@@ -861,8 +861,8 @@ describe('ListWrapper', () => {
   describe('List Rendering Logic', () => {
     it('should render collections when not loading', () => {
       mockMarketplaceData.isLoading = false
-      mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-      mockMarketplaceData.marketplaceCollectionPluginsMap = {
+      mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+      mockMarketplaceData.pluginCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
@@ -874,8 +874,8 @@ describe('ListWrapper', () => {
     it('should render List when loading but page > 1', () => {
       mockMarketplaceData.isLoading = true
       mockMarketplaceData.page = 2
-      mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-      mockMarketplaceData.marketplaceCollectionPluginsMap = {
+      mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+      mockMarketplaceData.pluginCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
@@ -899,13 +899,13 @@ describe('ListWrapper', () => {
     })
 
     it('should show View More button and call moreClick hook', () => {
-      mockMarketplaceData.marketplaceCollections = [createMockCollection({
-        name: 'collection-0',
+      mockMarketplaceData.pluginCollections = [createMockCollection({
+        name: 'partners',
         searchable: true,
         search_params: { query: 'test' },
       })]
-      mockMarketplaceData.marketplaceCollectionPluginsMap = {
-        'collection-0': createMockPluginList(1),
+      mockMarketplaceData.pluginCollectionPluginsMap = {
+        partners: createMockPluginList(1),
       }
 
       render(<ListWrapper />)
@@ -973,8 +973,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -991,8 +991,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1010,8 +1010,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={plugins}
         />,
       )
@@ -1030,8 +1030,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1050,8 +1050,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1071,8 +1071,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1089,8 +1089,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1105,8 +1105,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1121,8 +1121,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1147,8 +1147,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={false}
         />,
@@ -1167,8 +1167,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={false}
         />,
@@ -1182,8 +1182,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1205,8 +1205,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1222,8 +1222,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1239,8 +1239,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1261,8 +1261,8 @@ describe('Combined Workflows', () => {
     mockMarketplaceData.pluginsTotal = 0
     mockMarketplaceData.isLoading = false
     mockMarketplaceData.page = 1
-    mockMarketplaceData.marketplaceCollections = undefined
-    mockMarketplaceData.marketplaceCollectionPluginsMap = undefined
+    mockMarketplaceData.pluginCollections = undefined
+    mockMarketplaceData.pluginCollectionPluginsMap = undefined
   })
 
   it('should transition from loading to showing collections', async () => {
@@ -1275,8 +1275,8 @@ describe('Combined Workflows', () => {
 
     // Simulate loading complete
     mockMarketplaceData.isLoading = false
-    mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-    mockMarketplaceData.marketplaceCollectionPluginsMap = {
+    mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+    mockMarketplaceData.pluginCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
     }
 
@@ -1287,8 +1287,8 @@ describe('Combined Workflows', () => {
   })
 
   it('should transition from collections to search results', async () => {
-    mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-    mockMarketplaceData.marketplaceCollectionPluginsMap = {
+    mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+    mockMarketplaceData.pluginCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
     }
 
@@ -1350,8 +1350,9 @@ describe('Accessibility', () => {
 
     const { container } = render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        variant="plugins"
+        collections={collections}
+        collectionItemsMap={pluginsMap}
       />,
     )
 
@@ -1360,19 +1361,20 @@ describe('Accessibility', () => {
     expect(headings.length).toBeGreaterThan(0)
   })
 
-  it('should have clickable View More button', () => {
+    it('should have clickable View More button', () => {
     const collections = [createMockCollection({
-      name: 'collection-0',
+      name: 'partners',
       searchable: true,
     })]
     const pluginsMap: Record<string, Plugin[]> = {
-      'collection-0': createMockPluginList(1),
+      partners: createMockPluginList(1),
     }
 
     render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        variant="plugins"
+        collections={collections}
+        collectionItemsMap={pluginsMap}
       />,
     )
 
@@ -1381,18 +1383,18 @@ describe('Accessibility', () => {
     expect(viewMoreButton.closest('div')).toHaveClass('cursor-pointer')
   })
 
-  it('should have proper grid layout for cards', () => {
+    it('should have proper grid layout for cards', () => {
     const plugins = createMockPluginList(4)
 
     const { container } = render(
       <List
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
+        pluginCollections={[]}
+        pluginCollectionPluginsMap={{}}
         plugins={plugins}
       />,
     )
 
-    const grid = container.querySelector('.grid-cols-4')
+    const grid = container.querySelector('.grid')
     expect(grid).toBeInTheDocument()
   })
 })
@@ -1411,8 +1413,8 @@ describe('Performance', () => {
     const startTime = performance.now()
     render(
       <List
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
+        pluginCollections={[]}
+        pluginCollectionPluginsMap={{}}
         plugins={plugins}
       />,
     )
@@ -1432,8 +1434,9 @@ describe('Performance', () => {
     const startTime = performance.now()
     render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        variant="plugins"
+        collections={collections}
+        collectionItemsMap={pluginsMap}
       />,
     )
     const endTime = performance.now()

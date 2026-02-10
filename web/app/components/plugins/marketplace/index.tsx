@@ -2,7 +2,7 @@ import type { SearchParams } from 'nuqs'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { cn } from '@/utils/classnames'
 import { HydrateQueryClient } from './hydration-server'
-import ListWrapper from './list/list-wrapper'
+import MarketplaceContent from './marketplace-content'
 import MarketplaceHeader from './marketplace-header'
 
 type MarketplaceProps = {
@@ -28,7 +28,7 @@ const Marketplace = async ({
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams}>
         <MarketplaceHeader descriptionClassName={cn('mx-12 mt-1', isMarketplacePlatform && 'top-0 mx-0 mt-0 rounded-none')} marketplaceNav={marketplaceNav} />
-        <ListWrapper
+        <MarketplaceContent
           showInstallButton={showInstallButton}
         />
       </HydrateQueryClient>

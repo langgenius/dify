@@ -7,7 +7,8 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import marketPlaceBg from '@/public/marketplace/hero-bg.jpg'
 import marketplaceGradientNoise from '@/public/marketplace/hero-gradient-noise.svg'
 import { cn } from '@/utils/classnames'
-import PluginTypeSwitch from '../plugin-type-switch'
+import PluginCategorySwitch from '../plugin-category-switch'
+import TemplateCategorySwitch from '../template-category-switch'
 import { useMarketplaceData } from '../state'
 
 type DescriptionProps = {
@@ -167,9 +168,15 @@ export const Description = ({
           </h2>
         </motion.div>
 
-        {/* Plugin type switch tabs - always visible */}
+        {/* Category switch tabs - Plugin or Template based on creationType */}
         <motion.div style={{ marginTop: tabsMarginTop }}>
-          <PluginTypeSwitch variant="hero" />
+          {isTemplatesView
+            ? (
+                <TemplateCategorySwitch variant="hero" />
+              )
+            : (
+                <PluginCategorySwitch variant="hero" />
+              )}
         </motion.div>
       </div>
     </motion.div>

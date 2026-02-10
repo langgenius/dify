@@ -3,7 +3,7 @@ import type {
 } from '../types'
 import type {
   CollectionsAndPluginsSearchParams,
-  MarketplaceCollection,
+  PluginCollection,
   PluginsSearchParams,
 } from './types'
 import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
@@ -31,8 +31,8 @@ import {
  */
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
-  const [marketplaceCollectionsOverride, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
-  const [marketplaceCollectionPluginsMapOverride, setMarketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
+  const [pluginCollectionsOverride, setPluginCollections] = useState<PluginCollection[]>()
+  const [pluginCollectionPluginsMapOverride, setPluginCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
 
   const {
     data,
@@ -54,10 +54,10 @@ export const useMarketplaceCollectionsAndPlugins = () => {
   const isLoading = !!queryParams && (isFetching || isPending)
 
   return {
-    marketplaceCollections: marketplaceCollectionsOverride ?? data?.marketplaceCollections,
-    setMarketplaceCollections,
-    marketplaceCollectionPluginsMap: marketplaceCollectionPluginsMapOverride ?? data?.marketplaceCollectionPluginsMap,
-    setMarketplaceCollectionPluginsMap,
+    pluginCollections: pluginCollectionsOverride ?? data?.marketplaceCollections,
+    setPluginCollections,
+    pluginCollectionPluginsMap: pluginCollectionPluginsMapOverride ?? data?.marketplaceCollectionPluginsMap,
+    setPluginCollectionPluginsMap,
     queryMarketplaceCollectionsAndPlugins,
     isLoading,
     isSuccess,

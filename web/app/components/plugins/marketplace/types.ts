@@ -6,7 +6,7 @@ export type SearchParamsFromCollection = {
   sort_order?: string
 }
 
-export type MarketplaceCollection = {
+export type PluginCollection = {
   name: string
   label: Record<string, string>
   description: Record<string, string>
@@ -18,7 +18,7 @@ export type MarketplaceCollection = {
 }
 
 export type MarketplaceCollectionsResponse = {
-  collections: MarketplaceCollection[]
+  collections: PluginCollection[]
   total: number
 }
 
@@ -183,4 +183,53 @@ export type TemplateSearchParams = {
   sort_by?: string
   sort_order?: string
   languages?: string[]
+}
+
+// Unified search types
+
+export type UnifiedSearchScope = 'creators' | 'organizations' | 'plugins' | 'templates'
+
+export type UnifiedSearchParams = {
+  query: string
+  scope?: UnifiedSearchScope[]
+  page?: number
+  page_size?: number
+}
+
+// Plugin item shape from /search/unified (superset of Plugin with index_id)
+export type UnifiedPluginItem = Plugin & {
+  index_id: string
+}
+
+// Template item shape from /search/unified (differs from TemplateDetail)
+export type UnifiedTemplateItem = {
+  id: string
+  index_id: string
+  template_name: string
+  icon: string
+  icon_file_key: string
+  categories: string[]
+  overview: string
+  readme: string
+  partner_link: string
+  publisher_handle: string
+  publisher_type: 'individual' | 'organization'
+  status: string
+  usage_count: number
+  created_at: string
+  updated_at: string
+}
+
+// Creator item shape from /search/unified (superset of Creator with index_id)
+export type UnifiedCreatorItem = Creator & {
+  index_id: string
+}
+
+export type UnifiedSearchResponse = {
+  data: {
+    creators: { items: UnifiedCreatorItem[], total: number }
+    organizations: { items: unknown[], total: number }
+    plugins: { items: UnifiedPluginItem[], total: number }
+    templates: { items: UnifiedTemplateItem[], total: number }
+  }
 }

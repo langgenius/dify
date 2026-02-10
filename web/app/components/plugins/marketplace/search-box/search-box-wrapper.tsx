@@ -1,6 +1,6 @@
 'use client'
 
-import type { PluginsSearchParams } from '../types'
+import type { UnifiedSearchParams } from '../types'
 import { useTranslation } from '#i18n'
 import { useDebounce } from 'ahooks'
 import { useSetAtom } from 'jotai'
@@ -14,14 +14,10 @@ import {
 import { cn } from '@/utils/classnames'
 import {
   searchModeAtom,
-  useActivePluginType,
-  useFilterPluginTags,
-  useMarketplaceSortValue,
-  useSearchPluginText,
+  useSearchText,
 } from '../atoms'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
-import { useMarketplacePlugins } from '../query'
-import { getMarketplaceListFilterType } from '../utils'
+import { useMarketplaceUnifiedSearch } from '../query'
+import { mapUnifiedCreatorToCreator, mapUnifiedPluginToPlugin, mapUnifiedTemplateToTemplate } from '../utils'
 import SearchDropdown from './search-dropdown'
 
 type SearchBoxWrapperProps = {
@@ -33,41 +29,44 @@ const SearchBoxWrapper = ({
   inputClassName,
 }: SearchBoxWrapperProps) => {
   const { t } = useTranslation()
-  const [searchPluginText, handleSearchPluginTextChange] = useSearchPluginText()
-  const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
-  const sort = useMarketplaceSortValue()
+  const [searchText, handleSearchTextChange] = useSearchText()
   const setSearchMode = useSetAtom(searchModeAtom)
-  const committedSearch = searchPluginText || ''
+  const committedSearch = searchText || ''
   const [draftSearch, setDraftSearch] = useState(committedSearch)
   const [isFocused, setIsFocused] = useState(false)
   const [isHoveringDropdown, setIsHoveringDropdown] = useState(false)
   const debouncedDraft = useDebounce(draftSearch, { wait: 300 })
   const hasDraft = !!debouncedDraft.trim()
 
-  const dropdownQueryParams = useMemo(() => {
+  const dropdownQueryParams = useMemo((): UnifiedSearchParams | undefined => {
     if (!hasDraft)
       return undefined
-    const filterType = getMarketplaceListFilterType(activePluginType) as PluginsSearchParams['type']
     return {
       query: debouncedDraft.trim(),
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
-      tags: filterPluginTags,
-      sort_by: sort.sortBy,
-      sort_order: sort.sortOrder,
-      type: filterType,
-      page_size: 3,
+      scope: ['plugins', 'templates', 'creators'],
+      page_size: 5,
     }
-  }, [activePluginType, debouncedDraft, filterPluginTags, hasDraft, sort.sortBy, sort.sortOrder])
+  }, [debouncedDraft, hasDraft])
 
-  const dropdownQuery = useMarketplacePlugins(dropdownQueryParams)
-  const dropdownPlugins = dropdownQuery.data?.pages[0]?.plugins || []
+  const dropdownQuery = useMarketplaceUnifiedSearch(dropdownQueryParams)
+  const dropdownPlugins = useMemo(
+    () => (dropdownQuery.data?.plugins.items || []).map(mapUnifiedPluginToPlugin),
+    [dropdownQuery.data?.plugins.items],
+  )
+  const dropdownTemplates = useMemo(
+    () => (dropdownQuery.data?.templates.items || []).map(mapUnifiedTemplateToTemplate),
+    [dropdownQuery.data?.templates.items],
+  )
+  const dropdownCreators = useMemo(
+    () => (dropdownQuery.data?.creators.items || []).map(mapUnifiedCreatorToCreator),
+    [dropdownQuery.data?.creators.items],
+  )
 
   const handleSubmit = () => {
     const trimmed = draftSearch.trim()
     if (!trimmed)
       return
-    handleSearchPluginTextChange(trimmed)
+    handleSearchTextChange(trimmed)
     setSearchMode(true)
     setIsFocused(false)
   }
@@ -119,6 +118,8 @@ const SearchBoxWrapper = ({
         <SearchDropdown
           query={debouncedDraft.trim()}
           plugins={dropdownPlugins}
+          templates={dropdownTemplates}
+          creators={dropdownCreators}
           onShowAll={handleSubmit}
           isLoading={dropdownQuery.isLoading}
         />

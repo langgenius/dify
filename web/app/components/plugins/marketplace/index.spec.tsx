@@ -610,8 +610,8 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isSuccess).toBe(false)
     expect(result.current.queryMarketplaceCollectionsAndPlugins).toBeDefined()
-    expect(result.current.setMarketplaceCollections).toBeDefined()
-    expect(result.current.setMarketplaceCollectionPluginsMap).toBeDefined()
+    expect(result.current.setPluginCollections).toBeDefined()
+    expect(result.current.setPluginCollectionPluginsMap).toBeDefined()
   })
 
   it('should provide queryMarketplaceCollectionsAndPlugins function', async () => {
@@ -621,34 +621,34 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
     expect(typeof result.current.queryMarketplaceCollectionsAndPlugins).toBe('function')
   })
 
-  it('should provide setMarketplaceCollections function', async () => {
+  it('should provide setPluginCollections function', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    expect(typeof result.current.setMarketplaceCollections).toBe('function')
+    expect(typeof result.current.setPluginCollections).toBe('function')
   })
 
-  it('should provide setMarketplaceCollectionPluginsMap function', async () => {
+  it('should provide setPluginCollectionPluginsMap function', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    expect(typeof result.current.setMarketplaceCollectionPluginsMap).toBe('function')
+    expect(typeof result.current.setPluginCollectionPluginsMap).toBe('function')
   })
 
-  it('should return marketplaceCollections from data or override', async () => {
+  it('should return pluginCollections from data or override', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
     // Initial state
-    expect(result.current.marketplaceCollections).toBeUndefined()
+    expect(result.current.pluginCollections).toBeUndefined()
   })
 
-  it('should return marketplaceCollectionPluginsMap from data or override', async () => {
+  it('should return pluginCollectionPluginsMap from data or override', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
     // Initial state
-    expect(result.current.marketplaceCollectionPluginsMap).toBeUndefined()
+    expect(result.current.pluginCollectionPluginsMap).toBeUndefined()
   })
 })
 

@@ -1,14 +1,16 @@
 'use client'
+
 import type { Plugin } from '../../types'
-import type { MarketplaceCollection } from '../types'
+import type { PluginCollection } from '../types'
 import { cn } from '@/utils/classnames'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
+import { GRID_CLASS } from './collection-list'
 import ListWithCollection from './list-with-collection'
 
 type ListProps = {
-  marketplaceCollections: MarketplaceCollection[]
-  marketplaceCollectionPluginsMap: Record<string, Plugin[]>
+  pluginCollections: PluginCollection[]
+  pluginCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
   cardContainerClassName?: string
@@ -16,8 +18,8 @@ type ListProps = {
   emptyClassName?: string
 }
 const List = ({
-  marketplaceCollections,
-  marketplaceCollectionPluginsMap,
+  pluginCollections,
+  pluginCollectionPluginsMap,
   plugins,
   showInstallButton,
   cardContainerClassName,
@@ -29,8 +31,9 @@ const List = ({
       {
         !plugins && (
           <ListWithCollection
-            marketplaceCollections={marketplaceCollections}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+            variant="plugins"
+            collections={pluginCollections}
+            collectionItemsMap={pluginCollectionPluginsMap}
             showInstallButton={showInstallButton}
             cardContainerClassName={cardContainerClassName}
             cardRender={cardRender}
@@ -39,11 +42,7 @@ const List = ({
       }
       {
         plugins && !!plugins.length && (
-          <div className={cn(
-            'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-            cardContainerClassName,
-          )}
-          >
+          <div className={cn(GRID_CLASS, cardContainerClassName)}>
             {
               plugins.map((plugin) => {
                 if (cardRender)

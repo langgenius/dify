@@ -1,12 +1,19 @@
 import type { ActivePluginType } from './constants'
 import type {
   CollectionsAndPluginsSearchParams,
-  MarketplaceCollection,
+  Creator,
+  CreatorSearchParams,
+  PluginCollection,
   PluginsSearchParams,
   Template,
   TemplateCollection,
   TemplateDetail,
   TemplateSearchParams,
+  UnifiedCreatorItem,
+  UnifiedPluginItem,
+  UnifiedSearchParams,
+  UnifiedSearchResponse,
+  UnifiedTemplateItem,
 } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -21,10 +28,19 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
+/** Get a string key from an item by field name (e.g. plugin_id, template_id). */
+export function getItemKeyByField<T>(item: T, field: keyof T): string {
+  return String((item as Record<string, unknown>)[field as string])
+}
+
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
     return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
+}
+
+export const getCreatorAvatarUrl = (uniqueHandle: string) => {
+  return `${MARKETPLACE_API_PREFIX}/creators/${uniqueHandle}/avatar`
 }
 
 export const getFormattedPlugin = (bundle: Plugin): Plugin => {
@@ -63,7 +79,7 @@ export const getMarketplacePluginsByCollectionId = async (
   let plugins: Plugin[] = []
 
   try {
-    const marketplaceCollectionPluginsDataJson = await marketplaceClient.collectionPlugins({
+    const marketplaceCollectionPluginsDataJson = await marketplaceClient.plugins.collectionPlugins({
       params: {
         collectionId,
       },
@@ -85,10 +101,10 @@ export const getMarketplaceCollectionsAndPlugins = async (
   query?: CollectionsAndPluginsSearchParams,
   options?: MarketplaceFetchOptions,
 ) => {
-  let marketplaceCollections: MarketplaceCollection[] = []
-  let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
+  let pluginCollections: PluginCollection[] = []
+  let pluginCollectionPluginsMap: Record<string, Plugin[]> = {}
   try {
-    const marketplaceCollectionsDataJson = await marketplaceClient.collections({
+    const collectionsDataJson = await marketplaceClient.plugins.collections({
       query: {
         ...query,
         page: 1,
@@ -97,22 +113,22 @@ export const getMarketplaceCollectionsAndPlugins = async (
     }, {
       signal: options?.signal,
     })
-    marketplaceCollections = marketplaceCollectionsDataJson.data?.collections || []
-    await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
+    pluginCollections = collectionsDataJson.data?.collections || []
+    await Promise.all(pluginCollections.map(async (collection: PluginCollection) => {
       const plugins = await getMarketplacePluginsByCollectionId(collection.name, query, options)
 
-      marketplaceCollectionPluginsMap[collection.name] = plugins
+      pluginCollectionPluginsMap[collection.name] = plugins
     }))
   }
   // eslint-disable-next-line unused-imports/no-unused-vars
   catch (e) {
-    marketplaceCollections = []
-    marketplaceCollectionPluginsMap = {}
+    pluginCollections = []
+    pluginCollectionPluginsMap = {}
   }
 
   return {
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
+    marketplaceCollections: pluginCollections,
+    marketplaceCollectionPluginsMap: pluginCollectionPluginsMap,
   }
 }
 
@@ -202,7 +218,7 @@ export const getMarketplacePlugins = async (
   } = queryParams
 
   try {
-    const res = await marketplaceClient.searchAdvanced({
+    const res = await marketplaceClient.plugins.searchAdvanced({
       params: {
         kind: type === 'bundle' ? 'bundles' : 'plugins',
       },
@@ -235,7 +251,7 @@ export const getMarketplacePlugins = async (
   }
 }
 
-export const getMarketplaceListCondition = (pluginType: string) => {
+export const getPluginCondition = (pluginType: string) => {
   if ([PluginCategoryEnum.tool, PluginCategoryEnum.agent, PluginCategoryEnum.model, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger].includes(pluginType as PluginCategoryEnum))
     return `category=${pluginType}`
 
@@ -248,7 +264,7 @@ export const getMarketplaceListCondition = (pluginType: string) => {
   return ''
 }
 
-export const getMarketplaceListFilterType = (category: ActivePluginType) => {
+export const getPluginFilterType = (category: ActivePluginType) => {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all)
     return undefined
 
@@ -264,8 +280,8 @@ export function getCollectionsParams(category: ActivePluginType): CollectionsAnd
   }
   return {
     category,
-    condition: getMarketplaceListCondition(category),
-    type: getMarketplaceListFilterType(category),
+    condition: getPluginCondition(category),
+    type: getPluginFilterType(category),
   }
 }
 
@@ -322,6 +338,195 @@ export const getMarketplaceTemplates = async (
       templates: [],
       total: 0,
       page: pageParam,
+      page_size,
+    }
+  }
+}
+
+export const getMarketplaceCreators = async (
+  queryParams: CreatorSearchParams | undefined,
+  pageParam: number,
+  signal?: AbortSignal,
+): Promise<{
+  creators: Creator[]
+  total: number
+  page: number
+  page_size: number
+}> => {
+  if (!queryParams) {
+    return {
+      creators: [],
+      total: 0,
+      page: 1,
+      page_size: 40,
+    }
+  }
+
+  const {
+    query,
+    sort_by,
+    sort_order,
+    categories,
+    page_size = 40,
+  } = queryParams
+
+  try {
+    const res = await marketplaceClient.creators.searchAdvanced({
+      body: {
+        page: pageParam,
+        page_size,
+        query,
+        sort_by,
+        sort_order,
+        categories,
+      },
+    }, { signal })
+
+    const creators = (res.data?.creators || []).map((c: Creator) => ({
+      ...c,
+      display_name: c.display_name || c.name,
+      display_email: c.display_email ?? '',
+      social_links: c.social_links ?? [],
+    }))
+
+    return {
+      creators,
+      total: res.data?.total || 0,
+      page: pageParam,
+      page_size,
+    }
+  }
+  catch {
+    return {
+      creators: [],
+      total: 0,
+      page: pageParam,
+      page_size,
+    }
+  }
+}
+
+/**
+ * Map unified search plugin item to Plugin type
+ */
+export function mapUnifiedPluginToPlugin(item: UnifiedPluginItem): Plugin {
+  return {
+    type: item.type,
+    org: item.org,
+    name: item.name,
+    plugin_id: item.plugin_id,
+    version: item.latest_version,
+    latest_version: item.latest_version,
+    latest_package_identifier: item.latest_package_identifier,
+    icon: `${MARKETPLACE_API_PREFIX}/plugins/${item.org}/${item.name}/icon`,
+    verified: item.verification?.authorized_category === 'langgenius',
+    label: item.label,
+    brief: item.brief,
+    description: item.brief,
+    introduction: '',
+    repository: item.repository || '',
+    category: item.category as PluginCategoryEnum,
+    install_count: item.install_count,
+    endpoint: { settings: [] },
+    tags: item.tags || [],
+    badges: item.badges || [],
+    verification: item.verification,
+    from: 'marketplace',
+  }
+}
+
+/**
+ * Map unified search template item to Template type
+ */
+export function mapUnifiedTemplateToTemplate(item: UnifiedTemplateItem): Template {
+  const descriptionText = item.overview || item.readme || ''
+  return {
+    template_id: item.id,
+    name: item.template_name,
+    description: {
+      en_US: descriptionText,
+      zh_Hans: descriptionText,
+    },
+    icon: item.icon || '',
+    tags: item.categories || [],
+    author: item.publisher_handle || '',
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }
+}
+
+/**
+ * Map unified search creator item to Creator type
+ */
+export function mapUnifiedCreatorToCreator(item: UnifiedCreatorItem): Creator {
+  return {
+    email: item.email || '',
+    name: item.name || '',
+    display_name: item.display_name || item.name || '',
+    unique_handle: item.unique_handle || '',
+    display_email: '',
+    description: item.description || '',
+    avatar: item.avatar || '',
+    social_links: [],
+    status: item.status || 'active',
+    plugin_count: item.plugin_count,
+    template_count: item.template_count,
+    created_at: '',
+    updated_at: '',
+  }
+}
+
+/**
+ * Fetch unified search results
+ */
+export const getMarketplaceUnifiedSearch = async (
+  queryParams: UnifiedSearchParams | undefined,
+  signal?: AbortSignal,
+): Promise<UnifiedSearchResponse['data'] & { page: number, page_size: number }> => {
+  if (!queryParams || !queryParams.query.trim()) {
+    return {
+      creators: { items: [], total: 0 },
+      organizations: { items: [], total: 0 },
+      plugins: { items: [], total: 0 },
+      templates: { items: [], total: 0 },
+      page: 1,
+      page_size: queryParams?.page_size || 10,
+    }
+  }
+
+  const {
+    query,
+    scope,
+    page = 1,
+    page_size = 10,
+  } = queryParams
+
+  try {
+    const res = await marketplaceClient.searchUnified({
+      body: {
+        query,
+        scope,
+        page,
+        page_size,
+      },
+    }, { signal })
+
+    return {
+      creators: res.data?.creators || { items: [], total: 0 },
+      organizations: res.data?.organizations || { items: [], total: 0 },
+      plugins: res.data?.plugins || { items: [], total: 0 },
+      templates: res.data?.templates || { items: [], total: 0 },
+      page,
+      page_size,
+    }
+  }
+  catch {
+    return {
+      creators: { items: [], total: 0 },
+      organizations: { items: [], total: 0 },
+      plugins: { items: [], total: 0 },
+      templates: { items: [], total: 0 },
+      page,
       page_size,
     }
   }

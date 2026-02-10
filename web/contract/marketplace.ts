@@ -14,6 +14,8 @@ import type {
   TemplateDetail,
   TemplateSearchParams,
   TemplatesListResponse,
+  UnifiedSearchParams,
+  UnifiedSearchResponse,
 } from '@/app/components/plugins/marketplace/types'
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import { type } from '@orpc/contract'
@@ -366,6 +368,20 @@ export const searchTemplatesAdvancedContract = base
     }>(),
   )
 
+export const searchUnifiedContract = base
+  .route({
+    path: '/search/unified',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      body: UnifiedSearchParams
+    }>(),
+  )
+  .output(
+    type<UnifiedSearchResponse>(),
+  )
+
 export const getPublisherTemplatesContract = base
   .route({
     path: '/templates/publisher/{uniqueHandle}',
@@ -385,5 +401,27 @@ export const getPublisherTemplatesContract = base
   .output(
     type<{
       data?: TemplatesListResponse
+    }>(),
+  )
+
+export const getPublisherPluginsContract = base
+  .route({
+    path: '/plugins/publisher/{uniqueHandle}',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      params: {
+        uniqueHandle: string
+      }
+      query?: {
+        page?: number
+        page_size?: number
+      }
+    }>(),
+  )
+  .output(
+    type<{
+      data?: PluginsFromMarketplaceResponse
     }>(),
   )

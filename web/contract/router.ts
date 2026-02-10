@@ -30,6 +30,7 @@ import {
   getCollectionTemplatesContract,
   getCreatorAvatarContract,
   getCreatorByHandleContract,
+  getPublisherPluginsContract,
   getPublisherTemplatesContract,
   getTemplateByIdContract,
   getTemplateCollectionContract,
@@ -39,15 +40,20 @@ import {
   searchCreatorsAdvancedContract,
   searchTemplatesAdvancedContract,
   searchTemplatesBasicContract,
+  searchUnifiedContract,
   syncCreatorAvatarContract,
   syncCreatorProfileContract,
   templateCollectionsContract,
 } from './marketplace'
 
 export const marketplaceRouterContract = {
-  collections: collectionsContract,
-  collectionPlugins: collectionPluginsContract,
-  searchAdvanced: searchAdvancedContract,
+  plugins: {
+    collections: collectionsContract,
+    collectionPlugins: collectionPluginsContract,
+    searchAdvanced: searchAdvancedContract,
+    getPublisherPlugins: getPublisherPluginsContract,
+  },
+  searchUnified: searchUnifiedContract,
   templateCollections: {
     list: templateCollectionsContract,
     create: createTemplateCollectionContract,
