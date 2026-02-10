@@ -1,8 +1,7 @@
 import { render, screen } from '@testing-library/react'
-
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Drawer from './drawer'
 
-// Capture the useKeyPress callback so tests can invoke it
 let capturedKeyPressCallback: ((e: KeyboardEvent) => void) | undefined
 
 vi.mock('ahooks', () => ({
