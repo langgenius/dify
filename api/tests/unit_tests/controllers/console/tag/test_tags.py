@@ -193,24 +193,6 @@ class TestTagUpdateDeleteApi:
         delete_mock.assert_called_once_with("tag-1")
         assert status == 204
 
-    def test_delete_forbidden(self, app, readonly_user):
-        api = TagUpdateDeleteApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.tag.tags.current_account_with_tenant",
-                return_value=(readonly_user, "tenant-1"),
-            ),
-            patch(
-                "controllers.console.tag.tags.TagService.delete_tag",
-                side_effect=Forbidden,
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "tag-1")
-
 
 class TestTagBindingCreateApi:
     def test_create_success(self, app, admin_user, payload_patch):

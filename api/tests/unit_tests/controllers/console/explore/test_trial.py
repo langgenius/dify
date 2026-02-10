@@ -41,7 +41,7 @@ def trial_app_chat():
 def trial_app_completion():
     app = MagicMock()
     app.id = "a-comp"
-    app.mode = "completion"
+    app.mode = AppMode.COMPLETION
     return app
 
 
@@ -393,40 +393,6 @@ class TestTrialChatApi:
             with pytest.raises(InvokeRateLimitHttpError):
                 method(api, trial_app_chat)
 
-    def test_completion_value_error(self, app, trial_app_completion, account):
-        api = module.TrialCompletionApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
-            patch.object(
-                module.AppGenerateService,
-                "generate",
-                side_effect=ValueError("test error"),
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, trial_app_completion)
-
-    def test_completion_generic_exception(self, app, trial_app_completion, account):
-        from werkzeug.exceptions import InternalServerError
-
-        api = module.TrialCompletionApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
-            patch.object(
-                module.AppGenerateService,
-                "generate",
-                side_effect=RuntimeError("unexpected error"),
-            ),
-        ):
-            with pytest.raises(InternalServerError):
-                method(api, trial_app_completion)
-
     def test_chat_value_error(self, app, trial_app_chat, account):
         api = module.TrialChatApi()
         method = unwrap(api.post)
@@ -592,6 +558,40 @@ class TestTrialCompletionApi:
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeRateLimitError("test"),
+            ),
+        ):
+            with pytest.raises(InternalServerError):
+                method(api, trial_app_completion)
+
+    def test_completion_value_error(self, app, trial_app_completion, account):
+        api = module.TrialCompletionApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", json={"inputs": {}, "query": ""}),
+            patch.object(module, "current_user", account),
+            patch.object(
+                module.AppGenerateService,
+                "generate",
+                side_effect=ValueError("test error"),
+            ),
+        ):
+            with pytest.raises(ValueError):
+                method(api, trial_app_completion)
+
+    def test_completion_generic_exception(self, app, trial_app_completion, account):
+        from werkzeug.exceptions import InternalServerError
+
+        api = module.TrialCompletionApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", json={"inputs": {}, "query": ""}),
+            patch.object(module, "current_user", account),
+            patch.object(
+                module.AppGenerateService,
+                "generate",
+                side_effect=RuntimeError("unexpected error"),
             ),
         ):
             with pytest.raises(InternalServerError):
