@@ -8,23 +8,6 @@ ENV UV_VERSION=0.8.9
 
 RUN pip3 install --no-cache-dir uv==${UV_VERSION}
 
-
-FROM base AS packages
-
-# if you located in China, you can use aliyun mirror to speed up
-# RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-          # basic environment
-          g++ \
-          # for building gmpy2
-          libmpfr-dev libmpc-dev
-
-# Install Python dependencies
-COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev
-
 # production stage
 FROM base AS production
 
@@ -53,16 +36,7 @@ ARG dify_uid=1001
 ARG NODE_MAJOR=22
 ARG NODE_PACKAGE_VERSION=22.22.0-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
-
-RUN \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-        passwd
-
-RUN groupadd -r -g ${dify_uid} dify && \
-    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
-    chown -R dify:dify /app
-
+ 
 RUN \
     apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -85,6 +59,8 @@ RUN \
         nodejs=${NODE_PACKAGE_VERSION} \
         # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
+        passwd \
+        g++ \
         # For Security
         expat libldap-dev perl libsqlite3-dev zlib1g \
         # install fonts to support the use of tools like pypdfium2
@@ -96,6 +72,9 @@ RUN \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd -r -g ${dify_uid} dify && \
+    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
+    chown -R dify:dify /app
 # Copy Python environment and packages
 ENV VIRTUAL_ENV=/app/api/.venv
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
