@@ -1,21 +1,15 @@
 import type { Mock } from 'vitest'
 import type { Locale } from '@/i18n-config'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import CSVDownload from './csv-downloader'
 
-const downloaderProps: any[] = []
+const mockDownloadCSV = vi.fn()
 
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: vi.fn(() => ({
-    CSVDownloader: ({ children, ...props }: any) => {
-      downloaderProps.push(props)
-      return <div data-testid="mock-csv-downloader">{children}</div>
-    },
-    Type: { Link: 'link' },
-  })),
+vi.mock('@/utils/csv', () => ({
+  downloadCSV: (...args: unknown[]) => mockDownloadCSV(...args),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -40,30 +34,39 @@ describe('CSVDownload', () => {
   ]
 
   beforeEach(() => {
-    downloaderProps.length = 0
+    vi.clearAllMocks()
   })
 
-  it('should render the structure preview and pass English template data by default', () => {
+  it('should render the structure preview and download button', () => {
     renderWithLocale('en-US' as Locale)
 
     expect(screen.getByText('share.generation.csvStructureTitle')).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchModal.template')).toBeInTheDocument()
-
-    expect(downloaderProps[0]).toMatchObject({
-      filename: 'template-en-US',
-      type: 'link',
-      bom: true,
-      data: englishTemplate,
-    })
+    expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('should switch to the Chinese template when locale matches the secondary language', () => {
+  it('should download English template when clicked with en-US locale', () => {
+    renderWithLocale('en-US' as Locale)
+
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(mockDownloadCSV).toHaveBeenCalledWith(
+      englishTemplate,
+      'template-en-US',
+      { bom: true },
+    )
+  })
+
+  it('should download Chinese template when locale matches the secondary language', () => {
     const locale = LanguagesSupported[1] as Locale
     renderWithLocale(locale)
 
-    expect(downloaderProps[0]).toMatchObject({
-      filename: `template-${locale}`,
-      data: chineseTemplate,
-    })
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(mockDownloadCSV).toHaveBeenCalledWith(
+      chineseTemplate,
+      `template-${locale}`,
+      { bom: true },
+    )
   })
 })

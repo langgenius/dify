@@ -257,6 +257,9 @@ importers:
       nuqs:
         specifier: 2.8.6
         version: 2.8.6(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react@19.2.4)
+      papaparse:
+        specifier: 5.5.3
+        version: 5.5.3
       pinyin-pro:
         specifier: 3.27.0
         version: 3.27.0
@@ -290,9 +293,6 @@ importers:
       react-multi-email:
         specifier: 1.0.25
         version: 1.0.25(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react-papaparse:
-        specifier: 4.4.0
-        version: 4.4.0
       react-pdf-highlighter:
         specifier: 8.0.0-rc.0
         version: 8.0.0-rc.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -468,6 +468,9 @@ importers:
       '@types/node':
         specifier: 24.10.12
         version: 24.10.12
+      '@types/papaparse':
+        specifier: 5.5.2
+        version: 5.5.2
       '@types/postcss-js':
         specifier: 4.1.0
         version: 4.1.0
@@ -941,10 +944,6 @@ packages:
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
-
-  '@discoveryjs/json-ext@0.5.7':
-    resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
-    engines: {node: '>=10.0.0'}
 
   '@egoist/tailwindcss-icons@1.9.2':
     resolution: {integrity: sha512-I6XsSykmhu2cASg5Hp/ICLsJ/K/1aXPaSKjgbWaNp2xYnb4We/arWMmkhhV+9CglOFCUbqx0A3mM2kWV32ZIhw==}
@@ -6502,10 +6501,6 @@ packages:
       react: ^18.2.0
       react-dom: ^18.2.0
 
-  react-papaparse@4.4.0:
-    resolution: {integrity: sha512-xTEwHZYJ+1dh9mQDQjjwJXmWyX20DdZ52u+ddw75V+Xm5qsjXSvWmC7c8K82vRwMjKAOH2S9uFyGpHEyEztkUQ==}
-    engines: {node: '>=8', npm: '>=5'}
-
   react-pdf-highlighter@8.0.0-rc.0:
     resolution: {integrity: sha512-zYHDq5XxsXA02UbFUoMdo7Cex1l42vHJxszywXmct2kUMZm6TmU3b/a5zOS6ssXWqdjEx5Vpq6/gW+Mek9rDTQ==}
     peerDependencies:
@@ -8204,8 +8199,6 @@ snapshots:
   '@csstools/css-syntax-patches-for-csstree@1.0.26': {}
 
   '@csstools/css-tokenizer@3.0.4': {}
-
-  '@discoveryjs/json-ext@0.5.7': {}
 
   '@egoist/tailwindcss-icons@1.9.2(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -14580,11 +14573,6 @@ snapshots:
     dependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-
-  react-papaparse@4.4.0:
-    dependencies:
-      '@types/papaparse': 5.5.2
-      papaparse: 5.5.3
 
   react-pdf-highlighter@8.0.0-rc.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:

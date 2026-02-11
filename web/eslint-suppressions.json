@@ -377,11 +377,6 @@
       "count": 1
     }
   },
-  "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -430,11 +425,6 @@
   "app/components/app/annotation/empty-element.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/app/annotation/header-opts/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/app/annotation/header-opts/index.tsx": {
@@ -5749,17 +5739,9 @@
       "count": 2
     }
   },
-  "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/share/text-generation/run-once/index.tsx": {
