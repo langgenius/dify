@@ -30,9 +30,15 @@ vi.mock('#i18n', () => ({
 // Mock marketplace atoms with controllable values
 let mockSort: { sortBy: string, sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
 const mockHandleSortChange = vi.fn()
+let mockCreationType = 'plugins'
 
 vi.mock('../atoms', () => ({
-  useMarketplaceSort: () => [mockSort, mockHandleSortChange],
+  useActiveSort: () => [mockSort, mockHandleSortChange],
+  useCreationType: () => [mockCreationType, vi.fn()],
+}))
+
+vi.mock('../search-params', () => ({
+  CREATION_TYPE: { plugins: 'plugins', templates: 'templates' },
 }))
 
 // Mock portal component with controllable open state
@@ -91,6 +97,7 @@ describe('SortDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSort = { sortBy: 'install_count', sortOrder: 'DESC' }
+    mockCreationType = 'plugins'
     mockPortalOpenState = false
   })
 

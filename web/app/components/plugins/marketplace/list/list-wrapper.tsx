@@ -3,6 +3,7 @@
 import Loading from '@/app/components/base/loading'
 import { isPluginsData, useMarketplaceData } from '../state'
 import FlatList from './flat-list'
+import ListTopInfo from './list-top-info'
 import ListWithCollection from './list-with-collection'
 
 type ListWrapperProps = {
@@ -17,7 +18,12 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
     if (isPluginsData(marketplaceData)) {
       const { pluginCollections, pluginCollectionPluginsMap, plugins } = marketplaceData
       return plugins !== undefined
-        ? <FlatList variant="plugins" items={plugins} showInstallButton={showInstallButton} />
+        ? (
+            <>
+              <ListTopInfo variant="plugins" />
+              <FlatList variant="plugins" items={plugins} showInstallButton={showInstallButton} />
+            </>
+          )
         : (
             <ListWithCollection
               variant="plugins"
@@ -30,7 +36,12 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
 
     const { templateCollections, templateCollectionTemplatesMap, templates } = marketplaceData
     return templates !== undefined
-      ? <FlatList variant="templates" items={templates} />
+      ? (
+          <>
+            <ListTopInfo variant="templates" />
+            <FlatList variant="templates" items={templates} />
+          </>
+        )
       : (
           <ListWithCollection
             variant="templates"

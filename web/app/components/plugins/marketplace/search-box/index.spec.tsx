@@ -81,7 +81,12 @@ vi.mock('../atoms', () => ({
   useSearchText: () => [mockSearchText, mockHandleSearchTextChange],
   useFilterPluginTags: () => [mockFilterPluginTags, mockHandleFilterPluginTagsChange],
   useActivePluginCategory: () => [mockActivePluginCategory, vi.fn()],
-  useMarketplaceSortValue: () => mockSortValue,
+  useMarketplacePluginSortValue: () => mockSortValue,
+  useMarketplaceTemplateSortValue: () => ({ sortBy: 'usage_count', sortOrder: 'DESC' }),
+  useActiveSort: () => [mockSortValue, vi.fn()],
+  useActiveSortValue: () => mockSortValue,
+  useCreationType: () => ['plugins', vi.fn()],
+  useSearchTab: () => ['', vi.fn()],
   searchModeAtom: {},
 }))
 

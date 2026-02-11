@@ -2,13 +2,13 @@
 
 import type { ActivePluginType } from '../constants'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useTranslation } from '#i18n'
 import { RiArchive2Line } from '@remixicon/react'
 import { useSetAtom } from 'jotai'
 import { Plugin } from '@/app/components/base/icons/src/vender/plugin'
 import { searchModeAtom, useActivePluginCategory, useFilterPluginTags } from '../atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import { MARKETPLACE_TYPE_ICON_COMPONENTS } from '../plugin-type-icons'
+import { usePluginCategoryText } from './category-text'
 import { CommonCategorySwitch } from './common'
 import HeroTagsFilter from './hero-tags-filter'
 
@@ -16,6 +16,17 @@ type PluginTypeSwitchProps = {
   className?: string
   variant?: 'default' | 'hero'
 }
+
+const categoryValues = [
+  PLUGIN_TYPE_SEARCH_MAP.all,
+  PLUGIN_TYPE_SEARCH_MAP.model,
+  PLUGIN_TYPE_SEARCH_MAP.tool,
+  PLUGIN_TYPE_SEARCH_MAP.datasource,
+  PLUGIN_TYPE_SEARCH_MAP.trigger,
+  PLUGIN_TYPE_SEARCH_MAP.agent,
+  PLUGIN_TYPE_SEARCH_MAP.extension,
+  PLUGIN_TYPE_SEARCH_MAP.bundle,
+] as const
 
 const getTypeIcon = (value: ActivePluginType, isHeroVariant?: boolean) => {
   if (value === PLUGIN_TYPE_SEARCH_MAP.all)
@@ -30,55 +41,18 @@ export const PluginCategorySwitch = ({
   className,
   variant = 'default',
 }: PluginTypeSwitchProps) => {
-  const { t } = useTranslation()
   const [activePluginCategory, handleActivePluginCategoryChange] = useActivePluginCategory()
   const [filterPluginTags, setFilterPluginTags] = useFilterPluginTags()
   const setSearchMode = useSetAtom(searchModeAtom)
+  const getPluginCategoryText = usePluginCategoryText()
 
   const isHeroVariant = variant === 'hero'
 
-  const options = [
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: isHeroVariant ? t('category.allTypes', { ns: 'plugin' }) : t('category.all', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.all, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.model,
-      text: t('category.models', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.model, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.tool,
-      text: t('category.tools', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.tool, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t('category.datasources', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.datasource, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      text: t('category.triggers', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.trigger, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t('category.agents', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.agent, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.extension,
-      text: t('category.extensions', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.extension, isHeroVariant),
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t('category.bundles', { ns: 'plugin' }),
-      icon: getTypeIcon(PLUGIN_TYPE_SEARCH_MAP.bundle, isHeroVariant),
-    },
-  ]
+  const options = categoryValues.map(value => ({
+    value,
+    text: getPluginCategoryText(value, isHeroVariant),
+    icon: getTypeIcon(value, isHeroVariant),
+  }))
 
   const handleChange = (value: string) => {
     handleActivePluginCategoryChange(value)

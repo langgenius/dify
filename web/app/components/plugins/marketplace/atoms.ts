@@ -2,19 +2,30 @@ import type { SearchTab } from './search-params'
 import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useCallback } from 'react'
-import { CATEGORY_ALL, DEFAULT_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
+import { useCallback, useMemo } from 'react'
+import { CATEGORY_ALL, DEFAULT_PLUGIN_SORT, DEFAULT_TEMPLATE_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
 import { CREATION_TYPE, marketplaceSearchParamsParsers } from './search-params'
 
-const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
-export function useMarketplaceSort() {
-  return useAtom(marketplaceSortAtom)
+const marketplacePluginSortAtom = atom<PluginsSort>(DEFAULT_PLUGIN_SORT)
+export function useMarketplacePluginSort() {
+  return useAtom(marketplacePluginSortAtom)
 }
-export function useMarketplaceSortValue() {
-  return useAtomValue(marketplaceSortAtom)
+export function useMarketplacePluginSortValue() {
+  return useAtomValue(marketplacePluginSortAtom)
 }
-export function useSetMarketplaceSort() {
-  return useSetAtom(marketplaceSortAtom)
+export function useSetMarketplacePluginSort() {
+  return useSetAtom(marketplacePluginSortAtom)
+}
+
+const marketplaceTemplateSortAtom = atom<PluginsSort>(DEFAULT_TEMPLATE_SORT)
+export function useMarketplaceTemplateSort() {
+  return useAtom(marketplaceTemplateSortAtom)
+}
+export function useMarketplaceTemplateSortValue() {
+  return useAtomValue(marketplaceTemplateSortAtom)
+}
+export function useSetMarketplaceTemplateSort() {
+  return useSetAtom(marketplaceTemplateSortAtom)
 }
 
 export function useSearchText() {
@@ -64,22 +75,56 @@ export function useMarketplaceSearchMode() {
   return isSearchMode
 }
 
+/**
+ * Returns the active sort state based on the current creationType.
+ * Plugins use `marketplacePluginSortAtom`, templates use `marketplaceTemplateSortAtom`.
+ */
+export function useActiveSort(): [PluginsSort, (sort: PluginsSort) => void] {
+  const [creationType] = useCreationType()
+  const [pluginSort, setPluginSort] = useAtom(marketplacePluginSortAtom)
+  const [templateSort, setTemplateSort] = useAtom(marketplaceTemplateSortAtom)
+  const isTemplates = creationType === CREATION_TYPE.templates
+
+  const sort = isTemplates ? templateSort : pluginSort
+  const setSort = useMemo(
+    () => isTemplates ? setTemplateSort : setPluginSort,
+    [isTemplates, setTemplateSort, setPluginSort],
+  )
+  return [sort, setSort]
+}
+
+export function useActiveSortValue(): PluginsSort {
+  const [creationType] = useCreationType()
+  const pluginSort = useAtomValue(marketplacePluginSortAtom)
+  const templateSort = useAtomValue(marketplaceTemplateSortAtom)
+  return creationType === CREATION_TYPE.templates ? templateSort : pluginSort
+}
+
 export function useMarketplaceMoreClick() {
   const [, setQ] = useSearchText()
   const [, setSearchTab] = useSearchTab()
-  const setSort = useSetAtom(marketplaceSortAtom)
+  const setPluginSort = useSetAtom(marketplacePluginSortAtom)
+  const setTemplateSort = useSetAtom(marketplaceTemplateSortAtom)
   const setSearchMode = useSetAtom(searchModeAtom)
 
   return useCallback((searchParams?: SearchParamsFromCollection, searchTab?: SearchTab) => {
     if (!searchParams)
       return
     setQ(searchParams?.query || '')
-    setSort({
-      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
-      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
-    })
+    if (searchTab === 'templates') {
+      setTemplateSort({
+        sortBy: searchParams?.sort_by || DEFAULT_TEMPLATE_SORT.sortBy,
+        sortOrder: searchParams?.sort_order || DEFAULT_TEMPLATE_SORT.sortOrder,
+      })
+    }
+    else {
+      setPluginSort({
+        sortBy: searchParams?.sort_by || DEFAULT_PLUGIN_SORT.sortBy,
+        sortOrder: searchParams?.sort_order || DEFAULT_PLUGIN_SORT.sortOrder,
+      })
+    }
     setSearchMode(true)
     if (searchTab)
       setSearchTab(searchTab)
-  }, [setQ, setSearchTab, setSort, setSearchMode])
+  }, [setQ, setSearchTab, setPluginSort, setTemplateSort, setSearchMode])
 }

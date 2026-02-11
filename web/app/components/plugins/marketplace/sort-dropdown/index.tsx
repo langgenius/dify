@@ -10,33 +10,36 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useMarketplaceSort } from '../atoms'
+import { useActiveSort, useCreationType } from '../atoms'
+import { CREATION_TYPE } from '../search-params'
+
+const PLUGIN_SORT_OPTIONS = [
+  { value: 'install_count', order: 'DESC', labelKey: 'marketplace.sortOption.mostPopular' },
+  { value: 'version_updated_at', order: 'DESC', labelKey: 'marketplace.sortOption.recentlyUpdated' },
+  { value: 'created_at', order: 'DESC', labelKey: 'marketplace.sortOption.newlyReleased' },
+  { value: 'created_at', order: 'ASC', labelKey: 'marketplace.sortOption.firstReleased' },
+] as const
+
+const TEMPLATE_SORT_OPTIONS = [
+  { value: 'usage_count', order: 'DESC', labelKey: 'marketplace.sortOption.mostPopular' },
+  { value: 'updated_at', order: 'DESC', labelKey: 'marketplace.sortOption.recentlyUpdated' },
+  { value: 'created_at', order: 'DESC', labelKey: 'marketplace.sortOption.newlyReleased' },
+  { value: 'created_at', order: 'ASC', labelKey: 'marketplace.sortOption.firstReleased' },
+] as const
 
 const SortDropdown = () => {
   const { t } = useTranslation()
-  const options = [
-    {
-      value: 'install_count',
-      order: 'DESC',
-      text: t('marketplace.sortOption.mostPopular', { ns: 'plugin' }),
-    },
-    {
-      value: 'version_updated_at',
-      order: 'DESC',
-      text: t('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' }),
-    },
-    {
-      value: 'created_at',
-      order: 'DESC',
-      text: t('marketplace.sortOption.newlyReleased', { ns: 'plugin' }),
-    },
-    {
-      value: 'created_at',
-      order: 'ASC',
-      text: t('marketplace.sortOption.firstReleased', { ns: 'plugin' }),
-    },
-  ]
-  const [sort, handleSortChange] = useMarketplaceSort()
+  const [creationType] = useCreationType()
+  const isTemplates = creationType === CREATION_TYPE.templates
+
+  const rawOptions = isTemplates ? TEMPLATE_SORT_OPTIONS : PLUGIN_SORT_OPTIONS
+  const options = rawOptions.map(opt => ({
+    value: opt.value,
+    order: opt.order,
+    text: t(opt.labelKey, { ns: 'plugin' }),
+  }))
+
+  const [sort, handleSortChange] = useActiveSort()
   const [open, setOpen] = useState(false)
   const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]
 

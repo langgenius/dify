@@ -9,7 +9,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 // ================================
 
 // Note: Import after mocks are set up
-import { DEFAULT_SORT, DEFAULT_TEMPLATE_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { DEFAULT_PLUGIN_SORT, DEFAULT_TEMPLATE_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
   getPluginCondition,
@@ -406,20 +406,20 @@ const createMockCollection = (overrides?: Partial<PluginCollection>): PluginColl
 // Constants Tests
 // ================================
 describe('constants', () => {
-  describe('DEFAULT_SORT', () => {
+  describe('DEFAULT_PLUGIN_SORT', () => {
     it('should have correct default sort values', () => {
-      expect(DEFAULT_SORT).toEqual({
+      expect(DEFAULT_PLUGIN_SORT).toEqual({
         sortBy: 'install_count',
         sortOrder: 'DESC',
       })
     })
 
     it('should be immutable at runtime', () => {
-      const originalSortBy = DEFAULT_SORT.sortBy
-      const originalSortOrder = DEFAULT_SORT.sortOrder
+      const originalSortBy = DEFAULT_PLUGIN_SORT.sortBy
+      const originalSortOrder = DEFAULT_PLUGIN_SORT.sortOrder
 
-      expect(DEFAULT_SORT.sortBy).toBe(originalSortBy)
-      expect(DEFAULT_SORT.sortOrder).toBe(originalSortOrder)
+      expect(DEFAULT_PLUGIN_SORT.sortBy).toBe(originalSortBy)
+      expect(DEFAULT_PLUGIN_SORT.sortOrder).toBe(originalSortOrder)
     })
   })
 

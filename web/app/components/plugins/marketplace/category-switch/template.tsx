@@ -1,9 +1,9 @@
 'use client'
 
-import { useTranslation } from '#i18n'
 import { Playground } from '@/app/components/base/icons/src/vender/plugin'
 import { useActiveTemplateCategory } from '../atoms'
 import { CATEGORY_ALL, TEMPLATE_CATEGORY_MAP } from '../constants'
+import { useTemplateCategoryText } from './category-text'
 import { CommonCategorySwitch } from './common'
 
 type TemplateCategorySwitchProps = {
@@ -11,57 +11,31 @@ type TemplateCategorySwitchProps = {
   variant?: 'default' | 'hero'
 }
 
+const categoryValues = [
+  CATEGORY_ALL,
+  TEMPLATE_CATEGORY_MAP.marketing,
+  TEMPLATE_CATEGORY_MAP.sales,
+  TEMPLATE_CATEGORY_MAP.support,
+  TEMPLATE_CATEGORY_MAP.operations,
+  TEMPLATE_CATEGORY_MAP.it,
+  TEMPLATE_CATEGORY_MAP.knowledge,
+  TEMPLATE_CATEGORY_MAP.design,
+] as const
+
 export const TemplateCategorySwitch = ({
   className,
   variant = 'default',
 }: TemplateCategorySwitchProps) => {
-  const { t } = useTranslation()
   const [activeTemplateCategory, handleActiveTemplateCategoryChange] = useActiveTemplateCategory()
+  const getTemplateCategoryText = useTemplateCategoryText()
 
   const isHeroVariant = variant === 'hero'
 
-  const options = [
-    {
-      value: CATEGORY_ALL,
-      text: t('marketplace.templateCategory.all', { ns: 'plugin' }),
-      icon: isHeroVariant ? <Playground className="mr-1.5 h-4 w-4" /> : null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.marketing,
-      text: t('marketplace.templateCategory.marketing', { ns: 'plugin' }),
-      icon: null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.sales,
-      text: t('marketplace.templateCategory.sales', { ns: 'plugin' }),
-      icon: null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.support,
-      text: t('marketplace.templateCategory.support', { ns: 'plugin' }),
-      icon: null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.operations,
-      text: t('marketplace.templateCategory.operations', { ns: 'plugin' }),
-      icon: null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.it,
-      text: t('marketplace.templateCategory.it', { ns: 'plugin' }),
-      icon: null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.knowledge,
-      text: t('marketplace.templateCategory.knowledge', { ns: 'plugin' }),
-      icon: null,
-    },
-    {
-      value: TEMPLATE_CATEGORY_MAP.design,
-      text: t('marketplace.templateCategory.design', { ns: 'plugin' }),
-      icon: null,
-    },
-  ]
+  const options = categoryValues.map(value => ({
+    value,
+    text: getTemplateCategoryText(value),
+    icon: value === CATEGORY_ALL && isHeroVariant ? <Playground className="mr-1.5 h-4 w-4" /> : null,
+  }))
 
   return (
     <CommonCategorySwitch

@@ -1,6 +1,6 @@
 import { PluginCategoryEnum } from '../types'
 
-export const DEFAULT_SORT = {
+export const DEFAULT_PLUGIN_SORT = {
   sortBy: 'install_count',
   sortOrder: 'DESC',
 }

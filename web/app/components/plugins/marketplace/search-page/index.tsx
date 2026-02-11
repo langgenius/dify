@@ -8,7 +8,7 @@ import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import Loading from '@/app/components/base/loading'
 import SegmentedControl from '@/app/components/base/segmented-control'
-import { useMarketplaceSortValue, useSearchTab, useSearchText } from '../atoms'
+import { useMarketplacePluginSortValue, useMarketplaceTemplateSortValue, useSearchTab, useSearchText } from '../atoms'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import Empty from '../empty'
 import { useMarketplaceContainerScroll } from '../hooks'
@@ -23,17 +23,12 @@ const PAGE_SIZE = 40
 const ALL_TAB_PREVIEW_SIZE = 8
 const ZERO_WIDTH_SPACE = '\u200B'
 
-type SortValue = { sortBy: string, sortOrder: string }
+// type SortValue = { sortBy: string, sortOrder: string }
 
-function mapSortForTemplates(sort: SortValue): { sort_by: string, sort_order: string } {
-  const sortBy = sort.sortBy === 'install_count' ? 'usage_count' : sort.sortBy === 'version_updated_at' ? 'updated_at' : sort.sortBy
-  return { sort_by: sortBy, sort_order: sort.sortOrder }
-}
-
-function mapSortForCreators(sort: SortValue): { sort_by: string, sort_order: string } {
-  const sortBy = sort.sortBy === 'install_count' ? 'created_at' : sort.sortBy === 'version_updated_at' ? 'updated_at' : sort.sortBy
-  return { sort_by: sortBy, sort_order: sort.sortOrder }
-}
+// function mapSortForCreators(sort: SortValue): { sort_by: string, sort_order: string } {
+//   const sortBy = sort.sortBy === 'install_count' ? 'created_at' : sort.sortBy === 'version_updated_at' ? 'updated_at' : sort.sortBy
+//   return { sort_by: sortBy, sort_order: sort.sortOrder }
+// }
 
 const SearchPage = () => {
   const { t } = useTranslation()
@@ -41,7 +36,8 @@ const SearchPage = () => {
   const debouncedQuery = useDebounce(searchText, { wait: 500 })
   const [searchTabParam, setSearchTab] = useSearchTab()
   const searchTab = (searchTabParam || 'all') as SearchTab
-  const sort = useMarketplaceSortValue()
+  const pluginSort = useMarketplacePluginSortValue()
+  const templateSort = useMarketplaceTemplateSortValue()
 
   const query = debouncedQuery === ZERO_WIDTH_SPACE ? '' : debouncedQuery.trim()
   const hasQuery = !!searchText && (!!query || searchText === ZERO_WIDTH_SPACE)
@@ -52,35 +48,33 @@ const SearchPage = () => {
     return {
       query,
       page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
-      sort_by: sort.sortBy,
-      sort_order: sort.sortOrder,
+      sort_by: pluginSort.sortBy,
+      sort_order: pluginSort.sortOrder,
       type: getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.all),
     } as PluginsSearchParams
-  }, [hasQuery, query, searchTab, sort])
+  }, [hasQuery, query, searchTab, pluginSort])
 
   const templatesParams = useMemo(() => {
     if (!hasQuery)
       return undefined
-    const { sort_by, sort_order } = mapSortForTemplates(sort)
     return {
       query,
       page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
-      sort_by,
-      sort_order,
+      sort_by: templateSort.sortBy,
+      sort_order: templateSort.sortOrder,
     }
-  }, [hasQuery, query, searchTab, sort])
+  }, [hasQuery, query, searchTab, templateSort])
 
   const creatorsParams = useMemo(() => {
     if (!hasQuery)
       return undefined
-    const { sort_by, sort_order } = mapSortForCreators(sort)
     return {
       query,
       page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
-      sort_by,
-      sort_order,
+      // sort_by,
+      // sort_order,
     }
-  }, [hasQuery, query, searchTab, sort])
+  }, [hasQuery, query, searchTab])
 
   const fetchPlugins = searchTab === 'all' || searchTab === 'plugins'
   const fetchTemplates = searchTab === 'all' || searchTab === 'templates'
@@ -198,32 +192,17 @@ const SearchPage = () => {
     </div>
   )
 
-  const renderPluginsTab = () => {
-    if (plugins.length === 0 && !pluginsQuery.isLoading)
-      return <Empty />
+  const renderTab = <T,>(
+    items: T[],
+    isItemLoading: boolean,
+    renderSection: (items: T[]) => React.ReactNode,
+    emptyText?: string,
+  ) => {
+    if (items.length === 0 && !isItemLoading)
+      return <Empty text={emptyText} />
     return (
       <div className="py-4">
-        {renderPluginsSection(plugins)}
-      </div>
-    )
-  }
-
-  const renderTemplatesTab = () => {
-    if (templates.length === 0 && !templatesQuery.isLoading)
-      return <Empty text={t('marketplace.noTemplateFound', { ns: 'plugin' })} />
-    return (
-      <div className="py-4">
-        {renderTemplatesSection(templates)}
-      </div>
-    )
-  }
-
-  const renderCreatorsTab = () => {
-    if (creators.length === 0 && !creatorsQuery.isLoading)
-      return <Empty text={t('marketplace.noCreatorFound', { ns: 'plugin' })} />
-    return (
-      <div className="py-4">
-        {renderCreatorsSection(creators)}
+        {renderSection(items)}
       </div>
     )
   }
@@ -241,7 +220,7 @@ const SearchPage = () => {
           onChange={v => setSearchTab(v as SearchTab)}
           options={tabOptions}
         />
-        <SortDropdown />
+        {(searchTab === 'templates' || searchTab === 'plugins') && <SortDropdown />}
       </div>
 
       {isLoading && (
@@ -253,9 +232,9 @@ const SearchPage = () => {
       {!isLoading && (
         <>
           {searchTab === 'all' && renderAllTab()}
-          {searchTab === 'plugins' && renderPluginsTab()}
-          {searchTab === 'templates' && renderTemplatesTab()}
-          {searchTab === 'creators' && renderCreatorsTab()}
+          {searchTab === 'plugins' && renderTab(plugins, pluginsQuery.isLoading, renderPluginsSection)}
+          {searchTab === 'templates' && renderTab(templates, templatesQuery.isLoading, renderTemplatesSection, t('marketplace.noTemplateFound', { ns: 'plugin' }))}
+          {searchTab === 'creators' && renderTab(creators, creatorsQuery.isLoading, renderCreatorsSection, t('marketplace.noCreatorFound', { ns: 'plugin' }))}
         </>
       )}
 

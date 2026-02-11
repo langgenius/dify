@@ -1,7 +1,7 @@
 import type { PluginsSearchParams, TemplateSearchParams } from './types'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
-import { useActivePluginCategory, useActiveTemplateCategory, useCreationType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchText } from './atoms'
+import { useActivePluginCategory, useActiveTemplateCategory, useCreationType, useFilterPluginTags, useMarketplacePluginSortValue, useMarketplaceSearchMode, useMarketplaceTemplateSortValue, useSearchText } from './atoms'
 import { CATEGORY_ALL } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
@@ -29,7 +29,7 @@ export function usePluginsMarketplaceData(enabled = true) {
     { enabled },
   )
 
-  const sort = useMarketplaceSortValue()
+  const sort = useMarketplacePluginSortValue()
   const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
@@ -79,8 +79,8 @@ export function useTemplatesMarketplaceData(enabled = true) {
   // Template collections query (for non-search mode)
   const templateCollectionsQuery = useMarketplaceTemplateCollectionsAndTemplates(undefined, { enabled })
 
-  // Sort value
-  const sort = useMarketplaceSortValue()
+  // Template-specific sort value (independent from plugin sort)
+  const sort = useMarketplaceTemplateSortValue()
 
   // Search mode: when there's search text or non-default category
   const isSearchMode = useMarketplaceSearchMode()
@@ -89,11 +89,10 @@ export function useTemplatesMarketplaceData(enabled = true) {
   const queryParams = useMemo((): TemplateSearchParams | undefined => {
     if (!isSearchMode)
       return undefined
-    const sortBy = sort.sortBy === 'install_count' ? 'usage_count' : sort.sortBy === 'version_updated_at' ? 'updated_at' : sort.sortBy
     return {
       query: searchText,
       categories: activeTemplateCategory === CATEGORY_ALL ? undefined : [activeTemplateCategory],
-      sort_by: sortBy,
+      sort_by: sort.sortBy,
       sort_order: sort.sortOrder,
     }
   }, [isSearchMode, searchText, activeTemplateCategory, sort])
