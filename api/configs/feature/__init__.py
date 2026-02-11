@@ -1314,6 +1314,9 @@ class WorkflowLogConfig(BaseSettings):
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
     )
+    WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: str = Field(
+        default="", description="Comma-separated list of workflow IDs to clean logs for"
+    )
 
 
 class SwaggerUIConfig(BaseSettings):
