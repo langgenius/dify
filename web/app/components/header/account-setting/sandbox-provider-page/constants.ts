@@ -5,7 +5,7 @@ export const PROVIDER_ICONS: Record<string, string> = {
   daytona: '/sandbox-providers/daytona.svg',
   docker: '/sandbox-providers/docker.svg',
   local: '/sandbox-providers/local.svg',
-  ssh: '/sandbox-providers/docker.svg',
+  ssh: '/sandbox-providers/ssh.svg',
 }
 
 export const PROVIDER_LABEL_KEYS = {
