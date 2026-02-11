@@ -1,10 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { EncryptedBottom } from '.'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
 describe('EncryptedBottom', () => {
   it('applies custom class names', () => {
     const { container } = render(<EncryptedBottom className="custom-class" />)

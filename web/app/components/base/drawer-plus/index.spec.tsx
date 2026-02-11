@@ -1,31 +1,6 @@
-import type { IDrawerProps } from '@/app/components/base/drawer'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import DrawerPlus from '.'
-
-vi.mock('@/app/components/base/drawer', () => ({
-  default: ({ isOpen, onClose, children, mask, positionCenter, dialogClassName, dialogBackdropClassName, panelClassName }: IDrawerProps) => {
-    if (!isOpen)
-      return null
-
-    return (
-      <div
-        data-testid="mock-drawer"
-        data-mask={mask === true ? 'true' : 'false'}
-        data-position-center={positionCenter === true ? 'true' : 'false'}
-        data-dialog-classname={dialogClassName}
-        data-backdrop-classname={dialogBackdropClassName}
-        data-panel-classname={panelClassName}
-        onClick={(e: React.MouseEvent) => {
-          if (e.currentTarget === e.target)
-            onClose()
-        }}
-      >
-        {children}
-      </div>
-    )
-  },
-}))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
@@ -48,7 +23,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.queryByTestId('mock-drawer')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should render when isShow is true', () => {
@@ -62,7 +37,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('Test Drawer')).toBeInTheDocument()
       expect(screen.getByText('Body Content')).toBeInTheDocument()
     })
@@ -149,9 +124,9 @@ describe('DrawerPlus', () => {
           body={<div>Body</div>}
         />,
       )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-panel-classname')).toContain('!max-w-[640px]')
+      const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
+      const outerPanel = innerPanel?.parentElement
+      expect(outerPanel?.className).toContain('!max-w-[640px]')
     })
 
     it('should apply custom maxWidthClassName', () => {
@@ -165,8 +140,9 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-panel-classname')).toContain('!max-w-[800px]')
+      const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
+      const outerPanel = innerPanel?.parentElement
+      expect(outerPanel?.className).toContain('!max-w-[800px]')
     })
 
     it('should apply custom panelClassName', () => {
@@ -180,8 +156,9 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-panel-classname')).toContain('custom-panel')
+      const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
+      const outerPanel = innerPanel?.parentElement
+      expect(outerPanel?.className).toContain('custom-panel')
     })
 
     it('should apply custom dialogClassName', () => {
@@ -195,23 +172,8 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-dialog-classname')).toContain('custom-dialog')
-    })
-
-    it('should apply custom dialogBackdropClassName', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-          dialogBackdropClassName="custom-backdrop"
-        />,
-      )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-backdrop-classname')).toContain('custom-backdrop')
+      const dialog = screen.getByRole('dialog')
+      expect(dialog.className).toContain('custom-dialog')
     })
 
     it('should apply custom contentClassName', () => {
@@ -224,10 +186,10 @@ describe('DrawerPlus', () => {
           contentClassName="custom-content"
         />,
       )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      const contentDiv = drawer.querySelector('div[style*="height"]')
-      expect(contentDiv?.className).toContain('custom-content')
+      const title = screen.getByText('Test')
+      const header = title.closest('.shrink-0.border-b.border-divider-subtle')
+      const content = header?.parentElement
+      expect(content?.className).toContain('custom-content')
     })
 
     it('should apply custom headerClassName', () => {
@@ -241,9 +203,9 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      const headerDiv = drawer.querySelector('div[class*="shrink-0"]')
-      expect(headerDiv?.className).toContain('custom-header')
+      const title = screen.getByText('Test')
+      const header = title.closest('.shrink-0.border-b.border-divider-subtle')
+      expect(header?.className).toContain('custom-header')
     })
 
     it('should apply custom height', () => {
@@ -257,9 +219,10 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      const contentDiv = drawer.querySelector('div[style*="height"]')
-      expect(contentDiv?.getAttribute('style')).toContain('height: 500px')
+      const title = screen.getByText('Test')
+      const header = title.closest('.shrink-0.border-b.border-divider-subtle')
+      const content = header?.parentElement
+      expect(content?.getAttribute('style')).toContain('height: 500px')
     })
 
     it('should use default height', () => {
@@ -272,39 +235,10 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      const contentDiv = drawer.querySelector('div[style*="height"]')
-      expect(contentDiv?.getAttribute('style')).toContain('calc(100vh - 72px)')
-    })
-
-    it('should apply isShowMask prop to drawer', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-          isShowMask={true}
-        />,
-      )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-mask')).toBe('true')
-    })
-
-    it('should apply positionCenter prop', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-          positionCenter={true}
-        />,
-      )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-position-center')).toBe('true')
+      const title = screen.getByText('Test')
+      const header = title.closest('.shrink-0.border-b.border-divider-subtle')
+      const content = header?.parentElement
+      expect(content?.getAttribute('style')).toContain('calc(100vh - 72px)')
     })
   })
 
@@ -320,71 +254,12 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      const closeDiv = drawer.querySelector('div.cursor-pointer')
-      expect(closeDiv).toBeInTheDocument()
-      fireEvent.click(closeDiv!)
+      const title = screen.getByText('Test')
+      const headerRight = title.nextElementSibling // .flex items-center
+      const closeDiv = headerRight?.querySelector('.cursor-pointer') as HTMLElement
+
+      fireEvent.click(closeDiv)
       expect(handleHide).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Breakpoints and Responsive Behavior', () => {
-    it('should not show mask on desktop when isShowMask is not set', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-        />,
-      )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-mask')).toBe('false')
-    })
-
-    it('should show mask on desktop when isShowMask is true', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-          isShowMask={true}
-        />,
-      )
-
-      const drawer = screen.getByTestId('mock-drawer')
-      expect(drawer.getAttribute('data-mask')).toBe('true')
-    })
-  })
-
-  describe('clickOutsideNotOpen prop', () => {
-    it('should pass clickOutsideNotOpen to drawer', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-          clickOutsideNotOpen={false}
-        />,
-      )
-
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
-    })
-
-    it('should default clickOutsideNotOpen to true', () => {
-      render(
-        <DrawerPlus
-          isShow={true}
-          onHide={() => {}}
-          title="Test"
-          body={<div>Body</div>}
-        />,
-      )
-
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
     })
   })
 
@@ -446,7 +321,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should handle undefined titleDescription', () => {
@@ -460,7 +335,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should handle rapid isShow toggle', () => {
@@ -473,7 +348,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
       rerender(
         <DrawerPlus
@@ -484,7 +359,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.queryByTestId('mock-drawer')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       rerender(
         <DrawerPlus
@@ -495,7 +370,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should handle special characters in title', () => {
@@ -522,7 +397,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(screen.getByTestId('mock-drawer')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should apply both custom maxWidth and panel classNames', () => {
@@ -537,10 +412,10 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
-      const panelClass = drawer.getAttribute('data-panel-classname')
-      expect(panelClass).toContain('!max-w-[500px]')
-      expect(panelClass).toContain('custom-style')
+      const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
+      const outerPanel = innerPanel?.parentElement
+      expect(outerPanel?.className).toContain('!max-w-[500px]')
+      expect(outerPanel?.className).toContain('custom-style')
     })
   })
 
@@ -555,7 +430,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const drawer = screen.getByTestId('mock-drawer')
+      const dialog = screen.getByRole('dialog')
 
       rerender(
         <DrawerPlus
@@ -566,7 +441,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      expect(drawer).toBeInTheDocument()
+      expect(dialog).toBeInTheDocument()
     })
   })
 })

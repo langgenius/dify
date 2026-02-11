@@ -1,16 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import CopyIcon from '.'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
-vi.mock('../tooltip', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-mock">{children}</div>
-  ),
-}))
 
 const copy = vi.fn()
 const reset = vi.fn()
@@ -32,7 +21,6 @@ describe('copy icon component', () => {
 
   it('renders normally', () => {
     const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    expect(screen.getByTestId('tooltip-mock')).toBeInTheDocument()
     expect(container.querySelector('svg')).not.toBeNull()
   })
 
@@ -57,10 +45,10 @@ describe('copy icon component', () => {
   })
 
   it('resets on mouse leave', () => {
-    render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const tooltip = screen.getByTestId('tooltip-mock') as HTMLElement
-    const div = tooltip.firstChild as HTMLElement
-    fireEvent.mouseLeave(div as Element)
+    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
+    const icon = container.querySelector('[data-icon="Copy"]')
+    const div = icon?.parentElement as HTMLElement
+    fireEvent.mouseLeave(div)
     expect(reset).toBeCalledTimes(1)
   })
 })
