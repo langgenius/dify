@@ -180,7 +180,7 @@ const FilePickerPanel = ({
       <div
         ref={containerRef}
         className={cn(
-          'max-h-[320px] min-h-[120px] px-2 pb-2',
+          'max-h-[250px] px-2 pb-2',
           !showHeader && 'pt-2',
           contentClassName,
         )}
