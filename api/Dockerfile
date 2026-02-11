@@ -6,7 +6,7 @@ WORKDIR /app/api
 # Install uv
 ENV UV_VERSION=0.8.9
 
-RUN pip3 install --no-cache-dir uv==${UV_VERSION} setuptools==82.0.0
+RUN pip3 install --no-cache-dir uv==${UV_VERSION}
 
 # production stage
 FROM base AS production
@@ -86,7 +86,7 @@ COPY --chown=dify:dify . /app/api
 # Prepare entrypoint script
 COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev && pip3 install --no-cache-dir --upgrade "wheel==0.46.3" "jaraco.context==6.1.0"
 
 # Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
