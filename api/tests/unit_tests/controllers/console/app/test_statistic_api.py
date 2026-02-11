@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 from types import SimpleNamespace
-from werkzeug.exceptions import BadRequest
 
 import pytest
+from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
 

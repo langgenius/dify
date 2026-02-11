@@ -13,6 +13,8 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     _serialize_full_content,
 )
+from core.file.enums import FileTransferMethod, FileType
+from core.file.models import File
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
@@ -20,8 +22,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
 
 _TEST_APP_ID = "test_app_id"
 _TEST_NODE_EXEC_ID = str(uuid.uuid4())
