@@ -1,3 +1,4 @@
+from core.db.session_factory import session_factory
 import json
 import logging
 from datetime import datetime
@@ -42,56 +43,57 @@ class WorkflowToolManageService:
         labels: list[str] | None = None,
     ):
         # check if the name is unique
-        existing_workflow_tool_provider = (
-            db.session.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == tenant_id,
-                # name or app_id
-                or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
+        with session_factory.create_session() as session, session.begin():
+            existing_workflow_tool_provider = (
+                session.query(WorkflowToolProvider)
+                .where(
+                    WorkflowToolProvider.tenant_id == tenant_id,
+                    # name or app_id
+                    or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
+                )
+                .first()
             )
-            .first()
-        )
 
-        if existing_workflow_tool_provider is not None:
-            raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
+            if existing_workflow_tool_provider is not None:
+                raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        app: App | None = db.session.query(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
+            app = session.query(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
 
-        if app is None:
-            raise ValueError(f"App {workflow_app_id} not found")
+            if app is None:
+                raise ValueError(f"App {workflow_app_id} not found")
 
-        workflow: Workflow | None = app.workflow
-        if workflow is None:
-            raise ValueError(f"Workflow not found for app {workflow_app_id}")
+            workflow: Workflow | None = app.workflow
+            if workflow is None:
+                raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
+            WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
-        workflow_tool_provider = WorkflowToolProvider(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            app_id=workflow_app_id,
-            name=name,
-            label=label,
-            icon=json.dumps(icon),
-            description=description,
-            parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
-            privacy_policy=privacy_policy,
-            version=workflow.version,
-        )
+            workflow_tool_provider = WorkflowToolProvider(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                app_id=workflow_app_id,
+                name=name,
+                label=label,
+                icon=json.dumps(icon),
+                description=description,
+                parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
+                privacy_policy=privacy_policy,
+                version=workflow.version,
+            )
 
-        try:
-            WorkflowToolProviderController.from_db(workflow_tool_provider)
-        except Exception as e:
-            raise ValueError(str(e))
+            try:
+                WorkflowToolProviderController.from_db(workflow_tool_provider)
+            except Exception as e:
+                raise ValueError(str(e))
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        
             session.add(workflow_tool_provider)
 
-        if labels is not None:
-            ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
-            )
-        return {"result": "success"}
+            if labels is not None:
+                ToolLabelManager.update_tool_labels(
+                    ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels, session
+                )
+            return {"result": "success"}
 
     @classmethod
     def update_workflow_tool(
