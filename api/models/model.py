@@ -1040,7 +1040,6 @@ class Message(Base):
         Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
-        Index("message_created_at_idx", "created_at"),
         Index("message_app_mode_idx", "app_mode"),
         Index("message_created_at_id_idx", "created_at", "id"),
     )
