@@ -620,7 +620,7 @@ class TrialApp(Base):
         sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     tenant_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -640,7 +640,7 @@ class AccountTrialAppRecord(Base):
         sa.Index("account_trial_app_record_app_id_idx", "app_id"),
         sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
     )
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     account_id = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=False)
     count = mapped_column(sa.Integer, nullable=False, default=0)
@@ -660,18 +660,18 @@ class AccountTrialAppRecord(Base):
 class ExporleBanner(TypeBase):
     __tablename__ = "exporle_banners"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     status: Mapped[str] = mapped_column(
-        sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"), default="enabled"
+        sa.String(255), nullable=False, server_default='enabled', default="enabled"
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     language: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'en-US'::character varying"), default="en-US"
+        String(255), nullable=False, server_default='en-US', default="en-US"
     )
 
 
@@ -2166,7 +2166,7 @@ class TenantCreditPool(TypeBase):
         sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     pool_type: Mapped[str] = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
     quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
