@@ -171,6 +171,11 @@ class ApiToolManageService:
             db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
             session.add(db_provider)
+            # ensure the provider has its primary key assigned before using it
+            session.flush()
+            # keep controller in sync with the persisted provider id if needed
+            if getattr(provider_controller, "provider_id", None) is None:
+                provider_controller.provider_id = db_provider.id
 
             # update labels
             ToolLabelManager.update_tool_labels(provider_controller, labels, session)
