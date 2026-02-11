@@ -19,7 +19,7 @@ class TestFeatureApi:
             return_value=("account_id", "tenant_123"),
         )
 
-        mocker.patch("services.feature_service.FeatureService.get_features").return_value.model_dump.return_value = {
+        mocker.patch("controllers.console.feature.FeatureService.get_features").return_value.model_dump.return_value = {
             "features": {"feature_a": True}
         }
 

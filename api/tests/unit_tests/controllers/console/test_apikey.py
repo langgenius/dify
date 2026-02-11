@@ -127,7 +127,10 @@ class TestBaseApiKeyResource:
         resource = DummyApiKeyResource()
         db_mock.session.query.return_value.where.return_value.first.return_value = MagicMock()
 
-        with patch("controllers.console.apikey._get_resource"):
+        with (
+            patch("controllers.console.apikey._get_resource"),
+            patch("controllers.console.apikey.ApiTokenCache.delete"),
+        ):
             result, status = DummyApiKeyResource.delete(resource, "rid", "kid")
 
             assert status == 204
