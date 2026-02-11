@@ -42,7 +42,10 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
+import {
+  useInvalidateAllCustomTools,
+  useInvalidateAllWorkflowTools,
+} from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
@@ -69,6 +72,7 @@ const ProviderDetail = ({
   const isModel = collection.type === CollectionType.model
   const { isCurrentWorkspaceManager } = useAppContext()
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
+  const invalidateCustomTools = useInvalidateAllCustomTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
@@ -118,6 +122,7 @@ const ProviderDetail = ({
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
+    invalidateCustomTools()
     onRefreshData()
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
@@ -130,6 +135,7 @@ const ProviderDetail = ({
   }
   const doRemoveCustomToolCollection = async () => {
     await removeCustomCollection(collection?.name as string)
+    invalidateCustomTools()
     onRefreshData()
     Toast.notify({
       type: 'success',
@@ -160,6 +166,7 @@ const ProviderDetail = ({
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {
     await deleteWorkflowTool(collection.id)
+    invalidateAllWorkflowTools()
     onRefreshData()
     Toast.notify({
       type: 'success',

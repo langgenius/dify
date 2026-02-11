@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
-import { useCreateMCP } from '@/service/use-tools'
+import { useCreateMCP, useInvalidateAllMCPTools } from '@/service/use-tools'
 import MCPModal from './modal'
 
 type Props = {
@@ -22,10 +22,12 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const { mutateAsync: createMCP } = useCreateMCP()
+  const invalidateAllMCPTools = useInvalidateAllMCPTools()
 
   const create = async (info: any) => {
     const provider = await createMCP(info)
     handleCreate(provider)
+    invalidateAllMCPTools()
   }
 
   const linkUrl = useMemo(() => docLink('/use-dify/build/mcp'), [docLink])

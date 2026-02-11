@@ -23,6 +23,7 @@ import {
   useAuthorizeMCP,
   useDeleteMCP,
   useInvalidateMCPTools,
+  useInvalidateAllMCPTools,
   useMCPTools,
   useUpdateMCP,
   useUpdateMCPTools,
@@ -53,6 +54,7 @@ const MCPDetailContent: FC<Props> = ({
 
   const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
+  const invalidateAllMCPTools = useInvalidateAllMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
   const toolList = data?.tools || []
@@ -68,8 +70,9 @@ const MCPDetailContent: FC<Props> = ({
       return
     await updateTools(detail.id)
     invalidateMCPTools(detail.id)
+    invalidateAllMCPTools()
     onUpdate()
-  }, [detail, hideUpdateConfirm, invalidateMCPTools, onUpdate, updateTools])
+  }, [detail, hideUpdateConfirm, invalidateMCPTools, invalidateAllMCPTools, onUpdate, updateTools])
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
   const { mutateAsync: deleteMCP } = useDeleteMCP({})
@@ -129,10 +132,11 @@ const MCPDetailContent: FC<Props> = ({
     })
     if ((res as any)?.result === 'success') {
       hideUpdateModal()
+      invalidateAllMCPTools()
       onUpdate()
       handleAuthorize()
     }
-  }, [detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize])
+  }, [detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize, invalidateAllMCPTools])
 
   const handleDelete = useCallback(async () => {
     if (!detail)
@@ -142,9 +146,10 @@ const MCPDetailContent: FC<Props> = ({
     hideDeleting()
     if ((res as any)?.result === 'success') {
       hideDeleteConfirm()
+      invalidateAllMCPTools()
       onUpdate(true)
     }
-  }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
+  }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate, invalidateAllMCPTools])
 
   useEffect(() => {
     if (isTriggerAuthorize)

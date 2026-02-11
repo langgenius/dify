@@ -9,6 +9,7 @@ import Toast from '@/app/components/base/toast'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useAppContext } from '@/context/app-context'
 import { createCustomCollection } from '@/service/tools'
+import { useInvalidateAllCustomTools } from '@/service/use-tools'
 
 type Props = {
   onRefreshData: () => void
@@ -17,6 +18,7 @@ type Props = {
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const invalidateCustomTools = useInvalidateAllCustomTools()
 
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
@@ -26,6 +28,7 @@ const Contribute = ({ onRefreshData }: Props) => {
       message: t('api.actionSuccess', { ns: 'common' }),
     })
     setIsShowEditCustomCollectionModal(false)
+    invalidateCustomTools()
     onRefreshData()
   }
 
