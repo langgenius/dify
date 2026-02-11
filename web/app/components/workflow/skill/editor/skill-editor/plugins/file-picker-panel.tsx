@@ -118,6 +118,8 @@ type FilePickerPanelProps = {
   className?: string
   contentClassName?: string
   showHeader?: boolean
+  showAddFiles?: boolean
+  onAddFiles?: () => void
 }
 
 const FilePickerPanel = ({
@@ -126,6 +128,8 @@ const FilePickerPanel = ({
   className,
   contentClassName,
   showHeader = true,
+  showAddFiles = false,
+  onAddFiles,
 }: FilePickerPanelProps) => {
   const { t } = useTranslation('workflow')
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
@@ -133,6 +137,7 @@ const FilePickerPanel = ({
   const containerSize = useSize(containerRef)
 
   const treeNodes = useMemo(() => treeData?.children || [], [treeData?.children])
+
   const initialOpenState = useMemo(() => {
     const nextState: Record<string, boolean> = {}
     if (!focusNodeId || treeNodes.length === 0)
@@ -162,6 +167,7 @@ const FilePickerPanel = ({
         if (target.closest('input, textarea, select'))
           return
         e.preventDefault()
+        e.stopPropagation()
       }}
     >
       {showHeader && (
@@ -214,6 +220,23 @@ const FilePickerPanel = ({
           </Tree>
         )}
       </div>
+      {showAddFiles && (
+        <>
+          <div className="h-px bg-divider-subtle" />
+          <button
+            type="button"
+            className={cn(
+              'flex h-9 w-full items-center gap-2 px-3 text-left hover:bg-state-base-hover',
+              !onAddFiles && 'cursor-not-allowed opacity-50',
+            )}
+            onClick={onAddFiles}
+            disabled={!onAddFiles}
+          >
+            <span className="i-ri-file-add-line size-4 text-text-secondary" aria-hidden="true" />
+            <span className="text-[13px] font-medium leading-4 text-text-secondary">{t('skillEditor.addFiles')}</span>
+          </button>
+        </>
+      )}
     </div>
   )
 }

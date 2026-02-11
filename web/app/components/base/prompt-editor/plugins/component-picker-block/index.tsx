@@ -46,6 +46,7 @@ import { SegmentedControl } from '@/app/components/base/segmented-control'
 import AgentNodeList from '@/app/components/workflow/nodes/_base/components/agent-node-list'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { FilePickerPanel } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-picker-panel'
+import FilePickerUploadModal from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-picker-upload-modal'
 import { $createFileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -138,6 +139,8 @@ const ComponentPicker = ({
 
   const [queryString, setQueryString] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'variables' | 'files'>('variables')
+  const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false)
+  const [fileUploadModalKey, setFileUploadModalKey] = useState(0)
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
@@ -298,6 +301,10 @@ const ComponentPicker = ({
                   visibility: isPositioned ? 'visible' : 'hidden',
                 }}
                 ref={refs.setFloating}
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
               >
                 <div
                   className="w-full"
@@ -358,6 +365,12 @@ const ComponentPicker = ({
                       className="w-full border-0 bg-transparent p-0 shadow-none"
                       contentClassName="px-0"
                       showHeader={false}
+                      showAddFiles
+                      onAddFiles={() => {
+                        setFileUploadModalKey(key => key + 1)
+                        setIsFileUploadModalOpen(true)
+                        handleClose()
+                      }}
                     />
                   )}
                 </div>
@@ -473,20 +486,27 @@ const ComponentPicker = ({
   }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference])
 
   return (
-    <LexicalTypeaheadMenuPlugin
-      options={(isSupportSandbox && triggerString === '/') ? [] : allFlattenOptions}
-      onQueryChange={setQueryString}
-      onSelectOption={onSelectOption}
-      onOpen={handleOpen}
-      // The `translate` class is used to workaround the issue that the `typeahead-menu` menu is not positioned as expected.
-      // See also https://github.com/facebook/lexical/blob/772520509308e8ba7e4a82b6cd1996a78b3298d0/packages/lexical-react/src/shared/LexicalMenu.ts#L498
-      //
-      // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
-      // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"
-      menuRenderFn={renderMenu}
-      triggerFn={checkForTriggerMatch}
-    />
+    <>
+      <LexicalTypeaheadMenuPlugin
+        options={(isSupportSandbox && triggerString === '/') ? [] : allFlattenOptions}
+        onQueryChange={setQueryString}
+        onSelectOption={onSelectOption}
+        onOpen={handleOpen}
+        // The `translate` class is used to workaround the issue that the `typeahead-menu` menu is not positioned as expected.
+        // See also https://github.com/facebook/lexical/blob/772520509308e8ba7e4a82b6cd1996a78b3298d0/packages/lexical-react/src/shared/LexicalMenu.ts#L498
+        //
+        // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
+        // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
+        anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"
+        menuRenderFn={renderMenu}
+        triggerFn={checkForTriggerMatch}
+      />
+      <FilePickerUploadModal
+        key={fileUploadModalKey}
+        isOpen={isFileUploadModalOpen}
+        onClose={() => setIsFileUploadModalOpen(false)}
+      />
+    </>
   )
 }
 
