@@ -22,7 +22,7 @@ import type {
   UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
@@ -319,7 +319,12 @@ export const useInvalidDataSourceIntegrates = () => {
 }
 
 export const useInvalidateCurrentWorkspace = () => {
-  return useInvalid(commonQueryKeys.currentWorkspace)
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({
+      queryKey: commonQueryKeys.currentWorkspace,
+    })
+  }
 }
 
 export const usePluginProviders = () => {
