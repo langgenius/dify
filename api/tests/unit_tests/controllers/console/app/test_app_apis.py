@@ -129,7 +129,6 @@ class TestCompletionEndpoints:
         assert resp == {"result": {"text": "ok"}}
 
     def test_completion_api_conversation_not_exists(self, app, monkeypatch):
-
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
