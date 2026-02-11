@@ -39,7 +39,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   //   )
   // }
 
-  if (feature === ModelFeatureEnum.toolCall) {
+  if (feature === ModelFeatureEnum.toolCall || feature === ModelFeatureEnum.multiToolCall || feature === ModelFeatureEnum.streamToolCall) {
     if (showFeaturesLabel) {
       return (
         <ModelBadge className={cn('gap-x-0.5', className)}>

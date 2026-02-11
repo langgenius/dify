@@ -1,6 +1,8 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ModelItem } from '../declarations'
 import { cn } from '@/utils/classnames'
+import { ModelFeatureEnum } from '../declarations'
+
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
@@ -69,7 +71,12 @@ const ModelName: FC<ModelNameProps> = ({
           )
         }
         {
-          showFeatures && modelItem.features?.map(feature => (
+          showFeatures && modelItem.features?.reduce((acc, feature) => {
+            if (acc.some(f => [ModelFeatureEnum.toolCall, ModelFeatureEnum.multiToolCall, ModelFeatureEnum.streamToolCall].includes(f)) && [ModelFeatureEnum.toolCall, ModelFeatureEnum.multiToolCall, ModelFeatureEnum.streamToolCall].includes(feature)) {
+              return acc
+            }
+            return [...acc, feature]
+          }, [] as ModelFeatureEnum[]).map(feature => (
             <FeatureIcon
               key={feature}
               feature={feature}

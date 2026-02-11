@@ -8,8 +8,9 @@ type MaxIterationsProps = {
   value?: number
   onChange?: (value: number) => void
   className?: string
+  disabled?: boolean
 }
-const MaxIterations = ({ value = 10, onChange, className }: MaxIterationsProps) => {
+const MaxIterations = ({ value = 10, onChange, className, disabled }: MaxIterationsProps) => {
   return (
     <div className={cn('mt-3 flex h-10 items-center justify-between', className)}>
       <div className="flex items-center">
@@ -20,11 +21,12 @@ const MaxIterations = ({ value = 10, onChange, className }: MaxIterationsProps) 
         />
       </div>
       <InputNumber
-        className="w-14 shrink-0"
+        className={cn('w-14 shrink-0', disabled && 'opacity-50')}
         value={value}
         onChange={onChange ?? (() => {})}
         min={1}
         step={1}
+        disabled={disabled}
       />
     </div>
   )

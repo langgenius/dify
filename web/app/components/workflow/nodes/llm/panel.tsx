@@ -290,7 +290,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             tools={inputs.tools}
             maxIterations={inputs.max_iterations}
             hideMaxIterations
-            disabled={isToolsBlocked}
+            disabled={isToolsBlocked || !isModelSupportToolCall}
             disabledTip={toolsDisabledTip}
           />
         )}
@@ -335,6 +335,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             className="flex h-10 items-center"
             value={inputs.max_iterations}
             onChange={handleMaxIterationsChange}
+            disabled={!isModelSupportToolCall}
           />
         </div>
       </FieldCollapse>

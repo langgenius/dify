@@ -97,7 +97,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 )} */}
                 <div className="flex flex-wrap gap-1">
                   {
-                    modelItem.features?.includes(ModelFeatureEnum.toolCall) && (
+                    modelItem.features?.some(feature => [ModelFeatureEnum.toolCall, ModelFeatureEnum.multiToolCall, ModelFeatureEnum.streamToolCall].includes(feature)) && (
                       <FeatureIcon
                         feature={ModelFeatureEnum.toolCall}
                         showFeaturesLabel
@@ -126,7 +126,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     <div className="pt-2">
                       <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('model.capabilities', { ns: 'common' })}</div>
                       <div className="flex flex-wrap gap-1">
-                        {modelItem.features?.filter(feature => feature !== ModelFeatureEnum.toolCall).map(feature => (
+                        {modelItem.features?.filter(feature => ![ModelFeatureEnum.toolCall, ModelFeatureEnum.multiToolCall, ModelFeatureEnum.streamToolCall].includes(feature)).map(feature => (
                           <FeatureIcon
                             key={feature}
                             feature={feature}
