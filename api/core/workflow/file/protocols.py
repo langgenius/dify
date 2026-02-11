@@ -7,9 +7,10 @@ from typing import Protocol
 class HttpResponseProtocol(Protocol):
     """Subset of response behavior needed by workflow file helpers."""
 
-    content: bytes
+    @property
+    def content(self) -> bytes: ...
 
-    def raise_for_status(self) -> None: ...
+    def raise_for_status(self) -> object: ...
 
 
 class WorkflowFileRuntimeProtocol(Protocol):

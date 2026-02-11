@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import NoReturn
 
 from .protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
 
@@ -10,7 +11,7 @@ class WorkflowFileRuntimeNotConfiguredError(RuntimeError):
 
 
 class _UnconfiguredWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
-    def _raise(self) -> None:
+    def _raise(self) -> NoReturn:
         raise WorkflowFileRuntimeNotConfiguredError(
             "workflow file runtime is not configured, call set_workflow_file_runtime(...) first"
         )
