@@ -26,12 +26,24 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
+const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
+
 export const useWorkflowRunHistory = (url?: string, enabled = true) => {
   return useQuery<WorkflowRunHistoryResponse>({
-    queryKey: [NAME_SPACE, 'runHistory', url],
+    queryKey: [...WorkflowRunHistoryKey, url],
     queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
     enabled: !!url && enabled,
+    staleTime: 0,
   })
+}
+
+export const useInvalidateWorkflowRunHistory = () => {
+  const queryClient = useQueryClient()
+  return (url: string) => {
+    queryClient.invalidateQueries({
+      queryKey: [...WorkflowRunHistoryKey, url],
+    })
+  }
 }
 
 export const useInvalidateAppWorkflow = () => {
@@ -223,6 +235,21 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
     }) => {
       return patch(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`, {
         body: rest,
+      })
+    },
+  })
+}
+
+export const useTestEmailSender = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'test email sender'],
+    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string, inputs: Record<string, any> }) => {
+      const { appID, nodeID, deliveryID, inputs } = data
+      return post<CommonResponse>(`/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`, {
+        body: {
+          delivery_method_id: deliveryID,
+          inputs,
+        },
       })
     },
   })
