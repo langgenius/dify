@@ -1,10 +1,10 @@
 import type * as React from 'react'
-import type { Plugin } from '../../plugins/types'
-import type { CommonNodeType } from '../../workflow/types'
+import type { Plugin } from '../../../plugins/types'
+import type { CommonNodeType } from '../../../workflow/types'
 import type { DataSet } from '@/models/datasets'
 import type { App } from '@/types/app'
 import { act, renderHook } from '@testing-library/react'
-import { useGotoAnythingNavigation } from './use-goto-anything-navigation'
+import { useGotoAnythingNavigation } from '../use-goto-anything-navigation'
 
 const mockRouterPush = vi.fn()
 const mockSelectWorkflowNode = vi.fn()
@@ -26,7 +26,7 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
   selectWorkflowNode: (...args: unknown[]) => mockSelectWorkflowNode(...args),
 }))
 
-vi.mock('../actions/commands/registry', () => ({
+vi.mock('../../actions/commands/registry', () => ({
   slashCommandRegistry: {
     findCommand: () => mockFindCommandResult,
   },
@@ -117,7 +117,6 @@ describe('useGotoAnythingNavigation', () => {
       })
 
       expect(options.onClose).not.toHaveBeenCalled()
-      // Should proceed with submenu mode
       expect(options.setSearchQuery).toHaveBeenCalledWith('/theme ')
     })
 
@@ -177,7 +176,6 @@ describe('useGotoAnythingNavigation', () => {
         result.current.handleCommandSelect('/unknown')
       })
 
-      // Should proceed with submenu mode
       expect(options.setSearchQuery).toHaveBeenCalledWith('/unknown ')
     })
   })
@@ -333,13 +331,11 @@ describe('useGotoAnythingNavigation', () => {
     it('should clear activePlugin when set to undefined', () => {
       const { result } = renderHook(() => useGotoAnythingNavigation(createMockOptions()))
 
-      // First set a plugin
       act(() => {
         result.current.setActivePlugin({ name: 'Plugin', latest_package_identifier: 'pkg' } as unknown as Plugin)
       })
       expect(result.current.activePlugin).toBeDefined()
 
-      // Then clear it
       act(() => {
         result.current.setActivePlugin(undefined)
       })
@@ -356,7 +352,6 @@ describe('useGotoAnythingNavigation', () => {
 
       const { result } = renderHook(() => useGotoAnythingNavigation(options))
 
-      // Should not throw
       act(() => {
         result.current.handleCommandSelect('@app')
       })
@@ -364,8 +359,6 @@ describe('useGotoAnythingNavigation', () => {
       act(() => {
         vi.runAllTimers()
       })
-
-      // No error should occur
     })
 
     it('should handle missing slash action', () => {
@@ -375,7 +368,6 @@ describe('useGotoAnythingNavigation', () => {
 
       const { result } = renderHook(() => useGotoAnythingNavigation(options))
 
-      // Should not throw
       act(() => {
         result.current.handleNavigate({
           id: 'cmd-1',
@@ -384,8 +376,6 @@ describe('useGotoAnythingNavigation', () => {
           data: { command: 'test-command' },
         })
       })
-
-      // No error should occur
     })
   })
 })

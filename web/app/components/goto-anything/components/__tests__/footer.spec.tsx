@@ -1,17 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Footer from './footer'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, count?: number, scope?: string }) => {
-      if (options?.count !== undefined)
-        return `${key}:${options.count}`
-      if (options?.scope)
-        return `${key}:${options.scope}`
-      return `${options?.ns || 'common'}.${key}`
-    },
-  }),
-}))
+import Footer from '../footer'
 
 describe('Footer', () => {
   describe('left content', () => {
@@ -27,7 +15,7 @@ describe('Footer', () => {
           />,
         )
 
-        expect(screen.getByText('gotoAnything.resultCount:5')).toBeInTheDocument()
+        expect(screen.getByText('app.gotoAnything.resultCount:{"count":5}')).toBeInTheDocument()
       })
 
       it('should show scope when not in general mode', () => {
@@ -41,7 +29,7 @@ describe('Footer', () => {
           />,
         )
 
-        expect(screen.getByText('gotoAnything.inScope:app')).toBeInTheDocument()
+        expect(screen.getByText('app.gotoAnything.inScope:{"scope":"app"}')).toBeInTheDocument()
       })
 
       it('should NOT show scope when in general mode', () => {

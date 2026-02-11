@@ -1,12 +1,6 @@
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import SearchInput from './search-input'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => `${options?.ns || 'common'}.${key}`,
-  }),
-}))
+import SearchInput from '../search-input'
 
 vi.mock('@remixicon/react', () => ({
   RiSearchLine: ({ className }: { className?: string }) => (

@@ -1,9 +1,9 @@
-import type { ActionItem } from './actions/types'
+import type { ActionItem } from '../actions/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Command } from 'cmdk'
 import * as React from 'react'
-import CommandSelector from './command-selector'
+import CommandSelector from '../command-selector'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/app',
@@ -16,7 +16,7 @@ const slashCommandsMock = [{
   isAvailable: () => true,
 }]
 
-vi.mock('./actions/commands/registry', () => ({
+vi.mock('../actions/commands/registry', () => ({
   slashCommandRegistry: {
     getAvailableCommands: () => slashCommandsMock,
   },
@@ -97,7 +97,6 @@ describe('CommandSelector', () => {
       </Command>,
     )
 
-    // Should show the zen command from mock
     expect(screen.getByText('/zen')).toBeInTheDocument()
   })
 
@@ -125,7 +124,6 @@ describe('CommandSelector', () => {
       </Command>,
     )
 
-    // Should show @ commands but not /
     expect(screen.getByText('@app')).toBeInTheDocument()
     expect(screen.queryByText('/')).not.toBeInTheDocument()
   })

@@ -1,15 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import EmptyState from './empty-state'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, shortcuts?: string }) => {
-      if (options?.shortcuts !== undefined)
-        return `${key}:${options.shortcuts}`
-      return `${options?.ns || 'common'}.${key}`
-    },
-  }),
-}))
+import EmptyState from '../empty-state'
 
 describe('EmptyState', () => {
   describe('loading variant', () => {
@@ -86,10 +76,10 @@ describe('EmptyState', () => {
         const Actions = {
           app: { key: '@app', shortcut: '@app' },
           plugin: { key: '@plugin', shortcut: '@plugin' },
-        } as unknown as Record<string, import('../actions/types').ActionItem>
+        } as unknown as Record<string, import('../../actions/types').ActionItem>
         render(<EmptyState variant="no-results" searchMode="general" Actions={Actions} />)
 
-        expect(screen.getByText('gotoAnything.emptyState.trySpecificSearch:@app, @plugin')).toBeInTheDocument()
+        expect(screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":"@app, @plugin"}')).toBeInTheDocument()
       })
     })
 
@@ -150,8 +140,7 @@ describe('EmptyState', () => {
     it('should use empty object as default Actions', () => {
       render(<EmptyState variant="no-results" searchMode="general" />)
 
-      // Should show empty shortcuts
-      expect(screen.getByText('gotoAnything.emptyState.trySpecificSearch:')).toBeInTheDocument()
+      expect(screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":""}')).toBeInTheDocument()
     })
   })
 })

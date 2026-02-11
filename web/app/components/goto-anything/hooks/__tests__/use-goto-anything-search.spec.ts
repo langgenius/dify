@@ -1,6 +1,6 @@
-import type { ActionItem } from '../actions/types'
+import type { ActionItem } from '../../actions/types'
 import { act, renderHook } from '@testing-library/react'
-import { useGotoAnythingSearch } from './use-goto-anything-search'
+import { useGotoAnythingSearch } from '../use-goto-anything-search'
 
 let mockContextValue = { isWorkflowPage: false, isRagPipelinePage: false }
 let mockMatchActionResult: Partial<ActionItem> | undefined
@@ -9,11 +9,11 @@ vi.mock('ahooks', () => ({
   useDebounce: <T>(value: T) => value,
 }))
 
-vi.mock('../context', () => ({
+vi.mock('../../context', () => ({
   useGotoAnythingContext: () => mockContextValue,
 }))
 
-vi.mock('../actions', () => ({
+vi.mock('../../actions', () => ({
   createActions: (isWorkflowPage: boolean, isRagPipelinePage: boolean) => {
     const base = {
       slash: { key: '/', shortcut: '/' },
@@ -233,13 +233,11 @@ describe('useGotoAnythingSearch', () => {
     it('should reset cmdVal to "_"', () => {
       const { result } = renderHook(() => useGotoAnythingSearch())
 
-      // First change cmdVal
       act(() => {
         result.current.setCmdVal('app-1')
       })
       expect(result.current.cmdVal).toBe('app-1')
 
-      // Then clear
       act(() => {
         result.current.clearSelection()
       })
@@ -294,7 +292,6 @@ describe('useGotoAnythingSearch', () => {
         result.current.setSearchQuery('  test  ')
       })
 
-      // Since we mock useDebounce to return value directly
       expect(result.current.searchQueryDebouncedValue).toBe('test')
     })
   })

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { useGotoAnythingModal } from './use-goto-anything-modal'
+import { useGotoAnythingModal } from '../use-goto-anything-modal'
 
 type KeyPressEvent = {
   preventDefault: () => void
@@ -94,20 +94,17 @@ describe('useGotoAnythingModal', () => {
         keyPressHandlers['ctrl.k']?.({ preventDefault: vi.fn(), target: document.body })
       })
 
-      // Should remain closed because focus is in input area
       expect(result.current.show).toBe(false)
     })
 
     it('should close modal when escape is pressed and modal is open', () => {
       const { result } = renderHook(() => useGotoAnythingModal())
 
-      // Open modal first
       act(() => {
         result.current.setShow(true)
       })
       expect(result.current.show).toBe(true)
 
-      // Press escape
       act(() => {
         keyPressHandlers.esc?.({ preventDefault: vi.fn() })
       })
@@ -125,7 +122,6 @@ describe('useGotoAnythingModal', () => {
         keyPressHandlers.esc?.({ preventDefault: preventDefaultMock })
       })
 
-      // Should remain closed, and preventDefault should not be called
       expect(result.current.show).toBe(false)
       expect(preventDefaultMock).not.toHaveBeenCalled()
     })
@@ -146,13 +142,11 @@ describe('useGotoAnythingModal', () => {
     it('should close modal when handleClose is called', () => {
       const { result } = renderHook(() => useGotoAnythingModal())
 
-      // Open modal first
       act(() => {
         result.current.setShow(true)
       })
       expect(result.current.show).toBe(true)
 
-      // Close via handleClose
       act(() => {
         result.current.handleClose()
       })
@@ -219,14 +213,12 @@ describe('useGotoAnythingModal', () => {
     it('should not call requestAnimationFrame when modal closes', () => {
       const { result } = renderHook(() => useGotoAnythingModal())
 
-      // First open
       act(() => {
         result.current.setShow(true)
       })
 
       const rafSpy = vi.spyOn(window, 'requestAnimationFrame')
 
-      // Then close
       act(() => {
         result.current.setShow(false)
       })
@@ -236,7 +228,6 @@ describe('useGotoAnythingModal', () => {
     })
 
     it('should focus input when modal opens and inputRef.current exists', () => {
-      // Mock requestAnimationFrame to execute callback immediately
       const originalRAF = window.requestAnimationFrame
       window.requestAnimationFrame = (callback: FrameRequestCallback) => {
         callback(0)
@@ -245,11 +236,9 @@ describe('useGotoAnythingModal', () => {
 
       const { result } = renderHook(() => useGotoAnythingModal())
 
-      // Create a mock input element with focus method
       const mockFocus = vi.fn()
       const mockInput = { focus: mockFocus } as unknown as HTMLInputElement
 
-      // Manually set the inputRef
       Object.defineProperty(result.current.inputRef, 'current', {
         value: mockInput,
         writable: true,
@@ -261,12 +250,10 @@ describe('useGotoAnythingModal', () => {
 
       expect(mockFocus).toHaveBeenCalled()
 
-      // Restore original requestAnimationFrame
       window.requestAnimationFrame = originalRAF
     })
 
     it('should not throw when inputRef.current is null when modal opens', () => {
-      // Mock requestAnimationFrame to execute callback immediately
       const originalRAF = window.requestAnimationFrame
       window.requestAnimationFrame = (callback: FrameRequestCallback) => {
         callback(0)
@@ -275,16 +262,12 @@ describe('useGotoAnythingModal', () => {
 
       const { result } = renderHook(() => useGotoAnythingModal())
 
-      // inputRef.current is already null by default
-
-      // Should not throw
       act(() => {
         result.current.setShow(true)
       })
 
       expect(result.current.show).toBe(true)
 
-      // Restore original requestAnimationFrame
       window.requestAnimationFrame = originalRAF
     })
   })

@@ -1,26 +1,14 @@
 import type { ReactNode } from 'react'
-import type { ActionItem, SearchResult } from './actions/types'
+import type { ActionItem, SearchResult } from '../actions/types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import GotoAnything from './index'
+import GotoAnything from '../index'
 
-// Test helper type that matches SearchResult but allows ReactNode for icon and flexible data
 type TestSearchResult = Omit<SearchResult, 'icon' | 'data'> & {
   icon?: ReactNode
   data?: Record<string, unknown>
 }
-
-// Mock react-i18next to return namespace.key format
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const ns = options?.ns || 'common'
-      return `${ns}.${key}`
-    },
-    i18n: { language: 'en' },
-  }),
-}))
 
 const routerPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -65,7 +53,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 const contextValue = { isWorkflowPage: false, isRagPipelinePage: false }
-vi.mock('./context', () => ({
+vi.mock('../context', () => ({
   useGotoAnythingContext: () => contextValue,
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
@@ -93,13 +81,13 @@ const createActionsMock = vi.fn(() => actionsMock)
 const matchActionMock = vi.fn(() => undefined)
 const searchAnythingMock = vi.fn(async () => mockQueryResult.data)
 
-vi.mock('./actions', () => ({
+vi.mock('../actions', () => ({
   createActions: () => createActionsMock(),
   matchAction: () => matchActionMock(),
   searchAnything: () => searchAnythingMock(),
 }))
 
-vi.mock('./actions/commands', () => ({
+vi.mock('../actions/commands', () => ({
   SlashCommandProvider: () => null,
 }))
 
@@ -110,7 +98,7 @@ type MockSlashCommand = {
 } | null
 
 let mockFindCommand: MockSlashCommand = null
-vi.mock('./actions/commands/registry', () => ({
+vi.mock('../actions/commands/registry', () => ({
   slashCommandRegistry: {
     findCommand: () => mockFindCommand,
     getAvailableCommands: () => [],
@@ -129,7 +117,7 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
   selectWorkflowNode: vi.fn(),
 }))
 
-vi.mock('../plugins/install-plugin/install-from-marketplace', () => ({
+vi.mock('../../plugins/install-plugin/install-from-marketplace', () => ({
   default: (props: { manifest?: { name?: string }, onClose: () => void, onSuccess: () => void }) => (
     <div data-testid="install-modal">
       <span>{props.manifest?.name}</span>
@@ -207,23 +195,19 @@ describe('GotoAnything', () => {
       const user = userEvent.setup()
       render(<GotoAnything />)
 
-      // Open modal first time
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
       })
 
-      // Type something
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
       await user.type(input, 'test')
 
-      // Close modal
       triggerKeyPress('esc')
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
       })
 
-      // Open modal again - should be empty
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
         const newInput = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -278,7 +262,6 @@ describe('GotoAnything', () => {
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
       await user.type(input, 'test query')
 
-      // Should not throw and input should have value
       expect(input).toHaveValue('test query')
     })
   })
@@ -303,7 +286,6 @@ describe('GotoAnything', () => {
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
       await user.type(input, 'search')
 
-      // Loading state shows in both EmptyState (spinner) and Footer
       const searchingTexts = screen.getAllByText('app.gotoAnything.searching')
       expect(searchingTexts.length).toBeGreaterThanOrEqual(1)
     })

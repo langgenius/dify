@@ -1,6 +1,6 @@
-import type { SearchResult } from '../actions/types'
+import type { SearchResult } from '../../actions/types'
 import { renderHook } from '@testing-library/react'
-import { useGotoAnythingResults } from './use-goto-anything-results'
+import { useGotoAnythingResults } from '../use-goto-anything-results'
 
 type MockQueryResult = {
   data: Array<{ id: string, type: string, title: string }> | undefined
@@ -30,7 +30,7 @@ vi.mock('@/context/i18n', () => ({
 const mockMatchAction = vi.fn()
 const mockSearchAnything = vi.fn()
 
-vi.mock('../actions', () => ({
+vi.mock('../../actions', () => ({
   matchAction: (...args: unknown[]) => mockMatchAction(...args),
   searchAnything: (...args: unknown[]) => mockSearchAnything(...args),
 }))
@@ -139,7 +139,6 @@ describe('useGotoAnythingResults', () => {
 
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions()))
 
-      // Different types, same id = different keys, so both should remain
       expect(result.current.dedupedResults).toHaveLength(2)
     })
   })

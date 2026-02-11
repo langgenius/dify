@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { GotoAnythingProvider, useGotoAnythingContext } from './context'
+import { GotoAnythingProvider, useGotoAnythingContext } from '../context'
 
 let pathnameMock: string | null | undefined = '/'
 vi.mock('next/navigation', () => ({
@@ -8,7 +8,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 let isWorkflowPageMock = false
-vi.mock('../workflow/constants', () => ({
+vi.mock('../../workflow/constants', () => ({
   isInWorkflowPage: () => isWorkflowPageMock,
 }))
 
