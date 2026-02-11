@@ -2299,7 +2299,7 @@
   },
   "app/components/base/markdown-blocks/code-block.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 10
+      "count": 7
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
