@@ -2,16 +2,17 @@
 
 import type { Template } from '../types'
 import { useLocale, useTranslation } from '#i18n'
-import Image from 'next/image'
 import Link from 'next/link'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
+import AppIcon from '@/app/components/base/app-icon'
 import CornerMark from '@/app/components/plugins/card/base/corner-mark'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
+import { getTemplateIconUrl } from '../utils'
 
 type TemplateCardProps = {
   template: Template
@@ -20,31 +21,6 @@ type TemplateCardProps = {
 
 // Number of tag icons to show before showing "+X"
 const MAX_VISIBLE_DEPS_PLUGINS = 7
-
-// Soft background color palette for avatar
-const AVATAR_BG_COLORS = [
-  'bg-components-icon-bg-red-soft',
-  'bg-components-icon-bg-orange-dark-soft',
-  'bg-components-icon-bg-yellow-soft',
-  'bg-components-icon-bg-green-soft',
-  'bg-components-icon-bg-teal-soft',
-  'bg-components-icon-bg-blue-light-soft',
-  'bg-components-icon-bg-blue-soft',
-  'bg-components-icon-bg-indigo-soft',
-  'bg-components-icon-bg-violet-soft',
-  'bg-components-icon-bg-pink-soft',
-]
-
-// Simple hash function to get consistent color per template
-const getAvatarBgClass = (id: string): string => {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) {
-    const char = id.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash
-  }
-  return AVATAR_BG_COLORS[Math.abs(hash) % AVATAR_BG_COLORS.length]
-}
 
 const TemplateCardComponent = ({
   template,
@@ -55,21 +31,7 @@ const TemplateCardComponent = ({
   const { theme } = useTheme()
   const { id, template_name, overview, icon, publisher_handle, usage_count, icon_background, deps_plugins, kind } = template
   const isSandbox = kind === 'sandboxed'
-  const isIconUrl = !!icon && /^(?:https?:)?\/\//.test(icon)
-
-  const avatarBgStyle = useMemo(() => {
-    // If icon_background is provided (hex or rgba), use it directly
-    if (icon_background)
-      return { backgroundColor: icon_background }
-    return undefined
-  }, [icon_background])
-
-  const avatarBgClass = useMemo(() => {
-    // Only use class-based color if no inline style
-    if (icon_background)
-      return ''
-    return getAvatarBgClass(id)
-  }, [icon_background, id])
+  const iconUrl = getTemplateIconUrl(template)
 
   const handleClick = useCallback(() => {
     const url = getMarketplaceUrl(`/templates/${publisher_handle}/${template_name}`, {
@@ -98,27 +60,13 @@ const TemplateCardComponent = ({
       {/* Header */}
       <div className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-4">
         {/* Avatar */}
-        <div
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-divider-regular p-1',
-            avatarBgClass,
-          )}
-          style={avatarBgStyle}
-        >
-          {isIconUrl
-            ? (
-                <Image
-                  src={icon}
-                  alt={template_name}
-                  width={24}
-                  height={24}
-                  className="h-6 w-6 object-contain"
-                />
-              )
-            : (
-                <span className="text-2xl leading-[1.2]">{icon || '📄'}</span>
-              )}
-        </div>
+        <AppIcon
+          size="large"
+          iconType={iconUrl ? 'image' : 'emoji'}
+          icon={iconUrl ? undefined : (icon || '📄')}
+          imageUrl={iconUrl || undefined}
+          background={icon_background || undefined}
+        />
         {/* Title */}
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <p className="system-md-medium truncate text-text-primary">{template_name}</p>

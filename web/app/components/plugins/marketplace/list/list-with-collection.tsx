@@ -75,7 +75,6 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
       itemKeyField="id"
       renderCard={renderTemplateCard}
       carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.featured]}
-      viewMoreSearchTab="templates"
       cardContainerClassName={cardContainerClassName}
     />
   )

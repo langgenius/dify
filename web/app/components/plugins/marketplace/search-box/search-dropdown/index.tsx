@@ -3,6 +3,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { useTranslation } from '#i18n'
 import { RiArrowRightLine } from '@remixicon/react'
 import { Fragment } from 'react'
+import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
 import { useCategories } from '@/app/components/plugins/hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -10,7 +11,7 @@ import { cn } from '@/utils/classnames'
 import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
 import { MARKETPLACE_TYPE_ICON_COMPONENTS } from '../../plugin-type-icons'
-import { getCreatorAvatarUrl, getPluginDetailLinkInMarketplace } from '../../utils'
+import { getCreatorAvatarUrl, getPluginDetailLinkInMarketplace, getTemplateIconUrl } from '../../utils'
 
 const DROPDOWN_PANEL = 'w-[472px] max-h-[710px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-sm'
 const ICON_BOX_BASE = 'flex shrink-0 items-center justify-center overflow-hidden border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
@@ -175,18 +176,20 @@ function TemplatesSection({ templates, t }: {
         const descriptionText = template.overview
         const formattedUsedCount = formatUsedCount(template.usage_count, { precision: 0, rounding: 'floor' })
         const usedLabel = t('usedCount', { ns: 'plugin', num: formattedUsedCount || 0 })
-        const iconBgStyle = template.icon_background
-          ? { backgroundColor: template.icon_background }
-          : undefined
+        const iconUrl = getTemplateIconUrl(template)
         return (
           <DropdownItem
             key={template.id}
             href={getMarketplaceUrl(`/templates/${template.publisher_handle}/${template.template_name}`, { templateId: template.id })}
             icon={(
               <div className="flex shrink-0 items-start py-1">
-                <IconBox shape="rounded-lg" style={iconBgStyle}>
-                  <span className="text-xl leading-[1.2]">{template.icon || '📄'}</span>
-                </IconBox>
+                <AppIcon
+                  size="small"
+                  iconType={iconUrl ? 'image' : 'emoji'}
+                  icon={iconUrl ? undefined : (template.icon || '📄')}
+                  imageUrl={iconUrl || undefined}
+                  background={template.icon_background || undefined}
+                />
               </div>
             )}
           >

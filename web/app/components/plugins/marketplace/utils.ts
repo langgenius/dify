@@ -58,6 +58,14 @@ export const getPluginIconInMarketplace = (plugin: Plugin) => {
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
 }
 
+export const getTemplateIconUrl = (template: { id: string, icon?: string, icon_file_key?: string }): string => {
+  if (template.icon?.startsWith('http'))
+    return template.icon
+  if (template.icon_file_key)
+    return `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
+  return ''
+}
+
 export const getCreatorAvatarUrl = (uniqueHandle: string) => {
   return `${MARKETPLACE_API_PREFIX}/creators/${uniqueHandle}/avatar`
 }
