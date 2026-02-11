@@ -10,10 +10,10 @@ from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
 from core.file.models import File
-from core.variables import Segment
 from core.workflow.enums import NodeType
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
+from core.workflow.variables import Segment
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
 
 

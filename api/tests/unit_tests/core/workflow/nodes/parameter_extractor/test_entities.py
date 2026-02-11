@@ -1,5 +1,5 @@
-from core.variables.types import SegmentType
 from core.workflow.nodes.parameter_extractor.entities import ParameterConfig
+from core.workflow.variables.types import SegmentType
 
 
 class TestParameterConfig:

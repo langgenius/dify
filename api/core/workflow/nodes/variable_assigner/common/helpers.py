@@ -3,9 +3,9 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from core.variables import Segment
-from core.variables.consts import SELECTORS_LENGTH
-from core.variables.types import SegmentType
+from core.workflow.variables import Segment
+from core.workflow.variables.consts import SELECTORS_LENGTH
+from core.workflow.variables.types import SegmentType
 
 # Use double underscore (`__`) prefix for internal variables
 # to minimize risk of collision with user-defined variable names.

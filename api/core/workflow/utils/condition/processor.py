@@ -3,9 +3,9 @@ from collections.abc import Mapping, Sequence
 from typing import Literal, NamedTuple
 
 from core.file import FileAttribute, file_manager
-from core.variables import ArrayFileSegment
-from core.variables.segments import ArrayBooleanSegment, BooleanSegment
 from core.workflow.runtime import VariablePool
+from core.workflow.variables import ArrayFileSegment
+from core.workflow.variables.segments import ArrayBooleanSegment, BooleanSegment
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
 

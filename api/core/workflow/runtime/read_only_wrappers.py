@@ -5,8 +5,8 @@ from copy import deepcopy
 from typing import Any
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables.segments import Segment
 from core.workflow.system_variable import SystemVariableReadOnlyView
+from core.workflow.variables.segments import Segment
 
 from .graph_runtime_state import GraphRuntimeState
 from .variable_pool import VariablePool

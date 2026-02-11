@@ -6,7 +6,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables import StringSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.knowledge_retrieval.entities import (
@@ -20,6 +19,7 @@ from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import Kno
 from core.workflow.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import StringSegment
 from models.enums import UserFrom
 
 

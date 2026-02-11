@@ -21,15 +21,6 @@ from typing import Any
 
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.variables import (
-    ArrayNumberVariable,
-    ArrayObjectVariable,
-    ArrayStringVariable,
-    FloatVariable,
-    IntegerVariable,
-    ObjectVariable,
-    StringVariable,
-)
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
@@ -41,6 +32,15 @@ from core.workflow.graph_events import (
 )
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import (
+    ArrayNumberVariable,
+    ArrayObjectVariable,
+    ArrayStringVariable,
+    FloatVariable,
+    IntegerVariable,
+    ObjectVariable,
+    StringVariable,
+)
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory

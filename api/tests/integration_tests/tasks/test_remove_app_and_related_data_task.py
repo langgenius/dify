@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import delete
 
 from core.db.session_factory import session_factory
-from core.variables.segments import StringSegment
+from core.workflow.variables.segments import StringSegment
 from models import Tenant
 from models.enums import CreatorUserRole
 from models.model import App, UploadFile
@@ -191,7 +191,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
     @pytest.fixture
     def setup_offload_test_data(self, app_and_tenant):
         tenant, app = app_and_tenant
-        from core.variables.types import SegmentType
+        from core.workflow.variables.types import SegmentType
         from libs.datetime_utils import naive_utc_now
 
         with session_factory.create_session() as session:
@@ -422,7 +422,7 @@ class TestDeleteDraftVariablesSessionCommit:
     @pytest.fixture
     def setup_offload_test_data(self, app_and_tenant):
         """Create test data with offload files for session commit tests."""
-        from core.variables.types import SegmentType
+        from core.workflow.variables.types import SegmentType
         from libs.datetime_utils import naive_utc_now
 
         tenant, app = app_and_tenant

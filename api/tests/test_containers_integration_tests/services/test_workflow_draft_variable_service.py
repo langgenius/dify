@@ -1,8 +1,8 @@
 import pytest
 from faker import Faker
 
-from core.variables.segments import StringSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.variables.segments import StringSegment
 from models import App, Workflow
 from models.enums import DraftVariableType
 from models.workflow import WorkflowDraftVariable
@@ -467,7 +467,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, fake=fake)
-        from core.variables.variables import StringVariable
+        from core.workflow.variables.variables import StringVariable
 
         conv_var = StringVariable(
             id=fake.uuid4(),
@@ -650,7 +650,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, fake=fake)
-        from core.variables.variables import StringVariable
+        from core.workflow.variables.variables import StringVariable
 
         conv_var1 = StringVariable(
             id=fake.uuid4(),

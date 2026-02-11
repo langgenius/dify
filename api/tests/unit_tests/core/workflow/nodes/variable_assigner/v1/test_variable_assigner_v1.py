@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.variables import ArrayStringVariable, StringVariable
 from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.graph_events.node import NodeRunSucceededEvent
@@ -13,6 +12,7 @@ from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode
 from core.workflow.nodes.variable_assigner.v1.node_data import WriteMode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import ArrayStringVariable, StringVariable
 from models.enums import UserFrom
 
 DEFAULT_NODE_ID = "node_id"

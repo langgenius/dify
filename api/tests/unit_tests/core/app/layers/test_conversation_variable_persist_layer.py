@@ -3,8 +3,6 @@ from datetime import datetime
 from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
-from core.variables import StringVariable
-from core.variables.segments import Segment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
@@ -13,6 +11,8 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import StringVariable
+from core.workflow.variables.segments import Segment
 
 
 class MockReadOnlyVariablePool:

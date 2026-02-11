@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import Engine
 
-from core.variables.segments import ObjectSegment, StringSegment
-from core.variables.types import SegmentType
+from core.workflow.variables.segments import ObjectSegment, StringSegment
+from core.workflow.variables.types import SegmentType
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import DraftVarLoader
@@ -174,7 +174,7 @@ class TestDraftVarLoaderSimple:
             mock_storage.load.return_value = test_json_content.encode()
 
             with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                from core.variables.segments import FloatSegment
+                from core.workflow.variables.segments import FloatSegment
 
                 mock_segment = FloatSegment(value=test_number)
                 mock_build_segment.return_value = mock_segment
@@ -224,7 +224,7 @@ class TestDraftVarLoaderSimple:
             mock_storage.load.return_value = test_json_content.encode()
 
             with patch.object(WorkflowDraftVariable, "build_segment_with_type") as mock_build_segment:
-                from core.variables.segments import ArrayAnySegment
+                from core.workflow.variables.segments import ArrayAnySegment
 
                 mock_segment = ArrayAnySegment(value=test_array)
                 mock_build_segment.return_value = mock_segment

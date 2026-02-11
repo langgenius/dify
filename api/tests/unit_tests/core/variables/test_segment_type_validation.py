@@ -12,8 +12,8 @@ import pytest
 
 from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
-from core.variables.segment_group import SegmentGroup
-from core.variables.segments import (
+from core.workflow.variables.segment_group import SegmentGroup
+from core.workflow.variables.segments import (
     ArrayFileSegment,
     BooleanSegment,
     FileSegment,
@@ -22,7 +22,7 @@ from core.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-from core.variables.types import ArrayValidation, SegmentType
+from core.workflow.variables.types import ArrayValidation, SegmentType
 
 
 def create_test_file(

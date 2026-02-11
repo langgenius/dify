@@ -19,7 +19,7 @@ import pytest
 
 from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
-from core.variables.segments import (
+from core.workflow.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArraySegment,

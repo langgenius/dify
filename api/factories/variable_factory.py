@@ -4,8 +4,12 @@ from uuid import uuid4
 
 from configs import dify_config
 from core.file import File
-from core.variables.exc import VariableError
-from core.variables.segments import (
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
+from core.workflow.variables.exc import VariableError
+from core.workflow.variables.segments import (
     ArrayAnySegment,
     ArrayBooleanSegment,
     ArrayFileSegment,
@@ -22,8 +26,8 @@ from core.variables.segments import (
     Segment,
     StringSegment,
 )
-from core.variables.types import SegmentType
-from core.variables.variables import (
+from core.workflow.variables.types import SegmentType
+from core.workflow.variables.variables import (
     ArrayAnyVariable,
     ArrayBooleanVariable,
     ArrayFileVariable,
@@ -39,10 +43,6 @@ from core.variables.variables import (
     SecretVariable,
     StringVariable,
     VariableBase,
-)
-from core.workflow.constants import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
 )
 
 

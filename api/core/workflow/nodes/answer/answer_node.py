@@ -1,13 +1,13 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.variables import ArrayFileSegment, FileSegment, Segment
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.answer.entities import AnswerNodeData
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.variables import ArrayFileSegment, FileSegment, Segment
 
 
 class AnswerNode(Node[AnswerNodeData]):

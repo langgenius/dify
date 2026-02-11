@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables import Segment, SegmentType
 from core.workflow.enums import (
     NodeExecutionType,
     NodeType,
@@ -31,6 +30,7 @@ from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.loop.entities import LoopCompletedReason, LoopNodeData, LoopVariableData
 from core.workflow.utils.condition.processor import ConditionProcessor
+from core.workflow.variables import Segment, SegmentType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type, segment_to_variable
 from libs.datetime_utils import naive_utc_now
 

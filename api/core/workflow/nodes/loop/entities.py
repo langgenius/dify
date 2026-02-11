@@ -3,9 +3,9 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator
 
-from core.variables.types import SegmentType
 from core.workflow.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
 from core.workflow.utils.condition.entities import Condition
+from core.workflow.variables.types import SegmentType
 
 _VALID_VAR_TYPE = frozenset(
     [

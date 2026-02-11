@@ -6,11 +6,11 @@ import pytest
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from core.variables.segments import StringSegment
-from core.variables.types import SegmentType
-from core.variables.variables import StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes import NodeType
+from core.workflow.variables.segments import StringSegment
+from core.workflow.variables.types import SegmentType
+from core.workflow.variables.variables import StringVariable
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.variable_factory import build_segment

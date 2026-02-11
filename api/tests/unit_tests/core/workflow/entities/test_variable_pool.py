@@ -1,10 +1,10 @@
-from core.variables.segments import (
+from core.workflow.runtime import VariablePool
+from core.workflow.variables.segments import (
     BooleanSegment,
     IntegerSegment,
     NoneSegment,
     StringSegment,
 )
-from core.workflow.runtime import VariablePool
 
 
 class TestVariablePoolGetAndNestedAttribute:
