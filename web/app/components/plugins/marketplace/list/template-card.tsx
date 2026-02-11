@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
+import CornerMark from '@/app/components/plugins/card/base/corner-mark'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
@@ -52,7 +53,8 @@ const TemplateCardComponent = ({
   const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { id, template_name, overview, icon, publisher_handle, usage_count, icon_background, deps_plugins } = template
+  const { id, template_name, overview, icon, publisher_handle, usage_count, icon_background, deps_plugins, kind } = template
+  const isSandbox = kind === 'sandboxed'
   const isIconUrl = !!icon && /^(?:https?:)?\/\//.test(icon)
 
   const avatarBgStyle = useMemo(() => {
@@ -92,6 +94,7 @@ const TemplateCardComponent = ({
       )}
       onClick={handleClick}
     >
+      {isSandbox && <CornerMark text="Sandbox" />}
       {/* Header */}
       <div className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-4">
         {/* Avatar */}

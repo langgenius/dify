@@ -2,7 +2,7 @@
 
 import type { MotionValue } from 'motion/react'
 import { useTranslation } from '#i18n'
-import { motion, useMotionValue, useTransform } from 'motion/react'
+import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import marketPlaceBg from '@/public/marketplace/hero-bg.jpg'
 import marketplaceGradientNoise from '@/public/marketplace/hero-gradient-noise.svg'
@@ -36,10 +36,10 @@ export const Description = ({
   const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'
   const rafRef = useRef<number | null>(null)
   const lastProgressRef = useRef(0)
-  const maxScrollableRef = useRef(1)
   const titleRef = useRef<HTMLDivElement | null>(null)
   const progress = useMotionValue(0)
   const titleHeight = useMotionValue(0)
+  const smoothProgress = useSpring(progress, { stiffness: 260, damping: 34 })
 
   useLayoutEffect(() => {
     const node = titleRef.current
@@ -74,17 +74,7 @@ export const Description = ({
       rafRef.current = requestAnimationFrame(() => {
         const scrollTop = Math.round(container.scrollTop)
         const heightDelta = container.scrollHeight - container.clientHeight
-        // Keep collapse threshold stable during the same scroll session.
-        // If we recompute with shrinking scrollHeight on every frame, progress can stay stuck at 1
-        // until scrollTop reaches 0, which feels like "cannot scroll to top".
-        const observedScrollable = Math.max(1, heightDelta)
-        const shouldResetThreshold = scrollTop === 0
-        if (shouldResetThreshold)
-          maxScrollableRef.current = observedScrollable
-        else
-          maxScrollableRef.current = Math.max(maxScrollableRef.current, observedScrollable)
-
-        const effectiveMaxScroll = Math.max(1, Math.min(MAX_SCROLL, maxScrollableRef.current))
+        const effectiveMaxScroll = Math.max(1, Math.min(MAX_SCROLL, heightDelta))
         const rawProgress = Math.min(Math.max(scrollTop / effectiveMaxScroll, 0), 1)
         const snappedProgress = rawProgress >= 0.95
           ? 1
@@ -109,19 +99,19 @@ export const Description = ({
       if (rafRef.current)
         cancelAnimationFrame(rafRef.current)
     }
-  }, [progress, scrollContainerId])
+  }, [smoothProgress, scrollContainerId])
 
   // Calculate interpolated values
-  const contentOpacity = useTransform(progress, [0, 1], [1, 0])
-  const contentScale = useTransform(progress, [0, 1], [1, 0.9])
+  const contentOpacity = useTransform(smoothProgress, [0, 1], [1, 0])
+  const contentScale = useTransform(smoothProgress, [0, 1], [1, 0.9])
   const titleMaxHeight: MotionValue<number> = useTransform(
-    [progress, titleHeight],
+    [smoothProgress, titleHeight],
     (values: number[]) => values[1] * (1 - values[0]),
   )
-  const tabsMarginTop = useTransform(progress, [0, 1], [48, marketplaceNav ? 16 : 0])
-  const titleMarginTop = useTransform(progress, [0, 1], [marketplaceNav ? 80 : 0, 0])
-  const paddingTop = useTransform(progress, [0, 1], [marketplaceNav ? COLLAPSED_PADDING_TOP : EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
-  const paddingBottom = useTransform(progress, [0, 1], [EXPANDED_PADDING_BOTTOM, COLLAPSED_PADDING_BOTTOM])
+  const tabsMarginTop = useTransform(smoothProgress, [0, 1], [48, marketplaceNav ? 16 : 0])
+  const titleMarginTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? 80 : 0, 0])
+  const paddingTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? COLLAPSED_PADDING_TOP : EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
+  const paddingBottom = useTransform(smoothProgress, [0, 1], [EXPANDED_PADDING_BOTTOM, COLLAPSED_PADDING_BOTTOM])
 
   return (
     <motion.div
@@ -132,7 +122,6 @@ export const Description = ({
       style={{
         paddingTop,
         paddingBottom,
-        overflowAnchor: 'none',
       }}
     >
       {/* Blue base background */}

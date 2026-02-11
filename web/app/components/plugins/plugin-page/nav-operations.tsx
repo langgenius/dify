@@ -1,5 +1,6 @@
 'use client'
-import { RiAddLine, RiBookOpenLine, RiGithubLine } from '@remixicon/react'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { RiAddLine, RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { CREATION_TYPE } from '@/app/components/plugins/marketplace/search-params'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 import { useCreationType } from '../marketplace/atoms'
@@ -31,9 +33,32 @@ const DropdownItem = ({ href, icon, text, onClick }: DropdownItemProps) => (
     onClick={onClick}
   >
     {icon}
-    <span className="system-sm-medium">{text}</span>
+    <span className="system-sm-medium text-text-secondary">{text}</span>
+    <RiArrowRightUpLine className="ml-auto h-4 w-4 shrink-0 text-text-tertiary" />
   </Link>
 )
+
+type OptionLabelKey = 'requestAPlugin' | 'publishPlugins' | 'createPublishTemplates'
+
+const getOptions = (docLink: (path: DocPathWithoutLang) => string): { href: string, icon: React.ReactNode, labelKey: OptionLabelKey }[] => {
+  return [
+    {
+      href: 'https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml',
+      icon: <Plugin className="h-4 w-4 shrink-0 text-text-tertiary" />,
+      labelKey: 'requestAPlugin',
+    },
+    {
+      href: docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace'),
+      icon: <RiBookOpenLine className="h-4 w-4 shrink-0 text-text-tertiary" />,
+      labelKey: 'publishPlugins',
+    },
+    {
+      href: MARKETPLACE_URL_PREFIX.replace('marketplace', 'creators'),
+      icon: <Playground className="h-4 w-4 shrink-0 text-text-tertiary" />,
+      labelKey: 'createPublishTemplates',
+    },
+  ]
+}
 
 export const SubmitRequestDropdown = () => {
   const { t } = useTranslation()
@@ -63,18 +88,15 @@ export const SubmitRequestDropdown = () => {
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">
         <div className="min-w-[200px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
-          <DropdownItem
-            href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
-            icon={<RiGithubLine className="h-4 w-4 shrink-0" />}
-            text={t('requestAPlugin', { ns: 'plugin' })}
-            onClick={() => setOpen(false)}
-          />
-          <DropdownItem
-            href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
-            icon={<RiBookOpenLine className="h-4 w-4 shrink-0" />}
-            text={t('publishPlugins', { ns: 'plugin' })}
-            onClick={() => setOpen(false)}
-          />
+          {getOptions(docLink).map(option => (
+            <DropdownItem
+              key={option.href}
+              href={option.href}
+              icon={option.icon}
+              text={t(option.labelKey, { ns: 'plugin' })}
+              onClick={() => setOpen(false)}
+            />
+          ))}
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
@@ -113,7 +135,7 @@ export const CreationTypeTabs = () => {
           {t('templates', { ns: 'plugin' })}
         </span>
         <Badge className="ml-1 hidden h-4 rounded-[4px] border-none bg-saas-dify-blue-accessible px-1 text-[10px] font-bold leading-[14px] text-text-primary-on-surface md:inline-flex">
-          NEW
+          {t('badge.new', { ns: 'plugin' })}
         </Badge>
       </Link>
     </div>
