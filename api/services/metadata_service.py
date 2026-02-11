@@ -228,7 +228,6 @@ class MetadataService:
                     doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
-                db.session.commit()
                 # deal metadata binding
                 if not operation.partial_update:
                     db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
