@@ -1,81 +1,116 @@
+import type { ChatWithHistoryContextValue } from '../context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { InputVarType } from '@/app/components/workflow/types'
+import { useChatWithHistoryContext } from '../context'
 import ViewFormDropdown from './view-form-dropdown'
 
-// -------------------- Mocks --------------------
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+// Mock FloatingPortal to render children in the normal DOM flow
+vi.mock('@floating-ui/react', async () => {
+  const actual = await vi.importActual('@floating-ui/react')
+  return {
+    ...actual,
+    FloatingPortal: ({ children }: { children: React.ReactNode }) => <div data-floating-ui-portal>{children}</div>,
+  }
+})
+
+// Mocks for components used by InputsFormContent (the real sibling)
+vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
+  default: ({ value, name }: { value: boolean, name: string }) => (
+    <div data-testid="mock-bool-input" role="checkbox" aria-checked={value}>
+      {name}
+    </div>
+  ),
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-root" data-open={open}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
+  default: ({ value, placeholder }: { value: string, placeholder?: React.ReactNode }) => (
+    <div data-testid="mock-code-editor">
+      <span>{value}</span>
+      {placeholder}
+    </div>
   ),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, state }: { children: React.ReactNode, state: string }) => (
-    <button data-testid="mock-action-button" data-state={state}>{children}</button>
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({ value }: { value?: unknown[] }) => (
+    <div data-testid="mock-file-uploader" data-count={value?.length ?? 0} />
   ),
-  ActionButtonState: {
-    Default: 'default',
-    Hover: 'hover',
-  },
 }))
 
-vi.mock('./content', () => ({
-  default: () => <div data-testid="mock-inputs-form-content" />,
+vi.mock('../context', () => ({
+  useChatWithHistoryContext: vi.fn(),
 }))
+
+const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
+  inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
+  currentConversationInputs: {},
+  newConversationInputs: {},
+  newConversationInputsRef: { current: {} } as unknown as React.RefObject<Record<string, unknown>>,
+  setCurrentConversationInputs: vi.fn(),
+  handleNewConversationInputsChange: vi.fn(),
+  appParams: { system_parameters: {} } as unknown as ChatWithHistoryContextValue['appParams'],
+  allInputsHidden: false,
+}
+
+const setMockContext = (overrides: Partial<ChatWithHistoryContextValue> = {}) => {
+  vi.mocked(useChatWithHistoryContext).mockReturnValue({
+    ...defaultContextValues,
+    ...overrides,
+  } as unknown as ChatWithHistoryContextValue)
+}
 
 describe('ViewFormDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setMockContext()
   })
 
-  it('renders the dropdown trigger with initial state', () => {
+  it('renders the dropdown trigger and toggles content visibility', () => {
     render(<ViewFormDropdown />)
 
-    const trigger = screen.getByTestId('portal-trigger')
+    // Initially, settings icon should be hidden (portal content)
+    expect(screen.queryByText('share.chat.chatSettingsTitle')).not.toBeInTheDocument()
+
+    // Find trigger (ActionButton renders a button)
+    const trigger = screen.getByRole('button')
     expect(trigger).toBeInTheDocument()
 
-    const actionButton = screen.getByTestId('mock-action-button')
-    expect(actionButton).toHaveAttribute('data-state', 'default')
+    // Open dropdown
+    fireEvent.click(trigger)
+    expect(screen.getByText('share.chat.chatSettingsTitle')).toBeInTheDocument()
+    expect(screen.getByText('Test Label')).toBeInTheDocument()
+
+    // Close dropdown
+    fireEvent.click(trigger)
+    expect(screen.queryByText('share.chat.chatSettingsTitle')).not.toBeInTheDocument()
   })
 
-  it('toggles open state when trigger is clicked', () => {
+  it('renders correctly with multiple form items', () => {
+    setMockContext({
+      inputsForms: [
+        { variable: 'text', type: InputVarType.textInput, label: 'Text Form' },
+        { variable: 'num', type: InputVarType.number, label: 'Num Form' },
+      ],
+    })
+
     render(<ViewFormDropdown />)
+    fireEvent.click(screen.getByRole('button'))
 
-    const trigger = screen.getByTestId('portal-trigger')
-    const portalRoot = screen.getByTestId('portal-root')
-
-    // initial closed state
-    expect(portalRoot).toHaveAttribute('data-open', 'false')
-
-    // open
-    fireEvent.click(trigger)
-    expect(portalRoot).toHaveAttribute('data-open', 'true')
-    expect(screen.getByTestId('mock-action-button')).toHaveAttribute('data-state', 'hover')
-
-    // close
-    fireEvent.click(trigger)
-    expect(portalRoot).toHaveAttribute('data-open', 'false')
+    expect(screen.getByText('Text Form')).toBeInTheDocument()
+    expect(screen.getByText('Num Form')).toBeInTheDocument()
   })
 
-  it('renders content when opened', () => {
+  it('applies correct state to ActionButton when open', () => {
     render(<ViewFormDropdown />)
+    const trigger = screen.getByRole('button')
 
-    const trigger = screen.getByTestId('portal-trigger')
+    // closed state
+    expect(trigger).not.toHaveClass('action-btn-hover')
+
+    // open state
     fireEvent.click(trigger)
-
-    expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-    expect(screen.getByText('chat.chatSettingsTitle')).toBeInTheDocument()
-    expect(screen.getByTestId('mock-inputs-form-content')).toBeInTheDocument()
+    expect(trigger).toHaveClass('action-btn-hover')
   })
 })

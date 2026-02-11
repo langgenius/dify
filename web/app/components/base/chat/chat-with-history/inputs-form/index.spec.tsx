@@ -2,46 +2,41 @@ import type { ChatWithHistoryContextValue } from '../context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { InputVarType } from '@/app/components/workflow/types'
 import { useChatWithHistoryContext } from '../context'
 import InputsFormNode from './index'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
+// Mock FloatingPortal to render children in the normal DOM flow
+vi.mock('@floating-ui/react', async () => {
+  const actual = await vi.importActual('@floating-ui/react')
+  return {
+    ...actual,
+    FloatingPortal: ({ children }: { children: React.ReactNode }) => <div data-floating-ui-portal>{children}</div>,
+  }
+})
 
-vi.mock('@/utils/classnames', () => ({
-  cn: (...inputs: (string | boolean | undefined)[]) => inputs.filter(Boolean).join(' '),
-}))
-
-type MockButtonProps = {
-  'children': React.ReactNode
-  'onClick'?: () => void
-  'style'?: React.CSSProperties
-  'className'?: string
-  'data-testid'?: string
-}
-
-vi.mock('@/app/components/base/button', () => ({
-  __esModule: true,
-  default: ({ children, onClick, style, className, 'data-testid': dataTestId }: MockButtonProps) => (
-    <button onClick={onClick} style={style} className={className} data-testid={dataTestId || 'mock-button'}>
-      {children}
-    </button>
+// Mocks for components used by InputsFormContent (the real sibling)
+vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
+  default: ({ value, name }: { value: boolean, name: string }) => (
+    <div data-testid="mock-bool-input" role="checkbox" aria-checked={value}>
+      {name}
+    </div>
   ),
 }))
 
-vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () => ({
-  __esModule: true,
-  default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
+  default: ({ value, placeholder }: { value: string, placeholder?: React.ReactNode }) => (
+    <div data-testid="mock-code-editor">
+      <span>{value}</span>
+      {placeholder}
+    </div>
+  ),
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  __esModule: true,
-  default: ({ className }: { className?: string }) => <div data-testid="divider" className={className} />,
-}))
-
-vi.mock('@/app/components/base/icons/src/public/other', () => ({
-  Message3Fill: ({ className }: { className?: string }) => <svg data-testid="message-icon" className={className} />,
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({ value }: { value?: unknown[] }) => (
+    <div data-testid="mock-file-uploader" data-count={value?.length ?? 0} />
+  ),
 }))
 
 vi.mock('../context', () => ({
@@ -59,7 +54,12 @@ const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
   handleStartChat: mockHandleStartChat,
   allInputsHidden: false,
   themeBuilder: undefined,
-  inputsForms: [{}],
+  inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
+  currentConversationInputs: {},
+  newConversationInputs: {},
+  newConversationInputsRef: { current: {} } as unknown as React.RefObject<Record<string, unknown>>,
+  setCurrentConversationInputs: vi.fn(),
+  handleNewConversationInputsChange: vi.fn(),
 }
 
 const setMockContext = (overrides: Partial<ChatWithHistoryContextValue> = {}) => {
@@ -72,7 +72,6 @@ const setMockContext = (overrides: Partial<ChatWithHistoryContextValue> = {}) =>
 describe('InputsFormNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // ensure a predictable default context for each test
     setMockContext()
   })
 
@@ -88,20 +87,16 @@ describe('InputsFormNode', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should render collapsed state with edit button and dividers', () => {
+  it('should render collapsed state with edit button', () => {
     const setCollapsed = vi.fn()
     setMockContext({ currentConversationId: '' })
     render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
 
-    expect(screen.getByText('chat.chatSettingsTitle')).toBeInTheDocument()
-    expect(screen.getByTestId('message-icon')).toBeInTheDocument()
+    expect(screen.getByText('share.chat.chatSettingsTitle')).toBeInTheDocument()
 
-    const editBtn = screen.getByText('operation.edit')
+    const editBtn = screen.getByRole('button', { name: /common.operation.edit/i })
     fireEvent.click(editBtn)
     expect(setCollapsed).toHaveBeenCalledWith(false)
-
-    const dividers = screen.getAllByTestId('divider')
-    expect(dividers.length).toBe(2)
   })
 
   it('should render expanded state with close button when a conversation exists', () => {
@@ -109,28 +104,27 @@ describe('InputsFormNode', () => {
     setMockContext({ currentConversationId: 'conv-1' })
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
 
-    expect(screen.getByTestId('inputs-form-content')).toBeInTheDocument()
-    const closeBtn = screen.getByText('operation.close')
+    // Real InputsFormContent should render the label
+    expect(screen.getByText('Test Label')).toBeInTheDocument()
+
+    const closeBtn = screen.getByRole('button', { name: /common.operation.close/i })
     fireEvent.click(closeBtn)
     expect(setCollapsed).toHaveBeenCalledWith(true)
-    expect(screen.queryByText('chat.startChat')).toBeNull()
   })
 
   it('should render start chat button with theme styling when no conversation exists', () => {
     const setCollapsed = vi.fn()
-    const themeColor = '#123456'
+    const themeColor = 'rgb(18, 52, 86)' // #123456
 
     setMockContext({
       currentConversationId: '',
       themeBuilder: {
         theme: { primaryColor: themeColor },
-        buildChecker: vi.fn(),
-        buildTheme: vi.fn(),
       } as unknown as ChatWithHistoryContextValue['themeBuilder'],
     })
 
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    const startBtn = screen.getByText('chat.startChat')
+    const startBtn = screen.getByRole('button', { name: /share.chat.startChat/i })
 
     expect(startBtn).toBeInTheDocument()
     expect(startBtn).toHaveStyle({ backgroundColor: themeColor })
@@ -144,9 +138,12 @@ describe('InputsFormNode', () => {
     setMockContext({ isMobile: true })
     const { container } = render(<InputsFormNode collapsed={false} setCollapsed={vi.fn()} />)
 
-    // Check for mobile-specific layout classes
+    // Check for mobile-specific layout classes (pt-4)
     const outerDiv = container.firstChild as HTMLElement
-    expect(outerDiv.className).toContain('pt-4')
-    expect(screen.getByTestId('inputs-form-content').parentElement?.className).toContain('p-4')
+    expect(outerDiv).toHaveClass('pt-4')
+
+    // Check padding in expanded content (p-4 for mobile)
+    const contentWrapper = screen.getByText('Test Label').closest('.p-4')
+    expect(contentWrapper).toBeInTheDocument()
   })
 })
