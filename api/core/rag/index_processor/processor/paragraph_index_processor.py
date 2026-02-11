@@ -275,7 +275,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("Chunks is not a list")
 
     def generate_summary_preview(
-        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
         For each segment, concurrently call generate_summary to generate a summary
@@ -298,11 +302,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                    summary, _ = self.generate_summary(
+                        tenant_id, preview.content, summary_index_setting, document_language=doc_language
+                    )
                     preview.summary = summary
             else:
                 # Fallback: try without app context (may fail)
-                summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                summary, _ = self.generate_summary(
+                    tenant_id, preview.content, summary_index_setting, document_language=doc_language
+                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor
@@ -356,6 +364,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         text: str,
         summary_index_setting: dict | None = None,
         segment_id: str | None = None,
+        document_language: str | None = None,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
@@ -366,6 +375,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             text: Text content to summarize
             summary_index_setting: Summary index configuration
             segment_id: Optional segment ID to fetch attachments from SegmentAttachmentBinding table
+            document_language: Optional document language (e.g., "Chinese", "English")
+                to ensure summary is generated in the correct language
 
         Returns:
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
@@ -381,8 +392,22 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("model_name and model_provider_name are required in summary_index_setting")
 
         # Import default summary prompt
+        is_default_prompt = False
         if not summary_prompt:
             summary_prompt = DEFAULT_GENERATOR_SUMMARY_PROMPT
+            is_default_prompt = True
+
+        # Format prompt with document language only for default prompt
+        # Custom prompts are used as-is to avoid interfering with user-defined templates
+        # If document_language is provided, use it; otherwise, use "the same language as the input content"
+        # This is especially important for image-only chunks where text is empty or minimal
+        if is_default_prompt:
+            language_for_prompt = document_language or "the same language as the input content"
+            try:
+                summary_prompt = summary_prompt.format(language=language_for_prompt)
+            except KeyError:
+                # If default prompt doesn't have {language} placeholder, use it as-is
+                pass
 
         provider_manager = ProviderManager()
         provider_model_bundle = provider_manager.get_provider_model_bundle(
