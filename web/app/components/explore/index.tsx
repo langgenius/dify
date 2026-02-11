@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { CurrentTryAppParams } from '@/context/explore-context'
 import type { InstalledApp } from '@/models/explore'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -41,6 +42,16 @@ const Explore: FC<IExploreProps> = ({
       return router.replace('/datasets')
   }, [isCurrentWorkspaceDatasetOperator])
 
+  const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>(undefined)
+  const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
+  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: CurrentTryAppParams) => {
+    if (showTryAppPanel)
+      setCurrentTryAppParams(params)
+    else
+      setCurrentTryAppParams(undefined)
+    setIsShowTryAppPanel(showTryAppPanel)
+  }
+
   return (
     <div className="flex h-full overflow-hidden border-t border-divider-regular bg-background-body">
       <ExploreContext.Provider
@@ -53,11 +64,14 @@ const Explore: FC<IExploreProps> = ({
             setInstalledApps,
             isFetchingInstalledApps,
             setIsFetchingInstalledApps,
+            currentApp: currentTryAppParams,
+            isShowTryAppPanel,
+            setShowTryAppPanel,
           }
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className="w-0 grow">
+        <div className="h-full min-h-0 w-0 grow">
           {children}
         </div>
       </ExploreContext.Provider>

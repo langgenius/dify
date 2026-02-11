@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import PremiumBadge from '.'
 
 const colors: Array<NonNullable<React.ComponentProps<typeof PremiumBadge>['color']>> = ['blue', 'indigo', 'gray', 'orange']

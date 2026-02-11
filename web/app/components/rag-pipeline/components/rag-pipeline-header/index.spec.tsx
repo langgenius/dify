@@ -42,6 +42,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
   useWorkflowStore: () => ({
     getState: () => ({
+      setShowInputFieldPanel: mockSetShowInputFieldPanel,
+      setShowEnvPanel: mockSetShowEnvPanel,
       setIsPreparingDataSource: mockSetIsPreparingDataSource,
       setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       setPublishedAt: mockSetPublishedAt,
@@ -139,6 +141,8 @@ vi.mock('@/context/modal-context', () => ({
 let mockProviderContextValue = createMockProviderContextValue()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderContextValue,
+  useProviderContextSelector: <T,>(selector: (s: ReturnType<typeof createMockProviderContextValue>) => T): T =>
+    selector(mockProviderContextValue),
 }))
 
 // Mock event emitter context

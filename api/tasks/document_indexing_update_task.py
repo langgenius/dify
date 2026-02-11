@@ -3,11 +3,11 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
+from core.db.session_factory import session_factory
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 
@@ -26,47 +26,46 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    with session_factory.create_session() as session, session.begin():
+        document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
-    if not document:
-        logger.info(click.style(f"Document not found: {document_id}", fg="red"))
-        db.session.close()
-        return
+        if not document:
+            logger.info(click.style(f"Document not found: {document_id}", fg="red"))
+            return
 
-    document.indexing_status = "parsing"
-    document.processing_started_at = naive_utc_now()
-    db.session.commit()
+        document.indexing_status = "parsing"
+        document.processing_started_at = naive_utc_now()
 
-    # delete all document segment and index
-    try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
-            raise Exception("Dataset not found")
+            return
 
         index_type = document.doc_form
+        segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+        index_node_ids = [segment.index_node_id for segment in segments]
+
+    clean_success = False
+    try:
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
-
-        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-        if segments:
-            index_node_ids = [segment.index_node_id for segment in segments]
-
-            # delete from vector index
+        if index_node_ids:
             index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-
-            for segment in segments:
-                db.session.delete(segment)
-            db.session.commit()
-        end_at = time.perf_counter()
-        logger.info(
-            click.style(
-                "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                    document_id, end_at - start_at
-                ),
-                fg="green",
+            end_at = time.perf_counter()
+            logger.info(
+                click.style(
+                    "Cleaned document when document update data source or process rule: {} latency: {}".format(
+                        document_id, end_at - start_at
+                    ),
+                    fg="green",
+                )
             )
-        )
+            clean_success = True
     except Exception:
-        logger.exception("Cleaned document when document update data source or process rule failed")
+        logger.exception("Failed to clean document index during update, document_id: %s", document_id)
+
+    if clean_success:
+        with session_factory.create_session() as session, session.begin():
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            session.execute(segment_delete_stmt)
 
     try:
         indexing_runner = IndexingRunner()
@@ -77,5 +76,3 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         logger.info(click.style(str(ex), fg="yellow"))
     except Exception:
         logger.exception("document_indexing_update_task failed, document_id: %s", document_id)
-    finally:
-        db.session.close()

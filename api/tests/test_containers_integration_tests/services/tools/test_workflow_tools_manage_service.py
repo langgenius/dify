@@ -3,7 +3,10 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from pydantic import ValidationError
 
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
@@ -130,20 +133,24 @@ class TestWorkflowToolManageService:
     def _create_test_workflow_tool_parameters(self):
         """Helper method to create valid workflow tool parameters."""
         return [
-            {
-                "name": "input_text",
-                "description": "Input text for processing",
-                "form": "form",
-                "type": "string",
-                "required": True,
-            },
-            {
-                "name": "output_format",
-                "description": "Output format specification",
-                "form": "form",
-                "type": "select",
-                "required": False,
-            },
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "input_text",
+                    "description": "Input text for processing",
+                    "form": "form",
+                    "type": "string",
+                    "required": True,
+                }
+            ),
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "output_format",
+                    "description": "Output format specification",
+                    "form": "form",
+                    "type": "select",
+                    "required": False,
+                }
+            ),
         ]
 
     def test_create_workflow_tool_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -208,7 +215,7 @@ class TestWorkflowToolManageService:
         assert created_tool_provider.label == tool_label
         assert created_tool_provider.icon == json.dumps(tool_icon)
         assert created_tool_provider.description == tool_description
-        assert created_tool_provider.parameter_configuration == json.dumps(tool_parameters)
+        assert created_tool_provider.parameter_configuration == json.dumps([p.model_dump() for p in tool_parameters])
         assert created_tool_provider.privacy_policy == tool_privacy_policy
         assert created_tool_provider.version == workflow.version
         assert created_tool_provider.user_id == account.id
@@ -353,18 +360,9 @@ class TestWorkflowToolManageService:
         app, account, workflow = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies
         )
-
-        # Setup invalid workflow tool parameters (missing required fields)
-        invalid_parameters = [
-            {
-                "name": "input_text",
-                # Missing description and form fields
-                "type": "string",
-                "required": True,
-            }
-        ]
         # Attempt to create workflow tool with invalid parameters
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
+            # Setup invalid workflow tool parameters (missing required fields)
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
                 tenant_id=account.current_tenant.id,
@@ -373,7 +371,16 @@ class TestWorkflowToolManageService:
                 label=fake.word(),
                 icon={"type": "emoji", "emoji": "🔧"},
                 description=fake.text(max_nb_chars=200),
-                parameters=invalid_parameters,
+                parameters=[
+                    WorkflowToolParameterConfiguration.model_validate(
+                        {
+                            "name": "input_text",
+                            # Missing description and form fields
+                            "type": "string",
+                            "required": True,
+                        }
+                    )
+                ],
             )
 
         # Verify error message contains validation error
@@ -507,6 +514,62 @@ class TestWorkflowToolManageService:
 
         assert tool_count == 0
 
+    def test_create_workflow_tool_human_input_node_error(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test workflow tool creation fails when workflow contains human input nodes.
+
+        This test verifies:
+        - Human input nodes prevent workflow tool publishing
+        - Correct error message
+        - No database changes when workflow is invalid
+        """
+        fake = Faker()
+
+        # Create test data
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        workflow.graph = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "human_input_node",
+                        "data": {"type": "human-input"},
+                    }
+                ]
+            }
+        )
+
+        tool_parameters = self._create_test_workflow_tool_parameters()
+        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
+            WorkflowToolManageService.create_workflow_tool(
+                user_id=account.id,
+                tenant_id=account.current_tenant.id,
+                workflow_app_id=app.id,
+                name=fake.word(),
+                label=fake.word(),
+                icon={"type": "emoji", "emoji": "🔧"},
+                description=fake.text(max_nb_chars=200),
+                parameters=tool_parameters,
+            )
+
+        assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
+
+        from extensions.ext_database import db
+
+        tool_count = (
+            db.session.query(WorkflowToolProvider)
+            .where(
+                WorkflowToolProvider.tenant_id == account.current_tenant.id,
+            )
+            .count()
+        )
+
+        assert tool_count == 0
+
     def test_update_workflow_tool_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test successful workflow tool update with valid parameters.
@@ -579,11 +642,12 @@ class TestWorkflowToolManageService:
 
         # Verify database state was updated
         db.session.refresh(created_tool)
+        assert created_tool is not None
         assert created_tool.name == updated_tool_name
         assert created_tool.label == updated_tool_label
         assert created_tool.icon == json.dumps(updated_tool_icon)
         assert created_tool.description == updated_tool_description
-        assert created_tool.parameter_configuration == json.dumps(updated_tool_parameters)
+        assert created_tool.parameter_configuration == json.dumps([p.model_dump() for p in updated_tool_parameters])
         assert created_tool.privacy_policy == updated_tool_privacy_policy
         assert created_tool.version == workflow.version
         assert created_tool.updated_at is not None
@@ -592,6 +656,80 @@ class TestWorkflowToolManageService:
         mock_external_service_dependencies["workflow_tool_provider_controller"].from_db.assert_called()
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called()
         mock_external_service_dependencies["tool_transform_service"].workflow_provider_to_controller.assert_called()
+
+    def test_update_workflow_tool_human_input_node_error(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test workflow tool update fails when workflow contains human input nodes.
+
+        This test verifies:
+        - Human input nodes prevent workflow tool updates
+        - Correct error message
+        - Existing tool data remains unchanged
+        """
+        fake = Faker()
+
+        # Create test data
+        app, account, workflow = self._create_test_app_and_account(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        # Create initial workflow tool
+        initial_tool_name = fake.word()
+        initial_tool_parameters = self._create_test_workflow_tool_parameters()
+        WorkflowToolManageService.create_workflow_tool(
+            user_id=account.id,
+            tenant_id=account.current_tenant.id,
+            workflow_app_id=app.id,
+            name=initial_tool_name,
+            label=fake.word(),
+            icon={"type": "emoji", "emoji": "🔧"},
+            description=fake.text(max_nb_chars=200),
+            parameters=initial_tool_parameters,
+        )
+
+        from extensions.ext_database import db
+
+        created_tool = (
+            db.session.query(WorkflowToolProvider)
+            .where(
+                WorkflowToolProvider.tenant_id == account.current_tenant.id,
+                WorkflowToolProvider.app_id == app.id,
+            )
+            .first()
+        )
+
+        original_name = created_tool.name
+
+        workflow.graph = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "human_input_node",
+                        "data": {"type": "human-input"},
+                    }
+                ]
+            }
+        )
+        db.session.commit()
+
+        with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
+            WorkflowToolManageService.update_workflow_tool(
+                user_id=account.id,
+                tenant_id=account.current_tenant.id,
+                workflow_tool_id=created_tool.id,
+                name=fake.word(),
+                label=fake.word(),
+                icon={"type": "emoji", "emoji": "⚙️"},
+                description=fake.text(max_nb_chars=200),
+                parameters=initial_tool_parameters,
+            )
+
+        assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
+
+        db.session.refresh(created_tool)
+        assert created_tool.name == original_name
 
     def test_update_workflow_tool_not_found_error(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -750,13 +888,15 @@ class TestWorkflowToolManageService:
 
         # Setup workflow tool parameters with FILE type
         file_parameters = [
-            {
-                "name": "document",
-                "description": "Upload a document",
-                "form": "form",
-                "type": "file",
-                "required": False,
-            }
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "document",
+                    "description": "Upload a document",
+                    "form": "form",
+                    "type": "file",
+                    "required": False,
+                }
+            )
         ]
 
         # Execute the method under test
@@ -823,13 +963,15 @@ class TestWorkflowToolManageService:
 
         # Setup workflow tool parameters with FILES type
         files_parameters = [
-            {
-                "name": "documents",
-                "description": "Upload multiple documents",
-                "form": "form",
-                "type": "files",
-                "required": False,
-            }
+            WorkflowToolParameterConfiguration.model_validate(
+                {
+                    "name": "documents",
+                    "description": "Upload multiple documents",
+                    "form": "form",
+                    "type": "files",
+                    "required": False,
+                }
+            )
         ]
 
         # Execute the method under test

@@ -1,12 +1,20 @@
+from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.web.error import NotFoundError
+from core.workflow.entities.pause_reason import HumanInputRequired
+from core.workflow.enums import WorkflowExecutionStatus
+from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
 from fields.workflow_run_fields import (
@@ -19,14 +27,29 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
-from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
+from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_service import WorkflowRunService
+
+
+def _build_backstage_input_url(form_token: str | None) -> str | None:
+    if not form_token:
+        return None
+    base_url = dify_config.APP_WEB_URL
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/form/{form_token}"
+
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
+EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -91,6 +114,15 @@ workflow_run_node_execution_list_fields_copy = workflow_run_node_execution_list_
 workflow_run_node_execution_list_fields_copy["data"] = fields.List(fields.Nested(workflow_run_node_execution_model))
 workflow_run_node_execution_list_model = console_ns.model(
     "WorkflowRunNodeExecutionList", workflow_run_node_execution_list_fields_copy
+)
+
+workflow_run_export_fields = console_ns.model(
+    "WorkflowRunExport",
+    {
+        "status": fields.String(description="Export status: success/failed"),
+        "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
+        "presigned_url_expires_at": fields.String(description="Pre-signed URL expiration time", required=False),
+    },
 )
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -179,6 +211,56 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         )
 
         return result
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export")
+class WorkflowRunExportApi(Resource):
+    @console_ns.doc("get_workflow_run_export_url")
+    @console_ns.doc(description="Generate a download URL for an archived workflow run.")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Export URL generated", workflow_run_export_fields)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model()
+    def get(self, app_model: App, run_id: str):
+        tenant_id = str(app_model.tenant_id)
+        app_id = str(app_model.id)
+        run_id_str = str(run_id)
+
+        run_created_at = db.session.scalar(
+            select(WorkflowArchiveLog.run_created_at)
+            .where(
+                WorkflowArchiveLog.tenant_id == tenant_id,
+                WorkflowArchiveLog.app_id == app_id,
+                WorkflowArchiveLog.workflow_run_id == run_id_str,
+            )
+            .limit(1)
+        )
+        if not run_created_at:
+            return {"code": "archive_log_not_found", "message": "workflow run archive not found"}, 404
+
+        prefix = (
+            f"{tenant_id}/app_id={app_id}/year={run_created_at.strftime('%Y')}/"
+            f"month={run_created_at.strftime('%m')}/workflow_run_id={run_id_str}"
+        )
+        archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
+
+        try:
+            archive_storage = get_archive_storage()
+        except ArchiveStorageNotConfiguredError as e:
+            return {"code": "archive_storage_not_configured", "message": str(e)}, 500
+
+        presigned_url = archive_storage.generate_presigned_url(
+            archive_key,
+            expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+        )
+        expires_at = datetime.now(UTC) + timedelta(seconds=EXPORT_SIGNED_URL_EXPIRE_SECONDS)
+        return {
+            "status": "success",
+            "presigned_url": presigned_url,
+            "presigned_url_expires_at": expires_at.isoformat(),
+        }, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
@@ -375,3 +457,68 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return {"data": node_executions}
+
+
+@console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
+class ConsoleWorkflowPauseDetailsApi(Resource):
+    """Console API for getting workflow pause details."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, workflow_run_id: str):
+        """
+        Get workflow pause details.
+
+        GET /console/api/workflow/<workflow_run_id>/pause-details
+
+        Returns information about why and where the workflow is paused.
+        """
+
+        # Query WorkflowRun to determine if workflow is suspended
+        session_maker = sessionmaker(bind=db.engine)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_maker)
+
+        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
+        if not workflow_run:
+            raise NotFoundError("Workflow run not found")
+
+        if workflow_run.tenant_id != current_user.current_tenant_id:
+            raise NotFoundError("Workflow run not found")
+
+        # Check if workflow is suspended
+        is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
+        if not is_paused:
+            return {
+                "paused_at": None,
+                "paused_nodes": [],
+            }, 200
+
+        pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
+        pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+
+        # Build response
+        paused_at = pause_entity.paused_at if pause_entity else None
+        paused_nodes = []
+        response = {
+            "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
+            "paused_nodes": paused_nodes,
+        }
+
+        for reason in pause_reasons:
+            if isinstance(reason, HumanInputRequired):
+                paused_nodes.append(
+                    {
+                        "node_id": reason.node_id,
+                        "node_title": reason.node_title,
+                        "pause_type": {
+                            "type": "human_input",
+                            "form_id": reason.form_id,
+                            "backstage_input_url": _build_backstage_input_url(reason.form_token),
+                        },
+                    }
+                )
+            else:
+                raise AssertionError("unimplemented.")
+
+        return response, 200

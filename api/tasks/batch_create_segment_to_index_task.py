@@ -9,9 +9,9 @@ import pandas as pd
 from celery import shared_task
 from sqlalchemy import func
 
+from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
@@ -48,64 +48,100 @@ def batch_create_segment_to_index_task(
 
     indexing_cache_key = f"segment_batch_import_{job_id}"
 
-    try:
-        dataset = db.session.get(Dataset, dataset_id)
-        if not dataset:
-            raise ValueError("Dataset not exist.")
+    # Initialize variables with default values
+    upload_file_key: str | None = None
+    dataset_config: dict | None = None
+    document_config: dict | None = None
 
-        dataset_document = db.session.get(Document, document_id)
-        if not dataset_document:
-            raise ValueError("Document not exist.")
+    with session_factory.create_session() as session:
+        try:
+            dataset = session.get(Dataset, dataset_id)
+            if not dataset:
+                raise ValueError("Dataset not exist.")
 
-        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            raise ValueError("Document is not available.")
+            dataset_document = session.get(Document, document_id)
+            if not dataset_document:
+                raise ValueError("Document not exist.")
 
-        upload_file = db.session.get(UploadFile, upload_file_id)
-        if not upload_file:
-            raise ValueError("UploadFile not found.")
+            if (
+                not dataset_document.enabled
+                or dataset_document.archived
+                or dataset_document.indexing_status != "completed"
+            ):
+                raise ValueError("Document is not available.")
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            suffix = Path(upload_file.key).suffix
-            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
-            storage.download(upload_file.key, file_path)
+            upload_file = session.get(UploadFile, upload_file_id)
+            if not upload_file:
+                raise ValueError("UploadFile not found.")
 
-            df = pd.read_csv(file_path)
-            content = []
-            for _, row in df.iterrows():
-                if dataset_document.doc_form == "qa_model":
-                    data = {"content": row.iloc[0], "answer": row.iloc[1]}
-                else:
-                    data = {"content": row.iloc[0]}
-                content.append(data)
-            if len(content) == 0:
-                raise ValueError("The CSV file is empty.")
+            dataset_config = {
+                "id": dataset.id,
+                "indexing_technique": dataset.indexing_technique,
+                "tenant_id": dataset.tenant_id,
+                "embedding_model_provider": dataset.embedding_model_provider,
+                "embedding_model": dataset.embedding_model,
+            }
 
-        document_segments = []
-        embedding_model = None
-        if dataset.indexing_technique == "high_quality":
-            model_manager = ModelManager()
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=dataset.tenant_id,
-                provider=dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=dataset.embedding_model,
-            )
+            document_config = {
+                "id": dataset_document.id,
+                "doc_form": dataset_document.doc_form,
+                "word_count": dataset_document.word_count or 0,
+            }
 
-        word_count_change = 0
-        if embedding_model:
-            tokens_list = embedding_model.get_text_embedding_num_tokens(
-                texts=[segment["content"] for segment in content]
-            )
-        else:
-            tokens_list = [0] * len(content)
+            upload_file_key = upload_file.key
 
+        except Exception:
+            logger.exception("Segments batch created index failed")
+            redis_client.setex(indexing_cache_key, 600, "error")
+            return
+
+    # Ensure required variables are set before proceeding
+    if upload_file_key is None or dataset_config is None or document_config is None:
+        logger.error("Required configuration not set due to session error")
+        redis_client.setex(indexing_cache_key, 600, "error")
+        return
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        suffix = Path(upload_file_key).suffix
+        file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+        storage.download(upload_file_key, file_path)
+
+        df = pd.read_csv(file_path)
+        content = []
+        for _, row in df.iterrows():
+            if document_config["doc_form"] == "qa_model":
+                data = {"content": row.iloc[0], "answer": row.iloc[1]}
+            else:
+                data = {"content": row.iloc[0]}
+            content.append(data)
+        if len(content) == 0:
+            raise ValueError("The CSV file is empty.")
+
+    document_segments = []
+    embedding_model = None
+    if dataset_config["indexing_technique"] == "high_quality":
+        model_manager = ModelManager()
+        embedding_model = model_manager.get_model_instance(
+            tenant_id=dataset_config["tenant_id"],
+            provider=dataset_config["embedding_model_provider"],
+            model_type=ModelType.TEXT_EMBEDDING,
+            model=dataset_config["embedding_model"],
+        )
+
+    word_count_change = 0
+    if embedding_model:
+        tokens_list = embedding_model.get_text_embedding_num_tokens(texts=[segment["content"] for segment in content])
+    else:
+        tokens_list = [0] * len(content)
+
+    with session_factory.create_session() as session, session.begin():
         for segment, tokens in zip(content, tokens_list):
             content = segment["content"]
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
             max_position = (
-                db.session.query(func.max(DocumentSegment.position))
-                .where(DocumentSegment.document_id == dataset_document.id)
+                session.query(func.max(DocumentSegment.position))
+                .where(DocumentSegment.document_id == document_config["id"])
                 .scalar()
             )
             segment_document = DocumentSegment(
@@ -123,29 +159,30 @@ def batch_create_segment_to_index_task(
                 status="completed",
                 completed_at=naive_utc_now(),
             )
-            if dataset_document.doc_form == "qa_model":
+            if document_config["doc_form"] == "qa_model":
                 segment_document.answer = segment["answer"]
                 segment_document.word_count += len(segment["answer"])
             word_count_change += segment_document.word_count
-            db.session.add(segment_document)
+            session.add(segment_document)
             document_segments.append(segment_document)
 
-        assert dataset_document.word_count is not None
-        dataset_document.word_count += word_count_change
-        db.session.add(dataset_document)
+    with session_factory.create_session() as session, session.begin():
+        dataset_document = session.get(Document, document_id)
+        if dataset_document:
+            assert dataset_document.word_count is not None
+            dataset_document.word_count += word_count_change
+            session.add(dataset_document)
 
-        VectorService.create_segments_vector(None, document_segments, dataset, dataset_document.doc_form)
-        db.session.commit()
-        redis_client.setex(indexing_cache_key, 600, "completed")
-        end_at = time.perf_counter()
-        logger.info(
-            click.style(
-                f"Segment batch created job: {job_id} latency: {end_at - start_at}",
-                fg="green",
-            )
+    with session_factory.create_session() as session:
+        dataset = session.get(Dataset, dataset_id)
+        if dataset:
+            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"])
+
+    redis_client.setex(indexing_cache_key, 600, "completed")
+    end_at = time.perf_counter()
+    logger.info(
+        click.style(
+            f"Segment batch created job: {job_id} latency: {end_at - start_at}",
+            fg="green",
         )
-    except Exception:
-        logger.exception("Segments batch created index failed")
-        redis_client.setex(indexing_cache_key, 600, "error")
-    finally:
-        db.session.close()
+    )

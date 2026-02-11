@@ -7,14 +7,14 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { z } from 'zod'
+import * as z from 'zod'
 import Button from '@/app/components/base/button'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 
-import { useDocLink } from '@/context/i18n'
+import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -22,20 +22,21 @@ import { encryptPassword as encodePassword } from '@/utils/encryption'
 import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'error.emailInValid' })
-    .email('error.emailInValid'),
-  name: z.string().min(1, { message: 'error.nameEmpty' }),
+  email: z.email('error.emailInValid')
+    .min(1, {
+      error: 'error.emailInValid',
+    }),
+  name: z.string().min(1, {
+    error: 'error.nameEmpty',
+  }),
   password: z.string().min(8, {
-    message: 'error.passwordLengthInValid',
+    error: 'error.passwordLengthInValid',
   }).regex(validPassword, 'error.passwordInvalid'),
 })
 
 const InstallForm = () => {
   useDocumentTitle('')
   const { t, i18n } = useTranslation()
-  const docLink = useDocLink()
   const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
@@ -198,7 +199,7 @@ const InstallForm = () => {
                       </div>
 
                       <div className={cn('mt-1 text-xs text-text-secondary', {
-                        'text-red-400 !text-sm': passwordErrors && passwordErrors.length > 0,
+                        '!text-sm text-red-400': passwordErrors && passwordErrors.length > 0,
                       })}
                       >
                         {t('error.passwordInvalid', { ns: 'login' })}
@@ -219,7 +220,7 @@ const InstallForm = () => {
                     className="text-text-accent"
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={docLink('/policies/open-source')}
+                    href={LICENSE_LINK}
                   >
                     {t('license.link', { ns: 'login' })}
                   </Link>

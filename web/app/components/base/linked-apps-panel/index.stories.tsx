@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { RelatedApp } from '@/models/datasets'
 import { AppModeEnum } from '@/types/app'
 import LinkedAppsPanel from '.'

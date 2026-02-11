@@ -113,7 +113,7 @@
   "overview.triggerInfo.noTriggerAdded": "Aucun déclencheur ajouté",
   "overview.triggerInfo.title": "Déclencheurs",
   "overview.triggerInfo.triggerStatusDescription": "L'état du nœud de déclenchement apparaît ici. (Peut déjà exister dans le brouillon, prend effet après publication)",
-  "overview.triggerInfo.triggersAdded": "Déclencheurs ajoutés",
+  "overview.triggerInfo.triggersAdded": "{{count}} déclencheurs ajoutés",
   "welcome.enterKeyTip": "saisissez votre clé API OpenAI ci-dessous",
   "welcome.firstStepTip": "Pour commencer,",
   "welcome.getKeyTip": "Obtenez votre clé API depuis le tableau de bord OpenAI",

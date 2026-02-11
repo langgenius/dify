@@ -1,11 +1,14 @@
 """Paragraph index processor."""
 
 import json
+import logging
 import uuid
 from collections.abc import Mapping
 from typing import Any
 
 from configs import dify_config
+from core.db.session_factory import session_factory
+from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -25,6 +28,9 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
+from services.summary_index_service import SummaryIndexService
+
+logger = logging.getLogger(__name__)
 
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
@@ -135,6 +141,30 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids
+        # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
+        # This method is called for actual deletion scenarios (e.g., when segment is deleted).
+        # For disable operations, disable_summaries_for_segments is called directly in the task.
+        # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
+        delete_summaries = kwargs.get("delete_summaries", False)
+        if delete_summaries:
+            if node_ids:
+                # Find segments by index_node_id
+                with session_factory.create_session() as session:
+                    segments = (
+                        session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset.id,
+                            DocumentSegment.index_node_id.in_(node_ids),
+                        )
+                        .all()
+                    )
+                    segment_ids = [segment.id for segment in segments]
+                    if segment_ids:
+                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+            else:
+                # Delete all summaries for the dataset
+                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+
         if dataset.indexing_technique == "high_quality":
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
             precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
@@ -326,3 +356,97 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             "preview": preview,
             "total_segments": len(parent_childs.parent_child_chunks),
         }
+
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
+    ) -> list[PreviewDetail]:
+        """
+        For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
+        and write it to the summary attribute of PreviewDetail.
+        In preview mode (indexing-estimate), if any summary generation fails, the method will raise an exception.
+
+        Note: For parent-child structure, we only generate summaries for parent chunks.
+        """
+        import concurrent.futures
+
+        from flask import current_app
+
+        # Capture Flask app context for worker threads
+        flask_app = None
+        try:
+            flask_app = current_app._get_current_object()  # type: ignore
+        except RuntimeError:
+            logger.warning("No Flask application context available, summary generation may fail")
+
+        def process(preview: PreviewDetail) -> None:
+            """Generate summary for a single preview item (parent chunk)."""
+            from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
+
+            if flask_app:
+                # Ensure Flask app context in worker thread
+                with flask_app.app_context():
+                    summary, _ = ParagraphIndexProcessor.generate_summary(
+                        tenant_id=tenant_id,
+                        text=preview.content,
+                        summary_index_setting=summary_index_setting,
+                        document_language=doc_language,
+                    )
+                    preview.summary = summary
+            else:
+                # Fallback: try without app context (may fail)
+                summary, _ = ParagraphIndexProcessor.generate_summary(
+                    tenant_id=tenant_id,
+                    text=preview.content,
+                    summary_index_setting=summary_index_setting,
+                    document_language=doc_language,
+                )
+                preview.summary = summary
+
+        # Generate summaries concurrently using ThreadPoolExecutor
+        # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)
+        timeout_seconds = min(300, 60 * len(preview_texts))
+        errors: list[Exception] = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_texts))) as executor:
+            futures = [executor.submit(process, preview) for preview in preview_texts]
+            # Wait for all tasks to complete with timeout
+            done, not_done = concurrent.futures.wait(futures, timeout=timeout_seconds)
+
+            # Cancel tasks that didn't complete in time
+            if not_done:
+                timeout_error_msg = (
+                    f"Summary generation timeout: {len(not_done)} chunks did not complete within {timeout_seconds}s"
+                )
+                logger.warning("%s. Cancelling remaining tasks...", timeout_error_msg)
+                # In preview mode, timeout is also an error
+                errors.append(TimeoutError(timeout_error_msg))
+                for future in not_done:
+                    future.cancel()
+                # Wait a bit for cancellation to take effect
+                concurrent.futures.wait(not_done, timeout=5)
+
+            # Collect exceptions from completed futures
+            for future in done:
+                try:
+                    future.result()  # This will raise any exception that occurred
+                except Exception as e:
+                    logger.exception("Error in summary generation future")
+                    errors.append(e)
+
+        # In preview mode (indexing-estimate), if there are any errors, fail the request
+        if errors:
+            error_messages = [str(e) for e in errors]
+            error_summary = (
+                f"Failed to generate summaries for {len(errors)} chunk(s). "
+                f"Errors: {'; '.join(error_messages[:3])}"  # Show first 3 errors
+            )
+            if len(errors) > 3:
+                error_summary += f" (and {len(errors) - 3} more)"
+            logger.error("Summary generation failed in preview mode: %s", error_summary)
+            raise ValueError(error_summary)
+
+        return preview_texts

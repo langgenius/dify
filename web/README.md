@@ -107,6 +107,8 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
+Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
+
 ## Test
 
 We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
@@ -138,7 +140,7 @@ This will help you determine the testing strategy. See [web/testing/testing.md](
 
 ## Documentation
 
-Visit <https://docs.dify.ai/getting-started/readme> to view the full documentation.
+Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 

@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "آزمون اثرگذاری دانش بر اساس متن پرسش داده شده.",
   "hit.emptyTip": "نتایج آزمون بازیابی اینجا نمایش داده می‌شوند",
-  "hit.title": "پاراگراف‌های بازیابی",
+  "hit.title": "{{num}} پاراگراف‌های بازیابی",
   "hitChunks": "{{num}} را بزنید تکه های فرزند",
   "imageUploader.dropZoneTip": "فایل را اینجا بکشید تا بارگذاری شود",
   "imageUploader.singleChunkAttachmentLimitTooltip": "تعداد پیوست‌های تک قطعه‌ای نمی‌تواند از {{limit}} بیشتر باشد",
