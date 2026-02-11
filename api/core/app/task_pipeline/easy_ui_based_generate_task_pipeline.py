@@ -63,8 +63,15 @@ from core.tools.signature import sign_tool_file
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, LLMGenerationDetail, Message, MessageAgentThought
-from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from models.model import (
+    AppMode,
+    Conversation,
+    LLMGenerationDetail,
+    Message,
+    MessageAgentThought,
+    MessageFile,
+    UploadFile,
+)
 
 logger = logging.getLogger(__name__)
 
