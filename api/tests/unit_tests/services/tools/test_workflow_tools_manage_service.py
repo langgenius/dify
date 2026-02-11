@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.tools.entities.tool_entities import ToolParameter, WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -89,6 +90,12 @@ def _build_fake_session(app) -> SimpleNamespace:
     return SimpleNamespace(query=query)
 
 
+def _build_parameters() -> list[WorkflowToolParameterConfiguration]:
+    return [
+        WorkflowToolParameterConfiguration(name="input", description="input", form=ToolParameter.ToolParameterForm.LLM),
+    ]
+
+
 def test_create_workflow_tool_rejects_human_input_nodes(monkeypatch):
     workflow = DummyWorkflow(graph_dict={"nodes": [{"id": "node_1", "data": {"type": "human-input"}}]})
     app = SimpleNamespace(workflow=workflow)
@@ -100,8 +107,6 @@ def test_create_workflow_tool_rejects_human_input_nodes(monkeypatch):
     monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", mock_from_db)
     mock_invalidate = MagicMock()
 
-    parameters = [{"name": "input", "description": "input", "form": "form"}]
-
     with pytest.raises(WorkflowToolHumanInputNotSupportedError) as exc_info:
         workflow_tools_manage_service.WorkflowToolManageService.create_workflow_tool(
             user_id="user-id",
@@ -111,7 +116,7 @@ def test_create_workflow_tool_rejects_human_input_nodes(monkeypatch):
             label="Tool",
             icon={"type": "emoji", "emoji": "tool"},
             description="desc",
-            parameters=parameters,
+            parameters=_build_parameters(),
         )
 
     assert exc_info.value.error_code == "workflow_tool_human_input_not_supported"
@@ -134,7 +139,6 @@ def test_create_workflow_tool_success(monkeypatch):
     mock_from_db = MagicMock()
     monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", mock_from_db)
 
-    parameters = [{"name": "input", "description": "input", "form": "form"}]
     icon = {"type": "emoji", "emoji": "tool"}
 
     result = workflow_tools_manage_service.WorkflowToolManageService.create_workflow_tool(
@@ -145,7 +149,7 @@ def test_create_workflow_tool_success(monkeypatch):
         label="Tool",
         icon=icon,
         description="desc",
-        parameters=parameters,
+        parameters=_build_parameters(),
     )
 
     assert result == {"result": "success"}

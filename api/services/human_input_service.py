@@ -22,7 +22,7 @@ from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
-from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE, resume_app_execution
+from tasks.app_generate.workflow_execute_task import resume_app_execution
 
 
 class Form:
@@ -230,7 +230,6 @@ class HumanInputService:
             try:
                 resume_app_execution.apply_async(
                     kwargs={"payload": payload},
-                    queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE,
                 )
             except Exception:  # pragma: no cover
                 logger.exception("Failed to enqueue resume task for workflow run %s", workflow_run_id)
@@ -239,7 +238,7 @@ class HumanInputService:
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
 
     def _is_globally_expired(self, form: Form, *, now: datetime | None = None) -> bool:
-        global_timeout_seconds = dify_config.HITL_GLOBAL_TIMEOUT_SECONDS
+        global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
         if global_timeout_seconds <= 0:
             return False
         if form.workflow_run_id is None:

@@ -93,9 +93,9 @@ class AppExecutionConfig(BaseSettings):
         default=0,
     )
 
-    HITL_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+    HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
         description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
-        default=int(timedelta(days=3).total_seconds()),
+        default=int(timedelta(days=7).total_seconds()),
         ge=1,
     )
 
@@ -1180,6 +1180,16 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=0,
     )
 
+    # API token last_used_at batch update
+    ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK: bool = Field(
+        description="Enable periodic batch update of API token last_used_at timestamps",
+        default=True,
+    )
+    API_TOKEN_LAST_USED_UPDATE_INTERVAL: int = Field(
+        description="Interval in minutes for batch updating API token last_used_at (default 30)",
+        default=30,
+    )
+
     # Trigger provider refresh (simple version)
     ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
         description="Enable trigger provider refresh poller",
@@ -1333,6 +1343,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
         description="Maximum number of records to process in each batch",
         default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
+        description="Maximum interval in milliseconds between batches",
+        default=200,
     )
     SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
         description="Retention days for sandbox expired workflow_run records and message records",

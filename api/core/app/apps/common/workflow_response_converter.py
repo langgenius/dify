@@ -268,7 +268,7 @@ class WorkflowResponseConverter:
             data=WorkflowFinishStreamResponse.Data(
                 id=run_id,
                 workflow_id=workflow_id,
-                status=status.value,
+                status=status,
                 outputs=encoded_outputs,
                 error=error,
                 elapsed_time=elapsed_time,
@@ -346,7 +346,7 @@ class WorkflowResponseConverter:
                     paused_nodes=list(event.paused_nodes),
                     outputs=encoded_outputs,
                     reasons=pause_reasons,
-                    status=WorkflowExecutionStatus.PAUSED.value,
+                    status=WorkflowExecutionStatus.PAUSED,
                     created_at=int(started_at.timestamp()),
                     elapsed_time=elapsed_time,
                     total_tokens=graph_runtime_state.total_tokens,
@@ -422,7 +422,7 @@ class WorkflowResponseConverter:
             data=WorkflowFinishStreamResponse.Data(
                 id=run_id,
                 workflow_id=workflow_run.workflow_id,
-                status=workflow_run.status.value,
+                status=workflow_run.status,
                 outputs=encoded_outputs,
                 error=workflow_run.error,
                 elapsed_time=elapsed_time,
@@ -512,13 +512,13 @@ class WorkflowResponseConverter:
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
         if isinstance(event, QueueNodeSucceededEvent):
-            status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+            status = WorkflowNodeExecutionStatus.SUCCEEDED
             error_message = event.error
         elif isinstance(event, QueueNodeFailedEvent):
-            status = WorkflowNodeExecutionStatus.FAILED.value
+            status = WorkflowNodeExecutionStatus.FAILED
             error_message = event.error
         else:
-            status = WorkflowNodeExecutionStatus.EXCEPTION.value
+            status = WorkflowNodeExecutionStatus.EXCEPTION
             error_message = event.error
 
         return NodeFinishStreamResponse(
@@ -585,7 +585,7 @@ class WorkflowResponseConverter:
                 process_data_truncated=process_data_truncated,
                 outputs=outputs,
                 outputs_truncated=outputs_truncated,
-                status=WorkflowNodeExecutionStatus.RETRY.value,
+                status=WorkflowNodeExecutionStatus.RETRY,
                 error=event.error,
                 elapsed_time=elapsed_time,
                 execution_metadata=metadata,

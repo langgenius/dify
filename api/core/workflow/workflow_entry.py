@@ -144,11 +144,11 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        node_config = dict(workflow.get_node_config_by_id(node_id))
-        node_config_data = node_config.get("data", {})
+        node_config = workflow.get_node_config_by_id(node_id)
+        node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data.get("type"))
+        node_type = NodeType(node_config_data["type"])
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
