@@ -28,15 +28,16 @@ import { useToastContext } from '@/app/components/base/toast'
 import {
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -67,7 +68,7 @@ const Popup = () => {
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   const { notify } = useToastContext()
   const workflowStore = useWorkflowStore()
-  const { isAllowPublishAsCustomKnowledgePipelineTemplate } = useProviderContext()
+  const isAllowPublishAsCustomKnowledgePipelineTemplate = useProviderContextSelector(s => s.isAllowPublishAsCustomKnowledgePipelineTemplate)
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -151,7 +152,7 @@ const Popup = () => {
       if (confirmVisible)
         hideConfirm()
     }
-  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, showConfirm, publishedAt, confirmVisible, hidePublishing, showPublishing, hideConfirm, publishing])
+  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -206,15 +207,7 @@ const Popup = () => {
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [
-    pipelineId,
-    publishAsCustomizedPipeline,
-    showPublishingAsCustomizedPipeline,
-    hidePublishingAsCustomizedPipeline,
-    hidePublishAsKnowledgePipelineModal,
-    notify,
-    t,
-  ])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, notify, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
 
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
@@ -261,13 +254,7 @@ const Popup = () => {
               : (
                   <div className="flex gap-1">
                     <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                    <div className="flex gap-0.5">
-                      {PUBLISH_SHORTCUT.map(key => (
-                        <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
-                          {getKeyboardKeyNameBySystem(key)}
-                        </span>
-                      ))}
-                    </div>
+                    <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
                   </div>
                 )
           }

@@ -192,32 +192,33 @@ class AgentNode(Node[AgentNodeData]):
                 result[parameter_name] = None
                 continue
             agent_input = node_data.agent_parameters[parameter_name]
-            if agent_input.type == "variable":
-                variable = variable_pool.get(agent_input.value)  # type: ignore
-                if variable is None:
-                    raise AgentVariableNotFoundError(str(agent_input.value))
-                parameter_value = variable.value
-            elif agent_input.type in {"mixed", "constant"}:
-                # variable_pool.convert_template expects a string template,
-                # but if passing a dict, convert to JSON string first before rendering
-                try:
-                    if not isinstance(agent_input.value, str):
-                        parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
-                    else:
+            match agent_input.type:
+                case "variable":
+                    variable = variable_pool.get(agent_input.value)  # type: ignore
+                    if variable is None:
+                        raise AgentVariableNotFoundError(str(agent_input.value))
+                    parameter_value = variable.value
+                case "mixed" | "constant":
+                    # variable_pool.convert_template expects a string template,
+                    # but if passing a dict, convert to JSON string first before rendering
+                    try:
+                        if not isinstance(agent_input.value, str):
+                            parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                        else:
+                            parameter_value = str(agent_input.value)
+                    except TypeError:
                         parameter_value = str(agent_input.value)
-                except TypeError:
-                    parameter_value = str(agent_input.value)
-                segment_group = variable_pool.convert_template(parameter_value)
-                parameter_value = segment_group.log if for_log else segment_group.text
-                # variable_pool.convert_template returns a string,
-                # so we need to convert it back to a dictionary
-                try:
-                    if not isinstance(agent_input.value, str):
-                        parameter_value = json.loads(parameter_value)
-                except json.JSONDecodeError:
-                    parameter_value = parameter_value
-            else:
-                raise AgentInputTypeError(agent_input.type)
+                    segment_group = variable_pool.convert_template(parameter_value)
+                    parameter_value = segment_group.log if for_log else segment_group.text
+                    # variable_pool.convert_template returns a string,
+                    # so we need to convert it back to a dictionary
+                    try:
+                        if not isinstance(agent_input.value, str):
+                            parameter_value = json.loads(parameter_value)
+                    except json.JSONDecodeError:
+                        parameter_value = parameter_value
+                case _:
+                    raise AgentInputTypeError(agent_input.type)
             value = parameter_value
             if parameter.type == "array[tools]":
                 value = cast(list[dict[str, Any]], value)
@@ -374,12 +375,13 @@ class AgentNode(Node[AgentNodeData]):
         result: dict[str, Any] = {}
         for parameter_name in typed_node_data.agent_parameters:
             input = typed_node_data.agent_parameters[parameter_name]
-            if input.type in ["mixed", "constant"]:
-                selectors = VariableTemplateParser(str(input.value)).extract_variable_selectors()
-                for selector in selectors:
-                    result[selector.variable] = selector.value_selector
-            elif input.type == "variable":
-                result[parameter_name] = input.value
+            match input.type:
+                case "mixed" | "constant":
+                    selectors = VariableTemplateParser(str(input.value)).extract_variable_selectors()
+                    for selector in selectors:
+                        result[selector.variable] = selector.value_selector
+                case "variable":
+                    result[parameter_name] = input.value
 
         result = {node_id + "." + key: value for key, value in result.items()}
 
