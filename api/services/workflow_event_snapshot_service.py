@@ -134,7 +134,7 @@ def build_workflow_event_stream(
                         current_time = time.time()
                         if current_time - last_msg_time > idle_timeout:
                             logger.debug(
-                                "No workflow events received for %s seconds, keeping stream open",
+                                "Idle timeout of %s seconds reached, closing workflow event stream.",
                                 idle_timeout,
                             )
                             return
