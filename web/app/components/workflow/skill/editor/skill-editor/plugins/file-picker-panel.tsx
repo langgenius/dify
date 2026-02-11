@@ -181,7 +181,7 @@ const FilePickerPanel = ({
         ref={containerRef}
         className={cn(
           'max-h-[250px] px-2 pb-2',
-          !showHeader && 'max-h-[34vh] min-h-[34vh] pt-1',
+          !showHeader && 'pt-1',
           contentClassName,
         )}
       >
