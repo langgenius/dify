@@ -6,6 +6,7 @@
  */
 
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import { describe, expect, it } from 'vitest'
 
 // --- Factory ---
 const createFormData = (overrides?: Partial<CreateKnowledgeBaseReq>): CreateKnowledgeBaseReq => ({

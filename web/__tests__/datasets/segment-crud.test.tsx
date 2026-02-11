@@ -7,6 +7,7 @@
 
 import type { SegmentDetailModel } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useModalState } from '@/app/components/datasets/documents/detail/completed/hooks/use-modal-state'
 import { useSearchFilter } from '@/app/components/datasets/documents/detail/completed/hooks/use-search-filter'
 import { useSegmentSelection } from '@/app/components/datasets/documents/detail/completed/hooks/use-segment-selection'

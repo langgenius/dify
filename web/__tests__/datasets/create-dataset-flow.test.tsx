@@ -8,6 +8,7 @@
 import type { CustomFile } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
@@ -69,7 +70,7 @@ describe('Create Dataset Flow - Cross-Step Data Contract', () => {
       expect(result.current.segmentIdentifier).toBe(DEFAULT_SEGMENT_IDENTIFIER)
       expect(result.current.maxChunkLength).toBe(DEFAULT_MAXIMUM_CHUNK_LENGTH)
       expect(result.current.overlap).toBe(DEFAULT_OVERLAP)
-      expect(result.current.segmentationType).toBe(ProcessMode.general) // 'custom'
+      expect(result.current.segmentationType).toBe(ProcessMode.general)
     })
 
     it('should produce valid process rule for general chunking', () => {
