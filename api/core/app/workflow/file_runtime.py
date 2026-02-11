@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+
 from configs import dify_config
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.signature import sign_tool_file
@@ -34,7 +36,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def http_get(self, url: str, *, follow_redirects: bool = True) -> HttpResponseProtocol:
         return ssrf_proxy.get(url, follow_redirects=follow_redirects)
 
-    def storage_load(self, path: str, *, stream: bool = False):
+    def storage_load(self, path: str, *, stream: bool = False) -> bytes | Generator:
         return storage.load(path, stream=stream)
 
     def sign_tool_file(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
