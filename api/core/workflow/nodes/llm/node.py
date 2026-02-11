@@ -41,6 +41,7 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageContentUnionTypes,
     PromptMessageRole,
+    PromptMessageTool,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
@@ -56,7 +57,6 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import Sandbox
 from core.sandbox.bash.session import SandboxBashSession
-from core.sandbox.entities.config import AppAssets
 from core.skill.constants import SkillAttrs
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
@@ -552,7 +552,8 @@ class LLMNode(Node[LLMNodeData]):
             # Remove ToolPromptMessages whose tool_call_id was orphaned
             if orphaned_tc_ids:
                 current_prompt_messages = [
-                    msg for msg in current_prompt_messages
+                    msg
+                    for msg in current_prompt_messages
                     if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
                 ]
 
@@ -586,7 +587,8 @@ class LLMNode(Node[LLMNodeData]):
                         )
             if orphaned_tc_ids:
                 current_prompt_messages = [
-                    msg for msg in current_prompt_messages
+                    msg
+                    for msg in current_prompt_messages
                     if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
                 ]
 
@@ -677,8 +679,8 @@ class LLMNode(Node[LLMNodeData]):
         has_content = False
 
         collected_structured_output = None  # Collect structured_output from streaming chunks
-        collected_tool_calls = []
-        current_tool_call = None
+        collected_tool_calls: list[dict[str, Any]] = []
+        current_tool_call: dict[str, Any] | None = None
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
@@ -1335,7 +1337,6 @@ class LLMNode(Node[LLMNodeData]):
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
                 files=context_dict.get("files"),
-                summary=context_dict.get("summary"),
             )
 
             return source
@@ -1692,7 +1693,6 @@ class LLMNode(Node[LLMNodeData]):
                         bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
                         file_tree=file_tree,
-                        base_path=AppAssets.PATH,
                     )
                     result_text = skill_entry.content
 
@@ -1731,7 +1731,6 @@ class LLMNode(Node[LLMNodeData]):
                         bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
                         file_tree=file_tree,
-                        base_path=AppAssets.PATH,
                     )
                     plain_text = skill_entry.content
 
@@ -2009,7 +2008,6 @@ class LLMNode(Node[LLMNodeData]):
                     bundle=bundle,
                     document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}),
                     file_tree=file_tree,
-                    base_path=AppAssets.PATH,
                 )
                 tool_deps_list.append(skill_entry.tools)
 

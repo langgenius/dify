@@ -177,17 +177,21 @@ class TokenBufferMemory(BaseMemory):
                         # Find end: next "[call_" or end of string
                         next_bracket = query_text.find("\n[call_", start)
                         output = query_text[start:next_bracket] if next_bracket != -1 else query_text[start:]
-                        prompt_messages.append(ToolPromptMessage(
-                            content=output.strip(),
-                            tool_call_id=tc_id,
-                        ))
+                        prompt_messages.append(
+                            ToolPromptMessage(
+                                content=output.strip(),
+                                tool_call_id=tc_id,
+                            )
+                        )
                         tool_msgs_added = True
                     else:
                         # Fallback: use entire query as output for this tool call
-                        prompt_messages.append(ToolPromptMessage(
-                            content=query_text,
-                            tool_call_id=tc_id,
-                        ))
+                        prompt_messages.append(
+                            ToolPromptMessage(
+                                content=query_text,
+                                tool_call_id=tc_id,
+                            )
+                        )
                         tool_msgs_added = True
                 if not tool_msgs_added:
                     # Fallback: emit as regular user message

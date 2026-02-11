@@ -125,15 +125,11 @@ class SkillCompiler:
         parsed_metadata: dict[str, SkillMetadata],
         file_tree: AppAssetFileTree,
     ) -> SkillBundleEntry:
-        all_tools, all_files = self._compute_transitive_closure(
-            document.skill_id, bundle, parsed_metadata
-        )
+        all_tools, all_files = self._compute_transitive_closure(document.skill_id, bundle, parsed_metadata)
 
         current_node = file_tree.get(document.skill_id)
 
-        resolved_content = self._resolve_content(
-            document.content, metadata, current_node, file_tree
-        )
+        resolved_content = self._resolve_content(document.content, metadata, current_node, file_tree)
 
         content_digest = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
 

@@ -77,8 +77,7 @@ class AttrMapTypeError(TypeError):
         self.expected_type = expected_type
         self.actual_type = actual_type
         super().__init__(
-            f"Attribute '{key.name}' expects type '{expected_type.__name__}', "
-            f"got '{actual_type.__name__}'"
+            f"Attribute '{key.name}' expects type '{expected_type.__name__}', got '{actual_type.__name__}'"
         )
 
 

@@ -473,7 +473,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             )
 
         if event.node_type == NodeType.LLM and event.outputs and "tool_calls" in event.outputs:
-            self._tool_calls.extend(event.outputs["tool_calls"])
+            tool_calls = event.outputs["tool_calls"]
+            if isinstance(tool_calls, list):
+                self._tool_calls.extend(tool_calls)
 
         node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,

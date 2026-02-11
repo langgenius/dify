@@ -172,15 +172,9 @@ class TestSkillCompilerTransitiveDependencies:
         # given
         # skill-a -> skill-b -> skill-c
         # each has its own tool
-        tool_a = ToolReference(
-            uuid="tool-a", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_a"
-        )
-        tool_b = ToolReference(
-            uuid="tool-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b"
-        )
-        tool_c = ToolReference(
-            uuid="tool-c", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_c"
-        )
+        tool_a = ToolReference(uuid="tool-a", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_a")
+        tool_b = ToolReference(uuid="tool-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b")
+        tool_c = ToolReference(uuid="tool-c", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_c")
 
         doc_a = SkillDocument(
             skill_id="skill-a",
@@ -426,9 +420,7 @@ class TestSkillCompilerComplexScenarios:
         # skill-b   skill-c
         #    \       /
         #     skill-d (has tool)
-        tool_d = ToolReference(
-            uuid="tool-d", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_d"
-        )
+        tool_d = ToolReference(uuid="tool-d", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_d")
 
         doc_a = SkillDocument(
             skill_id="skill-a",
@@ -497,15 +489,9 @@ class TestSkillCompilerComplexScenarios:
         #    \       /
         #     skill-d
         #     (tool_d)
-        tool_b = ToolReference(
-            uuid="tool-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b"
-        )
-        tool_c = ToolReference(
-            uuid="tool-c", type=ToolProviderType.API, provider="q", tool_name="tool_c"
-        )
-        tool_d = ToolReference(
-            uuid="tool-d", type=ToolProviderType.WORKFLOW, provider="r", tool_name="tool_d"
-        )
+        tool_b = ToolReference(uuid="tool-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b")
+        tool_c = ToolReference(uuid="tool-c", type=ToolProviderType.API, provider="q", tool_name="tool_c")
+        tool_d = ToolReference(uuid="tool-d", type=ToolProviderType.WORKFLOW, provider="r", tool_name="tool_d")
 
         doc_a = SkillDocument(
             skill_id="skill-a",
@@ -585,8 +571,14 @@ class TestSkillCompilerComplexScenarios:
         file_image = AppAssetNode.create_file("file-image", "image.png", parent_id="folder-assets")
 
         tree = create_file_tree(
-            folder_root, folder_helpers, folder_deep, folder_assets,
-            file_main, file_helper, file_deep, file_image,
+            folder_root,
+            folder_helpers,
+            folder_deep,
+            folder_assets,
+            file_main,
+            file_helper,
+            file_deep,
+            file_image,
         )
 
         doc_main = SkillDocument(
@@ -643,17 +635,10 @@ class TestSkillCompilerComplexScenarios:
             )
             for i in range(10)
         }
-        files = [
-            FileReference(source="app", asset_id=f"file-{i}")
-            for i in range(5)
-        ]
+        files = [FileReference(source="app", asset_id=f"file-{i}") for i in range(5)]
 
-        tool_refs_in_content = " ".join(
-            f"§[tool].[provider-{i}].[tool_name_{i}].[tool-{i}]§" for i in range(10)
-        )
-        file_refs_in_content = " ".join(
-            f"§[file].[app].[file-{i}]§" for i in range(5)
-        )
+        tool_refs_in_content = " ".join(f"§[tool].[provider-{i}].[tool_name_{i}].[tool-{i}]§" for i in range(10))
+        file_refs_in_content = " ".join(f"§[file].[app].[file-{i}]§" for i in range(5))
 
         doc = SkillDocument(
             skill_id="skill-main",
@@ -973,9 +958,7 @@ class TestSkillCompilerIncrementalRecompile:
             AppAssetNode.create_file("r-leaf", "r-leaf.md"),
         )
         compiler = SkillCompiler()
-        artifact_set = compiler.compile_all(
-            [doc_root, doc_left, doc_right, doc_l_leaf, doc_r_leaf], tree, "assets-1"
-        )
+        artifact_set = compiler.compile_all([doc_root, doc_left, doc_right, doc_l_leaf, doc_r_leaf], tree, "assets-1")
 
         # when - l-leaf changes
         affected_by_l_leaf = artifact_set.recompile_group_ids("l-leaf")
