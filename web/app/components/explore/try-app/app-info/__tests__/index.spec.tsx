@@ -1,29 +1,11 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import AppInfo from './index'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'types.advanced': 'Advanced',
-        'types.chatbot': 'Chatbot',
-        'types.agent': 'Agent',
-        'types.workflow': 'Workflow',
-        'types.completion': 'Completion',
-        'tryApp.createFromSampleApp': 'Create from Sample',
-        'tryApp.category': 'Category',
-        'tryApp.requirements': 'Requirements',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
+import AppInfo from '../index'
 
 const mockUseGetRequirements = vi.fn()
 
-vi.mock('./use-get-requirements', () => ({
+vi.mock('../use-get-requirements', () => ({
   default: (...args: unknown[]) => mockUseGetRequirements(...args),
 }))
 
@@ -118,7 +100,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('ADVANCED')).toBeInTheDocument()
+      expect(screen.getByText('APP.TYPES.ADVANCED')).toBeInTheDocument()
     })
 
     it('displays CHATBOT for chat mode', () => {
@@ -133,7 +115,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('CHATBOT')).toBeInTheDocument()
+      expect(screen.getByText('APP.TYPES.CHATBOT')).toBeInTheDocument()
     })
 
     it('displays AGENT for agent-chat mode', () => {
@@ -148,7 +130,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('AGENT')).toBeInTheDocument()
+      expect(screen.getByText('APP.TYPES.AGENT')).toBeInTheDocument()
     })
 
     it('displays WORKFLOW for workflow mode', () => {
@@ -163,7 +145,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('WORKFLOW')).toBeInTheDocument()
+      expect(screen.getByText('APP.TYPES.WORKFLOW')).toBeInTheDocument()
     })
 
     it('displays COMPLETION for completion mode', () => {
@@ -178,7 +160,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('COMPLETION')).toBeInTheDocument()
+      expect(screen.getByText('APP.TYPES.COMPLETION')).toBeInTheDocument()
     })
   })
 
@@ -214,7 +196,6 @@ describe('AppInfo', () => {
         />,
       )
 
-      // Check that there's no element with the description class that has empty content
       const descriptionElements = container.querySelectorAll('.system-sm-regular.mt-\\[14px\\]')
       expect(descriptionElements.length).toBe(0)
     })
@@ -233,7 +214,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('Create from Sample')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.createFromSampleApp')).toBeInTheDocument()
     })
 
     it('calls onCreate when button is clicked', () => {
@@ -248,7 +229,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText('Create from Sample'))
+      fireEvent.click(screen.getByText('explore.tryApp.createFromSampleApp'))
       expect(mockOnCreate).toHaveBeenCalledTimes(1)
     })
   })
@@ -267,7 +248,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('Category')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.category')).toBeInTheDocument()
       expect(screen.getByText('AI Assistant')).toBeInTheDocument()
     })
 
@@ -283,7 +264,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.queryByText('Category')).not.toBeInTheDocument()
+      expect(screen.queryByText('explore.tryApp.category')).not.toBeInTheDocument()
     })
   })
 
@@ -307,7 +288,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.getByText('Requirements')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.requirements')).toBeInTheDocument()
       expect(screen.getByText('OpenAI GPT-4')).toBeInTheDocument()
       expect(screen.getByText('Google Search')).toBeInTheDocument()
     })
@@ -328,7 +309,7 @@ describe('AppInfo', () => {
         />,
       )
 
-      expect(screen.queryByText('Requirements')).not.toBeInTheDocument()
+      expect(screen.queryByText('explore.tryApp.requirements')).not.toBeInTheDocument()
     })
 
     it('renders requirement icons with correct background image', () => {

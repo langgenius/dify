@@ -1,7 +1,7 @@
 import type { Banner } from '@/models/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BannerItem } from './banner-item'
+import { BannerItem } from '../banner-item'
 
 const mockScrollTo = vi.fn()
 const mockSlideNodes = vi.fn()
@@ -13,17 +13,6 @@ vi.mock('@/app/components/base/carousel', () => ({
       slideNodes: mockSlideNodes,
     },
     selectedIndex: 0,
-  }),
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'banner.viewMore': 'View More',
-      }
-      return translations[key] || key
-    },
   }),
 }))
 
@@ -40,14 +29,11 @@ const createMockBanner = (overrides: Partial<Banner> = {}): Banner => ({
   ...overrides,
 } as Banner)
 
-// Mock ResizeObserver methods declared at module level and initialized
 const mockResizeObserverObserve = vi.fn()
 const mockResizeObserverDisconnect = vi.fn()
 
-// Create mock class outside of describe block for proper hoisting
 class MockResizeObserver {
   constructor(_callback: ResizeObserverCallback) {
-    // Store callback if needed
   }
 
   observe(...args: Parameters<ResizeObserver['observe']>) {
@@ -59,7 +45,6 @@ class MockResizeObserver {
   }
 
   unobserve() {
-    // No-op
   }
 }
 
@@ -72,7 +57,6 @@ describe('BannerItem', () => {
 
     vi.stubGlobal('ResizeObserver', MockResizeObserver)
 
-    // Mock window.innerWidth for responsive tests
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -147,7 +131,7 @@ describe('BannerItem', () => {
         />,
       )
 
-      expect(screen.getByText('View More')).toBeInTheDocument()
+      expect(screen.getByText('explore.banner.viewMore')).toBeInTheDocument()
     })
   })
 
@@ -257,7 +241,6 @@ describe('BannerItem', () => {
         />,
       )
 
-      // Component should render without issues
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
 
@@ -271,7 +254,6 @@ describe('BannerItem', () => {
         />,
       )
 
-      // Component should render with isPaused
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
   })
@@ -320,7 +302,6 @@ describe('BannerItem', () => {
     })
 
     it('sets maxWidth when window width is below breakpoint', () => {
-      // Set window width below RESPONSIVE_BREAKPOINT (1200)
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
@@ -335,12 +316,10 @@ describe('BannerItem', () => {
         />,
       )
 
-      // Component should render and apply responsive styles
       expect(screen.getByText('Test Banner Title')).toBeInTheDocument()
     })
 
     it('applies responsive styles when below breakpoint', () => {
-      // Set window width below RESPONSIVE_BREAKPOINT (1200)
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
@@ -355,8 +334,7 @@ describe('BannerItem', () => {
         />,
       )
 
-      // The component should render even with responsive mode
-      expect(screen.getByText('View More')).toBeInTheDocument()
+      expect(screen.getByText('explore.banner.viewMore')).toBeInTheDocument()
     })
   })
 
@@ -432,8 +410,6 @@ describe('BannerItem', () => {
         />,
       )
 
-      // With selectedIndex=0 and 3 slides, nextIndex should be 1
-      // The second indicator button should show the "next slide" state
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(3)
     })

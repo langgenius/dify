@@ -3,7 +3,7 @@ import type { Banner as BannerType } from '@/models/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Banner from './banner'
+import Banner from '../banner'
 
 const mockUseGetBanners = vi.fn()
 
@@ -53,7 +53,7 @@ vi.mock('@/app/components/base/carousel', () => ({
   }),
 }))
 
-vi.mock('./banner-item', () => ({
+vi.mock('../banner-item', () => ({
   BannerItem: ({ banner, autoplayDelay, isPaused }: {
     banner: BannerType
     autoplayDelay: number
@@ -105,7 +105,6 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      // Loading component renders a spinner
       const loadingWrapper = document.querySelector('[style*="min-height"]')
       expect(loadingWrapper).toBeInTheDocument()
     })
@@ -266,7 +265,6 @@ describe('Banner', () => {
 
       const carousel = screen.getByTestId('carousel')
 
-      // Enter and then leave
       fireEvent.mouseEnter(carousel)
       fireEvent.mouseLeave(carousel)
 
@@ -285,7 +283,6 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      // Trigger resize event
       act(() => {
         window.dispatchEvent(new Event('resize'))
       })
@@ -303,12 +300,10 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      // Trigger resize event
       act(() => {
         window.dispatchEvent(new Event('resize'))
       })
 
-      // Wait for debounce delay (50ms)
       act(() => {
         vi.advanceTimersByTime(50)
       })
@@ -326,31 +321,25 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      // Trigger first resize event
       act(() => {
         window.dispatchEvent(new Event('resize'))
       })
 
-      // Wait partial time
       act(() => {
         vi.advanceTimersByTime(30)
       })
 
-      // Trigger second resize event
       act(() => {
         window.dispatchEvent(new Event('resize'))
       })
 
-      // Wait another 30ms (total 60ms from second resize but only 30ms after)
       act(() => {
         vi.advanceTimersByTime(30)
       })
 
-      // Should still be paused (debounce resets)
       let bannerItem = screen.getByTestId('banner-item')
       expect(bannerItem).toHaveAttribute('data-is-paused', 'true')
 
-      // Wait remaining time
       act(() => {
         vi.advanceTimersByTime(20)
       })
@@ -388,7 +377,6 @@ describe('Banner', () => {
 
       const { unmount } = render(<Banner />)
 
-      // Trigger resize to create timer
       act(() => {
         window.dispatchEvent(new Event('resize'))
       })
@@ -462,10 +450,8 @@ describe('Banner', () => {
 
       const { rerender } = render(<Banner />)
 
-      // Re-render with same props
       rerender(<Banner />)
 
-      // Component should still be present (memo doesn't break rendering)
       expect(screen.getByTestId('carousel')).toBeInTheDocument()
     })
   })
