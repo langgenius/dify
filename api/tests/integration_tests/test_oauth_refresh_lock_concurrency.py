@@ -8,7 +8,9 @@ condition where refresh token rotation (e.g., QuickBooks) causes invalid_grant.
 
 Requirements:
     - Redis running at localhost:6379 (or REDIS_HOST env var)
-    - Run with: uv run --project api python -m pytest api/tests/integration_tests/test_oauth_refresh_lock_concurrency.py -v -o "addopts=" -s
+    - Run with: uv run --project api python -m pytest \
+      api/tests/integration_tests/test_oauth_refresh_lock_concurrency.py \
+      -v -o "addopts=" -s
 
 Simulated scenario:
     1. A BuiltinToolProvider row exists with expires_at in the past
@@ -19,17 +21,17 @@ Simulated scenario:
     4. Expected: only 1 thread refreshes; the rest read from DB
 """
 
-import json
+import operator
 import os
 import threading
 import time
-from unittest.mock import MagicMock, patch
 
 import redis
 
 # ---------------------------------------------------------------------------
 # Simulated token rotation state
 # ---------------------------------------------------------------------------
+
 
 class TokenRotationSimulator:
     """Simulates an OAuth provider with refresh token rotation (like QuickBooks).
@@ -235,19 +237,19 @@ def test_concurrent_oauth_refresh_with_lock():
     print(f"Simulator invalid_grant count: {simulator.invalid_grant_count}")
     print(f"DB refresh count: {db_refresh_count}")
 
-    print(f"\nFinal DB state:")
+    print("\nFinal DB state:")
     print(f"  access_token: {db_state['access_token']}")
     print(f"  refresh_token: {db_state['refresh_token']}")
     print(f"  expires_at: {db_state['expires_at']} (now: {int(time.time())})")
 
-    print(f"\nPer-thread results:")
-    for r in sorted(thread_results, key=lambda x: x["thread"]):
+    print("\nPer-thread results:")
+    for r in sorted(thread_results, key=operator.itemgetter("thread")):
         extra = ""
         if r["action"] == "read_from_db":
             extra = f", retries={r.get('retries')}, got_fresh={r.get('got_fresh')}, read_at={r.get('read_at')}"
         print(f"  {r['thread']}: action={r['action']}{extra}, error={r.get('error')}")
 
-    print(f"\nSimulator call log:")
+    print("\nSimulator call log:")
     for entry in simulator.call_log:
         print(f"  {entry}")
 
@@ -285,11 +287,11 @@ def test_concurrent_oauth_refresh_with_lock():
     fresh_waiters = [r for r in waiters if r.get("got_fresh")]
     stale_waiters = [r for r in waiters if not r.get("got_fresh")]
 
-    print(f"\n✓ ALL ASSERTIONS PASSED")
-    print(f"  - Only 1 refresh call was made (lock prevented race condition)")
-    print(f"  - 0 invalid_grant errors")
-    print(f"  - DB updated exactly once")
-    print(f"  - All threads completed without errors")
+    print("\n✓ ALL ASSERTIONS PASSED")
+    print("  - Only 1 refresh call was made (lock prevented race condition)")
+    print("  - 0 invalid_grant errors")
+    print("  - DB updated exactly once")
+    print("  - All threads completed without errors")
     print(f"  - {len(fresh_waiters)}/{len(waiters)} waiting threads got fresh credentials via retry")
     if stale_waiters:
         print(f"  - {len(stale_waiters)} threads timed out (will use stale creds as fallback)")
@@ -378,11 +380,11 @@ def test_concurrent_oauth_refresh_without_lock_shows_race():
     print(f"Simulator success count: {simulator.success_count}")
     print(f"Simulator invalid_grant count: {simulator.invalid_grant_count}")
 
-    print(f"\nPer-thread results:")
-    for r in sorted(thread_results, key=lambda x: x["thread"]):
+    print("\nPer-thread results:")
+    for r in sorted(thread_results, key=operator.itemgetter("thread")):
         print(f"  {r['thread']}: action={r['action']}")
 
-    print(f"\nSimulator call log:")
+    print("\nSimulator call log:")
     for entry in simulator.call_log:
         print(f"  {entry}")
 
@@ -397,7 +399,7 @@ def test_concurrent_oauth_refresh_without_lock_shows_race():
     )
 
     invalid_grants = [r for r in thread_results if r["action"] == "invalid_grant"]
-    print(f"\n✓ RACE CONDITION DEMONSTRATED")
+    print("\n✓ RACE CONDITION DEMONSTRATED")
     print(f"  - {simulator.call_count} refresh calls (should be 1)")
     print(f"  - {simulator.invalid_grant_count} invalid_grant errors")
     print(f"  - {len(invalid_grants)}/{NUM_THREADS} threads hit invalid_grant")

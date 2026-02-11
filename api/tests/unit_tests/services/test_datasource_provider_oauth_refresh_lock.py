@@ -2,17 +2,22 @@
 
 These tests verify the non-blocking Redis lock + double-check pattern that
 prevents concurrent OAuth token refresh race conditions.
+
+The lock uses ``with redis_client.lock(key, timeout=30, blocking_timeout=0):``
+context manager; when the lock cannot be acquired, ``LockError`` is raised and
+the fallback polling path runs.
 """
 
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
+from redis.exceptions import LockError
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_datasource_provider(
     *,
@@ -64,6 +69,24 @@ def _make_mock_session(datasource_provider):
     return mock_session
 
 
+def _make_redis_lock(*, acquired=True):
+    """Create a mock redis lock that works as a context manager.
+
+    When acquired=True, the context manager enters normally.
+    When acquired=False, __enter__ raises LockError (simulating blocking_timeout=0).
+    """
+    mock_lock = MagicMock()
+    if acquired:
+        mock_lock.__enter__ = MagicMock(return_value=mock_lock)
+        mock_lock.__exit__ = MagicMock(return_value=False)
+    else:
+        mock_lock.__enter__ = MagicMock(
+            side_effect=LockError("Failed to acquire lock"),
+        )
+        mock_lock.__exit__ = MagicMock(return_value=False)
+    return mock_lock
+
+
 # ---------------------------------------------------------------------------
 # Test: Lock acquired → credentials refreshed
 # ---------------------------------------------------------------------------
@@ -101,9 +124,8 @@ class TestDatasourceProviderOAuthRefreshLockAcquired:
         # db.session.refresh keeps expired (double-check passes)
         mock_session.refresh.side_effect = lambda obj: None
 
-        # Lock acquired
-        mock_lock = MagicMock()
-        mock_lock.acquire.return_value = True
+        # Lock as context manager (acquired)
+        mock_lock = _make_redis_lock(acquired=True)
         mock_redis.lock.return_value = mock_lock
 
         # OAuth refresh
@@ -148,8 +170,8 @@ class TestDatasourceProviderOAuthRefreshLockAcquired:
 
         # Assert
         mock_redis.lock.assert_called_once()
-        mock_lock.acquire.assert_called_once_with(blocking=False)
-        mock_lock.release.assert_called_once()
+        mock_lock.__enter__.assert_called_once()
+        mock_lock.__exit__.assert_called_once()
         mock_oauth.refresh_credentials.assert_called_once()
         mock_session.commit.assert_called_once()
         assert dp.expires_at == new_expires_at
@@ -190,9 +212,8 @@ class TestDatasourceProviderOAuthRefreshDoubleCheck:
 
         mock_session.refresh.side_effect = _fake_refresh
 
-        # Lock acquired
-        mock_lock = MagicMock()
-        mock_lock.acquire.return_value = True
+        # Lock as context manager (acquired)
+        mock_lock = _make_redis_lock(acquired=True)
         mock_redis.lock.return_value = mock_lock
 
         svc = DatasourceProviderService()
@@ -213,19 +234,19 @@ class TestDatasourceProviderOAuthRefreshDoubleCheck:
             )
 
         # Assert
-        mock_lock.acquire.assert_called_once_with(blocking=False)
-        mock_lock.release.assert_called_once()
+        mock_lock.__enter__.assert_called_once()
+        mock_lock.__exit__.assert_called_once()
         mock_session.refresh.assert_called_with(dp)
         # No commit since double-check found fresh credentials
         mock_session.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
-# Test: Lock NOT acquired → read from DB
+# Test: Lock NOT acquired → poll DB with exponential backoff
 # ---------------------------------------------------------------------------
 
 class TestDatasourceProviderOAuthRefreshLockNotAcquired:
-    """When the lock is not acquired, retry polling DB until credentials are fresh."""
+    """When the lock is not acquired (LockError), retry polling DB until fresh."""
 
     @patch("services.datasource_provider_service.time")
     @patch("services.datasource_provider_service.redis_client")
@@ -256,13 +277,13 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
         mock_time.time.return_value = now
         mock_time.sleep = MagicMock()
 
-        # Lock NOT acquired
-        mock_lock = MagicMock()
-        mock_lock.acquire.return_value = False
+        # Lock NOT acquired (context manager raises LockError)
+        mock_lock = _make_redis_lock(acquired=False)
         mock_redis.lock.return_value = mock_lock
 
         # Simulate: first session.refresh still expired, second one is fresh
         call_count = 0
+
         def _fake_refresh(obj):
             nonlocal call_count
             call_count += 1
@@ -288,9 +309,7 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
                 credential_id="dp-001",
             )
 
-        # Assert
-        mock_lock.acquire.assert_called_once_with(blocking=False)
-        mock_lock.release.assert_not_called()
+        # Assert: LockError path was taken (no __exit__ since __enter__ raised)
         # time.sleep was called for backoff
         assert mock_time.sleep.call_count >= 1
         # DB was polled multiple times
@@ -303,7 +322,7 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
 # ---------------------------------------------------------------------------
 
 class TestDatasourceProviderOAuthRefreshLockRelease:
-    """Lock should always be released, even when refresh raises an exception."""
+    """Lock should always be released (via context manager __exit__) on exception."""
 
     @patch("services.datasource_provider_service.redis_client")
     @patch("services.datasource_provider_service.db")
@@ -316,7 +335,7 @@ class TestDatasourceProviderOAuthRefreshLockRelease:
         mock_db,
         mock_redis,
     ):
-        """Lock must be released in finally block even if refresh raises."""
+        """Lock must be released via context manager even if refresh raises."""
         from services.datasource_provider_service import DatasourceProviderService
 
         # Arrange
@@ -331,8 +350,7 @@ class TestDatasourceProviderOAuthRefreshLockRelease:
 
         mock_session.refresh.side_effect = lambda obj: None
 
-        mock_lock = MagicMock()
-        mock_lock.acquire.return_value = True
+        mock_lock = _make_redis_lock(acquired=True)
         mock_redis.lock.return_value = mock_lock
 
         mock_user = MagicMock()
@@ -370,8 +388,8 @@ class TestDatasourceProviderOAuthRefreshLockRelease:
                     credential_id="dp-001",
                 )
 
-        # Lock must still be released
-        mock_lock.release.assert_called_once()
+        # Context manager ensures __exit__ is called even on exception
+        mock_lock.__exit__.assert_called_once()
         mock_session.commit.assert_not_called()
 
 

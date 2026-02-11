@@ -8,6 +8,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
 
 import sqlalchemy as sa
+from redis.exceptions import LockError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
@@ -269,9 +270,8 @@ class ToolManager:
             # check if the credentials is expired
             if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
                 lock_key = f"oauth_token_refresh_lock:{tenant_id}_{provider_id}_{builtin_provider.id}"
-                lock = redis_client.lock(lock_key, timeout=30)
-                if lock.acquire(blocking=False):
-                    try:
+                try:
+                    with redis_client.lock(lock_key, timeout=30, blocking_timeout=0):
                         # Use an explicit session to ensure commit persistence in
                         # Celery worker and gevent greenlet contexts where the
                         # Flask-SQLAlchemy scoped db.session does not reliably persist.
@@ -316,9 +316,7 @@ class ToolManager:
                                 cache.delete()
                             elif bp is not None:
                                 decrypted_credentials = encrypter.decrypt(bp.credentials)
-                    finally:
-                        lock.release()
-                else:
+                except LockError:
                     # another request is refreshing; poll DB until credentials are fresh
                     backoff = 0.1
                     bp = None

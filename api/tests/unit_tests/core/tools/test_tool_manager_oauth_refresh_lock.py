@@ -14,13 +14,14 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from redis.exceptions import LockError
 
 from core.tools.plugin_tool.provider import PluginToolProviderController
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_builtin_provider(*, expires_at: int = -1):
     provider = MagicMock()
@@ -81,12 +82,27 @@ def _make_mock_session(get_return_value=None, get_side_effect=None):
     return mock_Session_cls, mock_session
 
 
+def _make_redis_lock(*, acquired=True):
+    """Create a mock redis lock that works as a context manager.
+
+    When acquired=True, the context manager enters normally.
+    When acquired=False, __enter__ raises LockError (simulating blocking_timeout=0).
+    """
+    mock_lock = MagicMock()
+    if acquired:
+        mock_lock.__enter__ = MagicMock(return_value=mock_lock)
+        mock_lock.__exit__ = MagicMock(return_value=False)
+    else:
+        mock_lock.__enter__ = MagicMock(side_effect=LockError("Failed to acquire lock"))
+        mock_lock.__exit__ = MagicMock(return_value=False)
+    return mock_lock
+
+
 def _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider,
                   bp, enc, cache, lock_acquired=True):
     mock_db.session.scalar.return_value = bp
     mock_create_encrypter.return_value = (enc, cache)
-    mock_lock = MagicMock()
-    mock_lock.acquire.return_value = lock_acquired
+    mock_lock = _make_redis_lock(acquired=lock_acquired)
     mock_redis.lock.return_value = mock_lock
     mock_get_provider.return_value = _make_provider_controller()
     return mock_lock
@@ -124,14 +140,14 @@ class TestOAuthRefreshLockAcquired:
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_lock_acquired_refreshes_credentials(
         self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, _,
+        mock_create_encrypter, mock_is_uuid, mock_check_credential,
     ):
         expired_at = int(time.time()) - 100
         new_expires_at = int(time.time()) + 3600
         bp = _make_builtin_provider(expires_at=expired_at)
         enc, cache = _make_encrypter_and_cache()
-        mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                                  mock_get_provider, bp, enc, cache, lock_acquired=True)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter,
+                      mock_get_provider, bp, enc, cache, lock_acquired=True)
 
         # session.get() returns bp still expired (double-check confirms refresh needed)
         bp_in_session = _make_builtin_provider(expires_at=expired_at)
@@ -152,8 +168,6 @@ class TestOAuthRefreshLockAcquired:
             mock_oauth_cls.return_value = mock_oauth
             _call_get_tool_runtime()
 
-        mock_lock.acquire.assert_called_once_with(blocking=False)
-        mock_lock.release.assert_called_once()
         mock_oauth.refresh_credentials.assert_called_once()
         mock_session.commit.assert_called_once()
         assert bp_in_session.expires_at == new_expires_at
@@ -173,14 +187,14 @@ class TestOAuthRefreshDoubleCheck:
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_double_check_skips_refresh(
         self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, _,
+        mock_create_encrypter, mock_is_uuid, mock_check_credential,
     ):
         expired_at = int(time.time()) - 100
         fresh_at = int(time.time()) + 3600
         bp = _make_builtin_provider(expires_at=expired_at)
         enc, cache = _make_encrypter_and_cache()
-        mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                                  mock_get_provider, bp, enc, cache, lock_acquired=True)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter,
+                      mock_get_provider, bp, enc, cache, lock_acquired=True)
 
         # session.get() returns bp already refreshed by another thread
         bp_fresh = _make_builtin_provider(expires_at=fresh_at)
@@ -193,8 +207,6 @@ class TestOAuthRefreshDoubleCheck:
         ):
             _call_get_tool_runtime()
 
-        mock_lock.acquire.assert_called_once_with(blocking=False)
-        mock_lock.release.assert_called_once()
         mock_session.commit.assert_not_called()
 
 
@@ -212,7 +224,7 @@ class TestOAuthRefreshLockNotAcquired:
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_lock_not_acquired_polls_db_until_fresh(
         self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, _, mock_time,
+        mock_create_encrypter, mock_is_uuid, mock_check_credential, mock_time,
     ):
         """Poll DB with backoff; break early when credentials become fresh."""
         now = int(time.time())
@@ -221,11 +233,12 @@ class TestOAuthRefreshLockNotAcquired:
         mock_time.time.return_value = now
         mock_time.sleep = MagicMock()
 
-        mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                                  mock_get_provider, bp, enc, cache, lock_acquired=False)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter,
+                      mock_get_provider, bp, enc, cache, lock_acquired=False)
 
         # Simulate: 2nd session.get() returns fresh credentials
         call_count = 0
+
         def _get_side_effect(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -242,15 +255,13 @@ class TestOAuthRefreshLockNotAcquired:
         ):
             _call_get_tool_runtime()
 
-        mock_lock.acquire.assert_called_once_with(blocking=False)
-        mock_lock.release.assert_not_called()
         assert mock_time.sleep.call_count >= 1
         assert mock_session.get.call_count >= 2
         mock_session.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
-# Test: Lock released even on exception
+# Test: Lock acquired, exception during refresh → lock auto-released
 # ---------------------------------------------------------------------------
 
 class TestOAuthRefreshLockRelease:
@@ -262,7 +273,7 @@ class TestOAuthRefreshLockRelease:
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_lock_released_on_exception(
         self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, _,
+        mock_create_encrypter, mock_is_uuid, mock_check_credential,
     ):
         bp = _make_builtin_provider(expires_at=int(time.time()) - 100)
         enc, cache = _make_encrypter_and_cache()
@@ -287,7 +298,8 @@ class TestOAuthRefreshLockRelease:
             with pytest.raises(RuntimeError, match="OAuth unreachable"):
                 _call_get_tool_runtime()
 
-        mock_lock.release.assert_called_once()
+        # Context manager ensures __exit__ is called even on exception
+        mock_lock.__exit__.assert_called_once()
         mock_session.commit.assert_not_called()
 
 
@@ -304,7 +316,7 @@ class TestOAuthRefreshNotExpired:
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_non_expired_skips_lock(
         self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, _,
+        mock_create_encrypter, mock_is_uuid, mock_check_credential,
     ):
         bp = _make_builtin_provider(expires_at=int(time.time()) + 3600)
         enc, cache = _make_encrypter_and_cache()
@@ -331,7 +343,7 @@ class TestOAuthRefreshNeverExpires:
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_never_expires_skips_lock(
         self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, _,
+        mock_create_encrypter, mock_is_uuid, mock_check_credential,
     ):
         bp = _make_builtin_provider(expires_at=-1)
         enc, cache = _make_encrypter_and_cache()

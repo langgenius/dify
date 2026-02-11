@@ -3,6 +3,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from redis.exceptions import LockError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -125,9 +126,8 @@ class DatasourceProviderService:
             # refresh the credentials
             if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
                 lock_key = f"oauth_token_refresh_lock:{tenant_id}_{datasource_provider.id}"
-                lock = redis_client.lock(lock_key, timeout=30)
-                if lock.acquire(blocking=False):
-                    try:
+                try:
+                    with redis_client.lock(lock_key, timeout=30, blocking_timeout=0):
                         # double-check after acquiring lock: another request may have already refreshed
                         session.refresh(datasource_provider)
                         if datasource_provider.expires_at != -1 and (
@@ -167,9 +167,7 @@ class DatasourceProviderService:
                             )
                             datasource_provider.expires_at = refreshed_credentials.expires_at
                             session.commit()
-                    finally:
-                        lock.release()
-                else:
+                except LockError:
                     # another request is refreshing; poll DB until credentials are fresh
                     backoff = 0.1
                     for _ in range(5):
