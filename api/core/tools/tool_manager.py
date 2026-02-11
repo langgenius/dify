@@ -314,21 +314,24 @@ class ToolManager:
                                 session.commit()
                                 decrypted_credentials = refreshed_credentials.credentials
                                 cache.delete()
+                                # Signal waiters that refresh is done
+                                signal_key = f"oauth_refresh_done:{lock_key}"
+                                redis_client.set(signal_key, 1, ex=60)
                             elif bp is not None:
                                 decrypted_credentials = encrypter.decrypt(bp.credentials)
                 except LockError:
-                    # another request is refreshing; poll DB until credentials are fresh
+                    # Another request is refreshing; poll Redis signal key
+                    # instead of hitting PostgreSQL on every retry.
+                    signal_key = f"oauth_refresh_done:{lock_key}"
                     backoff = 0.1
-                    bp = None
                     for _ in range(5):
                         time.sleep(backoff)
-                        with Session(db.engine) as session:
-                            bp = session.get(BuiltinToolProvider, builtin_provider.id)
-                        if bp is not None and bp.expires_at != -1 and (
-                            bp.expires_at - 60
-                        ) >= int(time.time()):
+                        if redis_client.exists(signal_key):
                             break
                         backoff = min(backoff * 2, 1.0)
+                    # One final DB read to get the refreshed credentials
+                    with Session(db.engine) as session:
+                        bp = session.get(BuiltinToolProvider, builtin_provider.id)
                     if bp is not None:
                         decrypted_credentials = encrypter.decrypt(bp.credentials)
 

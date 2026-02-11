@@ -175,6 +175,11 @@ class TestDatasourceProviderOAuthRefreshLockAcquired:
         mock_oauth.refresh_credentials.assert_called_once()
         mock_session.commit.assert_called_once()
         assert dp.expires_at == new_expires_at
+        # Signal key should be set in Redis after successful refresh
+        mock_redis.set.assert_called_once()
+        signal_call_args = mock_redis.set.call_args
+        assert signal_call_args[0][0].startswith("oauth_refresh_done:")
+        assert signal_call_args[1]["ex"] == 60
 
 
 # ---------------------------------------------------------------------------
@@ -246,24 +251,23 @@ class TestDatasourceProviderOAuthRefreshDoubleCheck:
 # ---------------------------------------------------------------------------
 
 class TestDatasourceProviderOAuthRefreshLockNotAcquired:
-    """When the lock is not acquired (LockError), retry polling DB until fresh."""
+    """When the lock is not acquired (LockError), poll Redis signal then read DB once."""
 
     @patch("services.datasource_provider_service.time")
     @patch("services.datasource_provider_service.redis_client")
     @patch("services.datasource_provider_service.db")
-    def test_lock_not_acquired_retries_then_reads_fresh(
+    def test_lock_not_acquired_polls_redis_signal(
         self,
         mock_db,
         mock_redis,
         mock_time,
     ):
-        """When lock not acquired, should retry polling DB until credentials become fresh."""
+        """When lock not acquired, poll Redis signal key then do one final DB read."""
         from services.datasource_provider_service import DatasourceProviderService
 
         # Arrange
         now = int(time.time())
         expired_at = now - 100
-        fresh_at = now + 3600
 
         dp = _make_datasource_provider(expires_at=expired_at)
         mock_session = _make_mock_session(dp)
@@ -281,16 +285,8 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
         mock_lock = _make_redis_lock(acquired=False)
         mock_redis.lock.return_value = mock_lock
 
-        # Simulate: first session.refresh still expired, second one is fresh
-        call_count = 0
-
-        def _fake_refresh(obj):
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                obj.expires_at = fresh_at
-
-        mock_session.refresh.side_effect = _fake_refresh
+        # redis_client.exists returns False first, then True (signal set)
+        mock_redis.exists.side_effect = [False, True]
 
         svc = DatasourceProviderService()
 
@@ -309,11 +305,11 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
                 credential_id="dp-001",
             )
 
-        # Assert: LockError path was taken (no __exit__ since __enter__ raised)
-        # time.sleep was called for backoff
+        # Assert: polls Redis signal, not DB
         assert mock_time.sleep.call_count >= 1
-        # DB was polled multiple times
-        assert mock_session.refresh.call_count >= 2
+        assert mock_redis.exists.call_count >= 1
+        # One final session.refresh to get latest credentials from DB
+        mock_session.refresh.assert_called()
         mock_session.commit.assert_not_called()
 
 

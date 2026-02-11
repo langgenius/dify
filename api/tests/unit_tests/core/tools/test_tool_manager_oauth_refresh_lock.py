@@ -172,6 +172,11 @@ class TestOAuthRefreshLockAcquired:
         mock_session.commit.assert_called_once()
         assert bp_in_session.expires_at == new_expires_at
         cache.delete.assert_called_once()
+        # Signal key should be set in Redis after successful refresh
+        mock_redis.set.assert_called_once()
+        signal_call_args = mock_redis.set.call_args
+        assert signal_call_args[0][0].startswith("oauth_refresh_done:")
+        assert signal_call_args[1]["ex"] == 60
 
 
 # ---------------------------------------------------------------------------
@@ -222,11 +227,11 @@ class TestOAuthRefreshLockNotAcquired:
     @patch("core.tools.tool_manager.redis_client")
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
-    def test_lock_not_acquired_polls_db_until_fresh(
+    def test_lock_not_acquired_polls_redis_signal(
         self, mock_get_provider, mock_db, mock_redis,
         mock_create_encrypter, mock_is_uuid, mock_check_credential, mock_time,
     ):
-        """Poll DB with backoff; break early when credentials become fresh."""
+        """Poll Redis signal key with backoff; one final DB read after signal."""
         now = int(time.time())
         bp = _make_builtin_provider(expires_at=now - 100)
         enc, cache = _make_encrypter_and_cache()
@@ -236,17 +241,14 @@ class TestOAuthRefreshLockNotAcquired:
         _setup_common(mock_db, mock_redis, mock_create_encrypter,
                       mock_get_provider, bp, enc, cache, lock_acquired=False)
 
-        # Simulate: 2nd session.get() returns fresh credentials
-        call_count = 0
+        # redis_client.exists returns False first, then True (signal set)
+        mock_redis.exists.side_effect = [False, True]
 
-        def _get_side_effect(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                return _make_builtin_provider(expires_at=now + 3600)
-            return _make_builtin_provider(expires_at=now - 100)
-
-        mock_Session_cls, mock_session = _make_mock_session(get_side_effect=_get_side_effect)
+        # Final DB read returns fresh credentials
+        bp_fresh = _make_builtin_provider(expires_at=now + 3600)
+        mock_Session_cls, mock_session = _make_mock_session(
+            get_return_value=bp_fresh,
+        )
 
         with (
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
@@ -256,7 +258,10 @@ class TestOAuthRefreshLockNotAcquired:
             _call_get_tool_runtime()
 
         assert mock_time.sleep.call_count >= 1
-        assert mock_session.get.call_count >= 2
+        # Polls Redis signal, not DB
+        assert mock_redis.exists.call_count >= 1
+        # Only one final DB read
+        assert mock_session.get.call_count == 1
         mock_session.commit.assert_not_called()
 
 

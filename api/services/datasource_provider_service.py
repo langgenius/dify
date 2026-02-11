@@ -167,17 +167,21 @@ class DatasourceProviderService:
                             )
                             datasource_provider.expires_at = refreshed_credentials.expires_at
                             session.commit()
+                            # Signal waiters that refresh is done
+                            signal_key = f"oauth_refresh_done:{lock_key}"
+                            redis_client.set(signal_key, 1, ex=60)
                 except LockError:
-                    # another request is refreshing; poll DB until credentials are fresh
+                    # Another request is refreshing; poll Redis signal key
+                    # instead of hitting PostgreSQL on every retry.
+                    signal_key = f"oauth_refresh_done:{lock_key}"
                     backoff = 0.1
                     for _ in range(5):
                         time.sleep(backoff)
-                        session.refresh(datasource_provider)
-                        if datasource_provider.expires_at != -1 and (
-                            datasource_provider.expires_at - 60
-                        ) >= int(time.time()):
+                        if redis_client.exists(signal_key):
                             break
                         backoff = min(backoff * 2, 1.0)
+                    # One final DB read to get the refreshed credentials
+                    session.refresh(datasource_provider)
 
             return self.decrypt_datasource_provider_credentials(
                 tenant_id=tenant_id,
