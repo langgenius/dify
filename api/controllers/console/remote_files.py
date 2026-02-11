@@ -41,7 +41,6 @@ class GetRemoteFileInfo(Resource):
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUpload(Resource):
-
     @login_required
     def post(self):
         payload = RemoteFileUploadPayload.model_validate(console_ns.payload)

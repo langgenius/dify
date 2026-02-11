@@ -23,6 +23,7 @@ def app() -> Flask:
 def client(app):
     """Create test client with console blueprint registered."""
     from controllers.console import bp
+
     app.register_blueprint(bp)
     return app.test_client()
 
@@ -41,12 +42,14 @@ def mock_account():
 @pytest.fixture
 def auth_ctx(app, mock_account):
     """Context manager to set auth/tenant context in flask.g for a request."""
+
     @contextlib.contextmanager
     def _ctx():
         with app.test_request_context():
             g._login_user = mock_account
             g._current_tenant = mock_account.current_tenant_id
             yield
+
     return _ctx
 
 
@@ -61,11 +64,13 @@ class TestGetRemoteFileInfo:
             headers={"Content-Type": "text/plain", "Content-Length": "1024"},
         )
 
-        with patch(
-            "controllers.console.remote_files.current_account_with_tenant",
-            return_value=(mock_account, "test-tenant-id"),
-        ), patch("controllers.console.remote_files.ssrf_proxy.head", return_value=response), patch(
-            "libs.login.check_csrf_token", return_value=None
+        with (
+            patch(
+                "controllers.console.remote_files.current_account_with_tenant",
+                return_value=(mock_account, "test-tenant-id"),
+            ),
+            patch("controllers.console.remote_files.ssrf_proxy.head", return_value=response),
+            patch("libs.login.check_csrf_token", return_value=None),
         ):
             with app.test_request_context():
                 g._login_user = mock_account
@@ -90,13 +95,14 @@ class TestGetRemoteFileInfo:
             headers={"Content-Type": "application/pdf", "Content-Length": "2048"},
         )
 
-        with patch(
-            "controllers.console.remote_files.current_account_with_tenant",
-            return_value=(mock_account, "test-tenant-id"),
-        ), patch("controllers.console.remote_files.ssrf_proxy.head", return_value=head_response), patch(
-            "controllers.console.remote_files.ssrf_proxy.get", return_value=get_response
-        ), patch(
-            "libs.login.check_csrf_token", return_value=None
+        with (
+            patch(
+                "controllers.console.remote_files.current_account_with_tenant",
+                return_value=(mock_account, "test-tenant-id"),
+            ),
+            patch("controllers.console.remote_files.ssrf_proxy.head", return_value=head_response),
+            patch("controllers.console.remote_files.ssrf_proxy.get", return_value=get_response),
+            patch("libs.login.check_csrf_token", return_value=None),
         ):
             with app.test_request_context():
                 g._login_user = mock_account
@@ -117,7 +123,7 @@ class TestRemoteFileUpload:
         ("head_status", "use_get"),
         [
             (200, False),  # HEAD succeeds
-            (405, True),   # HEAD fails -> fallback GET
+            (405, True),  # HEAD fails -> fallback GET
         ],
     )
     def test_upload_remote_file_success_paths(self, client, mock_account, auth_ctx, head_status, use_get):
@@ -150,26 +156,28 @@ class TestRemoteFileUpload:
             created_at=datetime(2024, 1, 1, 12, 0, 0),
         )
 
-        with patch(
-            "controllers.console.remote_files.current_account_with_tenant",
-            return_value=(mock_account, "test-tenant-id"),
-        ), patch(
-            "controllers.console.remote_files.ssrf_proxy.head", return_value=head_resp
-        ) as p_head, patch(
-            "controllers.console.remote_files.ssrf_proxy.get", return_value=get_resp
-        ) as p_get, patch(
-            "controllers.console.remote_files.helpers.guess_file_info_from_response",
-            return_value=file_info,
-        ), patch(
-            "controllers.console.remote_files.FileService.is_file_size_within_limit",
-            return_value=True,
-        ), patch("controllers.console.remote_files.db", spec=["engine"]), patch(
-            "controllers.console.remote_files.FileService"
-        ) as mock_file_service, patch(
-            "controllers.console.remote_files.file_helpers.get_signed_file_url",
-            return_value="http://example.com/signed-url",
-        ), patch(
-            "libs.login.check_csrf_token", return_value=None
+        with (
+            patch(
+                "controllers.console.remote_files.current_account_with_tenant",
+                return_value=(mock_account, "test-tenant-id"),
+            ),
+            patch("controllers.console.remote_files.ssrf_proxy.head", return_value=head_resp) as p_head,
+            patch("controllers.console.remote_files.ssrf_proxy.get", return_value=get_resp) as p_get,
+            patch(
+                "controllers.console.remote_files.helpers.guess_file_info_from_response",
+                return_value=file_info,
+            ),
+            patch(
+                "controllers.console.remote_files.FileService.is_file_size_within_limit",
+                return_value=True,
+            ),
+            patch("controllers.console.remote_files.db", spec=["engine"]),
+            patch("controllers.console.remote_files.FileService") as mock_file_service,
+            patch(
+                "controllers.console.remote_files.file_helpers.get_signed_file_url",
+                return_value="http://example.com/signed-url",
+            ),
+            patch("libs.login.check_csrf_token", return_value=None),
         ):
             mock_file_service.return_value.upload_file.return_value = uploaded_file
 
@@ -214,22 +222,26 @@ class TestRemoteFileUpload:
         )
         file_info = SimpleNamespace(extension="pdf", size=9, filename="x.pdf", mimetype="application/pdf")
 
-        with patch(
-            "controllers.console.remote_files.current_account_with_tenant",
-            return_value=(mock_account, "test-tenant-id"),
-        ), patch(
-            "controllers.console.remote_files.ssrf_proxy.head", return_value=head_resp
-        ), patch(
-            "controllers.console.remote_files.helpers.guess_file_info_from_response",
-            return_value=file_info,
-        ), patch(
-            "controllers.console.remote_files.FileService.is_file_size_within_limit",
-            return_value=size_ok,
-        ), patch("controllers.console.remote_files.db", spec=["engine"]), patch(
-            "libs.login.check_csrf_token", return_value=None
+        with (
+            patch(
+                "controllers.console.remote_files.current_account_with_tenant",
+                return_value=(mock_account, "test-tenant-id"),
+            ),
+            patch("controllers.console.remote_files.ssrf_proxy.head", return_value=head_resp),
+            patch(
+                "controllers.console.remote_files.helpers.guess_file_info_from_response",
+                return_value=file_info,
+            ),
+            patch(
+                "controllers.console.remote_files.FileService.is_file_size_within_limit",
+                return_value=size_ok,
+            ),
+            patch("controllers.console.remote_files.db", spec=["engine"]),
+            patch("libs.login.check_csrf_token", return_value=None),
         ):
             if raises == "unsupported":
                 from services.errors.file import UnsupportedFileTypeError
+
                 with patch("controllers.console.remote_files.FileService") as mock_file_service:
                     mock_file_service.return_value.upload_file.side_effect = UnsupportedFileTypeError("bad")
                     with auth_ctx():
@@ -251,14 +263,16 @@ class TestRemoteFileUpload:
 
     def test_upload_remote_file_fetch_failure(self, client, mock_account, auth_ctx):
         """Test upload when fetching of remote file fails."""
-        with patch(
-            "controllers.console.remote_files.current_account_with_tenant",
-            return_value=(mock_account, "test-tenant-id"),
-        ), patch(
-            "controllers.console.remote_files.ssrf_proxy.head",
-            side_effect=httpx.RequestError("Connection failed"),
-        ), patch(
-            "libs.login.check_csrf_token", return_value=None
+        with (
+            patch(
+                "controllers.console.remote_files.current_account_with_tenant",
+                return_value=(mock_account, "test-tenant-id"),
+            ),
+            patch(
+                "controllers.console.remote_files.ssrf_proxy.head",
+                side_effect=httpx.RequestError("Connection failed"),
+            ),
+            patch("libs.login.check_csrf_token", return_value=None),
         ):
             with auth_ctx():
                 resp = client.post(
