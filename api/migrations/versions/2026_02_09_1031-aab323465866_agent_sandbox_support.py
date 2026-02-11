@@ -1,7 +1,7 @@
 """Add sandbox providers, app assets, and LLM detail tables.
 
 Revision ID: aab323465866
-Revises: c3df22613c99
+Revises: f55813ffe2c8
 Create Date: 2026-02-09 10:31:05.062722
 
 """
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "aab323465866"
-down_revision = "c3df22613c99"
+down_revision = "f55813ffe2c8"
 branch_labels = None
 depends_on = None
 
