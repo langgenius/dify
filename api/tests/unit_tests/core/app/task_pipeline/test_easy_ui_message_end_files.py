@@ -206,6 +206,7 @@ class TestMessageEndStreamResponseFiles:
             assert file_dict["related_id"] == mock_message_file_remote.id
             assert file_dict["filename"] == "image.jpg"
             assert file_dict["url"] == "https://example.com/image.jpg"
+            assert file_dict["extension"] == ".jpg"
             assert file_dict["type"] == "image"
             assert file_dict["transfer_method"] == FileTransferMethod.REMOTE_URL.value
             assert file_dict["remote_url"] == "https://example.com/image.jpg"
@@ -244,6 +245,7 @@ class TestMessageEndStreamResponseFiles:
             file_dict = result.files[0]
             assert file_dict["url"] == "https://example.com/tool_file.png"
             assert file_dict["filename"] == "tool_file.png"
+            assert file_dict["extension"] == ".png"
             assert file_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value
 
     def test_message_end_with_tool_file_local(self, mock_pipeline, mock_message_file_tool):
