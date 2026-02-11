@@ -53,7 +53,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   providers,
 }) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { currentWorkspace, isLoadingCurrentWorkspace } = useAppContext()
   const { trial_models } = useGlobalPublicStore(s => s.systemFeatures)
   const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
   const providerMap = useMemo(() => new Map(
@@ -96,13 +96,16 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     }
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
 
-  if (!currentWorkspace.id) {
+  if (isLoadingCurrentWorkspace) {
     return (
       <div className="my-2 flex min-h-[72px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
         <Loading />
       </div>
     )
   }
+
+  if (!currentWorkspace.id)
+    return null
 
   return (
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
