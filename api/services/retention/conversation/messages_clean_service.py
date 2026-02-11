@@ -6,7 +6,7 @@ import time
 from collections.abc import Sequence
 from typing import cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -215,13 +215,9 @@ class MessagesCleanService:
                     msg_stmt = msg_stmt.where(Message.created_at >= self._start_from)
 
                 # Apply cursor condition: (created_at, id) > (last_created_at, last_message_id)
-                # This translates to:
-                #   created_at > last_created_at OR (created_at = last_created_at AND id > last_message_id)
                 if _cursor:
-                    # Continuing from previous batch
                     msg_stmt = msg_stmt.where(
-                        (Message.created_at > _cursor[0])
-                        | ((Message.created_at == _cursor[0]) & (Message.id > _cursor[1]))
+                        tuple_(Message.created_at, Message.id) > tuple_(_cursor[0], _cursor[1])
                     )
 
                 raw_messages = list(session.execute(msg_stmt).all())
