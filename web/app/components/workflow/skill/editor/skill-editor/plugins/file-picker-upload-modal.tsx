@@ -1,21 +1,27 @@
-import type { Item } from '@/app/components/base/select'
+import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '@/app/components/workflow/skill/type'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
+import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { SimpleSelect } from '@/app/components/base/select'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import Toast from '@/app/components/base/toast'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { ROOT_ID } from '@/app/components/workflow/skill/constants'
+import TreeGuideLines from '@/app/components/workflow/skill/file-tree/tree/tree-guide-lines'
 import { useSkillAssetTreeData } from '@/app/components/workflow/skill/hooks/file-tree/data/use-skill-asset-tree'
 import { useSkillTreeUpdateEmitter } from '@/app/components/workflow/skill/hooks/file-tree/data/use-skill-tree-collaboration'
 import { useCreateOperations } from '@/app/components/workflow/skill/hooks/file-tree/operations/use-create-operations'
-import { toApiParentId } from '@/app/components/workflow/skill/utils/tree-utils'
+import { findNodeById, toApiParentId } from '@/app/components/workflow/skill/utils/tree-utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useUploadFileWithPresignedUrl } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
@@ -27,11 +33,101 @@ type FilePickerUploadModalProps = {
 }
 
 type AddFileMode = 'create' | 'upload'
-type FolderOption = Item & {
-  pathLabel: string
-  depth: number
-  hasChildren: boolean
+
+const buildFolderOnlyTree = (nodes: TreeNodeData[]): TreeNodeData[] => {
+  return nodes
+    .filter(node => node.node_type === 'folder')
+    .map((node) => {
+      const children = buildFolderOnlyTree(node.children)
+      return {
+        ...node,
+        children,
+      }
+    })
 }
+
+type FolderPickerTreeNodeProps = NodeRendererProps<TreeNodeData> & {
+  onSelectNode: (node: TreeNodeData) => void
+}
+
+const FolderPickerTreeNode = ({ node, style, dragHandle, onSelectNode }: FolderPickerTreeNodeProps) => {
+  const isSelected = node.isSelected
+  const hasChildren = node.data.children.length > 0
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    node.select()
+    onSelectNode(node.data)
+  }, [node, onSelectNode])
+
+  const handleToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    node.toggle()
+  }, [node])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelectNode(node.data)
+    }
+  }, [node.data, onSelectNode])
+
+  return (
+    <div
+      ref={dragHandle}
+      style={style}
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isSelected}
+      aria-expanded={hasChildren ? node.isOpen : undefined}
+      className={cn(
+        'group relative flex h-6 cursor-pointer items-center gap-0 overflow-hidden rounded-md',
+        'hover:bg-state-base-hover',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
+        isSelected && 'bg-state-base-active',
+      )}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+    >
+      <TreeGuideLines level={node.level} lineOffset={0} />
+      <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
+        <div className="flex size-4 shrink-0 items-center justify-center">
+          {node.isOpen
+            ? <span className="i-ri-folder-open-line size-4 text-text-accent" aria-hidden="true" />
+            : <span className="i-ri-folder-line size-4 text-text-secondary" aria-hidden="true" />}
+        </div>
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
+            isSelected ? 'text-text-primary' : 'text-text-secondary',
+          )}
+        >
+          {node.data.name}
+        </span>
+      </div>
+      {hasChildren && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={handleToggle}
+          className={cn(
+            'flex size-6 shrink-0 items-center justify-center rounded-r-md',
+            'bg-transparent text-text-tertiary',
+            'group-hover:bg-state-base-hover-subtle',
+            'hover:bg-state-base-hover-subtle',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
+          )}
+        >
+          {node.isOpen
+            ? <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />
+            : <span className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
+        </button>
+      )}
+    </div>
+  )
+}
+
+FolderPickerTreeNode.displayName = 'FolderPickerTreeNode'
 
 const FilePickerUploadModal = ({
   isOpen,
@@ -47,49 +143,44 @@ const FilePickerUploadModal = ({
   const uploadFile = useUploadFileWithPresignedUrl()
   const [mode, setMode] = useState<AddFileMode>('create')
   const [uploadFolderId, setUploadFolderId] = useState(defaultFolderId || ROOT_ID)
+  const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false)
+  const [folderPickerVersion, setFolderPickerVersion] = useState(0)
   const [fileName, setFileName] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
 
   const treeNodes = useMemo(() => treeData?.children || [], [treeData?.children])
-  const folderOptions = useMemo<FolderOption[]>(() => {
-    const options: FolderOption[] = [{
-      value: ROOT_ID,
-      name: t('skillSidebar.rootFolder'),
-      pathLabel: t('skillSidebar.rootFolder'),
-      depth: 0,
-      hasChildren: true,
-    }]
-
-    const travelFolders = (nodes: TreeNodeData[]) => {
-      nodes.forEach((node) => {
-        if (node.node_type !== 'folder')
-          return
-
-        const folderPath = node.path.replace(/^\//, '') || node.name
-        const depth = Math.max(0, folderPath.split('/').length - 1)
-        options.push({
-          value: node.id,
-          name: node.name,
-          pathLabel: folderPath,
-          depth,
-          hasChildren: node.children.some(child => child.node_type === 'folder'),
-        })
-        if (node.children.length > 0)
-          travelFolders(node.children)
-      })
+  const folderTreeNodes = useMemo(() => buildFolderOnlyTree(treeNodes), [treeNodes])
+  const uploadInTreeData = useMemo<TreeNodeData[]>(() => {
+    const workRoot: TreeNodeData = {
+      id: ROOT_ID,
+      node_type: 'folder',
+      name: 'work',
+      path: '/work',
+      extension: '',
+      size: 0,
+      children: folderTreeNodes,
     }
-    travelFolders(treeNodes)
-    return options
-  }, [t, treeNodes])
+    return [workRoot]
+  }, [folderTreeNodes])
+  const selectedFolderPath = useMemo(() => {
+    if (uploadFolderId === ROOT_ID)
+      return 'work'
+    const selectedNode = findNodeById(uploadInTreeData, uploadFolderId)
+    const selectedPath = selectedNode?.path.replace(/^\//, '')
+    return selectedPath ? `work/${selectedPath}` : 'work'
+  }, [uploadFolderId, uploadInTreeData])
 
   const effectiveUploadFolderId = useMemo(() => {
-    return folderOptions.some(item => item.value === uploadFolderId)
+    if (uploadFolderId === ROOT_ID)
+      return ROOT_ID
+    const selectedNode = findNodeById(uploadInTreeData, uploadFolderId)
+    return selectedNode
       ? uploadFolderId
       : ROOT_ID
-  }, [folderOptions, uploadFolderId])
-  const selectedFolderOption = useMemo(() => {
-    return folderOptions.find(item => item.value === effectiveUploadFolderId) || folderOptions[0]
-  }, [effectiveUploadFolderId, folderOptions])
+  }, [uploadFolderId, uploadInTreeData])
+  const folderPickerOpenState = useMemo(() => {
+    return { [ROOT_ID]: true }
+  }, [])
 
   const {
     fileInputRef,
@@ -111,6 +202,25 @@ const FilePickerUploadModal = ({
       return
     onClose()
   }, [isBusy, onClose])
+  const handleFolderPickerOpenChange = useCallback((open: boolean) => {
+    setIsFolderPickerOpen(open)
+    if (open)
+      setFolderPickerVersion(version => version + 1)
+  }, [])
+  const handleToggleFolderPicker = useCallback(() => {
+    if (isBusy)
+      return
+    setIsFolderPickerOpen((open) => {
+      const nextOpen = !open
+      if (nextOpen)
+        setFolderPickerVersion(version => version + 1)
+      return nextOpen
+    })
+  }, [isBusy])
+  const handleSelectUploadFolder = useCallback((node: TreeNodeData) => {
+    setUploadFolderId(node.id)
+    setIsFolderPickerOpen(false)
+  }, [])
 
   const handleUploadFilesChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const hasSelectedFiles = (e.target.files?.length ?? 0) > 0
@@ -188,41 +298,66 @@ const FilePickerUploadModal = ({
         </div>
         <div className="space-y-1">
           <div className="text-text-secondary system-sm-medium">{modeLabel}</div>
-          <SimpleSelect
-            items={folderOptions as Item[]}
-            defaultValue={effectiveUploadFolderId}
-            notClearable
-            className="h-8 rounded-lg bg-components-input-bg-normal pl-3 pr-10 hover:bg-state-base-hover-alt"
-            optionWrapClassName="max-h-[260px] rounded-xl bg-components-panel-bg-blur"
-            optionClassName="pr-3"
-            renderTrigger={(selectedItem, open) => {
-              const currentOption = selectedItem as FolderOption | null
-              const label = currentOption?.pathLabel || selectedFolderOption?.pathLabel || t('skillSidebar.rootFolder')
-              return (
-                <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal pl-3 pr-10 hover:bg-state-base-hover-alt">
-                  <span className="i-ri-folder-line mr-2 size-4 shrink-0 text-text-secondary" aria-hidden="true" />
-                  <span className="min-w-0 truncate text-left text-components-input-text-filled system-sm-regular">{label}</span>
-                  <span className={cn(
-                    'i-ri-arrow-down-s-line absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-quaternary transition-transform',
-                    open && 'rotate-180',
+          <PortalToFollowElem
+            open={isFolderPickerOpen}
+            onOpenChange={handleFolderPickerOpenChange}
+            placement="bottom-start"
+            offset={{ mainAxis: 4 }}
+            triggerPopupSameWidth
+          >
+            <PortalToFollowElemTrigger asChild>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={handleToggleFolderPicker}
+                className={cn(
+                  'relative flex h-8 w-full items-center rounded-lg bg-components-input-bg-normal pl-3 pr-10 hover:bg-state-base-hover-alt',
+                  isBusy && 'cursor-not-allowed opacity-60',
+                )}
+              >
+                <span className="i-ri-folder-line mr-2 size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                <span className="min-w-0 truncate text-left text-components-input-text-filled system-sm-regular">{selectedFolderPath}</span>
+                <span className={cn(
+                  'i-ri-arrow-down-s-line absolute right-3 top-1/2 size-4 -translate-y-1/2 text-text-quaternary transition-transform',
+                  isFolderPickerOpen && 'rotate-180',
+                )}
+                />
+              </button>
+            </PortalToFollowElemTrigger>
+            <PortalToFollowElemContent className="z-[1200]">
+              <div
+                className="max-h-[260px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-sm"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+              >
+                <Tree<TreeNodeData>
+                  key={folderPickerVersion}
+                  data={uploadInTreeData}
+                  idAccessor="id"
+                  childrenAccessor="children"
+                  width="100%"
+                  className="pb-1"
+                  height={240}
+                  rowHeight={24}
+                  indent={20}
+                  overscanCount={5}
+                  openByDefault={false}
+                  initialOpenState={folderPickerOpenState}
+                  disableDrag
+                  disableDrop
+                >
+                  {(props: NodeRendererProps<TreeNodeData>) => (
+                    <FolderPickerTreeNode
+                      {...props}
+                      onSelectNode={handleSelectUploadFolder}
+                    />
                   )}
-                  />
-                </div>
-              )
-            }}
-            renderOption={({ item }) => {
-              const option = item as FolderOption
-              return (
-                <div className="flex items-center gap-2">
-                  <span style={{ width: `${option.depth * 16}px` }} aria-hidden="true" />
-                  <span className="i-ri-folder-line size-4 shrink-0 text-text-secondary" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">{option.name}</span>
-                  {option.hasChildren && <span className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />}
-                </div>
-              )
-            }}
-            onSelect={item => setUploadFolderId(String(item.value))}
-          />
+                </Tree>
+              </div>
+            </PortalToFollowElemContent>
+          </PortalToFollowElem>
         </div>
         {mode === 'create' && (
           <div className="space-y-1">
