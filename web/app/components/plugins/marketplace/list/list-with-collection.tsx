@@ -56,7 +56,7 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
         collectionItemsMap={collectionItemsMap}
         itemKeyField="plugin_id"
         renderCard={renderPluginCard}
-        carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.partners]}
+        carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.partners, CAROUSEL_COLLECTION_NAMES.featured]}
         cardContainerClassName={cardContainerClassName}
       />
     )

@@ -47,10 +47,12 @@ const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
 
 vi.mock('../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
+  isPluginsData: (data: Record<string, unknown>) => 'pluginCollections' in data,
 }))
 
 vi.mock('../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
+  useMarketplaceSearchMode: () => false,
 }))
 
 // Mock useLocale context
@@ -113,12 +115,16 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 // Mock marketplace utils
-vi.mock('../utils', () => ({
-  getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
-    `/plugins/${plugin.org}/${plugin.name}`,
-  getPluginDetailLinkInMarketplace: (plugin: Plugin) =>
-    `/plugins/${plugin.org}/${plugin.name}`,
-}))
+vi.mock('../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
+      `/plugins/${plugin.org}/${plugin.name}`,
+    getPluginDetailLinkInMarketplace: (plugin: Plugin) =>
+      `/plugins/${plugin.org}/${plugin.name}`,
+  }
+})
 
 // Mock Card component
 vi.mock('@/app/components/plugins/card', () => ({
@@ -581,14 +587,14 @@ describe('ListWithCollection', () => {
   // View More Button Tests
   // ================================
   describe('View More Button', () => {
-    it('should render View More button when collection is searchable', () => {
+    it('should render View More button when non-carousel collection is searchable and exceeds display limit', () => {
       const collections = [createMockCollection({
-        name: 'partners',
+        name: 'searchable-collection',
         searchable: true,
         search_params: { query: 'test' },
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        partners: createMockPluginList(1),
+        'searchable-collection': createMockPluginList(5),
       }
 
       render(
@@ -606,9 +612,31 @@ describe('ListWithCollection', () => {
       const collections = [createMockCollection({
         name: 'collection-0',
         searchable: false,
+        search_params: undefined,
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
+        'collection-0': createMockPluginList(5),
+      }
+
+      render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      expect(screen.queryByText('View More')).not.toBeInTheDocument()
+    })
+
+    it('should not render View More button when items do not exceed display limit', () => {
+      const collections = [createMockCollection({
+        name: 'small-collection',
+        searchable: true,
+        search_params: { query: 'test' },
+      })]
+      const pluginsMap: Record<string, Plugin[]> = {
+        'small-collection': createMockPluginList(4),
       }
 
       render(
@@ -625,12 +653,12 @@ describe('ListWithCollection', () => {
     it('should call moreClick hook with search_params when View More is clicked', () => {
       const searchParams: SearchParamsFromCollection = { query: 'test-query', sort_by: 'install_count' }
       const collections = [createMockCollection({
-        name: 'partners',
+        name: 'clickable-collection',
         searchable: true,
         search_params: searchParams,
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        partners: createMockPluginList(1),
+        'clickable-collection': createMockPluginList(5),
       }
 
       render(
@@ -644,7 +672,66 @@ describe('ListWithCollection', () => {
       fireEvent.click(screen.getByText('View More'))
 
       expect(mockMoreClick).toHaveBeenCalledTimes(1)
-      expect(mockMoreClick).toHaveBeenCalledWith(searchParams)
+      expect(mockMoreClick).toHaveBeenCalledWith(searchParams, undefined)
+    })
+  })
+
+  // ================================
+  // Grid Display Limit Tests
+  // ================================
+  describe('Grid Display Limit', () => {
+    it('should render at most 4 cards for non-carousel collections', () => {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(8),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(4)
+    })
+
+    it('should render all cards when count is within the display limit', () => {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(3),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(3)
+    })
+
+    it('should render exactly 4 cards when collection has exactly 4 items', () => {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(4),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(4)
     })
   })
 
@@ -900,12 +987,12 @@ describe('ListWrapper', () => {
 
     it('should show View More button and call moreClick hook', () => {
       mockMarketplaceData.pluginCollections = [createMockCollection({
-        name: 'partners',
+        name: 'wrapper-collection',
         searchable: true,
         search_params: { query: 'test' },
       })]
       mockMarketplaceData.pluginCollectionPluginsMap = {
-        partners: createMockPluginList(1),
+        'wrapper-collection': createMockPluginList(5),
       }
 
       render(<ListWrapper />)
@@ -1361,13 +1448,14 @@ describe('Accessibility', () => {
     expect(headings.length).toBeGreaterThan(0)
   })
 
-    it('should have clickable View More button', () => {
+  it('should have clickable View More button', () => {
     const collections = [createMockCollection({
-      name: 'partners',
+      name: 'accessible-collection',
       searchable: true,
+      search_params: { query: 'test' },
     })]
     const pluginsMap: Record<string, Plugin[]> = {
-      partners: createMockPluginList(1),
+      'accessible-collection': createMockPluginList(5),
     }
 
     render(
@@ -1383,7 +1471,7 @@ describe('Accessibility', () => {
     expect(viewMoreButton.closest('div')).toHaveClass('cursor-pointer')
   })
 
-    it('should have proper grid layout for cards', () => {
+  it('should have proper grid layout for cards', () => {
     const plugins = createMockPluginList(4)
 
     const { container } = render(

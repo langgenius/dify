@@ -1,6 +1,6 @@
 export const GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 
-export const GRID_DISPLAY_LIMIT = 8
+export const GRID_DISPLAY_LIMIT = 4
 
 export const CAROUSEL_COLUMN_CLASS = 'flex w-[calc((100%-0px)/1)] shrink-0 flex-col gap-3 sm:w-[calc((100%-12px)/2)] lg:w-[calc((100%-24px)/3)] xl:w-[calc((100%-36px)/4)]'
 

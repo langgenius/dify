@@ -32,6 +32,26 @@ export function getItemKeyByField<T>(item: T, field: keyof T): string {
   return String((item as Record<string, unknown>)[field as string])
 }
 
+/**
+ * Group a flat array into columns for a carousel grid layout.
+ * When the item count exceeds `maxVisibleColumns`, items are arranged in
+ * a two-row, column-first order with the first row always fully filled.
+ */
+export function buildCarouselColumns<T>(items: T[], maxVisibleColumns: number): T[][] {
+  const useDoubleRow = items.length > maxVisibleColumns
+  const numColumns = useDoubleRow
+    ? Math.max(maxVisibleColumns, Math.ceil(items.length / 2))
+    : items.length
+  const columns: T[][] = []
+  for (let i = 0; i < numColumns; i++) {
+    const column: T[] = [items[i]]
+    if (useDoubleRow && i + numColumns < items.length)
+      column.push(items[i + numColumns])
+    columns.push(column)
+  }
+  return columns
+}
+
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
     return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`

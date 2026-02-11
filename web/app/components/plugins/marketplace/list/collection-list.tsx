@@ -10,7 +10,7 @@ import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 import { useMarketplaceMoreClick } from '../atoms'
 import Empty from '../empty'
-import { getItemKeyByField } from '../utils'
+import { buildCarouselColumns, getItemKeyByField } from '../utils'
 import Carousel from './carousel'
 import { CAROUSEL_COLUMN_CLASS, CAROUSEL_MAX_VISIBLE_COLUMNS, GRID_CLASS, GRID_DISPLAY_LIMIT } from './collection-constants'
 
@@ -81,15 +81,7 @@ export function CarouselCollection<TItem>({
   renderCard,
   cardContainerClassName,
 }: CarouselCollectionProps<TItem>) {
-  const useDoubleRow = items.length > CAROUSEL_MAX_VISIBLE_COLUMNS
-  const numColumns = useDoubleRow ? Math.ceil(items.length / 2) : items.length
-  const columns: TItem[][] = []
-  for (let i = 0; i < numColumns; i++) {
-    const column: TItem[] = [items[i]]
-    if (useDoubleRow && i + numColumns < items.length)
-      column.push(items[i + numColumns])
-    columns.push(column)
-  }
+  const columns = buildCarouselColumns(items, CAROUSEL_MAX_VISIBLE_COLUMNS)
 
   return (
     <Carousel
