@@ -12,7 +12,6 @@ import httpx
 from yarl import URL
 
 from configs import dify_config
-from services.oauth_server import OAuthServerService
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +45,15 @@ def upload_dsl(dsl_file_bytes: bytes, filename: str = "template.yaml") -> str:
 
 
 def get_redirect_url(user_account_id: str, claim_code: str) -> str:
-    """Generate the redirect URL to the Creators Platform OAuth callback.
+    """Generate the redirect URL to the Creators Platform frontend.
 
-    Signs an OAuth authorization code for the current user and builds
-    a URL pointing to the Creators Platform's existing OAuth callback
-    endpoint, with the dsl_claim_code passed as a query parameter.
+    Redirects to the Creators Platform root page with the dsl_claim_code.
+    If CREATORS_PLATFORM_OAUTH_CLIENT_ID is configured (Dify Cloud),
+    also signs an OAuth authorization code so the frontend can
+    automatically authenticate the user via the OAuth callback.
 
-    The callback endpoint will process the OAuth code, authenticate the
-    user, and redirect to the appropriate frontend page. The frontend
-    landing page (login or root) stores the dsl_claim_code in localStorage
-    before initiating the redirect.
+    For self-hosted Dify without OAuth client_id configured, only the
+    dsl_claim_code is passed and the user must log in manually.
 
     Args:
         user_account_id: The Dify user account ID.
@@ -63,21 +61,15 @@ def get_redirect_url(user_account_id: str, claim_code: str) -> str:
 
     Returns:
         The full redirect URL string.
-
-    Raises:
-        ValueError: If CREATORS_PLATFORM_OAUTH_CLIENT_ID is not configured.
     """
-    client_id = str(dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID)
-    if not client_id:
-        raise ValueError("CREATORS_PLATFORM_OAUTH_CLIENT_ID is not configured")
+    base_url = str(dify_config.CREATORS_PLATFORM_API_URL).rstrip("/")
+    params: dict[str, str] = {"dsl_claim_code": claim_code}
 
-    oauth_code = OAuthServerService.sign_oauth_authorization_code(client_id, user_account_id)
+    client_id = str(dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or "")
+    if client_id:
+        from services.oauth_server import OAuthServerService
 
-    # Build the redirect URL to the Creators Platform callback endpoint
-    callback_url = str(creators_platform_api_url / "api/v1/oauth/callback/dify")
-    params = urlencode({
-        "code": oauth_code,
-        "dsl_claim_code": claim_code,
-    })
+        oauth_code = OAuthServerService.sign_oauth_authorization_code(client_id, user_account_id)
+        params["oauth_code"] = oauth_code
 
-    return f"{callback_url}?{params}"
+    return f"{base_url}?{urlencode(params)}"
