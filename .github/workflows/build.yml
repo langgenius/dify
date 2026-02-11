@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAMESPACE: teamc
+  IMAGE_NAMESPACE: ai
 
 jobs:
   build-and-push:
@@ -18,11 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - component: api
+          - component: dify_api
             context: api
             dockerfile: api/Dockerfile
 
-          - component: web
+          - component: dify_web
             context: web
             dockerfile: web/Dockerfile
 
