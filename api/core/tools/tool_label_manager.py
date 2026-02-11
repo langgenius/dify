@@ -32,18 +32,17 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
 
         # delete old labels
-        with session.begin():
-            session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id).delete()
+        session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id).delete()
 
-            # insert new labels
-            for label in labels:
-                session.add(
-                    ToolLabelBinding(
-                        tool_id=provider_id,
-                        tool_type=controller.provider_type.value,
-                        label_name=label,
-                    )
+        # insert new labels
+        for label in labels:
+            session.add(
+                ToolLabelBinding(
+                    tool_id=provider_id,
+                    tool_type=controller.provider_type.value,
+                    label_name=label,
                 )
+            )
 
     @classmethod
     def get_tool_labels(cls, controller: ToolProviderController) -> list[str]:
