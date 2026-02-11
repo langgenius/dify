@@ -55,7 +55,6 @@ class CustomizedSnippet(Base):
     icon_info: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
 
     # Snippet configuration (stored as JSON text)
-    graph: Mapped[str | None] = mapped_column(LongText, nullable=True)
     input_fields: Mapped[str | None] = mapped_column(LongText, nullable=True)
 
     # Audit fields
@@ -68,8 +67,14 @@ class CustomizedSnippet(Base):
 
     @property
     def graph_dict(self) -> dict[str, Any]:
-        """Parse graph JSON to dict."""
-        return json.loads(self.graph) if self.graph else {}
+        """Get graph from associated workflow."""
+        if self.workflow_id:
+            from .workflow import Workflow
+
+            workflow = db.session.get(Workflow, self.workflow_id)
+            if workflow:
+                return json.loads(workflow.graph) if workflow.graph else {}
+        return {}
 
     @property
     def input_fields_list(self) -> list[dict[str, Any]]:
