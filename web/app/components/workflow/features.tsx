@@ -7,6 +7,7 @@ import {
   useCallback,
 } from 'react'
 import { useNodes } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
@@ -14,6 +15,7 @@ import { updateFeatures } from '@/service/workflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
+  useNodesSyncDraft,
 } from './hooks'
 import useConfig from './nodes/start/use-config'
 import { useStore } from './store'
@@ -22,8 +24,10 @@ import { InputVarType } from './types'
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
   const appId = useStore(s => s.appId)
+  const isSandboxRuntime = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const featuresStore = useFeaturesStore()
   const nodes = useNodes<CommonNodeType>()
   const startNode = nodes.find(node => node.data.type === 'start')
@@ -49,6 +53,7 @@ const Features = () => {
 
     try {
       const currentFeatures = featuresStore.getState().features
+      const shouldSyncDraft = isSandboxRuntime || currentFeatures.sandbox?.enabled === true
 
       // Transform features to match the expected server format (same as doSyncWorkflowDraft)
       const transformedFeatures: WorkflowDraftFeaturesPayload = {
@@ -68,6 +73,9 @@ const Features = () => {
         features: transformedFeatures,
       })
 
+      if (shouldSyncDraft)
+        handleSyncWorkflowDraft(true, true)
+
       // Emit update event to other connected clients
       const socket = webSocketClient.getSocket(appId)
       if (socket) {
@@ -81,7 +89,7 @@ const Features = () => {
     }
 
     setShowFeaturesPanel(true)
-  }, [appId, featuresStore, setShowFeaturesPanel])
+  }, [appId, featuresStore, handleSyncWorkflowDraft, isSandboxRuntime, setShowFeaturesPanel])
 
   return (
     <NewFeaturePanel

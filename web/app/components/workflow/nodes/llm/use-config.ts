@@ -2,6 +2,7 @@ import type { Memory, PromptItem, PromptTemplateItem, ValueSelector, Var, Variab
 import type { LLMNodeType, StructuredOutput } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import {
@@ -24,8 +25,9 @@ import useAvailableVarList from '../_base/hooks/use-available-var-list'
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
+  const isSandboxRuntime = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
   const features = useFeatures(s => s.features)
-  const isSupportSandbox = !!features.sandbox?.enabled
+  const isSupportSandbox = isSandboxRuntime || features.sandbox?.enabled === true
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
@@ -66,6 +68,10 @@ const useConfig = (id: string, payload: LLMNodeType) => {
           }
         })
       }
+
+      newPayload = produce(newPayload, (draft) => {
+        delete draft.reasoning_format
+      })
     }
     else {
       newPayload = produce(newPayload, (draft) => {
@@ -364,11 +370,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   // reasoning format
   const handleReasoningFormatChange = useCallback((reasoningFormat: 'tagged' | 'separated') => {
+    if (isSupportSandbox)
+      return
+
     const newInputs = produce(inputRef.current, (draft) => {
       draft.reasoning_format = reasoningFormat
     })
     setInputs(newInputs)
-  }, [setInputs])
+  }, [isSupportSandbox, setInputs])
 
   const {
     availableVars,

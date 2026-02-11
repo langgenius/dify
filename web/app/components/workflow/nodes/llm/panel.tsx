@@ -341,11 +341,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           />
 
           {/* Reasoning Format */}
-          <ReasoningFormatConfig
-            value={inputs.reasoning_format || 'tagged'}
-            onChange={handleReasoningFormatChange}
-            readonly={readOnly}
-          />
+          {!isSupportSandbox && (
+            <ReasoningFormatConfig
+              value={inputs.reasoning_format || 'tagged'}
+              onChange={handleReasoningFormatChange}
+              readonly={readOnly}
+            />
+          )}
         </div>
       </FieldCollapse>
 
