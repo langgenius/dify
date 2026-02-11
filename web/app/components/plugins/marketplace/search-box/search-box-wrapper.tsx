@@ -91,7 +91,7 @@ const SearchBoxWrapper = ({
             className={cn('h-9 bg-components-input-bg-normal', inputClassName)}
             showLeftIcon
             value={inputValue}
-            placeholder={t('searchPlugins', { ns: 'plugin' })}
+            placeholder={t('searchInMarketplace', { ns: 'plugin' })}
             onChange={(e) => {
               setDraftSearch(e.target.value)
             }}
