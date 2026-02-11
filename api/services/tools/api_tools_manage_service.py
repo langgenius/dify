@@ -251,7 +251,7 @@ class ApiToolManageService:
         """
         provider_name = provider_name.strip()
         with session_factory.create_session() as session:
-            # check if the provider exists
+        with session_factory.create_session() as session, session.begin():
             provider = (
                 session.query(ApiToolProvider)
                 .where(
