@@ -52,6 +52,24 @@ export function useCreationType() {
   return useQueryState('creationType', marketplaceSearchParamsParsers.creationType)
 }
 
+// Search-page-specific filter hooks (separate from list-page category/tags)
+export function useSearchFilterCategories() {
+  return useQueryState('searchCategories', marketplaceSearchParamsParsers.searchCategories)
+}
+
+export function useSearchFilterLanguages() {
+  return useQueryState('searchLanguages', marketplaceSearchParamsParsers.searchLanguages)
+}
+
+export function useSearchFilterType() {
+  const [type, setType] = useQueryState('searchType', marketplaceSearchParamsParsers.searchType)
+  return [getValidatedPluginCategory(type), setType] as const
+}
+
+export function useSearchFilterTags() {
+  return useQueryState('searchTags', marketplaceSearchParamsParsers.searchTags)
+}
+
 /**
  * Not all categories have collections, so we need to
  * force the search mode for those categories.

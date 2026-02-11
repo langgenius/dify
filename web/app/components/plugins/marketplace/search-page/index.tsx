@@ -8,8 +8,17 @@ import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import Loading from '@/app/components/base/loading'
 import SegmentedControl from '@/app/components/base/segmented-control'
-import { useMarketplacePluginSortValue, useMarketplaceTemplateSortValue, useSearchTab, useSearchText } from '../atoms'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
+import {
+  useMarketplacePluginSortValue,
+  useMarketplaceTemplateSortValue,
+  useSearchFilterCategories,
+  useSearchFilterLanguages,
+  useSearchFilterTags,
+  useSearchFilterType,
+  useSearchTab,
+  useSearchText,
+} from '../atoms'
+import { CATEGORY_ALL, PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import Empty from '../empty'
 import { useMarketplaceContainerScroll } from '../hooks'
 import CardWrapper from '../list/card-wrapper'
@@ -18,6 +27,8 @@ import { useMarketplaceCreators, useMarketplacePlugins, useMarketplaceTemplates 
 import SortDropdown from '../sort-dropdown'
 import { getPluginFilterType, mapTemplateDetailToTemplate } from '../utils'
 import CreatorCard from './creator-card'
+import PluginFilters from './plugin-filters'
+import TemplateFilters from './template-filters'
 
 const PAGE_SIZE = 40
 const ALL_TAB_PREVIEW_SIZE = 8
@@ -39,31 +50,53 @@ const SearchPage = () => {
   const pluginSort = useMarketplacePluginSortValue()
   const templateSort = useMarketplaceTemplateSortValue()
 
+  // Search-page-specific filters
+  const [searchFilterCategories] = useSearchFilterCategories()
+  const [searchFilterLanguages] = useSearchFilterLanguages()
+  const [searchFilterType] = useSearchFilterType()
+  const [searchFilterTags] = useSearchFilterTags()
+
   const query = debouncedQuery === ZERO_WIDTH_SPACE ? '' : debouncedQuery.trim()
   const hasQuery = !!searchText && (!!query || searchText === ZERO_WIDTH_SPACE)
 
   const pluginsParams = useMemo(() => {
     if (!hasQuery)
       return undefined
+    const category = searchTab === 'plugins' && searchFilterType !== CATEGORY_ALL
+      ? searchFilterType
+      : undefined
+    const tags = searchTab === 'plugins' && searchFilterTags.length > 0
+      ? searchFilterTags
+      : undefined
     return {
       query,
       page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
       sort_by: pluginSort.sortBy,
       sort_order: pluginSort.sortOrder,
-      type: getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.all),
+      category,
+      tags,
+      type: getPluginFilterType(category || PLUGIN_TYPE_SEARCH_MAP.all),
     } as PluginsSearchParams
-  }, [hasQuery, query, searchTab, pluginSort])
+  }, [hasQuery, query, searchTab, pluginSort, searchFilterType, searchFilterTags])
 
   const templatesParams = useMemo(() => {
     if (!hasQuery)
       return undefined
+    const categories = searchTab === 'templates' && searchFilterCategories.length > 0
+      ? searchFilterCategories
+      : undefined
+    const languages = searchTab === 'templates' && searchFilterLanguages.length > 0
+      ? searchFilterLanguages
+      : undefined
     return {
       query,
       page_size: searchTab === 'all' ? ALL_TAB_PREVIEW_SIZE : PAGE_SIZE,
       sort_by: templateSort.sortBy,
       sort_order: templateSort.sortOrder,
+      categories,
+      languages,
     }
-  }, [hasQuery, query, searchTab, templateSort])
+  }, [hasQuery, query, searchTab, templateSort, searchFilterCategories, searchFilterLanguages])
 
   const creatorsParams = useMemo(() => {
     if (!hasQuery)
@@ -213,13 +246,17 @@ const SearchPage = () => {
       className="relative flex grow flex-col bg-background-default-subtle px-12 py-2"
     >
       <div className="mb-4 flex items-center justify-between pt-3">
-        <SegmentedControl
-          size="large"
-          activeState="accentLight"
-          value={searchTab}
-          onChange={v => setSearchTab(v as SearchTab)}
-          options={tabOptions}
-        />
+        <div className="flex items-center gap-2">
+          <SegmentedControl
+            size="large"
+            activeState="accentLight"
+            value={searchTab}
+            onChange={v => setSearchTab(v as SearchTab)}
+            options={tabOptions}
+          />
+          {searchTab === 'templates' && <TemplateFilters />}
+          {searchTab === 'plugins' && <PluginFilters />}
+        </div>
         {(searchTab === 'templates' || searchTab === 'plugins') && <SortDropdown />}
       </div>
 
