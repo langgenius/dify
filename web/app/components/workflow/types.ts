@@ -355,6 +355,7 @@ export type NodeOutPutVar = {
   isStartNode?: boolean
   isLoop?: boolean
   isFlat?: boolean
+  nodeType?: BlockEnum
 }
 
 // allow node default validators with narrower payload types to be stored in shared collections.

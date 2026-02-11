@@ -1,13 +1,14 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { inputVarTypeToVarType } from '../../data-source/utils'
 import useNodeInfo from './use-node-info'
 
@@ -33,6 +34,8 @@ const useAvailableVarList = (nodeId: string, {
   const { getTreeLeafNodes, getNodeById, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = !!features.sandbox?.enabled
   const baseAvailableNodes = useMemo(() => {
     return passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
   }, [passedInAvailableNodes, onlyLeafNodeVar, nodeId, getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent])
@@ -105,9 +108,12 @@ const useAvailableVarList = (nodeId: string, {
         .map((nodeVar) => {
           if (!llmNodeIds.has(nodeVar.nodeId))
             return nodeVar
-          const nextVars = nodeVar.vars.filter(item => item.variable !== 'context')
-          if (nextVars.length === nodeVar.vars.length)
-            return nodeVar
+          const nextVars = nodeVar.vars.filter(item => item.variable !== 'context').filter((item) => {
+            if (isSupportSandbox && item.type === VarType.string)
+              return item.variable !== 'text' && item.variable !== 'reasoning_content'
+
+            return true
+          })
           return {
             ...nodeVar,
             vars: nextVars,

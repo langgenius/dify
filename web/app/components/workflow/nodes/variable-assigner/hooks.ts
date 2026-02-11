@@ -8,13 +8,13 @@ import type {
   VariableAssignerNodeType,
 } from './types'
 import { uniqBy } from 'es-toolkit/compat'
-
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useNodes,
   useStoreApi,
 } from 'reactflow'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   useIsChatMode,
   useNodeDataUpdate,
@@ -22,6 +22,7 @@ import {
   useWorkflowVariables,
 } from '../../hooks'
 import { useWorkflowStore } from '../../store'
+import { BlockEnum, VarType } from '../../types'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
@@ -129,6 +130,8 @@ export const useGetAvailableVars = () => {
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = !!features.sandbox?.enabled
   const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean, hideEnv = false) => {
     const availableNodes: Node[] = []
     const currentNode = nodes.find(node => node.id === nodeId)!
@@ -152,6 +155,17 @@ export const useGetAvailableVars = () => {
           ...node,
           vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
         }))
+        .map((node) => {
+          return {
+            ...node,
+            vars: node.vars.filter((item) => {
+              if (isSupportSandbox && item.type === VarType.string && node.nodeType === BlockEnum.LLM)
+                return item.variable !== 'text' && item.variable !== 'reasoning_content'
+
+              return true
+            }),
+          }
+        })
         .filter(item => item.vars.length > 0)
     }
 
@@ -160,8 +174,18 @@ export const useGetAvailableVars = () => {
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
       filterVar,
+    }).map((node) => {
+      return {
+        ...node,
+        vars: node.vars.filter((item) => {
+          if (isSupportSandbox && item.type === VarType.string && node.nodeType === BlockEnum.LLM)
+            return item.variable !== 'text' && item.variable !== 'reasoning_content'
+
+          return true
+        }),
+      }
     })
-  }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
+  }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode, isSupportSandbox])
 
   return getAvailableVars
 }

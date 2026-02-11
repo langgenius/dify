@@ -343,12 +343,7 @@ const findExceptVarInObject = (
 }
 
 const getLLMNodeOutputVars = (llmNodeData: LLMNodeType): Var[] => {
-  const isComputerUseEnabled = !!llmNodeData.computer_use
-  const vars = [...LLM_OUTPUT_STRUCT].filter((item) => {
-    if (isComputerUseEnabled)
-      return true
-    return item.variable !== 'generation'
-  })
+  const vars = [...LLM_OUTPUT_STRUCT]
 
   if (
     llmNodeData.structured_output_enabled
@@ -379,6 +374,7 @@ const formatItem = (
     nodeId: id,
     title: data.title,
     vars: [],
+    nodeType: data?.type,
   }
   switch (data.type) {
     case BlockEnum.Start: {

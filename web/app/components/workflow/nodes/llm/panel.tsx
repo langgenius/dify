@@ -405,40 +405,46 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
       >
         <>
-          {!!inputs.computer_use && (
-            <VarItem
-              name="generation"
-              type="object"
-              description={t(`${i18nPrefix}.outputVars.generation`, { ns: 'workflow' })}
-              subItems={[
-                {
-                  name: 'content',
-                  type: 'string',
-                  description: '',
-                },
-                {
-                  name: 'reasoning_content',
-                  type: 'array[string]',
-                  description: '',
-                },
-                {
-                  name: 'tool_calls',
-                  type: 'array[object]',
-                  description: '',
-                },
-              ]}
-            />
-          )}
           <VarItem
-            name="text"
-            type="string"
-            description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
+            name="generation"
+            type="object"
+            description={t(`${i18nPrefix}.outputVars.generation`, { ns: 'workflow' })}
+            subItems={[
+              {
+                name: 'content',
+                type: 'string',
+                description: '',
+              },
+              {
+                name: 'reasoning_content',
+                type: 'array[string]',
+                description: '',
+              },
+              {
+                name: 'tool_calls',
+                type: 'array[object]',
+                description: '',
+              },
+            ]}
           />
-          <VarItem
-            name="reasoning_content"
-            type="string"
-            description={t(`${i18nPrefix}.outputVars.reasoning_content`, { ns: 'workflow' })}
-          />
+          {
+            !isSupportSandbox && (
+              <VarItem
+                name="text"
+                type="string"
+                description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
+              />
+            )
+          }
+          {
+            !isSupportSandbox && (
+              <VarItem
+                name="reasoning_content"
+                type="string"
+                description={t(`${i18nPrefix}.outputVars.reasoning_content`, { ns: 'workflow' })}
+              />
+            )
+          }
           <VarItem
             name="usage"
             type="object"
