@@ -4,12 +4,18 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { marketplaceQuery } from '@/service/client'
 import { getMarketplaceCollectionsAndPlugins, getMarketplacePlugins } from './utils'
 
+type CollectionsQueryOptions = {
+  enabled?: boolean
+}
+
 export function useMarketplaceCollectionsAndPlugins(
   collectionsParams: MarketPlaceInputs['collections']['query'],
+  options?: CollectionsQueryOptions,
 ) {
   return useQuery({
     queryKey: marketplaceQuery.collections.queryKey({ input: { query: collectionsParams } }),
     queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(collectionsParams, { signal }),
+    enabled: options?.enabled ?? true,
   })
 }
 
