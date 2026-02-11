@@ -8,7 +8,7 @@
   "blocks.datasource-empty": "Empty Data Source",
   "blocks.document-extractor": "Doc Extractor",
   "blocks.end": "Output",
-  "blocks.file-upload": "File Upload",
+  "blocks.file-upload": "Upload File to Sandbox",
   "blocks.group": "Group",
   "blocks.http-request": "HTTP Request",
   "blocks.human-input": "Human Input",
