@@ -2,8 +2,21 @@ import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, Variable, VarType } from '@/app/components/workflow/types'
+import type {
+  BlockEnum,
+  CommonNodeType,
+  ConversationVariable,
+  Edge,
+  EnvironmentVariable,
+  InputVar,
+  Node,
+  ValueSelector,
+  Variable,
+  VarType,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
 
@@ -165,6 +178,20 @@ export type WorkflowStartedResponse = {
     workflow_id: string
     created_at: number
   }
+  conversation_id?: string // only in chatflow
+  message_id?: string // only in chatflow
+}
+
+export type WorkflowPausedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    outputs: any // todo: remove any
+    paused_nodes: string[]
+    reasons: any[] // todo: remove any
+    workflow_run_id: string
+  }
 }
 
 export type WorkflowFinishedResponse = {
@@ -298,6 +325,54 @@ export type AgentLogResponse = {
   data: AgentLogItemWithChildren
 }
 
+export type HumanInputFormData = {
+  form_id: string
+  node_id: string
+  node_title: string
+  form_content: string
+  inputs: FormInputItem[]
+  actions: UserAction[]
+  form_token: string
+  resolved_default_values: Record<string, string>
+  display_in_ui: boolean
+  expiration_time: number
+}
+
+export type HumanInputRequiredResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFormData
+}
+
+export type HumanInputFilledFormData = {
+  node_id: string
+  node_title: string
+  rendered_content: string
+  action_id: string
+  action_text: string
+}
+
+export type HumanInputFormFilledResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFilledFormData
+}
+
+export type HumanInputFormTimeoutData = {
+  node_id: string
+  node_title: string
+  expiration_time: number
+}
+
+export type HumanInputFormTimeoutResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFormTimeoutData
+}
+
 export type WorkflowRunHistory = {
   id: string
   version: string
@@ -309,7 +384,7 @@ export type WorkflowRunHistory = {
     viewport?: Viewport
   }
   inputs: Record<string, string>
-  status: string
+  status: WorkflowRunningStatus
   outputs: Record<string, any>
   error?: string
   elapsed_time: number

@@ -81,26 +81,35 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
             session.commit()
             return
 
-        for document_id in document_ids:
-            logger.info(click.style(f"Start process document: {document_id}", fg="green"))
+    # Phase 1: Update status to parsing (short transaction)
+    with session_factory.create_session() as session, session.begin():
+        documents = (
+            session.query(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id).all()
+        )
 
-            document = (
-                session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
-
+        for document in documents:
             if document:
                 document.indexing_status = "parsing"
                 document.processing_started_at = naive_utc_now()
-                documents.append(document)
                 session.add(document)
-        session.commit()
+    # Transaction committed and closed
 
-        try:
-            indexing_runner = IndexingRunner()
-            indexing_runner.run(documents)
-            end_at = time.perf_counter()
-            logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+    # Phase 2: Execute indexing (no transaction - IndexingRunner creates its own sessions)
+    has_error = False
+    try:
+        indexing_runner = IndexingRunner()
+        indexing_runner.run(documents)
+        end_at = time.perf_counter()
+        logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+    except DocumentIsPausedError as ex:
+        logger.info(click.style(str(ex), fg="yellow"))
+        has_error = True
+    except Exception:
+        logger.exception("Document indexing task failed, dataset_id: %s", dataset_id)
+        has_error = True
 
+    if not has_error:
+        with session_factory.create_session() as session:
             # Trigger summary index generation for completed documents if enabled
             # Only generate for high_quality indexing technique and when summary_index_setting is enabled
             # Re-query dataset to get latest summary_index_setting (in case it was updated)
@@ -115,17 +124,18 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     # expire all session to get latest document's indexing status
                     session.expire_all()
                     # Check each document's indexing status and trigger summary generation if completed
-                    for document_id in document_ids:
-                        # Re-query document to get latest status (IndexingRunner may have updated it)
-                        document = (
-                            session.query(Document)
-                            .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                            .first()
-                        )
+
+                    documents = (
+                        session.query(Document)
+                        .where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        .all()
+                    )
+
+                    for document in documents:
                         if document:
                             logger.info(
                                 "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
-                                document_id,
+                                document.id,
                                 document.indexing_status,
                                 document.doc_form,
                                 document.need_summary,
@@ -136,46 +146,36 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 and document.need_summary is True
                             ):
                                 try:
-                                    generate_summary_index_task.delay(dataset.id, document_id, None)
+                                    generate_summary_index_task.delay(dataset.id, document.id, None)
                                     logger.info(
                                         "Queued summary index generation task for document %s in dataset %s "
                                         "after indexing completed",
-                                        document_id,
+                                        document.id,
                                         dataset.id,
                                     )
                                 except Exception:
                                     logger.exception(
                                         "Failed to queue summary index generation task for document %s",
-                                        document_id,
+                                        document.id,
                                     )
                                     # Don't fail the entire indexing process if summary task queuing fails
                             else:
                                 logger.info(
                                     "Skipping summary generation for document %s: "
                                     "status=%s, doc_form=%s, need_summary=%s",
-                                    document_id,
+                                    document.id,
                                     document.indexing_status,
                                     document.doc_form,
                                     document.need_summary,
                                 )
                         else:
-                            logger.warning("Document %s not found after indexing", document_id)
-                else:
-                    logger.info(
-                        "Summary index generation skipped for dataset %s: summary_index_setting.enable=%s",
-                        dataset.id,
-                        summary_index_setting.get("enable") if summary_index_setting else None,
-                    )
+                            logger.warning("Document %s not found after indexing", document.id)
             else:
                 logger.info(
                     "Summary index generation skipped for dataset %s: indexing_technique=%s (not 'high_quality')",
                     dataset.id,
                     dataset.indexing_technique,
                 )
-        except DocumentIsPausedError as ex:
-            logger.info(click.style(str(ex), fg="yellow"))
-        except Exception:
-            logger.exception("Document indexing task failed, dataset_id: %s", dataset_id)
 
 
 def _document_indexing_with_tenant_queue(
