@@ -21,7 +21,7 @@ export const useGetPricingPageLanguage = () => {
   return getPricingPageLanguage(locale)
 }
 
-export const defaultDocBaseUrl = 'https://docs.dify.ai'
+export const defaultDocBaseUrl = 'https://dify-6c0370d8-add-new-agent.mintlify.app'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 
 export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
