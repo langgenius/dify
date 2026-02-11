@@ -378,59 +378,59 @@ class ApiToolManageService:
                 .first()
             )
 
-        if not db_provider:
-            # create a fake db provider
-            db_provider = ApiToolProvider(
-                tenant_id="",
-                user_id="",
-                name="",
-                icon="",
-                schema=schema,
-                description="",
-                schema_type_str=ApiProviderSchemaType.OPENAPI,
-                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
-                credentials_str=json.dumps(credentials),
-            )
-
-        if "auth_type" not in credentials:
-            raise ValueError("auth_type is required")
-
-        # get auth type, none or api key
-        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
-
-        # create provider entity
-        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
-        # load tools into provider entity
-        provider_controller.load_bundled_tools(tool_bundles)
-
-        # decrypt credentials
-        if db_provider.id:
-            encrypter, _ = create_tool_provider_encrypter(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-            )
-            decrypted_credentials = encrypter.decrypt(credentials)
-            # check if the credential has changed, save the original credential
-            masked_credentials = encrypter.mask_plugin_credentials(decrypted_credentials)
-            for name, value in credentials.items():
-                if name in masked_credentials and value == masked_credentials[name]:
-                    credentials[name] = decrypted_credentials[name]
-
-        try:
-            provider_controller.validate_credentials_format(credentials)
-            # get tool
-            tool = provider_controller.get_tool(tool_name)
-            tool = tool.fork_tool_runtime(
-                runtime=ToolRuntime(
-                    credentials=credentials,
-                    tenant_id=tenant_id,
+            if not db_provider:
+                # create a fake db provider
+                db_provider = ApiToolProvider(
+                    tenant_id="",
+                    user_id="",
+                    name="",
+                    icon="",
+                    schema=schema,
+                    description="",
+                    schema_type_str=ApiProviderSchemaType.OPENAPI,
+                    tools_str=json.dumps(jsonable_encoder(tool_bundles)),
+                    credentials_str=json.dumps(credentials),
                 )
-            )
-            result = tool.validate_credentials(credentials, parameters)
-        except Exception as e:
-            return {"error": str(e)}
 
-        return {"result": result or "empty response"}
+            if "auth_type" not in credentials:
+                raise ValueError("auth_type is required")
+
+            # get auth type, none or api key
+            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+
+            # create provider entity
+            provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
+            # load tools into provider entity
+            provider_controller.load_bundled_tools(tool_bundles)
+
+            # decrypt credentials
+            if db_provider.id:
+                encrypter, _ = create_tool_provider_encrypter(
+                    tenant_id=tenant_id,
+                    controller=provider_controller,
+                )
+                decrypted_credentials = encrypter.decrypt(credentials)
+                # check if the credential has changed, save the original credential
+                masked_credentials = encrypter.mask_plugin_credentials(decrypted_credentials)
+                for name, value in credentials.items():
+                    if name in masked_credentials and value == masked_credentials[name]:
+                        credentials[name] = decrypted_credentials[name]
+
+            try:
+                provider_controller.validate_credentials_format(credentials)
+                # get tool
+                tool = provider_controller.get_tool(tool_name)
+                tool = tool.fork_tool_runtime(
+                    runtime=ToolRuntime(
+                        credentials=credentials,
+                        tenant_id=tenant_id,
+                    )
+                )
+                result = tool.validate_credentials(credentials, parameters)
+            except Exception as e:
+                return {"error": str(e)}
+
+            return {"result": result or "empty response"}
 
     @staticmethod
     def list_api_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
