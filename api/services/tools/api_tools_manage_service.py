@@ -217,20 +217,20 @@ class ApiToolManageService:
                 .first()
             )
 
-        if provider is None:
-            raise ValueError(f"you have not added provider {provider_name}")
+            if provider is None:
+                raise ValueError(f"you have not added provider {provider_name}")
 
-        controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
-        labels = ToolLabelManager.get_tool_labels(controller)
+            controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
+            labels = ToolLabelManager.get_tool_labels(controller)
 
-        return [
-            ToolTransformService.convert_tool_entity_to_api_entity(
-                tool_bundle,
-                tenant_id=tenant_id,
-                labels=labels,
-            )
-            for tool_bundle in provider.tools
-        ]
+            return [
+                ToolTransformService.convert_tool_entity_to_api_entity(
+                    tool_bundle,
+                    tenant_id=tenant_id,
+                    labels=labels,
+                )
+                for tool_bundle in provider.tools
+            ]
 
     @staticmethod
     def update_api_tool_provider(
