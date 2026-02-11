@@ -8,6 +8,7 @@ from core.file.file_manager import file_manager
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType
@@ -16,6 +17,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.nodes.http_request.node import HttpRequestNode
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from core.workflow.nodes.template_transform.template_renderer import (
@@ -47,6 +49,7 @@ class DifyNodeFactory(NodeFactory):
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits | None = None,
         template_renderer: Jinja2TemplateRenderer | None = None,
+        template_transform_max_output_length: int | None = None,
         http_request_http_client: HttpClientProtocol | None = None,
         http_request_tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
         http_request_file_manager: FileManagerProtocol | None = None,
@@ -68,9 +71,13 @@ class DifyNodeFactory(NodeFactory):
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
         self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
+        self._template_transform_max_output_length = (
+            template_transform_max_output_length or dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
+        )
         self._http_request_http_client = http_request_http_client or ssrf_proxy
         self._http_request_tool_file_manager_factory = http_request_tool_file_manager_factory
         self._http_request_file_manager = http_request_file_manager or file_manager
+        self._rag_retrieval = DatasetRetrieval()
 
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:
@@ -122,6 +129,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 template_renderer=self._template_renderer,
+                max_output_length=self._template_transform_max_output_length,
             )
 
         if node_type == NodeType.HTTP_REQUEST:
@@ -133,6 +141,15 @@ class DifyNodeFactory(NodeFactory):
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
+            )
+
+        if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            return KnowledgeRetrievalNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                rag_retrieval=self._rag_retrieval,
             )
 
         return node_class(
