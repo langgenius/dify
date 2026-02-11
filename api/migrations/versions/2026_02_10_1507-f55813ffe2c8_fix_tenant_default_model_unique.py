@@ -15,7 +15,7 @@ def _is_pg(conn):
 
 # revision identifiers, used by Alembic.
 revision = 'f55813ffe2c8'
-down_revision = 'c3df22613c99'
+down_revision = '227822d22895'
 branch_labels = None
 depends_on = None
 
