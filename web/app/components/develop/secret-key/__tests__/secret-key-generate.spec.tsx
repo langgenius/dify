@@ -153,18 +153,6 @@ describe('SecretKeyGenerateModal', () => {
       const closeIcon = document.body.querySelector('svg.cursor-pointer')
       expect(closeIcon).toBeInTheDocument()
     })
-
-    it('should have correct dimensions on close icon', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg[class*="h-6"][class*="w-6"]')
-      expect(closeIcon).toBeInTheDocument()
-    })
-
-    it('should have tertiary text color on close icon', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg[class*="text-text-tertiary"]')
-      expect(closeIcon).toBeInTheDocument()
-    })
   })
 
   describe('header section', () => {

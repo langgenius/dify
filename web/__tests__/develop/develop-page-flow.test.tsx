@@ -222,20 +222,20 @@ describe('DevelopMain page flow', () => {
       mode: AppModeEnum.CHAT,
     }
 
-    const { container } = render(<DevelopMain appId="app-1" />)
+    render(<DevelopMain appId="app-1" />)
 
     // Main container: flex column with full height
-    const mainDiv = container.firstChild as HTMLElement
+    const mainDiv = screen.getByTestId('develop-main')
     expect(mainDiv.className).toContain('flex')
     expect(mainDiv.className).toContain('flex-col')
     expect(mainDiv.className).toContain('h-full')
 
     // Header section with border
-    const header = container.querySelector('.border-b')
+    const header = mainDiv.querySelector('.border-b')
     expect(header).toBeInTheDocument()
 
     // Content section with overflow scroll
-    const content = container.querySelector('.overflow-auto')
+    const content = mainDiv.querySelector('.overflow-auto')
     expect(content).toBeInTheDocument()
   })
 })

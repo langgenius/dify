@@ -124,27 +124,27 @@ describe('DevelopMain', () => {
     })
 
     it('should have flex column layout', () => {
-      const { container } = render(<DevelopMain appId="app-123" />)
-      const mainContainer = container.firstChild as HTMLElement
+      render(<DevelopMain appId="app-123" />)
+      const mainContainer = screen.getByTestId('develop-main')
       expect(mainContainer.className).toContain('flex')
       expect(mainContainer.className).toContain('flex-col')
     })
 
     it('should have relative positioning', () => {
-      const { container } = render(<DevelopMain appId="app-123" />)
-      const mainContainer = container.firstChild as HTMLElement
+      render(<DevelopMain appId="app-123" />)
+      const mainContainer = screen.getByTestId('develop-main')
       expect(mainContainer.className).toContain('relative')
     })
 
     it('should have full height', () => {
-      const { container } = render(<DevelopMain appId="app-123" />)
-      const mainContainer = container.firstChild as HTMLElement
+      render(<DevelopMain appId="app-123" />)
+      const mainContainer = screen.getByTestId('develop-main')
       expect(mainContainer.className).toContain('h-full')
     })
 
     it('should have overflow-hidden', () => {
-      const { container } = render(<DevelopMain appId="app-123" />)
-      const mainContainer = container.firstChild as HTMLElement
+      render(<DevelopMain appId="app-123" />)
+      const mainContainer = screen.getByTestId('develop-main')
       expect(mainContainer.className).toContain('overflow-hidden')
     })
   })

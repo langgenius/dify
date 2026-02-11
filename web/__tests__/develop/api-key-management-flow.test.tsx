@@ -143,11 +143,11 @@ describe('API Key management flow', () => {
     })
 
     // Click X icon to close
-    const xIcon = document.body.querySelector('svg.cursor-pointer')
-    expect(xIcon).toBeInTheDocument()
+    const closeIcon = document.body.querySelector('svg.cursor-pointer')
+    expect(closeIcon).toBeInTheDocument()
 
     await act(async () => {
-      await user.click(xIcon!)
+      await user.click(closeIcon!)
     })
     await flushUI()
 
