@@ -307,11 +307,10 @@ describe('useInputFieldPanel', () => {
 
   it('should set edit panel props when toggleInputFieldEditPanel is called', () => {
     const { result } = renderHook(() => useInputFieldPanel())
-    const editContent = { type: 'edit', data: {} }
+    const editContent = { onClose: vi.fn(), onSubmit: vi.fn() }
 
     act(() => {
-      // eslint-disable-next-line ts/no-explicit-any
-      result.current.toggleInputFieldEditPanel(editContent as any)
+      result.current.toggleInputFieldEditPanel(editContent)
     })
 
     expect(mockSetInputFieldEditPanelProps).toHaveBeenCalledWith(editContent)

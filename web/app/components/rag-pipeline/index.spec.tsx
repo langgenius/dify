@@ -41,7 +41,7 @@ vi.mock('./components/conversion', () => ({
 
 // Mock: Complex component with many hooks and workflow dependencies
 vi.mock('./components/rag-pipeline-main', () => ({
-  default: ({ nodes, edges, viewport }: any) => (
+  default: ({ nodes, edges, viewport }: { nodes?: unknown[], edges?: unknown[], viewport?: { zoom?: number } }) => (
     <div data-testid="rag-pipeline-main">
       <span data-testid="nodes-count">{nodes?.length ?? 0}</span>
       <span data-testid="edges-count">{edges?.length ?? 0}</span>
@@ -72,7 +72,7 @@ const mockProcessNodesWithoutDataSource = vi.mocked(processNodesWithoutDataSourc
 // Helper to mock selector with actual execution (increases function coverage)
 // This executes the real selector function: s => s.dataset?.pipeline_id
 const mockSelectorWithDataset = (pipelineId: string | null | undefined) => {
-  mockUseDatasetDetailContextWithSelector.mockImplementation((selector: (state: any) => any) => {
+  mockUseDatasetDetailContextWithSelector.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
     const mockState = { dataset: pipelineId ? { pipeline_id: pipelineId } : null }
     return selector(mockState)
   })
@@ -327,7 +327,7 @@ describe('RagPipeline', () => {
         graph: {
           nodes: [],
           edges: [],
-          viewport: undefined as any,
+          viewport: undefined as never,
         },
       })
       mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
@@ -342,7 +342,7 @@ describe('RagPipeline', () => {
         graph: {
           nodes: [],
           edges: [],
-          viewport: null as any,
+          viewport: null as never,
         },
       })
       mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
@@ -438,7 +438,7 @@ describe('processNodesWithoutDataSource utility integration', () => {
     const mockData = createMockWorkflowData()
     mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
     mockProcessNodesWithoutDataSource.mockReturnValue({
-      nodes: [{ id: 'processed-node', type: 'custom', data: { type: BlockEnum.Start, title: 'Processed', desc: '' }, position: { x: 0, y: 0 } }] as any,
+      nodes: [{ id: 'processed-node', type: 'custom', data: { type: BlockEnum.Start, title: 'Processed', desc: '' }, position: { x: 0, y: 0 } }] as unknown as ReturnType<typeof processNodesWithoutDataSource>['nodes'],
       viewport: { x: 0, y: 0, zoom: 2 },
     })
 
@@ -510,13 +510,13 @@ describe('Error Handling', () => {
   it('should throw when graph nodes is null', () => {
     const mockData = {
       graph: {
-        nodes: null as any,
-        edges: null as any,
+        nodes: null,
+        edges: null,
         viewport: { x: 0, y: 0, zoom: 1 },
       },
       hash: 'test',
       updated_at: 123,
-    } as FetchWorkflowDraftResponse
+    } as unknown as FetchWorkflowDraftResponse
 
     mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
 

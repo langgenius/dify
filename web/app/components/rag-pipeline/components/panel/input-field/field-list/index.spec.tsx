@@ -2185,7 +2185,7 @@ describe('handleSubmitField', () => {
 
     // Simulate form submission with moreInfo but different type
     const updatedFieldData = createInputVar({ variable: 'var_0', label: 'Updated Label' })
-    editorProps.onSubmit(updatedFieldData, { type: 'otherType' as any })
+    editorProps.onSubmit(updatedFieldData, { type: 'otherType' as never })
 
     // Assert - handleInputVarRename should NOT be called
     expect(mockHandleInputVarRename).not.toHaveBeenCalled()
