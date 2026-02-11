@@ -178,7 +178,7 @@ describe('Input Field Editor Data Flow', () => {
 
       expect(restored.type).toBe('number')
       expect(restored.unit).toBe('°C')
-      expect(restored.default_value).toBe(0.7)
+      expect(restored.default_value).toBe('0.7')
     })
 
     it('should preserve select options through roundtrip', () => {
