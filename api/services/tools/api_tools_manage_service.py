@@ -441,29 +441,29 @@ class ApiToolManageService:
             # get all api providers
             db_providers = session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
 
-        result: list[ToolProviderApiEntity] = []
+            result: list[ToolProviderApiEntity] = []
 
-        for provider in db_providers:
-            # convert provider controller to user provider
-            provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
-            labels = ToolLabelManager.get_tool_labels(provider_controller)
-            user_provider = ToolTransformService.api_provider_to_user_provider(
-                provider_controller, db_provider=provider, decrypt_credentials=True
-            )
-            user_provider.labels = labels
-
-            # add icon
-            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_provider)
-
-            tools = provider_controller.get_tools(tenant_id=tenant_id)
-
-            for tool in tools or []:
-                user_provider.tools.append(
-                    ToolTransformService.convert_tool_entity_to_api_entity(
-                        tenant_id=tenant_id, tool=tool, labels=labels
-                    )
+            for provider in db_providers:
+                # convert provider controller to user provider
+                provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
+                labels = ToolLabelManager.get_tool_labels(provider_controller)
+                user_provider = ToolTransformService.api_provider_to_user_provider(
+                    provider_controller, db_provider=provider, decrypt_credentials=True
                 )
+                user_provider.labels = labels
 
-            result.append(user_provider)
+                # add icon
+                ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_provider)
 
-        return result
+                tools = provider_controller.get_tools(tenant_id=tenant_id)
+
+                for tool in tools or []:
+                    user_provider.tools.append(
+                        ToolTransformService.convert_tool_entity_to_api_entity(
+                            tenant_id=tenant_id, tool=tool, labels=labels
+                        )
+                    )
+
+                result.append(user_provider)
+
+            return result
