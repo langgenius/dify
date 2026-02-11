@@ -177,6 +177,7 @@ class SystemFeatureModel(BaseModel):
     trial_models: list[str] = []
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    enable_creators_platform: bool = False
 
 
 class FeatureService:
@@ -237,6 +238,9 @@ class FeatureService:
 
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
+
+        if dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            system_features.enable_creators_platform = True
 
         return system_features
 

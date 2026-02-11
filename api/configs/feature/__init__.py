@@ -293,6 +293,27 @@ class MarketplaceConfig(BaseSettings):
     )
 
 
+class CreatorsPlatformConfig(BaseSettings):
+    """
+    Configuration for creators platform
+    """
+
+    CREATORS_PLATFORM_FEATURES_ENABLED: bool = Field(
+        description="Enable or disable creators platform features",
+        default=True,
+    )
+
+    CREATORS_PLATFORM_API_URL: HttpUrl = Field(
+        description="Creators Platform API URL",
+        default=HttpUrl("https://creators.dify.ai"),
+    )
+
+    CREATORS_PLATFORM_OAUTH_CLIENT_ID: str = Field(
+        description="OAuth client_id for the Creators Platform app registered in Dify",
+        default="",
+    )
+
+
 class EndpointConfig(BaseSettings):
     """
     Configuration for various application endpoints and URLs
@@ -1396,6 +1417,7 @@ class FeatureConfig(
     PluginConfig,
     CliApiConfig,
     MarketplaceConfig,
+    CreatorsPlatformConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,
