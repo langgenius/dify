@@ -173,7 +173,7 @@ class ApiToolManageService:
             session.add(db_provider)
 
             # update labels
-            ToolLabelManager.update_tool_labels(provider_controller, labels)
+            ToolLabelManager.update_tool_labels(provider_controller, labels, session)
 
             return {"result": "success"}
 
@@ -250,7 +250,6 @@ class ApiToolManageService:
         update api tool provider
         """
         provider_name = provider_name.strip()
-        with session_factory.create_session() as session:
         with session_factory.create_session() as session, session.begin():
             provider = (
                 session.query(ApiToolProvider)
@@ -311,7 +310,7 @@ class ApiToolManageService:
             cache.delete()
 
             # update labels
-            ToolLabelManager.update_tool_labels(provider_controller, labels)
+            ToolLabelManager.update_tool_labels(provider_controller, labels, session)
 
             return {"result": "success"}
 

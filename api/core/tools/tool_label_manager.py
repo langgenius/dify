@@ -1,3 +1,4 @@
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from core.tools.__base.tool_provider import ToolProviderController
@@ -19,7 +20,7 @@ class ToolLabelManager:
         return list(set(tool_labels))
 
     @classmethod
-    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str]):
+    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str], session: Session):
         """
         Update tool labels
         """
@@ -31,7 +32,7 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
 
         # delete old labels
-        with session_factory.create_session() as session, session.begin():
+        with session.begin():
             session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id).delete()
 
             # insert new labels
