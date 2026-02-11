@@ -20,6 +20,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
+from core.file.enums import FileTransferMethod, FileType
+from core.file.models import File
 
 _TEST_APP_ID = "test_app_id"
 _TEST_NODE_EXEC_ID = str(uuid.uuid4())
@@ -310,8 +312,6 @@ def test_workflow_node_variables_fields():
 
 def test_workflow_file_variable_with_signed_url():
     """Test that File type variables include signed URLs in API responses."""
-    from core.file.enums import FileTransferMethod, FileType
-    from core.file.models import File
 
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
@@ -368,8 +368,6 @@ def test_workflow_file_variable_with_signed_url():
 
 def test_workflow_file_variable_remote_url():
     """Test that File type variables with REMOTE_URL transfer method return the remote URL."""
-    from core.file.enums import FileTransferMethod, FileType
-    from core.file.models import File
 
     # Create a File object with REMOTE_URL transfer method
     test_file = File(

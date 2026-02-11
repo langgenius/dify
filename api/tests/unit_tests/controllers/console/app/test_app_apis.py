@@ -10,40 +10,31 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.app import (
     annotation as annotation_module,
-)
-from controllers.console.app import (
     completion as completion_module,
-)
-from controllers.console.app import (
     message as message_module,
-)
-from controllers.console.app import (
     ops_trace as ops_trace_module,
-)
-from controllers.console.app import (
     site as site_module,
-)
-from controllers.console.app import (
     statistic as statistic_module,
-)
-from controllers.console.app import (
     workflow_app_log as workflow_app_log_module,
-)
-from controllers.console.app import (
     workflow_draft_variable as workflow_draft_variable_module,
-)
-from controllers.console.app import (
     workflow_statistic as workflow_statistic_module,
-)
-from controllers.console.app import (
     workflow_trigger as workflow_trigger_module,
-)
-from controllers.console.app import (
     wraps as wraps_module,
 )
+from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
+from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
+from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
+from controllers.console.app.site import AppSiteUpdatePayload
+from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
+from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
+from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
+from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
+from controllers.console.app.workflow_trigger import Parser, ParserEnable
+
 
 
 def _unwrap(func):
@@ -75,14 +66,10 @@ class TestCompletionEndpoints:
 
     def test_completion_create_payload(self):
         """Test completion creation payload."""
-        from controllers.console.app.completion import CompletionMessagePayload
-
         payload = CompletionMessagePayload(inputs={"prompt": "test"}, model_config={})
         assert payload.inputs == {"prompt": "test"}
 
     def test_chat_message_payload_uuid_validation(self):
-        from controllers.console.app.completion import ChatMessagePayload
-
         payload = ChatMessagePayload(
             inputs={},
             model_config={},
@@ -123,7 +110,6 @@ class TestCompletionEndpoints:
         assert resp == {"result": {"text": "ok"}}
 
     def test_completion_api_conversation_not_exists(self, app, monkeypatch):
-        from werkzeug.exceptions import NotFound
 
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
@@ -205,14 +191,10 @@ class TestOpsTraceEndpoints:
 
     def test_ops_trace_query_basic(self):
         """Test ops_trace query."""
-        from controllers.console.app.ops_trace import TraceProviderQuery
-
         query = TraceProviderQuery(tracing_provider="langfuse")
         assert query.tracing_provider == "langfuse"
 
     def test_ops_trace_config_payload(self):
-        from controllers.console.app.ops_trace import TraceConfigPayload
-
         payload = TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"})
         assert payload.tracing_config["api_key"] == "k"
 
@@ -232,8 +214,6 @@ class TestOpsTraceEndpoints:
         assert result == {"has_not_configured": True}
 
     def test_trace_app_config_post_invalid(self, app, monkeypatch):
-        from werkzeug.exceptions import BadRequest
-
         api = ops_trace_module.TraceAppConfigApi()
         method = _unwrap(api.post)
 
@@ -251,8 +231,6 @@ class TestOpsTraceEndpoints:
                 method(app_id="app-1")
 
     def test_trace_app_config_delete_not_found(self, app, monkeypatch):
-        from werkzeug.exceptions import BadRequest
-
         api = ops_trace_module.TraceAppConfigApi()
         method = _unwrap(api.delete)
 
@@ -273,14 +251,10 @@ class TestSiteEndpoints:
 
     def test_site_response_structure(self):
         """Test site response structure."""
-        from controllers.console.app.site import AppSiteUpdatePayload
-
         payload = AppSiteUpdatePayload(title="My Site", description="Test site")
         assert payload.title == "My Site"
 
     def test_site_default_language_validation(self):
-        from controllers.console.app.site import AppSiteUpdatePayload
-
         payload = AppSiteUpdatePayload(default_language="en-US")
         assert payload.default_language == "en-US"
 
@@ -340,15 +314,11 @@ class TestWorkflowEndpoints:
 
     def test_workflow_copy_payload(self):
         """Test workflow copy payload."""
-        from controllers.console.app.workflow import SyncDraftWorkflowPayload
-
         payload = SyncDraftWorkflowPayload(graph={}, features={})
         assert payload.graph == {}
 
     def test_workflow_mode_query(self):
         """Test workflow mode query."""
-        from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload
-
         payload = AdvancedChatWorkflowRunPayload(inputs={}, query="hi")
         assert payload.query == "hi"
 
@@ -359,14 +329,10 @@ class TestWorkflowAppLogEndpoints:
 
     def test_workflow_app_log_query(self):
         """Test workflow app log query."""
-        from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
-
         query = WorkflowAppLogQuery(keyword="test", page=1, limit=20)
         assert query.keyword == "test"
 
     def test_workflow_app_log_query_detail_bool(self):
-        from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
-
         query = WorkflowAppLogQuery(detail="true")
         assert query.detail is True
 
@@ -406,8 +372,6 @@ class TestWorkflowDraftVariableEndpoints:
 
     def test_workflow_variable_creation(self):
         """Test workflow variable creation."""
-        from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
-
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
@@ -452,14 +416,10 @@ class TestWorkflowStatisticEndpoints:
 
     def test_workflow_statistic_time_range(self):
         """Test workflow statistic time range query."""
-        from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
-
         query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
         assert query.start == "2024-01-01"
 
     def test_workflow_statistic_blank_to_none(self):
-        from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
-
         query = WorkflowStatisticQuery(start="", end="")
         assert query.start is None
         assert query.end is None
@@ -525,8 +485,6 @@ class TestWorkflowTriggerEndpoints:
 
     def test_webhook_trigger_payload(self):
         """Test webhook trigger payload."""
-        from controllers.console.app.workflow_trigger import Parser, ParserEnable
-
         payload = Parser(node_id="node-1")
         assert payload.node_id == "node-1"
 
@@ -574,14 +532,10 @@ class TestMCPServerEndpoints:
 
     def test_mcp_server_connection(self):
         """Test MCP server connection."""
-        from controllers.console.app.mcp_server import MCPServerCreatePayload
-
         payload = MCPServerCreatePayload(parameters={"url": "http://localhost:3000"})
         assert payload.parameters["url"] == "http://localhost:3000"
 
     def test_mcp_server_update_payload(self):
-        from controllers.console.app.mcp_server import MCPServerUpdatePayload
-
         payload = MCPServerUpdatePayload(id="server-1", parameters={"timeout": 30}, status="active")
         assert payload.status == "active"
 
