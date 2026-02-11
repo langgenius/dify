@@ -13,7 +13,6 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
@@ -187,43 +186,44 @@ class WorkflowToolManageService:
         :param tenant_id: the tenant id
         :return: the list of tools
         """
-        db_tools = db.session.scalars(
-            select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
-        ).all()
+        with session_factory.create_session() as session, session.begin():
+            db_tools = session.scalars(
+                select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
+            ).all()
 
-        # Create a mapping from provider_id to app_id
-        provider_id_to_app_id = {provider.id: provider.app_id for provider in db_tools}
+            # Create a mapping from provider_id to app_id
+            provider_id_to_app_id = {provider.id: provider.app_id for provider in db_tools}
 
-        tools: list[WorkflowToolProviderController] = []
-        for provider in db_tools:
-            try:
-                tools.append(ToolTransformService.workflow_provider_to_controller(provider))
-            except Exception:
-                # skip deleted tools
-                logger.exception("Failed to load workflow tool provider %s", provider.id)
+            tools: list[WorkflowToolProviderController] = []
+            for provider in db_tools:
+                try:
+                    tools.append(ToolTransformService.workflow_provider_to_controller(provider))
+                except Exception:
+                    # skip deleted tools
+                    logger.exception("Failed to load workflow tool provider %s", provider.id)
 
-        labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
+            labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
 
-        result = []
+            result = []
 
-        for tool in tools:
-            workflow_app_id = provider_id_to_app_id.get(tool.provider_id)
-            user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
-                provider_controller=tool,
-                labels=labels.get(tool.provider_id, []),
-                workflow_app_id=workflow_app_id,
-            )
-            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_tool_provider)
-            user_tool_provider.tools = [
-                ToolTransformService.convert_tool_entity_to_api_entity(
-                    tool=tool.get_tools(tenant_id)[0],
+            for tool in tools:
+                workflow_app_id = provider_id_to_app_id.get(tool.provider_id)
+                user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
+                    provider_controller=tool,
                     labels=labels.get(tool.provider_id, []),
-                    tenant_id=tenant_id,
+                    workflow_app_id=workflow_app_id,
                 )
-            ]
-            result.append(user_tool_provider)
+                ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_tool_provider)
+                user_tool_provider.tools = [
+                    ToolTransformService.convert_tool_entity_to_api_entity(
+                        tool=tool.get_tools(tenant_id)[0],
+                        labels=labels.get(tool.provider_id, []),
+                        tenant_id=tenant_id,
+                    )
+                ]
+                result.append(user_tool_provider)
 
-        return result
+            return result
 
     @classmethod
     def delete_workflow_tool(cls, user_id: str, tenant_id: str, workflow_tool_id: str):
@@ -251,7 +251,7 @@ class WorkflowToolManageService:
         """
         with session_factory.create_session() as session, session.begin():
             db_tool = (
-                db.session.query(WorkflowToolProvider)
+                session.query(WorkflowToolProvider)
                 .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
                 .first()
             )
