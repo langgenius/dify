@@ -1,6 +1,7 @@
 """
 Unit tests for inner_api mail module
 """
+
 from unittest.mock import patch
 
 import pytest
@@ -173,6 +174,7 @@ class TestEnterpriseMail:
         """Test that EnterpriseMail has enterprise_inner_api_only decorator"""
         # Check method_decorators
         from controllers.inner_api.wraps import enterprise_inner_api_only
+
         assert enterprise_inner_api_only in api_instance.method_decorators
 
     def test_has_setup_required_decorator(self, api_instance):
@@ -194,6 +196,7 @@ class TestBillingMail:
         """Test that BillingMail has billing_inner_api_only decorator"""
         # Check method_decorators
         from controllers.inner_api.wraps import billing_inner_api_only
+
         assert billing_inner_api_only in api_instance.method_decorators
 
     def test_has_setup_required_decorator(self, api_instance):

@@ -1,6 +1,7 @@
 """
 Unit tests for inner_api plugin decorators
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -97,6 +98,7 @@ class TestGetUser:
             result = get_user("tenant123", "user123")
 
         # Assert
+        assert result == mock_new_user
         mock_session.add.assert_called_once()
         mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once()
@@ -143,8 +145,9 @@ class TestGetUserTenant:
     """Test get_user_tenant decorator"""
 
     @patch("controllers.inner_api.plugin.wraps.Tenant")
-    def test_should_inject_tenant_and_user_models(self, mock_tenant_class, app: Flask):
+    def test_should_inject_tenant_and_user_models(self, mock_tenant_class, app: Flask, monkeypatch):
         """Test that decorator injects tenant_model and user_model into kwargs"""
+
         # Arrange
         @get_user_tenant
         def protected_view(tenant_model, user_model, **kwargs):
@@ -157,8 +160,7 @@ class TestGetUserTenant:
 
         # Act
         with app.test_request_context(json={"tenant_id": "tenant123", "user_id": "user456"}):
-            # Add login_manager to app since it doesn't exist
-            app.login_manager = MagicMock()
+            monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.db.session.query") as mock_query:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
                     mock_query.return_value.where.return_value.first.return_value = mock_tenant
@@ -171,6 +173,7 @@ class TestGetUserTenant:
 
     def test_should_raise_error_when_tenant_id_missing(self, app: Flask):
         """Test that Pydantic ValidationError is raised when tenant_id is missing from payload"""
+
         # Arrange
         @get_user_tenant
         def protected_view(tenant_model, user_model, **kwargs):
@@ -183,6 +186,7 @@ class TestGetUserTenant:
 
     def test_should_raise_error_when_tenant_not_found(self, app: Flask):
         """Test that ValueError is raised when tenant is not found"""
+
         # Arrange
         @get_user_tenant
         def protected_view(tenant_model, user_model, **kwargs):
@@ -196,8 +200,9 @@ class TestGetUserTenant:
                     protected_view()
 
     @patch("controllers.inner_api.plugin.wraps.Tenant")
-    def test_should_use_default_session_id_when_user_id_empty(self, mock_tenant_class, app: Flask):
+    def test_should_use_default_session_id_when_user_id_empty(self, mock_tenant_class, app: Flask, monkeypatch):
         """Test that default session ID is used when user_id is empty string"""
+
         # Arrange
         @get_user_tenant
         def protected_view(tenant_model, user_model, **kwargs):
@@ -209,8 +214,7 @@ class TestGetUserTenant:
 
         # Act - use empty string for user_id to trigger default logic
         with app.test_request_context(json={"tenant_id": "tenant123", "user_id": ""}):
-            # Add login_manager to app since it doesn't exist
-            app.login_manager = MagicMock()
+            monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.db.session.query") as mock_query:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
                     mock_query.return_value.where.return_value.first.return_value = mock_tenant
@@ -221,6 +225,7 @@ class TestGetUserTenant:
         assert result["tenant"] == mock_tenant
         assert result["user"] == mock_user
         from models.model import DefaultEndUserSessionID
+
         mock_get_user.assert_called_once_with("tenant123", DefaultEndUserSessionID.DEFAULT_SESSION_ID)
 
 
@@ -240,6 +245,7 @@ class TestPluginData:
 
     def test_should_inject_valid_payload(self, app: Flask):
         """Test that valid payload is injected into kwargs"""
+
         # Arrange
         @plugin_data(payload_type=PluginTestPayload)
         def protected_view(payload, **kwargs):
@@ -254,6 +260,7 @@ class TestPluginData:
 
     def test_should_raise_error_on_invalid_json(self, app: Flask):
         """Test that ValueError is raised when JSON parsing fails"""
+
         # Arrange
         @plugin_data(payload_type=PluginTestPayload)
         def protected_view(payload, **kwargs):
@@ -266,6 +273,7 @@ class TestPluginData:
 
     def test_should_raise_error_on_invalid_payload(self, app: Flask):
         """Test that ValueError is raised when payload validation fails"""
+
         # Arrange
         class InvalidPayload:
             @classmethod
@@ -283,6 +291,7 @@ class TestPluginData:
 
     def test_should_work_as_parameterized_decorator(self, app: Flask):
         """Test that decorator works when used with parentheses"""
+
         # Arrange
         @plugin_data(payload_type=PluginTestPayload)
         def protected_view(payload, **kwargs):

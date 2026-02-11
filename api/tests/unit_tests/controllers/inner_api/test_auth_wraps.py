@@ -257,7 +257,11 @@ class TestEnterpriseInnerApiUserAuth:
         assert result == mock_user
 
     def test_should_extract_user_id_with_bearer_prefix(self, app: Flask):
-        """Test that user ID is correctly extracted when Authorization has Bearer prefix"""
+        """Test that user ID is correctly extracted when Authorization has Bearer prefix.
+
+        For "Bearer DIFY user123:signature", the decorator strips the prefix
+        via split(" ")[-1] and extracts "user123" as the real user_id.
+        """
         # Arrange
         from base64 import b64encode
         from hashlib import sha1
@@ -267,24 +271,19 @@ class TestEnterpriseInnerApiUserAuth:
         def protected_view(**kwargs):
             return kwargs.get("user")
 
-        # For "Bearer DIFY user123:signature", the code extracts user_id as follows:
-        # parts[0] = "Bearer DIFY user123", then user_id.split(" ")[1] = "DIFY"
-        # This is the actual behavior of the decorator - see wraps.py lines 64-66
-        extracted_user_id = "DIFY"
-        actual_user_id = "user123"
+        user_id = "user123"
         inner_api_key = "valid_key"
-        data_to_sign = f"DIFY {extracted_user_id}"
+        data_to_sign = f"DIFY {user_id}"
         signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
         valid_signature = b64encode(signature.digest()).decode("utf-8")
 
-        # Create mock user with the ID that the decorator will actually query for
         mock_user = MagicMock()
-        mock_user.id = extracted_user_id
+        mock_user.id = user_id
 
         # Act - Authorization header with "Bearer " prefix before DIFY
         with app.test_request_context(
             headers={
-                "Authorization": f"Bearer DIFY {actual_user_id}:{valid_signature}",
+                "Authorization": f"Bearer DIFY {user_id}:{valid_signature}",
                 "X-Inner-Api-Key": inner_api_key,
             }
         ):
