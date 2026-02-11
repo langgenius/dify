@@ -1,7 +1,7 @@
 'use client'
 import type { Resource } from 'i18next'
 import type { Locale } from '.'
-import type { NamespaceCamelCase, NamespaceKebabCase } from './resources'
+import type { Namespace, NamespaceInFileName } from './resources'
 import { kebabCase } from 'es-toolkit/string'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
@@ -14,7 +14,7 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
     .use(initReactI18next)
     .use(resourcesToBackend((
       language: Locale,
-      namespace: NamespaceKebabCase | NamespaceCamelCase,
+      namespace: NamespaceInFileName | Namespace,
     ) => {
       const namespaceKebab = kebabCase(namespace)
       return import(`../i18n/${language}/${namespaceKebab}.json`)

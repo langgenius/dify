@@ -92,6 +92,10 @@ def _build_llm_result_from_first_chunk(
     Build a single `LLMResult` from the first returned chunk.
 
     This is used for `stream=False` because the plugin side may still implement the response via a chunked stream.
+
+    Note:
+        This function always drains the `chunks` iterator after reading the first chunk to ensure any underlying
+        streaming resources are released (e.g., HTTP connections owned by the plugin runtime).
     """
     content = ""
     content_list: list[PromptMessageContentUnionTypes] = []
@@ -99,18 +103,25 @@ def _build_llm_result_from_first_chunk(
     system_fingerprint: str | None = None
     tools_calls: list[AssistantPromptMessage.ToolCall] = []
 
-    first_chunk = next(chunks, None)
-    if first_chunk is not None:
-        if isinstance(first_chunk.delta.message.content, str):
-            content += first_chunk.delta.message.content
-        elif isinstance(first_chunk.delta.message.content, list):
-            content_list.extend(first_chunk.delta.message.content)
+    try:
+        first_chunk = next(chunks, None)
+        if first_chunk is not None:
+            if isinstance(first_chunk.delta.message.content, str):
+                content += first_chunk.delta.message.content
+            elif isinstance(first_chunk.delta.message.content, list):
+                content_list.extend(first_chunk.delta.message.content)
 
-        if first_chunk.delta.message.tool_calls:
-            _increase_tool_call(first_chunk.delta.message.tool_calls, tools_calls)
+            if first_chunk.delta.message.tool_calls:
+                _increase_tool_call(first_chunk.delta.message.tool_calls, tools_calls)
 
-        usage = first_chunk.delta.usage or LLMUsage.empty_usage()
-        system_fingerprint = first_chunk.system_fingerprint
+            usage = first_chunk.delta.usage or LLMUsage.empty_usage()
+            system_fingerprint = first_chunk.system_fingerprint
+    finally:
+        try:
+            for _ in chunks:
+                pass
+        except Exception:
+            logger.debug("Failed to drain non-stream plugin chunk iterator.", exc_info=True)
 
     return LLMResult(
         model=model,
@@ -283,7 +294,7 @@ class LargeLanguageModel(AIModel):
             # TODO
             raise self._transform_invoke_error(e)
 
-        if stream and isinstance(result, Generator):
+        if stream and not isinstance(result, LLMResult):
             return self._invoke_result_generator(
                 model=model,
                 result=result,

@@ -416,7 +416,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.runtime import GraphRuntimeState
 
@@ -452,6 +452,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             graph=loop_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine

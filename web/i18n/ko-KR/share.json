@@ -58,5 +58,15 @@
   "generation.tabs.create": "일회용 실행",
   "generation.tabs.saved": "저장된 결과",
   "generation.title": "AI 생성",
+  "humanInput.completed": "이 요청은 다른 곳에서 처리된 것 같습니다.",
+  "humanInput.expirationTimeNowOrFuture": "이 작업은 {{relativeTime}}에 만료됩니다.",
+  "humanInput.expired": "이 요청이 만료된 것 같습니다.",
+  "humanInput.expiredTip": "이 작업이 만료되었습니다.",
+  "humanInput.formNotFound": "양식을 찾을 수 없습니다.",
+  "humanInput.rateLimitExceeded": "요청이 너무 많습니다. 나중에 다시 시도하세요.",
+  "humanInput.recorded": "입력이 기록되었습니다.",
+  "humanInput.sorry": "죄송합니다!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "감사합니다!",
   "login.backToHome": "홈으로 돌아가기"
 }

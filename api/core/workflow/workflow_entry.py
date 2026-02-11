@@ -14,7 +14,7 @@ from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
@@ -81,6 +81,12 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
+            config=GraphEngineConfig(
+                min_workers=dify_config.GRAPH_ENGINE_MIN_WORKERS,
+                max_workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+                scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
+                scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
+            ),
         )
 
         # Add debug logging layer when in debug mode
@@ -138,11 +144,11 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        node_config = dict(workflow.get_node_config_by_id(node_id))
-        node_config_data = node_config.get("data", {})
+        node_config = workflow.get_node_config_by_id(node_id)
+        node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data.get("type"))
+        node_type = NodeType(node_config_data["type"])
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
