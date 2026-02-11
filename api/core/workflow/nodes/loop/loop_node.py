@@ -71,9 +71,9 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         if self.node_data.loop_variables:
             value_processor: dict[Literal["constant", "variable"], Callable[[LoopVariableData], Segment | None]] = {
                 "constant": lambda var: self._get_segment_for_constant(var.var_type, var.value),
-                "variable": lambda var: self.graph_runtime_state.variable_pool.get(var.value)
-                if isinstance(var.value, list)
-                else None,
+                "variable": lambda var: (
+                    self.graph_runtime_state.variable_pool.get(var.value) if isinstance(var.value, list) else None
+                ),
             }
             for loop_variable in self.node_data.loop_variables:
                 if loop_variable.value_type not in value_processor:

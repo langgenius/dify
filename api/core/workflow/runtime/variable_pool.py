@@ -8,7 +8,6 @@ from typing import Annotated, Any, Union, cast
 
 from pydantic import BaseModel, Field
 
-from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, VariableBase
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import FileSegment, ObjectSegment
@@ -19,6 +18,7 @@ from core.workflow.constants import (
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.file import File, FileAttribute, file_manager
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
 

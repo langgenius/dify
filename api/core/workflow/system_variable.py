@@ -7,8 +7,8 @@ from uuid import uuid4
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
-from core.file.models import File
 from core.workflow.enums import SystemVariableKey
+from core.workflow.file.models import File
 
 
 class SystemVariable(BaseModel):

@@ -3,14 +3,14 @@ from types import SimpleNamespace
 import pytest
 
 from configs import dify_config
-from core.file.enums import FileType
-from core.file.models import File, FileTransferMethod
 from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.variables import StringVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
+from core.workflow.file.enums import FileType
+from core.workflow.file.models import File, FileTransferMethod
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.runtime import VariablePool

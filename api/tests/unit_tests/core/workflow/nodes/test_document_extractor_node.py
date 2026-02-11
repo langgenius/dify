@@ -6,12 +6,12 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment
 from core.variables.variables import StringVariable
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from core.workflow.nodes.document_extractor.node import (
@@ -146,7 +146,7 @@ def test_run_extract_text(
     mock_ssrf_proxy_get.return_value.content = file_content
     mock_ssrf_proxy_get.return_value.raise_for_status = Mock()
 
-    monkeypatch.setattr("core.file.file_manager.download", mock_download)
+    monkeypatch.setattr("core.workflow.file.file_manager.download", mock_download)
     monkeypatch.setattr("core.helper.ssrf_proxy.get", mock_ssrf_proxy_get)
 
     if mime_type == "application/pdf":

@@ -11,10 +11,10 @@ import httpx
 from json_repair import repair_json
 
 from configs import dify_config
-from core.file.enums import FileTransferMethod
-from core.file.file_manager import file_manager as default_file_manager
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
+from core.workflow.file.enums import FileTransferMethod
+from core.workflow.file.file_manager import file_manager as default_file_manager
 from core.workflow.runtime import VariablePool
 
 from ..protocols import FileManagerProtocol, HttpClientProtocol
