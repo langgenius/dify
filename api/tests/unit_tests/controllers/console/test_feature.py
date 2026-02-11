@@ -48,7 +48,7 @@ class TestSystemFeatureApi:
         )
 
         mocker.patch(
-            "services.feature_service.FeatureService.get_system_features"
+            "controllers.console.feature.FeatureService.get_system_features"
         ).return_value.model_dump.return_value = {"features": {"sys_feature": True}}
 
         api = SystemFeatureApi()
@@ -72,7 +72,7 @@ class TestSystemFeatureApi:
         )
 
         mocker.patch(
-            "services.feature_service.FeatureService.get_system_features"
+            "controllers.console.feature.FeatureService.get_system_features"
         ).return_value.model_dump.return_value = {"features": {"sys_feature": False}}
 
         api = SystemFeatureApi()

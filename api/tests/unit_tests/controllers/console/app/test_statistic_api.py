@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from types import SimpleNamespace
+from werkzeug.exceptions import BadRequest
 
 import pytest
 
@@ -136,7 +137,6 @@ def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytes
     monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        from werkzeug.exceptions import BadRequest
 
         with pytest.raises(BadRequest):
             method(app_model=SimpleNamespace(id="app-1"))
