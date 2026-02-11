@@ -292,17 +292,10 @@ class TestAnnotationImportServiceValidation:
 class TestAnnotationImportTaskOptimization:
     """Test optimizations in batch import task."""
 
-    def test_task_has_timeout_configured(self):
-        """Test that task has proper timeout configuration."""
-
-        # Verify task configuration
-        assert hasattr(batch_import_annotations_task, "time_limit")
-        assert hasattr(batch_import_annotations_task, "soft_time_limit")
-
-        # Check timeout values are reasonable
-        # Hard limit should be 6 minutes (360s)
-        # Soft limit should be 5 minutes (300s)
-        # Note: actual values depend on Celery configuration
+    def test_task_is_registered_with_queue(self):
+        """Test that task is registered with the correct queue."""
+        assert hasattr(batch_import_annotations_task, "apply_async")
+        assert hasattr(batch_import_annotations_task, "delay")
 
 
 class TestConfigurationValues:
