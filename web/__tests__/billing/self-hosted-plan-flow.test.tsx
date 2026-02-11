@@ -14,15 +14,12 @@ import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '
 import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
 import { SelfHostedPlan } from '@/app/components/billing/type'
 
-// ─── Mock state ──────────────────────────────────────────────────────────────
 let mockAppCtx: Record<string, unknown> = {}
 const mockToastNotify = vi.fn()
 
-// Save and restore window.location.href
 const originalLocation = window.location
-let locationHrefSetter: ReturnType<typeof vi.fn<(url: string) => void>>
+let assignedHref = ''
 
-// ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => mockAppCtx,
 }))
@@ -47,14 +44,12 @@ vi.mock('@/app/components/base/toast', () => ({
   default: { notify: (args: unknown) => mockToastNotify(args) },
 }))
 
-// Self-hosted List uses t() with returnObjects; mock it
 vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () => ({
   default: ({ plan }: { plan: string }) => (
     <div data-testid={`self-hosted-list-${plan}`}>Features</div>
   ),
 }))
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
@@ -62,21 +57,19 @@ const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
 describe('Self-Hosted Plan Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
     setupAppContext()
 
-    // Mock window.location.href setter
-    locationHrefSetter = vi.fn()
+    // Mock window.location with minimal getter/setter (Location props are non-enumerable)
+    assignedHref = ''
     Object.defineProperty(window, 'location', {
-      writable: true,
+      configurable: true,
       value: {
-        ...originalLocation,
-        get href() { return originalLocation.href },
-        set href(url: string) { locationHrefSetter(url) },
+        get href() { return assignedHref },
+        set href(value: string) { assignedHref = value },
       },
     })
   })
@@ -84,7 +77,7 @@ describe('Self-Hosted Plan Flow', () => {
   afterEach(() => {
     // Restore original location
     Object.defineProperty(window, 'location', {
-      writable: true,
+      configurable: true,
       value: originalLocation,
     })
   })
@@ -154,7 +147,7 @@ describe('Self-Hosted Plan Flow', () => {
       const button = screen.getByRole('button')
       await user.click(button)
 
-      expect(locationHrefSetter).toHaveBeenCalledWith(getStartedWithCommunityUrl)
+      expect(assignedHref).toBe(getStartedWithCommunityUrl)
     })
 
     it('should redirect to AWS Marketplace when clicking premium plan button', async () => {
@@ -164,7 +157,7 @@ describe('Self-Hosted Plan Flow', () => {
       const button = screen.getByRole('button')
       await user.click(button)
 
-      expect(locationHrefSetter).toHaveBeenCalledWith(getWithPremiumUrl)
+      expect(assignedHref).toBe(getWithPremiumUrl)
     })
 
     it('should redirect to Typeform when clicking enterprise plan button', async () => {
@@ -174,7 +167,7 @@ describe('Self-Hosted Plan Flow', () => {
       const button = screen.getByRole('button')
       await user.click(button)
 
-      expect(locationHrefSetter).toHaveBeenCalledWith(contactSalesUrl)
+      expect(assignedHref).toBe(contactSalesUrl)
     })
   })
 
@@ -194,7 +187,7 @@ describe('Self-Hosted Plan Flow', () => {
         )
       })
       // Should NOT redirect
-      expect(locationHrefSetter).not.toHaveBeenCalled()
+      expect(assignedHref).toBe('')
     })
 
     it('should show error toast when non-manager clicks premium button', async () => {
@@ -210,7 +203,7 @@ describe('Self-Hosted Plan Flow', () => {
           expect.objectContaining({ type: 'error' }),
         )
       })
-      expect(locationHrefSetter).not.toHaveBeenCalled()
+      expect(assignedHref).toBe('')
     })
 
     it('should show error toast when non-manager clicks enterprise button', async () => {
@@ -226,7 +219,7 @@ describe('Self-Hosted Plan Flow', () => {
           expect.objectContaining({ type: 'error' }),
         )
       })
-      expect(locationHrefSetter).not.toHaveBeenCalled()
+      expect(assignedHref).toBe('')
     })
   })
 })
