@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getInitialTokenV2, isTokenV1 } from './utils'
+import { getInitialTokenV2, isTokenV1 } from '../utils'
 
 describe('utils', () => {
   describe('isTokenV1', () => {

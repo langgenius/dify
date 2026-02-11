@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { Col, Heading, Properties, Property, PropertyInstruction, Row, SubProperty } from './md'
+import { Col, Heading, Properties, Property, PropertyInstruction, Row, SubProperty } from '../md'
 
 describe('md.tsx components', () => {
   describe('Heading', () => {

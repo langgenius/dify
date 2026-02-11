@@ -1,18 +1,25 @@
 import type { SiteInfo } from '@/models/share'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import InfoModal from './info-modal'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import InfoModal from '../info-modal'
 
-// Only mock react-i18next for translations
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+})
 
 afterEach(() => {
+  vi.runOnlyPendingTimers()
+  vi.useRealTimers()
   cleanup()
 })
+
+async function renderModal(ui: React.ReactElement) {
+  const result = render(ui)
+  await act(async () => {
+    vi.runAllTimers()
+  })
+  return result
+}
 
 describe('InfoModal', () => {
   const mockOnClose = vi.fn()
@@ -29,8 +36,8 @@ describe('InfoModal', () => {
   })
 
   describe('rendering', () => {
-    it('should not render when isShow is false', () => {
-      render(
+    it('should not render when isShow is false', async () => {
+      await renderModal(
         <InfoModal
           isShow={false}
           onClose={mockOnClose}
@@ -41,8 +48,8 @@ describe('InfoModal', () => {
       expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     })
 
-    it('should render when isShow is true', () => {
-      render(
+    it('should render when isShow is true', async () => {
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -53,8 +60,8 @@ describe('InfoModal', () => {
       expect(screen.getByText('Test App')).toBeInTheDocument()
     })
 
-    it('should render app title', () => {
-      render(
+    it('should render app title', async () => {
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -65,13 +72,13 @@ describe('InfoModal', () => {
       expect(screen.getByText('Test App')).toBeInTheDocument()
     })
 
-    it('should render copyright when provided', () => {
+    it('should render copyright when provided', async () => {
       const siteInfoWithCopyright: SiteInfo = {
         ...baseSiteInfo,
         copyright: 'Dify Inc.',
       }
 
-      render(
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -82,13 +89,13 @@ describe('InfoModal', () => {
       expect(screen.getByText(/Dify Inc./)).toBeInTheDocument()
     })
 
-    it('should render current year in copyright', () => {
+    it('should render current year in copyright', async () => {
       const siteInfoWithCopyright: SiteInfo = {
         ...baseSiteInfo,
         copyright: 'Test Company',
       }
 
-      render(
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -100,13 +107,13 @@ describe('InfoModal', () => {
       expect(screen.getByText(new RegExp(currentYear))).toBeInTheDocument()
     })
 
-    it('should render custom disclaimer when provided', () => {
+    it('should render custom disclaimer when provided', async () => {
       const siteInfoWithDisclaimer: SiteInfo = {
         ...baseSiteInfo,
         custom_disclaimer: 'This is a custom disclaimer',
       }
 
-      render(
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -117,8 +124,8 @@ describe('InfoModal', () => {
       expect(screen.getByText('This is a custom disclaimer')).toBeInTheDocument()
     })
 
-    it('should not render copyright section when not provided', () => {
-      render(
+    it('should not render copyright section when not provided', async () => {
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -130,8 +137,8 @@ describe('InfoModal', () => {
       expect(screen.queryByText(new RegExp(`©.*${year}`))).not.toBeInTheDocument()
     })
 
-    it('should render with undefined data', () => {
-      render(
+    it('should render with undefined data', async () => {
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -139,18 +146,17 @@ describe('InfoModal', () => {
         />,
       )
 
-      // Modal should still render but without content
       expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     })
 
-    it('should render with image icon type', () => {
+    it('should render with image icon type', async () => {
       const siteInfoWithImage: SiteInfo = {
         ...baseSiteInfo,
         icon_type: 'image',
         icon_url: 'https://example.com/icon.png',
       }
 
-      render(
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -163,8 +169,8 @@ describe('InfoModal', () => {
   })
 
   describe('close functionality', () => {
-    it('should call onClose when close button is clicked', () => {
-      render(
+    it('should call onClose when close button is clicked', async () => {
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}
@@ -172,7 +178,6 @@ describe('InfoModal', () => {
         />,
       )
 
-      // Find the close icon (RiCloseLine) which has text-text-tertiary class
       const closeIcon = document.querySelector('[class*="text-text-tertiary"]')
       expect(closeIcon).toBeInTheDocument()
       if (closeIcon) {
@@ -183,14 +188,14 @@ describe('InfoModal', () => {
   })
 
   describe('both copyright and disclaimer', () => {
-    it('should render both when both are provided', () => {
+    it('should render both when both are provided', async () => {
       const siteInfoWithBoth: SiteInfo = {
         ...baseSiteInfo,
         copyright: 'My Company',
         custom_disclaimer: 'Disclaimer text here',
       }
 
-      render(
+      await renderModal(
         <InfoModal
           isShow={true}
           onClose={mockOnClose}

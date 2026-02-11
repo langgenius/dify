@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import ResDownload from './index'
+import ResDownload from '../index'
 
 const mockType = { Link: 'mock-link' }
 let capturedProps: Record<string, unknown> | undefined

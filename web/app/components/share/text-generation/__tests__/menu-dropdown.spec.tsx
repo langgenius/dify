@@ -1,16 +1,8 @@
 import type { SiteInfo } from '@/models/share'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import MenuDropdown from './menu-dropdown'
+import MenuDropdown from '../menu-dropdown'
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-// Mock next/navigation
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
 vi.mock('next/navigation', () => ({
@@ -20,7 +12,6 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
-// Mock web-app-context
 const mockShareCode = 'test-share-code'
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: Record<string, unknown>) => unknown) => {
@@ -32,7 +23,6 @@ vi.mock('@/context/web-app-context', () => ({
   },
 }))
 
-// Mock webapp-auth service
 const mockWebAppLogout = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: (...args: unknown[]) => mockWebAppLogout(...args),
@@ -57,7 +47,6 @@ describe('MenuDropdown', () => {
     it('should render the trigger button', () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      // The trigger button contains a settings icon (RiEqualizer2Line)
       const triggerButton = screen.getByRole('button')
       expect(triggerButton).toBeInTheDocument()
     })
@@ -65,8 +54,7 @@ describe('MenuDropdown', () => {
     it('should not show dropdown content initially', () => {
       render(<MenuDropdown data={baseSiteInfo} />)
 
-      // Dropdown content should not be visible initially
-      expect(screen.queryByText('theme.theme')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
     })
 
     it('should show dropdown content when clicked', async () => {
@@ -76,7 +64,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('theme.theme')).toBeInTheDocument()
+        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
       })
     })
 
@@ -87,7 +75,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('userProfile.about')).toBeInTheDocument()
+        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
       })
     })
   })
@@ -105,7 +93,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('chat.privacyPolicyMiddle')).toBeInTheDocument()
+        expect(screen.getByText('share.chat.privacyPolicyMiddle')).toBeInTheDocument()
       })
     })
 
@@ -116,7 +104,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.queryByText('chat.privacyPolicyMiddle')).not.toBeInTheDocument()
+        expect(screen.queryByText('share.chat.privacyPolicyMiddle')).not.toBeInTheDocument()
       })
     })
 
@@ -133,7 +121,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        const link = screen.getByText('chat.privacyPolicyMiddle').closest('a')
+        const link = screen.getByText('share.chat.privacyPolicyMiddle').closest('a')
         expect(link).toHaveAttribute('href', privacyUrl)
         expect(link).toHaveAttribute('target', '_blank')
       })
@@ -148,7 +136,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('userProfile.logout')).toBeInTheDocument()
+        expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
       })
     })
 
@@ -159,7 +147,7 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.queryByText('userProfile.logout')).not.toBeInTheDocument()
+        expect(screen.queryByText('common.userProfile.logout')).not.toBeInTheDocument()
       })
     })
 
@@ -170,10 +158,10 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('userProfile.logout')).toBeInTheDocument()
+        expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
       })
 
-      const logoutButton = screen.getByText('userProfile.logout')
+      const logoutButton = screen.getByText('common.userProfile.logout')
       await act(async () => {
         fireEvent.click(logoutButton)
       })
@@ -193,10 +181,10 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('userProfile.about')).toBeInTheDocument()
+        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
       })
 
-      const aboutButton = screen.getByText('userProfile.about')
+      const aboutButton = screen.getByText('common.userProfile.about')
       fireEvent.click(aboutButton)
 
       await waitFor(() => {
@@ -213,13 +201,13 @@ describe('MenuDropdown', () => {
       fireEvent.click(triggerButton)
 
       await waitFor(() => {
-        expect(screen.getByText('theme.theme')).toBeInTheDocument()
+        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
       })
 
       rerender(<MenuDropdown data={baseSiteInfo} forceClose={true} />)
 
       await waitFor(() => {
-        expect(screen.queryByText('theme.theme')).not.toBeInTheDocument()
+        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
     })
   })
@@ -239,16 +227,14 @@ describe('MenuDropdown', () => {
 
       const triggerButton = screen.getByRole('button')
 
-      // Open
       fireEvent.click(triggerButton)
       await waitFor(() => {
-        expect(screen.getByText('theme.theme')).toBeInTheDocument()
+        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
       })
 
-      // Close
       fireEvent.click(triggerButton)
       await waitFor(() => {
-        expect(screen.queryByText('theme.theme')).not.toBeInTheDocument()
+        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
     })
   })

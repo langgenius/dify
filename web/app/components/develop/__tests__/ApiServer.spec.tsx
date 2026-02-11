@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
-import ApiServer from './ApiServer'
+import ApiServer from '../ApiServer'
 
-// Mock the secret-key-modal since it involves complex API interactions
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
     isShow ? <div data-testid="secret-key-modal"><button onClick={onClose}>Close Modal</button></div> : null
@@ -38,7 +37,6 @@ describe('ApiServer', () => {
 
     it('should render CopyFeedback component', () => {
       render(<ApiServer {...defaultProps} />)
-      // CopyFeedback renders a button for copying
       const copyButtons = screen.getAllByRole('button')
       expect(copyButtons.length).toBeGreaterThan(0)
     })
@@ -90,7 +88,6 @@ describe('ApiServer', () => {
       const user = userEvent.setup()
       render(<ApiServer {...defaultProps} appId="app-123" />)
 
-      // Open modal
       const apiKeyButton = screen.getByText('appApi.apiKey')
       await act(async () => {
         await user.click(apiKeyButton)
@@ -98,7 +95,6 @@ describe('ApiServer', () => {
 
       expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
 
-      // Close modal
       const closeButton = screen.getByText('Close Modal')
       await act(async () => {
         await user.click(closeButton)
@@ -196,9 +192,7 @@ describe('ApiServer', () => {
   describe('SecretKeyButton styling', () => {
     it('should have shrink-0 class to prevent shrinking', () => {
       render(<ApiServer {...defaultProps} appId="app-123" />)
-      // The SecretKeyButton wraps a Button component
       const button = screen.getByRole('button', { name: /apiKey/i })
-      // Check parent container has shrink-0
       const buttonContainer = button.closest('.shrink-0')
       expect(buttonContainer).toBeInTheDocument()
     })

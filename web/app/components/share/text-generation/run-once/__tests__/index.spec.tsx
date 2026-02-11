@@ -1,4 +1,4 @@
-import type { InputValueTypes } from '../types'
+import type { InputValueTypes } from '../../types'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -6,7 +6,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
-import RunOnce from './index'
+import RunOnce from '../index'
 
 vi.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {
@@ -39,7 +39,6 @@ vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', (
   }
 })
 
-// Mock FileUploaderInAttachmentWrapper as it requires context providers not available in tests
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: object[], onChange: (files: object[]) => void }) => (
     <div data-testid="file-uploader-mock">
@@ -272,7 +271,6 @@ describe('RunOnce', () => {
           selectInput: 'Option A',
         })
       })
-      // The Select component should be rendered
       expect(screen.getByText('Select Input')).toBeInTheDocument()
     })
   })
@@ -463,7 +461,6 @@ describe('RunOnce', () => {
             key: 'textInput',
             name: 'Text Input',
             type: 'string',
-            // max_length is not set
           }),
         ],
       }

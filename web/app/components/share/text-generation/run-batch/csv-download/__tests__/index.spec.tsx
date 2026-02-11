@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import CSVDownload from './index'
+import CSVDownload from '../index'
 
 const mockType = { Link: 'mock-link' }
 let capturedProps: Record<string, unknown> | undefined

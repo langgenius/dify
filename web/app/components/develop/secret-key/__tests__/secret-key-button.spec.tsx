@@ -1,8 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SecretKeyButton from './secret-key-button'
+import SecretKeyButton from '../secret-key-button'
 
-// Mock the SecretKeyModal since it has complex dependencies
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({ isShow, onClose, appId }: { isShow: boolean, onClose: () => void, appId?: string }) => (
     isShow
@@ -30,7 +29,6 @@ describe('SecretKeyButton', () => {
 
     it('should render the key icon', () => {
       const { container } = render(<SecretKeyButton />)
-      // RiKey2Line icon should be rendered as an svg
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
     })
@@ -58,7 +56,6 @@ describe('SecretKeyButton', () => {
       const user = userEvent.setup()
       render(<SecretKeyButton />)
 
-      // Open modal
       const button = screen.getByRole('button')
       await act(async () => {
         await user.click(button)
@@ -66,7 +63,6 @@ describe('SecretKeyButton', () => {
 
       expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
 
-      // Close modal
       const closeButton = screen.getByTestId('close-modal')
       await act(async () => {
         await user.click(closeButton)
@@ -81,20 +77,17 @@ describe('SecretKeyButton', () => {
 
       const button = screen.getByRole('button')
 
-      // Open
       await act(async () => {
         await user.click(button)
       })
       expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
 
-      // Close
       const closeButton = screen.getByTestId('close-modal')
       await act(async () => {
         await user.click(closeButton)
       })
       expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
 
-      // Open again
       await act(async () => {
         await user.click(button)
       })
@@ -205,7 +198,6 @@ describe('SecretKeyButton', () => {
       const user = userEvent.setup()
       render(<SecretKeyButton />)
 
-      // Initially modal should not be visible
       expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
 
       const button = screen.getByRole('button')
@@ -213,7 +205,6 @@ describe('SecretKeyButton', () => {
         await user.click(button)
       })
 
-      // Now modal should be visible
       expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
     })
 
@@ -231,7 +222,6 @@ describe('SecretKeyButton', () => {
         await user.click(closeButton)
       })
 
-      // Modal should be closed after clicking close
       expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
     })
   })
@@ -251,7 +241,6 @@ describe('SecretKeyButton', () => {
       button.focus()
       expect(document.activeElement).toBe(button)
 
-      // Press Enter to activate
       await act(async () => {
         await user.keyboard('{Enter}')
       })
@@ -273,20 +262,17 @@ describe('SecretKeyButton', () => {
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(2)
 
-      // Click first button
       await act(async () => {
         await user.click(buttons[0])
       })
 
       expect(screen.getByText('Modal for app-1')).toBeInTheDocument()
 
-      // Close first modal
       const closeButton = screen.getByTestId('close-modal')
       await act(async () => {
         await user.click(closeButton)
       })
 
-      // Click second button
       await act(async () => {
         await user.click(buttons[1])
       })

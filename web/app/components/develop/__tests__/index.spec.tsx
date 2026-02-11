@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import DevelopMain from './index'
+import DevelopMain from '../index'
 
-// Mock the app store with a factory function to control state
 const mockAppDetailValue: { current: unknown } = { current: undefined }
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: unknown) => unknown) => {
@@ -10,7 +9,6 @@ vi.mock('@/app/components/app/store', () => ({
   },
 }))
 
-// Mock the Doc component since it has complex dependencies
 vi.mock('@/app/components/develop/doc', () => ({
   default: ({ appDetail }: { appDetail: { name?: string } | null }) => (
     <div data-testid="doc-component">
@@ -20,7 +18,6 @@ vi.mock('@/app/components/develop/doc', () => ({
   ),
 }))
 
-// Mock the ApiServer component
 vi.mock('@/app/components/develop/ApiServer', () => ({
   default: ({ apiBaseUrl, appId }: { apiBaseUrl: string, appId: string }) => (
     <div data-testid="api-server">
@@ -44,7 +41,6 @@ describe('DevelopMain', () => {
       mockAppDetailValue.current = undefined
       render(<DevelopMain appId="app-123" />)
 
-      // Loading component renders with role="status"
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
 

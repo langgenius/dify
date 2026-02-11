@@ -2,7 +2,7 @@ import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import RunBatch from './index'
+import RunBatch from '../index'
 
 vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
@@ -15,14 +15,14 @@ vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
 let latestOnParsed: ((data: string[][]) => void) | undefined
 let receivedCSVDownloadProps: Record<string, unknown> | undefined
 
-vi.mock('./csv-reader', () => ({
+vi.mock('../csv-reader', () => ({
   default: (props: { onParsed: (data: string[][]) => void }) => {
     latestOnParsed = props.onParsed
     return <div data-testid="csv-reader" />
   },
 }))
 
-vi.mock('./csv-download', () => ({
+vi.mock('../csv-download', () => ({
   default: (props: { vars: { name: string }[] }) => {
     receivedCSVDownloadProps = props
     return <div data-testid="csv-download" />

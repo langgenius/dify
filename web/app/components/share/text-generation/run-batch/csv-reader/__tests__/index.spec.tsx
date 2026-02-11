@@ -1,13 +1,20 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import CSVReader from './index'
+import CSVReader from '../index'
 
 let mockAcceptedFile: { name: string } | null = null
-let capturedHandlers: Record<string, (payload: any) => void> = {}
+
+type CSVReaderHandlers = {
+  onUploadAccepted?: (payload: { data: string[][] }) => void
+  onDragOver?: (event: DragEvent) => void
+  onDragLeave?: (event: DragEvent) => void
+}
+
+let capturedHandlers: CSVReaderHandlers = {}
 
 vi.mock('react-papaparse', () => ({
   useCSVReader: () => ({
-    CSVReader: ({ children, ...handlers }: any) => {
+    CSVReader: ({ children, ...handlers }: { children: (ctx: { getRootProps: () => Record<string, string>, acceptedFile: { name: string } | null }) => React.ReactNode } & CSVReaderHandlers) => {
       capturedHandlers = handlers
       return (
         <div data-testid="csv-reader-wrapper">

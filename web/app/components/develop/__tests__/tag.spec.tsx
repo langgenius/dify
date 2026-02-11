@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { Tag } from './tag'
+import { Tag } from '../tag'
 
 describe('Tag', () => {
   describe('rendering', () => {
@@ -110,7 +110,6 @@ describe('Tag', () => {
     it('should apply small variant styles', () => {
       render(<Tag variant="small">GET</Tag>)
       const tag = screen.getByText('GET')
-      // Small variant should not have ring styles
       expect(tag.className).not.toContain('rounded-lg')
       expect(tag.className).not.toContain('ring-1')
     })
@@ -189,7 +188,6 @@ describe('Tag', () => {
       render(<Tag color="emerald" variant="small">TEST</Tag>)
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('text-emerald-500')
-      // Small variant should not have background/ring styles
       expect(tag.className).not.toContain('bg-emerald-400/10')
       expect(tag.className).not.toContain('ring-emerald-300')
     })
@@ -223,7 +221,6 @@ describe('Tag', () => {
     it('should correctly map PATCH to emerald (default)', () => {
       render(<Tag>PATCH</Tag>)
       const tag = screen.getByText('PATCH')
-      // PATCH is not in the valueColorMap, so it defaults to emerald
       expect(tag.className).toContain('text-emerald')
     })
 

@@ -1,8 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Code, CodeGroup, Embed, Pre } from './code'
+import { Code, CodeGroup, Embed, Pre } from '../code'
 
-// Mock the clipboard utility
 vi.mock('@/utils/clipboard', () => ({
   writeTextToClipboard: vi.fn().mockResolvedValue(undefined),
 }))
@@ -155,6 +154,9 @@ describe('code.tsx components', () => {
             <pre><code>fallback</code></pre>
           </CodeGroup>,
         )
+        await act(async () => {
+          vi.runAllTimers()
+        })
 
         const tab2 = screen.getByRole('tab', { name: 'Tab2' })
         await act(async () => {
@@ -229,7 +231,6 @@ describe('code.tsx components', () => {
         )
         expect(screen.getByText('POST')).toBeInTheDocument()
         expect(screen.getByText('/api/create')).toBeInTheDocument()
-        // Separator should be present
         const separator = container.querySelector('.rounded-full.bg-zinc-500')
         expect(separator).toBeInTheDocument()
       })
@@ -264,6 +265,9 @@ describe('code.tsx components', () => {
             <pre><code>fallback</code></pre>
           </CodeGroup>,
         )
+        await act(async () => {
+          vi.runAllTimers()
+        })
 
         const copyButton = screen.getByRole('button')
         await act(async () => {
@@ -285,6 +289,9 @@ describe('code.tsx components', () => {
             <pre><code>fallback</code></pre>
           </CodeGroup>,
         )
+        await act(async () => {
+          vi.runAllTimers()
+        })
 
         const copyButton = screen.getByRole('button')
         await act(async () => {
@@ -295,7 +302,6 @@ describe('code.tsx components', () => {
           expect(screen.getByText('Copied!')).toBeInTheDocument()
         })
 
-        // Advance time past the timeout
         await act(async () => {
           vi.advanceTimersByTime(1500)
         })
@@ -358,7 +364,6 @@ describe('code.tsx components', () => {
             <pre><code>code content</code></pre>
           </Pre>,
         )
-        // Should render within a CodeGroup structure
         const codeGroup = container.querySelector('.bg-zinc-900')
         expect(codeGroup).toBeInTheDocument()
       })
@@ -382,7 +387,6 @@ describe('code.tsx components', () => {
             </Pre>
           </CodeGroup>,
         )
-        // The outer code should be rendered (from targetCode)
         expect(screen.getByText('outer code')).toBeInTheDocument()
       })
     })
@@ -546,7 +550,6 @@ describe('code.tsx components', () => {
           <pre><code>fallback</code></pre>
         </CodeGroup>,
       )
-      // Should render copy button even with empty code
       expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
@@ -569,7 +572,6 @@ line3`
           <pre><code>fallback</code></pre>
         </CodeGroup>,
       )
-      // Multiline code should be rendered - use a partial match
       expect(screen.getByText(/line1/)).toBeInTheDocument()
       expect(screen.getByText(/line2/)).toBeInTheDocument()
       expect(screen.getByText(/line3/)).toBeInTheDocument()
