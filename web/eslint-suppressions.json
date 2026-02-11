@@ -2816,9 +2816,6 @@
   "app/components/base/switch/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/base/tab-header/index.tsx": {
@@ -4078,14 +4075,6 @@
   },
   "app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -5629,11 +5618,6 @@
   "app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/rag-pipeline-header/publisher/popup.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
     }
   },
   "app/components/rag-pipeline/components/rag-pipeline-header/run-mode.tsx": {

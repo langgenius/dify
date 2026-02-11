@@ -148,6 +148,29 @@ describe('DatasetMetadataDrawer', () => {
 
       expect(onIsBuiltInEnabledChange).toHaveBeenCalled()
     })
+
+    it('should keep switch checked when parent value does not change', async () => {
+      const onIsBuiltInEnabledChange = vi.fn()
+      render(
+        <DatasetMetadataDrawer
+          {...defaultProps}
+          isBuiltInEnabled
+          onIsBuiltInEnabledChange={onIsBuiltInEnabledChange}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      const switchBtn = screen.getByRole('switch')
+      expect(switchBtn).toHaveAttribute('aria-checked', 'true')
+
+      fireEvent.click(switchBtn)
+
+      expect(onIsBuiltInEnabledChange).toHaveBeenCalled()
+      expect(switchBtn).toHaveAttribute('aria-checked', 'true')
+    })
   })
 
   describe('Add Metadata', () => {

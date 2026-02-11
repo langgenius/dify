@@ -3,11 +3,9 @@ import type { FC } from 'react'
 import type { DocMetadataItem } from '../types'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { RiAddLine, RiDeleteBinLine, RiDraftLine, RiEditLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { InputNumber } from '@/app/components/base/input-number'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
@@ -21,7 +19,6 @@ import {
   useCreateMetaData,
   useDeleteMetaData,
   useRenameMeta,
-  useUpdateBuiltInStatus,
 } from '@/service/knowledge/use-metadata'
 import { cn } from '@/utils/classnames'
 
@@ -111,7 +108,6 @@ const MetadataSection: FC<MetadataSectionProps> = ({
   const createMetadataMutation = useCreateMetaData(datasetId || '')
   const renameMetadataMutation = useRenameMeta(datasetId || '')
   const deleteMetadataMutation = useDeleteMetaData(datasetId || '')
-  const updateBuiltInStatus = useUpdateBuiltInStatus(datasetId || '')
 
   // Drawer handlers
   const handleAddMetadata = useCallback(async (data: BuiltInMetadataItem) => {
@@ -132,12 +128,14 @@ const MetadataSection: FC<MetadataSectionProps> = ({
     onMetadataListChange?.()
   }, [deleteMetadataMutation, t, onMetadataListChange])
 
-  const handleBuiltInEnabledChange = useCallback(async (enabled: boolean) => {
+  // In the Pipeline editor the built-in toggle only controls the *node*
+  // configuration (enable_built_in_metadata).  It must NOT call the backend
+  // API to flip dataset.built_in_field_enabled — those are independent
+  // concepts: the node flag decides whether the workflow writes built-in
+  // fields on execution, while the dataset flag governs existing documents.
+  const handleBuiltInEnabledChange = useCallback((enabled: boolean) => {
     onEnableBuiltInMetadataChange(enabled)
-    if (datasetId) {
-      await updateBuiltInStatus.mutateAsync(enabled)
-    }
-  }, [datasetId, updateBuiltInStatus, onEnableBuiltInMetadataChange])
+  }, [onEnableBuiltInMetadataChange])
 
   // Document metadata value handlers
   const handleAddDocMetadata = useCallback(() => {
@@ -214,12 +212,12 @@ const MetadataSection: FC<MetadataSectionProps> = ({
   return (
     <div className={cn('space-y-3', className)}>
       <div className="flex items-center justify-between">
-        <div className="system-xs-semibold-uppercase text-text-tertiary">
+        <div className="text-text-tertiary system-xs-semibold-uppercase">
           {t('metadata.metadata', { ns: 'dataset' })}
         </div>
         {datasetId && !readonly && (
           <Button variant="ghost" size="small" onClick={() => setIsDrawerOpen(true)}>
-            <RiDraftLine className="mr-1 size-3.5" />
+            <div className="i-ri-draft-line mr-1 size-3.5" />
             {t('metadata.datasetMetadata.addMetaData', { ns: 'dataset' })}
           </Button>
         )}
@@ -233,10 +231,10 @@ const MetadataSection: FC<MetadataSectionProps> = ({
               <button
                 type="button"
                 onClick={handleAddDocMetadata}
-                className="system-xs-medium flex items-center gap-1 text-text-accent-secondary hover:text-text-accent disabled:opacity-50"
+                className="flex items-center gap-1 text-text-accent-secondary system-xs-medium hover:text-text-accent disabled:opacity-50"
                 disabled={docMetadata.length >= userMetadata.length}
               >
-                <RiAddLine className="size-3.5" />
+                <div className="i-ri-add-line size-3.5" />
                 {t('operation.add', { ns: 'common' })}
               </button>
             )}
@@ -251,7 +249,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                     return (
                       <div key={itemKey} className="flex items-center gap-2">
                         <div className="flex w-0 grow items-center gap-2">
-                          <div className="border-components-input-border-normal flex w-1/3 items-center gap-1 rounded-lg border bg-components-input-bg-normal px-2">
+                          <div className="flex w-1/3 items-center gap-1 rounded-lg border border-components-panel-border bg-components-input-bg-normal px-2">
                             <select
                               value={item.metadata_id}
                               onChange={e => handleDocMetadataIdChange(index, e.target.value)}
@@ -267,7 +265,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                               )}
                             </select>
                           </div>
-                          <div className="border-components-input-border-normal flex h-8 grow items-center gap-1 rounded-lg border bg-components-input-bg-normal">
+                          <div className="flex h-8 grow items-center gap-1 rounded-lg border border-components-panel-border bg-components-input-bg-normal">
                             <div className="ml-1 inline-flex shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
                               <Tooltip
                                 popupContent={isVariable ? '' : t('nodes.common.valueType.variable', { ns: 'workflow' })}
@@ -276,7 +274,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                   className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', isVariable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg', readonly && 'cursor-not-allowed opacity-50')}
                                   onClick={() => !readonly && handleDocMetadataValueChange(index, [])}
                                 >
-                                  <Variable02 className="h-4 w-4" />
+                                  <div className="i-custom-vender-solid-development-variable-02 h-4 w-4" />
                                 </div>
                               </Tooltip>
                               <Tooltip
@@ -286,7 +284,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                   className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', !isVariable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg', readonly && 'cursor-not-allowed opacity-50')}
                                   onClick={() => !readonly && handleDocMetadataValueChange(index, '')}
                                 >
-                                  <RiEditLine className="h-4 w-4" />
+                                  <div className="i-ri-edit-line h-4 w-4" />
                                 </div>
                               </Tooltip>
                             </div>
@@ -328,7 +326,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                             onClick={() => handleRemoveDocMetadata(index)}
                             className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                           >
-                            <RiDeleteBinLine className="size-4" />
+                            <div className="i-ri-delete-bin-line size-4" />
                           </button>
                         )}
                       </div>
@@ -337,7 +335,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                 </div>
               )
             : (
-                <div className="system-2xs-regular py-2 text-center text-text-quaternary">
+                <div className="py-2 text-center text-text-quaternary system-2xs-regular">
                   {t('stepTwo.metadata.noValues', { ns: 'datasetCreation' })}
                 </div>
               )}

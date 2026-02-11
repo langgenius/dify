@@ -8,6 +8,7 @@ type SwitchProps = {
   onChange?: (value: boolean) => void
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
+  value?: boolean
   disabled?: boolean
   className?: string
 }
@@ -18,16 +19,22 @@ const Switch = (
     onChange,
     size = 'md',
     defaultValue = false,
+    value,
     disabled = false,
     className,
   }: SwitchProps & {
     ref?: React.RefObject<HTMLButtonElement>
   },
 ) => {
-  const [enabled, setEnabled] = useState(defaultValue)
+  const isControlled = value !== undefined
+  const [uncontrolledEnabled, setUncontrolledEnabled] = useState(defaultValue)
+
   useEffect(() => {
-    setEnabled(defaultValue)
-  }, [defaultValue])
+    if (!isControlled)
+      setUncontrolledEnabled(defaultValue)
+  }, [defaultValue, isControlled])
+
+  const enabled = isControlled ? value : uncontrolledEnabled
   const wrapStyle = {
     lg: 'h-6 w-11',
     l: 'h-5 w-9',
@@ -58,10 +65,13 @@ const Switch = (
       onChange={(checked: boolean) => {
         if (disabled)
           return
-        setEnabled(checked)
+
+        if (!isControlled)
+          setUncontrolledEnabled(checked)
+
         onChange?.(checked)
       }}
-      className={cn(wrapStyle[size], enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex  shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
+      className={cn(wrapStyle[size], enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
     >
       <span
         aria-hidden="true"

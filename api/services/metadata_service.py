@@ -1,5 +1,7 @@
 import copy
 import logging
+import time
+from collections.abc import Sequence
 
 from sqlalchemy import or_
 
@@ -17,6 +19,8 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 
 logger = logging.getLogger(__name__)
+
+KNOWLEDGE_INDEX_NODE_TYPE = "knowledge-index"
 
 
 class MetadataService:
@@ -98,66 +102,117 @@ class MetadataService:
         finally:
             redis_client.delete(lock_key)
 
+    # ------------------------------------------------------------------
+    # Pipeline workflow guard helpers
+    # ------------------------------------------------------------------
+
     @staticmethod
-    def check_metadata_used_in_pipeline(dataset_id: str, metadata_id: str) -> tuple[bool, str | None]:
-        """
-        Check if a metadata is used in the associated Pipeline's Knowledge Base node.
-
-        Checks both draft and current published workflows to prevent deletion of metadata
-        that is actively used in production.
-
-        Returns:
-            tuple[bool, str | None]: (is_used, pipeline_name) - True if used, with pipeline name
-        """
-        # Get the dataset
+    def _get_pipeline_for_dataset(dataset_id: str) -> Pipeline | None:
+        """Return the Pipeline associated with *dataset_id*, or ``None``."""
         dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
         if not dataset or not dataset.pipeline_id:
-            return False, None
+            return None
+        return db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
 
-        # Get the pipeline to access workflow_id (current published version)
-        pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
+    @staticmethod
+    def _get_pipeline_workflows(pipeline: Pipeline, *, published_only: bool = False) -> Sequence[Workflow]:
+        """Fetch the relevant workflows for *pipeline*.
+
+        Args:
+            pipeline: The pipeline whose workflows to fetch.
+            published_only: When ``True`` only the current published workflow is
+                returned.  When ``False`` both the draft **and** the published
+                workflow are returned (used for stricter deletion guards).
+        """
+        if published_only:
+            if not pipeline.workflow_id:
+                return []
+            wf = db.session.query(Workflow).filter_by(id=pipeline.workflow_id).first()
+            return [wf] if wf else []
+
+        draft_condition = (Workflow.app_id == pipeline.id) & (Workflow.version == Workflow.VERSION_DRAFT)
+        if pipeline.workflow_id:
+            return (
+                db.session.query(Workflow)
+                .where(or_(draft_condition, Workflow.id == pipeline.workflow_id))
+                .all()
+            )
+        return db.session.query(Workflow).where(draft_condition).all()
+
+    @staticmethod
+    def _iter_knowledge_index_nodes(workflow: Workflow):
+        """Yield each ``knowledge-index`` node data dict from *workflow*.
+
+        Raises on malformed ``graph_dict`` so callers can apply fail-closed
+        logic in their own ``except`` blocks.
+        """
+        graph_dict = workflow.graph_dict
+        for node in graph_dict.get("nodes", []):
+            node_data = node.get("data", {})
+            if node_data.get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
+                yield node_data
+
+    # ------------------------------------------------------------------
+    # Public pipeline guard checks
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def check_built_in_enabled_in_published_pipeline(dataset_id: str) -> tuple[bool, str | None]:
+        """Check if built-in metadata is enabled in the current **published** Pipeline workflow.
+
+        Used when users disable built-in metadata from the Documents page.
+        Only the published workflow is checked because the Documents page
+        should not block on unpublished draft changes.
+
+        Returns:
+            ``(is_enabled, pipeline_name)``
+        """
+        pipeline = MetadataService._get_pipeline_for_dataset(dataset_id)
         if not pipeline:
             return False, None
 
-        # Build conditions for draft and current published workflows only
-        draft_condition = (Workflow.app_id == pipeline.id) & (Workflow.version == Workflow.VERSION_DRAFT)
-
-        if pipeline.workflow_id:
-            workflows = (
-                db.session.query(Workflow)
-                .where(
-                    or_(
-                        draft_condition,
-                        Workflow.id == pipeline.workflow_id,
-                    )
-                )
-                .all()
-            )
-        else:
-            workflows = db.session.query(Workflow).where(draft_condition).all()
-
+        workflows = MetadataService._get_pipeline_workflows(pipeline, published_only=True)
         if not workflows:
             return False, None
 
-        # Check each workflow for metadata usage
         for workflow in workflows:
             try:
-                graph_dict = workflow.graph_dict
-                if "nodes" not in graph_dict:
-                    continue
-
-                for node in graph_dict["nodes"]:
-                    node_data = node.get("data", {})
-                    # Check if this is a knowledge-index node
-                    if node_data.get("type") == "knowledge-index":
-                        doc_metadata = node_data.get("doc_metadata", [])
-                        if doc_metadata:
-                            for item in doc_metadata:
-                                if item.get("metadata_id") == metadata_id:
-                                    return True, pipeline.name
+                for node_data in MetadataService._iter_knowledge_index_nodes(workflow):
+                    if node_data.get("enable_built_in_metadata") is True:
+                        return True, pipeline.name
             except Exception:
-                # Fail closed: if we can't parse the workflow, assume metadata is in use
-                # to prevent accidental deletion of actively used metadata.
+                logger.exception(
+                    "Error checking built-in metadata in published pipeline workflow %s", workflow.id
+                )
+                return True, pipeline.name
+
+        return False, None
+
+    @staticmethod
+    def check_metadata_used_in_pipeline(dataset_id: str, metadata_id: str) -> tuple[bool, str | None]:
+        """Check if a custom metadata field is referenced in the Pipeline's Knowledge Base node.
+
+        Both draft **and** published workflows are inspected to prevent
+        deletion of metadata that is actively used or about to be published.
+
+        Returns:
+            ``(is_used, pipeline_name)``
+        """
+        pipeline = MetadataService._get_pipeline_for_dataset(dataset_id)
+        if not pipeline:
+            return False, None
+
+        workflows = MetadataService._get_pipeline_workflows(pipeline, published_only=False)
+        if not workflows:
+            return False, None
+
+        for workflow in workflows:
+            try:
+                for node_data in MetadataService._iter_knowledge_index_nodes(workflow):
+                    for item in node_data.get("doc_metadata") or []:
+                        if item.get("metadata_id") == metadata_id:
+                            return True, pipeline.name
+            except Exception:
                 logger.exception("Error checking metadata usage in pipeline workflow %s", workflow.id)
                 return True, pipeline.name
 
@@ -246,12 +301,23 @@ class MetadataService:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def disable_built_in_field(dataset: Dataset):
+    def disable_built_in_field(dataset: Dataset) -> None:
         if not dataset.built_in_field_enabled:
             return
+
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
+
+            # Guard runs under the lock so a concurrent publish cannot change
+            # the published workflow between the check and the actual disable.
+            is_enabled, pipeline_name = MetadataService.check_built_in_enabled_in_published_pipeline(dataset.id)
+            if is_enabled:
+                raise ValueError(
+                    "Cannot disable built-in metadata because current published "
+                    f"Pipeline '{pipeline_name}' is using it."
+                )
+
             db.session.add(dataset)
             documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
             document_ids = []
@@ -271,10 +337,75 @@ class MetadataService:
                     document_ids.append(document.id)
             dataset.built_in_field_enabled = False
             db.session.commit()
+        except ValueError:
+            raise
         except Exception:
             logger.exception("Disable built-in field failed")
         finally:
             redis_client.delete(lock_key)
+
+    @staticmethod
+    def sync_built_in_field_on_publish(
+        dataset_id: str,
+        enable_built_in_metadata: bool,
+        *,
+        max_retries: int = 3,
+        retry_interval: float = 0.2,
+    ) -> None:
+        """Sync dataset.built_in_field_enabled with the published workflow's node config.
+
+        Called **after** the publish transaction commits so that
+        ``pipeline.workflow_id`` already points to the new workflow.
+
+        Unlike ``enable_built_in_field`` / ``disable_built_in_field`` this
+        method does **not** populate or strip built-in fields on existing
+        documents — that is intentional because the publish action only
+        changes the *future* indexing behaviour.  The flag sync ensures the
+        Documents page reflects the published pipeline's intent.
+
+        Retries on lock contention because a concurrent disable may hold the
+        lock briefly; giving up would leave the dataset flag stale.
+        """
+        lock_key = f"dataset_metadata_lock_{dataset_id}"
+
+        for attempt in range(max_retries + 1):
+            lock_acquired = False
+            try:
+                MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
+                lock_acquired = True
+
+                dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+                if not dataset:
+                    logger.warning("sync_built_in_field_on_publish: dataset %s not found", dataset_id)
+                    return
+
+                if dataset.built_in_field_enabled == enable_built_in_metadata:
+                    return
+
+                logger.info(
+                    "sync_built_in_field_on_publish: dataset=%s, %s -> %s",
+                    dataset_id, dataset.built_in_field_enabled, enable_built_in_metadata,
+                )
+                dataset.built_in_field_enabled = enable_built_in_metadata
+                db.session.add(dataset)
+                db.session.commit()
+                return
+            except ValueError:
+                if lock_acquired:
+                    raise
+                # Lock contention — retry after a short wait
+                if attempt < max_retries:
+                    logger.info(
+                        "sync_built_in_field_on_publish: lock contention for dataset %s, "
+                        "retrying (%d/%d)",
+                        dataset_id, attempt + 1, max_retries,
+                    )
+                    time.sleep(retry_interval)
+                else:
+                    raise
+            finally:
+                if lock_acquired:
+                    redis_client.delete(lock_key)
 
     @staticmethod
     def update_documents_metadata(dataset: Dataset, metadata_args: MetadataOperationData):
