@@ -9,10 +9,12 @@ import {
   RiArrowRightSLine,
   RiBuildingLine,
   RiGlobalLine,
+  RiLoader2Line,
   RiLockLine,
   RiPlanetLine,
   RiPlayCircleLine,
   RiPlayList2Line,
+  RiStore2Line,
   RiTerminalBoxLine,
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
@@ -47,7 +49,7 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
@@ -162,6 +164,7 @@ const AppPublisher = ({
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
+  const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
 
   const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
@@ -287,6 +290,22 @@ const AppPublisher = ({
       setShowAppAccessControl(false)
     }
   }, [appDetail, setAppDetail])
+
+  const handlePublishToMarketplace = useCallback(async () => {
+    if (!appDetail?.id || publishingToMarketplace)
+      return
+    setPublishingToMarketplace(true)
+    try {
+      const result = await publishToCreatorsPlatform({ appID: appDetail.id })
+      window.open(result.redirect_url, '_blank')
+    }
+    catch (error: any) {
+      Toast.notify({ type: 'error', message: error.message || t('common.publishToMarketplaceFailed', { ns: 'workflow' }) })
+    }
+    finally {
+      setPublishingToMarketplace(false)
+    }
+  }, [appDetail?.id, publishingToMarketplace, t])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -547,6 +566,22 @@ const AppPublisher = ({
                         </div>
                       )
                     }
+                    {systemFeatures.enable_creators_platform && (
+                      <div className="flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3">
+                        <SuggestedAction
+                          className="flex-1"
+                          onClick={handlePublishToMarketplace}
+                          disabled={publishingToMarketplace}
+                          icon={publishingToMarketplace
+                            ? <RiLoader2Line className="h-4 w-4 animate-spin" />
+                            : <RiStore2Line className="h-4 w-4" />}
+                        >
+                          {publishingToMarketplace
+                            ? t('common.publishingToMarketplace', { ns: 'workflow' })
+                            : t('common.publishToMarketplace', { ns: 'workflow' })}
+                        </SuggestedAction>
+                      </div>
+                    )}
                   </>
                 )}
           </div>

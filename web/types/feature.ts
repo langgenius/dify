@@ -65,6 +65,7 @@ export type SystemFeatures = {
   }
   enable_trial_app: boolean
   enable_explore_banner: boolean
+  enable_creators_platform: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -108,4 +109,5 @@ export const defaultSystemFeatures: SystemFeatures = {
   },
   enable_trial_app: false,
   enable_explore_banner: false,
+  enable_creators_platform: false,
 }

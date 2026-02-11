@@ -157,6 +157,14 @@ export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
 }
 
+export type PublishToCreatorsPlatformResponse = {
+  redirect_url: string
+}
+
+export const publishToCreatorsPlatform = ({ appID }: { appID: string }): Promise<PublishToCreatorsPlatformResponse> => {
+  return post<PublishToCreatorsPlatformResponse>(`apps/${appID}/publish-to-creators-platform`, { body: {} })
+}
+
 export type ImportBundlePrepareResponse = {
   import_id: string
   upload_url: string

@@ -736,6 +736,46 @@ class AppExportBundleApi(Resource):
         return result.model_dump(mode="json")
 
 
+@console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
+class AppPublishToCreatorsPlatformApi(Resource):
+    @get_app_model
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def post(self, app_model):
+        """Bundle the app DSL and upload to Creators Platform, returning a redirect URL."""
+        import httpx
+
+        from configs import dify_config
+        from core.helper.creators import get_redirect_url, upload_dsl
+        from services.app_bundle_service import AppBundleService
+
+        if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            return {"message": "Creators Platform is not enabled"}, 403
+
+        current_user, _ = current_account_with_tenant()
+
+        # 1. Export the app bundle (DSL + assets) to a temporary zip
+        bundle_result = AppBundleService.export_bundle(
+            app_model=app_model,
+            account_id=str(current_user.id),
+            include_secret=False,
+        )
+
+        # 2. Download the zip from the temporary URL
+        download_response = httpx.get(bundle_result.download_url, timeout=60, follow_redirects=True)
+        download_response.raise_for_status()
+
+        # 3. Upload to Creators Platform
+        claim_code = upload_dsl(download_response.content, filename=bundle_result.filename)
+
+        # 4. Generate redirect URL (with optional OAuth code)
+        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+
+        return {"redirect_url": redirect_url}
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @console_ns.doc("check_app_name")
