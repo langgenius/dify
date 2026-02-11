@@ -505,6 +505,37 @@ class LLMNode(Node[LLMNodeData]):
             )
 
     @staticmethod
+    def _sanitize_orphaned_tool_calls(
+        prompt_messages: list[PromptMessage], valid_tc_ids: set[str] | None = None
+    ) -> list[PromptMessage]:
+        """Strip orphaned tool_calls from assistant messages and their corresponding ToolPromptMessages.
+
+        If *valid_tc_ids* is provided, any assistant tool_call whose id is NOT in the set is orphaned.
+        If *valid_tc_ids* is ``None``, an assistant tool_call is orphaned when no matching
+        ToolPromptMessage exists in *prompt_messages*.
+        """
+        if valid_tc_ids is None:
+            valid_tc_ids = {
+                msg.tool_call_id for msg in prompt_messages if isinstance(msg, ToolPromptMessage) and msg.tool_call_id
+            }
+
+        orphaned_tc_ids: set[str] = set()
+        for i, msg in enumerate(prompt_messages):
+            if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                has_match = any(tc.id in valid_tc_ids for tc in msg.tool_calls)
+                if not has_match:
+                    orphaned_tc_ids.update(tc.id for tc in msg.tool_calls if tc.id)
+                    prompt_messages[i] = AssistantPromptMessage(content=msg.content, tool_calls=[])
+
+        if orphaned_tc_ids:
+            prompt_messages = [
+                msg
+                for msg in prompt_messages
+                if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
+            ]
+        return prompt_messages
+
+    @staticmethod
     def invoke_llm(
         *,
         node_data_model: ModelConfig,
@@ -533,29 +564,12 @@ class LLMNode(Node[LLMNodeData]):
         # Handle tool_results and tool_choice
         current_prompt_messages = list(prompt_messages)
         if tool_results:
-            # Collect the tool_call_ids we have results for
-            result_ids = {getattr(r, "tool_call_id", None) for r in tool_results if getattr(r, "tool_call_id", None)}
-
-            # Sanitize history: strip tool_calls (and their corresponding
-            # ToolPromptMessages) from assistant messages whose tool_call_ids
-            # are NOT in the current result set.
-            orphaned_tc_ids: set[str] = set()
-            for i, msg in enumerate(current_prompt_messages):
-                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
-                    has_match = any(tc.id in result_ids for tc in msg.tool_calls)
-                    if not has_match:
-                        orphaned_tc_ids.update(tc.id for tc in msg.tool_calls if tc.id)
-                        current_prompt_messages[i] = AssistantPromptMessage(
-                            content=msg.content,
-                            tool_calls=[],
-                        )
-            # Remove ToolPromptMessages whose tool_call_id was orphaned
-            if orphaned_tc_ids:
-                current_prompt_messages = [
-                    msg
-                    for msg in current_prompt_messages
-                    if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
-                ]
+            result_ids: set[str] = {
+                tc_id for r in tool_results if (tc_id := getattr(r, "tool_call_id", None)) is not None
+            }
+            current_prompt_messages = LLMNode._sanitize_orphaned_tool_calls(
+                current_prompt_messages, valid_tc_ids=result_ids
+            )
 
             for result in tool_results:
                 tool_call_id = getattr(result, "tool_call_id", None)
@@ -568,29 +582,7 @@ class LLMNode(Node[LLMNodeData]):
                         )
                     )
         else:
-            # Even without tool_results, strip any orphaned tool_calls and
-            # their corresponding ToolPromptMessages from history.
-            existing_tool_msg_ids = {
-                msg.tool_call_id
-                for msg in current_prompt_messages
-                if isinstance(msg, ToolPromptMessage) and msg.tool_call_id
-            }
-            orphaned_tc_ids = set()
-            for i, msg in enumerate(current_prompt_messages):
-                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
-                    has_response = any(tc.id in existing_tool_msg_ids for tc in msg.tool_calls)
-                    if not has_response:
-                        orphaned_tc_ids.update(tc.id for tc in msg.tool_calls if tc.id)
-                        current_prompt_messages[i] = AssistantPromptMessage(
-                            content=msg.content,
-                            tool_calls=[],
-                        )
-            if orphaned_tc_ids:
-                current_prompt_messages = [
-                    msg
-                    for msg in current_prompt_messages
-                    if not (isinstance(msg, ToolPromptMessage) and msg.tool_call_id in orphaned_tc_ids)
-                ]
+            current_prompt_messages = LLMNode._sanitize_orphaned_tool_calls(current_prompt_messages)
 
         current_model_parameters = node_data_model.completion_params.copy() if node_data_model.completion_params else {}
         if tool_choice:
@@ -680,6 +672,7 @@ class LLMNode(Node[LLMNodeData]):
 
         collected_structured_output = None  # Collect structured_output from streaming chunks
         collected_tool_calls: list[dict[str, Any]] = []
+        collected_tool_calls_map: dict[str, dict[str, Any]] = {}
         current_tool_call: dict[str, Any] | None = None
         # Consume the invoke result and handle generator exception
         try:
@@ -757,11 +750,7 @@ class LLMNode(Node[LLMNodeData]):
                                 new_args = str(new_args)
 
                             if tc.id:
-                                # Check if we already have this ID in our collected list
-                                for existing in collected_tool_calls:
-                                    if existing["id"] == tc.id:
-                                        target_tool_call = existing
-                                        break
+                                target_tool_call = collected_tool_calls_map.get(tc.id)
 
                             if target_tool_call:
                                 # Append delta arguments (standard OpenAI streaming behavior)
@@ -776,6 +765,7 @@ class LLMNode(Node[LLMNodeData]):
                                     "function": {"name": tc.function.name, "arguments": new_args},
                                 }
                                 collected_tool_calls.append(current_tool_call)
+                                collected_tool_calls_map[tc.id] = current_tool_call
                             elif current_tool_call:
                                 current_tool_call["function"]["arguments"] += new_args
 

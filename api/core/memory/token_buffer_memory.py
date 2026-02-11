@@ -167,34 +167,25 @@ class TokenBufferMemory(BaseMemory):
             if is_tool_round:
                 # Try to parse "[call_id] output" lines from query
                 query_text = message.query or ""
-                tool_msgs_added = False
+                parsed_tool_msgs: list[ToolPromptMessage] = []
                 for tc in prev_tool_calls:
                     tc_id = tc.get("id", "")
-                    # Find the output for this tool_call_id in the query
                     prefix = f"[{tc_id}] "
                     if prefix in query_text:
                         start = query_text.index(prefix) + len(prefix)
-                        # Find end: next "[call_" or end of string
                         next_bracket = query_text.find("\n[call_", start)
                         output = query_text[start:next_bracket] if next_bracket != -1 else query_text[start:]
-                        prompt_messages.append(
-                            ToolPromptMessage(
-                                content=output.strip(),
-                                tool_call_id=tc_id,
-                            )
-                        )
-                        tool_msgs_added = True
-                    else:
-                        # Fallback: use entire query as output for this tool call
-                        prompt_messages.append(
-                            ToolPromptMessage(
-                                content=query_text,
-                                tool_call_id=tc_id,
-                            )
-                        )
-                        tool_msgs_added = True
-                if not tool_msgs_added:
-                    # Fallback: emit as regular user message
+                        parsed_tool_msgs.append(ToolPromptMessage(content=output.strip(), tool_call_id=tc_id))
+
+                if parsed_tool_msgs:
+                    prompt_messages.extend(parsed_tool_msgs)
+                elif len(prev_tool_calls) == 1:
+                    # Single tool call without formatted output: use entire query
+                    prompt_messages.append(
+                        ToolPromptMessage(content=query_text, tool_call_id=prev_tool_calls[0].get("id", ""))
+                    )
+                else:
+                    # Multiple tool calls but no parseable format: treat as regular user message
                     prompt_messages.append(UserPromptMessage(content=message.query))
             else:
                 # Process user message with files
