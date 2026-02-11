@@ -42,6 +42,13 @@ const Header = () => {
     else
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+  const handleDownloadGraphImportLog = useCallback(() => {
+    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
+      .then(({ collaborationManager }) => {
+        collaborationManager.downloadGraphImportLog()
+      })
+      .catch(() => {})
+  }, [])
 
   const renderLogo = () => (
     <h1>
@@ -106,6 +113,14 @@ const Header = () => {
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
       </div>
       <div className="flex min-w-0 flex-[1] items-center justify-end pl-2 pr-3 min-[1280px]:pl-3">
+        <button
+          type="button"
+          data-testid="workflow-import-log-download"
+          className="left-full top-1/2 ml-1 h-3 w-3 -translate-y-1/2 opacity-0"
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={handleDownloadGraphImportLog}
+        />
         <EnvNav />
         <div className="mr-2">
           <PluginsNav />

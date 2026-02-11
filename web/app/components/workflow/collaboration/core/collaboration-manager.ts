@@ -1079,13 +1079,30 @@ export class CollaborationManager {
   }
 
   downloadGraphImportLog(): void {
-    if (this.graphImportLogs.length === 0)
-      return
-
+    const reactFlowState = this.reactFlowStore?.getState()
     const payload = {
       appId: this.currentAppId,
       generatedAt: new Date().toISOString(),
       entries: this.graphImportLogs,
+      summary: {
+        logCount: this.graphImportLogs.length,
+        leaderId: this.leaderId,
+        isLeader: this.isLeader,
+        graphViewActive: this.graphViewActive,
+        pendingInitialSync: this.pendingInitialSync,
+        isConnected: this.isConnected(),
+        hasDoc: Boolean(this.doc),
+        hasReactFlowStore: Boolean(this.reactFlowStore),
+        onlineUsersCount: this.onlineUsers.length,
+        crdtCounts: {
+          nodes: this.getNodes().length,
+          edges: this.getEdges().length,
+        },
+        reactFlowCounts: {
+          nodes: reactFlowState?.getNodes().length ?? 0,
+          edges: reactFlowState?.getEdges().length ?? 0,
+        },
+      },
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const appSuffix = this.currentAppId ?? 'unknown'
