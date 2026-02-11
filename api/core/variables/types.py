@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from core.file.models import File
+from core.workflow.file.models import File
 
 if TYPE_CHECKING:
     pass

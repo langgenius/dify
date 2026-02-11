@@ -12,8 +12,6 @@ from yarl import URL
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file import FileType
-from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
@@ -33,6 +31,8 @@ from core.tools.errors import (
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from core.workflow.file import FileType
+from core.workflow.file.models import FileTransferMethod
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import Message, MessageFile

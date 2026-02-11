@@ -7,7 +7,6 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from core.file import File, FileTransferMethod, FileType
 from core.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -34,6 +33,7 @@ from core.variables.segments import (
     StringSegment,
 )
 from core.variables.types import SegmentType
+from core.workflow.file import File, FileTransferMethod, FileType
 from factories import variable_factory
 from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 

@@ -8,9 +8,9 @@ from uuid import UUID
 import numpy as np
 import pytz
 
-from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.file import File, FileTransferMethod, FileType
 from libs.login import current_user
 from models import Account
 

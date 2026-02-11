@@ -13,7 +13,6 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.variables import VariableBase
@@ -22,6 +21,7 @@ from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.file import File
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType

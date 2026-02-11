@@ -2,7 +2,6 @@ import dataclasses
 
 from pydantic import BaseModel
 
-from core.file import File, FileTransferMethod, FileType
 from core.helper import encrypter
 from core.variables.segments import (
     ArrayAnySegment,
@@ -36,6 +35,7 @@ from core.variables.variables import (
     StringVariable,
     Variable,
 )
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 
