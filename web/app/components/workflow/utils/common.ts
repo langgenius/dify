@@ -41,8 +41,10 @@ export const isEventTargetInputArea = (target: HTMLElement) => {
  * @returns Formatted string like " (14:30:25)" or " (Running)"
  */
 export const formatWorkflowRunIdentifier = (finishedAt?: number, fallbackText = 'Running'): string => {
-  if (!finishedAt)
-    return ` (${fallbackText})`
+  if (!finishedAt) {
+    const capitalized = fallbackText.charAt(0).toUpperCase() + fallbackText.slice(1)
+    return ` (${capitalized})`
+  }
 
   const date = new Date(finishedAt * 1000)
   const timeStr = date.toLocaleTimeString([], {
