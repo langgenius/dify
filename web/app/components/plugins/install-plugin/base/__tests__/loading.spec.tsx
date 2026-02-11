@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../card/base/placeholder', () => ({
   default: () => <div data-testid="placeholder" />,

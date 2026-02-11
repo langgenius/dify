@@ -50,7 +50,7 @@ vi.mock('@/app/components/base/modal/modal', () => ({
       <button data-testid="modal-confirm" onClick={onConfirm}>Save And Auth</button>
       <button data-testid="modal-cancel" onClick={onCancel}>Save Only</button>
       <button data-testid="modal-close" onClick={onExtraButtonClick}>Cancel</button>
-      {footerSlot && <div data-testid="footer-slot">{footerSlot}</div>}
+      {!!footerSlot && <div data-testid="footer-slot">{footerSlot}</div>}
     </div>
   ),
 }))

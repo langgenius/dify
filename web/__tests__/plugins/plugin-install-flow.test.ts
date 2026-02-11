@@ -209,7 +209,7 @@ describe('Plugin Installation Flow Integration', () => {
       const { checkTaskStatus: fetchCheckTaskStatus } = await import('@/service/plugins')
       ;(fetchCheckTaskStatus as ReturnType<typeof vi.fn>).mockImplementation(mockCheckTaskStatus)
 
-      vi.mock('@/utils', () => ({
+      await vi.doMock('@/utils', () => ({
         sleep: () => Promise.resolve(),
       }))
 
