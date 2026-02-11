@@ -4,20 +4,18 @@ import { useTranslation } from '#i18n'
 import {
   useActivePluginCategory,
   useActiveTemplateCategory,
+  useCreationType,
   useFilterPluginTags,
 } from '../atoms'
 import { usePluginCategoryText, useTemplateCategoryText } from '../category-switch/category-text'
 import {
   CATEGORY_ALL,
-  TEMPLATE_CATEGORY_MAP,
 } from '../constants'
+import { CREATION_TYPE } from '../search-params'
 import SortDropdown from '../sort-dropdown'
 
-type ListTopInfoProps = {
-  variant: 'plugins' | 'templates'
-}
-
-const ListTopInfo = ({ variant }: ListTopInfoProps) => {
+const ListTopInfo = () => {
+  const [creationType] = useCreationType()
   const { t } = useTranslation()
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginCategory] = useActivePluginCategory()
@@ -25,7 +23,9 @@ const ListTopInfo = ({ variant }: ListTopInfoProps) => {
   const getPluginCategoryText = usePluginCategoryText()
   const getTemplateCategoryText = useTemplateCategoryText()
 
-  const hasTags = variant === 'plugins' && filterPluginTags.length > 0
+  const isPluginsView = creationType === CREATION_TYPE.plugins
+
+  const hasTags = isPluginsView && filterPluginTags.length > 0
 
   if (hasTags) {
     return (
@@ -38,26 +38,20 @@ const ListTopInfo = ({ variant }: ListTopInfoProps) => {
     )
   }
 
-  const isPlugins = variant === 'plugins'
-  const isAllCategory = isPlugins
+  const isAllCategory = isPluginsView
     ? activePluginCategory === CATEGORY_ALL
-    : activeTemplateCategory === TEMPLATE_CATEGORY_MAP.all
+    : activeTemplateCategory === CATEGORY_ALL
 
-  const categoryText = isPlugins
+  const categoryText = isPluginsView
     ? getPluginCategoryText(activePluginCategory)
     : getTemplateCategoryText(activeTemplateCategory)
 
-  const title = isPlugins
-    ? isAllCategory
-      ? t('marketplace.listTopInfo.pluginsTitleAll', { ns: 'plugin' })
-      : t('marketplace.listTopInfo.pluginsTitleByCategory', { ns: 'plugin', category: categoryText })
-    : isAllCategory
-      ? t('marketplace.listTopInfo.templatesTitleAll', { ns: 'plugin' })
-      : t('marketplace.listTopInfo.templatesTitleByCategory', { ns: 'plugin', category: categoryText })
-
-  const subtitleKey = isPlugins
-    ? 'marketplace.listTopInfo.pluginsSubtitle'
-    : 'marketplace.listTopInfo.templatesSubtitle'
+  const title = t(
+    `marketplace.listTopInfo.${creationType}${isAllCategory ? 'TitleAll' : 'TitleByCategory'}`,
+    isAllCategory
+      ? { ns: 'plugin' }
+      : { ns: 'plugin', category: categoryText },
+  )
 
   return (
     <div className="mb-4 flex items-center justify-between pt-3">
@@ -66,7 +60,7 @@ const ListTopInfo = ({ variant }: ListTopInfoProps) => {
           {title}
         </p>
         <p className="system-xs-regular truncate text-text-tertiary">
-          {t(subtitleKey, { ns: 'plugin' })}
+          {t(`marketplace.listTopInfo.${creationType}Subtitle`, { ns: 'plugin' })}
         </p>
       </div>
       <SortDropdown />

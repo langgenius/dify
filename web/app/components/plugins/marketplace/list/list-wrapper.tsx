@@ -1,6 +1,7 @@
 'use client'
 
 import Loading from '@/app/components/base/loading'
+import { useMarketplaceSearchMode } from '../atoms'
 import { isPluginsData, useMarketplaceData } from '../state'
 import FlatList from './flat-list'
 import ListTopInfo from './list-top-info'
@@ -13,16 +14,14 @@ type ListWrapperProps = {
 const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
   const marketplaceData = useMarketplaceData()
   const { isLoading, page, isFetchingNextPage } = marketplaceData
+  const isSearchMode = useMarketplaceSearchMode()
 
   const renderContent = () => {
     if (isPluginsData(marketplaceData)) {
       const { pluginCollections, pluginCollectionPluginsMap, plugins } = marketplaceData
       return plugins !== undefined
         ? (
-            <>
-              <ListTopInfo variant="plugins" />
-              <FlatList variant="plugins" items={plugins} showInstallButton={showInstallButton} />
-            </>
+            <FlatList variant="plugins" items={plugins} showInstallButton={showInstallButton} />
           )
         : (
             <ListWithCollection
@@ -37,10 +36,7 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
     const { templateCollections, templateCollectionTemplatesMap, templates } = marketplaceData
     return templates !== undefined
       ? (
-          <>
-            <ListTopInfo variant="templates" />
-            <FlatList variant="templates" items={templates} />
-          </>
+          <FlatList variant="templates" items={templates} />
         )
       : (
           <ListWithCollection
@@ -56,12 +52,15 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
       style={{ scrollbarGutter: 'stable' }}
       className="relative flex grow flex-col bg-background-default-subtle px-12 py-2"
     >
-      {isLoading && page === 1 && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <Loading />
-        </div>
-      )}
-      {(!isLoading || page > 1) && renderContent()}
+      {isSearchMode && <ListTopInfo />}
+      <div className="relative grow">
+        {isLoading && page === 1 && (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Loading />
+          </div>
+        )}
+        {(!isLoading || page > 1) && renderContent()}
+      </div>
       {isFetchingNextPage && <Loading className="my-3" />}
     </div>
   )

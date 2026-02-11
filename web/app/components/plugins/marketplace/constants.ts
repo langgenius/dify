@@ -15,7 +15,7 @@ export const SCROLL_BOTTOM_THRESHOLD = 100
 export const CATEGORY_ALL = 'all'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
-  all: CATEGORY_ALL,
+  [CATEGORY_ALL]: CATEGORY_ALL,
   model: PluginCategoryEnum.model,
   tool: PluginCategoryEnum.tool,
   agent: PluginCategoryEnum.agent,
@@ -38,7 +38,7 @@ export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set<ActivePluginType>(
 )
 
 export const TEMPLATE_CATEGORY_MAP = {
-  all: CATEGORY_ALL,
+  [CATEGORY_ALL]: CATEGORY_ALL,
   marketing: 'marketing',
   sales: 'sales',
   support: 'support',
