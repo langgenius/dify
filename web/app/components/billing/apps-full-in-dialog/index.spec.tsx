@@ -96,10 +96,8 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceDatasetOperator: false,
     mutateUserProfile: vi.fn(),
-    mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
-    isValidatingCurrentWorkspace: false,
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {

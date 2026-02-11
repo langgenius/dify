@@ -7,6 +7,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
+import { useInvalidateCurrentWorkspace } from '@/service/use-common'
 import CustomWebAppBrand from './index'
 
 vi.mock('@/app/components/base/toast', () => ({
@@ -14,6 +15,9 @@ vi.mock('@/app/components/base/toast', () => ({
 }))
 vi.mock('@/service/common', () => ({
   updateCurrentWorkspace: vi.fn(),
+}))
+vi.mock('@/service/use-common', () => ({
+  useInvalidateCurrentWorkspace: vi.fn(),
 }))
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -37,6 +41,8 @@ const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
+const mockInvalidateCurrentWorkspace = vi.fn()
+vi.mocked(useInvalidateCurrentWorkspace).mockReturnValue(mockInvalidateCurrentWorkspace)
 
 const defaultPlanUsage = {
   buildApps: 0,
@@ -62,7 +68,6 @@ describe('CustomWebAppBrand', () => {
           remove_webapp_brand: false,
         },
       },
-      mutateCurrentWorkspace: vi.fn(),
       isCurrentWorkspaceManager: true,
     } as any)
     mockUseProviderContext.mockReturnValue({
@@ -92,7 +97,6 @@ describe('CustomWebAppBrand', () => {
           remove_webapp_brand: false,
         },
       },
-      mutateCurrentWorkspace: vi.fn(),
       isCurrentWorkspaceManager: false,
     } as any)
 
@@ -101,8 +105,7 @@ describe('CustomWebAppBrand', () => {
     expect(fileInput).toBeDisabled()
   })
 
-  it('toggles remove brand switch and calls the backend + mutate', async () => {
-    const mutateMock = vi.fn()
+  it('toggles remove brand switch and calls the backend + invalidate', async () => {
     mockUseAppContext.mockReturnValue({
       currentWorkspace: {
         custom_config: {
@@ -110,7 +113,6 @@ describe('CustomWebAppBrand', () => {
           remove_webapp_brand: false,
         },
       },
-      mutateCurrentWorkspace: mutateMock,
       isCurrentWorkspaceManager: true,
     } as any)
 
@@ -122,7 +124,7 @@ describe('CustomWebAppBrand', () => {
       url: '/workspaces/custom-config',
       body: { remove_webapp_brand: true },
     }))
-    await waitFor(() => expect(mutateMock).toHaveBeenCalled())
+    await waitFor(() => expect(mockInvalidateCurrentWorkspace).toHaveBeenCalled())
   })
 
   it('shows cancel/apply buttons after successful upload and cancels properly', async () => {
