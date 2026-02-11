@@ -216,9 +216,7 @@ class MessagesCleanService:
 
                 # Apply cursor condition: (created_at, id) > (last_created_at, last_message_id)
                 if _cursor:
-                    msg_stmt = msg_stmt.where(
-                        tuple_(Message.created_at, Message.id) > tuple_(_cursor[0], _cursor[1])
-                    )
+                    msg_stmt = msg_stmt.where(tuple_(Message.created_at, Message.id) > tuple_(_cursor[0], _cursor[1]))
 
                 raw_messages = list(session.execute(msg_stmt).all())
                 messages = [
