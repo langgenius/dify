@@ -2512,11 +2512,6 @@
       "count": 1
     }
   },
-  "app/components/base/param-item/top-k-item.tsx": {
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "app/components/base/portal-to-follow-elem/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
@@ -3815,14 +3810,6 @@
   "app/components/datasets/documents/detail/embedding/components/status-header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/datasets/documents/detail/metadata/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/detail/new-segment.tsx": {
@@ -5659,10 +5646,12 @@
   },
   "app/components/rag-pipeline/components/update-dsl-modal.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
-    "ts/no-explicit-any": {
-      "count": 1
+      "count": 3
+    }
+  },
+  "app/components/rag-pipeline/components/version-mismatch-modal.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
     }
   },
   "app/components/rag-pipeline/hooks/use-DSL.ts": {
@@ -6806,12 +6795,6 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -7267,9 +7250,6 @@
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {
@@ -8583,11 +8563,6 @@
   "app/install/installForm.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "app/install/installForm.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/reset-password/check-code/page.tsx": {
