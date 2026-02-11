@@ -466,19 +466,14 @@ importers:
         specifier: 0.6.4
         version: 0.6.4
       '@types/node':
-<<<<<<< HEAD
-        specifier: 18.15.0
-        version: 18.15.0
+        specifier: 24.10.12
+        version: 24.10.12
       '@types/papaparse':
         specifier: 5.5.2
         version: 5.5.2
-=======
-        specifier: 24.10.12
-        version: 24.10.12
       '@types/postcss-js':
         specifier: 4.1.0
         version: 4.1.0
->>>>>>> main
       '@types/qs':
         specifier: 6.14.0
         version: 6.14.0
@@ -949,10 +944,6 @@ packages:
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
-
-  '@discoveryjs/json-ext@0.5.7':
-    resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
-    engines: {node: '>=10.0.0'}
 
   '@egoist/tailwindcss-icons@1.9.2':
     resolution: {integrity: sha512-I6XsSykmhu2cASg5Hp/ICLsJ/K/1aXPaSKjgbWaNp2xYnb4We/arWMmkhhV+9CglOFCUbqx0A3mM2kWV32ZIhw==}
@@ -8208,8 +8199,6 @@ snapshots:
   '@csstools/css-syntax-patches-for-csstree@1.0.26': {}
 
   '@csstools/css-tokenizer@3.0.4': {}
-
-  '@discoveryjs/json-ext@0.5.7': {}
 
   '@egoist/tailwindcss-icons@1.9.2(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
