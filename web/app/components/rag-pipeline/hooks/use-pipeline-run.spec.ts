@@ -474,6 +474,7 @@ describe('usePipelineRun', () => {
       })
 
       expect(onWorkflowStarted).toHaveBeenCalledWith({ task_id: 'task-1' })
+      expect(mockInvalidateRunHistory).toHaveBeenCalled()
     })
 
     it('should call onWorkflowFinished callback when provided', async () => {
@@ -495,6 +496,7 @@ describe('usePipelineRun', () => {
       })
 
       expect(onWorkflowFinished).toHaveBeenCalledWith({ status: 'succeeded' })
+      expect(mockInvalidateRunHistory).toHaveBeenCalled()
     })
 
     it('should call onError callback when provided', async () => {
@@ -516,6 +518,7 @@ describe('usePipelineRun', () => {
       })
 
       expect(onError).toHaveBeenCalledWith({ message: 'error' })
+      expect(mockInvalidateRunHistory).toHaveBeenCalled()
     })
 
     it('should call onNodeStarted callback when provided', async () => {
