@@ -76,6 +76,11 @@ class SystemVariable(BaseModel):
     def default(cls) -> SystemVariable:
         return cls(workflow_execution_id=str(uuid4()))
 
+    @classmethod
+    def empty(cls) -> SystemVariable:
+        """Create an empty SystemVariable instance with all fields set to their default values."""
+        return cls()
+
     def to_dict(self) -> dict[SystemVariableKey, Any]:
         # NOTE: This method is provided for compatibility with legacy code.
         # New code should use the `SystemVariable` object directly instead of converting

@@ -8,6 +8,7 @@ import type {
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -33,17 +34,17 @@ export type ModelParameterModalProps = {
   popupClassName?: string
   portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
-  value: any
-  setModel: (model: any) => void
+  value: DefaultModel & { completion_params?: FormValue, language?: string, voice?: string, model_type?: string }
+  setModel: (model: DefaultModel & { completion_params?: FormValue, language?: string, voice?: string, model_type?: string }) => void
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
   isAgentStrategy?: boolean
   scope?: string
   nodeId?: string
-  filterVar?: (payload: any, valueSelector: any) => boolean
-  availableVars?: any[]
-  availableNodes?: any[]
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  availableVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({

@@ -9,8 +9,11 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../declarations'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type {
   NodeOutPutVar,
+  ValueSelector,
+  Var,
 } from '@/app/components/workflow/types'
 import { useCallback, useState } from 'react'
 import Radio from '@/app/components/base/radio'
@@ -115,7 +118,7 @@ function Form<
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
-  const handleModelChanged = useCallback((key: string, model: any) => {
+  const handleModelChanged = useCallback((key: string, model: FormValue) => {
     const newValue = {
       ...value[key],
       ...model,
@@ -327,7 +330,7 @@ function Form<
       // Filter function for model parameter variables (string and number types)
       // This is used when the ModelParameterModal is in workflow context (isInWorkflow=true)
       // to filter which variables can be referenced in model parameter string fields
-      const filterVar = (varPayload: any) => {
+      const filterVar = (varPayload: Var) => {
         // For model parameters, we typically need string or number type variables
         return varPayload.type === 'string' || varPayload.type === 'number'
       }
@@ -384,8 +387,8 @@ function Form<
             disabled={readonly}
             value={value[variable]}
             // selectedTools={value[variable] ? [value[variable]] : []}
-            onSelect={item => handleFormChange(variable, item as any)}
-            onDelete={() => handleFormChange(variable, null as any)}
+            onSelect={item => handleFormChange(variable, item as ToolValue)}
+            onDelete={() => handleFormChange(variable, null as unknown as ToolValue)}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -414,7 +417,7 @@ function Form<
             required={required}
             tooltip={tooltip?.[language] || tooltip?.en_US}
             value={value[variable] || []}
-            onChange={item => handleFormChange(variable, item as any)}
+            onChange={item => handleFormChange(variable, item as ToolValue[])}
             supportCollapse
           />
           {fieldMoreInfo?.(formSchema)}
@@ -444,7 +447,7 @@ function Form<
             disabled={readonly}
             scope={scope}
             value={value[variable]}
-            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)}
+            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as FormValue)}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -475,8 +478,8 @@ function Form<
             isShowNodeName
             nodeId={nodeId || ''}
             value={value[variable] || []}
-            onChange={item => handleFormChange(variable, item as any)}
-            filterVar={(varPayload) => {
+            onChange={item => handleFormChange(variable, item as ValueSelector)}
+            filterVar={(varPayload: Var) => {
               if (!scope)
                 return true
               return scope.split('&').includes(varPayload.type)

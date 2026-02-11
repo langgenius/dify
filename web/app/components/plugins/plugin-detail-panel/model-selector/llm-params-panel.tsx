@@ -3,6 +3,7 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,9 +21,9 @@ type Props = {
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   nodeId?: string
-  filterVar?: (payload: any, valueSelector: any) => boolean
-  availableVars?: any[]
-  availableNodes?: any[]
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  availableVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const LLMParamsPanel = ({

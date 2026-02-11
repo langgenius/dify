@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useEffect, useRef, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -23,8 +23,8 @@ type ParameterItemProps = {
   isInWorkflow?: boolean
   nodeId?: string
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
-  availableVars?: any[]
-  availableNodes?: any[]
+  availableVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 const ParameterItem: FC<ParameterItemProps> = ({
   parameterRule,
@@ -33,7 +33,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
   nodeId,
-  filterVar,
   availableVars,
   availableNodes,
 }) => {

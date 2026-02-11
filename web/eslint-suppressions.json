@@ -4592,9 +4592,6 @@
   "app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 10
-    },
-    "ts/no-explicit-any": {
-      "count": 6
     }
   },
   "app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
@@ -5143,7 +5140,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/llm-params-panel.tsx": {

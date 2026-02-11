@@ -48,9 +48,9 @@ export type ModelParameterModalProps = {
   isInWorkflow?: boolean
   scope?: string
   nodeId?: string
-  filterVar?: (payload: any, valueSelector: any) => boolean
-  availableVars?: any[]
-  availableNodes?: any[]
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  availableVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
