@@ -192,6 +192,9 @@ ignore_imports =
     core.workflow.utils.condition.processor -> core.file.file_manager
     core.workflow.workflow_entry -> core.file.models
     core.workflow.workflow_type_encoder -> core.file.models
+    core.workflow.variables.segments -> core.file
+    core.workflow.variables.types -> core.file.models
+    core.workflow.variables.variables -> core.helper.encrypter
     core.workflow.nodes.agent.agent_node -> models.model
     core.workflow.nodes.code.code_node -> core.helper.code_executor.code_node_provider
     core.workflow.nodes.code.code_node -> core.helper.code_executor.javascript.javascript_code_provider
