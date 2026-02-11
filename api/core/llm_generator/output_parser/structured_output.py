@@ -9,7 +9,11 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.file_ref import detect_file_path_fields
-from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT, STRUCTURED_OUTPUT_TOOL_CALL_PROMPT
+from core.llm_generator.prompts import (
+    STRUCTURED_OUTPUT_FINAL_TURN_REMINDER,
+    STRUCTURED_OUTPUT_PROMPT,
+    STRUCTURED_OUTPUT_TOOL_CALL_PROMPT,
+)
 from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
@@ -20,6 +24,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
+    UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ParameterRule
 
@@ -107,6 +112,21 @@ def invoke_llm_with_structured_output(
         structured_output_schema=json_schema,
         use_tool_call=use_tool_call,
     )
+
+    # Append a "final turn" reminder at the very end of the conversation so the
+    # model sees it right before generating.  This exploits recency bias to
+    # override the in-context bash/tool-call patterns from earlier history.
+    # Merge into the last user message when possible to avoid consecutive
+    # UserPromptMessages (some APIs like Anthropic require user/assistant alternation).
+    if use_tool_call:
+        messages = list(prompt_messages)
+        if messages and isinstance(messages[-1], UserPromptMessage) and isinstance(messages[-1].content, str):
+            messages[-1] = UserPromptMessage(
+                content=messages[-1].content + "\n\n" + STRUCTURED_OUTPUT_FINAL_TURN_REMINDER,
+            )
+        else:
+            messages.append(UserPromptMessage(content=STRUCTURED_OUTPUT_FINAL_TURN_REMINDER))
+        prompt_messages = messages
 
     llm_result = model_instance.invoke_llm(
         prompt_messages=list(prompt_messages),
@@ -441,6 +461,11 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
     # Convert boolean types to string types (common requirement)
     convert_boolean_to_string(processed_schema)
 
+    # Strip Dify-internal custom formats (e.g. "file-path") that external model APIs
+    # do not recognise.  The field type ("string") is sufficient for the model to
+    # produce the expected value; the custom format is only used by Dify post-processing.
+    _strip_custom_formats(processed_schema)
+
     # Apply model-specific transformations
     if SpecialModelType.GEMINI in model_schema.model:
         remove_additional_properties(processed_schema)
@@ -448,7 +473,10 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
     elif SpecialModelType.OLLAMA in provider:
         return processed_schema
     else:
-        # Default format with name field
+        # OpenAI-style native structured output requires every property key to
+        # appear in ``required``.  Ensure this recursively so user schemas that
+        # leave ``required`` empty or partial don't get rejected by the API.
+        _ensure_all_properties_required(processed_schema)
         return {"schema": processed_schema, "name": "llm_response"}
 
 
@@ -496,3 +524,57 @@ def convert_boolean_to_string(schema: dict):
             for item in value:
                 if isinstance(item, dict):
                     convert_boolean_to_string(item)
+
+
+# Formats that are Dify-internal and not part of the standard JSON Schema spec
+# recognised by model providers (OpenAI, Azure, Google, etc.).
+_CUSTOM_FORMATS = frozenset({"file-path"})
+
+
+def _strip_custom_formats(schema: dict) -> None:
+    """Remove Dify-internal ``format`` values from a JSON schema in-place.
+
+    Model APIs (OpenAI, Azure, etc.) reject unknown format values in their
+    structured-output / response_format mode.  This strips only the formats
+    that are Dify-specific (e.g. ``file-path``); standard formats like
+    ``date-time`` or ``email`` are left untouched.
+    """
+    if not isinstance(schema, dict):
+        return
+
+    fmt = schema.get("format")
+    if isinstance(fmt, str) and fmt.lower().replace("_", "-") in _CUSTOM_FORMATS:
+        del schema["format"]
+
+    for value in schema.values():
+        if isinstance(value, dict):
+            _strip_custom_formats(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _strip_custom_formats(item)
+
+
+def _ensure_all_properties_required(schema: dict) -> None:
+    """Ensure ``required`` lists every key from ``properties``, recursively.
+
+    OpenAI's native structured-output mode (response_format with json_schema)
+    mandates that ``required`` contains ALL property names.  Schemas authored
+    in Dify may leave ``required`` empty or partial, so we patch it here
+    before sending to the API.
+    """
+    if not isinstance(schema, dict):
+        return
+
+    if schema.get("type") == "object":
+        properties = schema.get("properties")
+        if isinstance(properties, dict) and properties:
+            schema["required"] = list(properties.keys())
+
+    for value in schema.values():
+        if isinstance(value, dict):
+            _ensure_all_properties_required(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _ensure_all_properties_required(item)

@@ -323,11 +323,27 @@ Here is the JSON schema:
 {{schema}}
 """  # noqa: E501
 
-STRUCTURED_OUTPUT_TOOL_CALL_PROMPT = """The ONLY tool available to you is `structured_output`. You MUST call this tool to provide your final answer.
-Do NOT call any other tool. Tools such as `bash`, `python`, or any others that may appear in the conversation history are NOT available to you — they are part of historical context only.
-Do NOT write JSON directly in your message. Instead, always invoke the `structured_output` tool with the appropriate arguments.
-If you respond without calling `structured_output`, or if you call any other tool, your answer will be considered invalid.
+STRUCTURED_OUTPUT_TOOL_CALL_PROMPT = """## MANDATORY INSTRUCTION — read before responding
+
+You have EXACTLY ONE tool: `structured_output`.  You MUST call it with the correct arguments to provide your final answer.
+
+### Rules (violation = invalid response)
+1. Call `structured_output` — this is the ONLY action you can take.
+2. Do NOT output raw JSON text — always use the tool call.
+3. Do NOT call any other tool (bash, python, code_interpreter, etc.) — they do NOT exist and will be rejected.
+4. Do NOT ask clarifying questions or say you cannot answer — extract the best answer from the available context and call `structured_output`.
+
+### About conversation history
+The messages above may contain calls to tools like `bash`, `python`, `code_interpreter`, etc.
+Those calls happened in PREVIOUS steps that have already finished. The results are shown for your reference.
+You CANNOT execute those tools — they are no longer available. Read their outputs as context, then summarise your answer into `structured_output`.
 """  # noqa: E501
+
+STRUCTURED_OUTPUT_FINAL_TURN_REMINDER = (
+    "[SYSTEM] This is the FINAL turn. No further interaction is possible after this. "
+    "You must call `structured_output` NOW with your best answer based on the conversation above. "
+    "Do NOT call bash, python, or any other tool. Do NOT ask questions. Just call `structured_output`."
+)
 
 LLM_MODIFY_PROMPT_SYSTEM = """
 Both your input and output should be in JSON format.
