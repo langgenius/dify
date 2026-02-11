@@ -7,6 +7,7 @@ from typing import Self
 
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
+from redis import Redis, RedisCluster
 from redis.client import PubSub
 
 _logger = logging.getLogger(__name__)
@@ -22,10 +23,12 @@ class RedisSubscriptionBase(Subscription):
 
     def __init__(
         self,
+        client: Redis | RedisCluster,
         pubsub: PubSub,
         topic: str,
     ):
         # The _pubsub is None only if the subscription is closed.
+        self._client = client
         self._pubsub: PubSub | None = pubsub
         self._topic = topic
         self._closed = threading.Event()
@@ -149,7 +152,7 @@ class RedisSubscriptionBase(Subscription):
         """Iterator for consuming messages from the subscription."""
         while not self._closed.is_set():
             try:
-                item = self._queue.get(timeout=0.1)
+                item = self._queue.get(timeout=1)
             except queue.Empty:
                 continue
 
@@ -162,7 +165,7 @@ class RedisSubscriptionBase(Subscription):
         self._start_if_needed()
         return iter(self._message_iterator())
 
-    def receive(self, timeout: float | None = None) -> bytes | None:
+    def receive(self, timeout: float | None = 0.1) -> bytes | None:
         """Receive the next message from the subscription."""
         if self._closed.is_set():
             raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")

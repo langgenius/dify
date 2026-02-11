@@ -309,7 +309,7 @@ describe('WorkflowToolConfigureButton', () => {
 
     it('should render loading state when published and fetching details', async () => {
       // Arrange
-      mockFetchWorkflowToolDetailByAppID.mockImplementation(() => new Promise(() => {})) // Never resolves
+      mockFetchWorkflowToolDetailByAppID.mockImplementation(() => new Promise(() => { })) // Never resolves
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
@@ -774,7 +774,9 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Component should still render without crashing
-      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
+      })
     })
 
     it('should handle rapid publish/unpublish state changes', async () => {
