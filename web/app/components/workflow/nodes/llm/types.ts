@@ -38,6 +38,7 @@ export type LLMNodeType = CommonNodeType & {
   }
   structured_output_enabled?: boolean
   structured_output?: StructuredOutput
+  reasoning_format?: 'tagged' | 'separated'
   tools?: ToolValue[]
   tool_settings?: ToolSetting[]
   max_iterations?: number

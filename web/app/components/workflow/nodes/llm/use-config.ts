@@ -362,6 +362,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
+  // reasoning format
+  const handleReasoningFormatChange = useCallback((reasoningFormat: 'tagged' | 'separated') => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.reasoning_format = reasoningFormat
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   const {
     availableVars,
     availableNodesWithParent,
@@ -403,6 +411,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
+    handleReasoningFormatChange,
     isSupportSandbox,
     handleComputerUseChange,
   }
