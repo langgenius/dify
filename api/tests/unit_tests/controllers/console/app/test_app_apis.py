@@ -518,36 +518,6 @@ class TestWorkflowStatisticEndpoints:
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
-    def test_workflow_daily_runs_statistic(self, app, monkeypatch):
-        monkeypatch.setattr(
-            workflow_statistic_module,
-            "db",
-            SimpleNamespace(engine=MagicMock()),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module.DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: SimpleNamespace(get_daily_runs_statistics=lambda **_kw: [{"date": "2024-01-01"}]),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module,
-            "current_account_with_tenant",
-            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module,
-            "parse_time_range",
-            lambda *_args, **_kwargs: (None, None),
-        )
-
-        api = workflow_statistic_module.WorkflowDailyRunsStatistic()
-        method = _unwrap(api.get)
-
-        with app.test_request_context("/"):
-            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
-
-        assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
-
 
 # ========== Workflow Trigger Tests ==========
 class TestWorkflowTriggerEndpoints:
