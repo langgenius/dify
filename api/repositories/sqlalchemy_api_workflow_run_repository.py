@@ -386,6 +386,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         batch_size: int,
         run_types: Sequence[WorkflowType] | None = None,
         tenant_ids: Sequence[str] | None = None,
+        workflow_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
@@ -394,7 +395,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         - created_at in [start_from, end_before)
         - type in run_types (when provided)
         - status is an ended state
-        - optional tenant_id filter and cursor (last_seen) for pagination
+        - optional tenant_id, workflow_id filters and cursor (last_seen) for pagination
         """
         with self._session_maker() as session:
             stmt = (
@@ -416,6 +417,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             if tenant_ids:
                 stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
+
+            if workflow_ids:
+                stmt = stmt.where(WorkflowRun.workflow_id.in_(workflow_ids))
 
             if last_seen:
                 stmt = stmt.where(
