@@ -1,7 +1,3 @@
-import {
-  RiClipboardLine,
-  RiCloseLine,
-} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -141,7 +137,7 @@ const WorkflowPreview = () => {
           </Tooltip>
           <div className="mx-3 h-3.5 w-[1px] bg-divider-regular" />
           <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-close-line size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -246,7 +242,7 @@ const WorkflowPreview = () => {
                         Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
                       }}
                     >
-                      <RiClipboardLine className="h-3.5 w-3.5" />
+                      <span className="i-ri-clipboard-line h-3.5 w-3.5" />
                       <div>{t('operation.copy', { ns: 'common' })}</div>
                     </Button>
                   )}

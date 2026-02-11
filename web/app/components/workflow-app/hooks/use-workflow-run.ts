@@ -24,7 +24,7 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { handleStream, post, sseGet, ssePost } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { useInvalidateSandboxFiles } from '@/service/use-sandbox-file'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
@@ -67,6 +67,7 @@ export const useWorkflowRun = () => {
   const configsMap = useConfigsMap()
   const { flowId, flowType } = configsMap
   const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
   const invalidateSandboxFiles = useInvalidateSandboxFiles()
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
@@ -191,6 +192,9 @@ export const useWorkflowRun = () => {
     } = callback || {}
     workflowStore.setState({ historyWorkflowData: undefined })
     const appDetail = useAppStore.getState().appDetail
+    const runHistoryUrl = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+      ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
+      : `/apps/${appDetail?.id}/workflow-runs`
     const workflowContainer = document.getElementById('workflow-container')
 
     const {
@@ -365,6 +369,7 @@ export const useWorkflowRun = () => {
     const wrappedOnError = (params: any) => {
       clearAbortController()
       handleWorkflowFailed()
+      invalidateRunHistory(runHistoryUrl)
       clearListeningState()
 
       if (onError)
@@ -383,6 +388,7 @@ export const useWorkflowRun = () => {
       ...restCallback,
       onWorkflowStarted: (params) => {
         handleWorkflowStarted(params)
+        invalidateRunHistory(runHistoryUrl)
 
         if (onWorkflowStarted)
           onWorkflowStarted(params)
@@ -390,6 +396,7 @@ export const useWorkflowRun = () => {
       onWorkflowFinished: (params) => {
         clearListeningState()
         handleWorkflowFinished(params)
+        invalidateRunHistory(runHistoryUrl)
 
         if (onWorkflowFinished)
           onWorkflowFinished(params)
@@ -499,6 +506,7 @@ export const useWorkflowRun = () => {
       },
       onWorkflowPaused: (params) => {
         handleWorkflowPaused()
+        invalidateRunHistory(runHistoryUrl)
         if (onWorkflowPaused)
           onWorkflowPaused(params)
         const url = `/workflow/${params.workflow_run_id}/events`
@@ -697,6 +705,7 @@ export const useWorkflowRun = () => {
       },
       onWorkflowFinished: (params) => {
         handleWorkflowFinished(params)
+        invalidateRunHistory(runHistoryUrl)
 
         if (onWorkflowFinished)
           onWorkflowFinished(params)
@@ -707,6 +716,7 @@ export const useWorkflowRun = () => {
       },
       onError: (params) => {
         handleWorkflowFailed()
+        invalidateRunHistory(runHistoryUrl)
 
         if (onError)
           onError(params)
@@ -806,6 +816,7 @@ export const useWorkflowRun = () => {
       },
       onWorkflowPaused: (params) => {
         handleWorkflowPaused()
+        invalidateRunHistory(runHistoryUrl)
         if (onWorkflowPaused)
           onWorkflowPaused(params)
         const url = `/workflow/${params.workflow_run_id}/events`
@@ -840,7 +851,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [invalidateSandboxFiles, store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
+  }, [invalidateSandboxFiles, store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {
