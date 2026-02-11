@@ -68,22 +68,19 @@ vi.mock('@/config', () => ({
   API_PREFIX: '/api',
 }))
 
+// Mock postWithKeepalive from service/fetch
+const mockPostWithKeepalive = vi.fn()
+vi.mock('@/service/fetch', () => ({
+  postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
+}))
+
 // ============================================================================
 // Tests
 // ============================================================================
 
 describe('useNodesSyncDraft', () => {
-  const mockSendBeacon = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Setup navigator.sendBeacon mock
-    Object.defineProperty(navigator, 'sendBeacon', {
-      value: mockSendBeacon,
-      writable: true,
-      configurable: true,
-    })
 
     // Default store state
     mockStoreGetState.mockReturnValue({
@@ -134,7 +131,7 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('syncWorkflowDraftWhenPageClose', () => {
-    it('should not call sendBeacon when nodes are read only', () => {
+    it('should not call postWithKeepalive when nodes are read only', () => {
       mockGetNodesReadOnly.mockReturnValue(true)
 
       const { result } = renderHook(() => useNodesSyncDraft())
@@ -143,10 +140,10 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
     })
 
-    it('should call sendBeacon with correct URL and params', () => {
+    it('should call postWithKeepalive with correct URL and params', () => {
       mockGetNodesReadOnly.mockReturnValue(false)
       mockGetNodes.mockReturnValue([
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
@@ -158,13 +155,16 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).toHaveBeenCalledWith(
+      expect(mockPostWithKeepalive).toHaveBeenCalledWith(
         '/api/rag/pipelines/test-pipeline-id/workflows/draft',
-        expect.any(String),
+        expect.objectContaining({
+          graph: expect.any(Object),
+          hash: 'test-hash',
+        }),
       )
     })
 
-    it('should not call sendBeacon when pipelineId is missing', () => {
+    it('should not call postWithKeepalive when pipelineId is missing', () => {
       mockWorkflowStoreGetState.mockReturnValue({
         pipelineId: undefined,
         environmentVariables: [],
@@ -178,10 +178,10 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
     })
 
-    it('should not call sendBeacon when nodes array is empty', () => {
+    it('should not call postWithKeepalive when nodes array is empty', () => {
       mockGetNodes.mockReturnValue([])
 
       const { result } = renderHook(() => useNodesSyncDraft())
@@ -190,7 +190,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
     })
 
     it('should filter out temp nodes', () => {
@@ -204,8 +204,8 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      // Should not call sendBeacon because after filtering temp nodes, array is empty
-      expect(mockSendBeacon).not.toHaveBeenCalled()
+      // Should not call postWithKeepalive because after filtering temp nodes, array is empty
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
     })
 
     it('should remove underscore-prefixed data keys from nodes', () => {
@@ -219,9 +219,9 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      expect(mockSendBeacon).toHaveBeenCalled()
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
-      expect(sentData.graph.nodes[0].data._privateData).toBeUndefined()
+      expect(mockPostWithKeepalive).toHaveBeenCalled()
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      expect(sentParams.graph.nodes[0].data._privateData).toBeUndefined()
     })
   })
 
@@ -395,8 +395,8 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
-      expect(sentData.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      expect(sentParams.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
     })
 
     it('should include environment variables in params', () => {
@@ -418,8 +418,8 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
-      expect(sentData.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      expect(sentParams.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
     })
 
     it('should include rag pipeline variables in params', () => {
@@ -441,8 +441,8 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
-      expect(sentData.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
     })
 
     it('should remove underscore-prefixed keys from edges', () => {
@@ -461,9 +461,9 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentData = JSON.parse(mockSendBeacon.mock.calls[0][1])
-      expect(sentData.graph.edges[0].data._hidden).toBeUndefined()
-      expect(sentData.graph.edges[0].data.visible).toBe(false)
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      expect(sentParams.graph.edges[0].data._hidden).toBeUndefined()
+      expect(sentParams.graph.edges[0].data.visible).toBe(false)
     })
   })
 })

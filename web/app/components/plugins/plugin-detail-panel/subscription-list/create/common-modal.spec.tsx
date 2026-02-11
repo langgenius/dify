@@ -599,20 +599,30 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
+      const existingBuilder = createMockSubscriptionBuilder()
       mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
         onSuccess()
       })
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockVerifyCredentials).toHaveBeenCalled()
+        expect(mockVerifyCredentials).toHaveBeenCalledWith(
+          expect.objectContaining({
+            provider: 'test-provider',
+            subscriptionBuilderId: existingBuilder.id,
+          }),
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-confirm')).toHaveTextContent('pluginTrigger.modal.common.create')
       })
     })
 
@@ -629,15 +639,12 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
+      const existingBuilder = createMockSubscriptionBuilder()
       mockVerifyCredentials.mockImplementation((params, { onError }) => {
         onError(new Error('Verification failed'))
       })
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
@@ -1131,17 +1138,27 @@ describe('CommonCreateModal', () => {
       mockVerifyCredentials.mockImplementation((params, { onError }) => {
         onError(new Error('Raw error'))
       })
+      const builder = createMockSubscriptionBuilder()
 
-      render(<CommonCreateModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} builder={builder} />)
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockParsePluginErrorMessage).toHaveBeenCalled()
+        expect(mockVerifyCredentials).toHaveBeenCalledWith(
+          expect.objectContaining({
+            provider: 'test-provider',
+            subscriptionBuilderId: builder.id,
+          }),
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
+      })
+
+      await waitFor(() => {
+        expect(mockParsePluginErrorMessage).toHaveBeenCalledWith(expect.any(Error))
       })
     })
 
@@ -1224,6 +1241,10 @@ describe('CommonCreateModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
 
       // Wait for updateBuilder to be called, then check the toast
+      await waitFor(() => {
+        expect(mockUpdateBuilder).toHaveBeenCalled()
+      })
+
       await waitFor(() => {
         expect(mockUpdateBuilder).toHaveBeenCalled()
       })

@@ -1,8 +1,19 @@
 import type { PropsWithChildren } from 'react'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from './update-dsl-modal'
+
+class MockFileReader {
+  onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
+
+  readAsText(_file: Blob) {
+    const event = { target: { result: 'test content' } } as unknown as ProgressEvent<FileReader>
+    this.onload?.call(this as unknown as FileReader, event)
+  }
+}
+
+vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -133,11 +144,6 @@ vi.mock('@/app/components/base/modal', () => ({
 vi.mock('@/app/components/workflow/constants', () => ({
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
 }))
-
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
 
 describe('UpdateDSLModal', () => {
   const mockOnCancel = vi.fn()
