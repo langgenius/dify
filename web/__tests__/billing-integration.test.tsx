@@ -2,8 +2,19 @@ import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/typ
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import AnnotationFull from '@/app/components/billing/annotation-full'
+import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import Billing from '@/app/components/billing/billing-page'
 import { defaultPlan, NUM_INFINITE } from '@/app/components/billing/config'
+import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
+import PlanComp from '@/app/components/billing/plan'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import PriorityLabel from '@/app/components/billing/priority-label'
+import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-limit-modal'
 import { Plan } from '@/app/components/billing/type'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 
 // ─── Module-level mock state ────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
@@ -113,21 +124,7 @@ const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   }
 }
 
-// ─── Imports (after mocks) ──────────────────────────────────────────────────
-// These must be imported after all vi.mock() calls
-/* eslint-disable import/first */
-import AnnotationFull from '@/app/components/billing/annotation-full'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import Billing from '@/app/components/billing/billing-page'
-import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
-import PlanComp from '@/app/components/billing/plan'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
-import PriorityLabel from '@/app/components/billing/priority-label'
-import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-limit-modal'
-import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-/* eslint-enable import/first */
+// Vitest hoists vi.mock() calls, so imports above will use mocked modules
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Billing Page + Plan Component Integration
