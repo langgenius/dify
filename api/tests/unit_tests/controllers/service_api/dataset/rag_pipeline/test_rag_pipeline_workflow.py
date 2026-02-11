@@ -23,7 +23,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.service_api.dataset.error import PipelineRunError
@@ -370,11 +370,15 @@ class TestDatasourcePluginsApiGet:
     an inline dataset query, so no ``db`` patching is needed.
     """
 
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    def test_get_plugins_success(self, mock_svc_cls, app):
+    def test_get_plugins_success(self, mock_svc_cls, mock_db, app):
         """Test successful retrieval of datasource plugins."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
+
+        mock_dataset = Mock()
+        mock_db.session.scalar.return_value = mock_dataset
 
         mock_svc_instance = Mock()
         mock_svc_instance.get_datasource_plugins.return_value = [{"name": "plugin_a"}]
@@ -390,9 +394,21 @@ class TestDatasourcePluginsApiGet:
             tenant_id=tenant_id, dataset_id=dataset_id, is_published=True
         )
 
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
+    def test_get_plugins_not_found(self, mock_db, app):
+        """Test NotFound when dataset check fails."""
+        mock_db.session.scalar.return_value = None
+
+        with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
+            api = DatasourcePluginsApi()
+            with pytest.raises(NotFound):
+                api.get(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    def test_get_plugins_empty_list(self, mock_svc_cls, app):
+    def test_get_plugins_empty_list(self, mock_svc_cls, mock_db, app):
         """Test empty plugin list."""
+        mock_db.session.scalar.return_value = Mock()
         mock_svc_instance = Mock()
         mock_svc_instance.get_datasource_plugins.return_value = []
         mock_svc_cls.return_value = mock_svc_instance
@@ -420,12 +436,15 @@ class TestDatasourceNodeRunApiPost:
         new_callable=lambda: Mock(spec=Account),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success(self, mock_ns, mock_svc_cls, mock_current_user, mock_gen, mock_helper, app):
+    def test_post_success(self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen, mock_helper, app):
         """Test successful datasource node run."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
         node_id = "node_abc"
+
+        mock_db.session.scalar.return_value = Mock()
 
         mock_ns.payload = {
             "inputs": {"url": "https://example.com"},
@@ -449,15 +468,28 @@ class TestDatasourceNodeRunApiPost:
 
         assert response == {"result": "ok"}
         mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
+        mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
         mock_svc_instance.run_datasource_workflow_node.assert_called_once()
+
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
+    def test_post_not_found(self, mock_db, app):
+        """Test NotFound when dataset check fails."""
+        mock_db.session.scalar.return_value = None
+
+        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/n1/run", method="POST"):
+            api = DatasourceNodeRunApi()
+            with pytest.raises(NotFound):
+                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
 
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new="not_account",
     )
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_fails_when_current_user_not_account(self, mock_ns, app):
+    def test_post_fails_when_current_user_not_account(self, mock_ns, mock_db, app):
         """Test AssertionError when current_user is not an Account instance."""
+        mock_db.session.scalar.return_value = Mock()
         mock_ns.payload = {
             "inputs": {},
             "datasource_type": "local_file",
@@ -480,11 +512,16 @@ class TestPipelineRunApiPost:
         new_callable=lambda: Mock(spec=Account),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success_streaming(self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app):
+    def test_post_success_streaming(
+        self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app
+    ):
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
+
+        mock_db.session.scalar.return_value = Mock()
 
         mock_ns.payload = {
             "inputs": {"key": "val"},
@@ -510,10 +547,22 @@ class TestPipelineRunApiPost:
         assert response == {"result": "ok"}
         mock_gen_svc.generate.assert_called_once()
 
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
+    def test_post_not_found(self, mock_db, app):
+        """Test NotFound when dataset check fails."""
+        mock_db.session.scalar.return_value = None
+
+        with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
+            api = PipelineRunApi()
+            with pytest.raises(NotFound):
+                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_forbidden_non_account_user(self, mock_ns, app):
+    def test_post_forbidden_non_account_user(self, mock_ns, mock_db, app):
         """Test Forbidden when current_user is not an Account."""
+        mock_db.session.scalar.return_value = Mock()
         mock_ns.payload = {
             "inputs": {},
             "datasource_type": "online_document",
