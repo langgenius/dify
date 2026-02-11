@@ -291,6 +291,22 @@ export type OnlineDriveFile = {
   type: OnlineDriveFileType
 }
 
+export type OnlineDriveFileTreeItem = {
+  parentId: string | null
+  depth: number
+  children: Set<string>
+  descendants: Set<string>
+  hasChildren: boolean
+  isExpanded: boolean
+} & OnlineDriveFile
+
+export type OnlineDriveTreeMap = Record<string, OnlineDriveFileTreeItem>
+
+export enum OnlineDriveViewMode {
+  flat = 'flat',
+  tree = 'tree',
+}
+
 export type DatasourceNodeSingleRunRequest = {
   pipeline_id: string
   start_node_id: string

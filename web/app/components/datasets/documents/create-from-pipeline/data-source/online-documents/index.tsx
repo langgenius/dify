@@ -14,6 +14,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
 import Header from '../base/header'
+import ViewToggle from '../online-drive/file-list/header/view-toggle'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import PageSelector from './page-selector'
 import Title from './title'
@@ -41,11 +42,15 @@ const OnlineDocuments = ({
     searchValue,
     selectedPagesId,
     currentCredentialId,
+    viewMode,
+    setViewMode,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     documentsData: state.documentsData,
     searchValue: state.searchValue,
     selectedPagesId: state.selectedPagesId,
     currentCredentialId: state.currentCredentialId,
+    viewMode: state.viewMode,
+    setViewMode: state.setViewMode,
   })))
 
   const { data: dataSourceAuth } = useGetDataSourceAuth({
@@ -150,6 +155,10 @@ const OnlineDocuments = ({
           <div className="flex grow items-center">
             <Title name={nodeData.datasource_label} />
           </div>
+          <ViewToggle
+            viewMode={viewMode}
+            onChange={setViewMode}
+          />
           <SearchInput
             value={searchValue}
             onChange={handleSearchValueChange}
@@ -169,6 +178,7 @@ const OnlineDocuments = ({
                   onPreview={handlePreviewPage}
                   isMultipleChoice={supportBatchUpload}
                   currentCredentialId={currentCredentialId}
+                  viewMode={viewMode}
                 />
               )
             : (

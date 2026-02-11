@@ -17,6 +17,18 @@ vi.mock('ahooks', () => ({
     mockDebounceFnRun.mockImplementation(fn)
     return { run: mockDebounceFnRun }
   },
+  useBoolean: (defaultValue = false) => {
+    const [value, setValue] = React.useState(defaultValue)
+    return [
+      value,
+      {
+        setTrue: () => setValue(true),
+        setFalse: () => setValue(false),
+        toggle: () => setValue(v => !v),
+        set: setValue,
+      },
+    ]
+  },
 }))
 
 // Mock store - context provider requires mocking
@@ -30,6 +42,9 @@ const mockStoreState = {
   setBreadcrumbs: vi.fn(),
   setPrefix: vi.fn(),
   setBucket: vi.fn(),
+  prefix: [],
+  expandedFolderIds: new Set<string>(),
+  setExpandedFolderIds: vi.fn(),
 }
 
 const mockGetState = vi.fn(() => mockStoreState)
@@ -278,7 +293,7 @@ describe('FileList', () => {
         const { container } = render(<FileList {...props} />)
 
         // Assert - Should show spinner icon at the bottom
-        expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+        expect(container.querySelector('.animate-spin')).toBeInTheDocument()
       })
     })
 

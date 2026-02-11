@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "{{name}}와(과) 동기화하려면 먼저 {{name}}에 연결해야 합니다.",
   "onlineDrive.notSupportedFileType": "이 파일 형식은 지원되지 않습니다",
   "onlineDrive.resetKeywords": "키워드 재설정",
+  "onlineDrive.viewMode.flatList": "플랫 리스트 보기",
+  "onlineDrive.viewMode.treeView": "트리 뷰",
   "operations.backToDataSource": "데이터 소스로 돌아가기",
   "operations.choose": "선택",
   "operations.convert": "변환",

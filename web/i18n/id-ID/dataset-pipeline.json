@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "Untuk menyinkronkan dengan {{name}}, koneksi ke {{name}} harus dibuat terlebih dahulu.",
   "onlineDrive.notSupportedFileType": "Jenis file ini tidak didukung",
   "onlineDrive.resetKeywords": "Mengatur ulang kata kunci",
+  "onlineDrive.viewMode.flatList": "Tampilan Daftar Datar",
+  "onlineDrive.viewMode.treeView": "Tampilan Pohon",
   "operations.backToDataSource": "Kembali ke Sumber Data",
   "operations.choose": "Memilih",
   "operations.convert": "Mengkonversi",

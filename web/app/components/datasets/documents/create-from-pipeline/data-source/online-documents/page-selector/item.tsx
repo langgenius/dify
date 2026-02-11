@@ -1,5 +1,7 @@
 import type { ListChildComponentProps } from 'react-window'
+import type { NotionPageTreeMap } from './index'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,16 +9,8 @@ import { areEqual } from 'react-window'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
+import { OnlineDriveViewMode } from '@/models/pipeline'
 import { cn } from '@/utils/classnames'
-
-type NotionPageTreeItem = {
-  children: Set<string>
-  descendants: Set<string>
-  depth: number
-  ancestors: string[]
-} & DataSourceNotionPage
-
-type NotionPageTreeMap = Record<string, NotionPageTreeItem>
 
 type NotionPageItem = {
   expand: boolean
@@ -36,6 +30,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   previewPageId: string
   pagesMap: DataSourceNotionPageMap
   isMultipleChoice?: boolean
+  viewMode?: OnlineDriveViewModeType
 }>) => {
   const { t } = useTranslation()
   const {
@@ -51,6 +46,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
     previewPageId,
     pagesMap,
     isMultipleChoice,
+    viewMode = OnlineDriveViewMode.flat,
   } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
@@ -60,7 +56,8 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   const disabled = disabledCheckedIds.has(current.page_id)
 
   const renderArrow = () => {
-    if (hasChild) {
+    // In tree mode, show expandable arrow for parents
+    if (viewMode === OnlineDriveViewMode.tree && hasChild) {
       return (
         <div
           className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
@@ -75,6 +72,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
         </div>
       )
     }
+    // In both flat and tree modes, show indent for child pages
     if (current.parent_id === 'root' || !pagesMap[current.parent_id]) {
       return (
         <div></div>
@@ -124,7 +122,18 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
         {current.page_name}
       </div>
       {
-        canPreview && (
+        hasChild && viewMode === OnlineDriveViewMode.flat && (
+          <div
+            className="bg-components-badge-modern-purple-bg text-components-badge-modern-purple-text ml-1 flex shrink-0 items-center rounded-md px-1.5 text-xs font-medium dark:bg-components-badge-bg-gray-soft dark:text-text-secondary"
+            title={t('dataSource.notion.selector.childPagesIncluded', { ns: 'common', count: currentWithChildrenAndDescendants.descendants.size })}
+          >
+            +
+            {currentWithChildrenAndDescendants.descendants.size}
+          </div>
+        )
+      }
+      {
+        canPreview && !hasChild && (
           <div
             className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
             font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]

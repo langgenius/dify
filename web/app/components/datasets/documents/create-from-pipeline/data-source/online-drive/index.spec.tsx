@@ -57,6 +57,7 @@ const { mockToastNotify } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
+  __esModule: true,
   default: {
     notify: mockToastNotify,
   },
@@ -76,6 +77,8 @@ const mockStoreState = {
   currentCredentialId: '',
   isTruncated: { current: false },
   currentNextPageParametersRef: { current: {} },
+  treeMap: {},
+  expandedFolderIds: new Set<string>(),
   setOnlineDriveFileList: vi.fn(),
   setKeywords: vi.fn(),
   setSelectedFileIds: vi.fn(),
@@ -83,6 +86,8 @@ const mockStoreState = {
   setPrefix: vi.fn(),
   setBucket: vi.fn(),
   setHasBucket: vi.fn(),
+  setTreeMap: vi.fn(),
+  setExpandedFolderIds: vi.fn(),
 }
 
 const mockGetState = vi.fn(() => mockStoreState)
@@ -232,6 +237,8 @@ const resetMockStoreState = () => {
   mockStoreState.currentCredentialId = ''
   mockStoreState.isTruncated = { current: false }
   mockStoreState.currentNextPageParametersRef = { current: {} }
+  mockStoreState.treeMap = {}
+  mockStoreState.expandedFolderIds = new Set<string>()
   mockStoreState.setOnlineDriveFileList = vi.fn()
   mockStoreState.setKeywords = vi.fn()
   mockStoreState.setSelectedFileIds = vi.fn()
@@ -239,6 +246,8 @@ const resetMockStoreState = () => {
   mockStoreState.setPrefix = vi.fn()
   mockStoreState.setBucket = vi.fn()
   mockStoreState.setHasBucket = vi.fn()
+  mockStoreState.setTreeMap = vi.fn()
+  mockStoreState.setExpandedFolderIds = vi.fn()
 }
 
 // ==========================================

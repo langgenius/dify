@@ -1,5 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import type { OnlineDriveViewMode } from '@/models/pipeline'
+import { OnlineDriveViewMode as ViewMode } from '@/models/pipeline'
 
 export type OnlineDocumentSliceShape = {
   documentsData: DataSourceNotionWorkspace[]
@@ -13,6 +15,8 @@ export type OnlineDocumentSliceShape = {
   selectedPagesId: Set<string>
   setSelectedPagesId: (selectedPagesId: Set<string>) => void
   previewOnlineDocumentRef: React.RefObject<NotionPage | undefined>
+  viewMode: OnlineDriveViewMode
+  setViewMode: (viewMode: OnlineDriveViewMode) => void
 }
 
 export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set, get) => {
@@ -42,5 +46,9 @@ export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> =
       selectedPagesId,
     })),
     previewOnlineDocumentRef: { current: undefined },
+    viewMode: ViewMode.flat,
+    setViewMode: (viewMode: OnlineDriveViewMode) => set(() => ({
+      viewMode,
+    })),
   })
 }

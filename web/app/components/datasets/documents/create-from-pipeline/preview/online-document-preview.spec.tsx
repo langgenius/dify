@@ -197,7 +197,7 @@ describe('OnlineDocumentPreview', () => {
 
       await waitFor(() => {
         // Markdown component renders the content
-        const contentArea = document.querySelector('.overflow-hidden.px-6.py-5')
+        const contentArea = document.querySelector('.overflow-y-auto.px-6.py-5')
         expect(contentArea).toBeInTheDocument()
       })
     })

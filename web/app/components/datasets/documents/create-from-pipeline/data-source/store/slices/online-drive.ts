@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand'
-import type { OnlineDriveFile } from '@/models/pipeline'
+import type { OnlineDriveFile, OnlineDriveTreeMap, OnlineDriveViewMode } from '@/models/pipeline'
+import { OnlineDriveViewMode as ViewMode } from '@/models/pipeline'
 
 export type OnlineDriveSliceShape = {
   breadcrumbs: string[]
@@ -21,6 +22,12 @@ export type OnlineDriveSliceShape = {
   previewOnlineDriveFileRef: React.RefObject<OnlineDriveFile | undefined>
   hasBucket: boolean
   setHasBucket: (hasBucket: boolean) => void
+  viewMode: OnlineDriveViewMode
+  setViewMode: (viewMode: OnlineDriveViewMode) => void
+  treeMap: OnlineDriveTreeMap
+  setTreeMap: (treeMap: OnlineDriveTreeMap) => void
+  expandedFolderIds: Set<string>
+  setExpandedFolderIds: (expandedFolderIds: Set<string>) => void
 }
 
 export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set, get) => {
@@ -64,6 +71,18 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
     hasBucket: false,
     setHasBucket: (hasBucket: boolean) => set(() => ({
       hasBucket,
+    })),
+    viewMode: ViewMode.flat,
+    setViewMode: (viewMode: OnlineDriveViewMode) => set(() => ({
+      viewMode,
+    })),
+    treeMap: {},
+    setTreeMap: (treeMap: OnlineDriveTreeMap) => set(() => ({
+      treeMap,
+    })),
+    expandedFolderIds: new Set<string>(),
+    setExpandedFolderIds: (expandedFolderIds: Set<string>) => set(() => ({
+      expandedFolderIds,
     })),
   })
 }

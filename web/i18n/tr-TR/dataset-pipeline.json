@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "{{name}} ile senkronize olmak için önce {{name}} bağlantısının kurulması gerekir.",
   "onlineDrive.notSupportedFileType": "Bu dosya türü desteklenmiyor",
   "onlineDrive.resetKeywords": "Anahtar kelimeleri sıfırlama",
+  "onlineDrive.viewMode.flatList": "Düz Liste Görünümü",
+  "onlineDrive.viewMode.treeView": "Ağaç Görünümü",
   "operations.backToDataSource": "Veri Kaynağına Geri Dön",
   "operations.choose": "Seçmek",
   "operations.convert": "Dönüştürmek",
