@@ -1,11 +1,10 @@
-from core.db.session_factory import session_factory
 import json
 import logging
 from datetime import datetime
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -86,7 +85,6 @@ class WorkflowToolManageService:
             except Exception as e:
                 raise ValueError(str(e))
 
-        
             session.add(workflow_tool_provider)
 
             if labels is not None:
