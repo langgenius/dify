@@ -456,12 +456,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             model, credentials, prompt_tokens, completion_tokens
         )
 
-    def _prepare_file_dict(
-        self, message_file: MessageFile, upload_files_map: dict[str, UploadFile]
-    ) -> dict:
+    def _prepare_file_dict(self, message_file: MessageFile, upload_files_map: dict[str, UploadFile]) -> dict:
         """
         Prepare file dictionary for message end response.
-        
+
         :param message_file: MessageFile instance
         :param upload_files_map: Dictionary mapping upload_file_id to UploadFile
         :return: Dictionary containing file information
@@ -523,11 +521,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         # Format file response according to FileResponse type
         # FileTransferMethod is a StrEnum, so it always has .value attribute
         transfer_method_value = message_file.transfer_method.value
-        remote_url = (
-            message_file.url
-            if message_file.transfer_method == FileTransferMethod.REMOTE_URL
-            else ""
-        )
+        remote_url = message_file.url if message_file.transfer_method == FileTransferMethod.REMOTE_URL else ""
         file_dict = {
             "related_id": message_file.id,
             "extension": extension,
@@ -553,9 +547,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         # Fetch files associated with this message
         files = None
         with Session(db.engine, expire_on_commit=False) as session:
-            message_files = session.scalars(
-                select(MessageFile).where(MessageFile.message_id == self._message_id)
-            ).all()
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
 
             if message_files:
                 # Fetch all required UploadFile objects in a single query to avoid N+1 problem
@@ -566,9 +558,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 ]
                 upload_files_map = {}
                 if upload_file_ids:
-                    upload_files = session.scalars(
-                        select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-                    ).all()
+                    upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
                     upload_files_map = {uf.id: uf for uf in upload_files}
 
                 files_list = []
