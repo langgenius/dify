@@ -227,7 +227,7 @@ class App(Base):
         with Session(db.engine) as session:
             if api_provider_ids:
                 existing_api_providers = [
-                    api_provider.id
+                    str(api_provider.id)
                     for api_provider in session.execute(
                         text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"),
                         {"provider_ids": tuple(api_provider_ids)},
