@@ -92,8 +92,10 @@ vi.mock('@/service/workflow', () => ({
 }))
 
 const mockInvalidAllLastRun = vi.fn()
+const mockInvalidateWorkflowRunHistory = vi.fn()
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateWorkflowRunHistory: () => mockInvalidateWorkflowRunHistory,
 }))
 
 // Mock FlowType
