@@ -181,7 +181,7 @@ const FilePickerPanel = ({
         ref={containerRef}
         className={cn(
           'max-h-[250px] px-2 pb-2',
-          !showHeader && 'pt-2',
+          !showHeader && 'max-h-[34vh] min-h-[34vh] pt-1',
           contentClassName,
         )}
       >
@@ -223,18 +223,20 @@ const FilePickerPanel = ({
       {showAddFiles && (
         <>
           <div className="h-px bg-divider-subtle" />
-          <button
-            type="button"
-            className={cn(
-              'flex h-9 w-full items-center gap-2 px-3 text-left hover:bg-state-base-hover',
-              !onAddFiles && 'cursor-not-allowed opacity-50',
-            )}
-            onClick={onAddFiles}
-            disabled={!onAddFiles}
-          >
-            <span className="i-ri-file-add-line size-4 text-text-secondary" aria-hidden="true" />
-            <span className="text-[13px] font-medium leading-4 text-text-secondary">{t('skillEditor.addFiles')}</span>
-          </button>
+          <div className="p-1">
+            <button
+              type="button"
+              className={cn(
+                'flex w-full items-center rounded-md py-1 pl-3 pr-2 text-left hover:bg-state-base-hover',
+                !onAddFiles && 'cursor-not-allowed opacity-50',
+              )}
+              onClick={onAddFiles}
+              disabled={!onAddFiles}
+            >
+              <span className="i-ri-file-add-line mr-1.5 size-5 text-text-secondary" aria-hidden="true" />
+              <span className="text-[13px] font-normal leading-4 text-text-secondary">{t('skillEditor.addFiles')}</span>
+            </button>
+          </div>
         </>
       )}
     </div>

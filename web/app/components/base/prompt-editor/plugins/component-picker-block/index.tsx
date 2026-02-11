@@ -42,7 +42,6 @@ import {
 import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import { SegmentedControl } from '@/app/components/base/segmented-control'
 import AgentNodeList from '@/app/components/workflow/nodes/_base/components/agent-node-list'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { FilePickerPanel } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-picker-panel'
@@ -50,6 +49,7 @@ import FilePickerUploadModal from '@/app/components/workflow/skill/editor/skill-
 import { $createFileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { cn } from '@/utils/classnames'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
@@ -295,7 +295,7 @@ const ComponentPicker = ({
           {ReactDOM.createPortal(
             <div className="h-0 w-0">
               <div
-                className="w-[300px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg"
+                className="w-[360px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -306,35 +306,23 @@ const ComponentPicker = ({
                   event.stopPropagation()
                 }}
               >
-                <div
-                  className="w-full"
-                  role="presentation"
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                  }}
-                >
-                  <SegmentedControl
-                    size="small"
-                    padding="with"
-                    activeState="accent"
-                    className="w-full"
-                    btnClassName="flex-1"
-                    options={[
-                      {
-                        value: 'variables',
-                        text: t('promptEditor.variable.outputToolDisabledItem.title', { ns: 'common' }),
-                      },
-                      {
-                        value: 'files',
-                        text: t('nodes.llm.files', { ns: 'workflow' }),
-                      },
-                    ]}
-                    value={activeTab}
-                    onChange={setActiveTab}
-                  />
+                <div className="flex items-center gap-1 border-b border-divider-subtle px-2 py-2">
+                  <div className="flex gap-1">
+                    <div
+                      className={cn('flex h-6 cursor-pointer items-center rounded-md px-2 text-text-tertiary system-xs-medium hover:bg-state-base-hover', activeTab === 'variables' && 'bg-state-base-active text-text-primary')}
+                      onClick={() => setActiveTab('variables')}
+                    >
+                      {t('promptEditor.variable.outputToolDisabledItem.title', { ns: 'common' })}
+                    </div>
+                    <div
+                      className={cn('flex h-6 cursor-pointer items-center rounded-md px-2 text-text-tertiary system-xs-medium hover:bg-state-base-hover', activeTab === 'files' && 'bg-state-base-active text-text-primary')}
+                      onClick={() => setActiveTab('files')}
+                    >
+                      {t('nodes.llm.files', { ns: 'workflow' })}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-2">
+                <div className="p-1">
                   {activeTab === 'variables' && (
                     <VarReferenceVars
                       searchBoxClassName="mt-1"
@@ -363,7 +351,7 @@ const ComponentPicker = ({
                         handleClose()
                       }}
                       className="w-full border-0 bg-transparent p-0 shadow-none"
-                      contentClassName="px-0"
+                      contentClassName="px-1"
                       showHeader={false}
                       showAddFiles
                       onAddFiles={() => {
