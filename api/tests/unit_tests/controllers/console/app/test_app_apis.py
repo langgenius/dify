@@ -14,15 +14,35 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.app import (
     annotation as annotation_module,
+)
+from controllers.console.app import (
     completion as completion_module,
+)
+from controllers.console.app import (
     message as message_module,
+)
+from controllers.console.app import (
     ops_trace as ops_trace_module,
+)
+from controllers.console.app import (
     site as site_module,
+)
+from controllers.console.app import (
     statistic as statistic_module,
+)
+from controllers.console.app import (
     workflow_app_log as workflow_app_log_module,
+)
+from controllers.console.app import (
     workflow_draft_variable as workflow_draft_variable_module,
+)
+from controllers.console.app import (
     workflow_statistic as workflow_statistic_module,
+)
+from controllers.console.app import (
     workflow_trigger as workflow_trigger_module,
+)
+from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
@@ -34,7 +54,6 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
-
 
 
 def _unwrap(func):

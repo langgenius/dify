@@ -13,8 +13,8 @@ from pandas.errors import ParserError
 from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
+from controllers.console.wraps import annotation_import_concurrency_limit, annotation_import_rate_limit
 from services.annotation_service import AppAnnotationService
-from controllers.console.wraps import (annotation_import_rate_limit, annotation_import_concurrency_limit)
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 
 
