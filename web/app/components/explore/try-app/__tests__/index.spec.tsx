@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TryApp from '../index'
 import { TypeEnum } from '../tab'
 
+// Suppress expected React act() warnings from internal async state updates
+vi.spyOn(console, 'error').mockImplementation(() => {})
+
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal() as object
   return {

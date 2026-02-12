@@ -20,6 +20,7 @@ describe('VersionMismatchModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   describe('rendering', () => {

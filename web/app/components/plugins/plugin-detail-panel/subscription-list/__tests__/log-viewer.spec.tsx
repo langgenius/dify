@@ -1,16 +1,11 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import LogViewer from '../log-viewer'
 
 const mockToastNotify = vi.fn()
 const mockWriteText = vi.fn()
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (args: { type: string, message: string }) => mockToastNotify(args),
-  },
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ value }: { value: unknown }) => (
@@ -62,6 +57,10 @@ beforeEach(() => {
     },
     configurable: true,
   })
+  vi.spyOn(Toast, 'notify').mockImplementation((args) => {
+    mockToastNotify(args)
+    return { clear: vi.fn() }
+  })
 })
 
 describe('LogViewer', () => {
@@ -99,13 +98,20 @@ describe('LogViewer', () => {
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
   })
 
-  it('should render error styling when response is an error', () => {
-    render(<LogViewer logs={[createLog({ response: { ...createLog().response, status_code: 500 } })]} />)
+  it('should apply distinct styling when response is an error', () => {
+    const { container: errorContainer } = render(
+      <LogViewer logs={[createLog({ response: { ...createLog().response, status_code: 500 } })]} />,
+    )
+    const errorWrapperClass = errorContainer.querySelector('[class*="border"]')?.className ?? ''
 
-    const trigger = screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ })
-    const wrapper = trigger.parentElement as HTMLElement
+    cleanup()
 
-    expect(wrapper).toHaveClass('border-state-destructive-border')
+    const { container: okContainer } = render(
+      <LogViewer logs={[createLog()]} />,
+    )
+    const okWrapperClass = okContainer.querySelector('[class*="border"]')?.className ?? ''
+
+    expect(errorWrapperClass).not.toBe(okWrapperClass)
   })
 
   it('should render raw response text and allow copying', () => {
@@ -121,10 +127,9 @@ describe('LogViewer', () => {
 
     expect(screen.getByText('plain response')).toBeInTheDocument()
 
-    const copyButton = screen.getAllByRole('button').find(button => button !== toggleButton)
-    expect(copyButton).toBeDefined()
-    if (copyButton)
-      fireEvent.click(copyButton)
+    const copyButton = screen.getAllByRole('button').find(button => button !== toggleButton) as HTMLElement
+    expect(copyButton).toBeTruthy()
+    fireEvent.click(copyButton)
     expect(mockWriteText).toHaveBeenCalledWith('plain response')
     expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
   })

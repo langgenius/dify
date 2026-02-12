@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ToastContext } from '@/app/components/base/toast'
 import Publisher from '../index'
 import Popup from '../popup'
 
@@ -16,53 +17,6 @@ vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode, href: string }) => (
     <a href={href} {...props}>{children}</a>
   ),
-}))
-
-let keyPressCallback: ((e: KeyboardEvent) => void) | null = null
-vi.mock('ahooks', () => ({
-  useBoolean: (defaultValue = false) => {
-    const [value, setValue] = React.useState(defaultValue)
-    return [value, {
-      setTrue: () => setValue(true),
-      setFalse: () => setValue(false),
-      toggle: () => setValue(v => !v),
-    }]
-  },
-  useKeyPress: (key: string, callback: (e: KeyboardEvent) => void) => {
-    keyPressCallback = callback
-  },
-}))
-
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
-}))
-
-let mockPortalOpen = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: {
-    children: React.ReactNode
-    open: boolean
-    onOpenChange: (open: boolean) => void
-  }) => {
-    mockPortalOpen = open
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick }: {
-    children: React.ReactNode
-    onClick: () => void
-  }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
-    if (!mockPortalOpen)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
-  },
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -120,11 +74,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.dify.ai/v1/datasets/test-dataset-id',
@@ -207,7 +156,9 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      {ui}
+      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+        {ui}
+      </ToastContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -215,8 +166,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('publisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpen = false
-    keyPressCallback = null
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     mockPublishedAt.mockReturnValue(null)
     mockDraftUpdatedAt.mockReturnValue(1700000000)
     mockPipelineId.mockReturnValue('test-pipeline-id')
@@ -236,8 +186,9 @@ describe('publisher', () => {
       it('should render portal element in closed state by default', () => {
         renderWithQueryClient(<Publisher />)
 
-        expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+        const trigger = screen.getByText('workflow.common.publish').closest('[data-state]')
+        expect(trigger).toHaveAttribute('data-state', 'closed')
+        expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
       })
 
       it('should render down arrow icon in button', () => {
@@ -252,24 +203,24 @@ describe('publisher', () => {
       it('should open popup when trigger is clicked', async () => {
         renderWithQueryClient(<Publisher />)
 
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         await waitFor(() => {
-          expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+          expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
         })
       })
 
       it('should close popup when trigger is clicked again while open', async () => {
         renderWithQueryClient(<Publisher />)
-        fireEvent.click(screen.getByTestId('portal-trigger')) // open
+        fireEvent.click(screen.getByText('workflow.common.publish')) // open
 
         await waitFor(() => {
-          expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+          expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
         })
-        fireEvent.click(screen.getByTestId('portal-trigger')) // close
+        fireEvent.click(screen.getByText('workflow.common.publish')) // close
 
         await waitFor(() => {
-          expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+          expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
         })
       })
     })
@@ -278,20 +229,20 @@ describe('publisher', () => {
       it('should call handleSyncWorkflowDraft when popup opens', async () => {
         renderWithQueryClient(<Publisher />)
 
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
       })
 
       it('should not call handleSyncWorkflowDraft when popup closes', async () => {
         renderWithQueryClient(<Publisher />)
-        fireEvent.click(screen.getByTestId('portal-trigger')) // open
+        fireEvent.click(screen.getByText('workflow.common.publish')) // open
         vi.clearAllMocks()
 
         await waitFor(() => {
-          expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+          expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
         })
-        fireEvent.click(screen.getByTestId('portal-trigger')) // close
+        fireEvent.click(screen.getByText('workflow.common.publish')) // close
 
         expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
       })
@@ -306,10 +257,10 @@ describe('publisher', () => {
       it('should render popup content when opened', async () => {
         renderWithQueryClient(<Publisher />)
 
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('workflow.common.publish'))
 
         await waitFor(() => {
-          expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+          expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
         })
       })
     })
@@ -811,10 +762,8 @@ describe('publisher', () => {
         mockPublishWorkflow.mockResolvedValue({ created_at: 1700100000 })
         renderWithQueryClient(<Popup />)
 
-        const mockEvent = { preventDefault: vi.fn() } as unknown as KeyboardEvent
-        keyPressCallback?.(mockEvent)
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
-        expect(mockEvent.preventDefault).toHaveBeenCalled()
         await waitFor(() => {
           expect(mockPublishWorkflow).toHaveBeenCalled()
         })
@@ -834,10 +783,8 @@ describe('publisher', () => {
 
         vi.clearAllMocks()
 
-        const mockEvent = { preventDefault: vi.fn() } as unknown as KeyboardEvent
-        keyPressCallback?.(mockEvent)
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
-        expect(mockEvent.preventDefault).toHaveBeenCalled()
         expect(mockPublishWorkflow).not.toHaveBeenCalled()
       })
 
@@ -845,8 +792,7 @@ describe('publisher', () => {
         mockPublishedAt.mockReturnValue(null)
         renderWithQueryClient(<Popup />)
 
-        const mockEvent = { preventDefault: vi.fn() } as unknown as KeyboardEvent
-        keyPressCallback?.(mockEvent)
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         await waitFor(() => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
@@ -861,16 +807,14 @@ describe('publisher', () => {
         }))
         renderWithQueryClient(<Popup />)
 
-        const mockEvent1 = { preventDefault: vi.fn() } as unknown as KeyboardEvent
-        keyPressCallback?.(mockEvent1)
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         await waitFor(() => {
           const publishButton = screen.getByRole('button', { name: /workflow.common.publishUpdate/i })
           expect(publishButton).toBeDisabled()
         })
 
-        const mockEvent2 = { preventDefault: vi.fn() } as unknown as KeyboardEvent
-        keyPressCallback?.(mockEvent2)
+        fireEvent.keyDown(window, { key: 'p', keyCode: 80, ctrlKey: true, shiftKey: true })
 
         expect(mockPublishWorkflow).toHaveBeenCalledTimes(1)
 
@@ -1066,10 +1010,10 @@ describe('publisher', () => {
     it('should show Publisher button and open popup with Popup component', async () => {
       renderWithQueryClient(<Publisher />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByText('workflow.common.publish'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
       })
 
       expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)

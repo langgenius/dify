@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
 import SecretKeyModal from '../secret-key-modal'
 
+// Suppress expected React act() warnings from Headless UI Dialog transitions and async API state updates
+vi.spyOn(console, 'error').mockImplementation(() => {})
+
 async function renderModal(ui: React.ReactElement) {
   const result = render(ui)
   await act(async () => {

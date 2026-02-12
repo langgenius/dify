@@ -6,11 +6,8 @@ import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { contactSalesUrl } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
-// Get the mocked functions
-// const { useProviderContext } = vi.requireMock('@/context/provider-context')
-// const { useModalContext } = vi.requireMock('@/context/modal-context')
 import { useProviderContext } from '@/context/provider-context'
-import CustomPage from './index'
+import CustomPage from '../index'
 
 // Mock external dependencies only
 vi.mock('@/context/provider-context', () => ({

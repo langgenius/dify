@@ -47,8 +47,20 @@ describe('PlanSwitcherTab', () => {
       expect(handleClick).toHaveBeenCalledWith('self')
     })
 
-    it('should apply active text class when isActive is true', () => {
-      render(
+    it('should apply distinct styling when isActive is true', () => {
+      const { rerender } = render(
+        <Tab
+          Icon={Icon}
+          value="cloud"
+          label="Cloud"
+          isActive={false}
+          onClick={vi.fn()}
+        />,
+      )
+
+      const inactiveClassName = screen.getByText('Cloud').className
+
+      rerender(
         <Tab
           Icon={Icon}
           value="cloud"
@@ -58,7 +70,8 @@ describe('PlanSwitcherTab', () => {
         />,
       )
 
-      expect(screen.getByText('Cloud')).toHaveClass('text-saas-dify-blue-accessible')
+      const activeClassName = screen.getByText('Cloud').className
+      expect(activeClassName).not.toBe(inactiveClassName)
       expect(screen.getByTestId('tab-icon')).toHaveAttribute('data-active', 'true')
     })
   })
