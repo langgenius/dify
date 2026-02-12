@@ -3,6 +3,8 @@ from typing import Any
 
 import orjson
 
+from core.model_runtime.entities.message_entities import PromptMessageContent
+
 from .segment_group import SegmentGroup
 from .segments import ArrayFileSegment, FileSegment, Segment
 
@@ -22,6 +24,8 @@ def segment_orjson_default(o: Any):
         return o.value.model_dump()
     elif isinstance(o, SegmentGroup):
         return [segment_orjson_default(seg) for seg in o.value]
+    elif isinstance(o, PromptMessageContent):
+        return o.model_dump()
     elif isinstance(o, Segment):
         return o.value
     raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
