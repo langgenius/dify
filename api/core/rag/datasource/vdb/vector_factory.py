@@ -119,10 +119,6 @@ class Vector:
                 from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
 
                 return TiDBVectorFactory
-            case VectorType.WEAVIATE:
-                from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
-
-                return WeaviateVectorFactory
             case VectorType.TENCENT:
                 from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
 

@@ -86,7 +86,7 @@ COPY --chown=dify:dify . /app/api
 # Prepare entrypoint script
 COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
 
-RUN uv sync --frozen --no-dev && pip3 install --no-cache-dir --upgrade "wheel==0.46.3" "jaraco.context==6.1.0"
+RUN uv sync --frozen --no-dev && pip3 install --no-cache-dir --upgrade "wheel==0.46.3" "jaraco.context==6.1.0" "setuptools==80.10.2"
 
 # Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
