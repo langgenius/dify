@@ -23,7 +23,7 @@ const mockApis = {
 
 const mockUseInspectVarsCrudCommon = vi.fn(() => mockApis)
 vi.mock('../../../workflow/hooks/use-inspect-vars-crud-common', () => ({
-  useInspectVarsCrudCommon: () => mockUseInspectVarsCrudCommon(),
+  useInspectVarsCrudCommon: (...args: Parameters<typeof mockUseInspectVarsCrudCommon>) => mockUseInspectVarsCrudCommon(...args),
 }))
 
 const mockConfigsMap = {

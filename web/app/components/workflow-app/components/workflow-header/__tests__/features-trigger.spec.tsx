@@ -7,7 +7,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import FeaturesTrigger from './features-trigger'
+import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
 const mockUseTheme = vi.fn()
