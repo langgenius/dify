@@ -142,7 +142,7 @@ describe('AgentLogDetail', () => {
       await renderAndWaitForData()
 
       const detailTab = screen.getByText(/runLog.detail/i)
-      expect(detailTab.className).toContain('border-[rgb(21,94,239)]')
+      expect(detailTab.getAttribute('data-active')).toBe('true')
     })
 
     it('should show TRACING tab when activeTab is TRACING', async () => {
@@ -151,7 +151,7 @@ describe('AgentLogDetail', () => {
       await renderAndWaitForData({ activeTab: 'TRACING' })
 
       const tracingTab = screen.getByText(/runLog.tracing/i)
-      expect(tracingTab.className).toContain('border-[rgb(21,94,239)]')
+      expect(tracingTab.getAttribute('data-active')).toBe('true')
     })
   })
 
@@ -165,11 +165,11 @@ describe('AgentLogDetail', () => {
 
       await waitFor(() => {
         const tracingTab = screen.getByText(/runLog.tracing/i)
-        expect(tracingTab.className).toContain('border-[rgb(21,94,239)]')
+        expect(tracingTab.getAttribute('data-active')).toBe('true')
       })
 
       const detailTab = screen.getByText(/runLog.detail/i)
-      expect(detailTab.className).not.toContain('border-[rgb(21,94,239)]')
+      expect(detailTab.getAttribute('data-active')).toBe('false')
     })
 
     it('should switch back to DETAIL tab after switching to TRACING', async () => {
@@ -180,14 +180,14 @@ describe('AgentLogDetail', () => {
       fireEvent.click(screen.getByText(/runLog.tracing/i))
 
       await waitFor(() => {
-        expect(screen.getByText(/runLog.tracing/i).className).toContain('border-[rgb(21,94,239)]')
+        expect(screen.getByText(/runLog.tracing/i).getAttribute('data-active')).toBe('true')
       })
 
       fireEvent.click(screen.getByText(/runLog.detail/i))
 
       await waitFor(() => {
         const detailTab = screen.getByText(/runLog.detail/i)
-        expect(detailTab.className).toContain('border-[rgb(21,94,239)]')
+        expect(detailTab.getAttribute('data-active')).toBe('true')
       })
     })
   })
