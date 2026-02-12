@@ -68,10 +68,10 @@ describe('SearchInput', () => {
       const input = screen.getByPlaceholderText('common.operation.search')
 
       fireEvent.focus(input)
-      expect(wrapper).toHaveClass('!bg-components-input-bg-active')
+      expect(wrapper).toHaveClass(/bg-components-input-bg-active/)
 
       fireEvent.blur(input)
-      expect(wrapper).not.toHaveClass('!bg-components-input-bg-active')
+      expect(wrapper).not.toHaveClass(/bg-components-input-bg-active/)
     })
   })
 
