@@ -26,7 +26,7 @@ COPY package.json pnpm-lock.yaml /app/web/
 # Use packageManager from package.json
 RUN corepack install
 
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder
