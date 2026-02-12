@@ -3091,18 +3091,8 @@
       "count": 3
     }
   },
-  "app/components/datasets/common/document-picker/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/document-picker/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/document-picker/preview-document-picker.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3142,11 +3132,6 @@
   "app/components/datasets/common/image-uploader/store.tsx": {
     "react-refresh/only-export-components": {
       "count": 4
-    }
-  },
-  "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/datasets/common/retrieval-method-info/index.tsx": {
@@ -3247,11 +3232,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/create/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 16
-    }
-  },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -3268,11 +3248,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create/step-three/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/datasets/create/step-three/index.tsx": {
@@ -3328,11 +3303,6 @@
   "app/components/datasets/create/stepper/step.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/datasets/create/stop-embedding-modal/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
-      "count": 1
     }
   },
   "app/components/datasets/create/top-bar/index.tsx": {
@@ -3442,11 +3412,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3457,29 +3422,14 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/header.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 10
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
@@ -3489,11 +3439,6 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/title.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3532,11 +3477,6 @@
       "count": 3
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/empty-folder.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3544,11 +3484,6 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/empty-search-result.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3560,11 +3495,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
@@ -3612,22 +3542,12 @@
       "count": 2
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
