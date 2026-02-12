@@ -138,7 +138,7 @@ class AnalyticdbVectorBySql:
                 $func$;
             EXCEPTION
                 WHEN SQLSTATE '42501' THEN
-                    NULL;  /* insufficient_privilege: 已有函数且当前用户非 owner，跳过；仅需 EXECUTE 即可使用 */
+                    NULL;  /* insufficient_privilege: skip when function exists and current user is not owner; EXECUTE is sufficient to use it */
             END $$;
             """)
             cur.execute(f"CREATE SCHEMA IF NOT EXISTS {self.config.namespace}")
