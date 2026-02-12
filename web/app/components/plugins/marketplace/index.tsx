@@ -1,4 +1,5 @@
 import type { SearchParams } from 'nuqs'
+import type { Awaitable } from './hydration-server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { cn } from '@/utils/classnames'
 import { HydrateQueryClient } from './hydration-server'
@@ -8,9 +9,10 @@ import MarketplaceHeader from './marketplace-header'
 type MarketplaceProps = {
   showInstallButton?: boolean
   /**
-   * Pass the search params from the request to prefetch data on the server.
+   * Pass the search params & params from the request to prefetch data on the server.
    */
-  searchParams?: Promise<SearchParams>
+  params?: Awaitable<{ category?: string, creationType?: string, searchTab?: string } | undefined>
+  searchParams?: Awaitable<SearchParams>
   /**
    * Whether the marketplace is the platform marketplace.
    */
@@ -20,13 +22,14 @@ type MarketplaceProps = {
 
 const Marketplace = async ({
   showInstallButton = true,
+  params,
   searchParams,
   isMarketplacePlatform = false,
   marketplaceNav,
 }: MarketplaceProps) => {
   return (
     <TanstackQueryInitializer>
-      <HydrateQueryClient searchParams={searchParams}>
+      <HydrateQueryClient searchParams={searchParams} params={params}>
         <MarketplaceHeader descriptionClassName={cn('mx-12 mt-1', isMarketplacePlatform && 'top-0 mx-0 mt-0 rounded-none')} marketplaceNav={marketplaceNav} />
         <MarketplaceContent
           showInstallButton={showInstallButton}

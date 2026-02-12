@@ -1,14 +1,17 @@
 import type { SearchParams } from 'nuqs'
 import { HydrationBoundary } from '@tanstack/react-query'
 
-// The server side logic should move to marketplace's codebase so that we can get rid of Next.js
+export type Awaitable<T> = T | PromiseLike<T>
 
 export async function HydrateQueryClient({
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  params,
   // eslint-disable-next-line unused-imports/no-unused-vars
   searchParams,
   children,
 }: {
-  searchParams: Promise<SearchParams> | undefined
+  params?: Awaitable<{ category?: string, creationType?: string, searchTab?: string } | undefined>
+  searchParams?: Awaitable<SearchParams>
   children: React.ReactNode
 }) {
   // TODO: bring back dehydrated state
