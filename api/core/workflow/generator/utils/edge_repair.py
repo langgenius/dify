@@ -95,7 +95,9 @@ class EdgeRepair:
                 warnings.extend(branch_warnings)
                 # Update outgoing index
                 for edge in new_edges:
-                    outgoing_edges.setdefault(edge.get("source"), []).append(edge)
+                    src = edge.get("source")
+                    if src:
+                        outgoing_edges.setdefault(src, []).append(edge)
 
         # 4. Repair if-else branches
         for node in nodes:
@@ -108,7 +110,9 @@ class EdgeRepair:
                 warnings.extend(branch_warnings)
                 # Update outgoing index
                 for edge in new_edges:
-                    outgoing_edges.setdefault(edge.get("source"), []).append(edge)
+                    src = edge.get("source")
+                    if src:
+                        outgoing_edges.setdefault(src, []).append(edge)
 
         # 5. Connect orphaned nodes (nodes with no incoming edge, except start)
         new_edges, orphan_repairs = cls._connect_orphaned_nodes(nodes, edges, outgoing_edges, incoming_edges)
@@ -364,6 +368,10 @@ class EdgeRepair:
         for node in nodes:
             node_id = node.get("id")
             node_type = node.get("type")
+
+            # Skip nodes without ID
+            if not node_id:
+                continue
 
             # Skip end nodes
             if node_type == "end":
