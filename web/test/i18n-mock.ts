@@ -31,20 +31,31 @@ export function createTFunction(translations: TranslationMap, defaultNs?: string
 /**
  * Create useTranslation mock with optional custom translations
  *
+ * Caches t functions by defaultNs so the same reference is returned
+ * across renders, preventing infinite re-render loops when components
+ * include t in useEffect/useMemo dependency arrays.
+ *
  * @example
  * vi.mock('react-i18next', () => createUseTranslationMock({
  *   'operation.confirm': 'Confirm',
  * }))
  */
 export function createUseTranslationMock(translations: TranslationMap = {}) {
+  const tCache = new Map<string, ReturnType<typeof createTFunction>>()
+  const i18n = {
+    language: 'en',
+    changeLanguage: vi.fn(),
+  }
   return {
-    useTranslation: (defaultNs?: string) => ({
-      t: createTFunction(translations, defaultNs),
-      i18n: {
-        language: 'en',
-        changeLanguage: vi.fn(),
-      },
-    }),
+    useTranslation: (defaultNs?: string) => {
+      const cacheKey = defaultNs ?? ''
+      if (!tCache.has(cacheKey))
+        tCache.set(cacheKey, createTFunction(translations, defaultNs))
+      return {
+        t: tCache.get(cacheKey)!,
+        i18n,
+      }
+    },
   }
 }
 

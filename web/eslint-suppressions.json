@@ -32,11 +32,6 @@
       "count": 2
     }
   },
-  "__tests__/goto-anything/slash-command-modes.test.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "__tests__/i18n-upload-features.test.ts": {
     "no-console": {
       "count": 3
@@ -2299,7 +2294,7 @@
   },
   "app/components/base/markdown-blocks/code-block.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 10
+      "count": 7
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2994,11 +2989,6 @@
       "count": 1
     }
   },
-  "app/components/billing/pricing/plans/cloud-plan-item/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plans/cloud-plan-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
@@ -3016,11 +3006,6 @@
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
       "count": 1
     }
   },
@@ -3045,11 +3030,6 @@
   "app/components/billing/priority-label/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/billing/upgrade-btn/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
     }
   },
   "app/components/billing/upgrade-btn/index.tsx": {
@@ -3088,18 +3068,8 @@
       "count": 3
     }
   },
-  "app/components/datasets/common/document-picker/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/document-picker/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/document-picker/preview-document-picker.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3139,11 +3109,6 @@
   "app/components/datasets/common/image-uploader/store.tsx": {
     "react-refresh/only-export-components": {
       "count": 4
-    }
-  },
-  "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/datasets/common/retrieval-method-info/index.tsx": {
@@ -3244,11 +3209,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/create/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 16
-    }
-  },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -3265,11 +3225,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create/step-three/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/datasets/create/step-three/index.tsx": {
@@ -3325,11 +3280,6 @@
   "app/components/datasets/create/stepper/step.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/datasets/create/stop-embedding-modal/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
-      "count": 1
     }
   },
   "app/components/datasets/create/top-bar/index.tsx": {
@@ -3439,11 +3389,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3454,29 +3399,14 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/header.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/base/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 10
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
@@ -3486,11 +3416,6 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/title.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3529,11 +3454,6 @@
       "count": 3
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/empty-folder.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -3541,11 +3461,6 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/empty-search-result.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -3557,11 +3472,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/header.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
@@ -3609,22 +3519,12 @@
       "count": 2
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
@@ -4896,14 +4796,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/install-from-marketplace/steps/install.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -4960,11 +4852,6 @@
   "app/components/plugins/marketplace/search-box/trigger/tool-selector.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/plugins/marketplace/sort-dropdown/index.spec.tsx": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/plugins/marketplace/sort-dropdown/index.tsx": {
@@ -5148,14 +5035,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -5286,27 +5165,12 @@
       "count": 3
     }
   },
-  "app/components/plugins/plugin-item/action.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/plugin-item/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 10
-    }
-  },
   "app/components/plugins/plugin-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-mutation-model/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-mutation-model/index.tsx": {
@@ -5325,11 +5189,6 @@
   "app/components/plugins/plugin-page/debug-info.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-page/empty/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/plugins/plugin-page/empty/index.tsx": {
@@ -5358,29 +5217,14 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-page/list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/plugins/plugin-page/plugin-tasks/components/plugin-task-list.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-page/plugin-tasks/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/plugins/provider-card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/plugins/reference-setting-modal/auto-update-setting/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/plugins/reference-setting-modal/auto-update-setting/index.tsx": {
@@ -5421,11 +5265,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/reference-setting-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/plugins/reference-setting-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -5449,11 +5288,6 @@
   "app/components/plugins/update-plugin/from-market-place.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/plugins/update-plugin/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "app/components/plugins/update-plugin/plugin-version-picker.tsx": {
@@ -5512,11 +5346,6 @@
   "app/components/rag-pipeline/components/panel/input-field/field-list/field-item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/field-list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
@@ -5673,11 +5502,6 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 8
-    }
-  },
   "app/components/rag-pipeline/store/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -5730,11 +5554,6 @@
   },
   "app/components/share/text-generation/run-batch/csv-download/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 2
     }
   },
