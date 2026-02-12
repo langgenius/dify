@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerMark from '@/app/components/plugins/card/base/corner-mark'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
@@ -17,6 +18,7 @@ import { getTemplateIconUrl } from '../utils'
 type TemplateCardProps = {
   template: Template
   className?: string
+  includeSource?: boolean
 }
 
 // Number of tag icons to show before showing "+X"
@@ -25,6 +27,7 @@ const MAX_VISIBLE_DEPS_PLUGINS = 7
 const TemplateCardComponent = ({
   template,
   className,
+  includeSource = false,
 }: TemplateCardProps) => {
   const locale = useLocale()
   const { t } = useTranslation()
@@ -34,14 +37,17 @@ const TemplateCardComponent = ({
   const iconUrl = getTemplateIconUrl(template)
 
   const handleClick = useCallback(() => {
-    const url = getMarketplaceUrl(`/template/${publisher_handle}/${template_name}`, {
+    const queryParams = {
       theme,
       language: locale,
       templateId: id,
       creationType: 'templates',
-    })
+    }
+    const url = includeSource
+      ? getMarketplaceUrl(`/template/${publisher_handle}/${template_name}`, queryParams)
+      : `${MARKETPLACE_URL_PREFIX}/template/${publisher_handle}/${template_name}?${new URLSearchParams(queryParams).toString()}`
     window.open(url, '_blank')
-  }, [publisher_handle, template_name, theme, locale, id])
+  }, [publisher_handle, template_name, theme, locale, id, includeSource])
 
   const visibleDepsPlugins = deps_plugins?.slice(0, MAX_VISIBLE_DEPS_PLUGINS) || []
   const remainingDepsPluginsCount = deps_plugins ? Math.max(0, deps_plugins.length - MAX_VISIBLE_DEPS_PLUGINS) : 0
