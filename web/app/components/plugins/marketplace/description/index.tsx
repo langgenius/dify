@@ -36,13 +36,13 @@ export const Description = ({
   const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'
   const rafRef = useRef<number | null>(null)
   const lastProgressRef = useRef(0)
-  const titleRef = useRef<HTMLDivElement | null>(null)
+  const titleContentRef = useRef<HTMLDivElement | null>(null)
   const progress = useMotionValue(0)
-  const titleHeight = useMotionValue(0)
+  const titleHeight = useMotionValue(72)
   const smoothProgress = useSpring(progress, { stiffness: 260, damping: 34 })
 
   useLayoutEffect(() => {
-    const node = titleRef.current
+    const node = titleContentRef.current
     if (!node)
       return
 
@@ -99,7 +99,7 @@ export const Description = ({
       if (rafRef.current)
         cancelAnimationFrame(rafRef.current)
     }
-  }, [smoothProgress, scrollContainerId])
+  }, [progress, scrollContainerId])
 
   // Calculate interpolated values
   const contentOpacity = useTransform(smoothProgress, [0, 1], [1, 0])
@@ -149,7 +149,6 @@ export const Description = ({
       <div className="relative z-10">
         {/* Title and subtitle - fade out and scale down */}
         <motion.div
-          ref={titleRef}
           style={{
             opacity: contentOpacity,
             scale: contentScale,
@@ -160,12 +159,14 @@ export const Description = ({
             marginTop: titleMarginTop,
           }}
         >
-          <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-text-primary-on-surface">
-            {t(heroTitleKey)}
-          </h1>
-          <h2 className="body-md-regular shrink-0 text-text-secondary-on-surface">
-            {t(heroSubtitleKey)}
-          </h2>
+          <div ref={titleContentRef}>
+            <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-text-primary-on-surface">
+              {t(heroTitleKey)}
+            </h1>
+            <h2 className="body-md-regular shrink-0 text-text-secondary-on-surface">
+              {t(heroSubtitleKey)}
+            </h2>
+          </div>
         </motion.div>
 
         {/* Category switch tabs - Plugin or Template based on creationType */}
