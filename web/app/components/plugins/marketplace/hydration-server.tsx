@@ -1,6 +1,7 @@
 import type { SearchParams } from 'nuqs'
 import type { CreatorSearchParams, PluginsSearchParams, TemplateSearchParams } from './types'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { headers } from 'next/headers'
 import { createLoader } from 'nuqs/server'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { marketplaceQuery } from '@/service/client'
@@ -46,10 +47,18 @@ function getNextPageParam(lastPage: { page: number, page_size: number, total: nu
 
 type RouteParams = { category?: string, creationType?: string, searchTab?: string } | undefined
 
+async function shouldSkipServerPrefetch() {
+  const requestHeaders = await headers()
+  return requestHeaders.get('sec-fetch-dest') !== 'document'
+}
+
 async function getDehydratedState(
   params?: Awaitable<RouteParams>,
   searchParams?: Awaitable<SearchParams>,
 ) {
+  if (await shouldSkipServerPrefetch())
+    return
+
   const rawParams = params ? await params : undefined
   const rawSearchParams = searchParams ? await searchParams : undefined
   const parsedSearchParams = await loadSearchParams(Promise.resolve(rawSearchParams ?? {}))
