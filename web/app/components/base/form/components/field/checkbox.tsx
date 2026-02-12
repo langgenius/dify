@@ -18,9 +18,9 @@ const CheckboxField = ({
       <div className="flex h-6 shrink-0 items-center">
         <Checkbox
           id={field.name}
-          checked={field.state.value}
+          checked={field.state.value ?? false}
           onCheck={() => {
-            field.handleChange(!field.state.value)
+            field.handleChange(!(field.state.value ?? false))
           }}
         />
       </div>
@@ -31,7 +31,7 @@ const CheckboxField = ({
           labelClassName,
         )}
         onClick={() => {
-          field.handleChange(!field.state.value)
+          field.handleChange(!(field.state.value ?? false))
         }}
       >
         {label}

@@ -29,7 +29,7 @@ const TextField = ({
       />
       <Input
         id={field.name}
-        value={field.state.value}
+        value={field.state.value ?? ''}
         onChange={e => field.handleChange(e.target.value)}
         onBlur={field.handleBlur}
         {...inputProps}
