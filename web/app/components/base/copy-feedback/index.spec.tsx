@@ -64,12 +64,14 @@ describe('CopyFeedbackNew', () => {
     it('applies copied CSS class when copied is true', () => {
       mockCopied = true
       const { container } = render(<CopyFeedbackNew content="test content" />)
-      expect(container.querySelector('._copied_eb3d8b')).toBeInTheDocument()
+      const feedbackIcon = container.firstChild?.firstChild as Element
+      expect(feedbackIcon).toHaveClass(/_copied_.*/)
     })
 
     it('does not apply copied CSS class when not copied', () => {
       const { container } = render(<CopyFeedbackNew content="test content" />)
-      expect(container.querySelector('._copied_eb3d8b')).not.toBeInTheDocument()
+      const feedbackIcon = container.firstChild?.firstChild as Element
+      expect(feedbackIcon).not.toHaveClass(/_copied_.*/)
     })
   })
 
