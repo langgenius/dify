@@ -1,5 +1,6 @@
 import type { ChatWithHistoryContextValue } from '../context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -87,7 +88,8 @@ describe('InputsFormNode', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should render collapsed state with edit button', () => {
+  it('should render collapsed state with edit button', async () => {
+    const user = userEvent.setup()
     const setCollapsed = vi.fn()
     setMockContext({ currentConversationId: '' })
     render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
@@ -95,11 +97,12 @@ describe('InputsFormNode', () => {
     expect(screen.getByText('share.chat.chatSettingsTitle')).toBeInTheDocument()
 
     const editBtn = screen.getByRole('button', { name: /common.operation.edit/i })
-    fireEvent.click(editBtn)
+    await user.click(editBtn)
     expect(setCollapsed).toHaveBeenCalledWith(false)
   })
 
-  it('should render expanded state with close button when a conversation exists', () => {
+  it('should render expanded state with close button when a conversation exists', async () => {
+    const user = userEvent.setup()
     const setCollapsed = vi.fn()
     setMockContext({ currentConversationId: 'conv-1' })
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
@@ -108,11 +111,12 @@ describe('InputsFormNode', () => {
     expect(screen.getByText('Test Label')).toBeInTheDocument()
 
     const closeBtn = screen.getByRole('button', { name: /common.operation.close/i })
-    fireEvent.click(closeBtn)
+    await user.click(closeBtn)
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
 
-  it('should render start chat button with theme styling when no conversation exists', () => {
+  it('should render start chat button with theme styling when no conversation exists', async () => {
+    const user = userEvent.setup()
     const setCollapsed = vi.fn()
     const themeColor = 'rgb(18, 52, 86)' // #123456
 
@@ -129,7 +133,7 @@ describe('InputsFormNode', () => {
     expect(startBtn).toBeInTheDocument()
     expect(startBtn).toHaveStyle({ backgroundColor: themeColor })
 
-    fireEvent.click(startBtn)
+    await user.click(startBtn)
     expect(mockHandleStartChat).toHaveBeenCalled()
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
@@ -138,12 +142,16 @@ describe('InputsFormNode', () => {
     setMockContext({ isMobile: true })
     const { container } = render(<InputsFormNode collapsed={false} setCollapsed={vi.fn()} />)
 
+    // Prefer selecting by a test id if the component exposes it. Fallback to queries that
+    // don't rely on internal DOM structure so tests are less brittle.
+    const outerDiv = screen.queryByTestId('inputs-form-node') ?? (container.firstChild as HTMLElement)
+    expect(outerDiv).toBeTruthy()
     // Check for mobile-specific layout classes (pt-4)
-    const outerDiv = container.firstChild as HTMLElement
     expect(outerDiv).toHaveClass('pt-4')
 
     // Check padding in expanded content (p-4 for mobile)
-    const contentWrapper = screen.getByText('Test Label').closest('.p-4')
+    // Prefer a test id for the content wrapper; fallback to finding the label's closest ancestor
+    const contentWrapper = screen.queryByTestId('inputs-form-content-wrapper') ?? screen.getByText('Test Label').closest('.p-4')
     expect(contentWrapper).toBeInTheDocument()
   })
 })

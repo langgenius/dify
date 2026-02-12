@@ -1,5 +1,6 @@
 import type { ChatWithHistoryContextValue } from '../context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -67,7 +68,8 @@ describe('ViewFormDropdown', () => {
     setMockContext()
   })
 
-  it('renders the dropdown trigger and toggles content visibility', () => {
+  it('renders the dropdown trigger and toggles content visibility', async () => {
+    const user = userEvent.setup()
     render(<ViewFormDropdown />)
 
     // Initially, settings icon should be hidden (portal content)
@@ -78,16 +80,16 @@ describe('ViewFormDropdown', () => {
     expect(trigger).toBeInTheDocument()
 
     // Open dropdown
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(screen.getByText('share.chat.chatSettingsTitle')).toBeInTheDocument()
     expect(screen.getByText('Test Label')).toBeInTheDocument()
 
     // Close dropdown
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(screen.queryByText('share.chat.chatSettingsTitle')).not.toBeInTheDocument()
   })
 
-  it('renders correctly with multiple form items', () => {
+  it('renders correctly with multiple form items', async () => {
     setMockContext({
       inputsForms: [
         { variable: 'text', type: InputVarType.textInput, label: 'Text Form' },
@@ -95,14 +97,16 @@ describe('ViewFormDropdown', () => {
       ],
     })
 
+    const user = userEvent.setup()
     render(<ViewFormDropdown />)
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button'))
 
     expect(screen.getByText('Text Form')).toBeInTheDocument()
     expect(screen.getByText('Num Form')).toBeInTheDocument()
   })
 
-  it('applies correct state to ActionButton when open', () => {
+  it('applies correct state to ActionButton when open', async () => {
+    const user = userEvent.setup()
     render(<ViewFormDropdown />)
     const trigger = screen.getByRole('button')
 
@@ -110,7 +114,7 @@ describe('ViewFormDropdown', () => {
     expect(trigger).not.toHaveClass('action-btn-hover')
 
     // open state
-    fireEvent.click(trigger)
+    await user.click(trigger)
     expect(trigger).toHaveClass('action-btn-hover')
   })
 })

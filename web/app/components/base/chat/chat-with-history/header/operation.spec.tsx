@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Operation from './operation'
@@ -27,7 +28,8 @@ describe('Operation Component', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the title and toggles dropdown menu', () => {
+  it('renders the title and toggles dropdown menu', async () => {
+    const user = userEvent.setup()
     render(<Operation {...defaultProps} />)
 
     // Verify title
@@ -37,21 +39,23 @@ describe('Operation Component', () => {
     expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
 
     // Click to open
-    fireEvent.click(screen.getByText('Chat Title'))
+    await user.click(screen.getByText('Chat Title'))
     expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
 
     // Click to close
-    fireEvent.click(screen.getByText('Chat Title'))
+    await user.click(screen.getByText('Chat Title'))
     expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
   })
 
-  it('shows unpin label when isPinned is true', () => {
+  it('shows unpin label when isPinned is true', async () => {
+    const user = userEvent.setup()
     render(<Operation {...defaultProps} isPinned={true} />)
-    fireEvent.click(screen.getByText('Chat Title'))
+    await user.click(screen.getByText('Chat Title'))
     expect(screen.getByText('explore.sidebar.action.unpin')).toBeInTheDocument()
   })
 
-  it('handles rename and delete visibility correctly', () => {
+  it('handles rename and delete visibility correctly', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(
       <Operation
         {...defaultProps}
@@ -60,7 +64,7 @@ describe('Operation Component', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('Chat Title'))
+    await user.click(screen.getByText('Chat Title'))
     expect(screen.queryByText('explore.sidebar.action.rename')).not.toBeInTheDocument()
     expect(screen.queryByText('share.sidebar.action.delete')).not.toBeInTheDocument()
 
@@ -69,30 +73,35 @@ describe('Operation Component', () => {
     expect(screen.getByText('explore.sidebar.action.delete')).toBeInTheDocument()
   })
 
-  it('invokes callbacks when menu items are clicked', () => {
+  it('invokes callbacks when menu items are clicked', async () => {
+    const user = userEvent.setup()
     render(<Operation {...defaultProps} />)
-    fireEvent.click(screen.getByText('Chat Title'))
+    await user.click(screen.getByText('Chat Title'))
 
     // Toggle Pin
-    fireEvent.click(screen.getByText('explore.sidebar.action.pin'))
+    await user.click(screen.getByText('explore.sidebar.action.pin'))
     expect(defaultProps.togglePin).toHaveBeenCalledTimes(1)
 
     // Rename
-    fireEvent.click(screen.getByText('explore.sidebar.action.rename'))
+    await user.click(screen.getByText('explore.sidebar.action.rename'))
     expect(defaultProps.onRenameConversation).toHaveBeenCalledTimes(1)
 
     // Delete
-    fireEvent.click(screen.getByText('explore.sidebar.action.delete'))
+    await user.click(screen.getByText('explore.sidebar.action.delete'))
     expect(defaultProps.onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('applies hover background when open', () => {
+  it('applies hover background when open', async () => {
+    const user = userEvent.setup()
     render(<Operation {...defaultProps} />)
-    const trigger = screen.getByText('Chat Title').parentElement!
+    // Find trigger container by text and traverse to interactive container using a more robust selector
+    const trigger = screen.getByText('Chat Title').closest('.cursor-pointer')
 
+    // closed state
     expect(trigger).not.toHaveClass('bg-state-base-hover')
 
-    fireEvent.click(trigger)
+    // open state
+    await user.click(screen.getByText('Chat Title'))
     expect(trigger).toHaveClass('bg-state-base-hover')
   })
 })
