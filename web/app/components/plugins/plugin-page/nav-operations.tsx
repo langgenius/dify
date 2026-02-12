@@ -105,12 +105,12 @@ export const SubmitRequestDropdown = () => {
 
 export const CreationTypeTabs = () => {
   const { t } = useTranslation()
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
 
   return (
     <div className="flex items-center gap-1">
       <Link
-        href={`/?creationType=${CREATION_TYPE.plugins}`}
+        href={`/${CREATION_TYPE.plugins}`}
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -123,7 +123,7 @@ export const CreationTypeTabs = () => {
         </span>
       </Link>
       <Link
-        href={`/?creationType=${CREATION_TYPE.templates}`}
+        href={`/${CREATION_TYPE.templates}`}
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',

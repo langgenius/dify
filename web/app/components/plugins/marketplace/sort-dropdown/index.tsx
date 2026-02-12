@@ -29,7 +29,7 @@ const TEMPLATE_SORT_OPTIONS = [
 
 const SortDropdown = () => {
   const { t } = useTranslation()
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
   const isTemplates = creationType === CREATION_TYPE.templates
 
   const rawOptions = isTemplates ? TEMPLATE_SORT_OPTIONS : PLUGIN_SORT_OPTIONS

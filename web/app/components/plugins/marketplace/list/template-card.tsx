@@ -34,7 +34,7 @@ const TemplateCardComponent = ({
   const iconUrl = getTemplateIconUrl(template)
 
   const handleClick = useCallback(() => {
-    const url = getMarketplaceUrl(`/templates/${publisher_handle}/${template_name}`, {
+    const url = getMarketplaceUrl(`/template/${publisher_handle}/${template_name}`, {
       theme,
       language: locale,
       templateId: id,

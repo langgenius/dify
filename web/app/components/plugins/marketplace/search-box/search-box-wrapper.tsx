@@ -4,6 +4,7 @@ import type { UnifiedSearchParams } from '../types'
 import { useTranslation } from '#i18n'
 import { useDebounce } from 'ahooks'
 import { useSetAtom } from 'jotai'
+import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import Input from '@/app/components/base/input'
 import {
@@ -14,7 +15,6 @@ import {
 import { cn } from '@/utils/classnames'
 import {
   searchModeAtom,
-  useSearchTab,
   useSearchText,
 } from '../atoms'
 import { useMarketplaceUnifiedSearch } from '../query'
@@ -31,7 +31,6 @@ const SearchBoxWrapper = ({
 }: SearchBoxWrapperProps) => {
   const { t } = useTranslation()
   const [searchText, handleSearchTextChange] = useSearchText()
-  const [, setSearchTab] = useSearchTab()
   const setSearchMode = useSetAtom(searchModeAtom)
   const committedSearch = searchText || ''
   const [draftSearch, setDraftSearch] = useState(committedSearch)
@@ -39,6 +38,7 @@ const SearchBoxWrapper = ({
   const [isHoveringDropdown, setIsHoveringDropdown] = useState(false)
   const debouncedDraft = useDebounce(draftSearch, { wait: 300 })
   const hasDraft = !!debouncedDraft.trim()
+  const router = useRouter()
 
   const dropdownQueryParams = useMemo((): UnifiedSearchParams | undefined => {
     if (!hasDraft)
@@ -68,9 +68,7 @@ const SearchBoxWrapper = ({
     const trimmed = draftSearch.trim()
     if (!trimmed)
       return
-    handleSearchTextChange(trimmed)
-    setSearchTab('all')
-    setSearchMode(true)
+    router.push(`/search/all/?q=${encodeURIComponent(trimmed)}`)
     setIsFocused(false)
   }
 

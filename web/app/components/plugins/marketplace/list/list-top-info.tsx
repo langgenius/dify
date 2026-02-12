@@ -15,7 +15,7 @@ import { CREATION_TYPE } from '../search-params'
 import SortDropdown from '../sort-dropdown'
 
 const ListTopInfo = () => {
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
   const { t } = useTranslation()
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginCategory] = useActivePluginCategory()

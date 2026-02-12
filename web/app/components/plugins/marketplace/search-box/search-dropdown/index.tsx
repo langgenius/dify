@@ -180,7 +180,7 @@ function TemplatesSection({ templates, t }: {
         return (
           <DropdownItem
             key={template.id}
-            href={getMarketplaceUrl(`/templates/${template.publisher_handle}/${template.template_name}`, { templateId: template.id })}
+            href={getMarketplaceUrl(`/template/${template.publisher_handle}/${template.template_name}`, { templateId: template.id })}
             icon={(
               <div className="flex shrink-0 items-start py-1">
                 <AppIcon

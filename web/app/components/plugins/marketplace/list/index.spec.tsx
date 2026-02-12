@@ -120,9 +120,9 @@ vi.mock('../utils', async (importOriginal) => {
   return {
     ...actual,
     getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
-      `/plugins/${plugin.org}/${plugin.name}`,
+      `/plugin/${plugin.org}/${plugin.name}`,
     getPluginDetailLinkInMarketplace: (plugin: Plugin) =>
-      `/plugins/${plugin.org}/${plugin.name}`,
+      `/plugin/${plugin.org}/${plugin.name}`,
   }
 })
 
@@ -1166,7 +1166,7 @@ describe('CardWrapper (via List integration)', () => {
       )
 
       const detailLink = screen.getByText('Detail').closest('a')
-      expect(detailLink).toHaveAttribute('href', '/plugins/test-org/link-test-plugin')
+      expect(detailLink).toHaveAttribute('href', '/plugin/test-org/link-test-plugin')
       expect(detailLink).toHaveAttribute('target', '_blank')
     })
 

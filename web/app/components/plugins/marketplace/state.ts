@@ -134,7 +134,7 @@ export function isPluginsData(data: MarketplaceData): data is PluginsMarketplace
  * Returns either plugins or templates data based on URL parameter
  */
 export function useMarketplaceData(): MarketplaceData {
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
 
   const pluginsData = usePluginsMarketplaceData(creationType === CREATION_TYPE.plugins)
   const templatesData = useTemplatesMarketplaceData(creationType === CREATION_TYPE.templates)

@@ -530,7 +530,7 @@ describe('utils', () => {
       const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
       const link = getPluginLinkInMarketplace(plugin)
 
-      expect(link).toBe('https://marketplace.dify.ai/plugins/test-org/test-plugin')
+      expect(link).toBe('https://marketplace.dify.ai/plugin/test-org/test-plugin')
     })
 
     it('should return correct link for bundle', () => {
@@ -546,7 +546,7 @@ describe('utils', () => {
       const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
       const link = getPluginDetailLinkInMarketplace(plugin)
 
-      expect(link).toBe('/plugins/test-org/test-plugin')
+      expect(link).toBe('/plugin/test-org/test-plugin')
     })
 
     it('should return correct detail link for bundle', () => {

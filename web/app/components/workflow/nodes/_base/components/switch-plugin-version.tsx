@@ -93,7 +93,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             modalBottomLeft={(
               <Link
                 className="flex items-center justify-center gap-1"
-                href={getMarketplaceUrl(`/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`)}
+                href={getMarketplaceUrl(`/plugin/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`)}
                 target="_blank"
               >
                 <span className="system-xs-regular text-xs text-text-accent">

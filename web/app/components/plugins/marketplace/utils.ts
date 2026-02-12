@@ -89,13 +89,13 @@ export const getFormattedPlugin = (bundle: Plugin): Plugin => {
 export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<string, string | undefined>) => {
   if (plugin.type === 'bundle')
     return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
-  return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
+  return getMarketplaceUrl(`/plugin/${plugin.org}/${plugin.name}`, params)
 }
 
 export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
     return `/bundles/${plugin.org}/${plugin.name}`
-  return `/plugins/${plugin.org}/${plugin.name}`
+  return `/plugin/${plugin.org}/${plugin.name}`
 }
 
 export const getMarketplacePluginsByCollectionId = async (

@@ -30,7 +30,7 @@ export const Description = ({
   marketplaceNav,
 }: DescriptionProps) => {
   const { t } = useTranslation('plugin')
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
   const isTemplatesView = creationType === CREATION_TYPE.templates
   const heroTitleKey = isTemplatesView ? 'marketplace.templatesHeroTitle' : 'marketplace.pluginsHeroTitle'
   const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'

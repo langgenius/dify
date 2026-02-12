@@ -1,6 +1,7 @@
 import type { SearchTab } from './search-params'
 import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { CATEGORY_ALL, DEFAULT_PLUGIN_SORT, DEFAULT_TEMPLATE_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
@@ -32,24 +33,57 @@ export function useSearchText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
 export function useActivePluginCategory() {
-  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
-  return [getValidatedPluginCategory(category), setCategory] as const
+  const router = useRouter()
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(Boolean)
+  const categoryFromPath = segments[1] || CATEGORY_ALL
+  const validatedCategory = getValidatedPluginCategory(categoryFromPath)
+  const handleChange = (newCategory: string) => {
+    const newPathSegments = [...segments]
+    newPathSegments[1] = newCategory
+    const newPath = `/${newPathSegments.join('/')}`
+    router.push(newPath)
+  }
+  return [validatedCategory, handleChange] as const
 }
 
 export function useActiveTemplateCategory() {
-  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
-  return [getValidatedTemplateCategory(category), setCategory] as const
+  const router = useRouter()
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(Boolean)
+  const categoryFromPath = segments[1] || CATEGORY_ALL
+  const validatedCategory = getValidatedTemplateCategory(categoryFromPath)
+  const handleChange = (newCategory: string) => {
+    router.push(`/${CREATION_TYPE.templates}/${newCategory}`)
+  }
+  return [validatedCategory, handleChange] as const
 }
 export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
 export function useSearchTab() {
-  return useQueryState('searchTab', marketplaceSearchParamsParsers.searchTab)
+  const router = useRouter()
+  // /search/[searchTab]
+  const { searchTab } = useParams()
+  const handleChange = useCallback(
+    (newTab: string) => {
+      const location = new URL(window.location.href)
+      location.pathname = `/search/${newTab}`
+      router.push(location.href)
+    },
+    [router],
+  )
+  return [searchTab, handleChange] as const
 }
 
 export function useCreationType() {
-  return useQueryState('creationType', marketplaceSearchParamsParsers.creationType)
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(Boolean)
+
+  if (segments[0] === CREATION_TYPE.templates)
+    return CREATION_TYPE.templates
+  return CREATION_TYPE.plugins
 }
 
 // Search-page-specific filter hooks (separate from list-page category/tags)
@@ -77,7 +111,7 @@ export function useSearchFilterTags() {
 export const searchModeAtom = atom<true | null>(null)
 
 export function useMarketplaceSearchMode() {
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
   const [searchText] = useSearchText()
   const [searchTab] = useSearchTab()
   const [filterPluginTags] = useFilterPluginTags()
@@ -98,7 +132,7 @@ export function useMarketplaceSearchMode() {
  * Plugins use `marketplacePluginSortAtom`, templates use `marketplaceTemplateSortAtom`.
  */
 export function useActiveSort(): [PluginsSort, (sort: PluginsSort) => void] {
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
   const [pluginSort, setPluginSort] = useAtom(marketplacePluginSortAtom)
   const [templateSort, setTemplateSort] = useAtom(marketplaceTemplateSortAtom)
   const isTemplates = creationType === CREATION_TYPE.templates
@@ -112,7 +146,7 @@ export function useActiveSort(): [PluginsSort, (sort: PluginsSort) => void] {
 }
 
 export function useActiveSortValue(): PluginsSort {
-  const [creationType] = useCreationType()
+  const creationType = useCreationType()
   const pluginSort = useAtomValue(marketplacePluginSortAtom)
   const templateSort = useAtomValue(marketplaceTemplateSortAtom)
   return creationType === CREATION_TYPE.templates ? templateSort : pluginSort
