@@ -2997,11 +2997,6 @@
       "count": 1
     }
   },
-  "app/components/billing/pricing/plans/cloud-plan-item/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plans/cloud-plan-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
@@ -3019,11 +3014,6 @@
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
       "count": 1
     }
   },
@@ -3048,11 +3038,6 @@
   "app/components/billing/priority-label/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/billing/upgrade-btn/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
     }
   },
   "app/components/billing/upgrade-btn/index.tsx": {
