@@ -620,11 +620,10 @@ class PublishedRagPipelineApi(Resource):
             dataset = pipeline.retrieve_dataset(session=session)
             dataset_id: str | None = dataset.id if dataset else None
             try:
-                enabled = False
-                for node_data in MetadataService._iter_knowledge_index_nodes(workflow):
-                    if node_data.get("enable_built_in_metadata") is True:
-                        enabled = True
-                node_built_in_enabled = enabled
+                node_built_in_enabled = any(
+                    node_data.get("enable_built_in_metadata") is True
+                    for node_data in MetadataService._iter_knowledge_index_nodes(workflow)
+                )
             except Exception:
                 logger.exception(
                     "Skip post-publish built-in metadata sync extraction: failed to parse workflow %s graph",
