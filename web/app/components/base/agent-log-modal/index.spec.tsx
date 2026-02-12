@@ -14,15 +14,15 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({ status, time, tokens, error }: Record<string, unknown>) => (
+  default: ({ status, time, tokens, error }: { status: string, time?: number, tokens?: number, error?: string }) => (
     <div data-testid="status-panel" data-status={String(status)} data-time={String(time)} data-tokens={String(tokens)}>{error ? <span>{String(error)}</span> : null}</div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: Record<string, unknown>) => (
+  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
     <div data-testid="code-editor">
-      {String(title)}
+      {title}
       {typeof value === 'string' ? value : JSON.stringify(value)}
     </div>
   ),
@@ -37,7 +37,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: Record<string, unknown>) => <div data-testid="chevron-right" className={String(props.className)} />,
+  ChevronRight: (props: { className?: string }) => <div data-testid="chevron-right" className={props.className} />,
 }))
 
 vi.mock('ahooks', () => ({

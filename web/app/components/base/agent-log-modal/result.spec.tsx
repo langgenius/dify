@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
 import ResultPanel from './result'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
