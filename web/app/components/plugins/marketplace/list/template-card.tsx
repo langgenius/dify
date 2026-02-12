@@ -29,7 +29,7 @@ const TemplateCardComponent = ({
   const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { id, template_name, overview, icon, publisher_handle, usage_count, icon_background, deps_plugins, kind } = template
+  const { id, template_name, overview, icon, publisher_handle, publisher_type, usage_count, icon_background, deps_plugins, kind } = template
   const isSandbox = kind === 'sandboxed'
   const iconUrl = getTemplateIconUrl(template)
 
@@ -74,7 +74,7 @@ const TemplateCardComponent = ({
             <span className="flex shrink-0 items-center gap-1">
               <span className="shrink-0">{t('marketplace.templateCard.by', { ns: 'plugin' })}</span>
               <Link
-                href={`/creators/${publisher_handle}`}
+                href={`/creators/${publisher_handle}?publisher_type=${encodeURIComponent(publisher_type || 'individual')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="truncate hover:text-text-secondary hover:underline"

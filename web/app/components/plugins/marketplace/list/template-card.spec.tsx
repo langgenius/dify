@@ -220,6 +220,16 @@ describe('TemplateCard', () => {
     })
   })
 
+  describe('Creator Link', () => {
+    it('should append publisher_type query to creator link', () => {
+      const template = createMockTemplate({ publisher_type: 'organization' })
+      const { getByText } = render(<TemplateCard template={template} />)
+
+      const creatorLink = getByText('test-publisher').closest('a')
+      expect(creatorLink).toHaveAttribute('href', '/creators/test-publisher?publisher_type=organization')
+    })
+  })
+
   describe('Deps Plugins', () => {
     it('should render dep plugin icons', () => {
       const template = createMockTemplate({
