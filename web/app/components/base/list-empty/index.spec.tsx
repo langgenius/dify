@@ -2,28 +2,23 @@ import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import ListEmpty from './index'
 
-// Mock icons and line components
-vi.mock('../icons/src/vender/solid/development', () => ({
-  Variable02: () => <div data-testid="default-icon" />,
-}))
-
 describe('ListEmpty Component', () => {
   describe('Render', () => {
     it('renders default icon when no icon is provided', () => {
-      render(<ListEmpty />)
-      expect(screen.getByTestId('default-icon')).toBeInTheDocument()
+      const { container } = render(<ListEmpty />)
+      expect(container.querySelector('[data-icon="Variable02"]')).toBeInTheDocument()
     })
 
     it('renders custom icon when provided', () => {
-      render(<ListEmpty icon={<div data-testid="custom-icon" />} />)
-      expect(screen.queryByTestId('default-icon')).not.toBeInTheDocument()
+      const { container } = render(<ListEmpty icon={<div data-testid="custom-icon" />} />)
+      expect(container.querySelector('[data-icon="Variable02"]')).not.toBeInTheDocument()
       expect(screen.getByTestId('custom-icon')).toBeInTheDocument()
     })
 
     it('renders design lines', () => {
       const { container } = render(<ListEmpty />)
       const svgs = container.querySelectorAll('svg')
-      expect(svgs).toHaveLength(4)
+      expect(svgs).toHaveLength(5)
     })
   })
 

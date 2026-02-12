@@ -2,6 +2,19 @@ import type { AgentIteration } from '@/models/log'
 import { render, screen } from '@testing-library/react'
 import Iteration from './iteration'
 
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
+  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+    <div data-testid="code-editor">
+      <div data-testid="code-editor-title">{title}</div>
+      <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/workflow/block-icon', () => ({
+  default: () => <div data-testid="block-icon" />,
+}))
+
 const mockIterationInfo: AgentIteration = {
   created_at: '2023-01-01',
   files: [],
