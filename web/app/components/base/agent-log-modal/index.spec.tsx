@@ -40,10 +40,6 @@ vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
   ChevronRight: (props: Record<string, unknown>) => <div data-testid="chevron-right" className={String(props.className)} />,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('ahooks', () => ({
   useClickAway: vi.fn(),
 }))

@@ -11,10 +11,6 @@ vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
   ChevronRight: (props: Record<string, unknown>) => <div data-testid="chevron-right" className={String(props.className)} />,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: Record<string, unknown>) => (
     <div data-testid="code-editor">

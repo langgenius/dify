@@ -4,10 +4,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CheckboxList from '.'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
 vi.mock('next/image', () => ({
   default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
@@ -192,7 +188,7 @@ describe('checkbox list component', () => {
 
     const input = screen.getByRole('textbox')
     await userEvent.type(input, 'ban')
-    await userEvent.click(screen.getByText('operation.resetKeywords'))
+    await userEvent.click(screen.getByText('common.operation.resetKeywords'))
     expect(input).toHaveValue('')
   })
 })

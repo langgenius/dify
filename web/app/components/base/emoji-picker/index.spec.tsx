@@ -1,12 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import EmojiPicker from './index'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@emoji-mart/data', () => ({
   default: {
     categories: [
@@ -53,8 +47,8 @@ describe('EmojiPicker', () => {
         )
       })
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-      expect(screen.getByText('iconPicker.cancel')).toBeInTheDocument()
-      expect(screen.getByText('iconPicker.ok')).toBeInTheDocument()
+      expect(screen.getByText('app.iconPicker.cancel')).toBeInTheDocument()
+      expect(screen.getByText('app.iconPicker.ok')).toBeInTheDocument()
     })
 
     it('OK button is disabled initially', async () => {
@@ -63,7 +57,7 @@ describe('EmojiPicker', () => {
           <EmojiPicker />,
         )
       })
-      const okButton = screen.getByText('iconPicker.ok').closest('button')
+      const okButton = screen.getByText('app.iconPicker.ok').closest('button')
       expect(okButton).toBeDisabled()
     })
 
@@ -93,7 +87,7 @@ describe('EmojiPicker', () => {
         fireEvent.click(emojiWrappers[0])
       })
 
-      const okButton = screen.getByText('iconPicker.ok')
+      const okButton = screen.getByText('app.iconPicker.ok')
       expect(okButton.closest('button')).not.toBeDisabled()
 
       await act(async () => {
@@ -110,7 +104,7 @@ describe('EmojiPicker', () => {
         )
       })
 
-      const cancelButton = screen.getByText('iconPicker.cancel')
+      const cancelButton = screen.getByText('app.iconPicker.cancel')
       await act(async () => {
         fireEvent.click(cancelButton)
       })

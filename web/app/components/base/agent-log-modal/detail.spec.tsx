@@ -41,10 +41,6 @@ vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
   ChevronRight: (props: Record<string, unknown>) => <div data-testid="chevron-right" className={props.className as string} />,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   id: 'msg-id',
   content: 'output content',

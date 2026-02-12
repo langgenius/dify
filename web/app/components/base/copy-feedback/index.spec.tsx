@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import CopyFeedback, { CopyFeedbackNew } from '.'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
 const mockCopy = vi.fn()
 const mockReset = vi.fn()
 let mockCopied = false

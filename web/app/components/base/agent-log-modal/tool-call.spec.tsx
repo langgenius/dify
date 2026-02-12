@@ -4,10 +4,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import ToolCallItem from './tool-call'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
     <div data-testid="code-editor">
@@ -25,7 +21,7 @@ const mockToolCall = {
   status: 'success',
   error: null,
   tool_name: 'test_tool',
-  tool_label: { 'en-US': 'Test Tool Label' },
+  tool_label: { en: 'Test Tool Label' },
   tool_icon: 'icon',
   time_cost: 1.5,
   tool_input: { query: 'hello' },
@@ -72,12 +68,10 @@ describe('ToolCallItem', () => {
   it('should handle collapse/expand', () => {
     render(<ToolCallItem toolCall={mockToolCall} isLLM={false} />)
 
-    // Initially collapsed
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
 
-    // Expand
-    fireEvent.click(screen.getByText('Test Tool Label'))
-    expect(screen.getAllByTestId('code-editor')).toHaveLength(2) // Input and Output
+    fireEvent.click(screen.getByText(/Test Tool Label/i))
+    expect(screen.getAllByTestId('code-editor')).toHaveLength(2)
   })
 
   it('should display error message when status is error', () => {
@@ -88,7 +82,7 @@ describe('ToolCallItem', () => {
     }
     render(<ToolCallItem toolCall={errorToolCall} isLLM={false} />)
 
-    fireEvent.click(screen.getByText('Test Tool Label'))
+    fireEvent.click(screen.getByText(/Test Tool Label/i))
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
   })
 

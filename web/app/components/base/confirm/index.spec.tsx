@@ -1,10 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import Confirm from '.'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
-
 vi.mock('react-dom', async () => {
   const actual = await vi.importActual<typeof import('react-dom')>('react-dom')
 
@@ -55,14 +51,14 @@ describe('Confirm Component', () => {
   describe('Props', () => {
     it('showCancel prop works', () => {
       render(<Confirm isShow={true} title="test title" onCancel={onCancel} onConfirm={onConfirm} showCancel={false} />)
-      expect(screen.getByRole('button', { name: 'operation.confirm' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'operation.cancel' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.cancel' })).not.toBeInTheDocument()
     })
 
     it('showConfirm prop works', () => {
       render(<Confirm isShow={true} title="test title" onCancel={onCancel} onConfirm={onConfirm} showConfirm={false} />)
-      expect(screen.getByRole('button', { name: 'operation.cancel' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'operation.confirm' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
     })
 
     it('renders custom confirm and cancel text', () => {
@@ -73,7 +69,7 @@ describe('Confirm Component', () => {
 
     it('disables confirm button when isDisabled is true', () => {
       render(<Confirm isShow={true} title="title" isDisabled={true} onCancel={onCancel} onConfirm={onConfirm} />)
-      expect(screen.getByRole('button', { name: 'operation.confirm' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
     })
   })
 
