@@ -47,8 +47,8 @@ describe('EmojiPicker', () => {
         )
       })
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-      expect(screen.getByText('app.iconPicker.cancel')).toBeInTheDocument()
-      expect(screen.getByText('app.iconPicker.ok')).toBeInTheDocument()
+      expect(screen.getByText(/Cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/OK/i)).toBeInTheDocument()
     })
 
     it('OK button is disabled initially', async () => {
@@ -57,7 +57,7 @@ describe('EmojiPicker', () => {
           <EmojiPicker />,
         )
       })
-      const okButton = screen.getByText('app.iconPicker.ok').closest('button')
+      const okButton = screen.getByText(/OK/i).closest('button')
       expect(okButton).toBeDisabled()
     })
 
@@ -87,7 +87,7 @@ describe('EmojiPicker', () => {
         fireEvent.click(emojiWrappers[0])
       })
 
-      const okButton = screen.getByText('app.iconPicker.ok')
+      const okButton = screen.getByText(/OK/i)
       expect(okButton.closest('button')).not.toBeDisabled()
 
       await act(async () => {
@@ -104,7 +104,7 @@ describe('EmojiPicker', () => {
         )
       })
 
-      const cancelButton = screen.getByText('app.iconPicker.cancel')
+      const cancelButton = screen.getByText(/Cancel/i)
       await act(async () => {
         fireEvent.click(cancelButton)
       })

@@ -94,6 +94,7 @@ describe('checkbox list component', () => {
         options={options}
         value={['option1', 'option2', 'option3', 'apple']}
         onChange={onChange}
+        showSelectAll
       />,
     )
 
@@ -111,6 +112,7 @@ describe('checkbox list component', () => {
         options={options}
         value={['option1', 'option2', 'option3', 'apple']}
         onChange={onChange}
+        showSelectAll
       />,
     )
 

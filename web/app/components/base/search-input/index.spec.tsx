@@ -48,7 +48,7 @@ describe('SearchInput', () => {
       expect(input).toHaveValue('final')
 
       // End composition
-      fireEvent.compositionEnd(input, { currentTarget: { value: 'final' } })
+      fireEvent.compositionEnd(input)
       expect(onChange).toHaveBeenCalledTimes(1)
       expect(onChange).toHaveBeenCalledWith('final')
     })
