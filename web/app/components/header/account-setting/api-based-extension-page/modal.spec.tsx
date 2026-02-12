@@ -186,7 +186,6 @@ describe('ApiBasedExtensionModal', () => {
 
   it('covers placeholder fallback branches when translations are missing', async () => {
     const useTranslationSpy = vi.spyOn(reactI18next, 'useTranslation')
-    // Get the current implementation to build upon it
     const currentImpl = useTranslationSpy.getMockImplementation()
     const originalValue = currentImpl
       ? currentImpl()

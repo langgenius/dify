@@ -14,8 +14,6 @@ vi.mock('@/config', () => ({
   get IS_CE_EDITION() { return mockIsCEEdition },
 }))
 
-// Redacted for brevity as it's a deletion of lines 16-24
-
 vi.mock('@/app/components/header/plan-badge', () => ({
   default: ({ plan }: { plan: string }) => <div data-testid="plan-badge">{plan}</div>,
 }))
