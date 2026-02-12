@@ -302,9 +302,7 @@ class VariableTruncator(BaseTruncator):
             ):
                 part_result = self._truncate_json_primitives(item, remaining_budget)
             else:
-                raise UnknownTypeError(
-                    f"got unknown type {type(item)} in array truncation. "
-                )
+                raise UnknownTypeError(f"got unknown type {type(item)} in array truncation. ")
             truncated_value.append(part_result.value)
             used_size += part_result.value_size
             truncated = part_result.truncated

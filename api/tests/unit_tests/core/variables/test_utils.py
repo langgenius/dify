@@ -124,14 +124,9 @@ class TestSegmentOrjsonDefault:
         """Test ObjectSegment containing PromptMessageContent objects."""
         obj_segment = ObjectSegment(
             value={
-                "message": TextPromptMessageContent(
-                    type=PromptMessageContentType.TEXT, data="Hello"
-                ),
+                "message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Hello"),
                 "messages": [
-                    TextPromptMessageContent(
-                        type=PromptMessageContentType.TEXT, data=f"Msg {i}"
-                    )
-                    for i in range(3)
+                    TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Msg {i}") for i in range(3)
                 ],
                 "text": "plain text",
                 "count": 42,
@@ -195,12 +190,8 @@ class TestDumpsWithSegments:
     def test_array_with_text_prompt_messages(self):
         """Test array containing TextPromptMessageContent objects."""
         data = [
-            TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Message 1"
-            ),
-            TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Message 2"
-            ),
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Message 1"),
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Message 2"),
             "plain string",
         ]
         result = dumps_with_segments(data)
@@ -219,14 +210,8 @@ class TestDumpsWithSegments:
     def test_object_with_text_prompt_message_content(self):
         """Test object containing TextPromptMessageContent."""
         data = {
-            "message": TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Hello, world!"
-            ),
-            "nested": {
-                "inner_message": TextPromptMessageContent(
-                    type=PromptMessageContentType.TEXT, data="Nested"
-                )
-            },
+            "message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Hello, world!"),
+            "nested": {"inner_message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Nested")},
         }
         result = dumps_with_segments(data)
         # Should be valid JSON
@@ -247,9 +232,7 @@ class TestDumpsWithSegments:
                 data="Summary of workflow execution",
             ),
             "messages": [
-                TextPromptMessageContent(
-                    type=PromptMessageContentType.TEXT, data=f"Step {i} completed"
-                )
+                TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Step {i} completed")
                 for i in range(5)
             ],
             "metadata": {
@@ -272,12 +255,8 @@ class TestDumpsWithSegments:
     def test_unicode_and_special_characters_in_messages(self):
         """Test messages with unicode and special characters."""
         data = [
-            TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Hello 🌍🚀 世界"
-            ),
-            TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data='{"key": "value"}'
-            ),
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Hello 🌍🚀 世界"),
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data='{"key": "value"}'),
         ]
         result = dumps_with_segments(data)
         # Should be valid JSON
@@ -290,9 +269,7 @@ class TestDumpsWithSegments:
     def test_very_long_text_message_content(self):
         """Test very long text in message content doesn't break serialization."""
         long_text = "x" * 10000
-        data = TextPromptMessageContent(
-            type=PromptMessageContentType.TEXT, data=long_text
-        )
+        data = TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=long_text)
         result = dumps_with_segments(data)
         # Should be valid JSON
         import json
@@ -305,9 +282,7 @@ class TestDumpsWithSegments:
         """Test serialization with various segment and message types mixed."""
         data = {
             "string_segment": StringSegment(value="segment value"),
-            "text_message": TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="message value"
-            ),
+            "text_message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="message value"),
             "none_segment": NoneSegment(),
             "plain_string": "plain value",
             "number": 42,

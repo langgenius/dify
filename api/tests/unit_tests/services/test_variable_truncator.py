@@ -703,9 +703,7 @@ class TestPromptMessageContentSupport:
         assert result.value["data"] == text_message.data
         assert result.truncated is False
 
-    def test_truncate_json_primitives_text_prompt_message_content_with_truncation(
-        self, truncator, text_message
-    ):
+    def test_truncate_json_primitives_text_prompt_message_content_with_truncation(self, truncator, text_message):
         """Test _truncate_json_primitives truncates TextPromptMessageContent data when needed."""
         # Create a message with very long data
         long_message = TextPromptMessageContent(
@@ -746,9 +744,7 @@ class TestPromptMessageContentSupport:
         """Test _truncate_array truncates array with many TextPromptMessageContent objects."""
         # Create array with many messages
         messages = [
-            TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data=f"Message {i}: " + "x" * 50
-            )
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Message {i}: " + "x" * 50)
             for i in range(25)
         ]
         result = truncator._truncate_array(messages, 500)
@@ -763,14 +759,10 @@ class TestPromptMessageContentSupport:
     def test_truncate_object_with_text_prompt_message_content(self, truncator):
         """Test _truncate_object handles objects containing TextPromptMessageContent."""
         obj_with_message = {
-            "message": TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Hello, world!"
-            ),
+            "message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Hello, world!"),
             "count": 42,
             "nested": {
-                "inner_message": TextPromptMessageContent(
-                    type=PromptMessageContentType.TEXT, data="Nested message"
-                )
+                "inner_message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Nested message")
             },
         }
         result = truncator._truncate_object(obj_with_message, 1000)
@@ -825,13 +817,9 @@ class TestPromptMessageContentSupport:
     def test_object_segment_with_text_prompt_message_content(self, truncator):
         """Test ObjectSegment containing TextPromptMessageContent is handled correctly."""
         obj_data = {
-            "message": TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Test message content"
-            ),
+            "message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Test message content"),
             "messages": [
-                TextPromptMessageContent(
-                    type=PromptMessageContentType.TEXT, data=f"Array message {i}"
-                )
+                TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Array message {i}")
                 for i in range(3)
             ],
         }
@@ -853,14 +841,9 @@ class TestPromptMessageContentSupport:
         mapping = {
             "result": "success",
             "messages": [
-                TextPromptMessageContent(
-                    type=PromptMessageContentType.TEXT, data=f"Message {i}"
-                )
-                for i in range(5)
+                TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Message {i}") for i in range(5)
             ],
-            "single_message": TextPromptMessageContent(
-                type=PromptMessageContentType.TEXT, data="Single message"
-            ),
+            "single_message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Single message"),
         }
         result, is_truncated = truncator.truncate_variable_mapping(mapping)
 
