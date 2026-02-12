@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { IndicatorButton } from './indicator-button'
+import { IndicatorButton } from '../indicator-button'
 
 describe('IndicatorButton', () => {
   beforeEach(() => {
@@ -164,7 +164,6 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Check for conic-gradient style which indicates progress indicator
       const progressIndicator = container.querySelector('[style*="conic-gradient"]')
       expect(progressIndicator).not.toBeInTheDocument()
     })
@@ -221,10 +220,8 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Initially no progress indicator
       expect(container.querySelector('[style*="conic-gradient"]')).not.toBeInTheDocument()
 
-      // Rerender with isNextSlide=true
       rerender(
         <IndicatorButton
           index={1}
@@ -237,7 +234,6 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Now progress indicator should be visible
       expect(container.querySelector('[style*="conic-gradient"]')).toBeInTheDocument()
     })
 
@@ -255,11 +251,9 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Progress indicator should be present
       const progressIndicator = container.querySelector('[style*="conic-gradient"]')
       expect(progressIndicator).toBeInTheDocument()
 
-      // Rerender with new resetKey - this should reset the progress animation
       rerender(
         <IndicatorButton
           index={1}
@@ -273,7 +267,6 @@ describe('IndicatorButton', () => {
       )
 
       const newProgressIndicator = container.querySelector('[style*="conic-gradient"]')
-      // The progress indicator should still be present after reset
       expect(newProgressIndicator).toBeInTheDocument()
     })
 
@@ -293,8 +286,6 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // The component should still render but animation should be paused
-      // requestAnimationFrame might still be called for polling but progress won't update
       expect(screen.getByRole('button')).toBeInTheDocument()
       mockRequestAnimationFrame.mockRestore()
     })
@@ -315,7 +306,6 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Trigger animation frame
       act(() => {
         vi.advanceTimersToNextTimer()
       })
@@ -342,12 +332,10 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Trigger animation frame
       act(() => {
         vi.advanceTimersToNextTimer()
       })
 
-      // Change isNextSlide to false - this should cancel the animation frame
       rerender(
         <IndicatorButton
           index={1}
@@ -368,7 +356,6 @@ describe('IndicatorButton', () => {
       const mockOnClick = vi.fn()
       const mockRequestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame')
 
-      // Mock document.hidden to be true
       Object.defineProperty(document, 'hidden', {
         writable: true,
         configurable: true,
@@ -387,10 +374,8 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Component should still render
       expect(screen.getByRole('button')).toBeInTheDocument()
 
-      // Reset document.hidden
       Object.defineProperty(document, 'hidden', {
         writable: true,
         configurable: true,
@@ -415,7 +400,6 @@ describe('IndicatorButton', () => {
         />,
       )
 
-      // Progress indicator should be visible (animation running)
       expect(container.querySelector('[style*="conic-gradient"]')).toBeInTheDocument()
     })
   })

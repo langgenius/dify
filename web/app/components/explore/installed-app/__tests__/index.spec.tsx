@@ -8,9 +8,8 @@ import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
-import InstalledApp from './index'
+import InstalledApp from '../index'
 
-// Mock external dependencies BEFORE imports
 vi.mock('use-context-selector', () => ({
   useContext: vi.fn(),
   createContext: vi.fn(() => ({})),
@@ -119,13 +118,11 @@ describe('InstalledApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Mock useContext
     ;(useContext as Mock).mockReturnValue({
       installedApps: [mockInstalledApp],
       isFetchingInstalledApps: false,
     })
 
-    // Mock useWebAppStore
     ;(useWebAppStore as unknown as Mock).mockImplementation((
       selector: (state: {
         updateAppInfo: Mock
@@ -145,7 +142,6 @@ describe('InstalledApp', () => {
       return selector(state)
     })
 
-    // Mock service hooks with default success states
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
       isFetching: false,
       data: mockWebAppAccessMode,
@@ -565,7 +561,6 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      // Should find and render the correct app
       expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
       expect(screen.getByText(/installed-app-123/)).toBeInTheDocument()
     })
@@ -624,7 +619,6 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      // Error should take precedence over loading
       expect(screen.getByText(/Some error/)).toBeInTheDocument()
     })
 
@@ -640,7 +634,6 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      // Error should take precedence over permission
       expect(screen.getByText(/Params error/)).toBeInTheDocument()
       expect(screen.queryByText(/403/)).not.toBeInTheDocument()
     })
@@ -656,7 +649,6 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="nonexistent-app" />)
-      // Permission should take precedence over 404
       expect(screen.getByText(/403/)).toBeInTheDocument()
       expect(screen.queryByText(/404/)).not.toBeInTheDocument()
     })
@@ -673,7 +665,6 @@ describe('InstalledApp', () => {
       })
 
       const { container } = render(<InstalledApp id="nonexistent-app" />)
-      // Loading should take precedence over 404
       const svg = container.querySelector('svg.spin-animation')
       expect(svg).toBeInTheDocument()
       expect(screen.queryByText(/404/)).not.toBeInTheDocument()

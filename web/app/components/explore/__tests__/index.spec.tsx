@@ -6,7 +6,7 @@ import ExploreContext from '@/context/explore-context'
 import { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useMembers } from '@/service/use-common'
-import Explore from './index'
+import Explore from '../index'
 
 const mockReplace = vi.fn()
 const mockPush = vi.fn()
@@ -65,10 +65,8 @@ describe('Explore', () => {
     vi.clearAllMocks()
   })
 
-  // Rendering: provides ExploreContext and children.
   describe('Rendering', () => {
     it('should render children and provide edit permission from members role', async () => {
-      // Arrange
       ; (useAppContext as Mock).mockReturnValue({
         userProfile: { id: 'user-1' },
         isCurrentWorkspaceDatasetOperator: false,
@@ -79,57 +77,48 @@ describe('Explore', () => {
         },
       })
 
-      // Act
       render((
         <Explore>
           <ContextReader />
         </Explore>
       ))
 
-      // Assert
       await waitFor(() => {
         expect(screen.getByText('edit-yes')).toBeInTheDocument()
       })
     })
   })
 
-  // Effects: set document title and redirect dataset operators.
   describe('Effects', () => {
     it('should set document title on render', () => {
-      // Arrange
       ; (useAppContext as Mock).mockReturnValue({
         userProfile: { id: 'user-1' },
         isCurrentWorkspaceDatasetOperator: false,
       });
       (useMembers as Mock).mockReturnValue({ data: { accounts: [] } })
 
-      // Act
       render((
         <Explore>
           <div>child</div>
         </Explore>
       ))
 
-      // Assert
       expect(useDocumentTitle).toHaveBeenCalledWith('common.menus.explore')
     })
 
     it('should redirect dataset operators to /datasets', async () => {
-      // Arrange
       ; (useAppContext as Mock).mockReturnValue({
         userProfile: { id: 'user-1' },
         isCurrentWorkspaceDatasetOperator: true,
       });
       (useMembers as Mock).mockReturnValue({ data: { accounts: [] } })
 
-      // Act
       render((
         <Explore>
           <div>child</div>
         </Explore>
       ))
 
-      // Assert
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/datasets')
       })

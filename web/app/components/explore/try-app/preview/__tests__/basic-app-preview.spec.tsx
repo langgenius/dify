@@ -1,12 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import BasicAppPreview from './basic-app-preview'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+import BasicAppPreview from '../basic-app-preview'
 
 const mockUseGetTryAppInfo = vi.fn()
 const mockUseAllToolProviders = vi.fn()
@@ -22,7 +16,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => mockUseAllToolProviders(),
 }))
 
-vi.mock('../../../header/account-setting/model-provider-page/hooks', () => ({
+vi.mock('../../../../header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: (...args: unknown[]) =>
     mockUseTextGenerationCurrentProviderAndModelAndModelList(...args),
 }))
@@ -518,7 +512,6 @@ describe('BasicAppPreview', () => {
 
       render(<BasicAppPreview appId="test-app-id" />)
 
-      // Should still render (with default model config)
       await waitFor(() => {
         expect(mockUseGetTryAppDataSets).toHaveBeenCalled()
       })

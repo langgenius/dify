@@ -1,18 +1,23 @@
+/**
+ * Integration test: Explore App List Flow
+ *
+ * Tests the end-to-end user flow of browsing, filtering, searching,
+ * and adding apps to workspace from the explore page.
+ */
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import AppList from '@/app/components/explore/app-list'
 import ExploreContext from '@/context/explore-context'
 import { fetchAppDetail } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
-import AppList from './index'
 
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
-let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockExploreData: { categories: string[], allList: App[] } | undefined
 let mockIsLoading = false
-let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
@@ -43,7 +48,7 @@ vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => ({
     data: mockExploreData,
     isLoading: mockIsLoading,
-    isError: mockIsError,
+    isError: false,
   }),
 }))
 
@@ -96,7 +101,7 @@ vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
 
 const createApp = (overrides: Partial<App> = {}): App => ({
   app: {
-    id: overrides.app?.id ?? 'app-basic-id',
+    id: overrides.app?.id ?? 'app-id',
     mode: overrides.app?.mode ?? AppModeEnum.CHAT,
     icon_type: overrides.app?.icon_type ?? 'emoji',
     icon: overrides.app?.icon ?? '😀',
@@ -121,113 +126,80 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const renderWithContext = (hasEditPermission = false, onSuccess?: () => void) => {
-  return render(
-    <ExploreContext.Provider
-      value={{
-        controlUpdateInstalledApps: 0,
-        setControlUpdateInstalledApps: vi.fn(),
-        hasEditPermission,
-        installedApps: [],
-        setInstalledApps: vi.fn(),
-        isFetchingInstalledApps: false,
-        setIsFetchingInstalledApps: vi.fn(),
-        isShowTryAppPanel: false,
-        setShowTryAppPanel: vi.fn(),
-      }}
-    >
-      <AppList onSuccess={onSuccess} />
-    </ExploreContext.Provider>,
-  )
+const createContextValue = (hasEditPermission = true) => ({
+  controlUpdateInstalledApps: 0,
+  setControlUpdateInstalledApps: vi.fn(),
+  hasEditPermission,
+  installedApps: [] as never[],
+  setInstalledApps: vi.fn(),
+  isFetchingInstalledApps: false,
+  setIsFetchingInstalledApps: vi.fn(),
+  isShowTryAppPanel: false,
+  setShowTryAppPanel: vi.fn(),
+})
+
+const wrapWithContext = (hasEditPermission = true, onSuccess?: () => void) => (
+  <ExploreContext.Provider value={createContextValue(hasEditPermission)}>
+    <AppList onSuccess={onSuccess} />
+  </ExploreContext.Provider>
+)
+
+const renderWithContext = (hasEditPermission = true, onSuccess?: () => void) => {
+  return render(wrapWithContext(hasEditPermission, onSuccess))
 }
 
-describe('AppList', () => {
+describe('Explore App List Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockTabValue = allCategoriesEn
-    mockExploreData = { categories: [], allList: [] }
     mockIsLoading = false
-    mockIsError = false
+    mockExploreData = {
+      categories: ['Writing', 'Translate', 'Programming'],
+      allList: [
+        createApp({ app_id: 'app-1', app: { ...createApp().app, name: 'Writer Bot' }, category: 'Writing' }),
+        createApp({ app_id: 'app-2', app: { ...createApp().app, id: 'app-id-2', name: 'Translator' }, category: 'Translate' }),
+        createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, category: 'Programming' }),
+      ],
+    }
   })
 
-  // Rendering: show loading when categories are not ready.
-  describe('Rendering', () => {
-    it('should render loading when the query is loading', () => {
-      // Arrange
-      mockExploreData = undefined
-      mockIsLoading = true
-
-      // Act
+  describe('Browse and Filter Flow', () => {
+    it('should display all apps when no category filter is applied', () => {
       renderWithContext()
 
-      // Assert
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByText('Writer Bot')).toBeInTheDocument()
+      expect(screen.getByText('Translator')).toBeInTheDocument()
+      expect(screen.getByText('Code Helper')).toBeInTheDocument()
     })
 
-    it('should render app cards when data is available', () => {
-      // Arrange
-      mockExploreData = {
-        categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
-      }
-
-      // Act
-      renderWithContext()
-
-      // Assert
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Beta')).toBeInTheDocument()
-    })
-  })
-
-  // Props: category selection filters the list.
-  describe('Props', () => {
     it('should filter apps by selected category', () => {
-      // Arrange
       mockTabValue = 'Writing'
-      mockExploreData = {
-        categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
-      }
-
-      // Act
       renderWithContext()
 
-      // Assert
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
-      expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+      expect(screen.getByText('Writer Bot')).toBeInTheDocument()
+      expect(screen.queryByText('Translator')).not.toBeInTheDocument()
+      expect(screen.queryByText('Code Helper')).not.toBeInTheDocument()
     })
-  })
 
-  // User interactions: search and create flow.
-  describe('User Interactions', () => {
-    it('should filter apps by search keywords', async () => {
-      // Arrange
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
-      }
+    it('should filter apps by search keyword', async () => {
       renderWithContext()
 
-      // Act
       const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
+      fireEvent.change(input, { target: { value: 'trans' } })
 
-      // Assert
       await waitFor(() => {
-        expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-        expect(screen.getByText('Gamma')).toBeInTheDocument()
+        expect(screen.getByText('Translator')).toBeInTheDocument()
+        expect(screen.queryByText('Writer Bot')).not.toBeInTheDocument()
+        expect(screen.queryByText('Code Helper')).not.toBeInTheDocument()
       })
     })
+  })
 
-    it('should handle create flow and confirm DSL when pending', async () => {
-      // Arrange
+  describe('Add to Workspace Flow', () => {
+    it('should complete the full add-to-workspace flow with DSL confirmation', async () => {
+      // Step 1: User clicks "Add to Workspace" on an app card
       const onSuccess = vi.fn()
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content' })
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content' })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
@@ -235,19 +207,27 @@ describe('AppList', () => {
         options.onSuccess?.()
       })
 
-      // Act
       renderWithContext(true, onSuccess)
-      fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
+
+      // Step 2: Click add to workspace button - opens create modal
+      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0])
+
+      // Step 3: Confirm creation in modal
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
-      // Assert
+      // Step 4: API fetches app detail
       await waitFor(() => {
-        expect(fetchAppDetail).toHaveBeenCalledWith('app-basic-id')
+        expect(fetchAppDetail).toHaveBeenCalledWith('app-id')
       })
-      expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
-      expect(await screen.findByTestId('dsl-confirm-modal')).toBeInTheDocument()
 
+      // Step 5: DSL import triggers pending confirmation
+      expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
+
+      // Step 6: DSL confirm modal appears and user confirms
+      expect(await screen.findByTestId('dsl-confirm-modal')).toBeInTheDocument()
       fireEvent.click(screen.getByTestId('dsl-confirm'))
+
+      // Step 7: Flow completes successfully
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(onSuccess).toHaveBeenCalledTimes(1)
@@ -255,30 +235,39 @@ describe('AppList', () => {
     })
   })
 
-  // Edge cases: handle clearing search keywords.
-  describe('Edge Cases', () => {
-    it('should reset search results when clear icon is clicked', async () => {
-      // Arrange
+  describe('Loading and Empty States', () => {
+    it('should transition from loading to content', () => {
+      // Step 1: Loading state
+      mockIsLoading = true
+      mockExploreData = undefined
+      const { rerender } = render(wrapWithContext())
+
+      expect(screen.getByRole('status')).toBeInTheDocument()
+
+      // Step 2: Data loads
+      mockIsLoading = false
       mockExploreData = {
         categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
+        allList: [createApp()],
       }
-      renderWithContext()
+      rerender(wrapWithContext())
 
-      // Act
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-      await waitFor(() => {
-        expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-      })
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+    })
+  })
 
-      fireEvent.click(screen.getByTestId('input-clear'))
+  describe('Permission-Based Behavior', () => {
+    it('should hide add-to-workspace button when user has no edit permission', () => {
+      renderWithContext(false)
 
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('Alpha')).toBeInTheDocument()
-        expect(screen.getByText('Gamma')).toBeInTheDocument()
-      })
+      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+    })
+
+    it('should show add-to-workspace button when user has edit permission', () => {
+      renderWithContext(true)
+
+      expect(screen.getAllByText('explore.appCard.addToWorkspace').length).toBeGreaterThan(0)
     })
   })
 })
