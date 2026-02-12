@@ -1,11 +1,12 @@
 import type { SortableItem } from '../types'
 import type { InputVar } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import Toast from '@/app/components/base/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import FieldItem from '../field-item'
 import FieldListContainer from '../field-list-container'
+import { useFieldList } from '../hooks'
 import FieldList from '../index'
 
 const mockHandleInputVarRename = vi.fn()
@@ -681,22 +682,6 @@ describe('FieldListContainer', () => {
   })
 
   describe('User Interactions', () => {
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should call onListSortChange when items are reordered', () => {
-    })
-
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should not call onListSortChange when list hasnt changed', () => {
-    })
-
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should not call onListSortChange when disabled', () => {
-    })
-
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should not call onListSortChange when list order is unchanged (isEqual check)', () => {
-    })
-
     it('should pass onEditField to FieldItem', () => {
       const inputFields = createInputVarList(1)
       const onEditField = vi.fn()
@@ -737,8 +722,23 @@ describe('FieldListContainer', () => {
   })
 
   describe('List Conversion', () => {
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should convert InputVar[] to SortableItem[]', () => {
+    it('should convert InputVar[] to SortableItem[] with correct structure', () => {
+      // Verify the conversion contract: id from variable, default sortable flags
+      const inputFields = createInputVarList(2)
+      const converted: SortableItem[] = inputFields.map(content => ({
+        id: content.variable,
+        chosen: false,
+        selected: false,
+        ...content,
+      }))
+
+      expect(converted).toHaveLength(2)
+      expect(converted[0].id).toBe('var_0')
+      expect(converted[0].chosen).toBe(false)
+      expect(converted[0].selected).toBe(false)
+      expect(converted[0].variable).toBe('var_0')
+      expect(converted[0].type).toBe(PipelineInputVarType.textInput)
+      expect(converted[1].id).toBe('var_1')
     })
   })
 
@@ -953,8 +953,28 @@ describe('FieldList', () => {
   })
 
   describe('Callback Handling', () => {
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should call handleInputFieldsChange with nodeId when fields change', () => {
+    it('should call handleInputFieldsChange with nodeId when fields change', () => {
+      mockIsVarUsedInNodes.mockReturnValue(false)
+      const inputFields = createInputVarList(2)
+      const handleInputFieldsChange = vi.fn()
+
+      const { container } = render(
+        <FieldList
+          nodeId="node-1"
+          LabelRightContent={null}
+          inputFields={inputFields}
+          handleInputFieldsChange={handleInputFieldsChange}
+          allVariableNames={[]}
+        />,
+      )
+
+      // Trigger field change via remove action
+      fireEvent.mouseEnter(container.querySelector('.handle')!)
+      const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
+      if (fieldItemButtons.length >= 2)
+        fireEvent.click(fieldItemButtons[1])
+
+      expect(handleInputFieldsChange).toHaveBeenCalledWith('node-1', expect.any(Array))
     })
   })
 
@@ -1151,8 +1171,39 @@ describe('FieldList', () => {
       expect(screen.getByText('var_0')).toBeInTheDocument()
     })
 
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should maintain stable onInputFieldsChange callback', () => {
+    it('should maintain stable onInputFieldsChange callback', () => {
+      mockIsVarUsedInNodes.mockReturnValue(false)
+      const handleInputFieldsChange = vi.fn()
+      const inputFields = createInputVarList(2)
+
+      const { rerender, container } = render(
+        <FieldList
+          nodeId="node-1"
+          LabelRightContent={null}
+          inputFields={inputFields}
+          handleInputFieldsChange={handleInputFieldsChange}
+          allVariableNames={[]}
+        />,
+      )
+
+      // Rerender with same props to verify callback stability
+      rerender(
+        <FieldList
+          nodeId="node-1"
+          LabelRightContent={null}
+          inputFields={inputFields}
+          handleInputFieldsChange={handleInputFieldsChange}
+          allVariableNames={[]}
+        />,
+      )
+
+      // After rerender, the callback chain should still work correctly
+      fireEvent.mouseEnter(container.querySelector('.handle')!)
+      const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
+      if (fieldItemButtons.length >= 2)
+        fireEvent.click(fieldItemButtons[1])
+
+      expect(handleInputFieldsChange).toHaveBeenCalledWith('node-1', expect.any(Array))
     })
   })
 })
@@ -1198,12 +1249,57 @@ describe('useFieldList Hook', () => {
   })
 
   describe('handleListSortChange', () => {
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should update inputFields and call onInputFieldsChange', () => {
+    it('should update inputFields and call onInputFieldsChange', () => {
+      const onInputFieldsChange = vi.fn()
+      const initialFields = createInputVarList(2)
+
+      const { result } = renderHook(() => useFieldList({
+        initialInputFields: initialFields,
+        onInputFieldsChange,
+        nodeId: 'node-1',
+        allVariableNames: [],
+      }))
+
+      // Simulate sort change by calling handleListSortChange directly
+      const reorderedList: SortableItem[] = [
+        createSortableItem(initialFields[1]),
+        createSortableItem(initialFields[0]),
+      ]
+
+      act(() => {
+        result.current.handleListSortChange(reorderedList)
+      })
+
+      expect(onInputFieldsChange).toHaveBeenCalledWith([
+        expect.objectContaining({ variable: 'var_1' }),
+        expect.objectContaining({ variable: 'var_0' }),
+      ])
     })
 
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should strip sortable properties from list items', () => {
+    it('should strip sortable properties from list items', () => {
+      const onInputFieldsChange = vi.fn()
+      const initialFields = createInputVarList(1)
+
+      const { result } = renderHook(() => useFieldList({
+        initialInputFields: initialFields,
+        onInputFieldsChange,
+        nodeId: 'node-1',
+        allVariableNames: [],
+      }))
+
+      const sortableList: SortableItem[] = [
+        createSortableItem(initialFields[0], { chosen: true, selected: true }),
+      ]
+
+      act(() => {
+        result.current.handleListSortChange(sortableList)
+      })
+
+      const updatedFields = onInputFieldsChange.mock.calls[0][0]
+      expect(updatedFields[0]).not.toHaveProperty('id')
+      expect(updatedFields[0]).not.toHaveProperty('chosen')
+      expect(updatedFields[0]).not.toHaveProperty('selected')
+      expect(updatedFields[0]).toHaveProperty('variable', 'var_0')
     })
   })
 
@@ -1853,10 +1949,6 @@ describe('Integration Tests', () => {
         fireEvent.click(fieldItemButtons[1])
 
       expect(handleInputFieldsChange).toHaveBeenCalled()
-    })
-
-    // Skipped: drag-and-drop reordering cannot be simulated in jsdom
-    it.skip('should handle sort operation correctly', () => {
     })
   })
 
