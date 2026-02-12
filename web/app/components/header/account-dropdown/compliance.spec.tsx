@@ -65,8 +65,6 @@ describe('Compliance', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
-
-    // Removed useMutation mock implementation as we are using QueryClientProvider
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {

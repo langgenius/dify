@@ -194,7 +194,7 @@ describe('AccountSetting', () => {
 
   it('handles scroll event in panel', () => {
     render(<AccountSetting onCancel={mockOnCancel} />)
-    const scrollContainer = document.body.querySelector('.overflow-y-auto.bg-components-panel-bg')
+    const scrollContainer = screen.getByRole('dialog').querySelector('.overflow-y-auto')
 
     expect(scrollContainer).toBeInTheDocument()
 

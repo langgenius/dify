@@ -46,6 +46,8 @@ describe('AccountAbout', () => {
   const mockOnCancel = vi.fn()
 
   beforeEach(() => {
+    vi.clearAllMocks()
+    mockIsCEEdition = false
     vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
       systemFeatures: { branding: { enabled: false } },
     } as unknown as GlobalPublicStore))
@@ -79,7 +81,6 @@ describe('AccountAbout', () => {
     mockIsCEEdition = true
     render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
     expect(screen.getByText(/Open Source License/)).toBeDefined()
-    mockIsCEEdition = false // Reset
   })
 
   it('hides update button in Community Edition when behind version', () => {
@@ -87,7 +88,6 @@ describe('AccountAbout', () => {
     const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
     render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
     expect(screen.queryByText(/about.updateNow/)).toBeNull()
-    mockIsCEEdition = false // Reset
   })
 
   it('renders branding logo if enabled', () => {

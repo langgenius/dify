@@ -190,8 +190,7 @@ describe('AccountDropdown', () => {
     expect(screen.queryByText('common.userProfile.roadmap')).toBeNull()
   })
 
-  it('shows Compliance only in Cloud Edition for workspace owner', () => {
-    // Case 1: Cloud Edition + Owner
+  it('shows Compliance in Cloud Edition for workspace owner', () => {
     mockConfig.IS_CLOUD_EDITION = true
     vi.mocked(useAppContext).mockReturnValue({
       userProfile: { name: 'User' },
@@ -199,27 +198,34 @@ describe('AccountDropdown', () => {
       langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
     } as unknown as AppContextValue)
 
-    const { rerender } = renderWithRouter(<AppSelector />)
+    renderWithRouter(<AppSelector />)
     fireEvent.click(screen.getByRole('button'))
     expect(screen.getByTestId('compliance')).toBeDefined()
+  })
 
-    // Case 2: Cloud Edition + Not Owner
+  it('hides Compliance in Cloud Edition for non-owner', () => {
+    mockConfig.IS_CLOUD_EDITION = true
     vi.mocked(useAppContext).mockReturnValue({
       userProfile: { name: 'User' },
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
     } as unknown as AppContextValue)
-    rerender(<AppRouterContext.Provider value={{} as unknown as AppRouterInstance}><AppSelector /></AppRouterContext.Provider>)
-    expect(screen.queryByTestId('compliance')).toBeNull()
 
-    // Case 3: Not Cloud Edition + Owner
+    renderWithRouter(<AppSelector />)
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.queryByTestId('compliance')).toBeNull()
+  })
+
+  it('hides Compliance in non-Cloud Edition for owner', () => {
     mockConfig.IS_CLOUD_EDITION = false
     vi.mocked(useAppContext).mockReturnValue({
       userProfile: { name: 'User' },
       isCurrentWorkspaceOwner: true,
       langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
     } as unknown as AppContextValue)
-    rerender(<AppRouterContext.Provider value={{} as unknown as AppRouterInstance}><AppSelector /></AppRouterContext.Provider>)
+
+    renderWithRouter(<AppSelector />)
+    fireEvent.click(screen.getByRole('button'))
     expect(screen.queryByTestId('compliance')).toBeNull()
   })
 

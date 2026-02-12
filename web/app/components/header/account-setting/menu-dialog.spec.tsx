@@ -69,11 +69,8 @@ describe('MenuDialog', () => {
         </MenuDialog>,
       )
     })
-    // DialogPanel is the parent of the children container in our code
-    // The structure is: Transition -> Dialog -> DialogPanel -> children
-    const content = screen.getByTestId('dialog-content')
-    const panel = content.parentElement
-    expect(panel).toHaveClass('custom-class')
+    const panel = screen.getByRole('dialog').querySelector('.custom-class')
+    expect(panel).toBeInTheDocument()
   })
 
   it('does not render children when show is false', async () => {

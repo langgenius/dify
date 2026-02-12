@@ -195,11 +195,14 @@ describe('Item Component', () => {
       }) as unknown as TFunction,
     } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
-    const { container } = render(<Item data={mockData} onUpdate={mockOnUpdate} />)
-
-    // Find delete button by its position (second button in the actions group)
-    const buttons = container.querySelectorAll('button')
-    fireEvent.click(buttons[1])
+    render(<Item data={mockData} onUpdate={mockOnUpdate} />)
+    const allButtons = screen.getAllByRole('button')
+    // The first button is Edit, second is Delete.
+    // Even when translation is missing, we can find it by excluding the edit button.
+    const editBtn = screen.getByText('operation.edit')
+    const deleteBtn = allButtons.find(btn => btn !== editBtn)
+    if (deleteBtn)
+      fireEvent.click(deleteBtn)
 
     // The confirmation modal should still show up (title will be empty prefix)
     // In the codebase: title={`${t('operation.delete', { ns: 'common' })} “${data.name}”?`}
