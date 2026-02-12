@@ -120,14 +120,27 @@ class AnalyticdbVectorBySql:
                 conn.rollback()
                 if "already exists" not in str(e):
                     raise e
-            cur.execute(
-                "CREATE OR REPLACE FUNCTION "
-                "public.to_tsquery_from_text(txt text, lang regconfig DEFAULT 'english'::regconfig) "
-                "RETURNS tsquery LANGUAGE sql IMMUTABLE STRICT AS $function$ "
-                "SELECT to_tsquery(lang, COALESCE(string_agg(split_part(word, ':', 1), ' | '), '')) "
-                "FROM (SELECT unnest(string_to_array(to_tsvector(lang, txt)::text, ' ')) AS word) "
-                "AS words_only;$function$"
-            )
+            cur.execute("""
+            DO $$
+            BEGIN
+                CREATE OR REPLACE FUNCTION public.to_tsquery_from_text(
+                    txt text,
+                    lang regconfig DEFAULT 'english'::regconfig
+                )
+                RETURNS tsquery
+                LANGUAGE sql
+                IMMUTABLE STRICT
+                AS $func$
+                    SELECT to_tsquery(lang, COALESCE(string_agg(split_part(word, ':', 1), ' | '), ''))
+                    FROM (
+                        SELECT unnest(string_to_array(to_tsvector(lang, txt)::text, ' ')) AS word
+                    ) AS words_only;
+                $func$;
+            EXCEPTION
+                WHEN SQLSTATE '42501' THEN
+                    NULL;  /* insufficient_privilege: 已有函数且当前用户非 owner，跳过；仅需 EXECUTE 即可使用 */
+            END $$;
+            """)
             cur.execute(f"CREATE SCHEMA IF NOT EXISTS {self.config.namespace}")
 
     def _create_collection_if_not_exists(self, embedding_dimension: int):
