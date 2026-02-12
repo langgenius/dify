@@ -78,7 +78,7 @@ export function useCreationType() {
   const pathname = usePathname()
   const segments = pathname.split('/').filter(Boolean)
 
-  if (segments[0] === CREATION_TYPE.templates)
+  if (segments[0] === CREATION_TYPE.templates || segments[0] === 'template')
     return CREATION_TYPE.templates
   return CREATION_TYPE.plugins
 }

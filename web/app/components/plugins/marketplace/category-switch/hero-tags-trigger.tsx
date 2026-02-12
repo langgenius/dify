@@ -29,9 +29,9 @@ const HeroTagsTrigger = ({
       className={cn(
         'flex h-8 cursor-pointer select-none items-center gap-1.5 rounded-lg px-2.5 py-1.5',
         !hasSelected && 'border border-white/30 text-text-primary-on-surface',
-        !hasSelected && open && 'bg-white/10',
-        !hasSelected && !open && 'hover:bg-white/10',
-        hasSelected && 'border border-white bg-components-button-secondary-bg-hover shadow-md backdrop-blur-[5px]',
+        !hasSelected && open && 'bg-state-base-hover',
+        !hasSelected && !open && 'hover:bg-state-base-hover',
+        hasSelected && 'border-effect-highlight border bg-components-button-secondary-bg-hover shadow-md backdrop-blur-[5px]',
       )}
     >
       <RiPriceTag3Line className={cn(
