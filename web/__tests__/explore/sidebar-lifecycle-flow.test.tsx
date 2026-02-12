@@ -1,3 +1,4 @@
+import type { IExplore } from '@/context/explore-context'
 /**
  * Integration test: Sidebar Lifecycle Flow
  *
@@ -68,19 +69,21 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
   },
 })
 
+const createContextValue = (installedApps: InstalledApp[] = []): IExplore => ({
+  controlUpdateInstalledApps: 0,
+  setControlUpdateInstalledApps: vi.fn(),
+  hasEditPermission: true,
+  installedApps,
+  setInstalledApps: vi.fn(),
+  isFetchingInstalledApps: false,
+  setIsFetchingInstalledApps: vi.fn(),
+  isShowTryAppPanel: false,
+  setShowTryAppPanel: vi.fn(),
+})
+
 const renderSidebar = (installedApps: InstalledApp[] = []) => {
   return render(
-    <ExploreContext.Provider
-      value={{
-        controlUpdateInstalledApps: 0,
-        setControlUpdateInstalledApps: vi.fn(),
-        hasEditPermission: true,
-        installedApps,
-        setInstalledApps: vi.fn(),
-        isFetchingInstalledApps: false,
-        setIsFetchingInstalledApps: vi.fn(),
-      } as Record<string, unknown> as ReturnType<typeof ExploreContext.Provider extends React.FC<{ value: infer V }> ? () => V : never>}
-    >
+    <ExploreContext.Provider value={createContextValue(installedApps)}>
       <SideBar controlUpdateInstalledApps={0} />
     </ExploreContext.Provider>,
   )
@@ -96,19 +99,37 @@ describe('Sidebar Lifecycle Flow', () => {
 
   describe('Pin / Unpin / Delete Flow', () => {
     it('should complete pin → unpin cycle for an app', async () => {
-      // Step 1: Start with an unpinned app
-      const app = createInstalledApp({ is_pinned: false })
-      mockInstalledApps = [app]
       mockUpdatePinStatus.mockResolvedValue(undefined)
 
-      renderSidebar(mockInstalledApps)
+      // Step 1: Start with an unpinned app and pin it
+      const unpinnedApp = createInstalledApp({ is_pinned: false })
+      mockInstalledApps = [unpinnedApp]
+      const { unmount } = renderSidebar(mockInstalledApps)
 
-      // Step 2: Pin the app
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-1', isPinned: true })
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+        }))
+      })
+
+      // Step 2: Simulate refetch returning pinned state, then unpin
+      unmount()
+      vi.clearAllMocks()
+      mockUpdatePinStatus.mockResolvedValue(undefined)
+
+      const pinnedApp = createInstalledApp({ is_pinned: true })
+      mockInstalledApps = [pinnedApp]
+      renderSidebar(mockInstalledApps)
+
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(await screen.findByText('explore.sidebar.action.unpin'))
+
+      await waitFor(() => {
+        expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-1', isPinned: false })
         expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
         }))
@@ -167,13 +188,22 @@ describe('Sidebar Lifecycle Flow', () => {
         createInstalledApp({ id: 'unpinned-1', is_pinned: false, app: { ...createInstalledApp().app, name: 'Regular App' } }),
       ]
 
-      renderSidebar(mockInstalledApps)
+      const { container } = renderSidebar(mockInstalledApps)
 
+      // Both apps are rendered
       const pinnedApp = screen.getByText('Pinned App')
       const regularApp = screen.getByText('Regular App')
-
       expect(pinnedApp).toBeInTheDocument()
       expect(regularApp).toBeInTheDocument()
+
+      // Pinned app appears before unpinned app in the DOM
+      const pinnedItem = pinnedApp.closest('[class*="rounded-lg"]')!
+      const regularItem = regularApp.closest('[class*="rounded-lg"]')!
+      expect(pinnedItem.compareDocumentPosition(regularItem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+      // Divider is rendered between pinned and unpinned sections
+      const divider = container.querySelector('[class*="bg-divider-regular"]')
+      expect(divider).toBeInTheDocument()
     })
   })
 

@@ -126,24 +126,26 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
+const createContextValue = (hasEditPermission = true) => ({
+  controlUpdateInstalledApps: 0,
+  setControlUpdateInstalledApps: vi.fn(),
+  hasEditPermission,
+  installedApps: [] as never[],
+  setInstalledApps: vi.fn(),
+  isFetchingInstalledApps: false,
+  setIsFetchingInstalledApps: vi.fn(),
+  isShowTryAppPanel: false,
+  setShowTryAppPanel: vi.fn(),
+})
+
+const wrapWithContext = (hasEditPermission = true, onSuccess?: () => void) => (
+  <ExploreContext.Provider value={createContextValue(hasEditPermission)}>
+    <AppList onSuccess={onSuccess} />
+  </ExploreContext.Provider>
+)
+
 const renderWithContext = (hasEditPermission = true, onSuccess?: () => void) => {
-  return render(
-    <ExploreContext.Provider
-      value={{
-        controlUpdateInstalledApps: 0,
-        setControlUpdateInstalledApps: vi.fn(),
-        hasEditPermission,
-        installedApps: [],
-        setInstalledApps: vi.fn(),
-        isFetchingInstalledApps: false,
-        setIsFetchingInstalledApps: vi.fn(),
-        isShowTryAppPanel: false,
-        setShowTryAppPanel: vi.fn(),
-      }}
-    >
-      <AppList onSuccess={onSuccess} />
-    </ExploreContext.Provider>,
-  )
+  return render(wrapWithContext(hasEditPermission, onSuccess))
 }
 
 describe('Explore App List Flow', () => {
@@ -238,23 +240,7 @@ describe('Explore App List Flow', () => {
       // Step 1: Loading state
       mockIsLoading = true
       mockExploreData = undefined
-      const { rerender } = render(
-        <ExploreContext.Provider
-          value={{
-            controlUpdateInstalledApps: 0,
-            setControlUpdateInstalledApps: vi.fn(),
-            hasEditPermission: true,
-            installedApps: [],
-            setInstalledApps: vi.fn(),
-            isFetchingInstalledApps: false,
-            setIsFetchingInstalledApps: vi.fn(),
-            isShowTryAppPanel: false,
-            setShowTryAppPanel: vi.fn(),
-          }}
-        >
-          <AppList />
-        </ExploreContext.Provider>,
-      )
+      const { rerender } = render(wrapWithContext())
 
       expect(screen.getByRole('status')).toBeInTheDocument()
 
@@ -264,23 +250,7 @@ describe('Explore App List Flow', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      rerender(
-        <ExploreContext.Provider
-          value={{
-            controlUpdateInstalledApps: 0,
-            setControlUpdateInstalledApps: vi.fn(),
-            hasEditPermission: true,
-            installedApps: [],
-            setInstalledApps: vi.fn(),
-            isFetchingInstalledApps: false,
-            setIsFetchingInstalledApps: vi.fn(),
-            isShowTryAppPanel: false,
-            setShowTryAppPanel: vi.fn(),
-          }}
-        >
-          <AppList />
-        </ExploreContext.Provider>,
-      )
+      rerender(wrapWithContext())
 
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
       expect(screen.getByText('Alpha')).toBeInTheDocument()

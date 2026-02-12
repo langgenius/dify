@@ -85,10 +85,19 @@ describe('Installed App Flow', () => {
     system_parameters: {},
   }
 
-  const setupDefaultMocks = (app: InstalledAppModel) => {
+  type MockOverrides = {
+    context?: { installedApps?: InstalledAppModel[], isFetchingInstalledApps?: boolean }
+    accessMode?: { isFetching?: boolean, data?: unknown, error?: unknown }
+    params?: { isFetching?: boolean, data?: unknown, error?: unknown }
+    meta?: { isFetching?: boolean, data?: unknown, error?: unknown }
+    userAccess?: { data?: unknown, error?: unknown }
+  }
+
+  const setupDefaultMocks = (app?: InstalledAppModel, overrides: MockOverrides = {}) => {
     ;(useContext as Mock).mockReturnValue({
-      installedApps: [app],
+      installedApps: app ? [app] : [],
       isFetchingInstalledApps: false,
+      ...overrides.context,
     })
 
     ;(useWebAppStore as unknown as Mock).mockImplementation((selector: (state: Record<string, Mock>) => unknown) => {
@@ -105,23 +114,27 @@ describe('Installed App Flow', () => {
       isFetching: false,
       data: { accessMode: AccessMode.PUBLIC },
       error: null,
+      ...overrides.accessMode,
     })
 
     ;(useGetInstalledAppParams as Mock).mockReturnValue({
       isFetching: false,
       data: mockAppParams,
       error: null,
+      ...overrides.params,
     })
 
     ;(useGetInstalledAppMeta as Mock).mockReturnValue({
       isFetching: false,
       data: { tool_icons: {} },
       error: null,
+      ...overrides.meta,
     })
 
     ;(useGetUserCanAccessApp as Mock).mockReturnValue({
       data: { result: true },
       error: null,
+      ...overrides.userAccess,
     })
   }
 
@@ -169,13 +182,7 @@ describe('Installed App Flow', () => {
   describe('Data Loading Flow', () => {
     it('should show loading spinner when params are being fetched', () => {
       const app = createInstalledApp()
-      setupDefaultMocks(app)
-
-      ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: true,
-        data: null,
-        error: null,
-      })
+      setupDefaultMocks(app, { params: { isFetching: true, data: null } })
 
       const { container } = render(<InstalledApp id="installed-app-1" />)
 
@@ -196,13 +203,7 @@ describe('Installed App Flow', () => {
   describe('Error Handling Flow', () => {
     it('should show error state when API fails', () => {
       const app = createInstalledApp()
-      setupDefaultMocks(app)
-
-      ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: false,
-        data: null,
-        error: new Error('Network error'),
-      })
+      setupDefaultMocks(app, { params: { data: null, error: new Error('Network error') } })
 
       render(<InstalledApp id="installed-app-1" />)
 
@@ -210,37 +211,11 @@ describe('Installed App Flow', () => {
     })
 
     it('should show 404 when app is not found', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
-      ;(useWebAppStore as unknown as Mock).mockImplementation((selector: (state: Record<string, Mock>) => unknown) => {
-        return selector({
-          updateAppInfo: mockUpdateAppInfo,
-          updateWebAppAccessMode: mockUpdateWebAppAccessMode,
-          updateAppParams: mockUpdateAppParams,
-          updateWebAppMeta: mockUpdateWebAppMeta,
-          updateUserCanAccessApp: mockUpdateUserCanAccessApp,
-        })
-      })
-      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isFetching: false,
-        data: null,
-        error: null,
-      })
-      ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: false,
-        data: null,
-        error: null,
-      })
-      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isFetching: false,
-        data: null,
-        error: null,
-      })
-      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
-        data: null,
-        error: null,
+      setupDefaultMocks(undefined, {
+        accessMode: { data: null },
+        params: { data: null },
+        meta: { data: null },
+        userAccess: { data: null },
       })
 
       render(<InstalledApp id="nonexistent" />)
@@ -250,12 +225,7 @@ describe('Installed App Flow', () => {
 
     it('should show 403 when user has no permission', () => {
       const app = createInstalledApp()
-      setupDefaultMocks(app)
-
-      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
-        data: { result: false },
-        error: null,
-      })
+      setupDefaultMocks(app, { userAccess: { data: { result: false } } })
 
       render(<InstalledApp id="installed-app-1" />)
 
