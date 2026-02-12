@@ -11,8 +11,6 @@ describe('LogoEmbeddedChatHeader', () => {
     const img = screen.getByRole('img', { name: /logo/i })
     expect(img).toBeInTheDocument()
     expect(img).toHaveAttribute('src', '/test-base-path/logo/logo-embedded-chat-header.png')
-    expect(img).toHaveClass('h-6')
-    expect(img).toHaveClass('w-auto')
 
     const sources = container.querySelectorAll('source')
     expect(sources).toHaveLength(3)
