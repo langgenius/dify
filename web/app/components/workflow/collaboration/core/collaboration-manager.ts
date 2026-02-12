@@ -1307,12 +1307,12 @@ export class CollaborationManager {
         this.emitGraphViewActive(this.graphViewActive)
     })
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
       this.cursors = {}
       this.isLeader = false
       this.leaderId = null
       this.pendingInitialSync = false
-      this.eventEmitter.emit('stateChange', { isConnected: false })
+      this.eventEmitter.emit('stateChange', { isConnected: false, disconnectReason: reason })
       this.eventEmitter.emit('cursors', {})
     })
 
