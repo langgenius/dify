@@ -3,23 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import NotionConnector from './index'
 
-// 1. Mock only the translation side-effect
-const tMock = vi.fn((key, options) => {
-  const ns = options?.ns ? `${options.ns}:` : ''
-  return `${ns}${key}`
-})
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: tMock }),
-}))
-
 describe('NotionConnector', () => {
   it('should render the layout and actual sub-components (Icons & Button)', () => {
     const { container } = render(<NotionConnector onSetting={vi.fn()} />)
 
     // Verify Title & Tip translations
-    expect(screen.getByText('datasetCreation:stepOne.notionSyncTitle')).toBeInTheDocument()
-    expect(screen.getByText('datasetCreation:stepOne.notionSyncTip')).toBeInTheDocument()
+    expect(screen.getByText('datasetCreation.stepOne.notionSyncTitle')).toBeInTheDocument()
+    expect(screen.getByText('datasetCreation.stepOne.notionSyncTip')).toBeInTheDocument()
 
     const notionWrapper = container.querySelector('.h-12.w-12')
     const dotsWrapper = container.querySelector('.system-md-semibold')
@@ -28,7 +18,7 @@ describe('NotionConnector', () => {
     expect(dotsWrapper?.querySelector('svg')).toBeInTheDocument()
 
     const button = screen.getByRole('button', {
-      name: /datasetcreation:stepone.connect/i,
+      name: /datasetcreation.stepone.connect/i,
     })
 
     expect(button).toBeInTheDocument()
@@ -41,7 +31,7 @@ describe('NotionConnector', () => {
     render(<NotionConnector onSetting={onSetting} />)
 
     const button = screen.getByRole('button', {
-      name: /datasetcreation:stepone.connect/i,
+      name: /datasetcreation.stepone.connect/i,
     })
 
     await user.click(button)

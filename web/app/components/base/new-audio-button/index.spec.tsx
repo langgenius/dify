@@ -1,7 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import AudioBtn from './index'
 
 const mockPlayAudio = vi.fn()
@@ -11,10 +12,6 @@ const mockGetAudioPlayer = vi.fn()
 vi.mock('next/navigation', () => ({
   useParams: vi.fn(),
   usePathname: vi.fn(),
-}))
-
-vi.mock('i18next', () => ({
-  t: vi.fn(key => key),
 }))
 
 vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
@@ -41,6 +38,10 @@ describe('AudioBtn', () => {
       throw new Error('Audio callback not found - ensure mockGetAudioPlayer was called with a callback argument')
     return callback
   }
+
+  beforeAll(() => {
+    i18next.init({})
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()

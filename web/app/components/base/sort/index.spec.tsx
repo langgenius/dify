@@ -4,12 +4,6 @@ import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import Sort from './index'
 
-// deterministic i18n mock
-const tMock = vi.fn((key, options) =>
-  key === 'filter.sortBy' ? 'Sort by' : options?.ns ? `${options.ns}:${key}` : key,
-)
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: tMock }) }))
-
 const mockItems = [
   { value: 'created_at', name: 'Date Created' },
   { value: 'name', name: 'Name' },
@@ -26,7 +20,7 @@ describe('Sort component — real portal integration', () => {
 
     // helper: returns a non-null HTMLElement or throws with a clear message
     const getTriggerWrapper = (): HTMLElement => {
-      const labelNode = screen.getByText('Sort by')
+      const labelNode = screen.getByText('appLog.filter.sortBy')
       // try to find a reasonable wrapper element; prefer '.block' but fallback to any ancestor div
       const wrapper = labelNode.closest('.block') ?? labelNode.closest('div')
       if (!wrapper)
@@ -115,7 +109,7 @@ describe('Sort component — real portal integration', () => {
 
   it('shows empty selection label when value is unknown', () => {
     setup({ value: 'unknown_value' })
-    const label = screen.getByText('Sort by')
+    const label = screen.getByText('appLog.filter.sortBy')
     const valueNode = label.nextSibling
     if (!valueNode)
       throw new Error('Expected a sibling node for the selection text')
