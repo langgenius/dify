@@ -5359,11 +5359,6 @@
       "count": 3
     }
   },
-  "app/components/rag-pipeline/components/panel/input-field/field-list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -5521,11 +5516,6 @@
   "app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/rag-pipeline/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 8
     }
   },
   "app/components/rag-pipeline/store/index.ts": {
