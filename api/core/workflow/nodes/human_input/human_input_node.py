@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import (
@@ -15,7 +16,6 @@ from core.workflow.node_events import (
 )
 from core.workflow.node_events.base import NodeEventBase
 from core.workflow.node_events.node import StreamCompletedEvent
-from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.nodes.base.node import Node
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
