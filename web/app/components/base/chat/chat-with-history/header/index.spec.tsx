@@ -87,12 +87,6 @@ describe('Header Component', () => {
   })
 
   describe('Rendering', () => {
-    // it('should render app title and icon correctly', () => {
-    //   setup()
-    //   expect(screen.getByText('Test App')).toBeInTheDocument()
-    //   expect(screen.getByText('🤖')).toBeInTheDocument()
-    // })
-
     it('should render conversation name when conversation is selected', () => {
       const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
       setup({
