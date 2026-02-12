@@ -39,10 +39,7 @@ export function useActivePluginCategory() {
   const categoryFromPath = segments[1] || CATEGORY_ALL
   const validatedCategory = getValidatedPluginCategory(categoryFromPath)
   const handleChange = (newCategory: string) => {
-    const newPathSegments = [...segments]
-    newPathSegments[1] = newCategory
-    const newPath = `/${newPathSegments.join('/')}`
-    router.push(newPath)
+    router.push(`/plugins/${newCategory}`)
   }
   return [validatedCategory, handleChange] as const
 }
