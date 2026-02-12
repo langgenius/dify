@@ -136,7 +136,7 @@ class MetadataService:
         return db.session.query(Workflow).where(draft_condition).all()
 
     @staticmethod
-    def _iter_knowledge_index_nodes(workflow: Workflow):
+    def iter_knowledge_index_nodes(workflow: Workflow):
         """Yield each ``knowledge-index`` node data dict from *workflow*.
 
         Raises on malformed ``graph_dict`` so callers can apply fail-closed
@@ -173,7 +173,7 @@ class MetadataService:
 
         for workflow in workflows:
             try:
-                for node_data in MetadataService._iter_knowledge_index_nodes(workflow):
+                for node_data in MetadataService.iter_knowledge_index_nodes(workflow):
                     if node_data.get("enable_built_in_metadata") is True:
                         return True, pipeline.name
             except Exception:
@@ -202,7 +202,7 @@ class MetadataService:
 
         for workflow in workflows:
             try:
-                for node_data in MetadataService._iter_knowledge_index_nodes(workflow):
+                for node_data in MetadataService.iter_knowledge_index_nodes(workflow):
                     for item in node_data.get("doc_metadata") or []:
                         if item.get("metadata_id") == metadata_id:
                             return True, pipeline.name
@@ -217,7 +217,7 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
+            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id, dataset_id=dataset_id).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
 
@@ -462,14 +462,12 @@ class MetadataService:
     def knowledge_base_metadata_lock_check(dataset_id: str | None, document_id: str | None):
         if dataset_id:
             lock_key = f"dataset_metadata_lock_{dataset_id}"
-            if redis_client.get(lock_key):
+            if not redis_client.set(lock_key, 1, nx=True, ex=3600):
                 raise ValueError("Another knowledge base metadata operation is running, please wait a moment.")
-            redis_client.set(lock_key, 1, ex=3600)
         if document_id:
             lock_key = f"document_metadata_lock_{document_id}"
-            if redis_client.get(lock_key):
+            if not redis_client.set(lock_key, 1, nx=True, ex=3600):
                 raise ValueError("Another document metadata operation is running, please wait a moment.")
-            redis_client.set(lock_key, 1, ex=3600)
 
     @staticmethod
     def get_dataset_metadatas(dataset: Dataset):

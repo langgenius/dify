@@ -622,7 +622,7 @@ class PublishedRagPipelineApi(Resource):
             try:
                 node_built_in_enabled = any(
                     node_data.get("enable_built_in_metadata") is True
-                    for node_data in MetadataService._iter_knowledge_index_nodes(workflow)
+                    for node_data in MetadataService.iter_knowledge_index_nodes(workflow)
                 )
             except Exception:
                 logger.exception(
