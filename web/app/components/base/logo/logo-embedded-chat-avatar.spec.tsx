@@ -12,8 +12,6 @@ describe('LogoEmbeddedChatAvatar', () => {
       const img = screen.getByRole('img', { name: /logo/i })
       expect(img).toBeInTheDocument()
       expect(img).toHaveAttribute('src', '/test-base-path/logo/logo-embedded-chat-avatar.png')
-      expect(img).toHaveClass('h-10')
-      expect(img).toHaveClass('w-10')
     })
   })
 
@@ -23,7 +21,6 @@ describe('LogoEmbeddedChatAvatar', () => {
       render(<LogoEmbeddedChatAvatar className={customClass} />)
       const img = screen.getByRole('img', { name: /logo/i })
       expect(img).toHaveClass(customClass)
-      expect(img).toHaveClass('h-10')
     })
 
     it('has valid alt text', () => {

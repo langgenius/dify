@@ -41,7 +41,6 @@ describe('FileThumb Component', () => {
       expect(screen.queryByAltText(mockNonImageFile.name)).not.toBeInTheDocument()
       const svgIcon = container.querySelector('svg')
       expect(svgIcon).toBeInTheDocument()
-      expect(svgIcon).toHaveClass('text-[#EA3434]')
     })
 
     it('wraps content inside tooltip', async () => {

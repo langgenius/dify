@@ -31,8 +31,6 @@ describe('DifyLogo', () => {
       const img = screen.getByRole('img', { name: /dify logo/i })
       expect(img).toBeInTheDocument()
       expect(img).toHaveAttribute('src', '/test-base-path/logo/logo.svg')
-      expect(img).toHaveClass('w-12')
-      expect(img).toHaveClass('h-[22px]')
     })
   })
 

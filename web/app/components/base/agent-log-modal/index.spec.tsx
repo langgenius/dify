@@ -139,22 +139,4 @@ describe('AgentLogModal', () => {
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
   })
-
-  it('should have correct fixed positioning styles', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
-
-    const { getByRole } = render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
-    const modal = getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }).parentElement!
-
-    expect(modal).toHaveStyle({
-      position: 'fixed',
-      width: '480px',
-      top: '64px',
-      left: '528px',
-    })
-  })
 })

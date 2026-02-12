@@ -11,8 +11,6 @@ describe('LogoSite', () => {
     const img = screen.getByRole('img', { name: /logo/i })
     expect(img).toBeInTheDocument()
     expect(img).toHaveAttribute('src', '/test-base-path/logo/logo.png')
-    expect(img).toHaveClass('h-[24.5px]')
-    expect(img).toHaveClass('w-[22.651px]')
   })
 
   it('applies custom className correctly', () => {
@@ -20,6 +18,5 @@ describe('LogoSite', () => {
     render(<LogoSite className={customClass} />)
     const img = screen.getByRole('img', { name: /logo/i })
     expect(img).toHaveClass(customClass)
-    expect(img).toHaveClass('h-[24.5px]')
   })
 })

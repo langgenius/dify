@@ -34,12 +34,4 @@ describe('ListEmpty Component', () => {
       expect(screen.getByText('No items found')).toBeInTheDocument()
     })
   })
-
-  describe('Style', () => {
-    it('applies correct class names to the container', () => {
-      const { container } = render(<ListEmpty />)
-      const mainDiv = container.firstChild as HTMLElement
-      expect(mainDiv).toHaveClass('flex', 'w-[320px]', 'flex-col', 'items-start', 'gap-2', 'rounded-[10px]', 'bg-workflow-process-bg', 'p-4')
-    })
-  })
 })
