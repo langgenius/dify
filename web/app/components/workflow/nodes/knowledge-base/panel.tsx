@@ -44,7 +44,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
 
   // Get datasetId from context and fetch metadata
   const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
-  const { data: metadataList, refetch: refetchMetadataList } = useDatasetMetaData(datasetId || '')
+  const { data: metadataList } = useDatasetMetaData(datasetId || '')
 
   const {
     handleChunkStructureChange,
@@ -60,7 +60,6 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
-    handleEnableBuiltInMetadataChange,
     handleDocMetadataChange,
     handleSummaryIndexSettingChange,
   } = useConfig(id)
@@ -221,13 +220,9 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
             <BoxGroup>
               <MetadataSection
                 nodeId={id}
-                datasetId={datasetId}
-                enableBuiltInMetadata={data.enable_built_in_metadata ?? false}
-                onEnableBuiltInMetadataChange={handleEnableBuiltInMetadataChange}
                 userMetadata={metadataList?.doc_metadata || []}
                 docMetadata={data.doc_metadata}
                 onDocMetadataChange={handleDocMetadataChange}
-                onMetadataListChange={refetchMetadataList}
                 readonly={nodesReadOnly}
               />
             </BoxGroup>

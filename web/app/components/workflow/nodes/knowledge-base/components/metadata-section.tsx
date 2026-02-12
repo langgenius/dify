@@ -1,25 +1,16 @@
 'use client'
 import type { FC } from 'react'
 import type { DocMetadataItem } from '../types'
-import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
+import type { MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { InputNumber } from '@/app/components/base/input-number'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import Datepicker from '@/app/components/datasets/metadata/base/date-picker'
-import DatasetMetadataDrawer from '@/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer'
 import { DataType } from '@/app/components/datasets/metadata/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
-import {
-  useBuiltInMetaDataFields,
-  useCreateMetaData,
-  useDeleteMetaData,
-  useRenameMeta,
-} from '@/service/knowledge/use-metadata'
 import { cn } from '@/utils/classnames'
 
 type ConstantValueInputProps = {
@@ -74,68 +65,22 @@ const ConstantValueInput: FC<ConstantValueInputProps> = ({
 
 type MetadataSectionProps = {
   nodeId: string
-  datasetId?: string
-  enableBuiltInMetadata: boolean
-  onEnableBuiltInMetadataChange: (enabled: boolean) => void
   userMetadata?: MetadataItemWithValueLength[]
   docMetadata?: DocMetadataItem[]
   onDocMetadataChange?: (metadata: DocMetadataItem[]) => void
-  onMetadataListChange?: () => void
   readonly?: boolean
   className?: string
 }
 
 const MetadataSection: FC<MetadataSectionProps> = ({
   nodeId,
-  datasetId,
-  enableBuiltInMetadata,
-  onEnableBuiltInMetadataChange,
   userMetadata = [],
   docMetadata = [],
   onDocMetadataChange,
-  onMetadataListChange,
   readonly,
   className,
 }) => {
   const { t } = useTranslation()
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-
-  // Get built-in metadata fields from API
-  const { data: builtInFieldsData } = useBuiltInMetaDataFields()
-  const builtInFields = builtInFieldsData?.fields || []
-
-  // Mutations for drawer
-  const createMetadataMutation = useCreateMetaData(datasetId || '')
-  const renameMetadataMutation = useRenameMeta(datasetId || '')
-  const deleteMetadataMutation = useDeleteMetaData(datasetId || '')
-
-  // Drawer handlers
-  const handleAddMetadata = useCallback(async (data: BuiltInMetadataItem) => {
-    await createMetadataMutation.mutateAsync(data)
-    Toast.notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
-    onMetadataListChange?.()
-  }, [createMetadataMutation, t, onMetadataListChange])
-
-  const handleRenameMetadata = useCallback(async (data: MetadataItemWithValueLength) => {
-    await renameMetadataMutation.mutateAsync(data)
-    Toast.notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
-    onMetadataListChange?.()
-  }, [renameMetadataMutation, t, onMetadataListChange])
-
-  const handleDeleteMetadata = useCallback(async (id: string) => {
-    await deleteMetadataMutation.mutateAsync(id)
-    Toast.notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
-    onMetadataListChange?.()
-  }, [deleteMetadataMutation, t, onMetadataListChange])
-
-  // In the Pipeline editor the built-in toggle only controls the *node*
-  // configuration (enable_built_in_metadata).  It must NOT call the backend
-  // API to flip dataset.built_in_field_enabled — those are independent
-  // concepts: the node flag decides whether the workflow writes built-in
-  // fields on execution, while the dataset flag governs existing documents.
-  const handleBuiltInEnabledChange = useCallback((enabled: boolean) => {
-    onEnableBuiltInMetadataChange(enabled)
-  }, [onEnableBuiltInMetadataChange])
 
   // Document metadata value handlers
   const handleAddDocMetadata = useCallback(() => {
@@ -215,12 +160,6 @@ const MetadataSection: FC<MetadataSectionProps> = ({
         <div className="text-text-tertiary system-xs-semibold-uppercase">
           {t('metadata.metadata', { ns: 'dataset' })}
         </div>
-        {datasetId && !readonly && (
-          <Button variant="ghost" size="small" onClick={() => setIsDrawerOpen(true)}>
-            <div className="i-ri-draft-line mr-1 size-3.5" />
-            {t('metadata.datasetMetadata.addMetaData', { ns: 'dataset' })}
-          </Button>
-        )}
       </div>
 
       {/* Document Metadata Values Section */}
@@ -342,19 +281,6 @@ const MetadataSection: FC<MetadataSectionProps> = ({
         </div>
       )}
 
-      {/* Metadata Drawer */}
-      {isDrawerOpen && datasetId && (
-        <DatasetMetadataDrawer
-          userMetadata={userMetadata}
-          builtInMetadata={builtInFields}
-          isBuiltInEnabled={enableBuiltInMetadata}
-          onIsBuiltInEnabledChange={handleBuiltInEnabledChange}
-          onClose={() => setIsDrawerOpen(false)}
-          onAdd={handleAddMetadata}
-          onRename={handleRenameMetadata}
-          onRemove={handleDeleteMetadata}
-        />
-      )}
     </div>
   )
 }

@@ -49,6 +49,7 @@ type DocumentsHeaderProps = {
 
   // Actions
   onAddDocument: () => void
+  isAddDocumentDisabled?: boolean
 }
 
 const DocumentsHeader: FC<DocumentsHeaderProps> = ({
@@ -74,6 +75,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onDeleteMetaData,
   onBuiltInEnabledChange,
   onAddDocument,
+  isAddDocumentDisabled,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -187,7 +189,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             />
           )}
           {embeddingAvailable && (
-            <Button variant="primary" onClick={onAddDocument} className="shrink-0">
+            <Button variant="primary" onClick={onAddDocument} className="shrink-0" disabled={isAddDocumentDisabled}>
               <PlusIcon className="mr-2 h-4 w-4 stroke-current" />
               {addButtonText}
             </Button>
