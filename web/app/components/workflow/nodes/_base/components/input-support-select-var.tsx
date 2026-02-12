@@ -64,6 +64,7 @@ const Editor: FC<Props> = ({
     <div className={cn(className, 'relative')}>
       <>
         <PromptEditor
+          key={`${instanceId ?? 'input-support-select-var'}-${readOnly ? 'ro' : 'rw'}`}
           instanceId={instanceId}
           className={cn(promptMinHeightClassName, '!leading-[18px]')}
           placeholder={placeholder}

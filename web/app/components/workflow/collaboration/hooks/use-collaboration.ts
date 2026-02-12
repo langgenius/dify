@@ -6,7 +6,6 @@ import type {
   OnlineUser,
 } from '../types/collaboration'
 import { useEffect, useRef, useState } from 'react'
-import Toast from '@/app/components/base/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
@@ -33,6 +32,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   const [state, setState] = useState<CollaborationViewState>(initialState)
 
   const cursorServiceRef = useRef<CursorService | null>(null)
+  const lastDisconnectReasonRef = useRef<string | null>(null)
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   useEffect(() => {
@@ -67,6 +67,12 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
     initCollaboration()
 
     const unsubscribeStateChange = collaborationManager.onStateChange((newState: Partial<CollaborationState>) => {
+      if (newState.isConnected === false) {
+        lastDisconnectReasonRef.current = newState.disconnectReason || newState.error || null
+      }
+      if (newState.isConnected === true)
+        lastDisconnectReasonRef.current = null
+
       if (newState.isConnected === undefined)
         return
 
@@ -115,10 +121,11 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   const prevIsConnected = useRef(false)
   useEffect(() => {
     if (prevIsConnected.current && !state.isConnected) {
-      Toast.notify({
-        type: 'error',
-        message: 'Network connection lost. Please check your network.',
-      })
+      const reason = lastDisconnectReasonRef.current
+      if (reason)
+        console.warn('WebSocket disconnected:', reason)
+      else
+        console.warn('WebSocket disconnected.')
     }
     prevIsConnected.current = state.isConnected || false
   }, [state.isConnected])

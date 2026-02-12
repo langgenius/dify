@@ -342,7 +342,8 @@ You CANNOT execute those tools — they are no longer available. Read their outp
 STRUCTURED_OUTPUT_FINAL_TURN_REMINDER = (
     "[SYSTEM] This is the FINAL turn. No further interaction is possible after this. "
     "You must call `structured_output` NOW with your best answer based on the conversation above. "
-    "Do NOT call bash, python, or any other tool. Do NOT ask questions. Just call `structured_output`."
+    "Do NOT call bash, python, or any other tool. Do NOT ask questions. Just call `structured_output`. "
+    "All output files are located under the `output/` directory only, with no path prefix."
 )
 
 LLM_MODIFY_PROMPT_SYSTEM = """

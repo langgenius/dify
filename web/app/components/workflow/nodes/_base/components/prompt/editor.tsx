@@ -265,7 +265,7 @@ const Editor: FC<Props> = ({
               ? (
                   <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto px-3', editorContainerClassName)}>
                     <PromptEditor
-                      key={controlPromptEditorRerenderKey}
+                      key={`${controlPromptEditorRerenderKey}-${readOnly ? 'ro' : 'rw'}`}
                       placeholder={placeholder}
                       placeholderClassName={placeholderClassName}
                       instanceId={instanceId}
