@@ -202,7 +202,8 @@ class OceanBaseVector(BaseVector):
 
             try:
                 self._client.perform_raw_text_sql(
-                    f"CREATE INDEX idx_metadata_doc_id ON `{self._collection_name}` ((metadata->>'$.document_id'))"
+                    f"CREATE INDEX IF NOT EXISTS idx_metadata_doc_id ON `{self._collection_name}` "
+                    f"((CAST(metadata->>'$.document_id' AS CHAR(64))))"
                 )
             except SQLAlchemyError:
                 logger.warning(
