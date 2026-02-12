@@ -148,7 +148,7 @@ describe('LanguagePage - Interactions', () => {
 
     expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: midwayTimezone.name })).toBeInTheDocument()
-  }, 15000)
+  })
 
   it('should show error toast when timezone update fails', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
@@ -159,5 +159,5 @@ describe('LanguagePage - Interactions', () => {
     await selectOption('common.language.timezone', midwayTimezone.name)
 
     expect(await screen.findByText('Timezone failed')).toBeInTheDocument()
-  }, 15000)
+  })
 })

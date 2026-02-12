@@ -15,69 +15,59 @@ describe('Plugin Utils', () => {
     vi.clearAllMocks()
   })
 
-  describe('validatePluginKey', () => {
-    it('should return success status when validation succeeds', async () => {
-      mockValidatePluginProviderKey.mockResolvedValue({ result: 'success' })
+  describe.each([
+    {
+      name: 'validatePluginKey',
+      utilFn: validatePluginKey,
+      serviceMock: mockValidatePluginProviderKey,
+      successBody: { credentials: { api_key: 'test-key' } },
+      failureBody: { credentials: { api_key: 'invalid' } },
+      exceptionBody: { credentials: { api_key: 'test' } },
+      serviceErrorMessage: 'Invalid API key',
+      thrownErrorMessage: 'Network error',
+    },
+    {
+      name: 'updatePluginKey',
+      utilFn: updatePluginKey,
+      serviceMock: mockUpdatePluginProviderAIKey,
+      successBody: { credentials: { api_key: 'new-key' } },
+      failureBody: { credentials: { api_key: 'test' } },
+      exceptionBody: { credentials: { api_key: 'test' } },
+      serviceErrorMessage: 'Update failed',
+      thrownErrorMessage: 'Request failed',
+    },
+  ])('$name', ({ utilFn, serviceMock, successBody, failureBody, exceptionBody, serviceErrorMessage, thrownErrorMessage }) => {
+    it('should return success status when service succeeds', async () => {
+      serviceMock.mockResolvedValue({ result: 'success' })
 
-      const result = await validatePluginKey('serpapi', { credentials: { api_key: 'test-key' } })
-
-      expect(result.status).toBe(ValidatedStatus.Success)
-    })
-
-    it('should return error status with message when validation fails', async () => {
-      const errorMessage = 'Invalid API key'
-      mockValidatePluginProviderKey.mockResolvedValue({
-        result: 'error',
-        error: errorMessage,
-      })
-
-      const result = await validatePluginKey('serpapi', { credentials: { api_key: 'invalid' } })
-
-      expect(result.status).toBe(ValidatedStatus.Error)
-      expect((result as unknown as { message: string }).message).toBe(errorMessage)
-    })
-
-    it('should return error status when service throws exception', async () => {
-      const errorMessage = 'Network error'
-      mockValidatePluginProviderKey.mockRejectedValue(new Error(errorMessage))
-
-      const result = await validatePluginKey('serpapi', { credentials: { api_key: 'test' } })
-
-      expect(result.status).toBe(ValidatedStatus.Error)
-      expect((result as unknown as { message: string }).message).toBe(errorMessage)
-    })
-  })
-
-  describe('updatePluginKey', () => {
-    it('should return success status when update succeeds', async () => {
-      mockUpdatePluginProviderAIKey.mockResolvedValue({ result: 'success' })
-
-      const result = await updatePluginKey('serpapi', { credentials: { api_key: 'new-key' } })
+      const result = await utilFn('serpapi', successBody)
 
       expect(result.status).toBe(ValidatedStatus.Success)
     })
 
-    it('should return error status with message when update fails', async () => {
-      const errorMessage = 'Update failed'
-      mockUpdatePluginProviderAIKey.mockResolvedValue({
+    it('should return error status with message when service returns an error', async () => {
+      serviceMock.mockResolvedValue({
         result: 'error',
-        error: errorMessage,
+        error: serviceErrorMessage,
       })
 
-      const result = await updatePluginKey('serpapi', { credentials: { api_key: 'test' } })
+      const result = await utilFn('serpapi', failureBody)
 
-      expect(result.status).toBe(ValidatedStatus.Error)
-      expect((result as unknown as { message: string }).message).toBe(errorMessage)
+      expect(result).toMatchObject({
+        status: ValidatedStatus.Error,
+        message: serviceErrorMessage,
+      })
     })
 
     it('should return error status when service throws exception', async () => {
-      const errorMessage = 'Request failed'
-      mockUpdatePluginProviderAIKey.mockRejectedValue(new Error(errorMessage))
+      serviceMock.mockRejectedValue(new Error(thrownErrorMessage))
 
-      const result = await updatePluginKey('serpapi', { credentials: { api_key: 'test' } })
+      const result = await utilFn('serpapi', exceptionBody)
 
-      expect(result.status).toBe(ValidatedStatus.Error)
-      expect((result as unknown as { message: string }).message).toBe(errorMessage)
+      expect(result).toMatchObject({
+        status: ValidatedStatus.Error,
+        message: thrownErrorMessage,
+      })
     })
   })
 })
