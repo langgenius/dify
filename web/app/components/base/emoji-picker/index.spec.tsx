@@ -81,7 +81,7 @@ describe('EmojiPicker', () => {
         )
       })
 
-      const emojiWrappers = document.querySelectorAll('.ring-components-input-border-hover')
+      const emojiWrappers = screen.getAllByTestId(/^emoji-container-/)
       expect(emojiWrappers.length).toBeGreaterThan(0)
       await act(async () => {
         fireEvent.click(emojiWrappers[0])

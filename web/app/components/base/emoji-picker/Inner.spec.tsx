@@ -66,8 +66,7 @@ describe('EmojiPickerInner', () => {
 
     it('updates selected emoji and calls onSelect when an emoji is clicked', async () => {
       render(<EmojiPickerInner onSelect={mockOnSelect} />)
-
-      const emojiContainers = document.querySelectorAll('.ring-components-input-border-hover')
+      const emojiContainers = screen.getAllByTestId(/^emoji-container-/)
 
       await act(async () => {
         fireEvent.click(emojiContainers[0])
@@ -101,7 +100,7 @@ describe('EmojiPickerInner', () => {
         fireEvent.click(toggleButton!)
       })
 
-      const emojiContainers = document.querySelectorAll('.ring-components-input-border-hover')
+      const emojiContainers = screen.getAllByTestId(/^emoji-container-/)
       await act(async () => {
         fireEvent.click(emojiContainers[0])
       })
@@ -126,9 +125,7 @@ describe('EmojiPickerInner', () => {
 
       await screen.findByText('Search')
 
-      const searchSection = screen.getByText('Search').parentElement
-      const searchEmojis = searchSection?.querySelectorAll('.ring-components-input-border-hover')
-
+      const searchEmojis = screen.getAllByTestId(/^emoji-search-result-/)
       await act(async () => {
         fireEvent.click(searchEmojis![0])
       })

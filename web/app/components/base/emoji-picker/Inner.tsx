@@ -108,7 +108,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                         setSelectedEmoji(emoji)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
+                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-search-result-${emoji}`}>
                         <em-emoji id={emoji} />
                       </div>
                     </div>
@@ -133,7 +133,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                         setSelectedEmoji(emoji)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
+                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-result-${emoji}`}>
                         <em-emoji id={emoji} />
                       </div>
                     </div>

@@ -76,7 +76,7 @@ describe('Confirm Component', () => {
   describe('User Interactions', () => {
     it('clickAway is handled properly', () => {
       render(<Confirm isShow={true} title="test title" onCancel={onCancel} onConfirm={onConfirm} />)
-      const overlay = document.body.querySelector('.bg-background-overlay') as HTMLElement
+      const overlay = screen.getByTestId('confirm-overlay') as HTMLElement
       expect(overlay).toBeTruthy()
       fireEvent.mouseDown(overlay)
       expect(onCancel).toHaveBeenCalledTimes(1)
@@ -84,7 +84,7 @@ describe('Confirm Component', () => {
 
     it('overlay click stops propagation', () => {
       render(<Confirm isShow={true} title="test title" onCancel={onCancel} onConfirm={onConfirm} />)
-      const overlay = document.body.querySelector('.bg-background-overlay') as HTMLElement
+      const overlay = screen.getByTestId('confirm-overlay') as HTMLElement
       const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
       const preventDefaultSpy = vi.spyOn(clickEvent, 'preventDefault')
       const stopPropagationSpy = vi.spyOn(clickEvent, 'stopPropagation')
@@ -95,7 +95,7 @@ describe('Confirm Component', () => {
 
     it('does not close on click away when maskClosable is false', () => {
       render(<Confirm isShow={true} title="test title" maskClosable={false} onCancel={onCancel} onConfirm={onConfirm} />)
-      const overlay = document.body.querySelector('.bg-background-overlay') as HTMLElement
+      const overlay = screen.getByTestId('confirm-overlay') as HTMLElement
       fireEvent.mouseDown(overlay)
       expect(onCancel).not.toHaveBeenCalled()
     })
