@@ -44,9 +44,8 @@ describe('checkbox list component', () => {
 
   it('renders select-all checkbox', () => {
     render(<CheckboxList options={options} showSelectAll />)
-
-    const checkboxes = screen.getAllByTestId('checkbox-undefined')
-    expect(checkboxes.length).toBe(5)
+    const checkboxes = screen.getByTestId('checkbox-selectAll')
+    expect(checkboxes).toBeInTheDocument()
   })
 
   it('selects all options when select-all is clicked', async () => {
@@ -61,7 +60,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectAll = screen.getAllByTestId('checkbox-undefined')[0]
+    const selectAll = screen.getByTestId('checkbox-selectAll')
     await userEvent.click(selectAll)
 
     expect(onChange).toHaveBeenCalledWith(['option1', 'option2', 'option3', 'apple'])
@@ -80,7 +79,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectAll = screen.getAllByTestId('checkbox-undefined')[0]
+    const selectAll = screen.getByTestId('checkbox-selectAll')
     await userEvent.click(selectAll)
 
     expect(onChange).not.toHaveBeenCalled()
@@ -98,7 +97,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectAll = screen.getAllByTestId('checkbox-undefined')[0]
+    const selectAll = screen.getByTestId('checkbox-selectAll')
     await userEvent.click(selectAll)
 
     expect(onChange).toHaveBeenCalledWith([])
@@ -116,14 +115,14 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectAll = screen.getAllByTestId('checkbox-undefined')[0]
-    expect(selectAll.querySelector('[data-testid="check-icon-undefined"]')).toBeInTheDocument()
+    const selectAll = screen.getByTestId('checkbox-selectAll')
+    expect(selectAll.querySelector('[data-testid="check-icon-selectAll"]')).toBeInTheDocument()
   })
 
   it('hides select-all checkbox when searching', async () => {
     render(<CheckboxList options={options} />)
     await userEvent.type(screen.getByRole('textbox'), 'app')
-    expect(screen.getAllByTestId('checkbox-undefined').length).toBe(1)
+    expect(screen.queryByTestId('checkbox-selectAll')).not.toBeInTheDocument()
   })
 
   it('selects options when checkbox is clicked', async () => {
@@ -138,7 +137,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectOption = screen.getAllByTestId('checkbox-undefined')[0]
+    const selectOption = screen.getByTestId('checkbox-option1')
     await userEvent.click(selectOption)
     expect(onChange).toHaveBeenCalledWith(['option1'])
   })
@@ -155,7 +154,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectOption = screen.getAllByTestId('checkbox-undefined')[0]
+    const selectOption = screen.getByTestId('checkbox-option1')
     await userEvent.click(selectOption)
     expect(onChange).toHaveBeenCalledWith([])
   })
@@ -172,7 +171,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const selectOption = screen.getAllByTestId('checkbox-undefined')[0]
+    const selectOption = screen.getByTestId('checkbox-option1')
     await userEvent.click(selectOption)
     expect(onChange).not.toHaveBeenCalled()
   })
