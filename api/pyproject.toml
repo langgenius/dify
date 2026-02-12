@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.12.1"
+version = "1.13.0"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -23,7 +23,7 @@ dependencies = [
     "gevent~=25.9.1",
     "gmpy2~=2.2.1",
     "google-api-core==2.18.0",
-    "google-api-python-client==2.90.0",
+    "google-api-python-client==2.189.0",
     "google-auth==2.29.0",
     "google-auth-httplib2==0.2.0",
     "google-cloud-aiplatform==1.49.0",

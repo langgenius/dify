@@ -1,0 +1,19 @@
+{
+  "connect": "Connect to",
+  "continue": "Continue",
+  "error.authAppInfoFetchFailed": "Failed to fetch app info for authorization",
+  "error.authorizeFailed": "Authorization failed",
+  "error.invalidParams": "Invalid parameters",
+  "login": "Login",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Language Preference",
+  "scopes.name": "Name",
+  "scopes.timezone": "Timezone",
+  "switchAccount": "Switch Account",
+  "tips.common": "We respect your privacy and will only use this information to enhance your experience with our developer tools.",
+  "tips.loggedIn": "This app wants to access the following information from your Dify Cloud account.",
+  "tips.needLogin": "Please log in to authorize",
+  "tips.notLoggedIn": "This app wants to access your Dify Cloud account",
+  "unknownApp": "Unknown App"
+}

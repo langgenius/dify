@@ -119,7 +119,7 @@ class RedisClientWrapper:
 
 
 redis_client: RedisClientWrapper = RedisClientWrapper()
-pubsub_redis_client: RedisClientWrapper = RedisClientWrapper()
+_pubsub_redis_client: redis.Redis | RedisCluster | None = None
 
 
 def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
@@ -232,7 +232,7 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
     return client
 
 
-def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> Union[redis.Redis, RedisCluster]:
+def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | RedisCluster:
     if use_clusters:
         return RedisCluster.from_url(pubsub_url)
     return redis.Redis.from_url(pubsub_url)
@@ -256,23 +256,19 @@ def init_app(app: DifyApp):
     redis_client.initialize(client)
     app.extensions["redis"] = redis_client
 
-    pubsub_client = client
+    global _pubsub_redis_client
+    _pubsub_redis_client = client
     if dify_config.normalized_pubsub_redis_url:
-        pubsub_client = _create_pubsub_client(
+        _pubsub_redis_client = _create_pubsub_client(
             dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
         )
-    pubsub_redis_client.initialize(pubsub_client)
-
-
-def get_pubsub_redis_client() -> RedisClientWrapper:
-    return pubsub_redis_client
 
 
 def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
-    redis_conn = get_pubsub_redis_client()
+    assert _pubsub_redis_client is not None, "PubSub redis Client should be initialized here."
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "sharded":
-        return ShardedRedisBroadcastChannel(redis_conn)  # pyright: ignore[reportArgumentType]
-    return RedisBroadcastChannel(redis_conn)  # pyright: ignore[reportArgumentType]
+        return ShardedRedisBroadcastChannel(_pubsub_redis_client)
+    return RedisBroadcastChannel(_pubsub_redis_client)
 
 
 P = ParamSpec("P")
