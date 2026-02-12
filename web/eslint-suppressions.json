@@ -4102,11 +4102,6 @@
       "count": 1
     }
   },
-  "app/components/explore/app-card/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/explore/app-card/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -6201,9 +6196,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 11
     }
