@@ -744,33 +744,53 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def post(self, app_model):
-        """Bundle the app DSL and upload to Creators Platform, returning a redirect URL."""
+        """Export the app DSL and upload to Creators Platform, returning a redirect URL.
+
+        Classic apps export as YAML; sandboxed apps export as ZIP bundle.
+        """
         import httpx
 
         from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
         from services.app_bundle_service import AppBundleService
+        from services.workflow_service import WorkflowService
 
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
             return {"message": "Creators Platform is not enabled"}, 403
 
         current_user, _ = current_account_with_tenant()
 
-        # 1. Export the app bundle (DSL + assets) to a temporary zip
-        bundle_result = AppBundleService.export_bundle(
-            app_model=app_model,
-            account_id=str(current_user.id),
-            include_secret=False,
-        )
+        # Determine if the app is sandboxed by checking the draft workflow's sandbox feature
+        is_sandboxed = False
+        if app_model.mode in {"workflow", "advanced-chat"}:
+            draft_workflow = WorkflowService().get_draft_workflow(app_model)
+            if draft_workflow and draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
+                is_sandboxed = True
 
-        # 2. Download the zip from the temporary URL
-        download_response = httpx.get(bundle_result.download_url, timeout=60, follow_redirects=True)
-        download_response.raise_for_status()
+        if is_sandboxed:
+            # Sandboxed app: export as ZIP bundle
+            bundle_result = AppBundleService.export_bundle(
+                app_model=app_model,
+                account_id=str(current_user.id),
+                include_secret=False,
+            )
+            download_response = httpx.get(bundle_result.download_url, timeout=60, follow_redirects=True)
+            download_response.raise_for_status()
+            file_bytes = download_response.content
+            filename = bundle_result.filename
+        else:
+            # Classic app: export as YAML
+            dsl_content = AppDslService.export_dsl(
+                app_model=app_model,
+                include_secret=False,
+            )
+            file_bytes = dsl_content.encode("utf-8")
+            filename = f"{app_model.name}.yml"
 
-        # 3. Upload to Creators Platform
-        claim_code = upload_dsl(download_response.content, filename=bundle_result.filename)
+        # Upload to Creators Platform
+        claim_code = upload_dsl(file_bytes, filename=filename)
 
-        # 4. Generate redirect URL (with optional OAuth code)
+        # Generate redirect URL (with optional OAuth code)
         redirect_url = get_redirect_url(str(current_user.id), claim_code)
 
         return {"redirect_url": redirect_url}
