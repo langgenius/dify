@@ -49,3 +49,38 @@ class OceanBaseVectorConfig(BaseSettings):
         ),
         default="ik",
     )
+
+    OCEANBASE_VECTOR_BATCH_SIZE: PositiveInt = Field(
+        description="Number of documents to insert per batch",
+        default=100,
+    )
+
+    OCEANBASE_VECTOR_METRIC_TYPE: str = Field(
+        description="Distance metric type for vector index: l2, cosine, or inner_product",
+        default="l2",
+    )
+
+    OCEANBASE_HNSW_M: PositiveInt = Field(
+        description="HNSW M parameter (max number of connections per node)",
+        default=16,
+    )
+
+    OCEANBASE_HNSW_EF_CONSTRUCTION: PositiveInt = Field(
+        description="HNSW efConstruction parameter (index build-time search width)",
+        default=256,
+    )
+
+    OCEANBASE_HNSW_EF_SEARCH: int = Field(
+        description="HNSW efSearch parameter (query-time search width, -1 uses server default)",
+        default=-1,
+    )
+
+    OCEANBASE_VECTOR_POOL_SIZE: PositiveInt = Field(
+        description="SQLAlchemy connection pool size",
+        default=5,
+    )
+
+    OCEANBASE_VECTOR_MAX_OVERFLOW: int = Field(
+        description="SQLAlchemy connection pool max overflow connections",
+        default=10,
+    )
