@@ -6,6 +6,7 @@
  */
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -13,13 +14,18 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-// Use string literals inside vi.hoisted to avoid import-before-init
-// BlockEnum.DataSource = 'datasource', BlockEnum.KnowledgeBase = 'knowledge-base'
-const mockNodes = vi.hoisted(() => [
+// Mutable holder so mock data can reference BlockEnum after imports
+const mockNodesHolder = vi.hoisted(() => ({ value: [] as Record<string, unknown>[] }))
+
+vi.mock('reactflow', () => ({
+  useNodes: () => mockNodesHolder.value,
+}))
+
+mockNodesHolder.value = [
   {
     id: 'ds-1',
     data: {
-      type: 'datasource',
+      type: BlockEnum.DataSource,
       title: 'Local Files',
       datasource_type: 'upload_file',
       datasource_configurations: { datasource_label: 'Upload', upload_file_config: {} },
@@ -28,7 +34,7 @@ const mockNodes = vi.hoisted(() => [
   {
     id: 'ds-2',
     data: {
-      type: 'datasource',
+      type: BlockEnum.DataSource,
       title: 'Web Crawl',
       datasource_type: 'website_crawl',
       datasource_configurations: { datasource_label: 'Crawl' },
@@ -37,15 +43,11 @@ const mockNodes = vi.hoisted(() => [
   {
     id: 'kb-1',
     data: {
-      type: 'knowledge-base',
+      type: BlockEnum.KnowledgeBase,
       title: 'Knowledge Base',
     },
   },
-])
-
-vi.mock('reactflow', () => ({
-  useNodes: () => mockNodes,
-}))
+]
 
 // Mock the Zustand store used by the hooks
 const mockSetDocumentsData = vi.fn()
@@ -84,13 +86,6 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
       setSelectedFileIds: mockSetSelectedFileIds,
     }),
   }),
-}))
-
-vi.mock('@/app/components/rag-pipeline/components/panel/test-run/types', () => ({
-  TestRunStep: {
-    dataSource: 'data_source',
-    documentProcessing: 'document_processing',
-  },
 }))
 
 vi.mock('@/models/datasets', () => ({
@@ -144,8 +139,8 @@ describe('Test Run Flow Integration', () => {
       const { result } = renderHook(() => useTestRunSteps())
 
       expect(result.current.steps).toHaveLength(2)
-      expect(result.current.steps[0].value).toBe('data_source')
-      expect(result.current.steps[1].value).toBe('document_processing')
+      expect(result.current.steps[0].value).toBe('dataSource')
+      expect(result.current.steps[1].value).toBe('documentProcessing')
     })
   })
 
@@ -169,7 +164,7 @@ describe('Test Run Flow Integration', () => {
       const { result } = renderHook(() => useDatasourceOptions())
 
       expect(result.current[0].label).toBe('Local Files')
-      expect(result.current[0].data.type).toBe('datasource')
+      expect(result.current[0].data.type).toBe(BlockEnum.DataSource)
     })
   })
 

@@ -17,11 +17,16 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
   }),
 }))
 
-vi.mock('@/app/components/workflow/types', () => ({
-  BlockEnum: {
-    DataSource: 'data-source',
-  },
-}))
+vi.mock('@/app/components/workflow/types', async () => {
+  const actual = await vi.importActual<typeof import('@/app/components/workflow/types')>('@/app/components/workflow/types')
+  return {
+    ...actual,
+    BlockEnum: {
+      ...actual.BlockEnum,
+      DataSource: 'data-source',
+    },
+  }
+})
 
 vi.mock('../../types', () => ({
   TestRunStep: {
