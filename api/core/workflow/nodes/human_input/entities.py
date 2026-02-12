@@ -3,6 +3,7 @@ Human Input node entities.
 """
 
 import re
+from html import escape
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
@@ -57,6 +58,7 @@ class EmailDeliveryConfig(BaseModel):
     """Configuration for email delivery method."""
 
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+    _HTML_TAG_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]*\\b[^>]*>")
 
     recipients: EmailRecipients
 
@@ -93,9 +95,20 @@ class EmailDeliveryConfig(BaseModel):
     ) -> str:
         """Render email body by replacing placeholders with runtime values."""
         templated_body = cls.replace_url_placeholder(body, url)
-        if variable_pool is None:
-            return templated_body
-        return variable_pool.convert_template(templated_body).text
+        rendered_body = templated_body if variable_pool is None else variable_pool.convert_template(templated_body).text
+        if cls._should_preserve_html(rendered_body):
+            return rendered_body
+        escaped_body = escape(rendered_body, quote=False)
+        return cls._convert_newlines_to_br(escaped_body)
+
+    @classmethod
+    def _should_preserve_html(cls, body: str) -> bool:
+        return cls._HTML_TAG_PATTERN.search(body) is not None
+
+    @staticmethod
+    def _convert_newlines_to_br(body: str) -> str:
+        normalized = body.replace("\r\n", "\n").replace("\r", "\n")
+        return normalized.replace("\n", "<br>")
 
 
 class _DeliveryMethodBase(BaseModel):
