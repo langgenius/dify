@@ -436,48 +436,19 @@ class LLMNode(Node[LLMNodeData]):
                     if tool.enabled
                 ]
 
-            # Unified outputs building
-            outputs = {
-                "text": clean_text,
-                "reasoning_content": reasoning_content,
-                "usage": jsonable_encoder(usage),
-                "finish_reason": finish_reason,
-                "context": llm_utils.build_context(prompt_messages, clean_text, generation_data),
-            }
-
-            # Build generation field
-            if generation_data:
-                # Use generation_data from tool invocation (supports multi-turn)
-                generation = {
-                    "content": generation_data.text,
-                    "reasoning_content": generation_data.reasoning_contents,  # [thought1, thought2, ...]
-                    "tool_calls": [self._serialize_tool_call(item) for item in generation_data.tool_calls],
-                    "sequence": generation_data.sequence,
-                }
-                files_to_output = generation_data.files
-            else:
-                # Traditional LLM invocation
-                generation_reasoning = generation_reasoning_content or reasoning_content
-                generation_content = generation_clean_content or clean_text
-                sequence: list[dict[str, Any]] = []
-                if generation_reasoning:
-                    sequence = [
-                        {"type": "reasoning", "index": 0},
-                        {"type": "content", "start": 0, "end": len(generation_content)},
-                    ]
-                generation = {
-                    "content": generation_content,
-                    "reasoning_content": [generation_reasoning] if generation_reasoning else [],
-                    "tool_calls": [],
-                    "sequence": sequence,
-                }
-                files_to_output = self._file_outputs
-
-            outputs["generation"] = generation
-            if files_to_output:
-                outputs["files"] = ArrayFileSegment(value=files_to_output)
-            if structured_output:
-                outputs["structured_output"] = structured_output.structured_output
+            is_sandbox = self.graph_runtime_state.sandbox is not None
+            outputs = self._build_outputs(
+                is_sandbox=is_sandbox,
+                clean_text=clean_text,
+                reasoning_content=reasoning_content,
+                generation_reasoning_content=generation_reasoning_content,
+                generation_clean_content=generation_clean_content,
+                usage=usage,
+                finish_reason=finish_reason,
+                prompt_messages=prompt_messages,
+                generation_data=generation_data,
+                structured_output=structured_output,
+            )
 
             # Send final chunk event to indicate streaming is complete
             # For tool calls and sandbox, final events are already sent in _process_tool_outputs
@@ -542,6 +513,95 @@ class LLMNode(Node[LLMNodeData]):
                     llm_usage=usage,
                 )
             )
+
+    def _build_outputs(
+        self,
+        *,
+        is_sandbox: bool,
+        clean_text: str,
+        reasoning_content: str,
+        generation_reasoning_content: str,
+        generation_clean_content: str,
+        usage: LLMUsage,
+        finish_reason: str | None,
+        prompt_messages: Sequence[PromptMessage],
+        generation_data: LLMGenerationData | None,
+        structured_output: LLMStructuredOutput | None,
+    ) -> dict[str, Any]:
+        """Build the outputs dictionary for the LLM node.
+
+        Two runtime modes produce different output shapes:
+        - **Classical** (is_sandbox=False): top-level ``text`` and ``reasoning_content``
+          are preserved for backward compatibility with existing users.
+        - **Sandbox** (is_sandbox=True): ``text`` and ``reasoning_content`` are omitted
+          from the top level because they duplicate fields inside ``generation``.
+
+        The ``generation`` field always carries the full structured representation
+        (content, reasoning, tool_calls, sequence) regardless of runtime mode.
+
+        Args:
+            is_sandbox: Whether the current runtime is sandbox mode.
+            clean_text: Processed text for outputs["text"]; may keep <think> tags for "tagged" format.
+            reasoning_content: Native model reasoning from the API response.
+            generation_reasoning_content: Reasoning for the generation field, extracted from <think>
+                tags via _split_reasoning (always tag-free). Falls back to reasoning_content
+                if empty (no <think> tags found).
+            generation_clean_content: Clean text for the generation field (always tag-free).
+                Differs from clean_text only when reasoning_format is "tagged".
+            usage: LLM usage statistics.
+            finish_reason: Finish reason from LLM.
+            prompt_messages: Prompt messages sent to the LLM.
+            generation_data: Multi-turn generation data from tool/sandbox invocation, or None.
+            structured_output: Structured output if enabled.
+        """
+        # Common outputs shared by both runtimes
+        outputs: dict[str, Any] = {
+            "usage": jsonable_encoder(usage),
+            "finish_reason": finish_reason,
+            "context": llm_utils.build_context(prompt_messages, clean_text, generation_data),
+        }
+
+        # Classical runtime keeps top-level text/reasoning_content for backward compatibility
+        if not is_sandbox:
+            outputs["text"] = clean_text
+            outputs["reasoning_content"] = reasoning_content
+
+        # Build generation field
+        if generation_data:
+            # Agent/sandbox runtime: generation_data captures multi-turn interactions
+            generation = {
+                "content": generation_data.text,
+                "reasoning_content": generation_data.reasoning_contents,  # [thought1, thought2, ...]
+                "tool_calls": [self._serialize_tool_call(item) for item in generation_data.tool_calls],
+                "sequence": generation_data.sequence,
+            }
+            files_to_output = generation_data.files
+        else:
+            # Classical runtime: use pre-computed generation-specific text pair,
+            # falling back to native model reasoning if no <think> tags were found.
+            generation_reasoning = generation_reasoning_content or reasoning_content
+            generation_content = generation_clean_content or clean_text
+            sequence: list[dict[str, Any]] = []
+            if generation_reasoning:
+                sequence = [
+                    {"type": "reasoning", "index": 0},
+                    {"type": "content", "start": 0, "end": len(generation_content)},
+                ]
+            generation = {
+                "content": generation_content,
+                "reasoning_content": [generation_reasoning] if generation_reasoning else [],
+                "tool_calls": [],
+                "sequence": sequence,
+            }
+            files_to_output = self._file_outputs
+
+        outputs["generation"] = generation
+        if files_to_output:
+            outputs["files"] = ArrayFileSegment(value=files_to_output)
+        if structured_output:
+            outputs["structured_output"] = structured_output.structured_output
+
+        return outputs
 
     @staticmethod
     def invoke_llm(
@@ -1865,19 +1925,25 @@ class LLMNode(Node[LLMNodeData]):
         NodeEventBase,
         None,
         tuple[
-            str,
-            str,
-            str,
-            str,
+            str,  # clean_text: processed text for outputs["text"]
+            str,  # reasoning_content: native model reasoning
+            str,  # generation_reasoning_content: reasoning for generation field (from <think> tags)
+            str,  # generation_clean_content: clean text for generation field (always tag-free)
             LLMUsage,
             str | None,
             LLMStructuredOutput | None,
             LLMGenerationData | None,
         ],
     ]:
-        """
-        Stream events and capture generator return value in one place.
+        """Stream events and capture generator return value in one place.
+
         Uses generator delegation so _run stays concise while still emitting events.
+
+        Returns two pairs of text fields because outputs["text"] and generation["content"]
+        may differ when reasoning_format is "tagged":
+        - clean_text / reasoning_content: for top-level outputs (may keep <think> tags)
+        - generation_clean_content / generation_reasoning_content: for the generation field
+          (always tag-free, extracted via _split_reasoning with "separated" mode)
         """
         clean_text = ""
         reasoning_content = ""
