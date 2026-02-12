@@ -91,9 +91,9 @@ describe('AccountAbout', () => {
   })
 
   it('renders branding logo if enabled', () => {
-    vi.mocked(useGlobalPublicStore).mockReturnValue({
-      branding: { enabled: true, workspace_logo: 'custom-logo.png' },
-    } as unknown as SystemFeatures)
+    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
+      systemFeatures: { branding: { enabled: true, workspace_logo: 'custom-logo.png' } },
+    } as unknown as GlobalPublicStore))
     render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
     const img = screen.getByAltText('logo')
     expect(img).toBeDefined()
