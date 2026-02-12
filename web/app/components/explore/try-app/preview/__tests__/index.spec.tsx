@@ -1,9 +1,9 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import Preview from './index'
+import Preview from '../index'
 
-vi.mock('./basic-app-preview', () => ({
+vi.mock('../basic-app-preview', () => ({
   default: ({ appId }: { appId: string }) => (
     <div data-testid="basic-app-preview" data-app-id={appId}>
       BasicAppPreview
@@ -11,7 +11,7 @@ vi.mock('./basic-app-preview', () => ({
   ),
 }))
 
-vi.mock('./flow-app-preview', () => ({
+vi.mock('../flow-app-preview', () => ({
   default: ({ appId, className }: { appId: string, className?: string }) => (
     <div data-testid="flow-app-preview" data-app-id={appId} className={className}>
       FlowAppPreview

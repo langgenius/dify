@@ -1,19 +1,7 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import TryApp from './chat'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'chat.resetChat': 'Reset Chat',
-        'tryApp.tryInfo': 'This is try mode info',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
+import TryApp from '../chat'
 
 const mockRemoveConversationIdInfo = vi.fn()
 const mockHandleNewConversation = vi.fn()
@@ -31,7 +19,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('../../../base/chat/embedded-chatbot/theme/theme-context', () => ({
+vi.mock('../../../../base/chat/embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: () => ({
     primaryColor: '#1890ff',
   }),
@@ -146,7 +134,7 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      expect(screen.getByText('This is try mode info')).toBeInTheDocument()
+      expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
     })
 
     it('applies className prop', () => {
@@ -160,7 +148,6 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      // The component wraps with EmbeddedChatbotContext.Provider, first child is the div with className
       const innerDiv = container.querySelector('.custom-class')
       expect(innerDiv).toBeInTheDocument()
     })
@@ -185,7 +172,6 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      // Reset button should not be present
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
 
@@ -207,7 +193,6 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      // Should have a button (the reset button)
       expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
@@ -313,14 +298,12 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      // Find and click the hide button on the alert
-      const alertElement = screen.getByText('This is try mode info').closest('[class*="alert"]')?.parentElement
+      const alertElement = screen.getByText('explore.tryApp.tryInfo').closest('[class*="alert"]')?.parentElement
       const hideButton = alertElement?.querySelector('button, [role="button"], svg')
 
       if (hideButton) {
         fireEvent.click(hideButton)
-        // After hiding, the alert should not be visible
-        expect(screen.queryByText('This is try mode info')).not.toBeInTheDocument()
+        expect(screen.queryByText('explore.tryApp.tryInfo')).not.toBeInTheDocument()
       }
     })
   })

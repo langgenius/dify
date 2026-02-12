@@ -1,7 +1,7 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import useGetRequirements from './use-get-requirements'
+import useGetRequirements from '../use-get-requirements'
 
 const mockUseGetTryAppFlowPreview = vi.fn()
 
@@ -165,7 +165,6 @@ describe('useGetRequirements', () => {
         useGetRequirements({ appDetail, appId: 'test-app-id' }),
       )
 
-      // Only model provider should be included, no disabled tools
       expect(result.current.requirements).toHaveLength(1)
       expect(result.current.requirements[0].name).toBe('openai')
     })

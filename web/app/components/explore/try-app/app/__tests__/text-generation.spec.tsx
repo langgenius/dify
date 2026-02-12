@@ -1,18 +1,7 @@
 import type { AppData } from '@/models/share'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import TextGeneration from './text-generation'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'tryApp.tryInfo': 'This is a try app notice',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
+import TextGeneration from '../text-generation'
 
 const mockUpdateAppInfo = vi.fn()
 const mockUpdateAppParams = vi.fn()
@@ -156,7 +145,6 @@ describe('TextGeneration', () => {
       )
 
       await waitFor(() => {
-        // Multiple elements may have the title (header and RunOnce mock)
         const titles = screen.getAllByText('Test App Title')
         expect(titles.length).toBeGreaterThan(0)
       })
@@ -275,7 +263,6 @@ describe('TextGeneration', () => {
 
       fireEvent.click(screen.getByTestId('send-button'))
 
-      // The send should work without errors
       expect(screen.getByTestId('result-component')).toBeInTheDocument()
     })
   })
@@ -298,7 +285,7 @@ describe('TextGeneration', () => {
       fireEvent.click(screen.getByTestId('complete-button'))
 
       await waitFor(() => {
-        expect(screen.getByText('This is a try app notice')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
       })
     })
   })
@@ -384,7 +371,6 @@ describe('TextGeneration', () => {
 
       fireEvent.click(screen.getByTestId('run-start-button'))
 
-      // Result panel should remain visible
       expect(screen.getByTestId('result-component')).toBeInTheDocument()
     })
   })
@@ -404,10 +390,8 @@ describe('TextGeneration', () => {
         expect(screen.getByTestId('inputs-change-button')).toBeInTheDocument()
       })
 
-      // Trigger input change which should call setInputs callback
       fireEvent.click(screen.getByTestId('inputs-change-button'))
 
-      // The component should handle the input change without errors
       expect(screen.getByTestId('run-once')).toBeInTheDocument()
     })
   })
@@ -425,7 +409,6 @@ describe('TextGeneration', () => {
       )
 
       await waitFor(() => {
-        // Mobile toggle panel should be rendered
         const togglePanel = container.querySelector('.cursor-grab')
         expect(togglePanel).toBeInTheDocument()
       })
@@ -447,13 +430,11 @@ describe('TextGeneration', () => {
         expect(togglePanel).toBeInTheDocument()
       })
 
-      // Click to show result panel
       const toggleParent = container.querySelector('.cursor-grab')?.parentElement
       if (toggleParent) {
         fireEvent.click(toggleParent)
       }
 
-      // Click again to hide result panel
       await waitFor(() => {
         const newToggleParent = container.querySelector('.cursor-grab')?.parentElement
         if (newToggleParent) {
@@ -461,7 +442,6 @@ describe('TextGeneration', () => {
         }
       })
 
-      // Component should handle both show and hide without errors
       expect(screen.getByTestId('result-component')).toBeInTheDocument()
     })
   })

@@ -1,20 +1,8 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import TryApp from './index'
-import { TypeEnum } from './tab'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'tryApp.tabHeader.try': 'Try',
-        'tryApp.tabHeader.detail': 'Detail',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
+import TryApp from '../index'
+import { TypeEnum } from '../tab'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal() as object
@@ -30,7 +18,7 @@ vi.mock('@/service/use-try-app', () => ({
   useGetTryAppInfo: (...args: unknown[]) => mockUseGetTryAppInfo(...args),
 }))
 
-vi.mock('./app', () => ({
+vi.mock('../app', () => ({
   default: ({ appId, appDetail }: { appId: string, appDetail: TryAppInfo }) => (
     <div data-testid="app-component" data-app-id={appId} data-mode={appDetail?.mode}>
       App Component
@@ -38,7 +26,7 @@ vi.mock('./app', () => ({
   ),
 }))
 
-vi.mock('./preview', () => ({
+vi.mock('../preview', () => ({
   default: ({ appId, appDetail }: { appId: string, appDetail: TryAppInfo }) => (
     <div data-testid="preview-component" data-app-id={appId} data-mode={appDetail?.mode}>
       Preview Component
@@ -46,7 +34,7 @@ vi.mock('./preview', () => ({
   ),
 }))
 
-vi.mock('./app-info', () => ({
+vi.mock('../app-info', () => ({
   default: ({
     appId,
     appDetail,
@@ -141,8 +129,8 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Try')).toBeInTheDocument()
-        expect(screen.getByText('Detail')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tabHeader.try')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
       })
     })
 
@@ -185,7 +173,6 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        // Find the close button (the one with RiCloseLine icon)
         const buttons = document.body.querySelectorAll('button')
         expect(buttons.length).toBeGreaterThan(0)
       })
@@ -203,10 +190,10 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Detail')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('Detail'))
+      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.detail'))
 
       await waitFor(() => {
         expect(document.body.querySelector('[data-testid="preview-component"]')).toBeInTheDocument()
@@ -224,18 +211,16 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Detail')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
       })
 
-      // First switch to Detail
-      fireEvent.click(screen.getByText('Detail'))
+      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.detail'))
 
       await waitFor(() => {
         expect(document.body.querySelector('[data-testid="preview-component"]')).toBeInTheDocument()
       })
 
-      // Then switch back to Try
-      fireEvent.click(screen.getByText('Try'))
+      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.try'))
 
       await waitFor(() => {
         expect(document.body.querySelector('[data-testid="app-component"]')).toBeInTheDocument()
@@ -256,7 +241,6 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        // Find the button with close icon
         const buttons = document.body.querySelectorAll('button')
         const closeButton = Array.from(buttons).find(btn =>
           btn.querySelector('svg') || btn.className.includes('rounded-[10px]'),
@@ -368,10 +352,10 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Detail')).toBeInTheDocument()
+        expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('Detail'))
+      fireEvent.click(screen.getByText('explore.tryApp.tabHeader.detail'))
 
       await waitFor(() => {
         const previewComponent = document.body.querySelector('[data-testid="preview-component"]')

@@ -1,19 +1,13 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import TryApp from './index'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+import TryApp from '../index'
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('./chat', () => ({
+vi.mock('../chat', () => ({
   default: ({ appId, appDetail, className }: { appId: string, appDetail: TryAppInfo, className: string }) => (
     <div data-testid="chat-component" data-app-id={appId} data-mode={appDetail.mode} className={className}>
       Chat Component
@@ -21,7 +15,7 @@ vi.mock('./chat', () => ({
   ),
 }))
 
-vi.mock('./text-generation', () => ({
+vi.mock('../text-generation', () => ({
   default: ({
     appId,
     className,

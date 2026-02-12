@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import FlowAppPreview from './flow-app-preview'
+import FlowAppPreview from '../flow-app-preview'
 
 const mockUseGetTryAppFlowPreview = vi.fn()
 
