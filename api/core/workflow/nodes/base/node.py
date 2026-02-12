@@ -299,7 +299,7 @@ class Node(Generic[NodeDataT]):
         return str(execution_id)
 
     def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
-        return cast(NodeDataT, self._node_data_type.model_validate(data))
+        return self._node_data_type.model_validate(data)
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:

@@ -144,7 +144,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
             return KnowledgeRetrievalNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 rag_retrieval=self._rag_retrieval,

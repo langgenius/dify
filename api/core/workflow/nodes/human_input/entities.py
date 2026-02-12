@@ -11,7 +11,6 @@ from typing import Annotated, Any, ClassVar, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.variables.consts import SELECTORS_LENGTH
-from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
@@ -346,9 +345,6 @@ def validate_human_input_submission(
         if form_input.output_variable_name not in provided_inputs
     ]
 
-    type: NodeType = NodeType.HUMAN_INPUT
-    required_variables: list[str] = Field(default_factory=list)
-    pause_reason: str | None = Field(default=None)
     if missing_inputs:
         missing_list = ", ".join(missing_inputs)
         raise HumanInputSubmissionValidationError(f"Missing required inputs: {missing_list}")

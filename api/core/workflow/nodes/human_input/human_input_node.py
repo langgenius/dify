@@ -15,6 +15,7 @@ from core.workflow.node_events import (
 )
 from core.workflow.node_events.base import NodeEventBase
 from core.workflow.node_events.node import StreamCompletedEvent
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.nodes.base.node import Node
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
@@ -64,7 +65,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: dict[str, Any] | NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         form_repository: HumanInputFormRepository | None = None,
@@ -342,7 +343,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: HumanInputNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selectors referenced in form content and input default values.
@@ -351,5 +352,4 @@ class HumanInputNode(Node[HumanInputNodeData]):
         1. Variables referenced in form_content ({{#node_name.var_name#}})
         2. Variables referenced in input default values
         """
-        validated_node_data = HumanInputNodeData.model_validate(node_data)
-        return validated_node_data.extract_variable_selector_to_variable_mapping(node_id)
+        return node_data.extract_variable_selector_to_variable_mapping(node_id)
