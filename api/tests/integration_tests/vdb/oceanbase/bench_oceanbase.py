@@ -44,7 +44,7 @@ def _make_client(**extra):
 
 
 def _rand_vec():
-    return [random.uniform(-1, 1) for _ in range(VEC_DIM)]
+    return [random.uniform(-1, 1) for _ in range(VEC_DIM)]  # noqa: S311
 
 
 def _drop(client, table):
@@ -112,9 +112,7 @@ def bench_metadata_query(client, table, doc_id, with_index=False):
     """Query by metadata->>'$.document_id' with/without functional index."""
     if with_index:
         try:
-            client.perform_raw_text_sql(
-                f"CREATE INDEX idx_metadata_doc_id ON `{table}` ((metadata->>'$.document_id'))"
-            )
+            client.perform_raw_text_sql(f"CREATE INDEX idx_metadata_doc_id ON `{table}` ((metadata->>'$.document_id'))")
         except Exception:
             pass  # already exists
 
@@ -205,7 +203,7 @@ def main():
         res = conn.execute(text(f"SELECT metadata->>'$.document_id' FROM `{tbl_meta}` LIMIT 1"))
         doc_id_1000 = res.fetchone()[0]
 
-    print(f"\n[Metadata filter query — 1000 rows, by document_id]")
+    print("\n[Metadata filter query — 1000 rows, by document_id]")
     times_no_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=False)
     print(f"  Without index : {_fmt(times_no_idx)}")
     times_with_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=True)
@@ -214,7 +212,7 @@ def main():
     # ------------------------------------------------------------------
     # 3. Vector search benchmark — across metrics
     # ------------------------------------------------------------------
-    print(f"\n[Vector search — top-10, 20 queries each, on 1000 rows]")
+    print("\n[Vector search — top-10, 20 queries each, on 1000 rows]")
 
     for metric in ["l2", "cosine", "inner_product"]:
         tbl_vs = f"bench_vs_{metric}"

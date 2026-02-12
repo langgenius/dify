@@ -1,11 +1,13 @@
 import json
 import logging
-from typing import Any
+import re
+from typing import Any, Literal
 
 from pydantic import BaseModel, model_validator
 from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance  # type: ignore
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -19,6 +21,7 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 OCEANBASE_SUPPORTED_VECTOR_INDEX_TYPE = "HNSW"
+_VALID_TABLE_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 
 _DISTANCE_FUNC_MAP = {
     "l2": l2_distance,
@@ -35,12 +38,13 @@ class OceanBaseVectorConfig(BaseModel):
     database: str
     enable_hybrid_search: bool = False
     batch_size: int = 100
-    metric_type: str = "l2"
+    metric_type: Literal["l2", "cosine", "inner_product"] = "l2"
     hnsw_m: int = 16
     hnsw_ef_construction: int = 256
     hnsw_ef_search: int = -1
     pool_size: int = 5
     max_overflow: int = 10
+    hnsw_refresh_threshold: int = 1000
 
     @model_validator(mode="before")
     @classmethod
@@ -58,6 +62,11 @@ class OceanBaseVectorConfig(BaseModel):
 
 class OceanBaseVector(BaseVector):
     def __init__(self, collection_name: str, config: OceanBaseVectorConfig):
+        if not _VALID_TABLE_NAME_RE.match(collection_name):
+            raise ValueError(
+                f"Invalid collection name '{collection_name}': "
+                "only alphanumeric characters and underscores are allowed."
+            )
         super().__init__(collection_name)
         self._config = config
         self._hnsw_ef_search = self._config.hnsw_ef_search
@@ -195,7 +204,7 @@ class OceanBaseVector(BaseVector):
                 self._client.perform_raw_text_sql(
                     f"CREATE INDEX idx_metadata_doc_id ON `{self._collection_name}` ((metadata->>'$.document_id'))"
                 )
-            except Exception:
+            except SQLAlchemyError:
                 logger.warning(
                     "Failed to create metadata functional index on '%s'; metadata queries may be slow without it.",
                     self._collection_name,
@@ -259,13 +268,13 @@ class OceanBaseVector(BaseVector):
                     f"Failed to insert batch [{start}:{start + len(batch)}] into collection '{self._collection_name}'"
                 ) from e
 
-        if total >= 1000:
+        if self._config.hnsw_refresh_threshold > 0 and total >= self._config.hnsw_refresh_threshold:
             try:
                 self._client.refresh_index(
                     table_name=self._collection_name,
                     index_name="vector_index",
                 )
-            except Exception:
+            except SQLAlchemyError:
                 logger.warning(
                     "Failed to refresh HNSW index after inserting %d documents into '%s'",
                     total,
@@ -536,5 +545,6 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
                 hnsw_ef_search=dify_config.OCEANBASE_HNSW_EF_SEARCH,
                 pool_size=dify_config.OCEANBASE_VECTOR_POOL_SIZE,
                 max_overflow=dify_config.OCEANBASE_VECTOR_MAX_OVERFLOW,
+                hnsw_refresh_threshold=dify_config.OCEANBASE_HNSW_REFRESH_THRESHOLD,
             ),
         )

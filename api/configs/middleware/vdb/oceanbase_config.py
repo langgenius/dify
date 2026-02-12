@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings
 
@@ -55,7 +57,7 @@ class OceanBaseVectorConfig(BaseSettings):
         default=100,
     )
 
-    OCEANBASE_VECTOR_METRIC_TYPE: str = Field(
+    OCEANBASE_VECTOR_METRIC_TYPE: Literal["l2", "cosine", "inner_product"] = Field(
         description="Distance metric type for vector index: l2, cosine, or inner_product",
         default="l2",
     )
@@ -83,4 +85,9 @@ class OceanBaseVectorConfig(BaseSettings):
     OCEANBASE_VECTOR_MAX_OVERFLOW: int = Field(
         description="SQLAlchemy connection pool max overflow connections",
         default=10,
+    )
+
+    OCEANBASE_HNSW_REFRESH_THRESHOLD: int = Field(
+        description="Minimum number of inserted documents to trigger an automatic HNSW index refresh (0 to disable)",
+        default=1000,
     )
