@@ -136,18 +136,8 @@ const MetadataSection: FC<MetadataSectionProps> = ({
           return variable.type === VarType.string
         case DataType.number:
           return variable.type === VarType.number || variable.type === VarType.integer
-        case DataType.time: {
-          // Only allow number variables with time-related names
-          const varName = variable.variable.toLowerCase()
-          const isTimeRelated
-            = varName === 'timestamp' // sys.timestamp
-              || varName.includes('time') // current_time, expiry_time
-              || varName.includes('date') // created_date, updated_date
-              || varName.endsWith('_at') // created_at, updated_at
-
-          return (variable.type === VarType.number || variable.type === VarType.integer)
-            && isTimeRelated
-        }
+        case DataType.time:
+          return variable.type === VarType.number
         default:
           return false
       }
@@ -237,6 +227,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                                       value={item.value as ValueSelector}
                                       onChange={value => handleDocMetadataValueChange(index, value)}
                                       isSupportConstantValue={false}
+                                      isSupportFileVar={false}
                                       placeholder={t('placeholder.input', { ns: 'common' }) || ''}
                                       className="h-full border-none !bg-transparent p-0"
                                       zIndex={1000}

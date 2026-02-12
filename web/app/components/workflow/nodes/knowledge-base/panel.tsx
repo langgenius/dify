@@ -217,15 +217,17 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 />
               </div>
             </BoxGroup>
-            <BoxGroup>
-              <MetadataSection
-                nodeId={id}
-                userMetadata={metadataList?.doc_metadata || []}
-                docMetadata={data.doc_metadata}
-                onDocMetadataChange={handleDocMetadataChange}
-                readonly={nodesReadOnly}
-              />
-            </BoxGroup>
+            {(metadataList?.doc_metadata?.length ?? 0) > 0 && (
+              <BoxGroup>
+                <MetadataSection
+                  nodeId={id}
+                  userMetadata={metadataList?.doc_metadata || []}
+                  docMetadata={data.doc_metadata}
+                  onDocMetadataChange={handleDocMetadataChange}
+                  readonly={nodesReadOnly}
+                />
+              </BoxGroup>
+            )}
           </>
         )
       }
