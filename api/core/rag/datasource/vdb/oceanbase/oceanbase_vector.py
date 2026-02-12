@@ -193,13 +193,11 @@ class OceanBaseVector(BaseVector):
 
             try:
                 self._client.perform_raw_text_sql(
-                    f"CREATE INDEX idx_metadata_doc_id ON `{self._collection_name}` "
-                    f"((metadata->>'$.document_id'))"
+                    f"CREATE INDEX idx_metadata_doc_id ON `{self._collection_name}` ((metadata->>'$.document_id'))"
                 )
             except Exception:
                 logger.warning(
-                    "Failed to create metadata functional index on '%s'; "
-                    "metadata queries may be slow without it.",
+                    "Failed to create metadata functional index on '%s'; metadata queries may be slow without it.",
                     self._collection_name,
                 )
 
@@ -258,8 +256,7 @@ class OceanBaseVector(BaseVector):
                     self._collection_name,
                 )
                 raise Exception(
-                    f"Failed to insert batch [{start}:{start + len(batch)}] "
-                    f"into collection '{self._collection_name}'"
+                    f"Failed to insert batch [{start}:{start + len(batch)}] into collection '{self._collection_name}'"
                 ) from e
 
         if total >= 1000:
@@ -486,8 +483,7 @@ class OceanBaseVector(BaseVector):
         func = _DISTANCE_FUNC_MAP.get(self._config.metric_type)
         if func is None:
             raise ValueError(
-                f"Unsupported metric_type '{self._config.metric_type}'. "
-                f"Supported: {', '.join(_DISTANCE_FUNC_MAP)}"
+                f"Unsupported metric_type '{self._config.metric_type}'. Supported: {', '.join(_DISTANCE_FUNC_MAP)}"
             )
         return func
 
