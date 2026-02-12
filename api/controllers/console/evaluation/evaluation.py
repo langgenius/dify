@@ -2,10 +2,13 @@ import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar, Union
+from urllib.parse import quote
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource, fields
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -15,11 +18,14 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
+from core.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import App
+from models.model import UploadFile
 from models.snippet import CustomizedSnippet
+from services.evaluation_service import EvaluationService
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +164,8 @@ def get_evaluation_target(view_func: Callable[P, R]):
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
 class EvaluationDatasetTemplateDownloadApi(Resource):
     @console_ns.doc("download_evaluation_dataset_template")
-    @console_ns.response(200, "Template download URL generated successfully")
+    @console_ns.response(200, "Template file streamed as XLSX attachment")
+    @console_ns.response(400, "Invalid target type or excluded app mode")
     @console_ns.response(404, "Target not found")
     @setup_required
     @login_required
@@ -169,14 +176,25 @@ class EvaluationDatasetTemplateDownloadApi(Resource):
         """
         Download evaluation dataset template.
 
-        Generates a download URL for the evaluation dataset template
-        based on the target type (app or snippets).
+        Generates an XLSX template based on the target's input parameters
+        and streams it directly as a file attachment.
         """
-        # TODO: Implement actual template generation logic
-        # This is a placeholder implementation
-        return {
-            "download_url": f"/api/evaluation/{target_type}/{target.id}/template.csv",
-        }
+        try:
+            xlsx_content, filename = EvaluationService.generate_dataset_template(
+                target=target,
+                target_type=target_type,
+            )
+        except ValueError as e:
+            return {"message": str(e)}, 400
+
+        encoded_filename = quote(filename)
+        response = Response(
+            xlsx_content,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+        response.headers["Content-Length"] = str(len(xlsx_content))
+        return response
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation")
@@ -241,18 +259,32 @@ class EvaluationFileDownloadApi(Resource):
         """
         Download evaluation test file or result file.
 
-        Returns file information and download URL for the specified file.
+        Looks up the specified file, verifies it belongs to the same tenant,
+        and returns file info and download URL.
         """
         file_id = str(file_id)
+        _, current_tenant_id = current_account_with_tenant()
 
-        # TODO: Implement actual file download logic
-        # This is a placeholder implementation
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(UploadFile).where(
+                UploadFile.id == file_id,
+                UploadFile.tenant_id == current_tenant_id,
+            )
+            upload_file = session.execute(stmt).scalar_one_or_none()
+
+        if not upload_file:
+            raise NotFound("File not found")
+
+        download_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
+
         return {
-            "created_at": None,
-            "created_by": None,
-            "test_file": None,
-            "result_file": None,
-            "version": None,
+            "id": upload_file.id,
+            "name": upload_file.name,
+            "size": upload_file.size,
+            "extension": upload_file.extension,
+            "mime_type": upload_file.mime_type,
+            "created_at": int(upload_file.created_at.timestamp()) if upload_file.created_at else None,
+            "download_url": download_url,
         }
 
 
