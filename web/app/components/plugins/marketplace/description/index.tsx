@@ -36,6 +36,7 @@ export const Description = ({
   const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'
   const rafRef = useRef<number | null>(null)
   const lastProgressRef = useRef(0)
+  const headerRef = useRef<HTMLDivElement | null>(null)
   const titleContentRef = useRef<HTMLDivElement | null>(null)
   const progress = useMotionValue(0)
   const titleHeight = useMotionValue(72)
@@ -113,8 +114,58 @@ export const Description = ({
   const paddingTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? COLLAPSED_PADDING_TOP : EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
   const paddingBottom = useTransform(smoothProgress, [0, 1], [EXPANDED_PADDING_BOTTOM, COLLAPSED_PADDING_BOTTOM])
 
+  useEffect(() => {
+    const container = document.getElementById(scrollContainerId)
+    const header = headerRef.current
+    if (!container || !header)
+      return
+
+    let maxHeaderHeight = 0
+    let lastAppliedOffset = 0
+    const updateOffset = () => {
+      const currentHeaderHeight = Math.round(header.getBoundingClientRect().height)
+      maxHeaderHeight = Math.max(maxHeaderHeight, currentHeaderHeight)
+      const collapsedHeight = Math.max(0, maxHeaderHeight - currentHeaderHeight)
+      const currentScrollableTop = container.scrollHeight - container.clientHeight
+      const baseScrollableTop = Math.max(0, currentScrollableTop - lastAppliedOffset)
+      const shouldCompensate = baseScrollableTop <= maxHeaderHeight
+      const nextOffset = shouldCompensate ? collapsedHeight : 0
+      const offsetDelta = nextOffset - lastAppliedOffset
+
+      if (nextOffset > 0) {
+        // Only compensate when content is short enough that header collapse can clamp scrollTop.
+        container.style.setProperty('--marketplace-header-collapse-offset', `${nextOffset}px`)
+        if (offsetDelta !== 0 && container.scrollTop > 0)
+          container.scrollTop = Math.max(0, container.scrollTop + offsetDelta)
+      }
+      else {
+        container.style.removeProperty('--marketplace-header-collapse-offset')
+      }
+
+      lastAppliedOffset = nextOffset
+    }
+
+    updateOffset()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return () => {
+        container.style.removeProperty('--marketplace-header-collapse-offset')
+      }
+    }
+
+    const observer = new ResizeObserver(updateOffset)
+    observer.observe(header)
+    observer.observe(container)
+
+    return () => {
+      observer.disconnect()
+      container.style.removeProperty('--marketplace-header-collapse-offset')
+    }
+  }, [scrollContainerId])
+
   return (
     <motion.div
+      ref={headerRef}
       className={cn(
         'sticky top-[60px] z-20 mx-4 mt-4 shrink-0 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border px-6',
         className,

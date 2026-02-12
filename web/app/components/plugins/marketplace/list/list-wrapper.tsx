@@ -49,8 +49,11 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
 
   return (
     <div
-      style={{ scrollbarGutter: 'stable' }}
-      className="relative flex grow flex-col bg-background-default-subtle px-12 py-2"
+      style={{
+        scrollbarGutter: 'stable',
+        paddingBottom: 'calc(0.5rem + var(--marketplace-header-collapse-offset, 0px))',
+      }}
+      className="relative flex grow flex-col bg-background-default-subtle px-12 pt-2"
     >
       {isSearchMode && <ListTopInfo />}
       <div className="relative grow">
