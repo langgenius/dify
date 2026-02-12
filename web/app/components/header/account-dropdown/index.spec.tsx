@@ -115,9 +115,10 @@ describe('AccountDropdown', () => {
       },
       isCurrentWorkspaceOwner: true,
     } as unknown as AppContextValue)
-    vi.mocked(useGlobalPublicStore).mockReturnValue({
-      systemFeatures: { branding: { enabled: false } },
-    } as unknown as ReturnType<typeof useGlobalPublicStore>)
+    vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
+      const fullState = { systemFeatures: { branding: { enabled: false } }, setSystemFeatures: vi.fn() }
+      return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
+    })
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
     } as unknown as ProviderContextState)
@@ -178,9 +179,10 @@ describe('AccountDropdown', () => {
   })
 
   it('hides sections when branding is enabled', () => {
-    vi.mocked(useGlobalPublicStore).mockReturnValue({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as ReturnType<typeof useGlobalPublicStore>)
+    vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
+      const fullState = { systemFeatures: { branding: { enabled: true } }, setSystemFeatures: vi.fn() }
+      return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
+    })
     renderWithRouter(<AppSelector />)
     fireEvent.click(screen.getByRole('button'))
 
