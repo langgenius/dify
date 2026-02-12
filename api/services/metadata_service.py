@@ -132,11 +132,7 @@ class MetadataService:
 
         draft_condition = (Workflow.app_id == pipeline.id) & (Workflow.version == Workflow.VERSION_DRAFT)
         if pipeline.workflow_id:
-            return (
-                db.session.query(Workflow)
-                .where(or_(draft_condition, Workflow.id == pipeline.workflow_id))
-                .all()
-            )
+            return db.session.query(Workflow).where(or_(draft_condition, Workflow.id == pipeline.workflow_id)).all()
         return db.session.query(Workflow).where(draft_condition).all()
 
     @staticmethod
@@ -181,9 +177,7 @@ class MetadataService:
                     if node_data.get("enable_built_in_metadata") is True:
                         return True, pipeline.name
             except Exception:
-                logger.exception(
-                    "Error checking built-in metadata in published pipeline workflow %s", workflow.id
-                )
+                logger.exception("Error checking built-in metadata in published pipeline workflow %s", workflow.id)
                 return True, pipeline.name
 
         return False, None
@@ -384,7 +378,9 @@ class MetadataService:
 
                 logger.info(
                     "sync_built_in_field_on_publish: dataset=%s, %s -> %s",
-                    dataset_id, dataset.built_in_field_enabled, enable_built_in_metadata,
+                    dataset_id,
+                    dataset.built_in_field_enabled,
+                    enable_built_in_metadata,
                 )
                 dataset.built_in_field_enabled = enable_built_in_metadata
                 db.session.add(dataset)
@@ -396,9 +392,10 @@ class MetadataService:
                 # Lock contention — retry after a short wait
                 if attempt < max_retries:
                     logger.info(
-                        "sync_built_in_field_on_publish: lock contention for dataset %s, "
-                        "retrying (%d/%d)",
-                        dataset_id, attempt + 1, max_retries,
+                        "sync_built_in_field_on_publish: lock contention for dataset %s, retrying (%d/%d)",
+                        dataset_id,
+                        attempt + 1,
+                        max_retries,
                     )
                     time.sleep(retry_interval)
                 else:

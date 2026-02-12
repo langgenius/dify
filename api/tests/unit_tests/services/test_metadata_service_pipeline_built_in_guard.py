@@ -55,12 +55,15 @@ def _setup_db_for_check(mock_db, *, dataset=None, pipeline=None, workflow=None):
 # check_built_in_enabled_in_published_pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestCheckBuiltInEnabledInPublishedPipeline:
     @patch("services.metadata_service.db")
     def test_returns_true_when_enabled(self, mock_db):
-        workflow = _make_workflow({
-            "nodes": [{"data": {"type": "knowledge-index", "enable_built_in_metadata": True}}],
-        })
+        workflow = _make_workflow(
+            {
+                "nodes": [{"data": {"type": "knowledge-index", "enable_built_in_metadata": True}}],
+            }
+        )
         _setup_db_for_check(mock_db, dataset=_make_dataset(), pipeline=_make_pipeline(), workflow=workflow)
 
         is_enabled, name = MetadataService.check_built_in_enabled_in_published_pipeline("dataset-1")
@@ -70,9 +73,11 @@ class TestCheckBuiltInEnabledInPublishedPipeline:
 
     @patch("services.metadata_service.db")
     def test_returns_false_when_disabled(self, mock_db):
-        workflow = _make_workflow({
-            "nodes": [{"data": {"type": "knowledge-index", "enable_built_in_metadata": False}}],
-        })
+        workflow = _make_workflow(
+            {
+                "nodes": [{"data": {"type": "knowledge-index", "enable_built_in_metadata": False}}],
+            }
+        )
         _setup_db_for_check(mock_db, dataset=_make_dataset(), pipeline=_make_pipeline(), workflow=workflow)
 
         is_enabled, name = MetadataService.check_built_in_enabled_in_published_pipeline("dataset-1")
@@ -117,12 +122,14 @@ class TestCheckBuiltInEnabledInPublishedPipeline:
 
     @patch("services.metadata_service.db")
     def test_multiple_nodes_only_one_enabled(self, mock_db):
-        workflow = _make_workflow({
-            "nodes": [
-                {"data": {"type": "knowledge-index", "enable_built_in_metadata": False}},
-                {"data": {"type": "knowledge-index", "enable_built_in_metadata": True}},
-            ],
-        })
+        workflow = _make_workflow(
+            {
+                "nodes": [
+                    {"data": {"type": "knowledge-index", "enable_built_in_metadata": False}},
+                    {"data": {"type": "knowledge-index", "enable_built_in_metadata": True}},
+                ],
+            }
+        )
         _setup_db_for_check(mock_db, dataset=_make_dataset(), pipeline=_make_pipeline(), workflow=workflow)
 
         is_enabled, name = MetadataService.check_built_in_enabled_in_published_pipeline("dataset-1")
@@ -132,11 +139,13 @@ class TestCheckBuiltInEnabledInPublishedPipeline:
 
     @patch("services.metadata_service.db")
     def test_ignores_non_knowledge_index_nodes(self, mock_db):
-        workflow = _make_workflow({
-            "nodes": [
-                {"data": {"type": "llm", "enable_built_in_metadata": True}},
-            ],
-        })
+        workflow = _make_workflow(
+            {
+                "nodes": [
+                    {"data": {"type": "llm", "enable_built_in_metadata": True}},
+                ],
+            }
+        )
         _setup_db_for_check(mock_db, dataset=_make_dataset(), pipeline=_make_pipeline(), workflow=workflow)
 
         is_enabled, name = MetadataService.check_built_in_enabled_in_published_pipeline("dataset-1")
@@ -148,6 +157,7 @@ class TestCheckBuiltInEnabledInPublishedPipeline:
 # ---------------------------------------------------------------------------
 # disable_built_in_field — always guards against published pipeline usage
 # ---------------------------------------------------------------------------
+
 
 class TestDisableBuiltInField:
     @patch("services.metadata_service.db")
