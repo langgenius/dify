@@ -275,7 +275,7 @@ function CreatorsSection({ creators, t }: {
         <a
           key={creator.unique_handle}
           className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-state-base-hover"
-          href={getMarketplaceUrl(`/creators/${creator.unique_handle}`)}
+          href={getMarketplaceUrl(`/creator/${creator.unique_handle}`)}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-[0.5px] border-divider-regular">
             <img

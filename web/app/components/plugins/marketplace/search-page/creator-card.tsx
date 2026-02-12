@@ -1,9 +1,9 @@
 'use client'
 
 import type { Creator } from '../types'
-import { getCreatorAvatarUrl } from '../utils'
 import { useTranslation } from '#i18n'
 import { getMarketplaceUrl } from '@/utils/var'
+import { getCreatorAvatarUrl } from '../utils'
 
 type CreatorCardProps = {
   creator: Creator
@@ -11,7 +11,7 @@ type CreatorCardProps = {
 
 const CreatorCard = ({ creator }: CreatorCardProps) => {
   const { t } = useTranslation()
-  const href = getMarketplaceUrl(`/creators/${creator.unique_handle}`)
+  const href = getMarketplaceUrl(`/creator/${creator.unique_handle}`)
   const displayName = creator.display_name || creator.name
 
   return (

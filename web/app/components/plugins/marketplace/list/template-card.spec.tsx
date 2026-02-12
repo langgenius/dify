@@ -226,7 +226,7 @@ describe('TemplateCard', () => {
       const { getByText } = render(<TemplateCard template={template} />)
 
       const creatorLink = getByText('test-publisher').closest('a')
-      expect(creatorLink).toHaveAttribute('href', '/creators/test-publisher?publisher_type=organization')
+      expect(creatorLink).toHaveAttribute('href', '/creator/test-publisher?publisher_type=organization')
     })
   })
 

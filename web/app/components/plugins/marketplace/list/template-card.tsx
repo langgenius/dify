@@ -4,7 +4,7 @@ import type { Template } from '../types'
 import { useLocale, useTranslation } from '#i18n'
 import Link from 'next/link'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useMemo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerMark from '@/app/components/plugins/card/base/corner-mark'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
@@ -36,17 +36,16 @@ const TemplateCardComponent = ({
   const isSandbox = kind === 'sandboxed'
   const iconUrl = getTemplateIconUrl(template)
 
-  const handleClick = useCallback(() => {
+  const href = useMemo(() => {
     const queryParams = {
       theme,
       language: locale,
       templateId: id,
       creationType: 'templates',
     }
-    const url = includeSource
+    return includeSource
       ? getMarketplaceUrl(`/template/${publisher_handle}/${template_name}`, queryParams)
       : `${MARKETPLACE_URL_PREFIX}/template/${publisher_handle}/${template_name}?${new URLSearchParams(queryParams).toString()}`
-    window.open(url, '_blank')
   }, [publisher_handle, template_name, theme, locale, id, includeSource])
 
   const visibleDepsPlugins = deps_plugins?.slice(0, MAX_VISIBLE_DEPS_PLUGINS) || []
@@ -60,7 +59,6 @@ const TemplateCardComponent = ({
         'hover-bg-components-panel-on-panel-item-bg relative flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs',
         className,
       )}
-      onClick={handleClick}
     >
       {isSandbox && <CornerMark text="Sandbox" />}
       {/* Header */}
@@ -75,16 +73,22 @@ const TemplateCardComponent = ({
         />
         {/* Title */}
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-          <p className="system-md-medium truncate text-text-primary">{template_name}</p>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="system-md-medium truncate text-text-primary after:absolute after:inset-0"
+          >
+            {template_name}
+          </a>
           <div className="system-xs-regular flex items-center gap-2 text-text-tertiary">
-            <span className="flex shrink-0 items-center gap-1">
+            <span className="relative z-[1] flex shrink-0 items-center gap-1">
               <span className="shrink-0">{t('marketplace.templateCard.by', { ns: 'plugin' })}</span>
               <Link
-                href={`/creators/${publisher_handle}?publisher_type=${encodeURIComponent(publisher_type || 'individual')}`}
+                href={`/creator/${publisher_handle}?publisher_type=${encodeURIComponent(publisher_type || 'individual')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="truncate hover:text-text-secondary hover:underline"
-                onClick={e => e.stopPropagation()}
               >
                 {publisher_handle}
               </Link>

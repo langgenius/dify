@@ -29,7 +29,7 @@ const OrgInfo = ({
             {linkToOrg
               ? (
                   <Link
-                    href={`/creators/${orgName}`}
+                    href={`/creator/${orgName}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-text-secondary hover:underline"
