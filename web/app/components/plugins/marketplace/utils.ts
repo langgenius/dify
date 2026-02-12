@@ -70,6 +70,10 @@ export const getCreatorAvatarUrl = (uniqueHandle: string) => {
   return `${MARKETPLACE_API_PREFIX}/creators/${uniqueHandle}/avatar`
 }
 
+export const getOrganizationAvatarUrl = (id: string) => {
+  return `${MARKETPLACE_API_PREFIX}/organizations/${id}/avatar`
+}
+
 export const getFormattedPlugin = (bundle: Plugin): Plugin => {
   if (bundle.type === 'bundle') {
     return {

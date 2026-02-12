@@ -118,6 +118,7 @@ export type BatchAddTemplatesToCollectionRequest = {
 
 // Creator types
 export type Creator = {
+  id?: string
   email: string
   name: string
   display_name: string
