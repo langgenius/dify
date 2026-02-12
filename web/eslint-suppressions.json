@@ -32,11 +32,6 @@
       "count": 2
     }
   },
-  "__tests__/goto-anything/slash-command-modes.test.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "__tests__/i18n-upload-features.test.ts": {
     "no-console": {
       "count": 3
@@ -5585,11 +5580,6 @@
   },
   "app/components/share/text-generation/run-batch/csv-download/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 2
     }
   },
