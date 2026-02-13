@@ -3700,6 +3700,7 @@ class SegmentService:
                 )
                 .scalar()
             )
+            assert current_user.current_tenant_id is not None
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
@@ -3772,6 +3773,7 @@ class SegmentService:
                 for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
+                    assert current_user.current_tenant_id
                     child_chunk = ChildChunk(
                         tenant_id=current_user.current_tenant_id,
                         dataset_id=dataset.id,
