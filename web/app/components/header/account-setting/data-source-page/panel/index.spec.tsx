@@ -35,8 +35,8 @@ describe('Panel Component', () => {
   ]
 
   beforeEach(() => {
-    onConfigure.mockClear()
-    onRemove.mockClear()
+    // Reset all mocks before each test to ensure test isolation
+    vi.clearAllMocks()
   })
 
   /**
