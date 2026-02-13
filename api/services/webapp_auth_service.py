@@ -6,7 +6,7 @@ from typing import Any
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
@@ -92,25 +92,25 @@ class WebAppAuthService:
 
     @classmethod
     def create_end_user(cls, app_code, email) -> EndUser:
-        site = db.session.query(Site).where(Site.code == app_code).first()
-        if not site:
-            raise NotFound("Site not found.")
-        app_model = db.session.query(App).where(App.id == site.app_id).first()
-        if not app_model:
-            raise NotFound("App not found.")
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type="browser",
-            is_anonymous=False,
-            session_id=email,
-            name="enterpriseuser",
-            external_user_id="enterpriseuser",
-        )
-        db.session.add(end_user)
-        db.session.commit()
+        with session_factory.create_session() as session, session.begin():
+            site = session.query(Site).where(Site.code == app_code).first()
+            if not site:
+                raise NotFound("Site not found.")
+            app_model = session.query(App).where(App.id == site.app_id).first()
+            if not app_model:
+                raise NotFound("App not found.")
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="browser",
+                is_anonymous=False,
+                session_id=email,
+                name="enterpriseuser",
+                external_user_id="enterpriseuser",
+            )
+            session.add(end_user)
 
-        return end_user
+            return end_user
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account) -> str:
