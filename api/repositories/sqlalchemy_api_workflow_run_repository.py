@@ -31,7 +31,7 @@ from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause, ToolCallPending
 from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -675,10 +675,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if workflow_run is None:
                 raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
 
-            # Check if workflow is in RUNNING status
-            if workflow_run.status != WorkflowExecutionStatus.RUNNING:
+            # Check if workflow is in RUNNING or PAUSED status
+            if workflow_run.status not in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED):
                 raise _WorkflowRunError(
-                    f"Only WorkflowRun with RUNNING status can be paused, "
+                    f"Only WorkflowRun with RUNNING/PAUSED status can be paused, "
                     f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
                 )
             #
@@ -713,6 +713,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         pause_id=pause_model.id,
                         type_=reason.TYPE,
                         message=reason.message,
+                    )
+                elif isinstance(reason, ToolCallPending):
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        node_id=reason.node_id,
                     )
                 else:
                     raise AssertionError(f"unkown reason type: {type(reason)}")
