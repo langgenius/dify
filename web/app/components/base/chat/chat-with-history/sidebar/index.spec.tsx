@@ -53,7 +53,7 @@ vi.mock('@/app/components/base/modal', () => ({
       return null
     return (
       <div data-testid="modal">
-        {title && <div>{title}</div>}
+        {!!title && <div>{title}</div>}
         {children}
       </div>
     )
