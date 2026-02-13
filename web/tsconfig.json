@@ -21,6 +21,7 @@
     "resolveJsonModule": true,
     "types": [
       "vitest/globals",
+      "@testing-library/jest-dom",
       "node"
     ],
     "allowJs": true,
