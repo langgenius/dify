@@ -784,11 +784,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/dataset-config/card-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -1231,11 +1226,6 @@
       "count": 1
     }
   },
-  "app/components/apps/app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 22
-    }
-  },
   "app/components/apps/app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1260,19 +1250,9 @@
       "count": 1
     }
   },
-  "app/components/apps/list.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/apps/list.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1
-    }
-  },
-  "app/components/apps/new-app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/apps/new-app-card.tsx": {

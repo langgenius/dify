@@ -11,7 +11,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import Item from './index'
 
 vi.mock('../settings-modal', () => ({
-  default: ({ onSave, onCancel, currentDataset }: any) => (
+  default: ({ onSave, onCancel, currentDataset }: { currentDataset: DataSet, onCancel: () => void, onSave: (newDataset: DataSet) => void }) => (
     <div>
       <div>Mock settings modal</div>
       <button onClick={() => onSave({ ...currentDataset, name: 'Updated dataset' })}>Save changes</button>
@@ -177,7 +177,7 @@ describe('dataset-config/card-item', () => {
       expect(screen.getByRole('dialog')).toBeVisible()
     })
 
-    await user.click(screen.getByText('Save changes'))
+    fireEvent.click(screen.getByText('Save changes'))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
