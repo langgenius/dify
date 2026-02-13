@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
 import { useActivateSandboxProvider } from '@/service/use-sandbox-provider'
-import { PROVIDER_LABEL_KEYS } from './constants'
+import { PROVIDER_STATIC_LABELS } from './constants'
 
 type SwitchModalProps = {
   provider: SandboxProvider
@@ -22,6 +22,8 @@ const SwitchModal = ({
   const { notify } = useToastContext()
 
   const { mutateAsync: activateProvider, isPending } = useActivateSandboxProvider()
+  const providerLabel = PROVIDER_STATIC_LABELS[provider.provider_type as keyof typeof PROVIDER_STATIC_LABELS]
+    ?? provider.provider_type
 
   // Determine the type based on provider configuration
   // If tenant has custom config, activate as 'user', otherwise as 'system'
@@ -62,7 +64,7 @@ const SwitchModal = ({
           <Trans
             i18nKey="sandboxProvider.switchModal.confirmText"
             ns="common"
-            values={{ provider: t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' }) }}
+            values={{ provider: providerLabel }}
             components={{ bold: <span className="system-sm-semibold" /> }}
           />
         </div>

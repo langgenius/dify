@@ -17,7 +17,7 @@ import {
   useSaveSandboxProviderConfig,
 } from '@/service/use-sandbox-provider'
 import { cn } from '@/utils/classnames'
-import { PROVIDER_DOC_LINKS, PROVIDER_LABEL_KEYS, SANDBOX_FIELD_CONFIGS } from './constants'
+import { PROVIDER_DOC_LINKS, PROVIDER_STATIC_LABELS, SANDBOX_FIELD_CONFIGS } from './constants'
 import ProviderIcon from './provider-icon'
 
 type ConfigMode = 'managed' | 'byok'
@@ -95,7 +95,9 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
       return {
         name: schema.name,
         label: fieldConfig ? t(fieldConfig.labelKey, { ns: 'common' }) : schema.name,
-        placeholder: fieldConfig ? t(fieldConfig.placeholderKey, { ns: 'common' }) : '',
+        placeholder: fieldConfig
+          ? (fieldConfig.placeholder ?? (fieldConfig.placeholderKey ? t(fieldConfig.placeholderKey, { ns: 'common' }) : ''))
+          : '',
         type: fieldConfig?.type ?? fallbackType,
         required: schema.name === 'api_key',
         default: provider.config[schema.name] || '',
@@ -151,8 +153,8 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
   }, [deleteConfig, provider.provider_type, notify, t, onClose])
 
   const docLink = PROVIDER_DOC_LINKS[provider.provider_type]
-  const providerLabelKey = PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label'
-  const providerLabel = t(providerLabelKey, { ns: 'common' })
+  const providerLabel = PROVIDER_STATIC_LABELS[provider.provider_type as keyof typeof PROVIDER_STATIC_LABELS]
+    ?? provider.provider_type
 
   // Only show revoke button when in BYOK mode, tenant has custom config, and provider is not active
   // (active provider cannot be revoked to prevent "no sandbox provider" error)

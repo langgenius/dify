@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { IS_CLOUD_EDITION } from '@/config'
 import { cn } from '@/utils/classnames'
-import { PROVIDER_DESCRIPTION_KEYS, PROVIDER_LABEL_KEYS } from './constants'
+import { PROVIDER_DESCRIPTION_KEYS, PROVIDER_STATIC_LABELS } from './constants'
 import ProviderIcon from './provider-icon'
 
 type ProviderCardProps = {
@@ -30,6 +30,8 @@ const ProviderCard = ({
 
   const isConfigured = provider.is_tenant_configured || provider.is_system_configured
   const showEnableButton = !disabled && !isCurrent && isConfigured && onEnable
+  const providerLabel = PROVIDER_STATIC_LABELS[provider.provider_type as keyof typeof PROVIDER_STATIC_LABELS]
+    ?? provider.provider_type
 
   return (
     <div
@@ -46,7 +48,7 @@ const ProviderCard = ({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <span className="text-text-primary system-md-semibold">
-            {t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' })}
+            {providerLabel}
           </span>
           {IS_CLOUD_EDITION && provider.is_system_configured && !provider.is_tenant_configured && (
             <span className="rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary system-2xs-medium">

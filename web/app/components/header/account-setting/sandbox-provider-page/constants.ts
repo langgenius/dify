@@ -8,12 +8,12 @@ export const PROVIDER_ICONS: Record<string, string> = {
   ssh: '/sandbox-providers/ssh.svg',
 }
 
-export const PROVIDER_LABEL_KEYS = {
-  e2b: 'sandboxProvider.e2b.label',
-  daytona: 'sandboxProvider.daytona.label',
-  docker: 'sandboxProvider.docker.label',
-  local: 'sandboxProvider.local.label',
-  ssh: 'sandboxProvider.ssh.label',
+export const PROVIDER_STATIC_LABELS = {
+  e2b: 'E2B',
+  daytona: 'Daytona',
+  docker: 'Docker',
+  local: 'Local',
+  ssh: 'SSH',
 } as const
 
 export const PROVIDER_DESCRIPTION_KEYS = {
@@ -24,7 +24,28 @@ export const PROVIDER_DESCRIPTION_KEYS = {
   ssh: 'sandboxProvider.ssh.description',
 } as const
 
-export const SANDBOX_FIELD_CONFIGS = {
+type SandboxFieldConfig = {
+  labelKey:
+    | 'sandboxProvider.configModal.apiKey'
+    | 'sandboxProvider.configModal.e2bApiUrl'
+    | 'sandboxProvider.configModal.e2bTemplate'
+    | 'sandboxProvider.configModal.dockerSock'
+    | 'sandboxProvider.configModal.dockerImage'
+    | 'sandboxProvider.configModal.baseWorkingPath'
+    | 'sandboxProvider.configModal.sshHost'
+    | 'sandboxProvider.configModal.sshPort'
+    | 'sandboxProvider.configModal.sshUsername'
+    | 'sandboxProvider.configModal.sshPassword'
+  placeholderKey?:
+    | 'sandboxProvider.configModal.apiKeyPlaceholder'
+    | 'sandboxProvider.configModal.e2bTemplatePlaceholder'
+    | 'sandboxProvider.configModal.sshUsernamePlaceholder'
+    | 'sandboxProvider.configModal.sshPasswordPlaceholder'
+  placeholder?: string
+  type: FormTypeEnum
+}
+
+export const SANDBOX_FIELD_CONFIGS: Record<string, SandboxFieldConfig> = {
   api_key: {
     labelKey: 'sandboxProvider.configModal.apiKey',
     placeholderKey: 'sandboxProvider.configModal.apiKeyPlaceholder',
@@ -32,7 +53,7 @@ export const SANDBOX_FIELD_CONFIGS = {
   },
   e2b_api_url: {
     labelKey: 'sandboxProvider.configModal.e2bApiUrl',
-    placeholderKey: 'sandboxProvider.configModal.e2bApiUrlPlaceholder',
+    placeholder: 'https://api.e2b.app',
     type: FormTypeEnum.textInput,
   },
   e2b_default_template: {
@@ -42,27 +63,27 @@ export const SANDBOX_FIELD_CONFIGS = {
   },
   docker_sock: {
     labelKey: 'sandboxProvider.configModal.dockerSock',
-    placeholderKey: 'sandboxProvider.configModal.dockerSockPlaceholder',
+    placeholder: 'unix:///var/run/docker.sock',
     type: FormTypeEnum.textInput,
   },
   docker_image: {
     labelKey: 'sandboxProvider.configModal.dockerImage',
-    placeholderKey: 'sandboxProvider.configModal.dockerImagePlaceholder',
+    placeholder: 'ubuntu:latest',
     type: FormTypeEnum.textInput,
   },
   base_working_path: {
     labelKey: 'sandboxProvider.configModal.baseWorkingPath',
-    placeholderKey: 'sandboxProvider.configModal.baseWorkingPathPlaceholder',
+    placeholder: '/workspace/sandboxes',
     type: FormTypeEnum.textInput,
   },
   ssh_host: {
     labelKey: 'sandboxProvider.configModal.sshHost',
-    placeholderKey: 'sandboxProvider.configModal.sshHostPlaceholder',
+    placeholder: 'e.g. 127.0.0.1 or agentbox',
     type: FormTypeEnum.textInput,
   },
   ssh_port: {
     labelKey: 'sandboxProvider.configModal.sshPort',
-    placeholderKey: 'sandboxProvider.configModal.sshPortPlaceholder',
+    placeholder: '22',
     type: FormTypeEnum.textInput,
   },
   ssh_username: {
@@ -75,7 +96,7 @@ export const SANDBOX_FIELD_CONFIGS = {
     placeholderKey: 'sandboxProvider.configModal.sshPasswordPlaceholder',
     type: FormTypeEnum.secretInput,
   },
-} as const
+}
 
 export const PROVIDER_DOC_LINKS: Record<string, string> = {
   e2b: 'https://e2b.dev/docs',
