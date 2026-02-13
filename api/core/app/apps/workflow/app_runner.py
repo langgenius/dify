@@ -89,6 +89,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
+                user_id=self.application_generate_entity.user_id,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
             )

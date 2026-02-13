@@ -96,6 +96,7 @@ def test_run_uses_single_node_execution_branch(
 
     prepare_single.assert_called_once_with(
         workflow=workflow,
+        user_id="user",
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
     )
