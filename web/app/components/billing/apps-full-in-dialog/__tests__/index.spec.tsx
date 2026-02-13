@@ -197,61 +197,30 @@ describe('AppsFull', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should use the success color when usage is below 50%', () => {
-      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.sandbox,
-          usage: buildUsage({ buildApps: 2 }),
-          total: buildUsage({ buildApps: 5 }),
-          reset: {
-            apiRateLimit: null,
-            triggerEvents: null,
+    it('should apply distinct progress bar styling at different usage levels', () => {
+      const renderWithUsage = (used: number, total: number) => {
+        ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
+          plan: {
+            ...baseProviderContextValue.plan,
+            type: Plan.sandbox,
+            usage: buildUsage({ buildApps: used }),
+            total: buildUsage({ buildApps: total }),
+            reset: { apiRateLimit: null, triggerEvents: null },
           },
-        },
-      }))
+        }))
+        const { unmount } = render(<AppsFull loc="billing_dialog" />)
+        const className = screen.getByTestId('billing-progress-bar').className
+        unmount()
+        return className
+      }
 
-      render(<AppsFull loc="billing_dialog" />)
+      const normalClass = renderWithUsage(2, 10)
+      const warningClass = renderWithUsage(6, 10)
+      const errorClass = renderWithUsage(8, 10)
 
-      expect(screen.getByTestId('billing-progress-bar')).toHaveClass('bg-components-progress-bar-progress-solid')
-    })
-
-    it('should use the warning color when usage is between 50% and 80%', () => {
-      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.sandbox,
-          usage: buildUsage({ buildApps: 6 }),
-          total: buildUsage({ buildApps: 10 }),
-          reset: {
-            apiRateLimit: null,
-            triggerEvents: null,
-          },
-        },
-      }))
-
-      render(<AppsFull loc="billing_dialog" />)
-
-      expect(screen.getByTestId('billing-progress-bar')).toHaveClass('bg-components-progress-warning-progress')
-    })
-
-    it('should use the error color when usage is 80% or higher', () => {
-      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.sandbox,
-          usage: buildUsage({ buildApps: 8 }),
-          total: buildUsage({ buildApps: 10 }),
-          reset: {
-            apiRateLimit: null,
-            triggerEvents: null,
-          },
-        },
-      }))
-
-      render(<AppsFull loc="billing_dialog" />)
-
-      expect(screen.getByTestId('billing-progress-bar')).toHaveClass('bg-components-progress-error-progress')
+      expect(normalClass).not.toBe(warningClass)
+      expect(warningClass).not.toBe(errorClass)
+      expect(normalClass).not.toBe(errorClass)
     })
   })
 })

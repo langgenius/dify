@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import ChatVariableTrigger from './chat-variable-trigger'
+import ChatVariableTrigger from '../chat-variable-trigger'
 
 const mockUseNodesReadOnly = vi.fn()
 const mockUseIsChatMode = vi.fn()
@@ -8,7 +8,7 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../../hooks', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
