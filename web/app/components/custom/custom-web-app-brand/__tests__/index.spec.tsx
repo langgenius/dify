@@ -7,7 +7,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
-import CustomWebAppBrand from './index'
+import CustomWebAppBrand from '../index'
 
 vi.mock('@/app/components/base/toast', () => ({
   useToastContext: vi.fn(),
@@ -53,8 +53,8 @@ const renderComponent = () => render(<CustomWebAppBrand />)
 describe('CustomWebAppBrand', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseToastContext.mockReturnValue({ notify: mockNotify } as any)
-    mockUpdateCurrentWorkspace.mockResolvedValue({} as any)
+    mockUseToastContext.mockReturnValue({ notify: mockNotify } as unknown as ReturnType<typeof useToastContext>)
+    mockUpdateCurrentWorkspace.mockResolvedValue({} as unknown as Awaited<ReturnType<typeof updateCurrentWorkspace>>)
     mockUseAppContext.mockReturnValue({
       currentWorkspace: {
         custom_config: {
@@ -64,7 +64,7 @@ describe('CustomWebAppBrand', () => {
       },
       mutateCurrentWorkspace: vi.fn(),
       isCurrentWorkspaceManager: true,
-    } as any)
+    } as unknown as ReturnType<typeof useAppContext>)
     mockUseProviderContext.mockReturnValue({
       plan: {
         type: Plan.professional,
@@ -73,14 +73,14 @@ describe('CustomWebAppBrand', () => {
         reset: {},
       },
       enableBilling: false,
-    } as any)
+    } as unknown as ReturnType<typeof useProviderContext>)
     const systemFeaturesState = {
       branding: {
         enabled: true,
         workspace_logo: 'https://example.com/workspace-logo.png',
       },
     }
-    mockUseGlobalPublicStore.mockImplementation(selector => selector ? selector({ systemFeatures: systemFeaturesState } as any) : { systemFeatures: systemFeaturesState })
+    mockUseGlobalPublicStore.mockImplementation(selector => selector ? selector({ systemFeatures: systemFeaturesState, setSystemFeatures: vi.fn() } as unknown as ReturnType<typeof useGlobalPublicStore.getState>) : { systemFeatures: systemFeaturesState })
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
 
@@ -94,7 +94,7 @@ describe('CustomWebAppBrand', () => {
       },
       mutateCurrentWorkspace: vi.fn(),
       isCurrentWorkspaceManager: false,
-    } as any)
+    } as unknown as ReturnType<typeof useAppContext>)
 
     const { container } = renderComponent()
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
@@ -112,7 +112,7 @@ describe('CustomWebAppBrand', () => {
       },
       mutateCurrentWorkspace: mutateMock,
       isCurrentWorkspaceManager: true,
-    } as any)
+    } as unknown as ReturnType<typeof useAppContext>)
 
     renderComponent()
     const switchInput = screen.getByRole('switch')

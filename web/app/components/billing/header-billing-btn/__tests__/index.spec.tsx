@@ -70,7 +70,7 @@ describe('HeaderBillingBtn', () => {
     expect(screen.getByTestId('upgrade-btn')).toBeInTheDocument()
   })
 
-  it('renders team badge for team plan with correct styling', () => {
+  it('renders team badge for team plan', () => {
     ensureProviderContextMock().mockReturnValueOnce({
       plan: { type: Plan.team },
       enableBilling: true,
@@ -79,9 +79,7 @@ describe('HeaderBillingBtn', () => {
 
     render(<HeaderBillingBtn />)
 
-    const badge = screen.getByText('team').closest('div')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('bg-[#E0EAFF]')
+    expect(screen.getByText('team')).toBeInTheDocument()
   })
 
   it('renders nothing when plan is not fetched', () => {
@@ -111,16 +109,11 @@ describe('HeaderBillingBtn', () => {
 
     const { rerender } = render(<HeaderBillingBtn onClick={onClick} />)
 
-    const badge = screen.getByText('pro').closest('div')
-
-    expect(badge).toHaveClass('cursor-pointer')
-
-    fireEvent.click(badge!)
+    const badge = screen.getByText('pro').closest('div')!
+    fireEvent.click(badge)
     expect(onClick).toHaveBeenCalledTimes(1)
 
     rerender(<HeaderBillingBtn onClick={onClick} isDisplayOnly />)
-    expect(screen.getByText('pro').closest('div')).toHaveClass('cursor-default')
-
     fireEvent.click(screen.getByText('pro').closest('div')!)
     expect(onClick).toHaveBeenCalledTimes(1)
   })

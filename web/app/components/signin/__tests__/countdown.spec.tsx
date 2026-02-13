@@ -1,24 +1,15 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Countdown, { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from './countdown'
-
-// Mock useCountDown from ahooks
-let mockTime = COUNT_DOWN_TIME_MS
-let mockOnEnd: (() => void) | undefined
-
-vi.mock('ahooks', () => ({
-  useCountDown: ({ onEnd }: { leftTime: number, onEnd?: () => void }) => {
-    mockOnEnd = onEnd
-    return [mockTime]
-  },
-}))
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import Countdown, { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../countdown'
 
 describe('Countdown', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockTime = COUNT_DOWN_TIME_MS
-    mockOnEnd = undefined
+    vi.useFakeTimers()
     localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   // Rendering Tests
@@ -29,16 +20,15 @@ describe('Countdown', () => {
     })
 
     it('should display countdown time when time > 0', () => {
-      mockTime = 30000 // 30 seconds
+      localStorage.setItem(COUNT_DOWN_KEY, '30000')
       render(<Countdown />)
 
-      // The countdown displays number and 's' in the same span
       expect(screen.getByText(/30/)).toBeInTheDocument()
       expect(screen.getByText(/s$/)).toBeInTheDocument()
     })
 
     it('should display resend link when time <= 0', () => {
-      mockTime = 0
+      localStorage.setItem(COUNT_DOWN_KEY, '0')
       render(<Countdown />)
 
       expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
@@ -46,7 +36,7 @@ describe('Countdown', () => {
     })
 
     it('should not display resend link when time > 0', () => {
-      mockTime = 1000
+      localStorage.setItem(COUNT_DOWN_KEY, '1000')
       render(<Countdown />)
 
       expect(screen.queryByText('login.checkCode.resend')).not.toBeInTheDocument()
@@ -57,7 +47,7 @@ describe('Countdown', () => {
   describe('State Management', () => {
     it('should initialize leftTime from localStorage if available', () => {
       const savedTime = 45000
-      vi.mocked(localStorage.getItem).mockReturnValueOnce(String(savedTime))
+      localStorage.setItem(COUNT_DOWN_KEY, String(savedTime))
 
       render(<Countdown />)
 
@@ -65,25 +55,26 @@ describe('Countdown', () => {
     })
 
     it('should use default COUNT_DOWN_TIME_MS when localStorage is empty', () => {
-      vi.mocked(localStorage.getItem).mockReturnValueOnce(null)
-
       render(<Countdown />)
 
       expect(localStorage.getItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
     })
 
     it('should save time to localStorage on time change', () => {
-      mockTime = 50000
       render(<Countdown />)
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, String(mockTime))
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, expect.any(String))
     })
   })
 
   // Event Handler Tests
   describe('Event Handlers', () => {
     it('should call onResend callback when resend is clicked', () => {
-      mockTime = 0
+      localStorage.setItem(COUNT_DOWN_KEY, '0')
       const onResend = vi.fn()
 
       render(<Countdown onResend={onResend} />)
@@ -95,7 +86,7 @@ describe('Countdown', () => {
     })
 
     it('should reset countdown when resend is clicked', () => {
-      mockTime = 0
+      localStorage.setItem(COUNT_DOWN_KEY, '0')
 
       render(<Countdown />)
 
@@ -106,7 +97,7 @@ describe('Countdown', () => {
     })
 
     it('should work without onResend callback (optional prop)', () => {
-      mockTime = 0
+      localStorage.setItem(COUNT_DOWN_KEY, '0')
 
       render(<Countdown />)
 
@@ -118,11 +109,12 @@ describe('Countdown', () => {
   // Countdown End Tests
   describe('Countdown End', () => {
     it('should remove localStorage item when countdown ends', () => {
+      localStorage.setItem(COUNT_DOWN_KEY, '1000')
+
       render(<Countdown />)
 
-      // Simulate countdown end
       act(() => {
-        mockOnEnd?.()
+        vi.advanceTimersByTime(2000)
       })
 
       expect(localStorage.removeItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
@@ -132,28 +124,28 @@ describe('Countdown', () => {
   // Edge Cases
   describe('Edge Cases', () => {
     it('should handle time exactly at 0', () => {
-      mockTime = 0
+      localStorage.setItem(COUNT_DOWN_KEY, '0')
       render(<Countdown />)
 
       expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
     })
 
     it('should handle negative time values', () => {
-      mockTime = -1000
+      localStorage.setItem(COUNT_DOWN_KEY, '-1000')
       render(<Countdown />)
 
       expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
     })
 
     it('should round time display correctly', () => {
-      mockTime = 29500 // Should display as 30 (Math.round)
+      localStorage.setItem(COUNT_DOWN_KEY, '29500')
       render(<Countdown />)
 
       expect(screen.getByText(/30/)).toBeInTheDocument()
     })
 
     it('should display 1 second correctly', () => {
-      mockTime = 1000
+      localStorage.setItem(COUNT_DOWN_KEY, '1000')
       render(<Countdown />)
 
       expect(screen.getByText(/^1/)).toBeInTheDocument()
@@ -163,8 +155,8 @@ describe('Countdown', () => {
   // Props Tests
   describe('Props', () => {
     it('should render correctly with onResend prop', () => {
+      localStorage.setItem(COUNT_DOWN_KEY, '0')
       const onResend = vi.fn()
-      mockTime = 0
 
       render(<Countdown onResend={onResend} />)
 

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import WorkflowOnboardingModal from './index'
+import WorkflowOnboardingModal from '../index'
 
 // Mock Modal component
 vi.mock('@/app/components/base/modal', () => ({
@@ -33,14 +33,9 @@ vi.mock('@/app/components/base/modal', () => ({
   },
 }))
 
-// Mock useDocLink hook
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 // Mock StartNodeSelectionPanel (using real component would be better for integration,
 // but for this test we'll mock to control behavior)
-vi.mock('./start-node-selection-panel', () => ({
+vi.mock('../start-node-selection-panel', () => ({
   default: function MockStartNodeSelectionPanel({
     onSelectUserInput,
     onSelectTrigger,

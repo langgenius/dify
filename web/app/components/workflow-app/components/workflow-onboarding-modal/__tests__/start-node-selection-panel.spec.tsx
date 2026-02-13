@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import StartNodeSelectionPanel from './start-node-selection-panel'
+import StartNodeSelectionPanel from '../start-node-selection-panel'
 
 // Mock NodeSelector component
 vi.mock('@/app/components/workflow/block-selector', () => ({
@@ -11,7 +11,12 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     onOpenChange,
     onSelect,
     trigger,
-  }: any) {
+  }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    onSelect: (type: BlockEnum) => void
+    trigger: (() => React.ReactNode) | React.ReactNode
+  }) {
     // trigger is a function that returns a React element
     const triggerElement = typeof trigger === 'function' ? trigger() : trigger
 

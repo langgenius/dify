@@ -4,7 +4,7 @@ import type { App } from '@/types/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppModeEnum } from '@/types/app'
-import WorkflowHeader from './index'
+import WorkflowHeader from '../index'
 
 const mockResetWorkflowVersionHistory = vi.fn()
 

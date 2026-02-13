@@ -46,6 +46,7 @@ describe('usePipelineInit', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
 
     mockWorkflowStoreGetState.mockReturnValue({
       setEnvSecrets: mockSetEnvSecrets,

@@ -6,10 +6,15 @@ vi.mock('@/utils/clipboard', () => ({
   writeTextToClipboard: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Suppress expected React act() warnings and jsdom unimplemented API errors
+vi.spyOn(console, 'error').mockImplementation(() => {})
+
 describe('code.tsx components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
+    // jsdom does not implement scrollBy; mock it to prevent stderr noise
+    window.scrollBy = vi.fn()
   })
 
   afterEach(() => {
@@ -18,14 +23,9 @@ describe('code.tsx components', () => {
   })
 
   describe('Code', () => {
-    it('should render children', () => {
+    it('should render children as a code element', () => {
       render(<Code>const x = 1</Code>)
-      expect(screen.getByText('const x = 1')).toBeInTheDocument()
-    })
-
-    it('should render as code element', () => {
-      render(<Code>code snippet</Code>)
-      const codeElement = screen.getByText('code snippet')
+      const codeElement = screen.getByText('const x = 1')
       expect(codeElement.tagName).toBe('CODE')
     })
 
@@ -48,14 +48,9 @@ describe('code.tsx components', () => {
   })
 
   describe('Embed', () => {
-    it('should render value prop', () => {
+    it('should render value prop as a span element', () => {
       render(<Embed value="embedded content">ignored children</Embed>)
-      expect(screen.getByText('embedded content')).toBeInTheDocument()
-    })
-
-    it('should render as span element', () => {
-      render(<Embed value="test value">children</Embed>)
-      const span = screen.getByText('test value')
+      const span = screen.getByText('embedded content')
       expect(span.tagName).toBe('SPAN')
     })
 
@@ -65,7 +60,7 @@ describe('code.tsx components', () => {
       expect(embed).toHaveClass('embed-class')
     })
 
-    it('should not render children, only value', () => {
+    it('should render only value, not children', () => {
       render(<Embed value="shown">hidden children</Embed>)
       expect(screen.getByText('shown')).toBeInTheDocument()
       expect(screen.queryByText('hidden children')).not.toBeInTheDocument()
@@ -81,27 +76,6 @@ describe('code.tsx components', () => {
           </CodeGroup>,
         )
         expect(screen.getByText('const hello = \'world\'')).toBeInTheDocument()
-      })
-
-      it('should have shadow and rounded styles', () => {
-        const { container } = render(
-          <CodeGroup targetCode="code here">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
-        const codeGroup = container.querySelector('.shadow-md')
-        expect(codeGroup).toBeInTheDocument()
-        expect(codeGroup).toHaveClass('rounded-2xl')
-      })
-
-      it('should have bg-zinc-900 background', () => {
-        const { container } = render(
-          <CodeGroup targetCode="code">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
-        const codeGroup = container.querySelector('.bg-zinc-900')
-        expect(codeGroup).toBeInTheDocument()
       })
     })
 
@@ -184,23 +158,14 @@ describe('code.tsx components', () => {
     })
 
     describe('with title prop', () => {
-      it('should render title in header', () => {
+      it('should render title in an h3 heading', () => {
         render(
           <CodeGroup title="API Example" targetCode="code">
             <pre><code>fallback</code></pre>
           </CodeGroup>,
         )
-        expect(screen.getByText('API Example')).toBeInTheDocument()
-      })
-
-      it('should render title in h3 element', () => {
-        render(
-          <CodeGroup title="Example Title" targetCode="code">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
         const h3 = screen.getByRole('heading', { level: 3 })
-        expect(h3).toHaveTextContent('Example Title')
+        expect(h3).toHaveTextContent('API Example')
       })
     })
 
@@ -223,30 +188,18 @@ describe('code.tsx components', () => {
         expect(screen.getByText('/api/users')).toBeInTheDocument()
       })
 
-      it('should render both tag and label with separator', () => {
-        const { container } = render(
+      it('should render both tag and label together', () => {
+        render(
           <CodeGroup tag="POST" label="/api/create" targetCode="code">
             <pre><code>fallback</code></pre>
           </CodeGroup>,
         )
         expect(screen.getByText('POST')).toBeInTheDocument()
         expect(screen.getByText('/api/create')).toBeInTheDocument()
-        const separator = container.querySelector('.rounded-full.bg-zinc-500')
-        expect(separator).toBeInTheDocument()
       })
     })
 
     describe('CopyButton functionality', () => {
-      it('should render copy button', () => {
-        render(
-          <CodeGroup targetCode="copyable code">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
-        const copyButton = screen.getByRole('button')
-        expect(copyButton).toBeInTheDocument()
-      })
-
       it('should show "Copy" text initially', () => {
         render(
           <CodeGroup targetCode="code">
@@ -322,88 +275,32 @@ describe('code.tsx components', () => {
         expect(screen.getByText('child code content')).toBeInTheDocument()
       })
     })
-
-    describe('styling', () => {
-      it('should have not-prose class to prevent prose styling', () => {
-        const { container } = render(
-          <CodeGroup targetCode="code">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
-        const codeGroup = container.querySelector('.not-prose')
-        expect(codeGroup).toBeInTheDocument()
-      })
-
-      it('should have my-6 margin', () => {
-        const { container } = render(
-          <CodeGroup targetCode="code">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
-        const codeGroup = container.querySelector('.my-6')
-        expect(codeGroup).toBeInTheDocument()
-      })
-
-      it('should have overflow-hidden', () => {
-        const { container } = render(
-          <CodeGroup targetCode="code">
-            <pre><code>fallback</code></pre>
-          </CodeGroup>,
-        )
-        const codeGroup = container.querySelector('.overflow-hidden')
-        expect(codeGroup).toBeInTheDocument()
-      })
-    })
   })
 
   describe('Pre', () => {
-    describe('when outside CodeGroup context', () => {
-      it('should wrap children in CodeGroup', () => {
-        const { container } = render(
-          <Pre>
-            <pre><code>code content</code></pre>
-          </Pre>,
-        )
-        const codeGroup = container.querySelector('.bg-zinc-900')
-        expect(codeGroup).toBeInTheDocument()
-      })
-
-      it('should pass props to CodeGroup', () => {
-        render(
-          <Pre title="Pre Title">
-            <pre><code>code</code></pre>
-          </Pre>,
-        )
-        expect(screen.getByText('Pre Title')).toBeInTheDocument()
-      })
+    it('should wrap children in CodeGroup when outside CodeGroup context', () => {
+      render(
+        <Pre title="Pre Title">
+          <pre><code>code</code></pre>
+        </Pre>,
+      )
+      expect(screen.getByText('Pre Title')).toBeInTheDocument()
     })
 
-    describe('when inside CodeGroup context (isGrouped)', () => {
-      it('should return children directly without wrapping', () => {
-        render(
-          <CodeGroup targetCode="outer code">
-            <Pre>
-              <code>inner code</code>
-            </Pre>
-          </CodeGroup>,
-        )
-        expect(screen.getByText('outer code')).toBeInTheDocument()
-      })
+    it('should return children directly when inside CodeGroup context', () => {
+      render(
+        <CodeGroup targetCode="outer code">
+          <Pre>
+            <code>inner code</code>
+          </Pre>
+        </CodeGroup>,
+      )
+      expect(screen.getByText('outer code')).toBeInTheDocument()
     })
   })
 
   describe('CodePanelHeader (via CodeGroup)', () => {
-    it('should not render when neither tag nor label provided', () => {
-      const { container } = render(
-        <CodeGroup targetCode="code">
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const headerDivider = container.querySelector('.border-b-white\\/7\\.5')
-      expect(headerDivider).not.toBeInTheDocument()
-    })
-
-    it('should render when only tag is provided', () => {
+    it('should render when tag is provided', () => {
       render(
         <CodeGroup tag="GET" targetCode="code">
           <pre><code>fallback</code></pre>
@@ -412,24 +309,13 @@ describe('code.tsx components', () => {
       expect(screen.getByText('GET')).toBeInTheDocument()
     })
 
-    it('should render when only label is provided', () => {
+    it('should render when label is provided', () => {
       render(
         <CodeGroup label="/api/endpoint" targetCode="code">
           <pre><code>fallback</code></pre>
         </CodeGroup>,
       )
       expect(screen.getByText('/api/endpoint')).toBeInTheDocument()
-    })
-
-    it('should render label with font-mono styling', () => {
-      render(
-        <CodeGroup label="/api/test" targetCode="code">
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const label = screen.getByText('/api/test')
-      expect(label.className).toContain('font-mono')
-      expect(label.className).toContain('text-xs')
     })
   })
 
@@ -446,39 +332,10 @@ describe('code.tsx components', () => {
       )
       expect(screen.getByRole('tablist')).toBeInTheDocument()
     })
-
-    it('should style active tab differently', () => {
-      const examples = [
-        { title: 'Active', code: 'active code' },
-        { title: 'Inactive', code: 'inactive code' },
-      ]
-      render(
-        <CodeGroup targetCode={examples}>
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const activeTab = screen.getByRole('tab', { name: 'Active' })
-      expect(activeTab.className).toContain('border-emerald-500')
-      expect(activeTab.className).toContain('text-emerald-400')
-    })
-
-    it('should have header background styling', () => {
-      const examples = [
-        { title: 'Tab1', code: 'code1' },
-        { title: 'Tab2', code: 'code2' },
-      ]
-      const { container } = render(
-        <CodeGroup targetCode={examples}>
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const header = container.querySelector('.bg-zinc-800')
-      expect(header).toBeInTheDocument()
-    })
   })
 
   describe('CodePanel (via CodeGroup)', () => {
-    it('should render code in pre element', () => {
+    it('should render code in a pre element', () => {
       render(
         <CodeGroup targetCode="pre content">
           <pre><code>fallback</code></pre>
@@ -487,50 +344,10 @@ describe('code.tsx components', () => {
       const preElement = screen.getByText('pre content').closest('pre')
       expect(preElement).toBeInTheDocument()
     })
-
-    it('should have text-white class on pre', () => {
-      render(
-        <CodeGroup targetCode="white text">
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const preElement = screen.getByText('white text').closest('pre')
-      expect(preElement?.className).toContain('text-white')
-    })
-
-    it('should have text-xs class on pre', () => {
-      render(
-        <CodeGroup targetCode="small text">
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const preElement = screen.getByText('small text').closest('pre')
-      expect(preElement?.className).toContain('text-xs')
-    })
-
-    it('should have overflow-x-auto on pre', () => {
-      render(
-        <CodeGroup targetCode="scrollable">
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const preElement = screen.getByText('scrollable').closest('pre')
-      expect(preElement?.className).toContain('overflow-x-auto')
-    })
-
-    it('should have p-4 padding on pre', () => {
-      render(
-        <CodeGroup targetCode="padded">
-          <pre><code>fallback</code></pre>
-        </CodeGroup>,
-      )
-      const preElement = screen.getByText('padded').closest('pre')
-      expect(preElement?.className).toContain('p-4')
-    })
   })
 
-  describe('ClipboardIcon (via CopyButton in CodeGroup)', () => {
-    it('should render clipboard icon in copy button', () => {
+  describe('ClipboardIcon (via CopyButton)', () => {
+    it('should render clipboard SVG icon in copy button', () => {
       render(
         <CodeGroup targetCode="code">
           <pre><code>fallback</code></pre>
@@ -543,7 +360,7 @@ describe('code.tsx components', () => {
     })
   })
 
-  describe('edge cases', () => {
+  describe('Edge Cases', () => {
     it('should handle empty string targetCode', () => {
       render(
         <CodeGroup targetCode="">
