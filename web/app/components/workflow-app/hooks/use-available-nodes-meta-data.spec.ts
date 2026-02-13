@@ -102,6 +102,7 @@ describe('workflow-app/useAvailableNodesMetaData', () => {
     expect(nodeTypes).toContain(BlockEnum.TriggerPlugin)
     expect(nodeTypes).not.toContain(BlockEnum.Answer)
     expect(startNode?.metaData.isUndeletable).toBe(false)
+    expect(startNode?.metaData.isTypeFixed).toBe(false)
   })
 
   it('should include chatflow-only nodes when chat mode is enabled', () => {
@@ -117,6 +118,7 @@ describe('workflow-app/useAvailableNodesMetaData', () => {
     expect(nodeTypes).not.toContain(BlockEnum.TriggerSchedule)
     expect(nodeTypes).not.toContain(BlockEnum.TriggerPlugin)
     expect(startNode?.metaData.isUndeletable).toBe(true)
+    expect(startNode?.metaData.isTypeFixed).toBe(true)
   })
 
   it('should hide sandbox-only nodes and keep agent when sandbox is disabled', () => {

@@ -57,6 +57,7 @@ export const useAvailableNodesMetaData = () => {
     metaData: {
       ...StartDefault.metaData,
       isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
+      isTypeFixed: isChatMode, // start node (user input) is immutable in chatflow mode
     },
   }), [isChatMode])
 

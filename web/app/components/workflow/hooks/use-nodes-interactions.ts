@@ -63,6 +63,7 @@ import { checkMakeGroupAvailability } from './use-make-group'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import {
+  useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
   useWorkflowReadOnly,
@@ -326,6 +327,7 @@ export const useNodesInteractions = () => {
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getAfterNodesInSameBranch } = useWorkflow()
+  const isChatMode = useIsChatMode()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleSetHelpline } = useHelpline()
@@ -1963,7 +1965,14 @@ export const useNodesInteractions = () => {
         return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const currentNode = nodes.find(node => node.id === currentNodeId)!
+      const currentNode = nodes.find(node => node.id === currentNodeId)
+      if (!currentNode)
+        return
+
+      // In chatflow mode, the Start (user input) node is immutable.
+      if (isChatMode && currentNode.data.type === BlockEnum.Start)
+        return
+
       const connectedEdges = getConnectedEdges([currentNode], edges)
       const nodesWithSameType = nodes.filter(
         node => node.data.type === nodeType,
@@ -2051,6 +2060,7 @@ export const useNodesInteractions = () => {
       })
     },
     [
+      isChatMode,
       getNodesReadOnly,
       collaborativeWorkflow,
       handleSyncWorkflowDraft,
