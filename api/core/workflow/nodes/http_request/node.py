@@ -94,11 +94,15 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
     def _run(self) -> NodeRunResult:
         process_data = {}
         try:
+            # Use configured max_retries when retry is enabled, otherwise 0
+            retry_config = self.node_data.retry_config
+            max_retries = retry_config.max_retries if retry_config.retry_enabled else 0
+
             http_executor = Executor(
                 node_data=self.node_data,
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
-                max_retries=0,
+                max_retries=max_retries,
                 http_client=self._http_client,
                 file_manager=self._file_manager,
             )
