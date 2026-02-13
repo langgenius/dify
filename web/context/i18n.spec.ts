@@ -1,4 +1,4 @@
-import type { DocPathMap } from './i18n'
+import type { DocAnchorMap, DocPathMap } from './i18n'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useTranslation } from '#i18n'
 import { renderHook } from '@testing-library/react'
@@ -234,6 +234,17 @@ describe('useDocLink', () => {
       const url = result.current('/use-dify/getting-started/introduction')
       expect(url).toBe(`${defaultDocBaseUrl}/zh/use-dify/getting-started/introduction`)
     })
+
+    it('should preserve anchor while translating API reference path', () => {
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'zh-Hans' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/api-reference/annotations/create-annotation#request-body')
+      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/标注管理/创建标注#request-body`)
+    })
   })
 
   describe('Edge Cases', () => {
@@ -241,6 +252,22 @@ describe('useDocLink', () => {
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/getting-started/introduction#overview' as DocPathWithoutLang)
       expect(url).toBe(`${defaultDocBaseUrl}/en/use-dify/getting-started/introduction#overview`)
+    })
+
+    it('should support locale-specific anchors via anchorMap', () => {
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'zh-Hans' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const anchorMap: DocAnchorMap = {
+        'zh-Hans': '应用导出和导入',
+        'ja-JP': 'アプリのエクスポートとインポート',
+      }
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/use-dify/workspace/app-management#app-export-and-import', undefined, anchorMap)
+      expect(url).toBe(`${defaultDocBaseUrl}/zh/use-dify/workspace/app-management#${encodeURIComponent('应用导出和导入')}`)
     })
 
     it('should handle multiple calls with same hook instance', () => {

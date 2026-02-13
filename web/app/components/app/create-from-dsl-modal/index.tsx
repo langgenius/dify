@@ -16,6 +16,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { appManagementAnchorMap } from '@/context/doc-anchors'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -313,7 +314,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         <div className="flex items-center justify-between px-6 pb-6 pt-5">
           <a
             className="flex items-center gap-1 text-text-accent system-xs-regular"
-            href={docLink('/use-dify/workspace/app-management#app-export-and-import')}
+            href={docLink('/use-dify/workspace/app-management#app-export-and-import', undefined, appManagementAnchorMap)}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -1,7 +1,7 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { CommonNodeType, NodeDefault, NodeDefaultBase } from '@/app/components/workflow/types'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -15,6 +15,10 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { useIsChatMode } from './use-is-chat-mode'
+
+const NODE_HELP_LINK_OVERRIDES: Partial<Record<BlockEnum, string>> = {
+  [BlockEnum.FileUpload]: 'upload-file-to-sandbox',
+}
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
@@ -48,6 +52,13 @@ export const useAvailableNodesMetaData = () => {
           ]
     ),
   ] as AvailableNodesMetaData['nodes'], [isChatMode, isSandboxed, startNodeMetaData])
+
+  const getHelpLinkSlug = useCallback((nodeType: BlockEnum, helpLinkUri?: string) => {
+    if (isSandboxed && nodeType === BlockEnum.LLM)
+      return BlockEnum.Agent
+
+    return NODE_HELP_LINK_OVERRIDES[nodeType] || helpLinkUri || nodeType
+  }, [isSandboxed])
 
   const availableNodesMetaData = useMemo<NodeDefaultBase[]>(() => {
     const toNodeDefaultBase = (
@@ -83,7 +94,7 @@ export const useAvailableNodesMetaData = () => {
         ? BlockEnum.Agent
         : undefined
       const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
-      const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
+      const helpLinkPath = `/use-dify/nodes/${getHelpLinkSlug(metaData.type, metaData.helpLinkUri)}` as DocPathWithoutLang
       return toNodeDefaultBase(typedNode, {
         ...metaData,
         iconType: iconTypeOverride,
@@ -97,7 +108,7 @@ export const useAvailableNodesMetaData = () => {
         _iconTypeOverride: iconTypeOverride,
       })
     })
-  }, [mergedNodesMetaData, t, docLink, isSandboxed])
+  }, [mergedNodesMetaData, t, docLink, isSandboxed, getHelpLinkSlug])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

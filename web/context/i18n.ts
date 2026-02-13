@@ -21,31 +21,57 @@ export const useGetPricingPageLanguage = () => {
   return getPricingPageLanguage(locale)
 }
 
-export const defaultDocBaseUrl = 'https://dify-6c0370d8-add-new-agent.mintlify.app'
+export const defaultDocBaseUrl = 'https://docs.bash-is-all-you-need.dify.dev'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
+export type DocAnchorMap = Partial<Record<Locale, string>>
 
-export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
+const splitPathWithHash = (path: string) => {
+  const [pathname, ...hashParts] = path.split('#')
+  return {
+    pathname,
+    hash: hashParts.join('#'),
+  }
+}
+
+const normalizeAnchor = (anchor: string) => {
+  const normalizedAnchor = anchor.startsWith('#') ? anchor.slice(1) : anchor
+  if (!normalizedAnchor)
+    return ''
+
+  const isAsciiOnly = Array.from(normalizedAnchor).every(char => char.codePointAt(0)! <= 0x7F)
+  if (isAsciiOnly)
+    return normalizedAnchor
+
+  return encodeURIComponent(normalizedAnchor)
+}
+
+export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap, anchorMap?: DocAnchorMap) => string) => {
   let baseDocUrl = baseUrl || defaultDocBaseUrl
   baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
   const locale = useLocale()
   return useCallback(
-    (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
+    (path?: DocPathWithoutLang, pathMap?: DocPathMap, anchorMap?: DocAnchorMap): string => {
       const docLanguage = getDocLanguage(locale)
       const pathUrl = path || ''
-      let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
+      const targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
+      const { pathname: pathWithoutHash, hash: pathAnchor } = splitPathWithHash(targetPath)
+      let targetPathWithoutHash = pathWithoutHash
       let languagePrefix = `/${docLanguage}`
 
-      if (targetPath.startsWith('/api-reference/')) {
+      if (targetPathWithoutHash.startsWith('/api-reference/')) {
         languagePrefix = ''
         if (docLanguage !== 'en') {
-          const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage]
+          const translatedPath = apiReferencePathTranslations[targetPathWithoutHash]?.[docLanguage]
           if (translatedPath) {
-            targetPath = translatedPath
+            targetPathWithoutHash = translatedPath
           }
         }
       }
 
-      return `${baseDocUrl}${languagePrefix}${targetPath}`
+      const anchor = normalizeAnchor(anchorMap?.[locale] || pathAnchor)
+      const anchorSuffix = anchor ? `#${anchor}` : ''
+
+      return `${baseDocUrl}${languagePrefix}${targetPathWithoutHash}${anchorSuffix}`
     },
     [baseDocUrl, locale],
   )

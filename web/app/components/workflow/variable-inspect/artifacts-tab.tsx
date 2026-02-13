@@ -1,4 +1,5 @@
 import type { InspectHeaderProps } from './inspect-layout'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
 import {
   RiCloseLine,
@@ -12,6 +13,7 @@ import { FileDownload01 } from '@/app/components/base/icons/src/vender/line/file
 import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts/artifacts-tree'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
+import { fileSystemArtifactsAnchorMap } from '@/context/doc-anchors'
 import { useDocLink } from '@/context/i18n'
 import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
@@ -35,7 +37,7 @@ const ArtifactsEmpty = ({ description }: { description: string }) => {
         <div className="text-text-tertiary system-xs-regular">{description}</div>
         <a
           className="cursor-pointer text-text-accent system-xs-regular"
-          href={docLink('/use-dify/debug/variable-inspect')}
+          href={docLink('/use-dify/build/file-system#artifacts' as DocPathWithoutLang, undefined, fileSystemArtifactsAnchorMap)}
           target="_blank"
           rel="noopener noreferrer"
         >
