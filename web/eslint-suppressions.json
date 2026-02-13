@@ -1724,11 +1724,6 @@
       "count": 10
     }
   },
-  "app/components/base/checkbox-list/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    }
-  },
   "app/components/base/checkbox/index.stories.tsx": {
     "no-console": {
       "count": 1
@@ -1858,9 +1853,6 @@
   "app/components/base/emoji-picker/Inner.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/base/encrypted-bottom/index.tsx": {
