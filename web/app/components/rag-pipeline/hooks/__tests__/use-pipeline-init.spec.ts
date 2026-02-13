@@ -83,7 +83,7 @@ describe('usePipelineInit', () => {
   })
 
   afterEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('hook initialization', () => {

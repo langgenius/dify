@@ -2,9 +2,6 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import InputCopy from '../input-copy'
 
-// Suppress expected React act() warnings from CopyFeedback timer-based state updates
-vi.spyOn(console, 'error').mockImplementation(() => {})
-
 async function renderAndFlush(ui: React.ReactElement) {
   const result = render(ui)
   await act(async () => {
@@ -18,6 +15,7 @@ const execCommandMock = vi.fn().mockReturnValue(true)
 describe('InputCopy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     execCommandMock.mockReturnValue(true)
     document.execCommand = execCommandMock
@@ -26,6 +24,7 @@ describe('InputCopy', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('rendering', () => {
