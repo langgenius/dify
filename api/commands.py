@@ -773,6 +773,7 @@ def upgrade_db():
             daemon=True,
         )
         heartbeat_thread.start()
+        migration_succeeded = False
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
 
@@ -781,6 +782,7 @@ def upgrade_db():
 
             flask_migrate.upgrade()
 
+            migration_succeeded = True
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception as e:
@@ -794,9 +796,15 @@ def upgrade_db():
             try:
                 lock.release()
             except LockNotOwnedError:
-                logger.warning("DB migration lock not owned on release (likely expired); ignoring.")
+                status = "successful" if migration_succeeded else "failed"
+                logger.warning("DB migration lock not owned on release after %s migration (likely expired); ignoring.", status)
             except RedisError:
-                logger.warning("Failed to release DB migration lock due to Redis error; ignoring.", exc_info=True)
+                status = "successful" if migration_succeeded else "failed"
+                logger.warning(
+                    "Failed to release DB migration lock due to Redis error after %s migration; ignoring.",
+                    status,
+                    exc_info=True,
+                )
     else:
         click.echo("Database migration skipped")
 
