@@ -69,11 +69,35 @@ const ItemMeta = ({ items }: { items: (React.ReactNode | string)[] }) => (
   </div>
 )
 
+const getSearchParamsString = (params?: Record<string, string | undefined>) => {
+  const searchParams = new URLSearchParams()
+  if (params) {
+    Object.keys(params).forEach((key) => {
+      const value = params[key]
+      if (value !== undefined && value !== null)
+        searchParams.append(key, value)
+    })
+  }
+  return searchParams.toString()
+}
+
+const getDropdownMarketplaceUrl = (
+  path: string,
+  params: Record<string, string | undefined> | undefined,
+  includeSource: boolean,
+) => {
+  if (includeSource)
+    return getMarketplaceUrl(path, params)
+  const query = getSearchParamsString(params)
+  return query ? `${path}?${query}` : path
+}
+
 type SearchDropdownProps = {
   query: string
   plugins: Plugin[]
   templates: Template[]
   creators: Creator[]
+  includeSource?: boolean
   onShowAll: () => void
   isLoading?: boolean
 }
@@ -83,6 +107,7 @@ const SearchDropdown = ({
   plugins,
   templates,
   creators,
+  includeSource = true,
   onShowAll,
   isLoading = false,
 }: SearchDropdownProps) => {
@@ -100,6 +125,7 @@ const SearchDropdown = ({
       <TemplatesSection
         key="templates"
         templates={templates}
+        includeSource={includeSource}
         t={t}
       />,
     )
@@ -122,6 +148,7 @@ const SearchDropdown = ({
       <CreatorsSection
         key="creators"
         creators={creators}
+        includeSource={includeSource}
         t={t}
       />,
     )
@@ -166,8 +193,9 @@ const SearchDropdown = ({
 
 /* ---------- Templates Section ---------- */
 
-function TemplatesSection({ templates, t }: {
+function TemplatesSection({ templates, includeSource, t }: {
   templates: Template[]
+  includeSource: boolean
   t: ReturnType<typeof useTranslation>['t']
 }) {
   return (
@@ -180,7 +208,11 @@ function TemplatesSection({ templates, t }: {
         return (
           <DropdownItem
             key={template.id}
-            href={getMarketplaceUrl(`/template/${template.publisher_handle}/${template.template_name}`, { templateId: template.id })}
+            href={getDropdownMarketplaceUrl(
+              `/template/${template.publisher_handle}/${template.template_name}`,
+              { templateId: template.id },
+              includeSource,
+            )}
             icon={(
               <div className="flex shrink-0 items-start py-1">
                 <AppIcon
@@ -265,8 +297,9 @@ function PluginsSection({ plugins, getValueFromI18nObject, categoriesMap, t }: {
 
 /* ---------- Creators Section ---------- */
 
-function CreatorsSection({ creators, t }: {
+function CreatorsSection({ creators, includeSource, t }: {
   creators: Creator[]
+  includeSource: boolean
   t: ReturnType<typeof useTranslation>['t']
 }) {
   return (
@@ -275,7 +308,7 @@ function CreatorsSection({ creators, t }: {
         <a
           key={creator.unique_handle}
           className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-state-base-hover"
-          href={getMarketplaceUrl(`/creator/${creator.unique_handle}`)}
+          href={getDropdownMarketplaceUrl(`/creators/${creator.unique_handle}`, undefined, includeSource)}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-[0.5px] border-divider-regular">
             <img

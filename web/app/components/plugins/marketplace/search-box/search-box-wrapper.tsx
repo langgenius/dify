@@ -24,10 +24,12 @@ import SearchDropdown from './search-dropdown'
 type SearchBoxWrapperProps = {
   wrapperClassName?: string
   inputClassName?: string
+  includeSource?: boolean
 }
 const SearchBoxWrapper = ({
   wrapperClassName,
   inputClassName,
+  includeSource = true,
 }: SearchBoxWrapperProps) => {
   const { t } = useTranslation()
   const [searchText, handleSearchTextChange] = useSearchText()
@@ -126,6 +128,7 @@ const SearchBoxWrapper = ({
           plugins={dropdownPlugins}
           templates={dropdownTemplates}
           creators={dropdownCreators}
+          includeSource={includeSource}
           onShowAll={handleSubmit}
           isLoading={dropdownQuery.isLoading}
         />
