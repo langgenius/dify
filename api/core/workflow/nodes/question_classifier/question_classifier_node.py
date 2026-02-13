@@ -179,7 +179,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 result_text = re.sub(r"<think[^>]*>[\s\S]*?</think>", "", result_text, flags=re.IGNORECASE)
             result_text_json = parse_and_check_json_markdown(result_text, [])
             # result_text_json = json.loads(result_text.strip('```JSON\n'))
-            if "category_name" in result_text_json and "category_id" in result_text_json:
+            if "category_id" in result_text_json:
                 category_id_result = result_text_json["category_id"]
                 classes = rendered_classes
                 classes_map = {class_.id: class_.name for class_ in classes}
