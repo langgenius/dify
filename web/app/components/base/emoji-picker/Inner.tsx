@@ -3,8 +3,6 @@ import type { EmojiMartData } from '@emoji-mart/data'
 import type { ChangeEvent, FC } from 'react'
 import data from '@emoji-mart/data'
 import {
-  ChevronDownIcon,
-  ChevronUpIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { init } from 'emoji-mart'
@@ -150,8 +148,8 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
         <p className="mb-2 text-text-primary system-xs-medium-uppercase">Choose Style</p>
         {showStyleColors
-          ? <ChevronDownIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />
-          : <ChevronUpIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />}
+          ? <span className="i-heroicons-chevron-down h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />
+          : <span className="i-heroicons-chevron-up h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />}
       </div>
       {showStyleColors && (
         <div className="grid w-full grid-cols-8 gap-1 px-3">

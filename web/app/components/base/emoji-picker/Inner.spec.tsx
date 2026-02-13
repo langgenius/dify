@@ -80,7 +80,7 @@ describe('EmojiPickerInner', () => {
 
       expect(screen.queryByText('#FFEAD5')).not.toBeInTheDocument()
 
-      const toggleButton = document.querySelector('.h-4.w-4.cursor-pointer')
+      const toggleButton = screen.getByTestId('toggle-colors')
       expect(toggleButton).toBeInTheDocument()
 
       await act(async () => {
@@ -95,7 +95,7 @@ describe('EmojiPickerInner', () => {
     it('updates background color and calls onSelect when a color is clicked', async () => {
       render(<EmojiPickerInner onSelect={mockOnSelect} />)
 
-      const toggleButton = document.querySelector('.h-4.w-4.cursor-pointer')
+      const toggleButton = screen.getByTestId('toggle-colors')
       await act(async () => {
         fireEvent.click(toggleButton!)
       })
@@ -136,7 +136,7 @@ describe('EmojiPickerInner', () => {
     it('toggles style colors display back and forth', async () => {
       render(<EmojiPickerInner onSelect={mockOnSelect} />)
 
-      const toggleButton = document.querySelector('.h-4.w-4.cursor-pointer')
+      const toggleButton = screen.getByTestId('toggle-colors')
 
       await act(async () => {
         fireEvent.click(toggleButton!)
@@ -144,7 +144,7 @@ describe('EmojiPickerInner', () => {
       expect(screen.getByText('Choose Style')).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(document.querySelector('.h-4.w-4.cursor-pointer')!) // It should be the other icon now
+        fireEvent.click(screen.getByTestId('toggle-colors')!) // It should be the other icon now
       })
       expect(screen.queryByText('#FFEAD5')).not.toBeInTheDocument()
     })
