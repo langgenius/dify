@@ -3,6 +3,7 @@ import type {
   Collection,
   MCPServerDetail,
   Tool,
+  WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
@@ -401,4 +402,23 @@ export const useUpdateTriggerStatus = () => {
       })
     },
   })
+}
+
+const workflowToolDetailByAppIDKey = (appId: string) => [NAME_SPACE, 'workflowToolDetailByAppID', appId]
+
+export const useWorkflowToolDetailByAppID = (appId: string, enabled = true) => {
+  return useQuery<WorkflowToolProviderResponse>({
+    queryKey: workflowToolDetailByAppIDKey(appId),
+    queryFn: () => get<WorkflowToolProviderResponse>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appId}`),
+    enabled: enabled && !!appId,
+  })
+}
+
+export const useInvalidateWorkflowToolDetailByAppID = () => {
+  const queryClient = useQueryClient()
+  return (appId: string) => {
+    queryClient.invalidateQueries({
+      queryKey: workflowToolDetailByAppIDKey(appId),
+    })
+  }
 }

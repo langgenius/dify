@@ -5753,11 +5753,6 @@
       "count": 4
     }
   },
-  "app/components/tools/workflow-tool/configure-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/tools/workflow-tool/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
