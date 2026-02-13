@@ -32,6 +32,4 @@ class ToolCallPending(BaseModel):
     round: int
 
 
-PauseReason: TypeAlias = Annotated[
-    HumanInputRequired | SchedulingPause | ToolCallPending, Field(discriminator="TYPE")
-]
+PauseReason: TypeAlias = Annotated[HumanInputRequired | SchedulingPause | ToolCallPending, Field(discriminator="TYPE")]

@@ -177,8 +177,13 @@ class LLMNode(Node[LLMNodeData]):
 
         # Check if this is a resume from tool call pause
         tool_call_state = self._get_tool_call_state(variable_pool)
-        _dbg.debug("[llm_node:%s] state=%s tool_results=%s mode=%s",
-                   self._node_id, bool(tool_call_state), bool(external_tool_results), external_tool_call_mode)
+        _dbg.debug(
+            "[llm_node:%s] state=%s tool_results=%s mode=%s",
+            self._node_id,
+            bool(tool_call_state),
+            bool(external_tool_results),
+            external_tool_call_mode,
+        )
 
         try:
             # fetch model config (needed for both first-run and resume)
@@ -204,26 +209,46 @@ class LLMNode(Node[LLMNodeData]):
                     _dbg.debug("[llm_node:%s] ignoring stale external_tool_results (no saved state)", self._node_id)
                     external_tool_results = None
                 prompt_messages, stop, tool_call_history, current_round = yield from self._first_run_build_prompt(
-                    node_inputs, variable_pool, model_instance, model_config,
-                    external_tools, external_tool_choice, external_tool_results,
+                    node_inputs,
+                    variable_pool,
+                    model_instance,
+                    model_config,
+                    external_tools,
+                    external_tool_choice,
+                    external_tool_results,
                 )
                 resume_tool_results = None
 
             # Invoke LLM
-            result_text, clean_text, usage, finish_reason, reasoning_content, tool_calls, structured_output = (
-                yield from self._invoke_and_collect(
-                    model_instance, model_config, prompt_messages, stop,
-                    external_tools, external_tool_choice, resume_tool_results,
-                )
+            (
+                result_text,
+                clean_text,
+                usage,
+                finish_reason,
+                reasoning_content,
+                tool_calls,
+                structured_output,
+            ) = yield from self._invoke_and_collect(
+                model_instance,
+                model_config,
+                prompt_messages,
+                stop,
+                external_tools,
+                external_tool_choice,
+                resume_tool_results,
             )
 
             # External tool callback: if LLM returned tool_calls and feature is enabled, pause
             # Only activate when tool_call_mode is "structured" (explicit opt-in from caller)
             _dbg.debug(
                 "[llm_node:%s] pause check: calls=%s cb=%s tools=%s mode=%s round=%d/%d",
-                self._node_id, bool(tool_calls), self.node_data.external_tool_callback_enabled,
-                bool(external_tools), external_tool_call_mode,
-                current_round, self.node_data.max_tool_call_rounds,
+                self._node_id,
+                bool(tool_calls),
+                self.node_data.external_tool_callback_enabled,
+                bool(external_tools),
+                external_tool_call_mode,
+                current_round,
+                self.node_data.max_tool_call_rounds,
             )
             if (
                 tool_calls
@@ -232,28 +257,33 @@ class LLMNode(Node[LLMNodeData]):
                 and external_tool_call_mode == "structured"
                 and current_round < self.node_data.max_tool_call_rounds
             ):
-                _dbg.debug("[llm_node:%s] PAUSING round=%d calls=%s",
-                           self._node_id, current_round + 1,
-                           [(tc["function"]["name"], tc["id"][:12]) for tc in tool_calls])
+                _dbg.debug(
+                    "[llm_node:%s] PAUSING round=%d calls=%s",
+                    self._node_id,
+                    current_round + 1,
+                    [(tc["function"]["name"], tc["id"][:12]) for tc in tool_calls],
+                )
                 # Record this round in history
                 tool_call_history.append({"round": current_round + 1, "tool_calls": tool_calls, "tool_results": []})
 
                 # Append assistant message with tool_calls to prompt_messages for next round
                 prompt_messages = list(prompt_messages)
-                prompt_messages.append(AssistantPromptMessage(
-                    content=result_text or "",
-                    tool_calls=[
-                        AssistantPromptMessage.ToolCall(
-                            id=tc["id"],
-                            type=tc.get("type", "function"),
-                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                name=tc["function"]["name"],
-                                arguments=tc["function"]["arguments"],
-                            ),
-                        )
-                        for tc in tool_calls
-                    ],
-                ))
+                prompt_messages.append(
+                    AssistantPromptMessage(
+                        content=result_text or "",
+                        tool_calls=[
+                            AssistantPromptMessage.ToolCall(
+                                id=tc["id"],
+                                type=tc.get("type", "function"),
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=tc["function"]["name"],
+                                    arguments=tc["function"]["arguments"],
+                                ),
+                            )
+                            for tc in tool_calls
+                        ],
+                    )
+                )
 
                 # Save state to variable_pool for resume
                 state = {
@@ -408,9 +438,7 @@ class LLMNode(Node[LLMNodeData]):
                 tool_call_id = getattr(result, "tool_call_id", None) or (
                     result.get("tool_call_id") if isinstance(result, dict) else None
                 )
-                output = getattr(result, "output", None) or (
-                    result.get("output") if isinstance(result, dict) else None
-                )
+                output = getattr(result, "output", None) or (result.get("output") if isinstance(result, dict) else None)
                 if tool_call_id and tool_call_id in last_assistant_tool_call_ids and output is not None:
                     prompt_messages.append(ToolPromptMessage(content=str(output), tool_call_id=tool_call_id))
                     results_for_history.append({"tool_call_id": tool_call_id, "output": str(output)})
@@ -427,7 +455,9 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         model_instance: ModelInstance,
         model_config: ModelConfigWithCredentialsEntity,
-        external_tools, external_tool_choice, external_tool_results,
+        external_tools,
+        external_tool_choice,
+        external_tool_results,
     ) -> Generator:
         """First-run path: build prompt messages from scratch. Returns (prompt_messages, stop, [], 0)."""
         # init messages template
@@ -480,9 +510,7 @@ class LLMNode(Node[LLMNodeData]):
         query: str | None = None
         if self.node_data.memory:
             query = self.node_data.memory.query_prompt_template
-            if not query and (
-                query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
-            ):
+            if not query and (query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))):
                 query = query_variable.text
 
         if external_tool_results:
@@ -512,7 +540,9 @@ class LLMNode(Node[LLMNodeData]):
         model_config: ModelConfigWithCredentialsEntity,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
-        external_tools, external_tool_choice, external_tool_results,
+        external_tools,
+        external_tool_choice,
+        external_tool_results,
     ) -> Generator:
         """Invoke LLM and collect results.
 
@@ -560,9 +590,7 @@ class LLMNode(Node[LLMNodeData]):
                     clean_text, _ = LLMNode._split_reasoning(result_text, self.node_data.reasoning_format)
 
                 structured_output = (
-                    LLMStructuredOutput(structured_output=event.structured_output)
-                    if event.structured_output
-                    else None
+                    LLMStructuredOutput(structured_output=event.structured_output) if event.structured_output else None
                 )
 
                 tool_calls = event.tool_calls
@@ -583,7 +611,8 @@ class LLMNode(Node[LLMNodeData]):
             if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
                 d["tool_calls"] = [
                     {
-                        "id": tc.id, "type": tc.type,
+                        "id": tc.id,
+                        "type": tc.type,
                         "function": {"name": tc.function.name, "arguments": tc.function.arguments},
                     }
                     for tc in msg.tool_calls
@@ -665,10 +694,7 @@ class LLMNode(Node[LLMNodeData]):
             for msg in current_prompt_messages:
                 if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
                     history_tool_call_ids.update(tc.id for tc in msg.tool_calls)
-            relevant_results = [
-                r for r in tool_results
-                if getattr(r, "tool_call_id", None) in history_tool_call_ids
-            ]
+            relevant_results = [r for r in tool_results if getattr(r, "tool_call_id", None) in history_tool_call_ids]
 
         if relevant_results:
             result_ids = {getattr(r, "tool_call_id", None) for r in relevant_results}
