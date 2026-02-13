@@ -582,10 +582,8 @@ class RagPipelineDslService:
             pipeline.updated_by = account.id
 
         else:
-            if account.current_tenant_id is None:
-                raise ValueError("Current tenant is not set")
-
             # Create new app
+            
             pipeline = Pipeline(
                 tenant_id=account.current_tenant_id,
                 name=pipeline_data.get("name", ""),
