@@ -9,7 +9,6 @@ import { FileDownload01 } from '@/app/components/base/icons/src/vender/line/file
 import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts/artifacts-tree'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
-import { fileSystemArtifactsAnchorMap } from '@/context/doc-anchors'
 import { useDocLink } from '@/context/i18n'
 import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
@@ -18,6 +17,13 @@ import { useStore } from '../store'
 import { WorkflowRunningStatus } from '../types'
 import InspectLayout from './inspect-layout'
 import SplitPanel from './split-panel'
+
+const fileSystemArtifactsLocalizedPathMap = {
+  'zh-Hans': '/use-dify/build/file-system#产物' as DocPathWithoutLang,
+  'zh_Hans': '/use-dify/build/file-system#产物' as DocPathWithoutLang,
+  'ja-JP': '/use-dify/build/file-system#アーティファクト' as DocPathWithoutLang,
+  'ja_JP': '/use-dify/build/file-system#アーティファクト' as DocPathWithoutLang,
+}
 
 const ArtifactsEmpty = ({ description }: { description: string }) => {
   const { t } = useTranslation('workflow')
@@ -33,7 +39,7 @@ const ArtifactsEmpty = ({ description }: { description: string }) => {
         <div className="text-text-tertiary system-xs-regular">{description}</div>
         <a
           className="cursor-pointer text-text-accent system-xs-regular"
-          href={docLink('/use-dify/build/file-system#artifacts' as DocPathWithoutLang, { anchorMap: fileSystemArtifactsAnchorMap })}
+          href={docLink('/use-dify/build/file-system#artifacts' as DocPathWithoutLang, fileSystemArtifactsLocalizedPathMap)}
           target="_blank"
           rel="noopener noreferrer"
         >

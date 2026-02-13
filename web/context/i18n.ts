@@ -1,7 +1,7 @@
 import type { Locale } from '@/i18n-config/language'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useTranslation } from '#i18n'
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 import { apiReferencePathTranslations } from '@/types/doc-paths'
 
@@ -23,63 +23,29 @@ export const useGetPricingPageLanguage = () => {
 
 export const defaultDocBaseUrl = 'https://docs.bash-is-all-you-need.dify.dev'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
-export type DocAnchorMap = Partial<Record<Locale, string>>
-export type DocLinkOptions = {
-  pathMap?: DocPathMap
-  anchorMap?: DocAnchorMap
-}
-export type BuildDocLink = (path?: DocPathWithoutLang, options?: DocLinkOptions) => string
 
-const splitPathWithHash = (path: string) => {
-  const [pathname, ...hashParts] = path.split('#')
-  return {
-    pathname,
-    hash: hashParts.join('#'),
-  }
-}
-
-const normalizeAnchor = (anchor: string) => {
-  const normalizedAnchor = anchor.startsWith('#') ? anchor.slice(1) : anchor
-  if (!normalizedAnchor)
-    return ''
-
-  const isAsciiOnly = Array.from(normalizedAnchor).every(char => char.codePointAt(0)! <= 0x7F)
-  if (isAsciiOnly)
-    return normalizedAnchor
-
-  return encodeURIComponent(normalizedAnchor)
-}
-
-export const useDocLink = (baseUrl?: string): BuildDocLink => {
-  const baseDocUrl = useMemo(() => {
-    const resolvedBaseUrl = baseUrl || defaultDocBaseUrl
-    return resolvedBaseUrl.endsWith('/') ? resolvedBaseUrl.slice(0, -1) : resolvedBaseUrl
-  }, [baseUrl])
+export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
+  let baseDocUrl = baseUrl || defaultDocBaseUrl
+  baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
   const locale = useLocale()
   return useCallback(
-    (path?: DocPathWithoutLang, options?: DocLinkOptions): string => {
+    (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
       const docLanguage = getDocLanguage(locale)
       const pathUrl = path || ''
-      const { pathMap, anchorMap } = options || {}
-      const targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
-      const { pathname: pathWithoutHash, hash: pathAnchor } = splitPathWithHash(targetPath)
-      let targetPathWithoutHash = pathWithoutHash
+      let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
       let languagePrefix = `/${docLanguage}`
 
-      if (targetPathWithoutHash.startsWith('/api-reference/')) {
+      if (targetPath.startsWith('/api-reference/')) {
         languagePrefix = ''
         if (docLanguage !== 'en') {
-          const translatedPath = apiReferencePathTranslations[targetPathWithoutHash]?.[docLanguage]
+          const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage]
           if (translatedPath) {
-            targetPathWithoutHash = translatedPath
+            targetPath = translatedPath
           }
         }
       }
 
-      const anchor = normalizeAnchor(anchorMap?.[locale] || pathAnchor)
-      const anchorSuffix = anchor ? `#${anchor}` : ''
-
-      return `${baseDocUrl}${languagePrefix}${targetPathWithoutHash}${anchorSuffix}`
+      return `${baseDocUrl}${languagePrefix}${targetPath}`
     },
     [baseDocUrl, locale],
   )

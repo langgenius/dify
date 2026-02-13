@@ -1,5 +1,6 @@
 'use client'
 
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -15,7 +16,6 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { appManagementAnchorMap } from '@/context/doc-anchors'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -45,6 +45,13 @@ type CreateFromDSLModalProps = {
 export enum CreateFromDSLModalTab {
   FROM_FILE = 'from-file',
   FROM_URL = 'from-url',
+}
+
+const appManagementLocalizedPathMap = {
+  'zh-Hans': '/use-dify/workspace/app-management#应用导出和导入' as DocPathWithoutLang,
+  'zh_Hans': '/use-dify/workspace/app-management#应用导出和导入' as DocPathWithoutLang,
+  'ja-JP': '/use-dify/workspace/app-management#アプリのエクスポートとインポート' as DocPathWithoutLang,
+  'ja_JP': '/use-dify/workspace/app-management#アプリのエクスポートとインポート' as DocPathWithoutLang,
 }
 
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
@@ -313,7 +320,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         <div className="flex items-center justify-between px-6 pb-6 pt-5">
           <a
             className="flex items-center gap-1 text-text-accent system-xs-regular"
-            href={docLink('/use-dify/workspace/app-management#app-export-and-import', { anchorMap: appManagementAnchorMap })}
+            href={docLink('/use-dify/workspace/app-management#app-export-and-import', appManagementLocalizedPathMap)}
             target="_blank"
             rel="noopener noreferrer"
           >
