@@ -259,14 +259,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.externalToolCallback`, { ns: 'workflow' })}
           tooltip={t(`${i18nPrefix}.externalToolCallbackTip`, { ns: 'workflow' })!}
-          operations={
+          operations={(
             <Switch
               defaultValue={!!inputs.external_tool_callback_enabled}
               onChange={handleExternalToolCallbackEnabledChange}
               size="md"
               disabled={readOnly}
             />
-          }
+          )}
         >
           {inputs.external_tool_callback_enabled && (
             <div className="mt-1 flex items-center space-x-2">
@@ -277,7 +277,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 value={inputs.max_tool_call_rounds ?? 10}
                 min={1}
                 max={50}
-                onChange={e => handleMaxToolCallRoundsChange(parseInt(e.target.value) || 10)}
+                onChange={e => handleMaxToolCallRoundsChange(Number.parseInt(e.target.value) || 10)}
                 disabled={readOnly}
               />
             </div>

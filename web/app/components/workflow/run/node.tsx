@@ -145,7 +145,9 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.title}
               {nodeInfo.process_data?.external_tool_callback_round && (
                 <span className="ml-1 text-text-quaternary">
-                  (Tool Callback #{nodeInfo.process_data.external_tool_callback_round})
+                  (Tool Callback #
+                  {nodeInfo.process_data.external_tool_callback_round}
+                  )
                 </span>
               )}
             </div>
