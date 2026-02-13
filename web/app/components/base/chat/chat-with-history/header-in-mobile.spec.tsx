@@ -39,6 +39,45 @@ vi.mock('../embedded-chatbot/theme/theme-context', () => ({
   })),
 }))
 
+// Mock PortalToFollowElem using React Context
+vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
+  const React = await import('react')
+  const MockContext = React.createContext(false)
+
+  return {
+    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
+      return (
+        <MockContext.Provider value={open}>
+          <div data-open={open}>{children}</div>
+        </MockContext.Provider>
+      )
+    },
+    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
+      const open = React.useContext(MockContext)
+      if (!open)
+        return null
+      return <div>{children}</div>
+    },
+    PortalToFollowElemTrigger: ({ children, onClick, ...props }: { children: React.ReactNode, onClick: () => void } & React.HTMLAttributes<HTMLDivElement>) => (
+      <div onClick={onClick} {...props}>{children}</div>
+    ),
+  }
+})
+
+// Mock Modal to avoid Headless UI issues in tests
+vi.mock('@/app/components/base/modal', () => ({
+  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
+    if (!isShow)
+      return null
+    return (
+      <div role="dialog" data-testid="modal">
+        {title && <div>{title}</div>}
+        {children}
+      </div>
+    )
+  },
+}))
+
 // Sidebar mock removed to use real component
 
 const mockAppData = { site: { title: 'Test Chat', chat_color_theme: 'blue' } } as unknown as AppData

@@ -41,6 +41,20 @@ vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
   }
 })
 
+// Mock Modal to avoid Headless UI issues in tests
+vi.mock('@/app/components/base/modal', () => ({
+  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
+    if (!isShow)
+      return null
+    return (
+      <div data-testid="modal">
+        {title && <div>{title}</div>}
+        {children}
+      </div>
+    )
+  },
+}))
+
 const mockAppData: AppData = {
   app_id: 'app-1',
   site: {

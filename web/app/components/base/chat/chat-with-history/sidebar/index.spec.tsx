@@ -46,6 +46,20 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
+// Mock Modal to avoid Headless UI issues in tests
+vi.mock('@/app/components/base/modal', () => ({
+  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
+    if (!isShow)
+      return null
+    return (
+      <div data-testid="modal">
+        {title && <div>{title}</div>}
+        {children}
+      </div>
+    )
+  },
+}))
+
 describe('Sidebar Index', () => {
   const mockContextValue = {
     isInstalledApp: false,

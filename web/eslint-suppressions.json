@@ -1231,11 +1231,6 @@
       "count": 1
     }
   },
-  "app/components/apps/app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 22
-    }
-  },
   "app/components/apps/app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1260,19 +1255,9 @@
       "count": 1
     }
   },
-  "app/components/apps/list.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/apps/list.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1
-    }
-  },
-  "app/components/apps/new-app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/apps/new-app-card.tsx": {
@@ -1439,9 +1424,6 @@
     }
   },
   "app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1451,11 +1433,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
   },
@@ -3040,11 +3017,6 @@
   "app/components/custom/custom-page/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/custom/custom-web-app-brand/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
@@ -5805,11 +5777,6 @@
   "app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-selection-panel.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow-app/hooks/use-DSL.ts": {
