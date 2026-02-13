@@ -1,10 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 
-// Import after mocks
-import CreateAppCard from './new-app-card'
+import CreateAppCard from '../new-app-card'
 
-// Mock next/navigation
 const mockReplace = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -13,7 +11,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// Mock provider context
 const mockOnPlanInfoChanged = vi.fn()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -21,37 +18,35 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock next/dynamic to immediately resolve components
 vi.mock('next/dynamic', () => ({
-  default: (importFn: () => Promise<any>) => {
+  default: (importFn: () => Promise<{ default: React.ComponentType }>) => {
     const fnString = importFn.toString()
 
     if (fnString.includes('create-app-modal') && !fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: any) {
+      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: Record<string, unknown>) {
         if (!show)
           return null
-        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'))
+        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate as () => void, 'data-testid': 'to-template-modal' }, 'To Template'))
       }
     }
     if (fnString.includes('create-app-dialog')) {
-      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: any) {
+      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: Record<string, unknown>) {
         if (!show)
           return null
-        return React.createElement('div', { 'data-testid': 'create-template-dialog' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'))
+        return React.createElement('div', { 'data-testid': 'create-template-dialog' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank as () => void, 'data-testid': 'to-blank-modal' }, 'To Blank'))
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
+      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: Record<string, unknown>) {
         if (!show)
           return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
+        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-dsl-modal' }, 'Success'))
       }
     }
     return () => null
   },
 }))
 
-// Mock CreateFromDSLModalTab enum
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   CreateFromDSLModalTab: {
     FROM_URL: 'from-url',
@@ -68,7 +63,6 @@ describe('CreateAppCard', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<CreateAppCard ref={defaultRef} />)
-      // Use pattern matching for resilient text assertions
       expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
 
@@ -245,19 +239,15 @@ describe('CreateAppCard', () => {
     it('should handle multiple modal opens/closes', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      // Open and close create modal
       fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       fireEvent.click(screen.getByTestId('close-create-modal'))
 
-      // Open and close template dialog
       fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       fireEvent.click(screen.getByTestId('close-template-dialog'))
 
-      // Open and close DSL modal
       fireEvent.click(screen.getByText('app.importDSL'))
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
-      // No modals should be visible
       expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       expect(screen.queryByTestId('create-template-dialog')).not.toBeInTheDocument()
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
@@ -267,7 +257,6 @@ describe('CreateAppCard', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
       fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
-      // This should not throw an error
       expect(() => {
         fireEvent.click(screen.getByTestId('success-create-modal'))
       }).not.toThrow()

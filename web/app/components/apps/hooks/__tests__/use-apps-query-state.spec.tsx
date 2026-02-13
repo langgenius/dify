@@ -1,16 +1,8 @@
 import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
 import type { ReactNode } from 'react'
-/**
- * Test suite for useAppsQueryState hook
- *
- * This hook manages app filtering state through URL search parameters, enabling:
- * - Bookmarkable filter states (users can share URLs with specific filters active)
- * - Browser history integration (back/forward buttons work with filters)
- * - Multiple filter types: tagIDs, keywords, isCreatedByMe
- */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import useAppsQueryState from './use-apps-query-state'
+import useAppsQueryState from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
   const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
@@ -23,13 +15,11 @@ const renderWithAdapter = (searchParams = '') => {
   return { result, onUrlUpdate }
 }
 
-// Groups scenarios for useAppsQueryState behavior.
 describe('useAppsQueryState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  // Covers the hook return shape and default values.
   describe('Initialization', () => {
     it('should expose query and setQuery when initialized', () => {
       const { result } = renderWithAdapter()
@@ -47,7 +37,6 @@ describe('useAppsQueryState', () => {
     })
   })
 
-  // Covers parsing of existing URL search params.
   describe('Parsing search params', () => {
     it('should parse tagIDs when URL includes tagIDs', () => {
       const { result } = renderWithAdapter('?tagIDs=tag1;tag2;tag3')
@@ -78,7 +67,6 @@ describe('useAppsQueryState', () => {
     })
   })
 
-  // Covers updates driven by setQuery.
   describe('Updating query state', () => {
     it('should update keywords when setQuery receives keywords', () => {
       const { result } = renderWithAdapter()
@@ -126,7 +114,6 @@ describe('useAppsQueryState', () => {
     })
   })
 
-  // Covers URL updates triggered by query changes.
   describe('URL synchronization', () => {
     it('should sync keywords to URL when keywords change', async () => {
       const { result, onUrlUpdate } = renderWithAdapter()
@@ -202,7 +189,6 @@ describe('useAppsQueryState', () => {
     })
   })
 
-  // Covers decoding and empty values.
   describe('Edge cases', () => {
     it('should treat empty tagIDs as empty list when URL param is empty', () => {
       const { result } = renderWithAdapter('?tagIDs=')
@@ -223,7 +209,6 @@ describe('useAppsQueryState', () => {
     })
   })
 
-  // Covers multi-step updates that mimic real usage.
   describe('Integration scenarios', () => {
     it('should keep accumulated filters when updates are sequential', () => {
       const { result } = renderWithAdapter()
