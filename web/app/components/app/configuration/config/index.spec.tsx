@@ -20,6 +20,11 @@ vi.mock('../debug/hooks', () => ({
   useFormattingChangedDispatcher: () => mockFormattingDispatcher,
 }))
 
+vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: vi.fn(() => ({ file: { allowed_file_types: [] } })),
+  useFeaturesStore: vi.fn(() => ({ getState: vi.fn(() => ({ features: { file: { allowed_file_types: [] } } })) })),
+}))
+
 let latestConfigPromptProps: any
 vi.mock('@/app/components/app/configuration/config-prompt', () => ({
   default: (props: any) => {
@@ -54,6 +59,10 @@ vi.mock('./config-document', () => ({
 
 vi.mock('./config-audio', () => ({
   default: () => <div data-testid="config-audio" />,
+}))
+
+vi.mock('./config-video', () => ({
+  default: () => <div data-testid="config-video" />,
 }))
 
 let latestHistoryPanelProps: any
