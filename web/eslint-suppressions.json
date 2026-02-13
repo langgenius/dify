@@ -32,11 +32,6 @@
       "count": 2
     }
   },
-  "__tests__/goto-anything/slash-command-modes.test.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "__tests__/i18n-upload-features.test.ts": {
     "no-console": {
       "count": 3
@@ -258,6 +253,11 @@
   "app/components/app/app-publisher/features-wrapper.tsx": {
     "ts/no-explicit-any": {
       "count": 4
+    }
+  },
+  "app/components/app/app-publisher/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
     }
   },
   "app/components/app/configuration/base/var-highlight/index.tsx": {
@@ -646,11 +646,6 @@
       "count": 1
     }
   },
-  "app/components/apps/app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 22
-    }
-  },
   "app/components/apps/app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -662,19 +657,9 @@
       "count": 4
     }
   },
-  "app/components/apps/list.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/apps/list.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1
-    }
-  },
-  "app/components/apps/new-app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/apps/new-app-card.tsx": {
@@ -1707,44 +1692,14 @@
       "count": 1
     }
   },
-  "app/components/billing/pricing/plans/cloud-plan-item/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/upgrade-btn/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
-    }
-  },
   "app/components/billing/upgrade-btn/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
     }
   },
-  "app/components/custom/custom-web-app-brand/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/custom/custom-web-app-brand/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/datasets/common/document-picker/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/document-picker/preview-document-picker.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/datasets/common/image-previewer/index.tsx": {
@@ -1762,11 +1717,6 @@
       "count": 4
     }
   },
-  "app/components/datasets/common/retrieval-method-config/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/common/retrieval-method-info/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -1777,19 +1727,9 @@
       "count": 1
     }
   },
-  "app/components/datasets/create/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 16
-    }
-  },
   "app/components/datasets/create/notion-page-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create/step-three/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
@@ -1799,11 +1739,6 @@
   },
   "app/components/datasets/create/step-two/preview-item/index.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/stop-embedding-modal/index.spec.tsx": {
-    "test/prefer-hooks-in-order": {
       "count": 1
     }
   },
@@ -1860,54 +1795,14 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/credential-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/base/header.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 10
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
@@ -1930,19 +1825,9 @@
       "count": 4
     }
   },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
-    }
-  },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/options/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 11
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
@@ -2097,11 +1982,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/explore/app-card/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/explore/create-app-modal/index.tsx": {
@@ -2385,19 +2265,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/marketplace/sort-dropdown/index.spec.tsx": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2498,14 +2365,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-detail-panel/multiple-tool-selector/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2541,24 +2400,9 @@
       "count": 5
     }
   },
-  "app/components/plugins/plugin-item/action.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/plugin-item/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 10
-    }
-  },
   "app/components/plugins/plugin-item/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-mutation-model/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-page/context.tsx": {
@@ -2567,11 +2411,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-page/empty/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/plugins/plugin-page/empty/index.tsx": {
@@ -2584,34 +2423,9 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-page/list/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "app/components/plugins/plugin-page/plugin-tasks/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/reference-setting-modal/auto-update-setting/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
-  "app/components/plugins/reference-setting-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/plugins/types.ts": {
     "ts/no-explicit-any": {
       "count": 30
-    }
-  },
-  "app/components/plugins/update-plugin/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
@@ -2635,11 +2449,6 @@
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/types.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/field-list/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2724,11 +2533,6 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 8
-    }
-  },
   "app/components/rag-pipeline/store/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2763,11 +2567,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/share/text-generation/run-batch/csv-reader/index.tsx": {
@@ -2857,11 +2656,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-selection-panel.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow-app/hooks/use-DSL.ts": {

@@ -108,7 +108,7 @@ const FormItem: FC<Props> = ({
   const isIteratorItemFile = isIterator && payload.isFileItem
   const singleFileValue = useMemo(() => {
     if (payload.variable === '#files#')
-      return value?.[0] || []
+      return value || []
 
     return value ? [value] : []
   }, [payload.variable, value])

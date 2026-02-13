@@ -120,6 +120,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                 indeterminate={isIndeterminate}
                 onCheck={handleSelectAll}
                 disabled={disabled}
+                id="selectAll"
               />
             )}
             {!searchQuery
@@ -198,6 +199,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                             handleToggleOption(option.value)
                         }}
                         disabled={option.disabled || disabled}
+                        id={option.value}
                       />
                       <div
                         className="flex-1 truncate text-text-secondary system-sm-medium"

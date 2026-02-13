@@ -101,6 +101,7 @@ function Confirm({
         e.preventDefault()
         e.stopPropagation()
       }}
+      data-testid="confirm-overlay"
     >
       <div ref={dialogRef} className="relative w-full max-w-[480px] overflow-hidden">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
