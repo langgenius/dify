@@ -6,7 +6,6 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -168,7 +167,10 @@ const FeaturesTrigger = () => {
         releaseNotes: publishParams?.releaseNotes || '',
       })
       if (res) {
-        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
+        const publishSuccessMessage = isChatMode
+          ? t('common.chatflowPublishSuccess', { ns: 'workflow' })
+          : t('common.workflowPublishSuccess', { ns: 'workflow' })
+        notify({ type: 'success', message: publishSuccessMessage })
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -180,7 +182,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode, isChatMode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -202,7 +204,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
+          <span className="i-ri-apps-2-add-line mr-1 h-4 w-4 text-components-button-secondary-text" />
           {t('common.features', { ns: 'workflow' })}
         </Button>
       )}
