@@ -4,9 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TryApp from '../index'
 import { TypeEnum } from '../tab'
 
-// Suppress expected React act() warnings from internal async state updates
-vi.spyOn(console, 'error').mockImplementation(() => {})
-
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal() as object
   return {
@@ -91,6 +88,9 @@ const createMockAppDetail = (mode: string = 'chat'): TryAppInfo => ({
 
 describe('TryApp (main index.tsx)', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    // Suppress expected React act() warnings from internal async state updates
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     mockUseGetTryAppInfo.mockReturnValue({
       data: createMockAppDetail(),
       isLoading: false,
@@ -99,7 +99,7 @@ describe('TryApp (main index.tsx)', () => {
 
   afterEach(() => {
     cleanup()
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('loading state', () => {

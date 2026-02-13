@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import Footer from './footer'
+import Footer from '../footer'
 
 describe('Footer', () => {
   beforeEach(() => {
@@ -15,7 +15,6 @@ describe('Footer', () => {
 
     it('should display the community heading', () => {
       render(<Footer />)
-      // Use pattern matching for resilient text assertions
       expect(screen.getByText('app.join')).toBeInTheDocument()
     })
 
