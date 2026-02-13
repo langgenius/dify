@@ -75,6 +75,10 @@ class Vector:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
 
                 return MilvusVectorFactory
+            case VectorType.MONGODB:
+                from core.rag.datasource.vdb.mongodb.mongodb_vector import MongoDBVectorFactory
+
+                return MongoDBVectorFactory
             case VectorType.ALIBABACLOUD_MYSQL:
                 from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
                     AlibabaCloudMySQLVectorFactory,
@@ -192,7 +196,11 @@ class Vector:
 
                 return IrisVectorFactory
             case _:
-                raise ValueError(f"Vector store {vector_type} is not supported.")
+                supported_types = ", ".join(sorted([vt.value for vt in VectorType]))
+                raise ValueError(
+                    f"Vector store '{vector_type}' is not supported. "
+                    f"Supported types: {supported_types}"
+                )
 
     def create(self, texts: list | None = None, **kwargs):
         if texts:

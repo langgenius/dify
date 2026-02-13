@@ -457,6 +457,20 @@ services:
       ENABLE_TOKENIZER_KAGOME_JA: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA:-false}
       ENABLE_TOKENIZER_KAGOME_KR: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR:-false}
 
+  # MongoDB Atlas Local (simulates Atlas Vector Search)
+  mongodb:
+    image: mongodb/mongodb-atlas-local:latest
+    profiles:
+      - mongodb
+    restart: always
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=${MONGODB_USERNAME:-root}
+      - MONGODB_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-difyai123456}
+    ports:
+      - "${EXPOSE_MONGODB_PORT:-27017}:27017"
+    volumes:
+      - ${MONGODB_HOST_VOLUME:-./volumes/mongodb/data}:/data/db
+
   # OceanBase vector database
   oceanbase:
     image: oceanbase/oceanbase-ce:4.3.5-lts
