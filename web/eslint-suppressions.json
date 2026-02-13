@@ -2423,11 +2423,6 @@
       "count": 3
     }
   },
-  "app/components/base/modal-like-wrap/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/modal/index.stories.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
