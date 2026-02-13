@@ -3,7 +3,7 @@ import logging
 import ssl
 from collections.abc import Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Generic, ParamSpec, TypeVar, Union
 
 import redis
 from redis import RedisError
@@ -23,6 +23,44 @@ if TYPE_CHECKING:
     from redis.lock import Lock
 
 logger = logging.getLogger(__name__)
+
+ClientType = TypeVar("ClientType")
+
+
+class KeyPrefixMethodProxy(Generic[ClientType]):
+    """
+    KeyPrefixMethodProxy is a generic class used to proxy method calls.
+    It can preprocess parameters before calling a method, such as prefixing specific keys.
+    Key features include:
+    If a method's argument contains 'key', prefix it.
+    If the method's positional parameter contains a key of type string, prefix it.
+    """
+
+    def __init__(self, client: ClientType, prefix: str) -> None:
+        self._client = client
+        self._prefix = prefix
+
+    def __getattr__(self, item: str) -> Any:
+        attr = getattr(self._client, item)
+        if callable(attr):
+            return self._wrap_method(attr)
+        return attr
+
+    def _wrap_method(self, method: Callable) -> Callable:
+        @functools.wraps(method)
+        def wrapper(*args, **kwargs):
+            if "key" in kwargs:
+                if isinstance(kwargs["key"], str):
+                    kwargs["key"] = self._add_prefix(kwargs["key"])
+            elif args:
+                if args and isinstance(args[0], str):
+                    args = (self._add_prefix(args[0]),) + args[1:]
+            return method(*args, **kwargs)
+
+        return wrapper
+
+    def _add_prefix(self, key: str) -> str:
+        return f"{self._prefix}:{key}" if self._prefix else key
 
 
 class RedisClientWrapper:
@@ -50,10 +88,13 @@ class RedisClientWrapper:
 
     def __init__(self) -> None:
         self._client = None
+        self._prefix = None
 
-    def initialize(self, client: Union[redis.Redis, RedisCluster]) -> None:
+    def initialize(self, client: Union[redis.Redis, RedisCluster], prefix: str | None = None) -> None:
         if self._client is None:
             self._client = client
+        if prefix is not None:
+            self._prefix = prefix
 
     if TYPE_CHECKING:
         # Type hints for IDE support and static analysis
@@ -115,6 +156,8 @@ class RedisClientWrapper:
     def __getattr__(self, item: str) -> Any:
         if self._client is None:
             raise RuntimeError("Redis client is not initialized. Call init_app first.")
+        if self._prefix is not None:
+            return getattr(KeyPrefixMethodProxy(self._client, self._prefix), item)
         return getattr(self._client, item)
 
 
@@ -253,7 +296,7 @@ def init_app(app: DifyApp):
         client = _create_standalone_client(redis_params)
 
     # Initialize the wrapper and attach to app
-    redis_client.initialize(client)
+    redis_client.initialize(client, prefix=dify_config.REDIS_KEY_PREFIX)
     app.extensions["redis"] = redis_client
 
     global _pubsub_redis_client
