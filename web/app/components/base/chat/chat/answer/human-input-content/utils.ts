@@ -8,6 +8,7 @@ import { UserActionButtonType } from '@/app/components/workflow/nodes/human-inpu
 import 'dayjs/locale/en'
 import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/ja'
+import 'dayjs/locale/nl'
 
 dayjs.extend(utc)
 dayjs.extend(relativeTime)
@@ -45,6 +46,7 @@ const localeMap: Record<string, string> = {
   'en-US': 'en',
   'zh-Hans': 'zh-cn',
   'ja-JP': 'ja',
+  'nl-NL': 'nl',
 }
 
 export const getRelativeTime = (
