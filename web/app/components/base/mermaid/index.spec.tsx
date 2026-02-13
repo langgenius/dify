@@ -280,6 +280,9 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
     }, 10000)
 
     it('should handle configuration failure', async () => {
+      vi.mocked(mermaidFresh.initialize).mockImplementation(() => {
+        throw new Error('Config fail')
+      })
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
       const { default: FlowchartFresh } = await import('./index')
 
@@ -287,12 +290,8 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
         render(<FlowchartFresh PrimitiveCode={mockCode} />)
       })
 
-      vi.mocked(mermaidFresh.initialize).mockImplementation(() => {
-        throw new Error('Config fail')
-      })
-
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Config error:', expect.any(Error))
+        expect(consoleSpy).toHaveBeenCalledWith('Mermaid initialization error:', expect.any(Error))
       })
       consoleSpy.mockRestore()
     })
