@@ -7,6 +7,8 @@ import { useCallback, useMemo } from 'react'
 import { CATEGORY_ALL, DEFAULT_PLUGIN_SORT, DEFAULT_TEMPLATE_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
 import { CREATION_TYPE, marketplaceSearchParamsParsers } from './search-params'
 
+export const isMarketplacePlatformAtom = atom<boolean>(false)
+
 const marketplacePluginSortAtom = atom<PluginsSort>(DEFAULT_PLUGIN_SORT)
 export function useMarketplacePluginSort() {
   return useAtom(marketplacePluginSortAtom)
@@ -33,33 +35,59 @@ export function useSearchText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
 export function useActivePluginCategory() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
+
   const router = useRouter()
   const pathname = usePathname()
   const segments = pathname.split('/').filter(Boolean)
   const categoryFromPath = segments[1] || CATEGORY_ALL
   const validatedCategory = getValidatedPluginCategory(categoryFromPath)
-  const handleChange = (newCategory: string) => {
-    router.push(`/plugins/${newCategory}`)
+  const handleChange = useCallback(
+    (newCategory: string) => {
+      router.push(`/plugins/${newCategory}`)
+    },
+    [router],
+  )
+
+  if (isAtMarketplace) {
+    return [validatedCategory, handleChange] as const
   }
-  return [validatedCategory, handleChange] as const
+  return [getValidatedPluginCategory(category), setCategory] as const
 }
 
 export function useActiveTemplateCategory() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
+
   const router = useRouter()
   const pathname = usePathname()
   const segments = pathname.split('/').filter(Boolean)
   const categoryFromPath = segments[1] || CATEGORY_ALL
   const validatedCategory = getValidatedTemplateCategory(categoryFromPath)
-  const handleChange = (newCategory: string) => {
-    router.push(`/${CREATION_TYPE.templates}/${newCategory}`)
+  const handleChange = useCallback(
+    (newCategory: string) => {
+      router.push(`/${CREATION_TYPE.templates}/${newCategory}`)
+    },
+    [router],
+  )
+
+  if (isAtMarketplace) {
+    return [validatedCategory, handleChange] as const
   }
-  return [validatedCategory, handleChange] as const
+  return [getValidatedTemplateCategory(category), setCategory] as const
 }
 export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
 export function useSearchTab() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const state = useQueryState('searchTab', marketplaceSearchParamsParsers.searchTab)
+
   const router = useRouter()
   // /search/[searchTab]
   const { searchTab } = useParams()
@@ -71,16 +99,27 @@ export function useSearchTab() {
     },
     [router],
   )
-  return [searchTab, handleChange] as const
+
+  if (isAtMarketplace) {
+    return [searchTab, handleChange] as const
+  }
+  return state
 }
 
 export function useCreationType() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const [creationType] = useQueryState('creationType', marketplaceSearchParamsParsers.creationType)
+
   const pathname = usePathname()
   const segments = pathname.split('/').filter(Boolean)
 
-  if (segments[0] === CREATION_TYPE.templates || segments[0] === 'template')
-    return CREATION_TYPE.templates
-  return CREATION_TYPE.plugins
+  if (isAtMarketplace) {
+    if (segments[0] === CREATION_TYPE.templates || segments[0] === 'template')
+      return CREATION_TYPE.templates
+    return CREATION_TYPE.plugins
+  }
+  return creationType
 }
 
 // Search-page-specific filter hooks (separate from list-page category/tags)

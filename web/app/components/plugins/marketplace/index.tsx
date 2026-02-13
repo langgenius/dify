@@ -2,6 +2,7 @@ import type { SearchParams } from 'nuqs'
 import type { Awaitable } from './hydration-server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { cn } from '@/utils/classnames'
+import { HydrateClient } from './hydration-client'
 import { HydrateQueryClient } from './hydration-server'
 import MarketplaceContent from './marketplace-content'
 import MarketplaceHeader from './marketplace-header'
@@ -20,7 +21,7 @@ type MarketplaceProps = {
   marketplaceNav?: React.ReactNode
 }
 
-const Marketplace = async ({
+const Marketplace = ({
   showInstallButton = true,
   params,
   searchParams,
@@ -30,10 +31,12 @@ const Marketplace = async ({
   return (
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams} params={params}>
-        <MarketplaceHeader descriptionClassName={cn('mx-12 mt-1', isMarketplacePlatform && 'top-0 mx-0 mt-0 rounded-none')} marketplaceNav={marketplaceNav} />
-        <MarketplaceContent
-          showInstallButton={showInstallButton}
-        />
+        <HydrateClient isMarketplacePlatform={isMarketplacePlatform}>
+          <MarketplaceHeader descriptionClassName={cn('mx-12 mt-1', isMarketplacePlatform && 'top-0 mx-0 mt-0 rounded-none')} marketplaceNav={marketplaceNav} />
+          <MarketplaceContent
+            showInstallButton={showInstallButton}
+          />
+        </HydrateClient>
       </HydrateQueryClient>
     </TanstackQueryInitializer>
   )

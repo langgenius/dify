@@ -1,4 +1,4 @@
-import { parseAsArrayOf, parseAsString } from 'nuqs/server'
+import { parseAsArrayOf, parseAsString, parseAsStringEnum } from 'nuqs/server'
 
 export const CREATION_TYPE = {
   plugins: 'plugins',
@@ -17,4 +17,9 @@ export const marketplaceSearchParamsParsers = {
   searchLanguages: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
   searchType: parseAsString.withDefault('all').withOptions({ history: 'replace' }),
   searchTags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
+
+  // In marketplace, we use path instead of query
+  category: parseAsString.withDefault('all').withOptions({ history: 'replace', clearOnDefault: false }),
+  creationType: parseAsStringEnum<CreationType>([CREATION_TYPE.plugins, CREATION_TYPE.templates]).withDefault(CREATION_TYPE.plugins).withOptions({ history: 'replace' }),
+  searchTab: parseAsStringEnum<SearchTab>(['all', 'plugins', 'templates', 'creators']).withDefault('').withOptions({ history: 'replace' }),
 }
