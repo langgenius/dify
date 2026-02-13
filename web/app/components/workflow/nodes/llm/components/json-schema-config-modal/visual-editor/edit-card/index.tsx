@@ -6,7 +6,9 @@ import { useUnmount } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { cn } from '@/utils/classnames'
 import { ArrayType, Type } from '../../../../types'
@@ -61,6 +63,10 @@ const MAXIMUM_DEPTH_TYPE_OPTIONS = [
   { value: ArrayType.file, text: 'array[file]' },
 ]
 
+const FILE_TYPES: Set<Type | ArrayType> = new Set([Type.file, ArrayType.file])
+
+const filterFileTypes = (options: TypeItem[]) => options.filter(o => !FILE_TYPES.has(o.value))
+
 const EditCard: FC<EditCardProps> = ({
   fields,
   depth,
@@ -77,10 +83,19 @@ const EditCard: FC<EditCardProps> = ({
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
 
+  const isSandboxRuntime = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = isSandboxRuntime || features.sandbox?.enabled === true
+
   const maximumDepthReached = depth === JSON_SCHEMA_MAX_DEPTH
   const disableAddBtn = maximumDepthReached || (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
   const hasAdvancedOptions = currentFields.type === Type.string || currentFields.type === Type.number
   const isAdvancedEditing = advancedEditing || isAddingNewField
+
+  const typeOptions = useMemo(() => {
+    const base = maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS
+    return isSupportSandbox ? base : filterFileTypes(base)
+  }, [maximumDepthReached, isSupportSandbox])
 
   const advancedOptions = useMemo(() => {
     let enumValue = ''
@@ -234,7 +249,7 @@ const EditCard: FC<EditCardProps> = ({
           />
           <TypeSelector
             currentValue={currentFields.type}
-            items={maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS}
+            items={typeOptions}
             onSelect={handleTypeChange}
             popupClassName="z-[1000]"
           />

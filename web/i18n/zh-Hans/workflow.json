@@ -840,6 +840,7 @@
   "nodes.llm.singleRun.variable": "变量",
   "nodes.llm.sysQueryInUser": "user message 中必须包含 sys.query",
   "nodes.llm.tools.disabledByStructuredOutput": "启用结构化输出时，将禁用工具。",
+  "nodes.llm.tools.tooltip": "允许 LLM 在执行过程中调用外部工具。模型会根据上下文自主决定何时调用哪些工具，并可多次迭代以优化结果。",
   "nodes.llm.variables": "变量",
   "nodes.llm.vision": "视觉",
   "nodes.loop.ErrorMethod.continueOnError": "忽略错误并继续",

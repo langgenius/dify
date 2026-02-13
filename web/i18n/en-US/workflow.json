@@ -848,6 +848,7 @@
   "nodes.llm.sysQueryInUser": "sys.query in user message is required",
   "nodes.llm.tools.disabledByStructuredOutput": "Tools are disabled when Structured Output is enabled.",
   "nodes.llm.tools.title": "Tools",
+  "nodes.llm.tools.tooltip": "Enable the LLM to call external tools during execution. The model autonomously decides when and which tools to invoke based on context, and may iterate multiple times to refine results.",
   "nodes.llm.variables": "variables",
   "nodes.llm.vision": "vision",
   "nodes.loop.ErrorMethod.continueOnError": "Continue on Error",

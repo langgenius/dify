@@ -53,7 +53,7 @@ const Tools = ({
               availableNodes={[]}
               value={tools}
               label={t('nodes.llm.tools.title', { ns: 'workflow' })}
-              tooltip={t('nodes.llm.tools.title', { ns: 'workflow' })}
+              tooltip={t('nodes.llm.tools.tooltip', { ns: 'workflow' })}
               onChange={handleToolsChange}
               supportCollapse
               disabled={isDisabled}
