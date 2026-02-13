@@ -3,8 +3,9 @@ import datetime
 import json
 import logging
 import secrets
+import threading
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
 import sqlalchemy as sa
@@ -54,6 +55,35 @@ from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs i
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from redis.lock import Lock
+
+DB_UPGRADE_LOCK_TTL_SECONDS = 60
+
+
+def _heartbeat_db_upgrade_lock(lock: "Lock", stop_event: threading.Event, ttl_seconds: float) -> None:
+    """
+    Keep the DB upgrade lock alive while migrations are running.
+
+    We intentionally keep the base TTL small (e.g. 60s) so that if the process is killed and can't
+    release the lock, the lock will naturally expire soon. While the process is alive, this
+    heartbeat periodically resets the TTL via `lock.reacquire()`.
+    """
+
+    interval_seconds = max(0.1, ttl_seconds / 3)
+    while not stop_event.wait(interval_seconds):
+        try:
+            lock.reacquire()
+        except LockNotOwnedError:
+            # Another process took over / TTL expired; continuing to retry won't help.
+            logger.warning("DB migration lock is no longer owned during heartbeat; stop renewing.")
+            return
+        except RedisError:
+            # Best-effort: keep trying while the process is alive.
+            logger.warning("Failed to renew DB migration lock due to Redis error; will retry.", exc_info=True)
+        except Exception:
+            logger.warning("Unexpected error while renewing DB migration lock; will retry.", exc_info=True)
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -728,8 +758,21 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    lock = redis_client.lock(name="db_upgrade_lock", timeout=dify_config.MIGRATION_LOCK_TTL)
+    # Use a short base TTL + heartbeat renewal, so a crashed process doesn't block migrations for long.
+    # thread_local=False is required because heartbeat runs in a separate thread.
+    lock = redis_client.lock(
+        name="db_upgrade_lock",
+        timeout=DB_UPGRADE_LOCK_TTL_SECONDS,
+        thread_local=False,
+    )
     if lock.acquire(blocking=False):
+        stop_event = threading.Event()
+        heartbeat_thread = threading.Thread(
+            target=_heartbeat_db_upgrade_lock,
+            args=(lock, stop_event, float(DB_UPGRADE_LOCK_TTL_SECONDS)),
+            daemon=True,
+        )
+        heartbeat_thread.start()
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
 
@@ -745,6 +788,8 @@ def upgrade_db():
             click.echo(click.style(f"Database migration failed: {e}", fg="red"))
             raise SystemExit(1)
         finally:
+            stop_event.set()
+            heartbeat_thread.join(timeout=5)
             # Lock release errors should never mask the real migration failure.
             try:
                 lock.release()

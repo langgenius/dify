@@ -1,4 +1,4 @@
-from pydantic import Field, PositiveInt
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -33,7 +33,3 @@ class DeploymentConfig(BaseSettings):
         default="PRODUCTION",
     )
 
-    MIGRATION_LOCK_TTL: PositiveInt = Field(
-        description="Redis lock TTL for startup DB migration (seconds). Increase for large/slow databases.",
-        default=3600,
-    )
