@@ -1,9 +1,7 @@
-import { render, renderHook } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-// ================================
-// Mock External Dependencies
-// ================================
 
 vi.mock('@/i18n-config/i18next-config', () => ({
   default: {
@@ -26,62 +24,19 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-const mockFetchNextPage = vi.fn()
-const mockHasNextPage = false
-let mockInfiniteQueryData: { pages: Array<{ plugins: unknown[], total: number, page: number, page_size: number }> } | undefined
-let capturedInfiniteQueryFn: ((ctx: { pageParam: number, signal: AbortSignal }) => Promise<unknown>) | null = null
-let capturedQueryFn: ((ctx: { signal: AbortSignal }) => Promise<unknown>) | null = null
-let capturedGetNextPageParam: ((lastPage: { page: number, page_size: number, total: number }) => number | undefined) | null = null
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(({ queryFn, enabled }: { queryFn: (ctx: { signal: AbortSignal }) => Promise<unknown>, enabled: boolean }) => {
-    capturedQueryFn = queryFn
-    if (queryFn) {
-      const controller = new AbortController()
-      queryFn({ signal: controller.signal }).catch(() => {})
-    }
-    return {
-      data: enabled ? { marketplaceCollections: [], marketplaceCollectionPluginsMap: {} } : undefined,
-      isFetching: false,
-      isPending: false,
-      isSuccess: enabled,
-    }
-  }),
-  useInfiniteQuery: vi.fn(({ queryFn, getNextPageParam }: {
-    queryFn: (ctx: { pageParam: number, signal: AbortSignal }) => Promise<unknown>
-    getNextPageParam: (lastPage: { page: number, page_size: number, total: number }) => number | undefined
-    enabled: boolean
-  }) => {
-    capturedInfiniteQueryFn = queryFn
-    capturedGetNextPageParam = getNextPageParam
-    if (queryFn) {
-      const controller = new AbortController()
-      queryFn({ pageParam: 1, signal: controller.signal }).catch(() => {})
-    }
-    if (getNextPageParam) {
-      getNextPageParam({ page: 1, page_size: 40, total: 100 })
-      getNextPageParam({ page: 3, page_size: 40, total: 100 })
-    }
-    return {
-      data: mockInfiniteQueryData,
-      isPending: false,
-      isFetching: false,
-      isFetchingNextPage: false,
-      hasNextPage: mockHasNextPage,
-      fetchNextPage: mockFetchNextPage,
-    }
-  }),
-  useQueryClient: vi.fn(() => ({
-    removeQueries: vi.fn(),
-  })),
-}))
-
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => void) => ({
-    run: fn,
-    cancel: vi.fn(),
-  }),
-}))
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  )
+  return { Wrapper, queryClient }
+}
 
 let mockPostMarketplaceShouldFail = false
 const mockPostMarketplaceResponse = {
@@ -150,59 +105,26 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-// ================================
-// useMarketplaceCollectionsAndPlugins Tests
-// ================================
 describe('useMarketplaceCollectionsAndPlugins', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should return initial state correctly', async () => {
+  it('should return initial state with all required properties', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins(), { wrapper: Wrapper })
 
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isSuccess).toBe(false)
-    expect(result.current.queryMarketplaceCollectionsAndPlugins).toBeDefined()
-    expect(result.current.setMarketplaceCollections).toBeDefined()
-    expect(result.current.setMarketplaceCollectionPluginsMap).toBeDefined()
-  })
-
-  it('should provide queryMarketplaceCollectionsAndPlugins function', async () => {
-    const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
     expect(typeof result.current.queryMarketplaceCollectionsAndPlugins).toBe('function')
-  })
-
-  it('should provide setMarketplaceCollections function', async () => {
-    const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
     expect(typeof result.current.setMarketplaceCollections).toBe('function')
-  })
-
-  it('should provide setMarketplaceCollectionPluginsMap function', async () => {
-    const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
     expect(typeof result.current.setMarketplaceCollectionPluginsMap).toBe('function')
-  })
-
-  it('should return marketplaceCollections from data or override', async () => {
-    const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
     expect(result.current.marketplaceCollections).toBeUndefined()
-  })
-
-  it('should return marketplaceCollectionPluginsMap from data or override', async () => {
-    const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
     expect(result.current.marketplaceCollectionPluginsMap).toBeUndefined()
   })
 })
 
-// ================================
-// useMarketplacePluginsByCollectionId Tests
-// ================================
 describe('useMarketplacePluginsByCollectionId', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -210,7 +132,11 @@ describe('useMarketplacePluginsByCollectionId', () => {
 
   it('should return initial state when collectionId is undefined', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePluginsByCollectionId(undefined))
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(
+      () => useMarketplacePluginsByCollectionId(undefined),
+      { wrapper: Wrapper },
+    )
     expect(result.current.plugins).toEqual([])
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isSuccess).toBe(false)
@@ -218,39 +144,54 @@ describe('useMarketplacePluginsByCollectionId', () => {
 
   it('should return isLoading false when collectionId is provided and query completes', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePluginsByCollectionId('test-collection'))
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(
+      () => useMarketplacePluginsByCollectionId('test-collection'),
+      { wrapper: Wrapper },
+    )
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
     expect(result.current.isLoading).toBe(false)
   })
 
   it('should accept query parameter', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
-    const { result } = renderHook(() =>
-      useMarketplacePluginsByCollectionId('test-collection', {
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(
+      () => useMarketplacePluginsByCollectionId('test-collection', {
         category: 'tool',
         type: 'plugin',
-      }))
-    expect(result.current.plugins).toBeDefined()
+      }),
+      { wrapper: Wrapper },
+    )
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
   })
 
   it('should return plugins property from hook', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePluginsByCollectionId('collection-1'))
-    expect(result.current.plugins).toBeDefined()
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(
+      () => useMarketplacePluginsByCollectionId('collection-1'),
+      { wrapper: Wrapper },
+    )
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
   })
 })
 
-// ================================
-// useMarketplacePlugins Tests
-// ================================
 describe('useMarketplacePlugins', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockInfiniteQueryData = undefined
   })
 
   it('should return initial state correctly', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(result.current.plugins).toBeUndefined()
     expect(result.current.total).toBeUndefined()
     expect(result.current.isLoading).toBe(false)
@@ -259,39 +200,21 @@ describe('useMarketplacePlugins', () => {
     expect(result.current.page).toBe(0)
   })
 
-  it('should provide queryPlugins function', async () => {
+  it('should expose all required functions', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(typeof result.current.queryPlugins).toBe('function')
-  })
-
-  it('should provide queryPluginsWithDebounced function', async () => {
-    const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
     expect(typeof result.current.queryPluginsWithDebounced).toBe('function')
-  })
-
-  it('should provide cancelQueryPluginsWithDebounced function', async () => {
-    const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
     expect(typeof result.current.cancelQueryPluginsWithDebounced).toBe('function')
-  })
-
-  it('should provide resetPlugins function', async () => {
-    const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
     expect(typeof result.current.resetPlugins).toBe('function')
-  })
-
-  it('should provide fetchNextPage function', async () => {
-    const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
     expect(typeof result.current.fetchNextPage).toBe('function')
   })
 
   it('should handle queryPlugins call without errors', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(() => {
       result.current.queryPlugins({
         query: 'test',
@@ -305,7 +228,8 @@ describe('useMarketplacePlugins', () => {
 
   it('should handle queryPlugins with bundle type', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(() => {
       result.current.queryPlugins({
         query: 'test',
@@ -317,7 +241,8 @@ describe('useMarketplacePlugins', () => {
 
   it('should handle resetPlugins call', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(() => {
       result.current.resetPlugins()
     }).not.toThrow()
@@ -325,18 +250,28 @@ describe('useMarketplacePlugins', () => {
 
   it('should handle queryPluginsWithDebounced call', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
+    vi.useFakeTimers()
     expect(() => {
       result.current.queryPluginsWithDebounced({
         query: 'debounced search',
         category: 'all',
       })
     }).not.toThrow()
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    vi.useRealTimers()
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
   })
 
   it('should handle cancelQueryPluginsWithDebounced call', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(() => {
       result.current.cancelQueryPluginsWithDebounced()
     }).not.toThrow()
@@ -344,13 +279,15 @@ describe('useMarketplacePlugins', () => {
 
   it('should return correct page number', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(result.current.page).toBe(0)
   })
 
   it('should handle queryPlugins with tags', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(() => {
       result.current.queryPlugins({
         query: 'test',
@@ -361,60 +298,76 @@ describe('useMarketplacePlugins', () => {
   })
 })
 
-// ================================
-// Hooks queryFn Coverage Tests
-// ================================
 describe('Hooks queryFn Coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockInfiniteQueryData = undefined
     mockPostMarketplaceShouldFail = false
-    capturedInfiniteQueryFn = null
-    capturedQueryFn = null
   })
 
   it('should cover queryFn with pages data', async () => {
-    mockInfiniteQueryData = {
-      pages: [
-        { plugins: [{ name: 'plugin1' }], total: 10, page: 1, page_size: 40 },
-      ],
-    }
-
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
 
     result.current.queryPlugins({
       query: 'test',
       category: 'tool',
     })
 
-    expect(result.current).toBeDefined()
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
   })
 
   it('should expose page and total from infinite query data', async () => {
-    mockInfiniteQueryData = {
-      pages: [
-        { plugins: [{ name: 'plugin1' }, { name: 'plugin2' }], total: 20, page: 1, page_size: 40 },
-        { plugins: [{ name: 'plugin3' }], total: 20, page: 2, page_size: 40 },
-      ],
-    }
+    const { postMarketplace } = await import('@/service/base')
+    vi.mocked(postMarketplace)
+      .mockResolvedValueOnce({
+        data: {
+          plugins: [
+            { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+            { type: 'plugin', org: 'test', name: 'plugin2', tags: [] },
+          ],
+          total: 100,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          plugins: [{ type: 'plugin', org: 'test', name: 'plugin3', tags: [] }],
+          total: 100,
+        },
+      })
 
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
 
-    result.current.queryPlugins({ query: 'search' })
-    expect(result.current.page).toBe(2)
+    result.current.queryPlugins({ query: 'search', page_size: 40 })
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+      expect(result.current.page).toBe(1)
+      expect(result.current.hasNextPage).toBe(true)
+    })
+
+    await act(async () => {
+      await result.current.fetchNextPage()
+    })
+    await waitFor(() => {
+      expect(result.current.page).toBe(2)
+    })
   })
 
   it('should return undefined total when no query is set', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
     expect(result.current.total).toBeUndefined()
   })
 
   it('should directly test queryFn execution', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
 
     result.current.queryPlugins({
       query: 'direct test',
@@ -424,82 +377,98 @@ describe('Hooks queryFn Coverage', () => {
       page_size: 40,
     })
 
-    if (capturedInfiniteQueryFn) {
-      const controller = new AbortController()
-      const response = await capturedInfiniteQueryFn({ pageParam: 1, signal: controller.signal })
-      expect(response).toBeDefined()
-    }
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
   })
 
   it('should test queryFn with bundle type', async () => {
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
 
     result.current.queryPlugins({
       type: 'bundle',
       query: 'bundle test',
     })
 
-    if (capturedInfiniteQueryFn) {
-      const controller = new AbortController()
-      const response = await capturedInfiniteQueryFn({ pageParam: 2, signal: controller.signal })
-      expect(response).toBeDefined()
-    }
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
   })
 
   it('should test queryFn error handling', async () => {
     mockPostMarketplaceShouldFail = true
 
     const { useMarketplacePlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
 
     result.current.queryPlugins({ query: 'test that will fail' })
 
-    if (capturedInfiniteQueryFn) {
-      const controller = new AbortController()
-      const response = await capturedInfiniteQueryFn({ pageParam: 1, signal: controller.signal })
-      expect(response).toBeDefined()
-      expect(response).toHaveProperty('plugins')
-    }
+    await waitFor(() => {
+      expect(result.current.plugins).toBeDefined()
+    })
+    expect(result.current.plugins).toEqual([])
+    expect(result.current.total).toBe(0)
 
     mockPostMarketplaceShouldFail = false
   })
 
   it('should test useMarketplaceCollectionsAndPlugins queryFn', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('../hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins(), { wrapper: Wrapper })
 
     result.current.queryMarketplaceCollectionsAndPlugins({
       condition: 'category=tool',
     })
 
-    if (capturedQueryFn) {
-      const controller = new AbortController()
-      const response = await capturedQueryFn({ signal: controller.signal })
-      expect(response).toBeDefined()
-    }
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    expect(result.current.marketplaceCollections).toBeDefined()
+    expect(result.current.marketplaceCollectionPluginsMap).toBeDefined()
   })
 
-  it('should test getNextPageParam directly', async () => {
+  it('should test getNextPageParam via fetchNextPage behavior', async () => {
+    const { postMarketplace } = await import('@/service/base')
+    vi.mocked(postMarketplace)
+      .mockResolvedValueOnce({
+        data: { plugins: [], total: 100 },
+      })
+      .mockResolvedValueOnce({
+        data: { plugins: [], total: 100 },
+      })
+      .mockResolvedValueOnce({
+        data: { plugins: [], total: 100 },
+      })
+
     const { useMarketplacePlugins } = await import('../hooks')
-    renderHook(() => useMarketplacePlugins())
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
 
-    if (capturedGetNextPageParam) {
-      const nextPage = capturedGetNextPageParam({ page: 1, page_size: 40, total: 100 })
-      expect(nextPage).toBe(2)
+    result.current.queryPlugins({ query: 'test', page_size: 40 })
 
-      const noMorePages = capturedGetNextPageParam({ page: 3, page_size: 40, total: 100 })
-      expect(noMorePages).toBeUndefined()
+    await waitFor(() => {
+      expect(result.current.hasNextPage).toBe(true)
+      expect(result.current.page).toBe(1)
+    })
 
-      const atBoundary = capturedGetNextPageParam({ page: 2, page_size: 50, total: 100 })
-      expect(atBoundary).toBeUndefined()
-    }
+    result.current.fetchNextPage()
+    await waitFor(() => {
+      expect(result.current.hasNextPage).toBe(true)
+      expect(result.current.page).toBe(2)
+    })
+
+    result.current.fetchNextPage()
+    await waitFor(() => {
+      expect(result.current.hasNextPage).toBe(false)
+      expect(result.current.page).toBe(3)
+    })
   })
 })
 
-// ================================
-// useMarketplaceContainerScroll Tests
-// ================================
 describe('useMarketplaceContainerScroll', () => {
   beforeEach(() => {
     vi.clearAllMocks()
