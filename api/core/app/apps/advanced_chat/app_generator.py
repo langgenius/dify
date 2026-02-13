@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import contextvars
-import json
 import logging
-import os
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
@@ -27,13 +25,13 @@ from core.app.apps.advanced_chat.generate_response_converter import AdvancedChat
 from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.external_tool_utils import resolve_tool_results, resolve_tools
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, ToolResult
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
-from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
@@ -59,15 +57,6 @@ from services.workflow_draft_variable_service import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Debug logger for pause/resume flow
-_dbg = logging.getLogger("dify_debug")
-if not _dbg.handlers:
-    _log_path = os.path.join(os.path.dirname(__file__), "../../../../logs/dify_debug.log")
-    _h = logging.FileHandler(_log_path, encoding="utf-8")
-    _h.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
-    _dbg.addHandler(_h)
-    _dbg.setLevel(logging.DEBUG)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
@@ -203,9 +192,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras,
             trace_manager=trace_manager,
             workflow_run_id=str(workflow_run_id),
-            tools=self._resolve_tools(args),
+            tools=resolve_tools(args),
             tool_choice=args.get("tool_choice"),
-            tool_results=self._resolve_tool_results(args),
+            tool_results=resolve_tool_results(args),
             tool_call_mode=args.get("tool_call_mode"),
         )
         contexts.plugin_tool_providers.set({})
@@ -623,7 +612,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             # Check if this is a resume request (tool_results + structured mode)
             resumed_graph_runtime_state = None
-            _dbg.debug(
+            logger.debug(
                 "[generator] resume check: tool_results=%s, tool_call_mode=%s, conversation_id=%s",
                 bool(application_generate_entity.tool_results),
                 application_generate_entity.tool_call_mode,
@@ -635,14 +624,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     conversation_id=application_generate_entity.conversation_id,
                     workflow_execution_repository=workflow_execution_repository,
                 )
-                _dbg.debug("[generator] _try_load_paused_state result: %s", result is not None)
+                logger.debug("[generator] _try_load_paused_state result: %s", result is not None)
                 if result is not None:
                     resumed_graph_runtime_state, paused_workflow_run_id = result
                     # Reuse the original workflow_run_id so persistence layer updates the same record
                     application_generate_entity.workflow_run_id = paused_workflow_run_id
-                    _dbg.debug("[generator] resuming workflow_run_id=%s", paused_workflow_run_id)
+                    logger.debug("[generator] resuming workflow_run_id=%s", paused_workflow_run_id)
 
-            _dbg.debug("[generator] resumed_graph_runtime_state is None: %s", resumed_graph_runtime_state is None)
+            logger.debug("[generator] resumed_graph_runtime_state is None: %s", resumed_graph_runtime_state is None)
 
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,
@@ -744,14 +733,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
             workflow_run = session.scalar(stmt)
             wf_id = workflow_run.id if workflow_run else None
-            _dbg.debug("[try_load] conv=%s app=%s => run=%s", conversation_id, app_id, wf_id)
+            logger.debug("[try_load] conv=%s app=%s => run=%s", conversation_id, app_id, wf_id)
             if workflow_run is None:
                 return None
             workflow_run_id = workflow_run.id
 
         repo = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sm)
         pause_entity = repo.get_workflow_pause(workflow_run_id=workflow_run_id)
-        _dbg.debug("[try_load] get_workflow_pause(%s) => %s", workflow_run_id, pause_entity is not None)
+        logger.debug("[try_load] get_workflow_pause(%s) => %s", workflow_run_id, pause_entity is not None)
         if pause_entity is None:
             return None
 
@@ -760,70 +749,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # Load and restore state
         state_bytes = pause_entity.get_state()
-        _dbg.debug("[try_load] state_bytes length=%d", len(state_bytes))
+        logger.debug("[try_load] state_bytes length=%d", len(state_bytes))
         resumption_context = WorkflowResumptionContext.loads(state_bytes.decode("utf-8"))
         graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
         logger.info("Loaded paused state for workflow run %s, resuming", workflow_run_id)
         return graph_runtime_state, workflow_run_id
-
-    @staticmethod
-    def _resolve_tools(args: Mapping[str, Any]) -> list[PromptMessageTool] | None:
-        tools = args.get("tools")
-        if not isinstance(tools, list):
-            return None
-
-        resolved: list[PromptMessageTool] = []
-        for tool in tools:
-            if not isinstance(tool, dict):
-                continue
-            if tool.get("type") != "function":
-                continue
-            function = tool.get("function")
-            if not isinstance(function, dict):
-                continue
-            name = function.get("name")
-            if not isinstance(name, str) or not name.strip():
-                continue
-            description = function.get("description")
-            parameters = function.get("parameters")
-            resolved.append(
-                PromptMessageTool(
-                    name=name.strip(),
-                    description=description if isinstance(description, str) else "",
-                    parameters=parameters if isinstance(parameters, dict) else {},
-                )
-            )
-
-        return resolved or None
-
-    @staticmethod
-    def _resolve_tool_results(args: Mapping[str, Any]) -> list[ToolResult] | None:
-        tool_results = args.get("tool_results")
-        if not isinstance(tool_results, list):
-            return None
-
-        resolved: list[ToolResult] = []
-        for result in tool_results:
-            if not isinstance(result, dict):
-                continue
-            tool_call_id = result.get("tool_call_id")
-            output = result.get("output")
-            if not isinstance(tool_call_id, str) or not tool_call_id.strip():
-                continue
-            if output is None:
-                continue
-            output_value = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False)
-            is_error = result.get("is_error")
-            resolved.append(
-                ToolResult(
-                    tool_call_id=tool_call_id.strip(),
-                    output=output_value,
-                    is_error=bool(is_error) if isinstance(is_error, bool) else None,
-                )
-            )
-
-        return resolved or None
 
     def _handle_advanced_chat_response(
         self,

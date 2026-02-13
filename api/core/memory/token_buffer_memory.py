@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -161,32 +162,29 @@ class TokenBufferMemory:
             is_tool_round = prev_had_tool_calls and bool(prev_tool_calls)
 
             if is_tool_round:
-                # Try to parse "[call_id] output" lines from query
+                # Build ToolPromptMessages for each tool_call from the previous round.
+                # The query may contain structured JSON tool results or plain text.
                 query_text = message.query or ""
                 tool_msgs_added = False
+
+                # Try structured JSON: [{"tool_call_id": "...", "output": "..."}]
+                parsed_results: dict[str, str] = {}
+                try:
+                    parsed = json.loads(query_text)
+                    if isinstance(parsed, list):
+                        for item in parsed:
+                            if isinstance(item, dict) and "tool_call_id" in item:
+                                parsed_results[item["tool_call_id"]] = str(item.get("output", ""))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
                 for tc in prev_tool_calls:
                     tc_id = tc.get("id", "")
-                    # Find the output for this tool_call_id in the query
-                    prefix = f"[{tc_id}] "
-                    if prefix in query_text:
-                        start = query_text.index(prefix) + len(prefix)
-                        # Find end: next "[call_" or end of string
-                        next_bracket = query_text.find("\n[call_", start)
-                        output = query_text[start:next_bracket] if next_bracket != -1 else query_text[start:]
-                        prompt_messages.append(ToolPromptMessage(
-                            content=output.strip(),
-                            tool_call_id=tc_id,
-                        ))
-                        tool_msgs_added = True
-                    else:
-                        # Fallback: use entire query as output for this tool call
-                        prompt_messages.append(ToolPromptMessage(
-                            content=query_text,
-                            tool_call_id=tc_id,
-                        ))
-                        tool_msgs_added = True
+                    content = parsed_results.get(tc_id, query_text)
+                    prompt_messages.append(ToolPromptMessage(content=content, tool_call_id=tc_id))
+                    tool_msgs_added = True
+
                 if not tool_msgs_added:
-                    # Fallback: emit as regular user message
                     prompt_messages.append(UserPromptMessage(content=message.query))
             else:
                 # Process user message with files

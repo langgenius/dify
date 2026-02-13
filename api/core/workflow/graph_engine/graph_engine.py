@@ -54,7 +54,6 @@ if TYPE_CHECKING:
     from core.workflow.graph_engine.response_coordinator import ResponseStreamCoordinator
 
 logger = logging.getLogger(__name__)
-_dbg = logging.getLogger("dify_debug")
 
 
 _DEFAULT_CONFIG = GraphEngineConfig()
@@ -233,7 +232,7 @@ class GraphEngine:
             self._initialize_layers()
 
             is_resume = self._graph_execution.started
-            _dbg.debug("[engine] is_resume=%s", is_resume)
+            logger.debug("[engine] is_resume=%s", is_resume)
             if not is_resume:
                 self._graph_execution.start()
             else:
@@ -254,7 +253,7 @@ class GraphEngine:
 
             # Handle completion
             if self._graph_execution.is_paused:
-                _dbg.debug("[engine] execution paused, reasons=%s", self._graph_execution.pause_reasons)
+                logger.debug("[engine] execution paused, reasons=%s", self._graph_execution.pause_reasons)
                 pause_reasons = self._graph_execution.pause_reasons
                 assert pause_reasons, "pause_reasons should not be empty when execution is paused."
                 # Ensure we have a valid PauseReason for the event

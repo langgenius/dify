@@ -108,11 +108,13 @@ if TYPE_CHECKING:
     from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
-_dbg = logging.getLogger("dify_debug")
 
 
 class LLMNode(Node[LLMNodeData]):
     node_type = NodeType.LLM
+
+    # Max length for a single tool result output to prevent prompt injection via oversized content
+    _MAX_TOOL_RESULT_LENGTH = 100_000
 
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
     _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
@@ -177,7 +179,7 @@ class LLMNode(Node[LLMNodeData]):
 
         # Check if this is a resume from tool call pause
         tool_call_state = self._get_tool_call_state(variable_pool)
-        _dbg.debug(
+        logger.debug(
             "[llm_node:%s] state=%s tool_results=%s mode=%s",
             self._node_id,
             bool(tool_call_state),
@@ -194,19 +196,19 @@ class LLMNode(Node[LLMNodeData]):
 
             if tool_call_state:
                 # === RESUME PATH: restore state and inject tool results ===
-                _dbg.debug("[llm_node:%s] RESUME round=%s", self._node_id, tool_call_state.get("round"))
+                logger.debug("[llm_node:%s] RESUME round=%s", self._node_id, tool_call_state.get("round"))
                 prompt_messages, stop, tool_call_history, current_round = self._resume_from_tool_call_state(
                     tool_call_state, variable_pool, external_tool_results
                 )
                 # Clear tool_results for invoke_llm since they're already in prompt_messages
                 resume_tool_results = None
             else:
-                _dbg.debug("[llm_node:%s] FIRST-RUN path", self._node_id)
+                logger.debug("[llm_node:%s] FIRST-RUN path", self._node_id)
                 # === FIRST-RUN PATH: normal prompt construction ===
                 # If external_tool_results exist but this node has no saved state,
                 # these results belong to a previously completed node — ignore them.
                 if external_tool_results:
-                    _dbg.debug("[llm_node:%s] ignoring stale external_tool_results (no saved state)", self._node_id)
+                    logger.debug("[llm_node:%s] ignoring stale external_tool_results (no saved state)", self._node_id)
                     external_tool_results = None
                 prompt_messages, stop, tool_call_history, current_round = yield from self._first_run_build_prompt(
                     node_inputs,
@@ -240,7 +242,7 @@ class LLMNode(Node[LLMNodeData]):
 
             # External tool callback: if LLM returned tool_calls and feature is enabled, pause
             # Only activate when tool_call_mode is "structured" (explicit opt-in from caller)
-            _dbg.debug(
+            logger.debug(
                 "[llm_node:%s] pause check: calls=%s cb=%s tools=%s mode=%s round=%d/%d",
                 self._node_id,
                 bool(tool_calls),
@@ -257,7 +259,7 @@ class LLMNode(Node[LLMNodeData]):
                 and external_tool_call_mode == "structured"
                 and current_round < self.node_data.max_tool_call_rounds
             ):
-                _dbg.debug(
+                logger.debug(
                     "[llm_node:%s] PAUSING round=%d calls=%s",
                     self._node_id,
                     current_round + 1,
@@ -346,7 +348,7 @@ class LLMNode(Node[LLMNodeData]):
                         out_short = out[:120] + "..." if len(out) > 120 else out
                         summary_parts.append(f"  → {out_short}")
                 outputs["tool_call_summary"] = "\n".join(summary_parts)
-                _dbg.debug("[llm_node:%s] completed with %d tool rounds", self._node_id, len(tool_call_history))
+                logger.debug("[llm_node:%s] completed with %d tool rounds", self._node_id, len(tool_call_history))
             if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
@@ -440,8 +442,9 @@ class LLMNode(Node[LLMNodeData]):
                 )
                 output = getattr(result, "output", None) or (result.get("output") if isinstance(result, dict) else None)
                 if tool_call_id and tool_call_id in last_assistant_tool_call_ids and output is not None:
-                    prompt_messages.append(ToolPromptMessage(content=str(output), tool_call_id=tool_call_id))
-                    results_for_history.append({"tool_call_id": tool_call_id, "output": str(output)})
+                    output_str = str(output)[: self._MAX_TOOL_RESULT_LENGTH]
+                    prompt_messages.append(ToolPromptMessage(content=output_str, tool_call_id=tool_call_id))
+                    results_for_history.append({"tool_call_id": tool_call_id, "output": output_str})
 
             # Update the last history entry with tool_results
             if tool_call_history and results_for_history:

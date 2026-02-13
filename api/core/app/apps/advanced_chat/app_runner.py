@@ -44,7 +44,6 @@ from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
-_dbg = logging.getLogger("dify_debug")
 
 
 class AdvancedChatAppRunner(WorkflowBasedAppRunner):
@@ -140,8 +139,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
         elif self._resume_graph_runtime_state is not None:
             # Resume path: use the restored graph runtime state
-            _dbg.debug("[runner] RESUME path entered")
-            _dbg.debug("[runner] tool_results=%s", system_inputs.external_tool_results)
+            logger.debug("[runner] RESUME path entered")
+            logger.debug("[runner] tool_results=%s", system_inputs.external_tool_results)
             graph_runtime_state = self._resume_graph_runtime_state
             # Update system variables with new tool_results for this resume round
             graph_runtime_state.variable_pool.system_variables = system_inputs
@@ -156,7 +155,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 invoke_from=invoke_from,
             )
         else:
-            _dbg.debug("[runner] NORMAL path (no resume)")
+            logger.debug("[runner] NORMAL path (no resume)")
             inputs = self.application_generate_entity.inputs
             query = self.application_generate_entity.query
 
