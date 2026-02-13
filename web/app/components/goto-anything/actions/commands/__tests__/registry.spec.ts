@@ -214,6 +214,7 @@ describe('SlashCommandRegistry', () => {
     })
 
     it('returns empty when handler.search throws', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const handler = createHandler({
         name: 'broken',
         search: vi.fn().mockRejectedValue(new Error('fail')),
@@ -222,6 +223,11 @@ describe('SlashCommandRegistry', () => {
 
       const results = await registry.search('/broken')
       expect(results).toEqual([])
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Command search failed'),
+        expect.any(Error),
+      )
+      warnSpy.mockRestore()
     })
 
     it('excludes unavailable commands from root listing', async () => {
