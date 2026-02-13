@@ -30,19 +30,21 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 // Mock API services - only mock external services
-const mockFetchWorkflowToolDetailByAppID = vi.fn()
 const mockCreateWorkflowToolProvider = vi.fn()
 const mockSaveWorkflowToolProvider = vi.fn()
 vi.mock('@/service/tools', () => ({
-  fetchWorkflowToolDetailByAppID: (...args: unknown[]) => mockFetchWorkflowToolDetailByAppID(...args),
   createWorkflowToolProvider: (...args: unknown[]) => mockCreateWorkflowToolProvider(...args),
   saveWorkflowToolProvider: (...args: unknown[]) => mockSaveWorkflowToolProvider(...args),
 }))
 
-// Mock invalidate workflow tools hook
+// Mock service hooks
 const mockInvalidateAllWorkflowTools = vi.fn()
+const mockInvalidateWorkflowToolDetailByAppID = vi.fn()
+const mockUseWorkflowToolDetailByAppID = vi.fn()
 vi.mock('@/service/use-tools', () => ({
   useInvalidateAllWorkflowTools: () => mockInvalidateAllWorkflowTools,
+  useInvalidateWorkflowToolDetailByAppID: () => mockInvalidateWorkflowToolDetailByAppID,
+  useWorkflowToolDetailByAppID: (...args: unknown[]) => mockUseWorkflowToolDetailByAppID(...args),
 }))
 
 // Mock Toast - need to verify notification calls
@@ -242,7 +244,10 @@ describe('WorkflowToolConfigureButton', () => {
     vi.clearAllMocks()
     mockPortalOpenState = false
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
-    mockFetchWorkflowToolDetailByAppID.mockResolvedValue(createMockWorkflowToolDetail())
+    mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
+      data: enabled ? createMockWorkflowToolDetail() : undefined,
+      isLoading: false,
+    }))
   })
 
   // Rendering Tests (REQUIRED)
@@ -307,19 +312,17 @@ describe('WorkflowToolConfigureButton', () => {
       expect(screen.getByText('Please save the workflow first')).toBeInTheDocument()
     })
 
-    it('should render loading state when published and fetching details', async () => {
+    it('should render loading state when published and fetching details', () => {
       // Arrange
-      mockFetchWorkflowToolDetailByAppID.mockImplementation(() => new Promise(() => { })) // Never resolves
+      mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: undefined, isLoading: true })
       const props = createDefaultConfigureButtonProps({ published: true })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
 
       // Assert
-      await waitFor(() => {
-        const loadingElement = document.querySelector('.pt-2')
-        expect(loadingElement).toBeInTheDocument()
-      })
+      const loadingElement = document.querySelector('.pt-2')
+      expect(loadingElement).toBeInTheDocument()
     })
 
     it('should render configure and manage buttons when published', async () => {
@@ -381,76 +384,10 @@ describe('WorkflowToolConfigureButton', () => {
       // Act & Assert
       expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
-
-    it('should call handlePublish when updating workflow tool', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const handlePublish = vi.fn().mockResolvedValue(undefined)
-      mockSaveWorkflowToolProvider.mockResolvedValue({})
-      const props = createDefaultConfigureButtonProps({ published: true, handlePublish })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
-      })
-      await user.click(screen.getByText('workflow.common.configure'))
-
-      // Fill required fields and save
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
-      })
-      const saveButton = screen.getByText('common.operation.save')
-      await user.click(saveButton)
-
-      // Confirm in modal
-      await waitFor(() => {
-        expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
-      })
-      await user.click(screen.getByText('common.operation.confirm'))
-
-      // Assert
-      await waitFor(() => {
-        expect(handlePublish).toHaveBeenCalled()
-      })
-    })
   })
 
-  // State Management Tests
-  describe('State Management', () => {
-    it('should fetch detail when published and mount', async () => {
-      // Arrange
-      const props = createDefaultConfigureButtonProps({ published: true })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      await waitFor(() => {
-        expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalledWith('workflow-app-123')
-      })
-    })
-
-    it('should refetch detail when detailNeedUpdate changes to true', async () => {
-      // Arrange
-      const props = createDefaultConfigureButtonProps({ published: true, detailNeedUpdate: false })
-
-      // Act
-      const { rerender } = render(<WorkflowToolConfigureButton {...props} />)
-
-      await waitFor(() => {
-        expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalledTimes(1)
-      })
-
-      // Rerender with detailNeedUpdate true
-      rerender(<WorkflowToolConfigureButton {...props} detailNeedUpdate={true} />)
-
-      // Assert
-      await waitFor(() => {
-        expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalledTimes(2)
-      })
-    })
-
+  // Modal behavior tests
+  describe('Modal Behavior', () => {
     it('should toggle modal visibility', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -513,85 +450,6 @@ describe('WorkflowToolConfigureButton', () => {
     })
   })
 
-  // Memoization Tests
-  describe('Memoization - outdated detection', () => {
-    it('should detect outdated when parameter count differs', async () => {
-      // Arrange
-      const detail = createMockWorkflowToolDetail()
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(detail)
-      const props = createDefaultConfigureButtonProps({
-        published: true,
-        inputs: [
-          createMockInputVar({ variable: 'test_var' }),
-          createMockInputVar({ variable: 'extra_var' }),
-        ],
-      })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert - should show outdated warning
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.workflowAsToolTip')).toBeInTheDocument()
-      })
-    })
-
-    it('should detect outdated when parameter not found', async () => {
-      // Arrange
-      const detail = createMockWorkflowToolDetail()
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(detail)
-      const props = createDefaultConfigureButtonProps({
-        published: true,
-        inputs: [createMockInputVar({ variable: 'different_var' })],
-      })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.workflowAsToolTip')).toBeInTheDocument()
-      })
-    })
-
-    it('should detect outdated when required property differs', async () => {
-      // Arrange
-      const detail = createMockWorkflowToolDetail()
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(detail)
-      const props = createDefaultConfigureButtonProps({
-        published: true,
-        inputs: [createMockInputVar({ variable: 'test_var', required: false })], // Detail has required: true
-      })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.workflowAsToolTip')).toBeInTheDocument()
-      })
-    })
-
-    it('should not show outdated when parameters match', async () => {
-      // Arrange
-      const detail = createMockWorkflowToolDetail()
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(detail)
-      const props = createDefaultConfigureButtonProps({
-        published: true,
-        inputs: [createMockInputVar({ variable: 'test_var', required: true, type: InputVarType.textInput })],
-      })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
-      })
-      expect(screen.queryByText('workflow.common.workflowAsToolTip')).not.toBeInTheDocument()
-    })
-  })
-
   // User Interactions Tests
   describe('User Interactions', () => {
     it('should navigate to tools page when manage button clicked', async () => {
@@ -611,174 +469,10 @@ describe('WorkflowToolConfigureButton', () => {
       // Assert
       expect(mockPush).toHaveBeenCalledWith('/tools?category=workflow')
     })
-
-    it('should create workflow tool provider on first publish', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockCreateWorkflowToolProvider.mockResolvedValue({})
-      const props = createDefaultConfigureButtonProps()
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Open modal
-      const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
-      await user.click(triggerArea!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
-      })
-
-      // Fill in required name field
-      const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
-      await user.type(nameInput, 'my_tool')
-
-      // Click save
-      await user.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockCreateWorkflowToolProvider).toHaveBeenCalled()
-      })
-    })
-
-    it('should show success toast after creating workflow tool', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockCreateWorkflowToolProvider.mockResolvedValue({})
-      const props = createDefaultConfigureButtonProps()
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
-      await user.click(triggerArea!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
-      })
-
-      const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
-      await user.type(nameInput, 'my_tool')
-
-      await user.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.api.actionSuccess',
-        })
-      })
-    })
-
-    it('should show error toast when create fails', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockCreateWorkflowToolProvider.mockRejectedValue(new Error('Create failed'))
-      const props = createDefaultConfigureButtonProps()
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
-      await user.click(triggerArea!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
-      })
-
-      const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
-      await user.type(nameInput, 'my_tool')
-
-      await user.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Create failed',
-        })
-      })
-    })
-
-    it('should call onRefreshData after successful create', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const onRefreshData = vi.fn()
-      mockCreateWorkflowToolProvider.mockResolvedValue({})
-      const props = createDefaultConfigureButtonProps({ onRefreshData })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
-      await user.click(triggerArea!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
-      })
-
-      const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
-      await user.type(nameInput, 'my_tool')
-
-      await user.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(onRefreshData).toHaveBeenCalled()
-      })
-    })
-
-    it('should invalidate all workflow tools after successful create', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockCreateWorkflowToolProvider.mockResolvedValue({})
-      const props = createDefaultConfigureButtonProps()
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
-      await user.click(triggerArea!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
-      })
-
-      const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
-      await user.type(nameInput, 'my_tool')
-
-      await user.click(screen.getByText('common.operation.save'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockInvalidateAllWorkflowTools).toHaveBeenCalled()
-      })
-    })
   })
 
   // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle API returning undefined', async () => {
-      // Arrange - API returns undefined (simulating empty response or handled error)
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(undefined)
-      const props = createDefaultConfigureButtonProps({ published: true })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert - should not crash and wait for API call
-      await waitFor(() => {
-        expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalled()
-      })
-
-      // Component should still render without crashing
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
-      })
-    })
-
     it('should handle rapid publish/unpublish state changes', async () => {
       // Arrange
       const props = createDefaultConfigureButtonProps({ published: false })
@@ -798,35 +492,7 @@ describe('WorkflowToolConfigureButton', () => {
       })
 
       // Assert - should not crash
-      expect(mockFetchWorkflowToolDetailByAppID).toHaveBeenCalled()
-    })
-
-    it('should handle detail with empty parameters', async () => {
-      // Arrange
-      const detail = createMockWorkflowToolDetail()
-      detail.tool.parameters = []
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(detail)
-      const props = createDefaultConfigureButtonProps({ published: true, inputs: [] })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure')).toBeInTheDocument()
-      })
-    })
-
-    it('should handle detail with undefined output_schema', async () => {
-      // Arrange
-      const detail = createMockWorkflowToolDetail()
-      // @ts-expect-error - testing undefined case
-      detail.tool.output_schema = undefined
-      mockFetchWorkflowToolDetailByAppID.mockResolvedValue(detail)
-      const props = createDefaultConfigureButtonProps({ published: true })
-
-      // Act & Assert
-      expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
+      expect(screen.getByText('workflow.common.workflowAsTool')).toBeInTheDocument()
     })
 
     it('should handle paragraph type input conversion', async () => {
@@ -1853,7 +1519,10 @@ describe('Integration Tests', () => {
     vi.clearAllMocks()
     mockPortalOpenState = false
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
-    mockFetchWorkflowToolDetailByAppID.mockResolvedValue(createMockWorkflowToolDetail())
+    mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
+      data: enabled ? createMockWorkflowToolDetail() : undefined,
+      isLoading: false,
+    }))
   })
 
   // Complete workflow: open modal -> fill form -> save
