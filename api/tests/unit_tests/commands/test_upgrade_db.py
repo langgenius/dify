@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 
 import commands
 
+HEARTBEAT_WAIT_TIMEOUT_SECONDS = 1.0
+
 
 def _install_fake_flask_migrate(monkeypatch, upgrade_impl) -> None:
     module = types.ModuleType("flask_migrate")
@@ -104,7 +106,7 @@ def test_upgrade_db_renews_lock_during_migration(monkeypatch, capsys):
     lock.reacquire.side_effect = _reacquire
 
     def _upgrade():
-        assert renewed.wait(1.0)
+        assert renewed.wait(HEARTBEAT_WAIT_TIMEOUT_SECONDS)
 
     _install_fake_flask_migrate(monkeypatch, _upgrade)
 
@@ -132,7 +134,7 @@ def test_upgrade_db_ignores_reacquire_errors(monkeypatch, capsys):
     lock.reacquire.side_effect = _reacquire
 
     def _upgrade():
-        assert attempted.wait(1.0)
+        assert attempted.wait(HEARTBEAT_WAIT_TIMEOUT_SECONDS)
 
     _install_fake_flask_migrate(monkeypatch, _upgrade)
 
