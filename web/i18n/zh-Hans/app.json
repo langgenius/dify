@@ -119,6 +119,7 @@
   "importDSL": "导入 DSL 文件",
   "importFromDSL": "导入 DSL",
   "importFromDSLFile": "从 DSL 文件",
+  "importFromDSLModal.learnMore": "了解 DSL 与 ZIP 格式",
   "importFromDSLUrl": "URL",
   "importFromDSLUrlPlaceholder": "输入 DSL 文件的 URL",
   "join": "参与社区",

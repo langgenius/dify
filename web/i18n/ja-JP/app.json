@@ -118,6 +118,7 @@
   "importDSL": "DSL ファイルをインポート",
   "importFromDSL": "DSL からインポート",
   "importFromDSLFile": "DSL ファイルから",
+  "importFromDSLModal.learnMore": "DSL と ZIP 形式について",
   "importFromDSLUrl": "URL から",
   "importFromDSLUrlPlaceholder": "DSL リンクをここに貼り付けます",
   "join": "コミュニティに参加する",
