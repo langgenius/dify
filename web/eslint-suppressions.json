@@ -2433,11 +2433,6 @@
       "count": 1
     }
   },
-  "app/components/base/modal/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/modal/modal.stories.tsx": {
     "no-console": {
       "count": 4
