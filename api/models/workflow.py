@@ -38,7 +38,7 @@ from factories.variable_factory import TypeMismatchError, build_segment_with_typ
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
-from ._workflow_exc import NodeNotFoundError, WorkflowDataError
+from ._workflow_exc import NodeNotFoundError
 
 if TYPE_CHECKING:
     from .model import AppMode, UploadFile
@@ -237,13 +237,7 @@ class Workflow(Base):  # bug
         the node's id, title, and its data as a dict.
         """
         workflow_graph = self.graph_dict
-
-        if not workflow_graph:
-            raise WorkflowDataError(f"workflow graph not found, workflow_id={self.id}")
-
-        nodes = workflow_graph.get("nodes")
-        if not nodes:
-            raise WorkflowDataError("nodes not found in workflow graph")
+        nodes = workflow_graph.get("nodes", [])
 
         try:
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
@@ -348,17 +342,16 @@ class Workflow(Base):  # bug
         For specific node type, refer to `core.workflow.nodes`
         """
         graph_dict = self.graph_dict
-        if "nodes" not in graph_dict:
-            raise WorkflowDataError("nodes not found in workflow graph")
+        nodes = graph_dict.get("nodes", [])
 
         if specific_node_type:
             yield from (
-                (node["id"], node["data"])
-                for node in graph_dict["nodes"]
-                if node["data"]["type"] == specific_node_type.value
+                (node["id"], node.get("data", {}))
+                for node in nodes
+                if node.get("data", {}).get("type") == specific_node_type.value
             )
         else:
-            yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
+            yield from ((node["id"], node.get("data", {})) for node in nodes)
 
     def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
         # get start node from graph
@@ -366,13 +359,9 @@ class Workflow(Base):  # bug
             return []
 
         graph_dict = self.graph_dict
-        if "nodes" not in graph_dict:
-            return []
+        nodes = graph_dict.get("nodes", [])
 
-        start_node = next(
-            (node for node in graph_dict["nodes"] if node["data"]["type"] == "start"),
-            None,
-        )
+        start_node = next((node for node in nodes if node.get("data", {}).get("type") == "start"), None)
         if not start_node:
             return []
 
