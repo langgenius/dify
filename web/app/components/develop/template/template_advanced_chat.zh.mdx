@@ -49,7 +49,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       </Property>
       <Property name='tool_call_mode' type='string' key='tool_call_mode'>
         工具调用兼容模式：
-        - `structured`（默认）仅接受结构化 `tool_calls`。
+        - 不传或为空：不启用外部工具回调（默认行为，兼容旧流程）。
+        - `structured`：启用结构化工具调用模式。当 LLM 节点开启了"外部工具回调"且返回 `tool_calls` 时，工作流会暂停并通过 SSE 返回 `workflow_paused` 事件，等待外部系统回传 `tool_results` 后继续执行。
       </Property>
       <Property name='tools' type='array[object]' key='tools'>
         （选填）客户端提供的工具定义列表（OpenAI 格式）。Dify 会将这些工具注册到当前的 LLM 上下文中。

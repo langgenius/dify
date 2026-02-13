@@ -13,6 +13,7 @@ import {
   RiCheckboxCircleFill,
   RiErrorWarningLine,
   RiLoader2Line,
+  RiPauseCircleFill,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -142,6 +143,11 @@ const NodePanel: FC<Props> = ({
             )}
             >
               {nodeInfo.title}
+              {nodeInfo.process_data?.external_tool_callback_round && (
+                <span className="ml-1 text-text-quaternary">
+                  (Tool Callback #{nodeInfo.process_data.external_tool_callback_round})
+                </span>
+              )}
             </div>
           </Tooltip>
           {nodeInfo.status !== 'running' && !hideInfo && (
@@ -152,6 +158,9 @@ const NodePanel: FC<Props> = ({
           )}
           {nodeInfo.status === 'succeeded' && (
             <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+          )}
+          {nodeInfo.status === 'paused' && (
+            <RiPauseCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-accent" />
           )}
           {nodeInfo.status === 'failed' && (
             <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-text-warning" />
