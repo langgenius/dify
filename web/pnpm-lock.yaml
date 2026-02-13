@@ -78,8 +78,8 @@ importers:
         specifier: 0.38.2
         version: 0.38.2
       '@lexical/link':
-        specifier: 0.38.2
-        version: 0.38.2
+        specifier: 0.39.0
+        version: 0.39.0
       '@lexical/list':
         specifier: 0.38.2
         version: 0.38.2
@@ -1675,6 +1675,9 @@ packages:
 
   '@lexical/link@0.38.2':
     resolution: {integrity: sha512-UOKTyYqrdCR9+7GmH6ZVqJTmqYefKGMUHMGljyGks+OjOGZAQs78S1QgcPEqltDy+SSdPSYK7wAo6gjxZfEq9g==}
+
+  '@lexical/link@0.39.0':
+    resolution: {integrity: sha512-L1jSF2BVRHDqIQbKYFcQt3CqtVIphRA3QAW2VooYPNlKeaAb/yfFS+C60GX1cj96b0rMlHKrNC17ik2aEBZKLQ==}
 
   '@lexical/list@0.38.2':
     resolution: {integrity: sha512-OQm9TzatlMrDZGxMxbozZEHzMJhKxAbH1TOnOGyFfzpfjbnFK2y8oLeVsfQZfZRmiqQS4Qc/rpFnRP2Ax5dsbA==}
@@ -8945,6 +8948,12 @@ snapshots:
       '@lexical/extension': 0.38.2
       '@lexical/utils': 0.38.2
       lexical: 0.38.2
+
+  '@lexical/link@0.39.0':
+    dependencies:
+      '@lexical/extension': 0.39.0
+      '@lexical/utils': 0.39.0
+      lexical: 0.39.0
 
   '@lexical/list@0.38.2':
     dependencies:
