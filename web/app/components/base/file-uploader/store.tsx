@@ -1,11 +1,9 @@
 import type {
   FileEntity,
 } from './types'
-import { isEqual } from 'es-toolkit/predicate'
 import {
   createContext,
   useContext,
-  useEffect,
   useRef,
 } from 'react'
 import {
@@ -57,19 +55,9 @@ export const FileContextProvider = ({
   onChange,
 }: FileProviderProps) => {
   const storeRef = useRef<FileStore | undefined>(undefined)
+
   if (!storeRef.current)
     storeRef.current = createFileStore(value, onChange)
-
-  useEffect(() => {
-    if (!storeRef.current)
-      return
-    if (isEqual(value, storeRef.current.getState().files))
-      return
-
-    storeRef.current.setState({
-      files: value ? [...value] : [],
-    })
-  }, [value])
 
   return (
     <FileContext.Provider value={storeRef.current}>

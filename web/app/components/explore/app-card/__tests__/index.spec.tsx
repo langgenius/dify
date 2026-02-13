@@ -2,6 +2,7 @@ import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import ExploreContext from '@/context/explore-context'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
@@ -135,6 +136,33 @@ describe('AppCard', () => {
       renderComponent({ app: createApp({ description: '' }) })
 
       expect(screen.getByText('Sample App')).toBeInTheDocument()
+    })
+
+    it('should call setShowTryAppPanel when try button is clicked', () => {
+      const mockSetShowTryAppPanel = vi.fn()
+      const app = createApp()
+
+      render(
+        <ExploreContext.Provider
+          value={{
+            controlUpdateInstalledApps: 0,
+            setControlUpdateInstalledApps: vi.fn(),
+            hasEditPermission: false,
+            installedApps: [],
+            setInstalledApps: vi.fn(),
+            isFetchingInstalledApps: false,
+            setIsFetchingInstalledApps: vi.fn(),
+            isShowTryAppPanel: false,
+            setShowTryAppPanel: mockSetShowTryAppPanel,
+          }}
+        >
+          <AppCard app={app} canCreate={true} onCreate={vi.fn()} isExplore={true} />
+        </ExploreContext.Provider>,
+      )
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+
+      expect(mockSetShowTryAppPanel).toHaveBeenCalledWith(true, { appId: 'app-id', app })
     })
   })
 })
