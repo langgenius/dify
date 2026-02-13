@@ -119,7 +119,7 @@ describe('Explore', () => {
       expect(useDocumentTitle).toHaveBeenCalledWith('common.menus.explore')
     })
 
-    it('should redirect dataset operators to /datasets', async () => {
+    it('should not redirect dataset operators at component level', async () => {
       ; (useAppContext as Mock).mockReturnValue({
         userProfile: { id: 'user-1' },
         isCurrentWorkspaceDatasetOperator: true,
@@ -133,7 +133,7 @@ describe('Explore', () => {
       ))
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets')
+        expect(mockReplace).not.toHaveBeenCalled()
       })
     })
 

@@ -232,7 +232,7 @@ describe('List', () => {
   })
 
   describe('Branch Coverage', () => {
-    it('should redirect normal role users to /apps', async () => {
+    it('should not redirect normal role users at component level', async () => {
       // Re-mock useAppContext with normal role
       vi.doMock('@/context/app-context', () => ({
         useAppContext: () => ({
@@ -249,7 +249,7 @@ describe('List', () => {
       render(<ListComponent />)
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/apps')
+        expect(mockReplace).not.toHaveBeenCalled()
       })
     })
 
