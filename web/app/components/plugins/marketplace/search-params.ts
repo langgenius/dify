@@ -12,6 +12,7 @@ export type SearchTab = (typeof SEARCH_TABS)[number] | ''
 export const marketplaceSearchParamsParsers = {
   q: parseAsString.withDefault('').withOptions({ history: 'replace' }),
   tags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
+  languages: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
   // Search-page-specific filters (independent from list-page category/tags)
   searchCategories: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
   searchLanguages: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),

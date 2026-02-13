@@ -83,6 +83,10 @@ export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
+export function useFilterTemplateLanguages() {
+  return useQueryState('languages', marketplaceSearchParamsParsers.languages)
+}
+
 export function useSearchTab() {
   const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
 
@@ -151,6 +155,7 @@ export function useMarketplaceSearchMode() {
   const [searchText] = useSearchText()
   const [searchTab] = useSearchTab()
   const [filterPluginTags] = useFilterPluginTags()
+  const [filterTemplateLanguages] = useFilterTemplateLanguages()
   const [activePluginCategory] = useActivePluginCategory()
   const [activeTemplateCategory] = useActiveTemplateCategory()
   const isPluginsView = creationType === CREATION_TYPE.plugins
@@ -160,6 +165,7 @@ export function useMarketplaceSearchMode() {
     || (isPluginsView && filterPluginTags.length > 0)
     || (searchMode ?? (isPluginsView && !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginCategory)))
     || (!isPluginsView && activeTemplateCategory !== CATEGORY_ALL)
+    || (!isPluginsView && filterTemplateLanguages.length > 0)
   return isSearchMode
 }
 

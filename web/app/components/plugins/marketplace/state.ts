@@ -1,7 +1,7 @@
 import type { PluginsSearchParams, TemplateSearchParams } from './types'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
-import { useActivePluginCategory, useActiveTemplateCategory, useCreationType, useFilterPluginTags, useMarketplacePluginSortValue, useMarketplaceSearchMode, useMarketplaceTemplateSortValue, useSearchText } from './atoms'
+import { useActivePluginCategory, useActiveTemplateCategory, useCreationType, useFilterPluginTags, useFilterTemplateLanguages, useMarketplacePluginSortValue, useMarketplaceSearchMode, useMarketplaceTemplateSortValue, useSearchText } from './atoms'
 import { CATEGORY_ALL } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
@@ -75,6 +75,7 @@ export function useTemplatesMarketplaceData(enabled = true) {
   const [searchTextOriginal] = useSearchText()
   const searchText = useDebounce(searchTextOriginal, { wait: 500 })
   const [activeTemplateCategory] = useActiveTemplateCategory()
+  const [filterTemplateLanguages] = useFilterTemplateLanguages()
 
   // Template collections query (for non-search mode)
   const templateCollectionsQuery = useMarketplaceTemplateCollectionsAndTemplates(undefined, { enabled })
@@ -94,8 +95,9 @@ export function useTemplatesMarketplaceData(enabled = true) {
       categories: activeTemplateCategory === CATEGORY_ALL ? undefined : [activeTemplateCategory],
       sort_by: sort.sortBy,
       sort_order: sort.sortOrder,
+      ...(filterTemplateLanguages.length > 0 ? { languages: filterTemplateLanguages } : {}),
     }
-  }, [isSearchMode, searchText, activeTemplateCategory, sort])
+  }, [isSearchMode, searchText, activeTemplateCategory, sort, filterTemplateLanguages])
 
   // Templates search query (for search mode)
   const templatesQuery = useMarketplaceTemplates(queryParams, { enabled })

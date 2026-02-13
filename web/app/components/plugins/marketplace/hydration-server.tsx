@@ -183,7 +183,9 @@ async function getDehydratedState(
       queryFn: () => getMarketplaceTemplateCollectionsAndTemplates(),
     }))
 
-    const isSearchMode = !!parsedSearchParams.q || category !== CATEGORY_ALL
+    const isSearchMode = !!parsedSearchParams.q
+      || category !== CATEGORY_ALL
+      || parsedSearchParams.languages.length > 0
 
     if (isSearchMode) {
       const templatesParams: TemplateSearchParams = {
@@ -191,6 +193,7 @@ async function getDehydratedState(
         categories: category === CATEGORY_ALL ? undefined : [category],
         sort_by: DEFAULT_TEMPLATE_SORT.sortBy,
         sort_order: DEFAULT_TEMPLATE_SORT.sortOrder,
+        ...(parsedSearchParams.languages.length > 0 ? { languages: parsedSearchParams.languages } : {}),
       }
 
       prefetches.push(queryClient.prefetchInfiniteQuery({

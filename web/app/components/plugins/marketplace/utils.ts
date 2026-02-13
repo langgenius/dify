@@ -337,16 +337,17 @@ export const getMarketplaceTemplates = async (
   } = queryParams
 
   try {
+    const body = {
+      page: pageParam,
+      page_size,
+      query,
+      sort_by,
+      sort_order,
+      ...(categories ? { categories } : {}),
+      ...(languages ? { languages } : {}),
+    }
     const res = await marketplaceClient.templates.searchAdvanced({
-      body: {
-        page: pageParam,
-        page_size,
-        query,
-        sort_by,
-        sort_order,
-        categories,
-        languages,
-      },
+      body,
     }, { signal })
 
     return {
