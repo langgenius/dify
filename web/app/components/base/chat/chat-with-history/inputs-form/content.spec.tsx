@@ -6,15 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
 import InputsFormContent from './content'
 
-// Mock Portal to render children in the normal DOM flow
-vi.mock('@floating-ui/react', async () => {
-  const actual = await vi.importActual('@floating-ui/react')
-  return {
-    ...actual,
-    FloatingPortal: ({ children }: { children: React.ReactNode }) => <div data-floating-ui-portal>{children}</div>,
-  }
-})
-
 // Keep lightweight mocks for non-base project components
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
   default: ({ value, onChange, name }: { value: boolean, onChange: (v: boolean) => void, name: string }) => (

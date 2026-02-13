@@ -7,15 +7,6 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { useChatWithHistoryContext } from '../context'
 import InputsFormNode from './index'
 
-// Mock FloatingPortal to render children in the normal DOM flow
-vi.mock('@floating-ui/react', async () => {
-  const actual = await vi.importActual('@floating-ui/react')
-  return {
-    ...actual,
-    FloatingPortal: ({ children }: { children: React.ReactNode }) => <div data-floating-ui-portal>{children}</div>,
-  }
-})
-
 // Mocks for components used by InputsFormContent (the real sibling)
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
   default: ({ value, name }: { value: boolean, name: string }) => (

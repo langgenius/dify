@@ -4,15 +4,6 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Operation from './operation'
 
-// Mock FloatingPortal to render children in the normal DOM flow
-vi.mock('@floating-ui/react', async () => {
-  const actual = await vi.importActual('@floating-ui/react')
-  return {
-    ...actual,
-    FloatingPortal: ({ children }: { children: React.ReactNode }) => <div data-floating-ui-portal>{children}</div>,
-  }
-})
-
 describe('Operation Component', () => {
   const defaultProps = {
     title: 'Chat Title',
