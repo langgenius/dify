@@ -107,13 +107,4 @@ def sanitize_email_html(html: str, *, profile: MailHtmlSanitizerProfile | None =
 
 
 def sanitize_email_subject(subject: str) -> str:
-    sanitized_chars: list[str] = []
-    for ch in subject:
-        codepoint = ord(ch)
-        if ch == "\t":
-            sanitized_chars.append(ch)
-            continue
-        if codepoint < 32 or codepoint == 127:
-            continue
-        sanitized_chars.append(ch)
-    return "".join(sanitized_chars)
+    return "".join(ch for ch in subject if ch == "\t" or (ord(ch) >= 32 and ord(ch) != 127))
