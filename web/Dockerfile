@@ -50,24 +50,18 @@ ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PM2_INSTANCES=2
 
 # set timezone
 ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
-# global runtime packages
-RUN pnpm add -g pm2
-
-
 # Create non-root user
 ARG dify_uid=1001
 RUN addgroup -S -g ${dify_uid} dify && \
     adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
     mkdir /app && \
-    mkdir /.pm2 && \
-    chown -R dify:dify /app /.pm2
+    chown -R dify:dify /app
 
 
 WORKDIR /app/web
