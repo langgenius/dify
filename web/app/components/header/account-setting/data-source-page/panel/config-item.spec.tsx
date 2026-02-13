@@ -176,6 +176,14 @@ describe('ConfigItem Component', () => {
     expect(screen.queryByTestId('mock-operate')).not.toBeInTheDocument()
   })
 
+  /**
+   * Test case: Delete button click for Website.
+   * Verifies:
+   * - Delete button is clickable
+   * - onRemove callback is triggered
+   * Note: Using SVG selector to find delete button, which is more resilient
+   * to styling changes than relying on specific CSS class combinations.
+   */
   it('should call onRemove when delete button is clicked for Website', () => {
     const { container } = render(
       <ConfigItem
@@ -186,8 +194,9 @@ describe('ConfigItem Component', () => {
       />,
     )
 
-    const deleteBtn = container.querySelector('.cursor-pointer.rounded-md.p-2.text-text-tertiary')!
-    expect(deleteBtn).toBeInTheDocument()
+    const deleteSvg = container.querySelector('svg.remixicon')
+    expect(deleteSvg).toBeInTheDocument()
+    const deleteBtn = deleteSvg!.parentElement!
     fireEvent.click(deleteBtn)
     expect(mockOnRemove).toHaveBeenCalled()
   })
@@ -207,8 +216,8 @@ describe('ConfigItem Component', () => {
       />,
     )
 
-    const deleteBtn = container.querySelector('.cursor-pointer.rounded-md.p-2.text-text-tertiary')
-    expect(deleteBtn).not.toBeInTheDocument()
+    const deleteSvg = container.querySelector('svg.remixicon')
+    expect(deleteSvg).not.toBeInTheDocument()
   })
 
   /**
