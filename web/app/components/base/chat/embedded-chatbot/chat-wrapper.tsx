@@ -5,7 +5,7 @@ import type {
   ChatItemInTree,
   OnSend,
 } from '../types'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
@@ -57,6 +57,15 @@ const ChatWrapper = () => {
     initUserVariables,
     appSourceType,
   } = useEmbeddedChatbotContext()
+
+  // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
+  const sendOnEnter = useMemo(() => {
+    if (typeof window === 'undefined')
+      return true
+    const urlParams = new URLSearchParams(window.location.search)
+    const param = urlParams.get('sendOnEnter')
+    return param !== 'false'
+  }, [])
 
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -321,6 +330,7 @@ const ChatWrapper = () => {
       themeBuilder={themeBuilder}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
+      sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url
           ? (

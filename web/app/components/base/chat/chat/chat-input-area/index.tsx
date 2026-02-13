@@ -45,6 +45,13 @@ type ChatInputAreaProps = {
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  /**
+   * Controls whether pressing Enter sends the message.
+   * - true (default): Enter sends, Shift+Enter inserts newline
+   * - false: Enter inserts newline, Shift+Enter sends
+   * Useful for CJK (Japanese/Korean/Chinese) IME users who expect Enter to insert newlines.
+   */
+  sendOnEnter?: boolean
 }
 const ChatInputArea = ({
   readonly,
@@ -61,6 +68,7 @@ const ChatInputArea = ({
   theme,
   isResponding,
   disabled,
+  sendOnEnter = true,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -131,7 +139,14 @@ const ChatInputArea = ({
     }, 50)
   }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // Determine if this key combo should trigger send:
+    // sendOnEnter=true (default): Enter sends, Shift+Enter inserts newline
+    // sendOnEnter=false: Shift+Enter sends, Enter inserts newline
+    const isSendCombo = sendOnEnter
+      ? (e.key === 'Enter' && !e.shiftKey)
+      : (e.key === 'Enter' && e.shiftKey)
+
+    if (isSendCombo && !e.nativeEvent.isComposing) {
       // if isComposing, exit
       if (isComposingRef.current)
         return
