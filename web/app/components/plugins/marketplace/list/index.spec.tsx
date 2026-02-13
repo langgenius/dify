@@ -21,6 +21,7 @@ vi.mock('#i18n', () => ({
         'plugin.marketplace.viewMore': 'View More',
         'plugin.marketplace.pluginsResult': `${options?.num || 0} plugins found`,
         'plugin.marketplace.noPluginFound': 'No plugins found',
+        'plugin.marketplace.noTemplateFound': 'No template found',
         'plugin.detailPanel.operation.install': 'Install',
         'plugin.detailPanel.operation.detail': 'Detail',
       }
@@ -164,9 +165,9 @@ vi.mock('../sort-dropdown', () => ({
 
 // Mock Empty component
 vi.mock('../empty', () => ({
-  default: ({ className }: { className?: string }) => (
+  default: ({ className, text }: { className?: string, text?: string }) => (
     <div data-testid="empty-component" className={className}>
-      No plugins found
+      {text || 'No plugins found'}
     </div>
   ),
 }))
@@ -909,6 +910,32 @@ describe('ListWrapper', () => {
       render(<ListWrapper />)
 
       expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
+    })
+
+    it('should render template empty state with flex content wrapper when templates are empty', () => {
+      delete (mockMarketplaceData as Record<string, unknown>).pluginCollections
+      delete (mockMarketplaceData as Record<string, unknown>).pluginCollectionPluginsMap
+      ;(mockMarketplaceData as Record<string, unknown>).templateCollections = []
+      ;(mockMarketplaceData as Record<string, unknown>).templateCollectionTemplatesMap = {}
+      ;(mockMarketplaceData as Record<string, unknown>).templates = []
+
+      const { container } = render(<ListWrapper />)
+
+      expect(screen.getByTestId('empty-component')).toBeInTheDocument()
+      expect(screen.getByText('No template found')).toBeInTheDocument()
+      expect(container.querySelector('.relative.flex.grow.flex-col')).toBeInTheDocument()
+    })
+
+    it('should keep plugin empty text when plugins are empty', () => {
+      mockMarketplaceData.plugins = []
+      mockMarketplaceData.pluginsTotal = 0
+      mockMarketplaceData.pluginCollections = []
+      mockMarketplaceData.pluginCollectionPluginsMap = {}
+
+      render(<ListWrapper />)
+
+      expect(screen.getByTestId('empty-component')).toBeInTheDocument()
+      expect(screen.getByText('No plugins found')).toBeInTheDocument()
     })
   })
 

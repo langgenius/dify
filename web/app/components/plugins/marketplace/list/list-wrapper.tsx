@@ -56,7 +56,7 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
       className="relative flex grow flex-col bg-background-default-subtle px-12 pt-2"
     >
       {isSearchMode && <ListTopInfo />}
-      <div className="relative grow">
+      <div className="relative flex grow flex-col">
         {isLoading && page === 1 && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <Loading />
