@@ -152,10 +152,6 @@ describe('Mermaid Flowchart Component', () => {
   describe('Edge Cases', () => {
     it('should not render when code is too short', async () => {
       const shortCode = 'graph'
-      await act(async () => {
-        render(<Flowchart PrimitiveCode={shortCode} />)
-      })
-
       vi.useFakeTimers()
       render(<Flowchart PrimitiveCode={shortCode} />)
       await vi.advanceTimersByTimeAsync(1000)
@@ -295,11 +291,9 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
         throw new Error('Config fail')
       })
 
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith('Config error:', expect.any(Error))
       })
-
-      expect(consoleSpy).toHaveBeenCalledWith('Config error:', expect.any(Error))
       consoleSpy.mockRestore()
     })
   })

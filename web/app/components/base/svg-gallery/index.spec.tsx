@@ -22,7 +22,7 @@ vi.mock('dompurify', () => ({
 
 describe('SVGRenderer', () => {
   const validSvg = '<svg width="100" height="100"><circle cx="50" cy="50" r="40" /></svg>'
-
+  let parseFromStringSpy: ReturnType<typeof vi.spyOn>
   beforeEach(() => {
     vi.clearAllMocks()
     mockAddTo.mockReturnValue({
@@ -36,7 +36,7 @@ describe('SVGRenderer', () => {
     const mockSvgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     mockSvgElement.setAttribute('width', '100')
     mockSvgElement.setAttribute('height', '100')
-    vi.spyOn(DOMParser.prototype, 'parseFromString').mockReturnValue({
+    parseFromStringSpy = vi.spyOn(DOMParser.prototype, 'parseFromString').mockReturnValue({
       documentElement: mockSvgElement,
     } as unknown as Document)
   })
@@ -56,7 +56,7 @@ describe('SVGRenderer', () => {
     })
 
     it('shows error message on invalid SVG content', async () => {
-      vi.spyOn(DOMParser.prototype, 'parseFromString').mockReturnValue({
+      parseFromStringSpy.mockReturnValue({
         documentElement: document.createElement('div'),
       } as unknown as Document)
 
@@ -84,7 +84,7 @@ describe('SVGRenderer', () => {
 
     it('uses default values for width/height if not present', async () => {
       const mockSvgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-      vi.spyOn(DOMParser.prototype, 'parseFromString').mockReturnValue({
+      parseFromStringSpy.mockReturnValue({
         documentElement: mockSvgElement,
       } as unknown as Document)
 
@@ -129,7 +129,7 @@ describe('SVGRenderer', () => {
 
       expect(screen.getByAltText('Preview')).toBeInTheDocument()
 
-      fireEvent.keyDown(screen.getByAltText('Preview'), { key: 'Escape' })
+      fireEvent.keyDown(document, { key: 'Escape' })
 
       expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()
     })
