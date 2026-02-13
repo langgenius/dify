@@ -21,7 +21,7 @@ import CustomSelect from '@/app/components/base/select/custom'
 import Textarea from '@/app/components/base/textarea'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { MARKETPLACE_URL_PREFIX, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -48,6 +48,8 @@ type RuntimeOption = {
   description: string
   recommended?: boolean
 }
+
+const marketplaceTemplatesUrl = `${MARKETPLACE_URL_PREFIX.replace(/\/$/, '')}/templates`
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
@@ -332,11 +334,21 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pb-10 pt-5">
-              <div className="flex cursor-pointer items-center gap-1 text-text-tertiary system-xs-regular" onClick={onCreateFromTemplate}>
-                <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
-                <div className="p-[1px]">
-                  <RiArrowRightLine className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-2 system-xs-regular">
+                <div className="flex cursor-pointer items-center gap-1 text-text-tertiary" onClick={onCreateFromTemplate}>
+                  <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
+                  <div className="p-[1px]">
+                    <RiArrowRightLine className="h-3.5 w-3.5" />
+                  </div>
                 </div>
+                <a
+                  href={marketplaceTemplatesUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-text-tertiary hover:text-text-secondary hover:underline"
+                >
+                  {t('newApp.orExploreCommunity', { ns: 'app' })}
+                </a>
               </div>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
