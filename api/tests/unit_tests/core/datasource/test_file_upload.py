@@ -175,7 +175,7 @@ class TestFileTypeValidation:
 
     @pytest.mark.parametrize(
         "extension",
-        ["mp3", "m4a", "wav", "amr", "mpga", "MP3", "WAV"],
+        ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "MP4", "MPEG", "WEEM"]
     )
     def test_audio_extension_in_constants(self, extension):
         """Test that audio extensions are correctly defined in constants."""
@@ -1308,5 +1308,15 @@ class TestFileConstants:
         assert len(image_audio_overlap) == 0, f"Image/Audio overlap: {image_audio_overlap}"
 
         # Assert - Video and audio shouldn't overlap
-        video_audio_overlap = videos_lower & audio_lower
-        assert len(video_audio_overlap) == 0, f"Video/Audio overlap: {video_audio_overlap}"
+        # These formats are technically video containers but are supported
+        # by the audio-to-text endpoint, so overlap is allowed.
+        allowed_overlap = {'mp4', 'mpeg', 'webm'}
+
+        # Calculate the actual overlap found in the code
+        overlap = AUDIO_EXTENSIONS.intersection(VIDEO_EXTENSIONS)
+
+        # Remove the ones we know are safe
+        unexpected_overlap = overlap - allowed_overlap
+
+        # Fail ONLY if we find weird overlaps (like if 'jpg' was in audio)
+        assert not unexpected_overlap, f"Unexpected overlap between audio and video: {unexpected_overlap}"
