@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings
 
 
@@ -31,4 +31,9 @@ class DeploymentConfig(BaseSettings):
     DEPLOY_ENV: str = Field(
         description="Deployment environment (e.g., 'PRODUCTION', 'DEVELOPMENT'), default to PRODUCTION",
         default="PRODUCTION",
+    )
+
+    MIGRATION_LOCK_TTL: PositiveInt = Field(
+        description="Redis lock TTL for startup DB migration (seconds). Increase for large/slow databases.",
+        default=3600,
     )

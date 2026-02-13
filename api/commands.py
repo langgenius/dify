@@ -10,6 +10,7 @@ import click
 import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
+from redis.exceptions import LockNotOwnedError, RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -727,7 +728,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    lock = redis_client.lock(name="db_upgrade_lock", timeout=60)
+    lock = redis_client.lock(name="db_upgrade_lock", timeout=dify_config.MIGRATION_LOCK_TTL)
     if lock.acquire(blocking=False):
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
@@ -744,7 +745,13 @@ def upgrade_db():
             click.echo(click.style(f"Database migration failed: {e}", fg="red"))
             raise SystemExit(1)
         finally:
-            lock.release()
+            # Lock release errors should never mask the real migration failure.
+            try:
+                lock.release()
+            except LockNotOwnedError:
+                logger.warning("DB migration lock not owned on release (likely expired); ignoring.")
+            except RedisError:
+                logger.warning("Failed to release DB migration lock due to Redis error; ignoring.", exc_info=True)
     else:
         click.echo("Database migration skipped")
 
