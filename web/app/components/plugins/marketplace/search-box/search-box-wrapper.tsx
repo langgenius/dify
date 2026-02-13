@@ -3,7 +3,7 @@
 import type { UnifiedSearchParams } from '../types'
 import { useTranslation } from '#i18n'
 import { useDebounce } from 'ahooks'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import Input from '@/app/components/base/input'
@@ -14,7 +14,9 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 import {
+  isMarketplacePlatformAtom,
   searchModeAtom,
+  useSearchTab,
   useSearchText,
 } from '../atoms'
 import { useMarketplaceUnifiedSearch } from '../query'
@@ -31,8 +33,10 @@ const SearchBoxWrapper = ({
   inputClassName,
   includeSource = true,
 }: SearchBoxWrapperProps) => {
+  const isMarketplacePlatform = useAtomValue(isMarketplacePlatformAtom)
   const { t } = useTranslation()
   const [searchText, handleSearchTextChange] = useSearchText()
+  const [, setSearchTab] = useSearchTab()
   const setSearchMode = useSetAtom(searchModeAtom)
   const committedSearch = searchText || ''
   const [draftSearch, setDraftSearch] = useState(committedSearch)
@@ -70,7 +74,15 @@ const SearchBoxWrapper = ({
     const trimmed = draftSearch.trim()
     if (!trimmed)
       return
-    router.push(`/search/all/?q=${encodeURIComponent(trimmed)}`)
+
+    if (isMarketplacePlatform) {
+      router.push(`/search/all/?q=${encodeURIComponent(trimmed)}`)
+    }
+    else {
+      handleSearchTextChange(trimmed)
+      setSearchTab('all')
+      setSearchMode(true)
+    }
     setIsFocused(false)
   }
 
