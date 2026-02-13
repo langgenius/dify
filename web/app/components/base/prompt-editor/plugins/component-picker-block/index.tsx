@@ -489,11 +489,13 @@ const ComponentPicker = ({
         menuRenderFn={renderMenu}
         triggerFn={checkForTriggerMatch}
       />
-      <FilePickerUploadModal
-        key={fileUploadModalKey}
-        isOpen={isFileUploadModalOpen}
-        onClose={() => setIsFileUploadModalOpen(false)}
-      />
+      {isSupportSandbox && isFileUploadModalOpen && (
+        <FilePickerUploadModal
+          key={fileUploadModalKey}
+          isOpen={isFileUploadModalOpen}
+          onClose={() => setIsFileUploadModalOpen(false)}
+        />
+      )}
     </>
   )
 }
