@@ -3,10 +3,10 @@ Human Input node entities.
 """
 
 import re
-from html import escape
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
+from html import escape
 from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
