@@ -45,7 +45,7 @@ def test_sanitize_email_html_free_keeps_input():
     assert result == html
 
 
-def test_sanitize_email_subject_strips_html_and_newlines():
+def test_sanitize_email_subject_strips_control_chars():
     subject = "Hello\r\nBcc:\x01 victim@example.com\x7f\t<b>hi</b>"
     result = sanitize_email_subject(subject)
     assert "\r" not in result
@@ -61,7 +61,7 @@ def test_sanitize_email_subject_keeps_literal_angle_brackets():
     assert result == subject
 
 
-def test_sanitize_email_subject_matches_nh3_text_cleaning():
+def test_sanitize_email_subject_keeps_html_tags():
     subject = "<i>hello</i>"
     result = sanitize_email_subject(subject)
     assert result == subject
