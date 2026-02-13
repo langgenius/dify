@@ -87,8 +87,7 @@ class TestKnowledgeIndexNode:
     """
 
     def test_node_initialization(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service
+        self, mock_graph_init_params, mock_graph_runtime_state, mock_index_processor, mock_summary_index_service
     ):
         """Test KnowledgeIndexNode initialization."""
         # Arrange
@@ -119,8 +118,12 @@ class TestKnowledgeIndexNode:
         assert node.summary_index_service == mock_summary_index_service
 
     def test_run_without_dataset_id(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service, sample_node_data
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
     ):
         """Test _run raises KnowledgeIndexNodeError when dataset_id is not provided."""
         # Arrange
@@ -144,8 +147,12 @@ class TestKnowledgeIndexNode:
             node._run()
 
     def test_run_without_index_chunk_variable(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service, sample_node_data
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
     ):
         """Test _run raises KnowledgeIndexNodeError when index chunk variable is not provided."""
         # Arrange
@@ -175,8 +182,12 @@ class TestKnowledgeIndexNode:
             node._run()
 
     def test_run_with_empty_chunks(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service, sample_node_data
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
     ):
         """Test _run fails when chunks is empty."""
         # Arrange
@@ -212,9 +223,13 @@ class TestKnowledgeIndexNode:
         assert "Chunks is required" in result.error
 
     def test_run_preview_mode_success(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service,
-        sample_node_data, sample_chunks
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
     ):
         """Test _run succeeds in preview mode."""
         # Arrange
@@ -268,9 +283,13 @@ class TestKnowledgeIndexNode:
         assert mock_index_processor.get_preview_output.called
 
     def test_run_production_mode_success(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service,
-        sample_node_data, sample_chunks
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
     ):
         """Test _run succeeds in production mode."""
         # Arrange
@@ -330,9 +349,13 @@ class TestKnowledgeIndexNode:
         assert mock_index_processor.index_and_clean.called
 
     def test_run_production_mode_without_batch(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service,
-        sample_node_data, sample_chunks
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
     ):
         """Test _run fails when batch is not provided in production mode."""
         # Arrange
@@ -377,9 +400,13 @@ class TestKnowledgeIndexNode:
         assert "Batch is required" in result.error
 
     def test_run_with_knowledge_index_node_error(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service,
-        sample_node_data, sample_chunks
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
     ):
         """Test _run handles KnowledgeIndexNodeError properly."""
         # Arrange
@@ -433,9 +460,13 @@ class TestKnowledgeIndexNode:
         assert result.error_type == "KnowledgeIndexNodeError"
 
     def test_run_with_generic_exception(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service,
-        sample_node_data, sample_chunks
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
     ):
         """Test _run handles generic exceptions properly."""
         # Arrange
@@ -489,8 +520,12 @@ class TestKnowledgeIndexNode:
         assert result.error_type == "Exception"
 
     def test_invoke_knowledge_index(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service, sample_node_data
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
     ):
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -541,8 +576,12 @@ class TestKnowledgeIndexNode:
         assert version == "1"
 
     def test_get_streaming_template(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service, sample_node_data
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
     ):
         """Test get_streaming_template method."""
         # Arrange
@@ -570,10 +609,13 @@ class TestKnowledgeIndexNode:
 
 
 class TestInvokeKnowledgeIndex:
-
     def test_invoke_with_summary_index_setting(
-        self, mock_graph_init_params, mock_graph_runtime_state,
-        mock_index_processor, mock_summary_index_service, sample_node_data
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
     ):
         # Arrange
         dataset_id = str(uuid.uuid4())

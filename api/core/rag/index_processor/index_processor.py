@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 class IndexProcessor:
-
     def format_preview(self, chunk_structure: str, chunks: Any) -> Preview:
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         preview = index_processor.format_preview(chunks)
@@ -35,8 +34,9 @@ class IndexProcessor:
 
         for item in preview["preview"]:
             if "content" in item and "child_chunks" in item:
-                data.preview.append(PreviewItem(
-                    content=item["content"], child_chunks=item["child_chunks"], summary=None))
+                data.preview.append(
+                    PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None)
+                )
             elif "question" in item and "answer" in item:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
             elif "content" in item:
@@ -44,8 +44,14 @@ class IndexProcessor:
         return data
 
     def index_and_clean(
-        self, dataset_id: str, document_id: str, original_document_id: str,
-        chunks: Mapping[str, Any], batch: Any, summary_index_setting: dict | None = None):
+        self,
+        dataset_id: str,
+        document_id: str,
+        original_document_id: str,
+        chunks: Mapping[str, Any],
+        batch: Any,
+        summary_index_setting: dict | None = None,
+    ):
         with session_factory.create_session() as session:
             document = session.query(Document).filter_by(id=document_id).first()
             if not document:
@@ -88,13 +94,13 @@ class IndexProcessor:
             document.indexing_status = "completed"
             document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             document.word_count = (
-                                      session.query(func.sum(DocumentSegment.word_count))
-                                      .where(
-                                          DocumentSegment.document_id == document_id,
-                                          DocumentSegment.dataset_id == dataset_id,
-                                      )
-                                      .scalar()
-                                  ) or 0
+                session.query(func.sum(DocumentSegment.word_count))
+                .where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
+                .scalar()
+            ) or 0
             # Update need_summary based on dataset's summary_index_setting
             if summary_index_setting and summary_index_setting.get("enable") is True:
                 document.need_summary = True
@@ -124,8 +130,8 @@ class IndexProcessor:
         }
 
     def get_preview_output(
-        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str,
-        summary_index_setting: dict | None) -> Preview:
+        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
+    ) -> Preview:
         doc_language = None
         with session_factory.create_session() as session:
             if document_id:
@@ -190,8 +196,7 @@ class IndexProcessor:
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_output.preview))) as executor:
                 futures = [
-                    executor.submit(generate_summary_for_chunk, preview_item)
-                    for preview_item in preview_output.preview
+                    executor.submit(generate_summary_for_chunk, preview_item) for preview_item in preview_output.preview
                 ]
                 # Wait for all tasks to complete with timeout
                 done, not_done = concurrent.futures.wait(futures, timeout=timeout_seconds)
@@ -236,4 +241,3 @@ class IndexProcessor:
                 len(preview_output.preview),
             )
         return preview_output
-

@@ -24,17 +24,18 @@ class Preview(BaseModel):
 
 
 class IndexProcessorProtocol(Protocol):
-
-    def format_preview(self, chunk_structure: str, chunks: Any) -> Preview:
-        ...
+    def format_preview(self, chunk_structure: str, chunks: Any) -> Preview: ...
 
     def index_and_clean(
-        self, dataset_id: str, document_id: str,
-        original_document_id: str, chunks: Mapping[str, Any], batch: Any,
-        summary_index_setting: dict | None = None) -> dict[str, Any]:
-        ...
+        self,
+        dataset_id: str,
+        document_id: str,
+        original_document_id: str,
+        chunks: Mapping[str, Any],
+        batch: Any,
+        summary_index_setting: dict | None = None,
+    ) -> dict[str, Any]: ...
 
     def get_preview_output(
-        self, chunks: Any, dataset_id: str, document_id: str,
-        chunk_structure: str, summary_index_setting: dict | None) -> Preview:
-        ...
+        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
+    ) -> Preview: ...
