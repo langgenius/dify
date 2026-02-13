@@ -205,6 +205,10 @@ describe('useConfigureButton', () => {
     }))
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('Initialization', () => {
     it('should return showModal as false by default', () => {
       const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
