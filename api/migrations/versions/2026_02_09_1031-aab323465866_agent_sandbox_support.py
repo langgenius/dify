@@ -6,17 +6,37 @@ Create Date: 2026-02-09 10:31:05.062722
 
 """
 
+import os
 from uuid import uuid4
 
-from alembic import op
-import models as models
 import sqlalchemy as sa
+from alembic import op
+
+import models as models
 
 # revision identifiers, used by Alembic.
 revision = "aab323465866"
 down_revision = "c3df22613c99"
 branch_labels = None
 depends_on = None
+
+
+def _get_ssh_config_from_env() -> dict[str, str]:
+    """Build SSH sandbox config from environment variables.
+
+    Defaults are chosen so that:
+    - All-in-one Docker Compose (api inside the network): agentbox:22
+    - Middleware / local dev (api on the host): 127.0.0.1:2222
+
+    The env vars (SSH_SANDBOX_*) are documented in api/.env.example.
+    """
+    return {
+        "ssh_host": os.environ.get("SSH_SANDBOX_HOST", "agentbox"),
+        "ssh_port": os.environ.get("SSH_SANDBOX_PORT", "22"),
+        "ssh_username": os.environ.get("SSH_SANDBOX_USERNAME", "agentbox"),
+        "ssh_password": os.environ.get("SSH_SANDBOX_PASSWORD", "agentbox"),
+        "base_working_path": os.environ.get("SSH_SANDBOX_BASE_WORKING_PATH", "/workspace/sandboxes"),
+    }
 
 
 def upgrade():
@@ -88,29 +108,27 @@ def upgrade():
     with op.batch_alter_table("app_assets", schema=None) as batch_op:
         batch_op.create_index("app_assets_version_idx", ["tenant_id", "app_id", "version"], unique=False)
 
-    ssh_config = {
-        "ssh_host": "agentbox",
-        "ssh_port": "22",
-        "ssh_username": "agentbox",
-        "ssh_password": "agentbox",
-        "base_working_path": "/workspace/sandboxes",
-    }
-    encrypted_config = encrypt_system_params(ssh_config)
+    # Only seed a default SSH system provider for self-hosted deployments.
+    # CLOUD editions manage sandbox providers through admin tooling.
+    edition = os.environ.get("EDITION", "SELF_HOSTED")
+    if edition == "SELF_HOSTED":
+        ssh_config = _get_ssh_config_from_env()
+        encrypted_config = encrypt_system_params(ssh_config)
 
-    op.execute(
-        sa.text(
-            """
-            INSERT INTO sandbox_provider_system_config
-            (id, provider_type, encrypted_config, created_at, updated_at)
-            VALUES (:id, :provider_type, :encrypted_config, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ON CONFLICT (provider_type) DO NOTHING
-            """
-        ).bindparams(
-            id=str(uuid4()),
-            provider_type="ssh",
-            encrypted_config=encrypted_config,
+        op.execute(
+            sa.text(
+                """
+                INSERT INTO sandbox_provider_system_config
+                (id, provider_type, encrypted_config, created_at, updated_at)
+                VALUES (:id, :provider_type, :encrypted_config, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (provider_type) DO NOTHING
+                """
+            ).bindparams(
+                id=str(uuid4()),
+                provider_type="ssh",
+                encrypted_config=encrypted_config,
+            )
         )
-    )
 
 
 def downgrade():
