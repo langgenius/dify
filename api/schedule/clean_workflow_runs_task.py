@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import click
 from redis.exceptions import LockError
@@ -30,6 +30,16 @@ def clean_workflow_runs_task() -> None:
 
     start_time = datetime.now(UTC)
 
+    retention_days = dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS
+    scan_window_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_SCAN_WINDOW_DAYS
+
+    if scan_window_days > 0:
+        end_before = datetime.now() - timedelta(days=retention_days)
+        start_from = end_before - timedelta(days=scan_window_days)
+    else:
+        start_from = None
+        end_before = None
+
     try:
         # lock the task to avoid concurrent execution in case of the future data volume growth
         with redis_client.lock(
@@ -38,10 +48,10 @@ def clean_workflow_runs_task() -> None:
             blocking=False,
         ):
             WorkflowRunCleanup(
-                days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
+                days=retention_days,
                 batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE,
-                start_from=None,
-                end_before=None,
+                start_from=start_from,
+                end_before=end_before,
             ).run()
 
         end_time = datetime.now(UTC)

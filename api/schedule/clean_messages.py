@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime, timedelta
 
 import click
 from redis.exceptions import LockError
@@ -32,16 +33,30 @@ def clean_messages():
             graceful_period_days=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD,
         )
 
+        retention_days = dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS
+        scan_window_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_SCAN_WINDOW_DAYS
+        batch_size = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE
+
         # Create and run the cleanup service
         # lock the task to avoid concurrent execution in case of the future data volume growth
         with redis_client.lock(
             "retention:clean_messages", timeout=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL, blocking=False
         ):
-            service = MessagesCleanService.from_days(
-                policy=policy,
-                days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
-                batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE,
-            )
+            if scan_window_days > 0:
+                end_before = datetime.now() - timedelta(days=retention_days)
+                start_from = end_before - timedelta(days=scan_window_days)
+                service = MessagesCleanService.from_time_range(
+                    policy=policy,
+                    start_from=start_from,
+                    end_before=end_before,
+                    batch_size=batch_size,
+                )
+            else:
+                service = MessagesCleanService.from_days(
+                    policy=policy,
+                    days=retention_days,
+                    batch_size=batch_size,
+                )
             stats = service.run()
 
         end_at = time.perf_counter()

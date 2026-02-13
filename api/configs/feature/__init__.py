@@ -1355,6 +1355,12 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
         description="Retention days for sandbox expired workflow_run records and message records",
         default=30,
     )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_SCAN_WINDOW_DAYS: NonNegativeInt = Field(
+        description="Scan window lower bound in days relative to cutoff for scheduled cleanup tasks. "
+        "0 means disabled (scan all records before cutoff). "
+        "When > 0, only records in [cutoff - window, cutoff) are scanned.",
+        default=0,
+    )
     SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
         description="Lock TTL for sandbox expired records clean task in seconds",
         default=90000,
