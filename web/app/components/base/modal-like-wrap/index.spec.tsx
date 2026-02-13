@@ -34,11 +34,11 @@ describe('ModalLikeWrap', () => {
     it('calls onClose when close icon is clicked', async () => {
       render(<ModalLikeWrap {...defaultProps} />)
 
-      const closeBtn = document.querySelector('.remixicon')
+      const closeBtn = screen.getByTestId('modal-close-btn')
       expect(closeBtn).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(closeBtn!)
+        fireEvent.click(closeBtn)
       })
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
