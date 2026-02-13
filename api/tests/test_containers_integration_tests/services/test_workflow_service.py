@@ -165,20 +165,21 @@ class TestWorkflowService:
         from models.enums import CreatorUserRole
         from models.workflow import WorkflowNodeExecutionModel
 
-        node_execution = WorkflowNodeExecutionModel()
-        node_execution.id = fake.uuid4()
-        node_execution.tenant_id = app.tenant_id
-        node_execution.app_id = app.id
-        node_execution.workflow_id = workflow.id
-        node_execution.triggered_from = "single-step"  # Required field
-        node_execution.index = 1  # Required field
-        node_execution.node_id = "test-node-1"
-        node_execution.node_type = "test_node"
-        node_execution.title = "Test Node"  # Required field
-        node_execution.status = "succeeded"
-        node_execution.created_by_role = CreatorUserRole.ACCOUNT  # Required field
-        node_execution.created_by = account.id  # Required field
-        node_execution.created_at = fake.date_time_this_year()
+        node_execution = WorkflowNodeExecutionModel(
+            id=fake.uuid4(),
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow.id,
+            triggered_from="single-step",  # Required field
+            index=1,  # Required field
+            node_id="test-node-1",
+            node_type="test_node",
+            title="Test Node",  # Required field
+            status="succeeded",
+            created_by_role=CreatorUserRole.ACCOUNT,  # Required field
+            created_by=account.id,  # Required field
+            created_at=fake.date_time_this_year(),
+        )
 
         from extensions.ext_database import db
 
