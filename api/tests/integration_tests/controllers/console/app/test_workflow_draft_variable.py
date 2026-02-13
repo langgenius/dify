@@ -1,6 +1,9 @@
 import uuid
 from unittest import mock
 
+import pytest
+from flask import FlaskClient
+
 from controllers.console.app import workflow_draft_variable as draft_variable_api
 from controllers.console.app import wraps
 from factories.variable_factory import build_segment
@@ -14,12 +17,10 @@ def _get_mock_srv_class() -> type[WorkflowDraftVariableService]:
 
 
 class TestWorkflowDraftNodeVariableListApi:
-    def test_get(self, test_client, auth_header, monkeypatch):
+    def test_get(self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch):
         srv_class = _get_mock_srv_class()
-        mock_app_model: App = App()
-        mock_app_model.id = str(uuid.uuid4())
+        mock_app_model = App(id=str(uuid.uuid4()), mode=AppMode.ADVANCED_CHAT)
         test_node_id = "test_node_id"
-        mock_app_model.mode = AppMode.ADVANCED_CHAT
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
 
         monkeypatch.setattr(draft_variable_api, "WorkflowDraftVariableService", srv_class)
