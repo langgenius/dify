@@ -252,13 +252,15 @@ async function getDehydratedState(
 export async function HydrateQueryClient({
   params,
   searchParams,
+  isMarketplacePlatform = false,
   children,
 }: {
   params?: Awaitable<{ category?: string, creationType?: string, searchTab?: string } | undefined>
   searchParams?: Awaitable<SearchParams>
+  isMarketplacePlatform?: boolean
   children: React.ReactNode
 }) {
-  const dehydratedState = await getDehydratedState(params, searchParams)
+  const dehydratedState = isMarketplacePlatform ? await getDehydratedState(params, searchParams) : null
 
   return (
     <HydrationBoundary state={dehydratedState}>

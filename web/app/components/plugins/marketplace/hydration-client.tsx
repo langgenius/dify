@@ -8,7 +8,7 @@ export function HydrateClient({
   children,
 }: {
   isMarketplacePlatform?: boolean
-  children?: React.ReactNode
+  children: React.ReactNode
 }) {
   useHydrateAtoms([
     [isMarketplacePlatformAtom, isMarketplacePlatform],

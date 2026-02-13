@@ -30,8 +30,14 @@ const Marketplace = ({
 }: MarketplaceProps) => {
   return (
     <TanstackQueryInitializer>
-      <HydrateQueryClient searchParams={searchParams} params={params}>
-        <HydrateClient isMarketplacePlatform={isMarketplacePlatform}>
+      <HydrateQueryClient
+        isMarketplacePlatform={isMarketplacePlatform}
+        searchParams={searchParams}
+        params={params}
+      >
+        <HydrateClient
+          isMarketplacePlatform={isMarketplacePlatform}
+        >
           <MarketplaceHeader descriptionClassName={cn('mx-12 mt-1', isMarketplacePlatform && 'top-0 mx-0 mt-0 rounded-none')} marketplaceNav={marketplaceNav} />
           <MarketplaceContent
             showInstallButton={showInstallButton}
