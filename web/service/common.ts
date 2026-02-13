@@ -38,7 +38,6 @@ import { del, get, patch, post, put } from './base'
 
 type LoginSuccess = {
   result: 'success'
-  data?: { access_token?: string }
 }
 type LoginFail = {
   result: 'fail'
