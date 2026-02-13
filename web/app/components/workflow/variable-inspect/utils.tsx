@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 
 const arrayStringSchemaParttern = z.array(z.string())
 const arrayNumberSchemaParttern = z.array(z.number())
@@ -7,7 +7,7 @@ const arrayNumberSchemaParttern = z.array(z.number())
 const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
 type Literal = z.infer<typeof literalSchema>
 type Json = Literal | { [key: string]: Json } | Json[]
-const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))
+const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(z.string(), jsonSchema)]))
 const arrayJsonSchema: z.ZodType<Json[]> = z.lazy(() => z.array(jsonSchema))
 
 export const validateJSONSchema = (schema: any, type: string) => {
