@@ -113,9 +113,6 @@ logger = logging.getLogger(__name__)
 class LLMNode(Node[LLMNodeData]):
     node_type = NodeType.LLM
 
-    # Max length for a single tool result output to prevent prompt injection via oversized content
-    _MAX_TOOL_RESULT_LENGTH = 100_000
-
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
     _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
 
@@ -442,7 +439,7 @@ class LLMNode(Node[LLMNodeData]):
                 )
                 output = getattr(result, "output", None) or (result.get("output") if isinstance(result, dict) else None)
                 if tool_call_id and tool_call_id in last_assistant_tool_call_ids and output is not None:
-                    output_str = str(output)[: self._MAX_TOOL_RESULT_LENGTH]
+                    output_str = str(output)
                     prompt_messages.append(ToolPromptMessage(content=output_str, tool_call_id=tool_call_id))
                     results_for_history.append({"tool_call_id": tool_call_id, "output": output_str})
 
