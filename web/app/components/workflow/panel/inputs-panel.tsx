@@ -67,6 +67,7 @@ const InputsPanel = ({ onRun }: Props) => {
           variable: '__image',
           required: false,
           label: 'files',
+          var_description: '',
         },
       ]
     }

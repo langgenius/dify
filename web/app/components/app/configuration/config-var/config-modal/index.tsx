@@ -73,7 +73,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(() => normalizeSelectDefaultValue(payload || getNewVarInWorkflow('') as any))
-  const { type, label, variable, options, max_length } = tempPayload
+  const { type, label, var_description, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
   const isBasicApp = appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
@@ -203,16 +203,17 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   const handleVarKeyBlur = useCallback((e: any) => {
     const varName = e.target.value
-    if (!checkVariableName(varName, true) || tempPayload.label)
+    if (!checkVariableName(varName, true) || tempPayload.label || tempPayload.var_description)
       return
 
     setTempPayload((prev) => {
       return {
         ...prev,
         label: varName,
+        var_description: varName,
       }
     })
-  }, [checkVariableName, tempPayload.label])
+  }, [checkVariableName, tempPayload.label, tempPayload.var_description])
 
   const handleVarNameChange = useCallback((e: ChangeEvent<any>) => {
     replaceSpaceWithUnderscoreInVarNameInput(e.target)
@@ -349,6 +350,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
               placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
+            />
+          </Field>
+          <Field title={t('variableConfig.variableDescription', { ns: 'appDebug' })}>
+            <Input
+              value={var_description as string}
+              onChange={e => handlePayloadChange('var_description')(e.target.value)}
+              placeholder={t('variableConfig.variableDescriptionPlaceholder', { ns: 'appDebug' })!}
             />
           </Field>
 

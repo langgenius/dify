@@ -1087,6 +1087,7 @@ const useOneStepRun = <T>({
           type: InputVarType.textInput,
           required: true,
           value_selector: item.value_selector,
+          var_description: '',
         }
       }
       return {
@@ -1098,6 +1099,7 @@ const useOneStepRun = <T>({
         }),
         required: item.required !== false,
         options: originalVar.options,
+        var_description: originalVar.des || '',
       }
     })
 

@@ -45,6 +45,7 @@ const toInputVar = (item: PromptVariable): InputVar => ({
   label: item.name,
   variable: item.key,
   type: (item.type === 'string' ? InputVarType.textInput : item.type) as InputVarType,
+  var_description: '',
   required: item.required ?? false,
 })
 
