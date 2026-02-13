@@ -3,12 +3,12 @@ from collections.abc import Sequence
 from email.message import Message
 from typing import Any, Literal
 
-import charset_normalizer
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from configs import dify_config
 from core.workflow.nodes.base import BaseNodeData
+from libs.encode import safe_decode
 
 
 class HttpRequestNodeAuthorizationConfig(BaseModel):
@@ -169,24 +169,15 @@ class Response:
         which helps handle Chinese and other non-ASCII characters properly.
         """
         # Check cache first
-        if hasattr(self, "_cached_text") and self._cached_text is not None:
+        if self._cached_text is not None:
             return self._cached_text
 
-        # Try charset_normalizer for robust encoding detection first
-        detected_encoding = charset_normalizer.from_bytes(self.response.content).best()
-        if detected_encoding and detected_encoding.encoding:
-            try:
-                text = self.response.content.decode(detected_encoding.encoding)
-                self._cached_text = text
-                return text
-            except (UnicodeDecodeError, TypeError, LookupError):
-                # Fallback to httpx's encoding detection if charset_normalizer fails
-                pass
+        if "charset=" in self.response.headers.get("content-type", ""):
+            self._cached_text = self.response.text
+            return self._cached_text
 
-        # Fallback to httpx's built-in encoding detection
-        text = self.response.text
-        self._cached_text = text
-        return text
+        self._cached_text = safe_decode(self.response.content)
+        return self._cached_text
 
     @property
     def content(self) -> bytes:
