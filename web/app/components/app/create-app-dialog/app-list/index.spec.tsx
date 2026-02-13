@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import Apps from './index'
 
@@ -123,5 +124,14 @@ describe('Apps', () => {
 
     expect(screen.getByText('app.newApp.noTemplateFound')).toBeInTheDocument()
     expect(screen.getByText('app.newApp.noTemplateFoundTip')).toBeInTheDocument()
+  })
+
+  it('renders explore community link', () => {
+    render(<Apps />)
+
+    const link = screen.getByRole('link', { name: 'app.newApp.exploreCommunity' })
+    expect(link).toHaveAttribute('href', `${MARKETPLACE_URL_PREFIX.replace(/\/$/, '')}/templates`)
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })

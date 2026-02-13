@@ -10,13 +10,14 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { buttonVariants } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { MARKETPLACE_URL_PREFIX, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
@@ -32,6 +33,8 @@ type AppsProps = {
   onSuccess?: () => void
   onCreateFromBlank?: () => void
 }
+
+const marketplaceTemplatesUrl = `${MARKETPLACE_URL_PREFIX.replace(/\/$/, '')}/templates`
 
 // export enum PageType {
 //   EXPLORE = 'explore',
@@ -166,6 +169,17 @@ const Apps = ({
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
         <div className="min-w-[180px] pl-5">
           <span className="text-text-primary title-xl-semi-bold">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
+          <a
+            href={marketplaceTemplatesUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: 'primary', size: 'small' }),
+              'ml-2 align-middle',
+            )}
+          >
+            {t('newApp.exploreCommunity', { ns: 'app' })}
+          </a>
         </div>
         <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />

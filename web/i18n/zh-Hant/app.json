@@ -159,6 +159,7 @@
   "newApp.completionShortDescription": "用於文本生成任務的 AI 助手",
   "newApp.completionUserDescription": "通過簡單的配置快速構建用於文本生成任務的 AI 助手。",
   "newApp.dropDSLToCreateApp": "將 DSL 檔案拖放到此處以創建應用程式",
+  "newApp.exploreCommunity": "探索社群",
   "newApp.forAdvanced": "對於高級使用者",
   "newApp.forBeginners": "對於初學者",
   "newApp.foundResult": "{{count}}結果",
