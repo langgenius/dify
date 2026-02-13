@@ -62,9 +62,9 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
   const reactFlowStore = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { handleNodeSelect } = useNodesInteractions()
-  const availableNodesMetaData = useAvailableNodesMetaData()
   const flowType = configsMap?.flowType ?? FlowType.appFlow
   const flowId = configsMap?.flowId ?? ''
+  const availableNodesMetaData = useAvailableNodesMetaData(flowType)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowType,
     flowId,

@@ -3,6 +3,11 @@ import type { CommonNodeType, NodeDefault, NodeDefaultBase } from '@/app/compone
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
+import {
+  buildNodeSelectorAvailabilityContext,
+  filterNodesForSelector,
+  NodeSelectorScene,
+} from '@/app/components/workflow/constants/node-availability'
 import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-empty/default'
 import dataSourceDefault from '@/app/components/workflow/nodes/data-source/default'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
@@ -12,10 +17,12 @@ import { useDocLink } from '@/context/i18n'
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const nodeAvailabilityContext = useMemo(() => buildNodeSelectorAvailabilityContext({
+    scene: NodeSelectorScene.RagPipeline,
+  }), [])
 
   const mergedNodesMetaData = useMemo(() => [
-    // RAG pipeline doesn't support human-input node temporarily
-    ...WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.HumanInput),
+    ...filterNodesForSelector(WORKFLOW_COMMON_NODES, nodeAvailabilityContext),
     {
       ...dataSourceDefault,
       defaultValue: {
@@ -25,7 +32,7 @@ export const useAvailableNodesMetaData = () => {
     },
     knowledgeBaseDefault,
     dataSourceEmptyDefault,
-  ] as AvailableNodesMetaData['nodes'], [])
+  ] as AvailableNodesMetaData['nodes'], [nodeAvailabilityContext])
 
   const helpLinkUri = useMemo(() => docLink(
     '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',

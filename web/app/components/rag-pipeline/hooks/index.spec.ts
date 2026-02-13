@@ -29,6 +29,8 @@ import { usePipelineTemplate } from './use-pipeline-template'
 // Mocks
 // ============================================================================
 
+let mockSandboxEnabled = false
+
 // Mock the workflow store
 const _mockGetState = vi.fn()
 const mockUseStore = vi.fn()
@@ -43,6 +45,16 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
+  }),
+}))
+
+vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: (selector: (state: { features: { sandbox: { enabled: boolean } } }) => unknown) => selector({
+    features: {
+      sandbox: {
+        enabled: mockSandboxEnabled,
+      },
+    },
   }),
 }))
 
@@ -90,6 +102,18 @@ vi.mock('@/app/components/workflow/constants/node', () => ({
     {
       metaData: { type: BlockEnum.End },
       defaultValue: { type: BlockEnum.End },
+    },
+    {
+      metaData: { type: BlockEnum.Command },
+      defaultValue: { type: BlockEnum.Command },
+    },
+    {
+      metaData: { type: BlockEnum.FileUpload },
+      defaultValue: { type: BlockEnum.FileUpload },
+    },
+    {
+      metaData: { type: BlockEnum.HumanInput },
+      defaultValue: { type: BlockEnum.HumanInput },
     },
   ],
 }))
@@ -146,6 +170,10 @@ vi.mock('@/service/workflow', () => ({
 // ============================================================================
 // Tests
 // ============================================================================
+
+beforeEach(() => {
+  mockSandboxEnabled = false
+})
 
 describe('useConfigsMap', () => {
   beforeEach(() => {
@@ -467,6 +495,26 @@ describe('useAvailableNodesMetaData', () => {
 
     expect(result.current.nodesMap).toBeDefined()
     expect(typeof result.current.nodesMap).toBe('object')
+  })
+
+  it('should hide sandbox-only nodes when sandbox is disabled', () => {
+    mockSandboxEnabled = false
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map(node => node.metaData.type)
+
+    expect(nodeTypes).not.toContain(BlockEnum.Command)
+    expect(nodeTypes).not.toContain(BlockEnum.FileUpload)
+    expect(nodeTypes).not.toContain(BlockEnum.HumanInput)
+  })
+
+  it('should keep sandbox-only nodes hidden even when sandbox is enabled', () => {
+    mockSandboxEnabled = true
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map(node => node.metaData.type)
+
+    expect(nodeTypes).not.toContain(BlockEnum.Command)
+    expect(nodeTypes).not.toContain(BlockEnum.FileUpload)
+    expect(nodeTypes).not.toContain(BlockEnum.HumanInput)
   })
 })
 

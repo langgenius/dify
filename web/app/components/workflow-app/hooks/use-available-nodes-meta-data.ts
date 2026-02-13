@@ -6,6 +6,12 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
+import {
+  buildNodeSelectorAvailabilityContext,
+  filterNodesForSelector,
+  NodeSelectorSandboxMode,
+  NodeSelectorScene,
+} from '@/app/components/workflow/constants/node-availability'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
@@ -20,12 +26,30 @@ const NODE_HELP_LINK_OVERRIDES: Partial<Record<BlockEnum, string>> = {
   [BlockEnum.FileUpload]: 'upload-file-to-sandbox',
 }
 
+type WorkflowAppScene = NodeSelectorScene.Workflow | NodeSelectorScene.Chatflow
+
+const WORKFLOW_APP_SCENE_NODES = {
+  [NodeSelectorScene.Workflow]: [
+    EndDefault,
+    TriggerWebhookDefault,
+    TriggerScheduleDefault,
+    TriggerPluginDefault,
+  ],
+  [NodeSelectorScene.Chatflow]: [AnswerDefault],
+} as const
+
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const isSandboxFeatureEnabled = useFeatures(s => s.features.sandbox?.enabled) ?? false
   const isSandboxRuntime = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
-  const isSandboxed = isSandboxFeatureEnabled || isSandboxRuntime
+  const scene: WorkflowAppScene = isChatMode ? NodeSelectorScene.Chatflow : NodeSelectorScene.Workflow
+  const nodeAvailabilityContext = useMemo(() => buildNodeSelectorAvailabilityContext({
+    scene,
+    isSandboxRuntime,
+    isSandboxFeatureEnabled,
+  }), [scene, isSandboxFeatureEnabled, isSandboxRuntime])
+  const isSandboxed = nodeAvailabilityContext.sandboxMode === NodeSelectorSandboxMode.Enabled
   const docLink = useDocLink()
 
   const startNodeMetaData = useMemo(() => ({
@@ -36,22 +60,15 @@ export const useAvailableNodesMetaData = () => {
     },
   }), [isChatMode])
 
+  const availableWorkflowCommonNodes = useMemo(() => {
+    return filterNodesForSelector(WORKFLOW_COMMON_NODES, nodeAvailabilityContext)
+  }, [nodeAvailabilityContext])
+
   const mergedNodesMetaData = useMemo(() => [
-    ...(isSandboxed
-      ? WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.Agent)
-      : WORKFLOW_COMMON_NODES),
+    ...availableWorkflowCommonNodes,
     startNodeMetaData,
-    ...(
-      isChatMode
-        ? [AnswerDefault]
-        : [
-            EndDefault,
-            TriggerWebhookDefault,
-            TriggerScheduleDefault,
-            TriggerPluginDefault,
-          ]
-    ),
-  ] as AvailableNodesMetaData['nodes'], [isChatMode, isSandboxed, startNodeMetaData])
+    ...WORKFLOW_APP_SCENE_NODES[scene],
+  ] as AvailableNodesMetaData['nodes'], [availableWorkflowCommonNodes, scene, startNodeMetaData])
 
   const getHelpLinkSlug = useCallback((nodeType: BlockEnum, helpLinkUri?: string) => {
     if (isSandboxed && nodeType === BlockEnum.LLM)
