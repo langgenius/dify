@@ -1,16 +1,13 @@
 import type { Mock } from 'vitest'
+import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { AccessMode } from '@/models/access-control'
-// Mock API services - import for direct manipulation
 import * as appsService from '@/service/apps'
-
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
-
-// Import component after mocks
-import AppCard from './app-card'
+import AppCard from '../app-card'
 
 // Mock next/navigation
 const mockPush = vi.fn()
@@ -24,11 +21,11 @@ vi.mock('next/navigation', () => ({
 // Include createContext for components that use it (like Toast)
 const mockNotify = vi.fn()
 vi.mock('use-context-selector', () => ({
-  createContext: (defaultValue: any) => React.createContext(defaultValue),
+  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
   useContext: () => ({
     notify: mockNotify,
   }),
-  useContextSelector: (_context: any, selector: any) => selector({
+  useContextSelector: (_context: unknown, selector: (state: Record<string, unknown>) => unknown) => selector({
     notify: mockNotify,
   }),
 }))
@@ -51,7 +48,7 @@ vi.mock('@/context/provider-context', () => ({
 // Mock global public store - allow dynamic configuration
 let mockWebappAuthEnabled = false
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: any) => any) => selector({
+  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) => selector({
     systemFeatures: {
       webapp_auth: { enabled: mockWebappAuthEnabled },
       branding: { enabled: false },
@@ -106,11 +103,11 @@ vi.mock('@/utils/time', () => ({
 
 // Mock dynamic imports
 vi.mock('next/dynamic', () => ({
-  default: (importFn: () => Promise<any>) => {
+  default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
     if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
-      return function MockEditAppModal({ show, onHide, onConfirm }: any) {
+      return function MockEditAppModal({ show, onHide, onConfirm }: { show: boolean, onHide: () => void, onConfirm?: (data: Record<string, unknown>) => void }) {
         if (!show)
           return null
         return React.createElement('div', { 'data-testid': 'edit-app-modal' }, React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-edit-modal' }, 'Close'), React.createElement('button', {
@@ -128,7 +125,7 @@ vi.mock('next/dynamic', () => ({
       }
     }
     if (fnString.includes('duplicate-modal')) {
-      return function MockDuplicateAppModal({ show, onHide, onConfirm }: any) {
+      return function MockDuplicateAppModal({ show, onHide, onConfirm }: { show: boolean, onHide: () => void, onConfirm?: (data: Record<string, unknown>) => void }) {
         if (!show)
           return null
         return React.createElement('div', { 'data-testid': 'duplicate-modal' }, React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-duplicate-modal' }, 'Close'), React.createElement('button', {
@@ -143,26 +140,26 @@ vi.mock('next/dynamic', () => ({
       }
     }
     if (fnString.includes('switch-app-modal')) {
-      return function MockSwitchAppModal({ show, onClose, onSuccess }: any) {
+      return function MockSwitchAppModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
         if (!show)
           return null
         return React.createElement('div', { 'data-testid': 'switch-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'))
       }
     }
     if (fnString.includes('base/confirm')) {
-      return function MockConfirm({ isShow, onCancel, onConfirm }: any) {
+      return function MockConfirm({ isShow, onCancel, onConfirm }: { isShow: boolean, onCancel: () => void, onConfirm: () => void }) {
         if (!isShow)
           return null
         return React.createElement('div', { 'data-testid': 'confirm-dialog' }, React.createElement('button', { 'onClick': onCancel, 'data-testid': 'cancel-confirm' }, 'Cancel'), React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-confirm' }, 'Confirm'))
       }
     }
     if (fnString.includes('dsl-export-confirm-modal')) {
-      return function MockDSLExportModal({ onClose, onConfirm }: any) {
+      return function MockDSLExportModal({ onClose, onConfirm }: { onClose?: () => void, onConfirm?: (withSecrets: boolean) => void }) {
         return React.createElement('div', { 'data-testid': 'dsl-export-modal' }, React.createElement('button', { 'onClick': () => onClose?.(), 'data-testid': 'close-dsl-export' }, 'Close'), React.createElement('button', { 'onClick': () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' }, 'Export with secrets'), React.createElement('button', { 'onClick': () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' }, 'Export without secrets'))
       }
     }
     if (fnString.includes('app-access-control')) {
-      return function MockAccessControl({ onClose, onConfirm }: any) {
+      return function MockAccessControl({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) {
         return React.createElement('div', { 'data-testid': 'access-control-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-access-control' }, 'Close'), React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-access-control' }, 'Confirm'))
       }
     }
@@ -172,7 +169,9 @@ vi.mock('next/dynamic', () => ({
 
 // Popover uses @headlessui/react portals - mock for controlled interaction testing
 vi.mock('@/app/components/base/popover', () => {
-  const MockPopover = ({ htmlContent, btnElement, btnClassName }: any) => {
+  type PopoverHtmlContent = React.ReactNode | ((state: { open: boolean, onClose: () => void, onClick: () => void }) => React.ReactNode)
+  type MockPopoverProps = { htmlContent: PopoverHtmlContent, btnElement: React.ReactNode, btnClassName?: string | ((open: boolean) => string) }
+  const MockPopover = ({ htmlContent, btnElement, btnClassName }: MockPopoverProps) => {
     const [isOpen, setIsOpen] = React.useState(false)
     const computedClassName = typeof btnClassName === 'function' ? btnClassName(isOpen) : ''
     return React.createElement('div', { 'data-testid': 'custom-popover', 'className': computedClassName }, React.createElement('div', {
@@ -188,13 +187,13 @@ vi.mock('@/app/components/base/popover', () => {
 
 // Tooltip uses portals - minimal mock preserving popup content as title attribute
 vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: any) => React.createElement('div', { title: popupContent }, children),
+  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: React.ReactNode }) => React.createElement('div', { title: popupContent }, children),
 }))
 
 // TagSelector has API dependency (service/tag) - mock for isolated testing
 vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ tags }: any) => {
-    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: any) => React.createElement('span', { key: tag.id }, tag.name)))
+  default: ({ tags }: { tags?: { id: string, name: string }[] }) => {
+    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
   },
 }))
 
@@ -203,11 +202,7 @@ vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: () => React.createElement('div', { 'data-testid': 'app-type-icon' }),
 }))
 
-// ============================================================================
-// Test Data Factories
-// ============================================================================
-
-const createMockApp = (overrides: Record<string, any> = {}) => ({
+const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: 'test-app-id',
   name: 'Test App',
   description: 'Test app description',
@@ -229,16 +224,8 @@ const createMockApp = (overrides: Record<string, any> = {}) => ({
   api_rpm: 60,
   api_rph: 3600,
   is_demo: false,
-  model_config: {} as any,
-  app_model_config: {} as any,
-  site: {} as any,
-  api_base_url: 'https://api.example.com',
   ...overrides,
-})
-
-// ============================================================================
-// Tests
-// ============================================================================
+} as App)
 
 describe('AppCard', () => {
   const mockApp = createMockApp()
@@ -1171,7 +1158,7 @@ describe('AppCard', () => {
       (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('API Error'))
 
       // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options: any) => {
+      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
         try {
           await callback()
         }
@@ -1213,7 +1200,7 @@ describe('AppCard', () => {
       (exploreService.fetchInstalledAppList as Mock).mockResolvedValueOnce({ installed_apps: [] })
 
       // Configure mockOpenAsyncWindow to call the callback and trigger error
-      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options: any) => {
+      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options?: { onError?: (err: unknown) => void }) => {
         try {
           await callback()
         }

@@ -1,15 +1,6 @@
-/**
- * Test suite for useDSLDragDrop hook
- *
- * This hook provides drag-and-drop functionality for DSL files, enabling:
- * - File drag detection with visual feedback (dragging state)
- * - YAML/YML file filtering (only accepts .yaml and .yml files)
- * - Enable/disable toggle for conditional drag-and-drop
- * - Cleanup on unmount (removes event listeners)
- */
 import type { Mock } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { useDSLDragDrop } from './use-dsl-drag-drop'
+import { useDSLDragDrop } from '../use-dsl-drag-drop'
 
 describe('useDSLDragDrop', () => {
   let container: HTMLDivElement
@@ -26,7 +17,6 @@ describe('useDSLDragDrop', () => {
     document.body.removeChild(container)
   })
 
-  // Helper to create drag events
   const createDragEvent = (type: string, files: File[] = []) => {
     const dataTransfer = {
       types: files.length > 0 ? ['Files'] : [],
@@ -50,7 +40,6 @@ describe('useDSLDragDrop', () => {
     return event
   }
 
-  // Helper to create a mock file
   const createMockFile = (name: string) => {
     return new File(['content'], name, { type: 'application/x-yaml' })
   }
@@ -147,14 +136,12 @@ describe('useDSLDragDrop', () => {
         }),
       )
 
-      // First, enter with files
       const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
       act(() => {
         container.dispatchEvent(enterEvent)
       })
       expect(result.current.dragging).toBe(true)
 
-      // Then leave with null relatedTarget (leaving container)
       const leaveEvent = createDragEvent('dragleave')
       Object.defineProperty(leaveEvent, 'relatedTarget', {
         value: null,
@@ -180,14 +167,12 @@ describe('useDSLDragDrop', () => {
         }),
       )
 
-      // First, enter with files
       const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
       act(() => {
         container.dispatchEvent(enterEvent)
       })
       expect(result.current.dragging).toBe(true)
 
-      // Then leave but to a child element
       const leaveEvent = createDragEvent('dragleave')
       Object.defineProperty(leaveEvent, 'relatedTarget', {
         value: childElement,
@@ -290,14 +275,12 @@ describe('useDSLDragDrop', () => {
         }),
       )
 
-      // First, enter with files
       const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
       act(() => {
         container.dispatchEvent(enterEvent)
       })
       expect(result.current.dragging).toBe(true)
 
-      // Then drop
       const dropEvent = createDragEvent('drop', [createMockFile('test.yaml')])
       act(() => {
         container.dispatchEvent(dropEvent)
@@ -409,14 +392,12 @@ describe('useDSLDragDrop', () => {
         { initialProps: { enabled: true } },
       )
 
-      // Set dragging state
       const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
       act(() => {
         container.dispatchEvent(enterEvent)
       })
       expect(result.current.dragging).toBe(true)
 
-      // Disable the hook
       rerender({ enabled: false })
       expect(result.current.dragging).toBe(false)
     })

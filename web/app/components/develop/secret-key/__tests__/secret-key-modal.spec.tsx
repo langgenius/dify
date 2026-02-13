@@ -3,9 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
 import SecretKeyModal from '../secret-key-modal'
 
-// Suppress expected React act() warnings from Headless UI Dialog transitions and async API state updates
-vi.spyOn(console, 'error').mockImplementation(() => {})
-
 async function renderModal(ui: React.ReactElement) {
   const result = render(ui)
   await act(async () => {
@@ -91,6 +88,8 @@ describe('SecretKeyModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Suppress expected React act() warnings from Headless UI Dialog transitions and async API state updates
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
@@ -104,6 +103,7 @@ describe('SecretKeyModal', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('rendering when shown', () => {
