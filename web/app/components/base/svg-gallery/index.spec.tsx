@@ -56,18 +56,15 @@ describe('SVGRenderer', () => {
     })
 
     it('shows error message on invalid SVG content', async () => {
-      const originalParseFromString = DOMParser.prototype.parseFromString
-      DOMParser.prototype.parseFromString = vi.fn().mockReturnValue({
+      vi.spyOn(DOMParser.prototype, 'parseFromString').mockReturnValue({
         documentElement: document.createElement('div'),
-      })
+      } as unknown as Document)
 
       render(<SVGRenderer content="invalid" />)
 
       await waitFor(() => {
         expect(screen.getByText(/Error rendering SVG/)).toBeInTheDocument()
       })
-
-      DOMParser.prototype.parseFromString = originalParseFromString
     })
 
     it('re-renders on window resize', async () => {
@@ -86,19 +83,16 @@ describe('SVGRenderer', () => {
     })
 
     it('uses default values for width/height if not present', async () => {
-      const originalParseFromString = DOMParser.prototype.parseFromString
       const mockSvgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-      DOMParser.prototype.parseFromString = vi.fn().mockReturnValue({
+      vi.spyOn(DOMParser.prototype, 'parseFromString').mockReturnValue({
         documentElement: mockSvgElement,
-      })
+      } as unknown as Document)
 
       render(<SVGRenderer content="<svg></svg>" />)
 
       await waitFor(() => {
         expect(mockViewbox).toHaveBeenCalledWith(0, 0, 400, 600)
       })
-
-      DOMParser.prototype.parseFromString = originalParseFromString
     })
   })
 

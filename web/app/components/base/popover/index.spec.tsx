@@ -61,9 +61,11 @@ describe('CustomPopover', () => {
       expect(screen.queryByTestId('content')).not.toBeInTheDocument()
 
       const triggerContainer = screen.getByTestId('trigger').closest('div')
+      if (!triggerContainer)
+        throw new Error('Trigger container not found')
 
       await act(async () => {
-        fireEvent.mouseEnter(triggerContainer!)
+        fireEvent.mouseEnter(triggerContainer)
       })
 
       expect(screen.getByTestId('content')).toBeInTheDocument()
@@ -120,9 +122,11 @@ describe('CustomPopover', () => {
       render(<CustomPopover {...defaultProps} />)
 
       const triggerContainer = screen.getByTestId('trigger').closest('div')
+      if (!triggerContainer)
+        throw new Error('Trigger container not found')
 
       await act(async () => {
-        fireEvent.mouseEnter(triggerContainer!)
+        fireEvent.mouseEnter(triggerContainer)
       })
 
       await act(async () => {
@@ -179,12 +183,13 @@ describe('CustomPopover', () => {
     })
 
     it('should not close when mouse leaves while already closed', async () => {
-      vi.useFakeTimers()
       render(<CustomPopover {...defaultProps} />)
       const triggerContainer = screen.getByTestId('trigger').closest('div')
+      if (!triggerContainer)
+        throw new Error('Trigger container not found')
 
       await act(async () => {
-        fireEvent.mouseLeave(triggerContainer!)
+        fireEvent.mouseLeave(triggerContainer)
       })
 
       await act(async () => {

@@ -51,7 +51,7 @@ describe('Modal', () => {
         )
       })
 
-      const closeButton = document.querySelector('.remixicon')
+      const closeButton = screen.getByTestId('modal-close-button')
       expect(closeButton).toBeInTheDocument()
       await act(async () => {
         fireEvent.click(closeButton!)

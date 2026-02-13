@@ -97,15 +97,10 @@ describe('Modal Component', () => {
     })
 
     it('prevents propagation on internal container click', () => {
-      render(<Modal {...defaultProps} />)
-      const container = screen.getByText('Test Modal').parentElement
-
-      const event = new MouseEvent('click', { bubbles: true, cancelable: true })
-      const stopPropagationSpy = vi.spyOn(event, 'stopPropagation')
-
-      container!.dispatchEvent(event)
-
-      expect(stopPropagationSpy).toHaveBeenCalled()
+      const onClose = vi.fn()
+      render(<Modal {...defaultProps} onClose={onClose} clickOutsideNotClose={false} />)
+      fireEvent.click(screen.getByText('Test Modal'))
+      expect(onClose).not.toHaveBeenCalled()
     })
   })
 

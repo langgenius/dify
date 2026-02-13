@@ -156,11 +156,11 @@ describe('Mermaid Flowchart Component', () => {
         render(<Flowchart PrimitiveCode={shortCode} />)
       })
 
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
-      })
-
+      vi.useFakeTimers()
+      render(<Flowchart PrimitiveCode={shortCode} />)
+      await vi.advanceTimersByTimeAsync(1000)
       expect(mermaid.render).not.toHaveBeenCalled()
+      vi.useRealTimers()
     })
 
     it('should handle rendering errors gracefully', async () => {

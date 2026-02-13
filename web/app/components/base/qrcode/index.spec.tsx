@@ -28,11 +28,11 @@ describe('ShareQRCode', () => {
 
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
       const trigger = screen.getByTestId('qrcode-container')
-      await user.click(trigger!)
+      await user.click(trigger)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
 
-      await user.click(trigger!)
+      await user.click(trigger)
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
@@ -46,7 +46,7 @@ describe('ShareQRCode', () => {
       )
 
       const trigger = screen.getByTestId('qrcode-container')
-      await user.click(trigger!)
+      await user.click(trigger)
       expect(screen.getByRole('img')).toBeInTheDocument()
 
       await user.click(screen.getByTestId('outside'))
@@ -58,7 +58,7 @@ describe('ShareQRCode', () => {
       render(<ShareQRCode content={content} />)
 
       const trigger = screen.getByTestId('qrcode-container')
-      await user.click(trigger!)
+      await user.click(trigger)
 
       const canvas = screen.getByRole('img')
       const panel = canvas.parentElement

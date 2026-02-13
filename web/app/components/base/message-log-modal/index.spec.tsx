@@ -1,6 +1,5 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
 import { useStore } from '@/app/components/app/store'
 import MessageLogModal from './index'
 

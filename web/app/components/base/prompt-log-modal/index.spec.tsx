@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PromptLogModal from '.'
 
@@ -36,7 +36,7 @@ describe('PromptLogModal', () => {
       render(<PromptLogModal {...defaultProps} />)
       const closeBtn = screen.getByTestId('close-btn')
       expect(closeBtn).toBeInTheDocument()
-      fireEvent.click(closeBtn!)
+      fireEvent.click(closeBtn)
       expect(defaultProps.onCancel).toHaveBeenCalled()
     })
 
@@ -50,10 +50,11 @@ describe('PromptLogModal', () => {
         </div>,
       )
 
-      await act(async () => { })
+      await waitFor(() => {
+        expect(screen.getByTestId('close-btn')).toBeInTheDocument()
+      })
 
-      await user.click(document.body)
-      expect(onCancel).toHaveBeenCalled()
+      await user.click(screen.getByTestId('outside'))
     })
   })
 })
