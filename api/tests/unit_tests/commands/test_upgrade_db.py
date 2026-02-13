@@ -141,4 +141,3 @@ def test_upgrade_db_ignores_reacquire_errors(monkeypatch, capsys):
 
     assert exit_code == 0
     assert lock.reacquire.call_count >= 1
-

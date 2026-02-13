@@ -797,7 +797,9 @@ def upgrade_db():
                 lock.release()
             except LockNotOwnedError:
                 status = "successful" if migration_succeeded else "failed"
-                logger.warning("DB migration lock not owned on release after %s migration (likely expired); ignoring.", status)
+                logger.warning(
+                    "DB migration lock not owned on release after %s migration (likely expired); ignoring.", status
+                )
             except RedisError:
                 status = "successful" if migration_succeeded else "failed"
                 logger.warning(
