@@ -38,6 +38,7 @@ dependencies = [
     "markdown~=3.5.1",
     "mlflow-skinny>=3.0.0",
     "numpy~=1.26.4",
+    "nh3~=0.3.2",
     "openpyxl~=3.1.5",
     "opik~=1.8.72",
     "litellm==1.77.1",                                  # Pinned to avoid madoka dependency issue

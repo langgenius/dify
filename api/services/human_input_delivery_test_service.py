@@ -18,6 +18,7 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
+from libs.email_html_sanitizer import sanitize_email_html, sanitize_email_subject
 from libs.email_template_renderer import render_email_template
 from models import Account, TenantAccountJoin
 from services.feature_service import FeatureService
@@ -155,13 +156,13 @@ class EmailDeliveryTestHandler:
                 context=context,
                 recipient_email=recipient_email,
             )
-            subject = render_email_template(method.config.subject, substitutions)
+            subject = sanitize_email_subject(render_email_template(method.config.subject, substitutions))
             templated_body = EmailDeliveryConfig.render_body_template(
                 body=method.config.body,
                 url=substitutions.get("form_link"),
                 variable_pool=context.variable_pool,
             )
-            body = render_email_template(templated_body, substitutions)
+            body = sanitize_email_html(render_email_template(templated_body, substitutions))
 
             mail.send(
                 to=recipient_email,
