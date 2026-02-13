@@ -99,7 +99,7 @@ const SearchBoxWrapper = ({
       <PortalToFollowElemTrigger asChild>
         <div>
           <Input
-            wrapperClassName={cn('w-[200px] rounded-lg lg:w-[300px]', wrapperClassName)}
+            wrapperClassName={cn('w-[100px] min-w-[80px] shrink-0 rounded-lg sm:w-[160px] md:w-[200px] lg:w-[300px]', wrapperClassName)}
             className={cn('h-9 bg-components-input-bg-normal', inputClassName)}
             showLeftIcon
             value={inputValue}
