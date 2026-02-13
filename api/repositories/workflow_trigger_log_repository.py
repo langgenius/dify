@@ -110,6 +110,18 @@ class WorkflowTriggerLogRepository(Protocol):
         """
         ...
 
+    def get_by_workflow_run_id(self, workflow_run_id: str) -> WorkflowTriggerLog | None:
+        """
+        Retrieve a trigger log associated with a specific workflow run.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run
+
+        Returns:
+            The matching WorkflowTriggerLog if present, None otherwise
+        """
+        ...
+
     def delete_by_run_ids(self, run_ids: Sequence[str]) -> int:
         """
         Delete trigger logs for workflow run IDs.

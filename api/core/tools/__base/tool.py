@@ -5,7 +5,7 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from models.model import File
 
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -171,7 +171,7 @@ class Tool(ABC):
     def create_file_message(self, file: File) -> ToolInvokeMessage:
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.FILE,
-            message=ToolInvokeMessage.FileMessage(),
+            message=ToolInvokeMessage.FileMessage(file_marker="file_marker"),
             meta={"file": file},
         )
 

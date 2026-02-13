@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -48,6 +49,16 @@ class SecurityConfig(BaseSettings):
         default=5,
     )
 
+    WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS: PositiveInt = Field(
+        description="Maximum number of web form submissions allowed per IP within the rate limit window",
+        default=30,
+    )
+
+    WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS: PositiveInt = Field(
+        description="Time window in seconds for web form submission rate limiting",
+        default=60,
+    )
+
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
         default=False,
@@ -80,6 +91,12 @@ class AppExecutionConfig(BaseSettings):
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
+    )
+
+    HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
+        default=int(timedelta(days=7).total_seconds()),
+        ge=1,
     )
 
 
@@ -246,6 +263,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_MODEL_SCHEMA_CACHE_TTL: PositiveInt = Field(
         description="TTL in seconds for caching plugin model schemas in Redis",
         default=60 * 60,
+    )
+
+    PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size (bytes) for plugin-generated files",
+        default=50 * 1024 * 1024,
     )
 
 
@@ -1134,6 +1156,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable queue monitor task",
         default=False,
     )
+    ENABLE_HUMAN_INPUT_TIMEOUT_TASK: bool = Field(
+        description="Enable human input timeout check task",
+        default=True,
+    )
+    HUMAN_INPUT_TIMEOUT_TASK_INTERVAL: PositiveInt = Field(
+        description="Human input timeout check interval in minutes",
+        default=1,
+    )
     ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
         description="Enable check upgradable plugin task",
         default=True,
@@ -1153,6 +1183,16 @@ class CeleryScheduleTasksConfig(BaseSettings):
     WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
         description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
         default=0,
+    )
+
+    # API token last_used_at batch update
+    ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK: bool = Field(
+        description="Enable periodic batch update of API token last_used_at timestamps",
+        default=True,
+    )
+    API_TOKEN_LAST_USED_UPDATE_INTERVAL: int = Field(
+        description="Interval in minutes for batch updating API token last_used_at (default 30)",
+        default=30,
     )
 
     # Trigger provider refresh (simple version)
@@ -1279,6 +1319,9 @@ class WorkflowLogConfig(BaseSettings):
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
     )
+    WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: str = Field(
+        default="", description="Comma-separated list of workflow IDs to clean logs for"
+    )
 
 
 class SwaggerUIConfig(BaseSettings):
@@ -1308,6 +1351,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
         description="Maximum number of records to process in each batch",
         default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
+        description="Maximum interval in milliseconds between batches",
+        default=200,
     )
     SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
         description="Retention days for sandbox expired workflow_run records and message records",

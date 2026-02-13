@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.enums import NodeState
+from core.workflow.runtime.graph_runtime_state import GraphExecutionProtocol
 
 from .node_execution import NodeExecution
 
@@ -236,3 +237,6 @@ class GraphExecution:
     def record_node_failure(self) -> None:
         """Increment the count of node failures encountered during execution."""
         self.exceptions_count += 1
+
+
+_: GraphExecutionProtocol = GraphExecution(workflow_id="")

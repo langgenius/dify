@@ -16,6 +16,7 @@ class SavedMessage(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="saved_message_pkey"),
         sa.Index("saved_message_message_idx", "app_id", "message_id", "created_by_role", "created_by"),
+        sa.Index("saved_message_message_id_idx", "message_id"),
     )
 
     id: Mapped[str] = mapped_column(

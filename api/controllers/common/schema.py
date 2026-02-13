@@ -22,6 +22,7 @@ def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> No
 
 
 def get_or_create_model(model_name: str, field_def):
+    # Import lazily to avoid circular imports between console controllers and schema helpers.
     from controllers.console import console_ns
 
     existing = console_ns.models.get(model_name)

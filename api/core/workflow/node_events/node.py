@@ -49,3 +49,19 @@ class StreamCompletedEvent(NodeEventBase):
 class PauseRequestedEvent(NodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
     process_data: dict | None = Field(default=None, description="optional process data for the paused node")
+
+
+class HumanInputFormFilledEvent(NodeEventBase):
+    """Event emitted when a human input form is submitted."""
+
+    node_title: str
+    rendered_content: str
+    action_id: str
+    action_text: str
+
+
+class HumanInputFormTimeoutEvent(NodeEventBase):
+    """Event emitted when a human input form times out."""
+
+    node_title: str
+    expiration_time: datetime

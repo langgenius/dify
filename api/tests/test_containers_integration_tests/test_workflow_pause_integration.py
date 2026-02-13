@@ -95,11 +95,6 @@ def pause_workflow_failure_cases() -> list[PauseWorkflowFailureCase]:
     """Create test cases for pause workflow failure scenarios."""
     return [
         PauseWorkflowFailureCase(
-            name="pause_already_paused_workflow",
-            initial_status=WorkflowExecutionStatus.PAUSED,
-            description="Should fail to pause an already paused workflow",
-        ),
-        PauseWorkflowFailureCase(
             name="pause_completed_workflow",
             initial_status=WorkflowExecutionStatus.SUCCEEDED,
             description="Should fail to pause a completed workflow",

@@ -11,7 +11,7 @@ import {
   RiAlertFill,
   RiArrowRightSLine,
   RiCheckboxCircleFill,
-  RiErrorWarningLine,
+  RiErrorWarningFill,
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
@@ -152,7 +152,7 @@ const NodePanel: FC<Props> = ({
               )}
             </div>
           </Tooltip>
-          {nodeInfo.status !== 'running' && !hideInfo && (
+          {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="system-xs-regular shrink-0 text-text-tertiary">
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
@@ -165,10 +165,13 @@ const NodePanel: FC<Props> = ({
             <RiPauseCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-accent" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-text-warning" />
+            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+          )}
+          {nodeInfo.status === 'paused' && (
+            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
@@ -238,6 +241,11 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.status === 'retry' && (
                 <StatusContainer status="failed">
                   {nodeInfo.error}
+                </StatusContainer>
+              )}
+              {(nodeInfo.status === 'paused') && (
+                <StatusContainer status="paused">
+                  <div className="system-xs-regular text-text-warning">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
                 </StatusContainer>
               )}
             </div>
