@@ -1,6 +1,7 @@
 'use client'
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import { DataSourceProvider } from '@/models/common'
@@ -49,12 +50,32 @@ vi.mock('@/app/components/datasets/create/website/base/field', () => ({
   ),
 }))
 
+/**
+ * Internationalization (i18n) Behavior:
+ *
+ * react-i18next is globally mocked in vitest.setup.ts (via test/i18n-mock.ts).
+ * The global mock returns translation keys in the format 'namespace.key' instead of
+ * localized strings, making test assertions predictable and independent of locale.
+ *
+ * For example:
+ *   t('jinaReader.configJinaReader', { ns: 'datasetCreation' }) → 'datasetCreation.jinaReader.configJinaReader'
+ *   t('operation.save', { ns: 'common' }) → 'common.operation.save'
+ *
+ * This ensures that:
+ * 1. Tests verify the correct translation keys are being used
+ * 2. Tests remain stable regardless of translation file changes
+ * 3. No additional mocking is needed in individual test files
+ */
+
 describe('ConfigJinaReaderModal Component', () => {
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
+  let user: ReturnType<typeof userEvent.setup>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Setup userEvent for each test to ensure proper cleanup and isolation
+    user = userEvent.setup()
   })
 
   /**
@@ -77,12 +98,13 @@ describe('ConfigJinaReaderModal Component', () => {
 
   /**
    * Test case: Verify that API Key value is correctly updated.
+   * Uses userEvent.type to simulate realistic typing behavior.
    */
-  it('should update state when API Key field changes', () => {
+  it('should update state when API Key field changes', async () => {
     render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const apiKeyInput = screen.getByLabelText('API Key')
-    fireEvent.change(apiKeyInput, { target: { value: 'jina-test-key' } })
+    await user.type(apiKeyInput, 'jina-test-key')
 
     expect(apiKeyInput).toHaveValue('jina-test-key')
   })
@@ -95,7 +117,7 @@ describe('ConfigJinaReaderModal Component', () => {
     render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const saveButton = screen.getByText('common.operation.save')
-    fireEvent.click(saveButton)
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
@@ -119,8 +141,8 @@ describe('ConfigJinaReaderModal Component', () => {
     const apiKeyInput = screen.getByLabelText('API Key')
     const saveButton = screen.getByText('common.operation.save')
 
-    fireEvent.change(apiKeyInput, { target: { value: 'valid-jina-key' } })
-    fireEvent.click(saveButton)
+    await user.type(apiKeyInput, 'valid-jina-key')
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
@@ -147,11 +169,11 @@ describe('ConfigJinaReaderModal Component', () => {
   /**
    * Test case: Verify onCancel is called when clicking the cancel button.
    */
-  it('should call onCancel when cancel button is clicked', () => {
+  it('should call onCancel when cancel button is clicked', async () => {
     render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const cancelButton = screen.getByText('common.operation.cancel')
-    fireEvent.click(cancelButton)
+    await user.click(cancelButton)
 
     expect(mockOnCancel).toHaveBeenCalled()
   })
@@ -172,11 +194,11 @@ describe('ConfigJinaReaderModal Component', () => {
     const apiKeyInput = screen.getByLabelText('API Key')
     const saveButton = screen.getByText('common.operation.save')
 
-    fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } })
+    await user.type(apiKeyInput, 'test-api-key')
 
-    // Trigger save twice rapidly
-    fireEvent.click(saveButton)
-    fireEvent.click(saveButton)
+    // Trigger save twice rapidly to test re-entrancy guard
+    await user.click(saveButton)
+    await user.click(saveButton)
 
     expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
 

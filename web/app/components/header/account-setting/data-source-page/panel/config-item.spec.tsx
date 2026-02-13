@@ -96,10 +96,6 @@ describe('ConfigItem Component', () => {
     const statusText = screen.getByText('common.dataSource.notion.disconnected')
     expect(statusText).toBeInTheDocument()
     expect(statusText).toHaveClass('text-util-colors-warning-warning-600')
-
-    // Check Operate uses 0 if total is missing/undefined is handled in Operate prop?
-    // In ConfigItem: payload.notionConfig?.total || 0
-    // Here notionConfig is present but let's test missing one later.
   })
 
   /**
@@ -178,38 +174,7 @@ describe('ConfigItem Component', () => {
     expect(screen.getByText('common.dataSource.website.active')).toBeInTheDocument()
     // Operate should not be rendered
     expect(screen.queryByTestId('mock-operate')).not.toBeInTheDocument()
-
-    // Delete button (mocked indirectly as it renders RiDeleteBinLine wrapped in div)
-    // We can find the container by class or behavior
-    // The container has 'cursor-pointer rounded-md p-2 ... onClick={onRemove}'
-    // It contains the icon.
-    // Let's find by the icon class if possible or just query generic.
-    // Actually, checking for 'RiDeleteBinLine' might be hard if it's an SVG.
-    // But we can check that `onRemove` is called when clicking the delete area.
-    // There is no specific text or role.
-    // We can add a test id if we could modify the file, but we can't.
-    // We can look for the parent div of the SVG.
-    // OR we can rely on `fireEvent.click` on the element that looks like the delete button.
-
-    // Use container.querySelector or similar if needed, or by role if applicable.
-    // It's a div with onClick, might not have 'button' role.
-    // Let's rely on class matching? Or purely structure.
-
-    // Use `container` from render result.
-    // The delete button is the only div with `onClick={onRemove}` theoretically.
-    // But we can't select by onClick.
-    // It has class `text-text-tertiary hover:bg-state-base-hover`.
-
-    // Let's find the SVG, then its parent.
-    // RiDeleteBinLine usually renders an svg.
-    // Assuming standard remixicon behavior.
-
-    // Alternative: The delete button is the last child of the main div for website type.
   })
-
-  // To properly select the delete button without testid:
-  // It has class 'cursor-pointer rounded-md p-2 text-text-tertiary hover:bg-state-base-hover'
-  // I will use container.querySelector with class selector.
 
   it('should call onRemove when delete button is clicked for Website', () => {
     const { container } = render(
@@ -221,13 +186,10 @@ describe('ConfigItem Component', () => {
       />,
     )
 
-    // Select by specific classes used for the delete button wrapper
-    const deleteBtn = container.querySelector('.cursor-pointer.rounded-md.p-2.text-text-tertiary')
+    const deleteBtn = container.querySelector('.cursor-pointer.rounded-md.p-2.text-text-tertiary')!
     expect(deleteBtn).toBeInTheDocument()
-    if (deleteBtn) {
-      fireEvent.click(deleteBtn)
-      expect(mockOnRemove).toHaveBeenCalled()
-    }
+    fireEvent.click(deleteBtn)
+    expect(mockOnRemove).toHaveBeenCalled()
   })
 
   /**
@@ -266,8 +228,8 @@ describe('ConfigItem Component', () => {
       />,
     )
 
-    expect(screen.getByText('common.dataSource.website.inactive')).toBeInTheDocument()
-    const statusDiv = screen.getByText('common.dataSource.website.inactive')
-    expect(statusDiv).toHaveClass('text-util-colors-warning-warning-600')
+    const statusText = screen.getByText('common.dataSource.website.inactive')
+    expect(statusText).toBeInTheDocument()
+    expect(statusText).toHaveClass('text-util-colors-warning-warning-600')
   })
 })

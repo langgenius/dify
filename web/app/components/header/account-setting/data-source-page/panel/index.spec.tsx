@@ -1,5 +1,3 @@
-'use client'
-
 import type { ConfigItemType } from './config-item'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -35,6 +33,11 @@ describe('Panel Component', () => {
     { id: '1', name: 'Item 1', isActive: true, logo: () => null },
     { id: '2', name: 'Item 2', isActive: false, logo: () => null },
   ]
+
+  beforeEach(() => {
+    onConfigure.mockClear()
+    onRemove.mockClear()
+  })
 
   /**
    * Test case: Verify Notion Panel when not configured.

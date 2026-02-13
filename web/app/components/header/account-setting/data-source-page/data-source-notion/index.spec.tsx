@@ -1,5 +1,3 @@
-'use client'
-
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ConfigItemType } from '../panel/config-item'
 import type { AppContextValue } from '@/context/app-context'
@@ -314,40 +312,48 @@ describe('DataSourceNotion Component', () => {
     vi.mocked(useNotionConnection).mockReturnValue(mockQuerySuccess({ data: 'unknown' }))
     render(<DataSourceNotion />)
 
-    expect(window.location.href).toBe('')
-    expect(Toast.notify).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(window.location.href).toBe('')
+      expect(Toast.notify).not.toHaveBeenCalled()
+    })
   })
 
   /**
    * Test: Branch coverage for data that lacks the expected 'data' property in useEffect.
    */
-  it('handles case where data exists but "data" property is missing in useEffect', () => {
+  it('handles case where data exists but "data" property is missing in useEffect', async () => {
     const brokenData = {} as { data: string }
     vi.mocked(useNotionConnection).mockReturnValue(mockQuerySuccess(brokenData))
     render(<DataSourceNotion />)
 
-    expect(window.location.href).toBe('')
+    await waitFor(() => {
+      expect(window.location.href).toBe('')
+    })
   })
 
   /**
    * Test: Branch coverage for non-string data.data values in useEffect.
    */
-  it('handles non-string data.data in useEffect gracefully', () => {
+  it('handles non-string data.data in useEffect gracefully', async () => {
     const invalidTypeData = { data: 123 } as unknown as { data: string }
     vi.mocked(useNotionConnection).mockReturnValue(mockQuerySuccess(invalidTypeData))
     render(<DataSourceNotion />)
 
-    expect(window.location.href).toBe('')
+    await waitFor(() => {
+      expect(window.location.href).toBe('')
+    })
   })
 
   /**
    * Test: Branch coverage for minimal "http" string in useEffect.
    */
-  it('redirects if data starts with http regardless of rest of string', () => {
+  it('redirects if data starts with http regardless of rest of string', async () => {
     vi.mocked(useNotionConnection).mockReturnValue(mockQuerySuccess({ data: 'http' }))
     render(<DataSourceNotion />)
 
-    expect(window.location.href).toBe('http')
+    await waitFor(() => {
+      expect(window.location.href).toBe('http')
+    })
   })
 
   /**

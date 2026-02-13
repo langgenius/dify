@@ -1,7 +1,9 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { CommonResponse } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import { createDataSourceApiKeyBinding } from '@/service/datasets'
@@ -27,8 +29,8 @@ vi.mock('@/app/components/base/toast', () => ({
  * Mocking Portal components to ensure content is rendered in the testing DOM.
  */
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div data-testid="portal">{children}</div>,
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div data-testid="portal-content">{children}</div>,
+  PortalToFollowElem: ({ children }: { children: ReactNode }) => <div data-testid="portal">{children}</div>,
+  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => <div data-testid="portal-content">{children}</div>,
 }))
 
 /**
@@ -85,14 +87,15 @@ describe('ConfigFirecrawlModal Component', () => {
   /**
    * Test case: Verify updates to input fields.
    */
-  it('should update state when input fields change', () => {
+  it('should update state when input fields change', async () => {
+    const user = userEvent.setup()
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const apiKeyInput = screen.getByLabelText('API Key')
     const baseUrlInput = screen.getByLabelText('Base URL')
 
-    fireEvent.change(apiKeyInput, { target: { value: 'firecrawl-key' } })
-    fireEvent.change(baseUrlInput, { target: { value: 'https://custom.firecrawl.dev' } })
+    await user.type(apiKeyInput, 'firecrawl-key')
+    await user.type(baseUrlInput, 'https://custom.firecrawl.dev')
 
     expect(apiKeyInput).toHaveValue('firecrawl-key')
     expect(baseUrlInput).toHaveValue('https://custom.firecrawl.dev')
@@ -103,10 +106,11 @@ describe('ConfigFirecrawlModal Component', () => {
    * Covers branches for error validation logic.
    */
   it('should show error when saving without API Key', async () => {
+    const user = userEvent.setup()
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    const saveButton = screen.getByText('operation.save')
-    fireEvent.click(saveButton)
+    const saveButton = screen.getByRole('button', { name: 'operation.save' })
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
@@ -122,14 +126,15 @@ describe('ConfigFirecrawlModal Component', () => {
    * Covers URL validation branches.
    */
   it('should show error for invalid Base URL format', async () => {
+    const user = userEvent.setup()
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const baseUrlInput = screen.getByLabelText('Base URL')
-    const saveButton = screen.getByText('operation.save')
+    const saveButton = screen.getByRole('button', { name: 'operation.save' })
 
     // Invalid format (not starting with http:// or https://)
-    fireEvent.change(baseUrlInput, { target: { value: 'ftp://invalid-url.com' } })
-    fireEvent.click(saveButton)
+    await user.type(baseUrlInput, 'ftp://invalid-url.com')
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
@@ -145,17 +150,18 @@ describe('ConfigFirecrawlModal Component', () => {
    * Covers happy path and credential structure.
    */
   it('should save successfully with valid API Key and custom URL', async () => {
+    const user = userEvent.setup()
     vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
 
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const apiKeyInput = screen.getByLabelText('API Key')
     const baseUrlInput = screen.getByLabelText('Base URL')
-    const saveButton = screen.getByText('operation.save')
+    const saveButton = screen.getByRole('button', { name: 'operation.save' })
 
-    fireEvent.change(apiKeyInput, { target: { value: 'valid-firecrawl-key' } })
-    fireEvent.change(baseUrlInput, { target: { value: 'http://my-firecrawl.com' } })
-    fireEvent.click(saveButton)
+    await user.type(apiKeyInput, 'valid-firecrawl-key')
+    await user.type(baseUrlInput, 'http://my-firecrawl.com')
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
@@ -185,15 +191,16 @@ describe('ConfigFirecrawlModal Component', () => {
    * Covers the fallback logic for base_url.
    */
   it('should use default Base URL if none is provided during save', async () => {
+    const user = userEvent.setup()
     vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
 
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const apiKeyInput = screen.getByLabelText('API Key')
-    const saveButton = screen.getByText('operation.save')
+    const saveButton = screen.getByRole('button', { name: 'operation.save' })
 
-    fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } })
-    fireEvent.click(saveButton)
+    await user.type(apiKeyInput, 'test-api-key')
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
@@ -209,11 +216,12 @@ describe('ConfigFirecrawlModal Component', () => {
   /**
    * Test case: Verify onCancel is called when clicking the cancel button.
    */
-  it('should call onCancel when cancel button is clicked', () => {
+  it('should call onCancel when cancel button is clicked', async () => {
+    const user = userEvent.setup()
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    const cancelButton = screen.getByText('operation.cancel')
-    fireEvent.click(cancelButton)
+    const cancelButton = screen.getByRole('button', { name: 'operation.cancel' })
+    await user.click(cancelButton)
 
     expect(mockOnCancel).toHaveBeenCalled()
   })
@@ -223,6 +231,7 @@ describe('ConfigFirecrawlModal Component', () => {
    * Covers the isSaving re-entrancy branch.
    */
   it('should ignore multiple save clicks while saving is in progress', async () => {
+    const user = userEvent.setup()
     let resolveSave: (value: CommonResponse) => void
     const savePromise = new Promise<CommonResponse>((resolve) => {
       resolveSave = resolve
@@ -232,13 +241,13 @@ describe('ConfigFirecrawlModal Component', () => {
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const apiKeyInput = screen.getByLabelText('API Key')
-    const saveButton = screen.getByText('operation.save')
+    const saveButton = screen.getByRole('button', { name: 'operation.save' })
 
-    fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } })
+    await user.type(apiKeyInput, 'test-api-key')
 
     // Trigger save twice rapidly
-    fireEvent.click(saveButton)
-    fireEvent.click(saveButton)
+    await user.click(saveButton)
+    await user.click(saveButton)
 
     expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
 
@@ -254,17 +263,18 @@ describe('ConfigFirecrawlModal Component', () => {
    * Test case: Verify branch coverage for https:// prefix in base_url
    */
   it('should accept base_url starting with https://', async () => {
+    const user = userEvent.setup()
     vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
 
     render(<ConfigFirecrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
     const apiKeyInput = screen.getByLabelText('API Key')
     const baseUrlInput = screen.getByLabelText('Base URL')
-    const saveButton = screen.getByText('operation.save')
+    const saveButton = screen.getByRole('button', { name: 'operation.save' })
 
-    fireEvent.change(apiKeyInput, { target: { value: 'test-api-key' } })
-    fireEvent.change(baseUrlInput, { target: { value: 'https://secure-firecrawl.com' } })
-    fireEvent.click(saveButton)
+    await user.type(apiKeyInput, 'test-api-key')
+    await user.type(baseUrlInput, 'https://secure-firecrawl.com')
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({

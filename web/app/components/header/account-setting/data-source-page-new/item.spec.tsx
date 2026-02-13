@@ -16,14 +16,6 @@ vi.mock('./operator', () => ({
   )),
 }))
 
-/**
- * Type-safe ItemProps for testing edge cases like missing onAction.
- */
-type MockItemProps = {
-  credentialItem: DataSourceCredential
-  onAction?: (action: string, credentialItem: DataSourceCredential, renamePayload?: Record<string, unknown>) => void
-}
-
 describe('Item Component', () => {
   const mockOnAction = vi.fn()
   const mockCredentialItem: DataSourceCredential = {
@@ -153,14 +145,8 @@ describe('Item Component', () => {
   })
 
   it('should handle onAction being undefined gracefully even though it is required by props', () => {
-    // This test ensures 100% branch coverage for current implementation using optional chaining
-    // We use a type cast to unknown then to ItemProps to satisfy the compiler while testing this edge case.
-    const itemWithMissingAction = {
-      credentialItem: mockCredentialItem,
-    } as unknown as MockItemProps
-
-    // Casting to any is avoided here by using unknown and then a specific mock type
-    render(<Item {...(itemWithMissingAction as unknown as { credentialItem: DataSourceCredential, onAction: (action: string, credentialItem: DataSourceCredential, renamePayload?: Record<string, unknown>) => void })} />)
+    // @ts-expect-error - Testing runtime behavior when onAction is not provided despite being required
+    render(<Item credentialItem={mockCredentialItem} onAction={undefined} />)
 
     // Enter rename mode
     fireEvent.click(screen.getByTestId('operator-rename'))

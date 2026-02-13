@@ -1,5 +1,3 @@
-'use client'
-
 import type { JSX } from 'react'
 import type { AppContextValue } from '@/context/app-context'
 import type { CommonResponse } from '@/models/common'
@@ -10,6 +8,10 @@ import { useAppContext } from '@/context/app-context'
 import { DataSourceProvider } from '@/models/common'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
 import DataSourceWebsite from './index'
+
+type DataSourcesResponse = CommonResponse & {
+  sources: Array<{ id: string, provider: DataSourceProvider }>
+}
 
 // Mock App Context
 vi.mock('@/context/app-context', () => ({
@@ -93,7 +95,7 @@ describe('DataSourceWebsite Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useAppContext).mockReturnValue({ isCurrentWorkspaceManager: true } as unknown as AppContextValue)
-    vi.mocked(fetchDataSources).mockResolvedValue({ sources: [] } as unknown as CommonResponse)
+    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [] } as DataSourcesResponse)
   })
 
   // Helper to render and wait for initial fetch to complete, avoiding 'act' warnings
@@ -107,7 +109,7 @@ describe('DataSourceWebsite Component', () => {
    * Test case: Verify initial data fetching on mount.
    */
   it('should fetch data sources on mount', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ sources: mockSources } as unknown as CommonResponse)
+    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: mockSources } as DataSourcesResponse)
 
     await renderAndWait(DataSourceProvider.fireCrawl)
 
@@ -130,7 +132,7 @@ describe('DataSourceWebsite Component', () => {
    * Test case: Verify logo and provider name logic for Firecrawl.
    */
   it('should render correct logo and name for Firecrawl', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ sources: [mockSources[0]] } as unknown as CommonResponse)
+    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
 
     await renderAndWait(DataSourceProvider.fireCrawl)
 
@@ -142,26 +144,32 @@ describe('DataSourceWebsite Component', () => {
    * Test case: Verify logo and provider name logic for WaterCrawl.
    */
   it('should render correct logo and name for WaterCrawl', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ sources: [mockSources[1]] } as unknown as CommonResponse)
+    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[1]] } as DataSourcesResponse)
 
     await renderAndWait(DataSourceProvider.waterCrawl)
 
     expect(await screen.findByTestId('name-2')).toHaveTextContent('WaterCrawl')
-    // Watercrawl uses a span with a CSS class from module
-    expect(screen.getByTestId('logo-2').firstChild).toBeInTheDocument()
+    // Watercrawl logo is a div containing a span with a CSS class from module
+    const watercrawlLogo = screen.getByTestId('logo-2').firstChild as HTMLElement
+    expect(watercrawlLogo).toBeInTheDocument()
+    expect(watercrawlLogo.tagName.toLowerCase()).toBe('div')
+    expect(watercrawlLogo.querySelector('span')).toBeInTheDocument()
   })
 
   /**
    * Test case: Verify logo and provider name logic for Jina Reader.
    */
   it('should render correct logo and name for Jina Reader', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ sources: [mockSources[2]] } as unknown as CommonResponse)
+    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[2]] } as DataSourcesResponse)
 
     await renderAndWait(DataSourceProvider.jinaReader)
 
     expect(await screen.findByTestId('name-3')).toHaveTextContent('Jina Reader')
-    // Jina uses a span with a CSS class from module
-    expect(screen.getByTestId('logo-3').firstChild).toBeInTheDocument()
+    // Jina logo is a div containing a span with a CSS class from module
+    const jinaLogo = screen.getByTestId('logo-3').firstChild as HTMLElement
+    expect(jinaLogo).toBeInTheDocument()
+    expect(jinaLogo.tagName.toLowerCase()).toBe('div')
+    expect(jinaLogo.querySelector('span')).toBeInTheDocument()
   })
 
   /**
@@ -209,9 +217,13 @@ describe('DataSourceWebsite Component', () => {
     fireEvent.click(screen.getByTestId('configure-btn'))
     expect(screen.getByTestId('jina-modal')).toBeInTheDocument()
 
+    // Clear initial call from mount
+    vi.mocked(fetchDataSources).mockClear()
+
     fireEvent.click(screen.getByTestId('save-jina'))
 
     await waitFor(() => {
+      expect(fetchDataSources).toHaveBeenCalled()
       expect(screen.queryByTestId('jina-modal')).not.toBeInTheDocument()
     })
   })
@@ -220,7 +232,7 @@ describe('DataSourceWebsite Component', () => {
    * Test case: Verify removal of a data source.
    */
   it('should remove data source and show notification', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ sources: [mockSources[0]] } as unknown as CommonResponse)
+    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
     vi.mocked(removeDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' } as CommonResponse)
 
     await renderAndWait(DataSourceProvider.fireCrawl)
