@@ -24,6 +24,24 @@ const TransferOwnershipHarness = () => {
 }
 
 describe('TransferOwnership', () => {
+  const setupMocks = ({
+    brandingEnabled,
+    isFetching,
+    allowOwnerTransfer,
+  }: {
+    brandingEnabled: boolean
+    isFetching: boolean
+    allowOwnerTransfer?: boolean
+  }) => {
+    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
+      systemFeatures: { branding: { enabled: brandingEnabled } },
+    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useWorkspacePermissions).mockReturnValue({
+      data: allowOwnerTransfer === undefined ? null : { allow_owner_transfer: allowOwnerTransfer },
+      isFetching,
+    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useAppContext).mockReturnValue({
@@ -32,13 +50,7 @@ describe('TransferOwnership', () => {
   })
 
   it('should show loading status while permissions are loading', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: null,
-      isFetching: true,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: true, isFetching: true })
 
     render(<TransferOwnershipHarness />)
 
@@ -46,13 +58,7 @@ describe('TransferOwnership', () => {
   })
 
   it('should show owner text without transfer menu when transfer is forbidden', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: { allow_owner_transfer: false },
-      isFetching: false,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: true, isFetching: false, allowOwnerTransfer: false })
 
     render(<TransferOwnershipHarness />)
 
@@ -63,13 +69,7 @@ describe('TransferOwnership', () => {
   it('should open transfer dialog when transfer option is selected', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: { allow_owner_transfer: true },
-      isFetching: false,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: true, isFetching: false, allowOwnerTransfer: true })
 
     render(<TransferOwnershipHarness />)
 
@@ -82,13 +82,7 @@ describe('TransferOwnership', () => {
   it('should allow transfer menu when branding is disabled', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: false } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: null,
-      isFetching: false,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: false, isFetching: false })
 
     render(<TransferOwnershipHarness />)
 

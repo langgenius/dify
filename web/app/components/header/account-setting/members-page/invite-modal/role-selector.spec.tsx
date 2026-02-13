@@ -30,37 +30,19 @@ describe('RoleSelector', () => {
     expect(screen.getByText(/members\.invitedAsRole/i)).toBeInTheDocument()
   })
 
-  it('should update selected role after user chooses admin', async () => {
+  it.each([
+    'common.members.admin',
+    'common.members.editor',
+    'common.members.datasetOperator',
+  ])('should update selected role after user chooses %s', async (nextRoleLabel) => {
     const user = userEvent.setup()
 
     render(<RoleSelectorWrapper initialRole="normal" />)
 
     await user.click(screen.getByText(/members\.invitedAsRole/i))
-    await user.click(screen.getByText('common.members.admin'))
+    await user.click(screen.getByText(nextRoleLabel))
 
-    expect(screen.getByText(/common\.members\.admin/i)).toBeInTheDocument()
-  })
-
-  it('should update selected role after user chooses editor', async () => {
-    const user = userEvent.setup()
-
-    render(<RoleSelectorWrapper initialRole="normal" />)
-
-    await user.click(screen.getByText(/members\.invitedAsRole/i))
-    await user.click(screen.getByText('common.members.editor'))
-
-    expect(screen.getByText(/common\.members\.editor/i)).toBeInTheDocument()
-  })
-
-  it('should update selected role after user chooses dataset operator', async () => {
-    const user = userEvent.setup()
-
-    render(<RoleSelectorWrapper initialRole="normal" />)
-
-    await user.click(screen.getByText(/members\.invitedAsRole/i))
-    await user.click(screen.getByText('common.members.datasetOperator'))
-
-    expect(screen.getByText(/common\.members\.datasetOperator/i)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(nextRoleLabel.replace('.', '\\.'), 'i'))).toBeInTheDocument()
   })
 
   it('should hide dataset operator option when feature is disabled', async () => {

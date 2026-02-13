@@ -12,6 +12,24 @@ vi.mock('@/context/global-public-context')
 vi.mock('@/service/use-workspace')
 
 describe('InviteButton', () => {
+  const setupMocks = ({
+    brandingEnabled,
+    isFetching,
+    allowInvite,
+  }: {
+    brandingEnabled: boolean
+    isFetching: boolean
+    allowInvite?: boolean
+  }) => {
+    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
+      systemFeatures: { branding: { enabled: brandingEnabled } },
+    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useWorkspacePermissions).mockReturnValue({
+      data: allowInvite === undefined ? null : { allow_member_invite: allowInvite },
+      isFetching,
+    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useAppContext).mockReturnValue({
@@ -20,13 +38,7 @@ describe('InviteButton', () => {
   })
 
   it('should show invite button when branding is disabled', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: false } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: null,
-      isFetching: false,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: false, isFetching: false })
 
     render(<InviteButton />)
 
@@ -34,13 +46,7 @@ describe('InviteButton', () => {
   })
 
   it('should show loading status while permissions are loading', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: null,
-      isFetching: true,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: true, isFetching: true })
 
     render(<InviteButton />)
 
@@ -48,13 +54,7 @@ describe('InviteButton', () => {
   })
 
   it('should hide invite button when permission is denied', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: { allow_member_invite: false },
-      isFetching: false,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: true, isFetching: false, allowInvite: false })
 
     render(<InviteButton />)
 
@@ -62,13 +62,7 @@ describe('InviteButton', () => {
   })
 
   it('should show invite button when permission is granted', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true } },
-    } as unknown as Parameters<typeof selector>[0]))
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: { allow_member_invite: true },
-      isFetching: false,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    setupMocks({ brandingEnabled: true, isFetching: false, allowInvite: true })
 
     render(<InviteButton />)
 
