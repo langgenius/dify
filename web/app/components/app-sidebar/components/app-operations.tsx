@@ -1,9 +1,9 @@
 import type { JSX } from 'react'
 import { RiMoreLine } from '@remixicon/react'
-import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cloneElement, useCallback, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../base/portal-to-follow-elem'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 export type Operation = {
   id: string
@@ -22,6 +22,17 @@ type AppOperationsProps = {
 
 const EMPTY_OPERATIONS: Operation[] = []
 
+type OperationLayout = {
+  visible: Operation[]
+  more: Operation[]
+}
+
+const initialLayout: OperationLayout = { visible: [], more: [] }
+
+function layoutReducer(_: OperationLayout, action: OperationLayout): OperationLayout {
+  return action
+}
+
 const AppOperations = ({
   operations,
   primaryOperations,
@@ -29,8 +40,7 @@ const AppOperations = ({
   gap,
 }: AppOperationsProps) => {
   const { t } = useTranslation()
-  const [visibleOpreations, setVisibleOperations] = useState<Operation[]>([])
-  const [moreOperations, setMoreOperations] = useState<Operation[]>([])
+  const [operationLayout, dispatchLayout] = useReducer(layoutReducer, initialLayout)
   const [showMore, setShowMore] = useState(false)
   const navRef = useRef<HTMLDivElement>(null)
   const handleTriggerMore = useCallback(() => {
@@ -54,13 +64,13 @@ const AppOperations = ({
   }, [operations, secondaryOperations])
   const inlineOperations = primaryOps.filter(operation => operation.type !== 'divider')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const applyState = (visible: Operation[], overflow: Operation[]) => {
       const combinedMore = [...overflow, ...secondaryOps]
       if (!overflow.length && combinedMore[0]?.type === 'divider')
         combinedMore.shift()
-      setVisibleOperations(visible)
-      setMoreOperations(combinedMore)
+
+      dispatchLayout({ visible, more: combinedMore })
     }
 
     const inline = primaryOps.filter(operation => operation.type !== 'divider')
@@ -114,6 +124,7 @@ const AppOperations = ({
     applyState(visible, overflow)
   }, [gap, primaryOps, secondaryOps])
 
+  const { visible: visibleOperations, more: moreOperations } = operationLayout
   const shouldShowMoreButton = moreOperations.length > 0
 
   return (
@@ -134,7 +145,7 @@ const AppOperations = ({
             tabIndex={-1}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
-            <span className="system-xs-medium text-components-button-secondary-text">
+            <span className="text-components-button-secondary-text system-xs-medium">
               {operation.title}
             </span>
           </Button>
@@ -147,13 +158,13 @@ const AppOperations = ({
           tabIndex={-1}
         >
           <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-          <span className="system-xs-medium text-components-button-secondary-text">
+          <span className="text-components-button-secondary-text system-xs-medium">
             {t('operation.more', { ns: 'common' })}
           </span>
         </Button>
       </div>
       <div className="flex items-center self-stretch overflow-hidden" style={{ gap }}>
-        {visibleOpreations.map(operation => (
+        {visibleOperations.map(operation => (
           <Button
             key={operation.id}
             data-targetid={operation.id}
@@ -163,7 +174,7 @@ const AppOperations = ({
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
-            <span className="system-xs-medium text-components-button-secondary-text">
+            <span className="text-components-button-secondary-text system-xs-medium">
               {operation.title}
             </span>
           </Button>
@@ -182,7 +193,7 @@ const AppOperations = ({
                 className="gap-[1px]"
               >
                 <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-                <span className="system-xs-medium text-components-button-secondary-text">
+                <span className="text-components-button-secondary-text system-xs-medium">
                   {t('operation.more', { ns: 'common' })}
                 </span>
               </Button>
@@ -200,7 +211,7 @@ const AppOperations = ({
                         onClick={item.onClick}
                       >
                         {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
-                        <span className="system-md-regular text-text-secondary">{item.title}</span>
+                        <span className="text-text-secondary system-md-regular">{item.title}</span>
                       </div>
                     ))}
               </div>

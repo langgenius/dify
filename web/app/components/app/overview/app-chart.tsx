@@ -9,7 +9,7 @@ import ReactECharts from 'echarts-for-react'
 import { get } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Basic from '@/app/components/app-sidebar/basic'
+import Basic from '@/app/components/app-sidebar/components/basic'
 import Loading from '@/app/components/base/loading'
 import {
   useAppAverageResponseTime,

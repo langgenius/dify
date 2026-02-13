@@ -280,82 +280,13 @@
       "count": 1
     }
   },
-  "app/components/app-sidebar/app-info.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/app-operations.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
-  "app/components/app-sidebar/app-sidebar-dropdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/app-sidebar/basic.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/app-sidebar/dataset-info/dropdown.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/app-sidebar/dataset-info/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/app-sidebar/dataset-info/menu-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/dataset-sidebar-dropdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/app-sidebar/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/navLink.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/navLink.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/app-sidebar/sidebar-animation-issues.spec.tsx": {
-    "no-console": {
-      "count": 26
-    }
-  },
-  "app/components/app-sidebar/text-squeeze-fix-verification.spec.tsx": {
-    "no-console": {
-      "count": 51
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app-sidebar/toggle-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -1097,12 +1028,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1231,11 +1156,6 @@
       "count": 1
     }
   },
-  "app/components/apps/app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 22
-    }
-  },
   "app/components/apps/app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1260,19 +1180,9 @@
       "count": 1
     }
   },
-  "app/components/apps/list.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/apps/list.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1
-    }
-  },
-  "app/components/apps/new-app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/apps/new-app-card.tsx": {
@@ -3040,11 +2950,6 @@
   "app/components/custom/custom-page/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/custom/custom-web-app-brand/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
@@ -5805,11 +5710,6 @@
   "app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-selection-panel.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow-app/hooks/use-DSL.ts": {

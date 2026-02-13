@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 
-// Simple Mock Components that reproduce the exact UI issues
 const MockNavLink = ({ name, mode }: { name: string, mode: string }) => {
   return (
     <a
@@ -12,12 +11,10 @@ const MockNavLink = ({ name, mode }: { name: string, mode: string }) => {
       data-testid={`nav-link-${name}`}
       data-mode={mode}
     >
-      {/* Icon with inconsistent margin - reproduces issue #2 */}
       <svg
         className={`h-4 w-4 shrink-0 ${mode === 'expand' ? 'mr-2' : 'mr-0'}`}
         data-testid={`nav-icon-${name}`}
       />
-      {/* Text that appears/disappears abruptly - reproduces issue #2 */}
       {mode === 'expand' && <span data-testid={`nav-text-${name}`}>{name}</span>}
     </a>
   )
@@ -32,12 +29,10 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean, onTogg
       `}
       data-testid="sidebar-container"
     >
-      {/* Top section with variable padding - reproduces issue #1 */}
       <div className={`shrink-0 ${expand ? 'p-2' : 'p-1'}`} data-testid="top-section">
         App Info Area
       </div>
 
-      {/* Navigation section - reproduces issue #2 */}
       <nav className={`grow space-y-1 ${expand ? 'p-4' : 'px-2.5 py-4'}`} data-testid="navigation">
         <MockNavLink name="Orchestrate" mode={expand ? 'expand' : 'collapse'} />
         <MockNavLink name="API Access" mode={expand ? 'expand' : 'collapse'} />
@@ -45,7 +40,6 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean, onTogg
         <MockNavLink name="Monitoring" mode={expand ? 'expand' : 'collapse'} />
       </nav>
 
-      {/* Toggle button section with consistent padding - issue #1 FIXED */}
       <div
         className="shrink-0 px-4 py-3"
         data-testid="toggle-section"
@@ -67,11 +61,8 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
   return (
     <div data-testid="app-info" data-expand={expand}>
       <button type="button" className="block w-full">
-        {/* Container with layout mode switching - reproduces issue #3 */}
         <div className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}>
-          {/* Icon container with justify-between to flex-col switch - reproduces issue #3 */}
           <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`} data-testid="icon-container">
-            {/* Icon with size changes - reproduces issue #3 */}
             <div
               data-testid="app-icon"
               data-size={expand ? 'large' : 'small'}
@@ -79,7 +70,7 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
                 width: expand ? '40px' : '24px',
                 height: expand ? '40px' : '24px',
                 backgroundColor: '#000',
-                transition: 'all 0.3s ease', // This broad transition causes bounce
+                transition: 'all 0.3s ease',
               }}
             >
               Icon
@@ -90,7 +81,6 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
               </div>
             </div>
           </div>
-          {/* Text that appears/disappears conditionally */}
           {expand && (
             <div className="flex flex-col items-start gap-1">
               <div className="flex w-full">
@@ -107,7 +97,6 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
 
 describe('Sidebar Animation Issues Reproduction', () => {
   beforeEach(() => {
-    // Mock getBoundingClientRect for position testing
     Element.prototype.getBoundingClientRect = vi.fn(() => ({
       width: 200,
       height: 40,
@@ -130,25 +119,16 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       const { rerender } = render(<MockSidebarToggleButton expand={false} onToggle={handleToggle} />)
 
-      // Check collapsed state padding
       const toggleSection = screen.getByTestId('toggle-section')
-      expect(toggleSection).toHaveClass('px-4') // Consistent padding
+      expect(toggleSection).toHaveClass('px-4')
       expect(toggleSection).not.toHaveClass('px-5')
       expect(toggleSection).not.toHaveClass('px-6')
 
-      // Switch to expanded state
       rerender(<MockSidebarToggleButton expand={true} onToggle={handleToggle} />)
 
-      // Check expanded state padding - should be the same
-      expect(toggleSection).toHaveClass('px-4') // Same consistent padding
+      expect(toggleSection).toHaveClass('px-4')
       expect(toggleSection).not.toHaveClass('px-5')
       expect(toggleSection).not.toHaveClass('px-6')
-
-      // THE FIX: px-4 in both states prevents position movement
-      console.log('✅ Issue #1 FIXED: Toggle button now has consistent padding')
-      console.log('   - Before: px-4 (collapsed) vs px-6 (expanded) - 8px difference')
-      console.log('   - After:  px-4 (both states) - 0px difference')
-      console.log('   - Result: No button position movement during transition')
     })
 
     it('should verify sidebar width animation is working correctly', () => {
@@ -157,15 +137,11 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       const container = screen.getByTestId('sidebar-container')
 
-      // Collapsed state
       expect(container).toHaveClass('w-14')
       expect(container).toHaveClass('transition-all')
 
-      // Expanded state
       rerender(<MockSidebarToggleButton expand={true} onToggle={handleToggle} />)
       expect(container).toHaveClass('w-[216px]')
-
-      console.log('✅ Sidebar width transition is properly configured')
     })
   })
 
@@ -176,41 +152,25 @@ describe('Sidebar Animation Issues Reproduction', () => {
       const link = screen.getByTestId('nav-link-Orchestrate')
       const icon = screen.getByTestId('nav-icon-Orchestrate')
 
-      // Collapsed state checks
-      expect(link).toHaveClass('px-2.5') // 10px padding
-      expect(icon).toHaveClass('mr-0') // No margin
+      expect(link).toHaveClass('px-2.5')
+      expect(icon).toHaveClass('mr-0')
       expect(screen.queryByTestId('nav-text-Orchestrate')).not.toBeInTheDocument()
 
-      // Switch to expanded state
       rerender(<MockNavLink name="Orchestrate" mode="expand" />)
 
-      // Expanded state checks
-      expect(link).toHaveClass('px-3') // 12px padding (+2px)
-      expect(icon).toHaveClass('mr-2') // 8px margin (+8px)
+      expect(link).toHaveClass('px-3')
+      expect(icon).toHaveClass('mr-2')
       expect(screen.getByTestId('nav-text-Orchestrate')).toBeInTheDocument()
-
-      // THE BUG: Multiple simultaneous changes create squeeze effect
-      console.log('🐛 Issue #2 Reproduced: Text squeeze effect from multiple layout changes')
-      console.log('   - Link padding: px-2.5 → px-3 (+2px)')
-      console.log('   - Icon margin: mr-0 → mr-2 (+8px)')
-      console.log('   - Text appears: none → visible (abrupt)')
-      console.log('   - Result: Text appears with squeeze effect due to layout shifts')
     })
 
     it('should document the abrupt text rendering issue', () => {
       const { rerender } = render(<MockNavLink name="API Access" mode="collapse" />)
 
-      // Text completely absent
       expect(screen.queryByTestId('nav-text-API Access')).not.toBeInTheDocument()
 
       rerender(<MockNavLink name="API Access" mode="expand" />)
 
-      // Text suddenly appears - no transition
       expect(screen.getByTestId('nav-text-API Access')).toBeInTheDocument()
-
-      console.log('🐛 Issue #2 Detail: Conditional rendering {mode === "expand" && name}')
-      console.log('   - Problem: Text appears/disappears abruptly without transition')
-      console.log('   - Should use: opacity or width transition for smooth appearance')
     })
   })
 
@@ -221,26 +181,16 @@ describe('Sidebar Animation Issues Reproduction', () => {
       const iconContainer = screen.getByTestId('icon-container')
       const appIcon = screen.getByTestId('app-icon')
 
-      // Expanded state layout
       expect(iconContainer).toHaveClass('justify-between')
       expect(iconContainer).not.toHaveClass('flex-col')
       expect(appIcon).toHaveAttribute('data-size', 'large')
 
-      // Switch to collapsed state
       rerender(<MockAppInfo expand={false} />)
 
-      // Collapsed state layout - completely different layout mode
       expect(iconContainer).toHaveClass('flex-col')
       expect(iconContainer).toHaveClass('gap-1')
       expect(iconContainer).not.toHaveClass('justify-between')
       expect(appIcon).toHaveAttribute('data-size', 'small')
-
-      // THE BUG: Layout mode switch causes icon to "bounce"
-      console.log('🐛 Issue #3 Reproduced: Icon bounce from layout mode switching')
-      console.log('   - Layout change: justify-between → flex-col gap-1')
-      console.log('   - Icon size: large (40px) → small (24px)')
-      console.log('   - Transition: transition-all causes excessive animation')
-      console.log('   - Result: Icon appears to bounce to right then back during collapse')
     })
 
     it('should identify the problematic transition-all property', () => {
@@ -249,12 +199,7 @@ describe('Sidebar Animation Issues Reproduction', () => {
       const appIcon = screen.getByTestId('app-icon')
       const computedStyle = window.getComputedStyle(appIcon)
 
-      // The problematic broad transition
       expect(computedStyle.transition).toContain('all')
-
-      console.log('🐛 Issue #3 Detail: transition-all affects ALL CSS properties')
-      console.log('   - Problem: Animates layout properties that should not transition')
-      console.log('   - Solution: Use specific transition properties instead of "all"')
     })
   })
 
@@ -274,11 +219,8 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       const toggleButton = screen.getByTestId('toggle-button')
 
-      // Initial state verification
       expect(expanded).toBe(false)
-      console.log('🔄 Starting interactive test - all issues will be reproduced')
 
-      // Simulate toggle click
       fireEvent.click(toggleButton)
       expanded = true
       rerender(
@@ -288,10 +230,8 @@ describe('Sidebar Animation Issues Reproduction', () => {
         </div>,
       )
 
-      console.log('✨ All three issues successfully reproduced in interactive test:')
-      console.log('   1. Toggle button position movement (padding inconsistency)')
-      console.log('   2. Navigation text squeeze effect (multiple layout changes)')
-      console.log('   3. App icon bounce animation (layout mode switching)')
+      expect(screen.getByTestId('sidebar-container')).toHaveClass('w-[216px]')
+      expect(screen.getByTestId('app-icon')).toHaveAttribute('data-size', 'large')
     })
   })
 })
