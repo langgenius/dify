@@ -52,6 +52,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
+import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
@@ -261,6 +262,21 @@ const ComponentPicker = ({
     handleClose()
   }, [editor, getMatchFromSelection, agentBlock, handleClose])
 
+  const handleSelectContext = useCallback(() => {
+    if (!contextBlock?.selectable)
+      return
+    editor.update(() => {
+      const match = getMatchFromSelection()
+      if (!match)
+        return
+      const needRemove = $splitNodeContainingQuery(match)
+      if (needRemove)
+        needRemove.remove()
+    })
+    editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
+    handleClose()
+  }, [contextBlock?.selectable, editor, getMatchFromSelection, handleClose])
+
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
   const showAssembleVariables = triggerString === '/' && workflowVariableBlock?.showAssembleVariables && !!workflowVariableBlock?.onAssembleVariables
   const agentNodes: AgentNode[] = useMemo(() => agentBlock?.agentNodes || [], [agentBlock?.agentNodes])
@@ -324,25 +340,48 @@ const ComponentPicker = ({
                 </div>
                 <div className="p-1">
                   {activeTab === 'variables' && (
-                    <VarReferenceVars
-                      searchBoxClassName="mt-1"
-                      vars={workflowVariableOptions}
-                      onChange={(variables: string[]) => {
-                        handleSelectWorkflowVariable(variables)
-                        handleClose()
-                      }}
-                      maxHeightClass="max-h-[34vh]"
-                      isSupportFileVar={isSupportFileVar}
-                      onClose={handleClose}
-                      onBlur={handleClose}
-                      showManageInputField={workflowVariableBlock?.showManageInputField}
-                      onManageInputField={workflowVariableBlock?.onManageInputField}
-                      hideSearch={useExternalSearch}
-                      externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
-                      enableKeyboardNavigation={useExternalSearch}
-                      autoFocus={false}
-                      isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
-                    />
+                    <>
+                      <VarReferenceVars
+                        searchBoxClassName="mt-1"
+                        vars={workflowVariableOptions}
+                        onChange={(variables: string[]) => {
+                          handleSelectWorkflowVariable(variables)
+                          handleClose()
+                        }}
+                        maxHeightClass="max-h-[34vh]"
+                        isSupportFileVar={isSupportFileVar}
+                        onClose={handleClose}
+                        onBlur={handleClose}
+                        showManageInputField={workflowVariableBlock?.showManageInputField}
+                        onManageInputField={workflowVariableBlock?.onManageInputField}
+                        hideSearch={useExternalSearch}
+                        externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                        enableKeyboardNavigation={useExternalSearch}
+                        autoFocus={false}
+                        isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                      />
+                      {contextBlock?.show && (
+                        <div className="mt-1 border-t border-divider-subtle pt-1">
+                          <button
+                            type="button"
+                            disabled={!contextBlock.selectable}
+                            className={cn(
+                              'flex h-6 w-full items-center rounded-md px-3 hover:bg-state-base-hover',
+                              contextBlock.selectable
+                                ? ''
+                                : 'cursor-not-allowed opacity-30',
+                            )}
+                            onClick={handleSelectContext}
+                            onMouseDown={e => e.preventDefault()}
+                          >
+                            <span className="i-custom-vender-solid-files-file-05 h-4 w-4 shrink-0 text-[#6938EF]" />
+                            <span className="ml-1 truncate text-[13px] text-text-secondary">
+                              {t('promptEditor.context.item.title', { ns: 'common' })}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                   {activeTab === 'files' && (
                     <FilePickerPanel
@@ -471,7 +510,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference])
+  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference, contextBlock?.show, contextBlock?.selectable, handleSelectContext])
 
   return (
     <>
