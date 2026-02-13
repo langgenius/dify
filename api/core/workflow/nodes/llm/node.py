@@ -306,6 +306,49 @@ class LLMNode(Node[LLMNodeData]):
                 )
                 return
 
+            # Max tool call rounds reached: re-invoke LLM without tools to get a text answer
+            if (
+                tool_calls
+                and self.node_data.external_tool_callback_enabled
+                and external_tool_call_mode == "structured"
+                and current_round >= self.node_data.max_tool_call_rounds
+            ):
+                logger.debug(
+                    "[llm_node:%s] max tool rounds reached (%d), re-invoking without tools",
+                    self._node_id,
+                    self.node_data.max_tool_call_rounds,
+                )
+                prompt_messages = list(prompt_messages)
+                prompt_messages.append(
+                    AssistantPromptMessage(content=result_text or ""),
+                )
+                prompt_messages.append(
+                    SystemPromptMessage(
+                        content=(
+                            "You have reached the maximum number of tool call rounds. "
+                            "Do NOT call any more tools. Summarize what you have done so far "
+                            "and answer the user's question directly with the information available."
+                        ),
+                    ),
+                )
+                (
+                    result_text,
+                    clean_text,
+                    usage,
+                    finish_reason,
+                    reasoning_content,
+                    tool_calls,
+                    structured_output,
+                ) = yield from self._invoke_and_collect(
+                    model_instance,
+                    model_config,
+                    prompt_messages,
+                    stop,
+                    None,  # no tools
+                    None,  # no tool_choice
+                    None,  # no resume_tool_results
+                )
+
             process_data = {
                 "model_mode": model_config.mode,
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(

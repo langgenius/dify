@@ -97,6 +97,7 @@ const NodePanel: FC<Props> = ({
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
+  const isLLMToolCallNode = nodeInfo.node_type === BlockEnum.LLM && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
     let text = t('common.input', { ns: 'workflow' })
@@ -208,7 +209,7 @@ const NodePanel: FC<Props> = ({
               />
             )}
             {
-              (isAgentNode || isToolNode) && onShowAgentOrToolLog && (
+              (isAgentNode || isToolNode || isLLMToolCallNode) && onShowAgentOrToolLog && (
                 <AgentLogTrigger
                   nodeInfo={nodeInfo}
                   onShowAgentOrToolLog={onShowAgentOrToolLog}

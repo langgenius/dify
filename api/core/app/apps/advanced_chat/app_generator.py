@@ -629,6 +629,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     resumed_graph_runtime_state, paused_workflow_run_id = result
                     # Reuse the original workflow_run_id so persistence layer updates the same record
                     application_generate_entity.workflow_run_id = paused_workflow_run_id
+                    # Eagerly associate the new message with the paused workflow run
+                    # so Dify UI can show node traces even before the stream is consumed
+                    with Session(db.engine) as s:
+                        msg = s.get(Message, message.id)
+                        if msg:
+                            msg.workflow_run_id = paused_workflow_run_id
+                            s.commit()
                     logger.debug("[generator] resuming workflow_run_id=%s", paused_workflow_run_id)
 
             logger.debug("[generator] resumed_graph_runtime_state is None: %s", resumed_graph_runtime_state is None)

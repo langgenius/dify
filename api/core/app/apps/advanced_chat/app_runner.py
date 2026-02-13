@@ -121,6 +121,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if resume_state is not None:
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
+            # Inject fresh tool_results from the resume request into the restored variable pool
+            variable_pool.system_variables.external_tool_results = system_inputs.external_tool_results
+            variable_pool.system_variables.external_tool_call_mode = system_inputs.external_tool_call_mode
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -136,23 +139,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
-            )
-        elif self._resume_graph_runtime_state is not None:
-            # Resume path: use the restored graph runtime state
-            logger.debug("[runner] RESUME path entered")
-            logger.debug("[runner] tool_results=%s", system_inputs.external_tool_results)
-            graph_runtime_state = self._resume_graph_runtime_state
-            # Update system variables with new tool_results for this resume round
-            graph_runtime_state.variable_pool.system_variables = system_inputs
-            variable_pool = graph_runtime_state.variable_pool
-            graph = self._init_graph(
-                graph_config=self._workflow.graph_dict,
-                graph_runtime_state=graph_runtime_state,
-                workflow_id=self._workflow.id,
-                tenant_id=self._workflow.tenant_id,
-                user_id=self.application_generate_entity.user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
             )
         else:
             logger.debug("[runner] NORMAL path (no resume)")

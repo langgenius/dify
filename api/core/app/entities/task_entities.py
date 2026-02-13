@@ -86,7 +86,6 @@ class StreamEvent(StrEnum):
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
     TOOL_CALL = "tool_call"
-    WORKFLOW_PAUSED = "workflow_paused"
     HUMAN_INPUT_REQUIRED = "human_input_required"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
     HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
@@ -733,21 +732,6 @@ class PingStreamResponse(StreamResponse):
     """
 
     event: StreamEvent = StreamEvent.PING
-
-
-class WorkflowPausedStreamResponse(StreamResponse):
-    """
-    WorkflowPausedStreamResponse entity - sent when workflow is paused for tool call
-    """
-
-    class Data(BaseModel):
-        task_id: str
-        workflow_run_id: str
-        tool_calls: list
-        reasons: list = Field(default_factory=list)
-
-    event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
-    data: Data
 
 
 class AppStreamResponse(BaseModel):
