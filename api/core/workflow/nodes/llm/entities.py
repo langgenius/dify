@@ -86,6 +86,9 @@ class LLMNodeData(BaseNodeData):
         ),
     )
 
+    external_tool_callback_enabled: bool = False
+    max_tool_call_rounds: int = 10
+
     @field_validator("prompt_config", mode="before")
     @classmethod
     def convert_none_prompt_config(cls, v: Any):
