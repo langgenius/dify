@@ -224,21 +224,22 @@ class TestDisableSegmentsFromIndexTask:
             DatasetProcessRule: Created process rule instance
         """
         fake = fake or Faker()
-        process_rule = DatasetProcessRule()
-        process_rule.id = fake.uuid4()
-        process_rule.tenant_id = dataset.tenant_id
-        process_rule.dataset_id = dataset.id
-        process_rule.mode = "automatic"
-        process_rule.rules = (
-            "{"
-            '"mode": "automatic", '
-            '"rules": {'
-            '"pre_processing_rules": [], "segmentation": '
-            '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
-            "}"
+        process_rule = DatasetProcessRule(
+            id=fake.uuid4(),
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            mode="automatic",
+            rules=(
+                "{"
+                '"mode": "automatic", '
+                '"rules": {'
+                '"pre_processing_rules": [], "segmentation": '
+                '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
+                "}"
+            ),
+            created_by=dataset.created_by,
+            updated_by=dataset.updated_by,
         )
-        process_rule.created_by = dataset.created_by
-        process_rule.updated_by = dataset.updated_by
 
         from extensions.ext_database import db
 
