@@ -1,10 +1,6 @@
 import type { InspectHeaderProps } from './inspect-layout'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
-import {
-  RiCloseLine,
-  RiMenuLine,
-} from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -156,7 +152,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
             <div className="flex min-w-0 flex-1 items-center gap-1">
               {isNarrow && (
                 <ActionButton className="shrink-0" onClick={onOpenMenu} aria-label="Open menu">
-                  <RiMenuLine className="h-4 w-4" />
+                  <span className="i-ri-menu-line h-4 w-4" aria-hidden="true" />
                 </ActionButton>
               )}
               {file && (
@@ -194,7 +190,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
               )}
             </div>
             <ActionButton className="shrink-0" onClick={handleClose} aria-label="Close">
-              <RiCloseLine className="h-4 w-4" />
+              <span className="i-ri-close-line h-4 w-4" aria-hidden="true" />
             </ActionButton>
           </div>
           <div className="flex min-h-0 flex-1 flex-col">

@@ -1,6 +1,5 @@
 'use client'
 
-import { RiCloseLine, RiExternalLinkLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -261,7 +260,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             className="flex h-8 w-8 cursor-pointer items-center justify-center"
             onClick={() => onClose()}
           >
-            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
+            <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
           </div>
         </div>
         <div className="border-b border-divider-subtle px-6">
@@ -319,7 +318,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             rel="noopener noreferrer"
           >
             {learnMoreLabel}
-            <RiExternalLinkLine className="h-[12px] w-[12px]" />
+            <span className="i-ri-external-link-line h-[12px] w-[12px]" aria-hidden="true" />
           </a>
           <div className="flex items-center gap-3">
             <Button variant="secondary" onClick={onClose}>
