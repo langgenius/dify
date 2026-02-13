@@ -84,8 +84,8 @@ const EditCard: FC<EditCardProps> = ({
   const blurWithActions = useRef(false)
 
   const isSandboxRuntime = useAppStore(s => s.appDetail?.runtime_type === 'sandboxed')
-  const features = useFeatures(s => s.features)
-  const isSupportSandbox = isSandboxRuntime || features.sandbox?.enabled === true
+  const isSandboxFeatureEnabled = useFeatures(s => s.features.sandbox?.enabled === true)
+  const isSupportSandbox = isSandboxRuntime || isSandboxFeatureEnabled
 
   const maximumDepthReached = depth === JSON_SCHEMA_MAX_DEPTH
   const disableAddBtn = maximumDepthReached || (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
