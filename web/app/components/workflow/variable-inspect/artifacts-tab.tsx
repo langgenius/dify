@@ -33,7 +33,7 @@ const ArtifactsEmpty = ({ description }: { description: string }) => {
         <div className="text-text-tertiary system-xs-regular">{description}</div>
         <a
           className="cursor-pointer text-text-accent system-xs-regular"
-          href={docLink('/use-dify/build/file-system#artifacts' as DocPathWithoutLang, undefined, fileSystemArtifactsAnchorMap)}
+          href={docLink('/use-dify/build/file-system#artifacts' as DocPathWithoutLang, { anchorMap: fileSystemArtifactsAnchorMap })}
           target="_blank"
           rel="noopener noreferrer"
         >

@@ -1,7 +1,7 @@
 import type { Locale } from '@/i18n-config/language'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useTranslation } from '#i18n'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 import { apiReferencePathTranslations } from '@/types/doc-paths'
 
@@ -24,6 +24,11 @@ export const useGetPricingPageLanguage = () => {
 export const defaultDocBaseUrl = 'https://docs.bash-is-all-you-need.dify.dev'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 export type DocAnchorMap = Partial<Record<Locale, string>>
+export type DocLinkOptions = {
+  pathMap?: DocPathMap
+  anchorMap?: DocAnchorMap
+}
+export type BuildDocLink = (path?: DocPathWithoutLang, options?: DocLinkOptions) => string
 
 const splitPathWithHash = (path: string) => {
   const [pathname, ...hashParts] = path.split('#')
@@ -45,14 +50,17 @@ const normalizeAnchor = (anchor: string) => {
   return encodeURIComponent(normalizedAnchor)
 }
 
-export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap, anchorMap?: DocAnchorMap) => string) => {
-  let baseDocUrl = baseUrl || defaultDocBaseUrl
-  baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
+export const useDocLink = (baseUrl?: string): BuildDocLink => {
+  const baseDocUrl = useMemo(() => {
+    const resolvedBaseUrl = baseUrl || defaultDocBaseUrl
+    return resolvedBaseUrl.endsWith('/') ? resolvedBaseUrl.slice(0, -1) : resolvedBaseUrl
+  }, [baseUrl])
   const locale = useLocale()
   return useCallback(
-    (path?: DocPathWithoutLang, pathMap?: DocPathMap, anchorMap?: DocAnchorMap): string => {
+    (path?: DocPathWithoutLang, options?: DocLinkOptions): string => {
       const docLanguage = getDocLanguage(locale)
       const pathUrl = path || ''
+      const { pathMap, anchorMap } = options || {}
       const targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
       const { pathname: pathWithoutHash, hash: pathAnchor } = splitPathWithHash(targetPath)
       let targetPathWithoutHash = pathWithoutHash

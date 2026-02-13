@@ -313,7 +313,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         <div className="flex items-center justify-between px-6 pb-6 pt-5">
           <a
             className="flex items-center gap-1 text-text-accent system-xs-regular"
-            href={docLink('/use-dify/workspace/app-management#app-export-and-import', undefined, appManagementAnchorMap)}
+            href={docLink('/use-dify/workspace/app-management#app-export-and-import', { anchorMap: appManagementAnchorMap })}
             target="_blank"
             rel="noopener noreferrer"
           >

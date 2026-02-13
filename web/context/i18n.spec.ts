@@ -103,7 +103,7 @@ describe('useDocLink', () => {
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/quick-start' as DocPathWithoutLang, pathMap)
+      const url = result.current('/use-dify/getting-started/quick-start' as DocPathWithoutLang, { pathMap })
       expect(url).toBe(`${defaultDocBaseUrl}/zh/use-dify/getting-started/introduction`)
     })
 
@@ -119,7 +119,7 @@ describe('useDocLink', () => {
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/quick-start' as DocPathWithoutLang, pathMap)
+      const url = result.current('/use-dify/getting-started/quick-start' as DocPathWithoutLang, { pathMap })
       expect(url).toBe(`${defaultDocBaseUrl}/ja/use-dify/getting-started/quick-start`)
     })
 
@@ -266,7 +266,7 @@ describe('useDocLink', () => {
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/workspace/app-management#app-export-and-import', undefined, anchorMap)
+      const url = result.current('/use-dify/workspace/app-management#app-export-and-import', { anchorMap })
       expect(url).toBe(`${defaultDocBaseUrl}/zh/use-dify/workspace/app-management#${encodeURIComponent('应用导出和导入')}`)
     })
 
