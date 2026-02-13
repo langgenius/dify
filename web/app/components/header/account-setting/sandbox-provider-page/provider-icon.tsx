@@ -20,6 +20,7 @@ const ProviderIcon = ({
   withBorder = false,
 }: ProviderIconProps) => {
   const sizeClass = size === 'sm' ? 'h-4 w-4' : 'h-6 w-6'
+  const dockerIconClass = size === 'sm' ? 'h-2.5 w-2.5' : 'h-6 w-6'
   const sshIconClass = size === 'sm' ? 'h-[5px] w-auto max-w-[70%]' : 'h-[6px] w-auto max-w-[70%]'
 
   if (providerType === 'docker') {
@@ -31,7 +32,7 @@ const ProviderIcon = ({
         )}
         style={{ backgroundColor: DOCKER_BRAND_BLUE }}
       >
-        <DockerMarkWhite className="h-6 w-6" />
+        <DockerMarkWhite className={dockerIconClass} />
       </div>
     )
     if (withBorder) {
@@ -59,7 +60,7 @@ const ProviderIcon = ({
       return (
         <div
           className={cn(
-            'shrink-0 overflow-hidden rounded border-[0.5px] border-divider-subtle',
+            'flex shrink-0 overflow-hidden rounded border-[0.5px] border-divider-subtle',
             sizeClass,
           )}
         >
