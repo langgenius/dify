@@ -14,6 +14,7 @@ import { ModalContextProvider } from '@/context/modal-context'
 import { ProviderContextProvider } from '@/context/provider-context'
 import PartnerStack from '../components/billing/partner-stack'
 import Splash from '../components/splash'
+import RoleRouteGuard from './role-route-guard'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -28,7 +29,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 <HeaderWrapper>
                   <Header />
                 </HeaderWrapper>
-                {children}
+                <RoleRouteGuard>
+                  {children}
+                </RoleRouteGuard>
                 <PartnerStack />
                 <ReadmePanel />
                 <GotoAnything />

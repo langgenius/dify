@@ -2,9 +2,8 @@
 import type { FC } from 'react'
 import type { CurrentTryAppParams } from '@/context/explore-context'
 import type { InstalledApp } from '@/models/explore'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
@@ -19,10 +18,8 @@ export type IExploreProps = {
 const Explore: FC<IExploreProps> = ({
   children,
 }) => {
-  const router = useRouter()
   const [controlUpdateInstalledApps, setControlUpdateInstalledApps] = useState(0)
-  const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const [hasEditPermission, setHasEditPermission] = useState(false)
+  const { userProfile } = useAppContext()
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
   const [isFetchingInstalledApps, setIsFetchingInstalledApps] = useState(false)
   const { t } = useTranslation()
@@ -30,17 +27,9 @@ const Explore: FC<IExploreProps> = ({
 
   useDocumentTitle(t('menus.explore', { ns: 'common' }))
 
-  useEffect(() => {
-    if (!membersData?.accounts)
-      return
-    const currUser = membersData.accounts.find(account => account.id === userProfile.id)
-    setHasEditPermission(currUser?.role !== 'normal')
-  }, [membersData, userProfile.id])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
+  const hasEditPermission = membersData?.accounts
+    ? membersData.accounts.find(account => account.id === userProfile.id)?.role !== 'normal'
+    : false
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>(undefined)
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)

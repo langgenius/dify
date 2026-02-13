@@ -1,9 +1,8 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { useRouter } from 'next/navigation'
 // Libraries
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Button from '@/app/components/base/button'
@@ -28,8 +27,7 @@ import Datasets from './datasets'
 const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
-  const router = useRouter()
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const { isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -53,11 +51,6 @@ const List = () => {
     setTagFilterValue(value)
     handleTagsUpdate()
   }
-
-  useEffect(() => {
-    if (currentWorkspace.role === 'normal')
-      return router.replace('/apps')
-  }, [currentWorkspace, router])
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
@@ -96,7 +89,7 @@ const List = () => {
             onClick={() => setShowExternalApiPanel(true)}
           >
             <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text system-sm-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
           </Button>
         </div>
       </div>
