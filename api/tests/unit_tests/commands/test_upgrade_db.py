@@ -1,9 +1,9 @@
 import sys
+import threading
 import types
 from unittest.mock import MagicMock
 
 import commands
-from configs import dify_config
 
 
 def _install_fake_flask_migrate(monkeypatch, upgrade_impl) -> None:
@@ -21,7 +21,7 @@ def _invoke_upgrade_db() -> int:
 
 
 def test_upgrade_db_skips_when_lock_not_acquired(monkeypatch, capsys):
-    monkeypatch.setattr(dify_config, "MIGRATION_LOCK_TTL", 1234)
+    monkeypatch.setattr(commands, "DB_UPGRADE_LOCK_TTL_SECONDS", 1234)
 
     lock = MagicMock()
     lock.acquire.return_value = False
@@ -33,13 +33,13 @@ def test_upgrade_db_skips_when_lock_not_acquired(monkeypatch, capsys):
     assert exit_code == 0
     assert "Database migration skipped" in captured.out
 
-    commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=1234)
+    commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=1234, thread_local=False)
     lock.acquire.assert_called_once_with(blocking=False)
     lock.release.assert_not_called()
 
 
 def test_upgrade_db_failure_not_masked_by_lock_release(monkeypatch, capsys):
-    monkeypatch.setattr(dify_config, "MIGRATION_LOCK_TTL", 321)
+    monkeypatch.setattr(commands, "DB_UPGRADE_LOCK_TTL_SECONDS", 321)
 
     lock = MagicMock()
     lock.acquire.return_value = True
@@ -57,13 +57,13 @@ def test_upgrade_db_failure_not_masked_by_lock_release(monkeypatch, capsys):
     assert exit_code == 1
     assert "Database migration failed: boom" in captured.out
 
-    commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=321)
+    commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=321, thread_local=False)
     lock.acquire.assert_called_once_with(blocking=False)
     lock.release.assert_called_once()
 
 
 def test_upgrade_db_success_ignores_lock_not_owned_on_release(monkeypatch, capsys):
-    monkeypatch.setattr(dify_config, "MIGRATION_LOCK_TTL", 999)
+    monkeypatch.setattr(commands, "DB_UPGRADE_LOCK_TTL_SECONDS", 999)
 
     lock = MagicMock()
     lock.acquire.return_value = True
@@ -78,7 +78,67 @@ def test_upgrade_db_success_ignores_lock_not_owned_on_release(monkeypatch, capsy
     assert exit_code == 0
     assert "Database migration successful!" in captured.out
 
-    commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=999)
+    commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=999, thread_local=False)
     lock.acquire.assert_called_once_with(blocking=False)
     lock.release.assert_called_once()
+
+
+def test_upgrade_db_renews_lock_during_migration(monkeypatch, capsys):
+    """
+    Ensure the lock is renewed while migrations are running, so the base TTL can stay short.
+    """
+
+    # Use a small TTL so the heartbeat interval triggers quickly.
+    monkeypatch.setattr(commands, "DB_UPGRADE_LOCK_TTL_SECONDS", 0.3)
+
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    commands.redis_client.lock.return_value = lock
+
+    renewed = threading.Event()
+
+    def _reacquire():
+        renewed.set()
+        return True
+
+    lock.reacquire.side_effect = _reacquire
+
+    def _upgrade():
+        assert renewed.wait(1.0)
+
+    _install_fake_flask_migrate(monkeypatch, _upgrade)
+
+    exit_code = _invoke_upgrade_db()
+    _ = capsys.readouterr()
+
+    assert exit_code == 0
+    assert lock.reacquire.call_count >= 1
+
+
+def test_upgrade_db_ignores_reacquire_errors(monkeypatch, capsys):
+    # Use a small TTL so heartbeat runs during the upgrade call.
+    monkeypatch.setattr(commands, "DB_UPGRADE_LOCK_TTL_SECONDS", 0.3)
+
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    commands.redis_client.lock.return_value = lock
+
+    attempted = threading.Event()
+
+    def _reacquire():
+        attempted.set()
+        raise commands.RedisError("simulated")
+
+    lock.reacquire.side_effect = _reacquire
+
+    def _upgrade():
+        assert attempted.wait(1.0)
+
+    _install_fake_flask_migrate(monkeypatch, _upgrade)
+
+    exit_code = _invoke_upgrade_db()
+    _ = capsys.readouterr()
+
+    assert exit_code == 0
+    assert lock.reacquire.call_count >= 1
 
