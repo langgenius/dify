@@ -48,3 +48,4 @@ class StreamCompletedEvent(NodeEventBase):
 
 class PauseRequestedEvent(NodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
+    process_data: dict | None = Field(default=None, description="optional process data for the paused node")

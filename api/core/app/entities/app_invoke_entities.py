@@ -144,8 +144,8 @@ class AppGenerateEntity(BaseModel):
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = Field(default_factory=dict)
 
-    # tracing instance
-    trace_manager: Optional["TraceQueueManager"] = None
+    # tracing instance (runtime-only, excluded from serialization)
+    trace_manager: Optional["TraceQueueManager"] = Field(default=None, exclude=True)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -234,6 +234,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     tools: list[PromptMessageTool] | None = None
     tool_choice: Any | None = None
     tool_results: list[ToolResult] | None = None
+    tool_call_mode: str | None = None
 
     class SingleIterationRunEntity(BaseModel):
         """

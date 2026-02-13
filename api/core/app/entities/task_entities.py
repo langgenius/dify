@@ -83,6 +83,7 @@ class StreamEvent(StrEnum):
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
     TOOL_CALL = "tool_call"
+    WORKFLOW_PAUSED = "workflow_paused"
 
 
 class StreamResponse(BaseModel):
@@ -645,6 +646,21 @@ class PingStreamResponse(StreamResponse):
     """
 
     event: StreamEvent = StreamEvent.PING
+
+
+class WorkflowPausedStreamResponse(StreamResponse):
+    """
+    WorkflowPausedStreamResponse entity - sent when workflow is paused for tool call
+    """
+
+    class Data(BaseModel):
+        task_id: str
+        workflow_run_id: str
+        tool_calls: list
+        reasons: list = Field(default_factory=list)
+
+    event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
+    data: Data
 
 
 class AppStreamResponse(BaseModel):

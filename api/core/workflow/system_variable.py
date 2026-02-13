@@ -60,6 +60,7 @@ class SystemVariable(BaseModel):
     external_tools: Any | None = None
     external_tool_choice: Any | None = None
     external_tool_results: Any | None = None
+    external_tool_call_mode: str | None = None
 
     @model_validator(mode="before")
     @classmethod
