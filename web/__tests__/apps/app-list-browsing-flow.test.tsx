@@ -187,7 +187,10 @@ describe('App List Browsing Flow', () => {
     mockShowTagManagementModal = false
   })
 
-  // -- Loading and Empty states --
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('Loading and Empty States', () => {
     it('should show skeleton cards during initial loading', () => {
       mockIsLoading = true
