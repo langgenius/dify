@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
+import os
 import threading
 import uuid
 from collections.abc import Generator, Mapping
@@ -41,6 +42,7 @@ from core.workflow.repositories.draft_variable_repository import (
 )
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.runtime import GraphRuntimeState
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
@@ -54,6 +56,15 @@ from services.workflow_draft_variable_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Debug logger for pause/resume flow
+_dbg = logging.getLogger("dify_debug")
+if not _dbg.handlers:
+    _log_path = os.path.join(os.path.dirname(__file__), "../../../../logs/dify_debug.log")
+    _h = logging.FileHandler(_log_path, encoding="utf-8")
+    _h.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    _dbg.addHandler(_h)
+    _dbg.setLevel(logging.DEBUG)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
@@ -185,6 +196,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             tools=self._resolve_tools(args),
             tool_choice=args.get("tool_choice"),
             tool_results=self._resolve_tool_results(args),
+            tool_call_mode=args.get("tool_call_mode"),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -540,6 +552,32 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if app is None:
                     raise ValueError("App not found")
 
+            # Check if this is a resume request (tool_results + structured mode)
+            resumed_graph_runtime_state = None
+            _dbg.debug(
+                "[generator] resume check: tool_results=%s, tool_call_mode=%s, conversation_id=%s",
+                bool(application_generate_entity.tool_results),
+                application_generate_entity.tool_call_mode,
+                application_generate_entity.conversation_id,
+            )
+            if (
+                application_generate_entity.tool_results
+                and application_generate_entity.tool_call_mode == "structured"
+            ):
+                result = self._try_load_paused_state(
+                    app_id=application_generate_entity.app_config.app_id,
+                    conversation_id=application_generate_entity.conversation_id,
+                    workflow_execution_repository=workflow_execution_repository,
+                )
+                _dbg.debug("[generator] _try_load_paused_state result: %s", result is not None)
+                if result is not None:
+                    resumed_graph_runtime_state, paused_workflow_run_id = result
+                    # Reuse the original workflow_run_id so persistence layer updates the same record
+                    application_generate_entity.workflow_run_id = paused_workflow_run_id
+                    _dbg.debug("[generator] resuming workflow_run_id=%s", paused_workflow_run_id)
+
+            _dbg.debug("[generator] resumed_graph_runtime_state is None: %s", resumed_graph_runtime_state is None)
+
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
@@ -552,6 +590,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app=app,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
+                graph_engine_layers=self._build_graph_engine_layers(
+                    application_generate_entity=application_generate_entity,
+                    system_user_id=system_user_id,
+                ),
+                resumed_graph_runtime_state=resumed_graph_runtime_state,
             )
 
             try:
@@ -574,6 +617,89 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
+
+    @staticmethod
+    def _build_graph_engine_layers(
+        *,
+        application_generate_entity: AdvancedChatAppGenerateEntity,
+        system_user_id: str,
+    ) -> list:
+        from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
+
+        return [
+            PauseStatePersistenceLayer(
+                session_factory=db.engine,
+                generate_entity=application_generate_entity,
+                state_owner_user_id=system_user_id,
+            ),
+        ]
+
+    @staticmethod
+    def _try_load_paused_state(
+        *,
+        app_id: str,
+        conversation_id: str | None,
+        workflow_execution_repository: WorkflowExecutionRepository,
+    ) -> tuple[GraphRuntimeState, str] | None:
+        """Try to find a paused workflow run and load its state.
+        Uses conversation_id if available, otherwise falls back to app_id only.
+        Returns (graph_runtime_state, workflow_run_id) or None.
+        """
+        from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+        from models.model import Message
+        from models.workflow import WorkflowRun
+        from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+
+        sm = sessionmaker(bind=db.engine, expire_on_commit=False)
+
+        with sm() as session:
+            if conversation_id:
+                stmt = (
+                    select(WorkflowRun)
+                    .join(Message, Message.workflow_run_id == WorkflowRun.id)
+                    .where(
+                        Message.conversation_id == conversation_id,
+                        Message.app_id == app_id,
+                        WorkflowRun.status == "paused",
+                    )
+                    .order_by(WorkflowRun.created_at.desc())
+                    .limit(1)
+                )
+            else:
+                # No conversation_id: find most recent paused run for this app
+                stmt = (
+                    select(WorkflowRun)
+                    .where(
+                        WorkflowRun.app_id == app_id,
+                        WorkflowRun.status == "paused",
+                    )
+                    .order_by(WorkflowRun.created_at.desc())
+                    .limit(1)
+                )
+            workflow_run = session.scalar(stmt)
+            wf_id = workflow_run.id if workflow_run else None
+            _dbg.debug("[try_load] conv=%s app=%s => run=%s", conversation_id, app_id, wf_id)
+            if workflow_run is None:
+                return None
+            workflow_run_id = workflow_run.id
+
+        repo = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sm)
+        pause_entity = repo.get_workflow_pause(workflow_run_id=workflow_run_id)
+        _dbg.debug("[try_load] get_workflow_pause(%s) => %s", workflow_run_id, pause_entity is not None)
+        if pause_entity is None:
+            return None
+
+        # Mark as resumed in DB
+        repo.resume_workflow_pause(workflow_run_id=workflow_run_id, pause_entity=pause_entity)
+
+        # Load and restore state
+        state_bytes = pause_entity.get_state()
+        _dbg.debug("[try_load] state_bytes length=%d", len(state_bytes))
+        resumption_context = WorkflowResumptionContext.loads(state_bytes.decode("utf-8"))
+        graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+
+        logger.info("Loaded paused state for workflow run %s, resuming", workflow_run_id)
+        return graph_runtime_state, workflow_run_id
 
     @staticmethod
     def _resolve_tools(args: Mapping[str, Any]) -> list[PromptMessageTool] | None:

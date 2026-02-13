@@ -44,6 +44,7 @@ from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
+_dbg = logging.getLogger("dify_debug")
 
 
 class AdvancedChatAppRunner(WorkflowBasedAppRunner):
@@ -66,6 +67,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        resumed_graph_runtime_state: GraphRuntimeState | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -82,6 +84,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._app = app
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._resumed_graph_runtime_state = resumed_graph_runtime_state
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -100,6 +103,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             external_tools=self.application_generate_entity.tools,
             external_tool_choice=self.application_generate_entity.tool_choice,
             external_tool_results=self.application_generate_entity.tool_results,
+            external_tool_call_mode=self.application_generate_entity.tool_call_mode,
         )
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -120,7 +124,25 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
             )
+        elif self._resumed_graph_runtime_state is not None:
+            # Resume path: use the restored graph runtime state
+            _dbg.debug("[runner] RESUME path entered")
+            _dbg.debug("[runner] tool_results=%s", system_inputs.external_tool_results)
+            graph_runtime_state = self._resumed_graph_runtime_state
+            # Update system variables with new tool_results for this resume round
+            graph_runtime_state.variable_pool.system_variables = system_inputs
+            variable_pool = graph_runtime_state.variable_pool
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                graph_runtime_state=graph_runtime_state,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+                user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            )
         else:
+            _dbg.debug("[runner] NORMAL path (no resume)")
             inputs = self.application_generate_entity.inputs
             query = self.application_generate_entity.query
 

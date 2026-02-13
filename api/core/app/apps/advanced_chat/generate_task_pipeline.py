@@ -42,6 +42,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
@@ -56,6 +57,7 @@ from core.app.entities.task_entities import (
     MessageToolCallChunkStreamResponse,
     PingStreamResponse,
     StreamResponse,
+    WorkflowPausedStreamResponse,
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -661,6 +663,32 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id, event=event
         )
 
+    def _handle_workflow_paused_event(
+        self,
+        event: QueueWorkflowPausedEvent,
+        **kwargs,
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle workflow paused events (tool call pending)."""
+        self._ensure_workflow_initialized()
+
+        # Extract tool_calls from pause reasons
+        tool_calls = []
+        for reason in event.reasons:
+            if hasattr(reason, "tool_calls"):
+                tool_calls.extend(reason.tool_calls)
+
+        yield WorkflowPausedStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=WorkflowPausedStreamResponse.Data(
+                task_id=self._application_generate_entity.task_id,
+                workflow_run_id=self._workflow_run_id,
+                tool_calls=tool_calls,
+                reasons=[r.model_dump() if hasattr(r, "model_dump") else r for r in event.reasons],
+            ),
+        )
+
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+
     def _get_event_handlers(self) -> dict[type, Callable]:
         """Get mapping of event types to their handlers using fluent pattern."""
         return {
@@ -673,6 +701,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
             QueueWorkflowFailedEvent: self._handle_workflow_failed_event,
+            QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
             # Node events
             QueueNodeRetryEvent: self._handle_node_retry_event,
             QueueNodeStartedEvent: self._handle_node_started_event,
