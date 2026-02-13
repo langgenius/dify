@@ -75,8 +75,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(react@19.2.4)
       '@lexical/code':
-        specifier: 0.38.2
-        version: 0.38.2
+        specifier: 0.39.0
+        version: 0.39.0
       '@lexical/link':
         specifier: 0.38.2
         version: 0.38.2
@@ -1645,6 +1645,9 @@ packages:
 
   '@lexical/code@0.38.2':
     resolution: {integrity: sha512-wpqgbmPsfi/+8SYP0zI2kml09fGPRhzO5litR9DIbbSGvcbawMbRNcKLO81DaTbsJRnBJiQvbBBBJAwZKRqgBw==}
+
+  '@lexical/code@0.39.0':
+    resolution: {integrity: sha512-3tqFOOzP5Z9nRkZPHZYmIyLXd28gMMrlAD3k2zxiH5vGnAqiYTezR24CpRDw1BaF2c8vCgY/9CNobZzjXivpIA==}
 
   '@lexical/devtools-core@0.38.2':
     resolution: {integrity: sha512-hlN0q7taHNzG47xKynQLCAFEPOL8l6IP79C2M18/FE1+htqNP35q4rWhYhsptGlKo4me4PtiME7mskvr7T4yqA==}
@@ -8886,6 +8889,12 @@ snapshots:
     dependencies:
       '@lexical/utils': 0.38.2
       lexical: 0.38.2
+      prismjs: 1.30.0
+
+  '@lexical/code@0.39.0':
+    dependencies:
+      '@lexical/utils': 0.39.0
+      lexical: 0.39.0
       prismjs: 1.30.0
 
   '@lexical/devtools-core@0.38.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
