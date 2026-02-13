@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { CurrentTryAppParams } from '@/context/explore-context'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useContext } from 'use-context-selector'
 import { useAppContext } from '@/context/app-context'
 import ExploreContext from '@/context/explore-context'
@@ -55,9 +56,21 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const ContextReader = () => {
-  const { hasEditPermission } = useContext(ExploreContext)
-  return <div>{hasEditPermission ? 'edit-yes' : 'edit-no'}</div>
+const ContextReader = ({ triggerTryPanel }: { triggerTryPanel?: boolean }) => {
+  const { hasEditPermission, setShowTryAppPanel, isShowTryAppPanel, currentApp } = useContext(ExploreContext)
+  return (
+    <div>
+      {hasEditPermission ? 'edit-yes' : 'edit-no'}
+      {isShowTryAppPanel && <span data-testid="try-panel-open">open</span>}
+      {currentApp && <span data-testid="current-app">{currentApp.appId}</span>}
+      {triggerTryPanel && (
+        <>
+          <button data-testid="show-try" onClick={() => setShowTryAppPanel(true, { appId: 'test-app' } as CurrentTryAppParams)}>show</button>
+          <button data-testid="hide-try" onClick={() => setShowTryAppPanel(false)}>hide</button>
+        </>
+      )}
+    </div>
+  )
 }
 
 describe('Explore', () => {
@@ -121,6 +134,70 @@ describe('Explore', () => {
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      })
+    })
+
+    it('should skip permission check when membersData has no accounts', () => {
+      ; (useAppContext as Mock).mockReturnValue({
+        userProfile: { id: 'user-1' },
+        isCurrentWorkspaceDatasetOperator: false,
+      });
+      (useMembers as Mock).mockReturnValue({ data: undefined })
+
+      render((
+        <Explore>
+          <ContextReader />
+        </Explore>
+      ))
+
+      expect(screen.getByText('edit-no')).toBeInTheDocument()
+    })
+  })
+
+  describe('Context: setShowTryAppPanel', () => {
+    it('should set currentApp params when showing try panel', async () => {
+      ; (useAppContext as Mock).mockReturnValue({
+        userProfile: { id: 'user-1' },
+        isCurrentWorkspaceDatasetOperator: false,
+      });
+      (useMembers as Mock).mockReturnValue({ data: { accounts: [] } })
+
+      render((
+        <Explore>
+          <ContextReader triggerTryPanel />
+        </Explore>
+      ))
+
+      fireEvent.click(screen.getByTestId('show-try'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('try-panel-open')).toBeInTheDocument()
+        expect(screen.getByTestId('current-app')).toHaveTextContent('test-app')
+      })
+    })
+
+    it('should clear currentApp params when hiding try panel', async () => {
+      ; (useAppContext as Mock).mockReturnValue({
+        userProfile: { id: 'user-1' },
+        isCurrentWorkspaceDatasetOperator: false,
+      });
+      (useMembers as Mock).mockReturnValue({ data: { accounts: [] } })
+
+      render((
+        <Explore>
+          <ContextReader triggerTryPanel />
+        </Explore>
+      ))
+
+      fireEvent.click(screen.getByTestId('show-try'))
+      await waitFor(() => {
+        expect(screen.getByTestId('try-panel-open')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('hide-try'))
+      await waitFor(() => {
+        expect(screen.queryByTestId('try-panel-open')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('current-app')).not.toBeInTheDocument()
       })
     })
   })

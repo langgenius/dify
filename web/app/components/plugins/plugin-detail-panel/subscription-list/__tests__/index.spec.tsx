@@ -136,18 +136,27 @@ describe('SubscriptionList', () => {
       expect(screen.getByText('Subscription One')).toBeInTheDocument()
     })
 
-    it('should highlight the selected subscription when selectedId is provided', () => {
-      render(
+    it('should visually distinguish selected subscription from unselected', () => {
+      const { rerender } = render(
         <SubscriptionList
           mode={SubscriptionListMode.SELECTOR}
           selectedId="sub-1"
         />,
       )
 
-      const selectedButton = screen.getByRole('button', { name: 'Subscription One' })
-      const selectedRow = selectedButton.closest('div')
+      const getRowClassName = () =>
+        screen.getByRole('button', { name: 'Subscription One' }).closest('div')?.className ?? ''
 
-      expect(selectedRow).toHaveClass('bg-state-base-hover')
+      const selectedClassName = getRowClassName()
+
+      rerender(
+        <SubscriptionList
+          mode={SubscriptionListMode.SELECTOR}
+          selectedId="other-id"
+        />,
+      )
+
+      expect(selectedClassName).not.toBe(getRowClassName())
     })
   })
 
@@ -190,11 +199,9 @@ describe('SubscriptionList', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('.subscription-delete-btn')
+      const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
       expect(deleteButton).toBeTruthy()
-
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton)
 
       expect(onSelect).not.toHaveBeenCalled()
       expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()

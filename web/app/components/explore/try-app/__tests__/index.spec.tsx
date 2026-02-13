@@ -88,6 +88,9 @@ const createMockAppDetail = (mode: string = 'chat'): TryAppInfo => ({
 
 describe('TryApp (main index.tsx)', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    // Suppress expected React act() warnings from internal async state updates
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     mockUseGetTryAppInfo.mockReturnValue({
       data: createMockAppDetail(),
       isLoading: false,
@@ -96,7 +99,7 @@ describe('TryApp (main index.tsx)', () => {
 
   afterEach(() => {
     cleanup()
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('loading state', () => {

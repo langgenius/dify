@@ -784,11 +784,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/dataset-config/card-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -1231,11 +1226,6 @@
       "count": 1
     }
   },
-  "app/components/apps/app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 22
-    }
-  },
   "app/components/apps/app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1260,19 +1250,9 @@
       "count": 1
     }
   },
-  "app/components/apps/list.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/apps/list.tsx": {
     "unused-imports/no-unused-vars": {
       "count": 1
-    }
-  },
-  "app/components/apps/new-app-card.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/apps/new-app-card.tsx": {
@@ -1724,11 +1704,6 @@
       "count": 10
     }
   },
-  "app/components/base/checkbox-list/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    }
-  },
   "app/components/base/checkbox/index.stories.tsx": {
     "no-console": {
       "count": 1
@@ -1858,9 +1833,6 @@
   "app/components/base/emoji-picker/Inner.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/base/encrypted-bottom/index.tsx": {
@@ -3050,11 +3022,6 @@
       "count": 1
     }
   },
-  "app/components/custom/custom-web-app-brand/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
   "app/components/custom/custom-web-app-brand/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 12
@@ -4081,14 +4048,6 @@
       "count": 9
     }
   },
-  "app/components/develop/doc.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/develop/md.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -4741,14 +4700,6 @@
   "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/plugins/install-plugin/install-bundle/steps/install-multi.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 5
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/plugins/install-plugin/install-bundle/steps/install.tsx": {
@@ -5774,11 +5725,6 @@
       "count": 4
     }
   },
-  "app/components/tools/workflow-tool/configure-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/tools/workflow-tool/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
@@ -5813,11 +5759,6 @@
   "app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-selection-panel.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/workflow-app/hooks/use-DSL.ts": {

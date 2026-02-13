@@ -9,10 +9,6 @@ vi.mock('@/utils/classnames', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),
 }))
 
-vi.mock('../../../base/icons/src/vender/solid/files', () => ({
-  Folder: () => null,
-}))
-
 describe('knowledgeAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -84,10 +80,13 @@ describe('knowledgeAction', () => {
   })
 
   it('returns empty array on API failure', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { fetchDatasets } = await import('@/service/datasets')
     vi.mocked(fetchDatasets).mockRejectedValue(new Error('fail'))
 
     const results = await knowledgeAction.search('@knowledge', 'fail', 'en')
     expect(results).toEqual([])
+    expect(warnSpy).toHaveBeenCalledWith('Knowledge search failed:', expect.any(Error))
+    warnSpy.mockRestore()
   })
 })

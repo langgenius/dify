@@ -146,6 +146,7 @@ describe('searchAnything', () => {
   })
 
   it('handles action search failure gracefully', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const action: ActionItem = {
       key: '@app',
       shortcut: '@app',
@@ -156,6 +157,11 @@ describe('searchAnything', () => {
 
     const results = await searchAnything('en', '@app test', action)
     expect(results).toEqual([])
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Search failed for @app'),
+      expect.any(Error),
+    )
+    warnSpy.mockRestore()
   })
 
   it('runs global search across all non-slash actions for plain queries', async () => {
@@ -183,6 +189,7 @@ describe('searchAnything', () => {
   })
 
   it('handles partial search failures in global search gracefully', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const dynamicActions: Record<string, ActionItem> = {
       app: { key: '@app', shortcut: '@app', title: 'App', description: '', search: vi.fn().mockRejectedValue(new Error('fail')) },
       knowledge: {
@@ -200,6 +207,8 @@ describe('searchAnything', () => {
 
     expect(results).toHaveLength(1)
     expect(results[0].id).toBe('k1')
+    expect(warnSpy).toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 })
 

@@ -60,5 +60,11 @@ describe('Category', () => {
       const allCategoriesItem = screen.getByText('explore.apps.allCategories')
       expect(allCategoriesItem.className).toContain('bg-components-main-nav-nav-button-bg-active')
     })
+
+    it('should render raw category name when i18n key does not exist', () => {
+      renderComponent({ list: ['CustomCategory', 'Recommended'] as AppCategory[] })
+
+      expect(screen.getByText('CustomCategory')).toBeInTheDocument()
+    })
   })
 })
