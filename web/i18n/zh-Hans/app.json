@@ -161,6 +161,7 @@
   "newApp.completionShortDescription": "用于文本生成任务的 AI 助手",
   "newApp.completionUserDescription": "通过简单的配置快速搭建一个面向文本生成类任务的 AI 助手。",
   "newApp.dropDSLToCreateApp": "拖放 DSL 文件到此处创建应用",
+  "newApp.enableSandboxRuntime": "启用沙盒运行时（支持命令执行节点）",
   "newApp.exploreCommunity": "探索社区",
   "newApp.forAdvanced": "进阶用户适用",
   "newApp.forBeginners": "新手适用",
