@@ -225,6 +225,8 @@ describe('DataSourceWebsite Component', () => {
 
     await renderAndWait(DataSourceProvider.fireCrawl)
 
+    await waitFor(() => expect(screen.getByTestId('configured-status')).toHaveTextContent('configured'))
+
     // Click remove
     fireEvent.click(screen.getByTestId('remove-btn'))
 
