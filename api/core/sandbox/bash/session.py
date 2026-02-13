@@ -52,10 +52,8 @@ class SandboxBashSession:
             user_id=self._user_id,
             context=CliContext(tool_access=ToolAccessPolicy.from_dependencies(self._tools)),
         )
-        if self._tools is not None and not self._tools.is_empty():
-            tools_path = self._setup_node_tools_directory(self._node_id, self._tools, self._cli_api_session)
-        else:
-            tools_path = DifyCli.GLOBAL_TOOLS_PATH
+        # FIXME(Mairuis): enable all tool using
+        tools_path = DifyCli.GLOBAL_TOOLS_PATH
 
         self._bash_tool = SandboxBashTool(
             sandbox=self._sandbox.vm,
