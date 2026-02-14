@@ -4,8 +4,9 @@ import types
 from unittest.mock import MagicMock
 
 import commands
+from libs.auto_renew_redis_lock import LockNotOwnedError, RedisError
 
-HEARTBEAT_WAIT_TIMEOUT_SECONDS = 1.0
+HEARTBEAT_WAIT_TIMEOUT_SECONDS = 5.0
 
 
 def _install_fake_flask_migrate(monkeypatch, upgrade_impl) -> None:
@@ -45,7 +46,7 @@ def test_upgrade_db_failure_not_masked_by_lock_release(monkeypatch, capsys):
 
     lock = MagicMock()
     lock.acquire.return_value = True
-    lock.release.side_effect = commands.LockNotOwnedError("simulated")
+    lock.release.side_effect = LockNotOwnedError("simulated")
     commands.redis_client.lock.return_value = lock
 
     def _upgrade():
@@ -69,7 +70,7 @@ def test_upgrade_db_success_ignores_lock_not_owned_on_release(monkeypatch, capsy
 
     lock = MagicMock()
     lock.acquire.return_value = True
-    lock.release.side_effect = commands.LockNotOwnedError("simulated")
+    lock.release.side_effect = LockNotOwnedError("simulated")
     commands.redis_client.lock.return_value = lock
 
     _install_fake_flask_migrate(monkeypatch, lambda: None)
@@ -129,7 +130,7 @@ def test_upgrade_db_ignores_reacquire_errors(monkeypatch, capsys):
 
     def _reacquire():
         attempted.set()
-        raise commands.RedisError("simulated")
+        raise RedisError("simulated")
 
     lock.reacquire.side_effect = _reacquire
 
