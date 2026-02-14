@@ -36,6 +36,8 @@ class TestJoinDefaultWorkspace:
                 "POST",
                 "/default-workspace/members",
                 json={"account_id": account_id},
+                timeout=1.0,
+                raise_for_status=True,
             )
 
     def test_join_default_workspace_invalid_response_format_raises(self):

@@ -39,6 +39,9 @@ class BaseRequest:
         endpoint: str,
         json: Any | None = None,
         params: Mapping[str, Any] | None = None,
+        *,
+        timeout: float | httpx.Timeout | None = None,
+        raise_for_status: bool = False,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
@@ -53,7 +56,9 @@ class BaseRequest:
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
         with httpx.Client(mounts=mounts) as client:
-            response = client.request(method, url, json=json, params=params, headers=headers)
+            response = client.request(method, url, json=json, params=params, headers=headers, timeout=timeout)
+            if raise_for_status:
+                response.raise_for_status()
         return response.json()
 
 

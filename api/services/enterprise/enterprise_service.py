@@ -9,6 +9,8 @@ from services.enterprise.base import EnterpriseRequest
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
+
 
 class WebAppSettings(BaseModel):
     access_mode: str = Field(
@@ -97,7 +99,13 @@ class EnterpriseService:
         # Ensure we are sending a UUID-shaped string (enterprise side validates too).
         uuid.UUID(account_id)
 
-        data = EnterpriseRequest.send_request("POST", "/default-workspace/members", json={"account_id": account_id})
+        data = EnterpriseRequest.send_request(
+            "POST",
+            "/default-workspace/members",
+            json={"account_id": account_id},
+            timeout=DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS,
+            raise_for_status=True,
+        )
         if not isinstance(data, dict):
             raise ValueError("Invalid response format from enterprise default workspace API")
         return DefaultWorkspaceJoinResult.model_validate(data)
