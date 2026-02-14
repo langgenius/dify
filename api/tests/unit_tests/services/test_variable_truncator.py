@@ -1,14 +1,3 @@
-"""
-Comprehensive unit tests for VariableTruncator class based on current implementation.
-
-This test suite covers all functionality of the current VariableTruncator including:
-- JSON size calculation for different data types
-- String, array, and object truncation logic
-- Segment-based truncation interface
-- Helper methods for budget-based truncation
-- Edge cases and error handling
-"""
-
 import functools
 import json
 import uuid
@@ -19,6 +8,7 @@ import pytest
 
 from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
+from core.model_runtime.entities.message_entities import PromptMessageContentType, TextPromptMessageContent
 from core.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -676,3 +666,192 @@ def test_dummy_variable_truncator_methods():
     assert isinstance(result, TruncationResult)
     assert result.result == segment
     assert result.truncated is False
+
+
+class TestPromptMessageContentSupport:
+    """Test handling of PromptMessageContent objects in truncation and serialization."""
+
+    @pytest.fixture
+    def truncator(self):
+        return VariableTruncator()
+
+    @pytest.fixture
+    def text_message(self):
+        """Create a TextPromptMessageContent fixture."""
+        return TextPromptMessageContent(
+            type=PromptMessageContentType.TEXT,
+            data="This is a test message with some content that can be truncated.",
+        )
+
+    def test_calculate_json_size_text_prompt_message_content(self, truncator, text_message):
+        """Test calculate_json_size handles TextPromptMessageContent correctly."""
+        size = truncator.calculate_json_size(text_message)
+        # Size should be calculated from model_dump() result
+        expected_dict = text_message.model_dump()
+        expected_size = truncator.calculate_json_size(expected_dict)
+        assert size == expected_size
+        assert size > 0
+
+    def test_truncate_json_primitives_text_prompt_message_content(self, truncator, text_message):
+        """Test _truncate_json_primitives handles TextPromptMessageContent correctly."""
+        result = truncator._truncate_json_primitives(text_message, 1000)
+
+        # Should convert to dict
+        assert isinstance(result.value, dict)
+        assert "type" in result.value
+        assert "data" in result.value
+        assert result.value["data"] == text_message.data
+        assert result.truncated is False
+
+    def test_truncate_json_primitives_text_prompt_message_content_with_truncation(self, truncator, text_message):
+        """Test _truncate_json_primitives truncates TextPromptMessageContent data when needed."""
+        # Create a message with very long data
+        long_message = TextPromptMessageContent(
+            type=PromptMessageContentType.TEXT,
+            data="x" * 1000,
+        )
+        result = truncator._truncate_json_primitives(long_message, 50)
+
+        # Should convert to dict and truncate the data field
+        assert isinstance(result.value, dict)
+        assert "type" in result.value
+        assert "data" in result.value
+        assert len(result.value["data"]) <= 50  # Should be truncated
+        assert result.truncated is True
+
+    def test_truncate_array_with_text_prompt_message_content(self, truncator):
+        """Test _truncate_array handles arrays containing TextPromptMessageContent."""
+        array_with_messages = [
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Message 1"),
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Message 2"),
+            "plain string",
+            123,
+        ]
+        result = truncator._truncate_array(array_with_messages, 1000)
+
+        assert isinstance(result.value, list)
+        assert len(result.value) == 4
+        # First two elements should be converted to dicts
+        assert isinstance(result.value[0], dict)
+        assert result.value[0]["data"] == "Message 1"
+        assert isinstance(result.value[1], dict)
+        assert result.value[1]["data"] == "Message 2"
+        # Other elements should remain as-is
+        assert result.value[2] == "plain string"
+        assert result.value[3] == 123
+
+    def test_truncate_array_with_many_text_prompt_message_content(self, truncator):
+        """Test _truncate_array truncates array with many TextPromptMessageContent objects."""
+        # Create array with many messages
+        messages = [
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Message {i}: " + "x" * 50)
+            for i in range(25)
+        ]
+        result = truncator._truncate_array(messages, 500)
+
+        # Should limit to array_element_limit (default 20)
+        assert len(result.value) <= 20
+        assert result.truncated is True
+        # All remaining items should be dicts
+        for item in result.value:
+            assert isinstance(item, dict)
+
+    def test_truncate_object_with_text_prompt_message_content(self, truncator):
+        """Test _truncate_object handles objects containing TextPromptMessageContent."""
+        obj_with_message = {
+            "message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Hello, world!"),
+            "count": 42,
+            "nested": {
+                "inner_message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Nested message")
+            },
+        }
+        result = truncator._truncate_object(obj_with_message, 1000)
+
+        assert isinstance(result.value, dict)
+        assert "message" in result.value
+        # Message should be converted to dict
+        assert isinstance(result.value["message"], dict)
+        assert result.value["message"]["data"] == "Hello, world!"
+        # Nested message should also be converted
+        assert isinstance(result.value["nested"]["inner_message"], dict)
+        assert result.value["nested"]["inner_message"]["data"] == "Nested message"
+
+    def test_array_segment_with_text_prompt_message_content(self, truncator):
+        """Test that arrays with PromptMessageContent are handled in workflow mappings."""
+        # This simulates the actual workflow output scenario where raw data
+        # contains PromptMessageContent objects that need to be serialized
+        from core.variables.segments import ArrayObjectSegment
+
+        # Convert to dicts first (as would happen in real workflow)
+        array_data = [
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="First message").model_dump(),
+            TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Second message").model_dump(),
+        ]
+        segment = ArrayObjectSegment(value=array_data)
+        result = truncator.truncate(segment)
+
+        assert isinstance(result, TruncationResult)
+        assert result.truncated is False  # Small data, no truncation needed
+        assert len(result.result.value) == 2
+
+    def test_large_array_segment_with_text_prompt_message_content(self, truncator):
+        """Test large arrays with message dicts get truncated."""
+        from core.variables.segments import ArrayObjectSegment
+
+        # Create large array with message dicts (as they would appear after model_dump)
+        array_data = [
+            {
+                "type": "text",
+                "data": f"Message {i}: " + "content " * 20,
+            }
+            for i in range(25)
+        ]
+        segment = ArrayObjectSegment(value=array_data)
+        result = truncator.truncate(segment)
+
+        assert isinstance(result, TruncationResult)
+        assert result.truncated is True
+        # Should be limited to array_element_limit
+        assert len(result.result.value) <= 20
+
+    def test_object_segment_with_text_prompt_message_content(self, truncator):
+        """Test ObjectSegment containing TextPromptMessageContent is handled correctly."""
+        obj_data = {
+            "message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Test message content"),
+            "messages": [
+                TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Array message {i}")
+                for i in range(3)
+            ],
+        }
+        segment = ObjectSegment(value=obj_data)
+        result = truncator.truncate(segment)
+
+        assert isinstance(result, TruncationResult)
+        assert isinstance(result.result, ObjectSegment)
+        # Message should be converted to dict
+        assert isinstance(result.result.value["message"], dict)
+        assert result.result.value["message"]["data"] == "Test message content"
+        # Array messages should also be converted
+        for msg in result.result.value["messages"]:
+            assert isinstance(msg, dict)
+            assert "data" in msg
+
+    def test_workflow_variable_mapping_with_text_prompt_message_content(self, truncator):
+        """Test truncate_variable_mapping handles workflow outputs with messages."""
+        mapping = {
+            "result": "success",
+            "messages": [
+                TextPromptMessageContent(type=PromptMessageContentType.TEXT, data=f"Message {i}") for i in range(5)
+            ],
+            "single_message": TextPromptMessageContent(type=PromptMessageContentType.TEXT, data="Single message"),
+        }
+        result, is_truncated = truncator.truncate_variable_mapping(mapping)
+
+        assert isinstance(result, dict)
+        # Messages should be converted to dicts
+        for msg in result["messages"]:
+            assert isinstance(msg, dict)
+            assert "data" in msg
+        # Single message should also be converted
+        assert isinstance(result["single_message"], dict)
+        assert result["single_message"]["data"] == "Single message"

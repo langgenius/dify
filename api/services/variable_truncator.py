@@ -7,6 +7,7 @@ from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
 from core.file.models import File
+from core.model_runtime.entities.message_entities import PromptMessageContent
 from core.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
@@ -251,7 +252,7 @@ class VariableTruncator(BaseTruncator):
                 total += 1  # ":"
                 total += VariableTruncator.calculate_json_size(value[key], depth=depth + 1)
             return total
-        elif isinstance(value, File):
+        elif isinstance(value, (File, PromptMessageContent)):
             return VariableTruncator.calculate_json_size(value.model_dump(), depth=depth + 1)
         else:
             raise UnknownTypeError(f"got unknown type {type(value)}")
@@ -296,10 +297,12 @@ class VariableTruncator(BaseTruncator):
                 break
 
             remaining_budget = target_size - used_size
-            if item is None or isinstance(item, (str, list, dict, bool, int, float, UpdatedVariable)):
+            if item is None or isinstance(
+                item, (str, list, dict, bool, int, float, UpdatedVariable, PromptMessageContent)
+            ):
                 part_result = self._truncate_json_primitives(item, remaining_budget)
             else:
-                raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")
+                raise UnknownTypeError(f"got unknown type {type(item)} in array truncation. ")
             truncated_value.append(part_result.value)
             used_size += part_result.value_size
             truncated = part_result.truncated
@@ -415,9 +418,27 @@ class VariableTruncator(BaseTruncator):
     @overload
     def _truncate_json_primitives(self, val: File, target_size: int) -> _PartResult[File]: ...
 
+    @overload
     def _truncate_json_primitives(
         self,
-        val: UpdatedVariable | File | str | list[object] | dict[str, object] | bool | int | float | None,
+        val: PromptMessageContent,
+        target_size: int,
+    ) -> _PartResult[dict[str, object]]: ...
+
+    def _truncate_json_primitives(
+        self,
+        val: (
+            UpdatedVariable
+            | File
+            | PromptMessageContent
+            | str
+            | list[object]
+            | dict[str, object]
+            | bool
+            | int
+            | float
+            | None
+        ),
         target_size: int,
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
@@ -430,6 +451,8 @@ class VariableTruncator(BaseTruncator):
             return self._truncate_array(val, target_size)
         elif isinstance(val, dict):
             return self._truncate_object(val, target_size)
+        elif isinstance(val, PromptMessageContent):
+            return self._truncate_object(val.model_dump(), target_size)
         elif isinstance(val, File):
             # File objects should not be truncated, return as-is
             return _PartResult(val, self.calculate_json_size(val), False)
