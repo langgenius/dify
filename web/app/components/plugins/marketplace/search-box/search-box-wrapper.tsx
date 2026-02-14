@@ -70,8 +70,8 @@ const SearchBoxWrapper = ({
     [dropdownQuery.data?.creators.items],
   )
 
-  const handleSubmit = () => {
-    const trimmed = draftSearch.trim()
+  const handleSubmit = (queryOverride?: string) => {
+    const trimmed = (queryOverride ?? draftSearch).trim()
     if (!trimmed)
       return
 
@@ -141,7 +141,7 @@ const SearchBoxWrapper = ({
           templates={dropdownTemplates}
           creators={dropdownCreators}
           includeSource={includeSource}
-          onShowAll={handleSubmit}
+          onShowAll={() => handleSubmit(debouncedDraft)}
           isLoading={dropdownQuery.isLoading}
         />
       </PortalToFollowElemContent>

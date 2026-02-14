@@ -220,6 +220,8 @@
   "marketplace.searchBreadcrumbSearch": "搜索",
   "marketplace.searchDropdown.byAuthor": "由 {{author}} 提供",
   "marketplace.searchDropdown.enter": "输入",
+  "marketplace.searchDropdown.noMatchesDesc": "尝试其他筛选条件。",
+  "marketplace.searchDropdown.noMatchesTitle": "无匹配结果",
   "marketplace.searchDropdown.plugins": "插件",
   "marketplace.searchDropdown.showAllResults": "显示所有搜索结果",
   "marketplace.searchFilterAll": "全部",

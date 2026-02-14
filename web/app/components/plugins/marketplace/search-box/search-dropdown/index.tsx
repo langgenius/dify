@@ -1,7 +1,7 @@
 import type { Creator, Template } from '../../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useTranslation } from '#i18n'
-import { RiArrowRightLine } from '@remixicon/react'
+import { RiArrowRightLine, RiFilter3Line } from '@remixicon/react'
 import { Fragment } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
@@ -24,6 +24,16 @@ const DropdownSection = ({ title, children }: { title: string, children: React.R
   <div className="p-1">
     <div className="system-xs-semibold-uppercase px-3 pb-2 pt-3 text-text-primary">{title}</div>
     <div className="flex flex-col">{children}</div>
+  </div>
+)
+
+const EmptyState = ({ title, description }: { title: string, description: string }) => (
+  <div className="flex flex-col items-center gap-2 px-3 py-6">
+    <RiFilter3Line className="h-6 w-6 text-text-empty-state-icon" />
+    <div className="flex flex-col items-center gap-1 text-center">
+      <div className="system-md-medium text-text-secondary">{title}</div>
+      <div className="system-xs-regular text-text-tertiary">{description}</div>
+    </div>
   </div>
 )
 
@@ -162,6 +172,12 @@ const SearchDropdown = ({
             <Loading />
           </div>
         )}
+        {!isLoading && !hasResults && (
+          <EmptyState
+            title={t('marketplace.searchDropdown.noMatchesTitle', { ns: 'plugin' })}
+            description={t('marketplace.searchDropdown.noMatchesDesc', { ns: 'plugin' })}
+          />
+        )}
 
         {sections.map((section, i) => (
           <Fragment key={i}>
@@ -170,23 +186,25 @@ const SearchDropdown = ({
           </Fragment>
         ))}
       </div>
-      <div className="border-t border-divider-subtle p-1">
-        <button
-          className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-state-base-hover"
-          onClick={onShowAll}
-          type="button"
-        >
-          <span className="system-sm-medium text-text-accent">
-            {t('marketplace.searchDropdown.showAllResults', { ns: 'plugin', query })}
-          </span>
-          <span className="flex items-center">
-            <span className="system-2xs-medium-uppercase rounded-[5px] border border-divider-deep px-1.5 py-0.5 text-text-tertiary group-hover:hidden">
-              {t('marketplace.searchDropdown.enter', { ns: 'plugin' })}
+      {hasResults && (
+        <div className="border-t border-divider-subtle p-1">
+          <button
+            className="group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-state-base-hover"
+            onClick={onShowAll}
+            type="button"
+          >
+            <span className="system-sm-medium text-text-accent">
+              {t('marketplace.searchDropdown.showAllResults', { ns: 'plugin', query })}
             </span>
-            <RiArrowRightLine className="hidden h-[18px] w-[18px] text-text-accent group-hover:block" />
-          </span>
-        </button>
-      </div>
+            <span className="flex items-center">
+              <span className="system-2xs-medium-uppercase rounded-[5px] border border-divider-deep px-1.5 py-0.5 text-text-tertiary group-hover:hidden">
+                {t('marketplace.searchDropdown.enter', { ns: 'plugin' })}
+              </span>
+              <RiArrowRightLine className="hidden h-[18px] w-[18px] text-text-accent group-hover:block" />
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

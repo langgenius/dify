@@ -28,6 +28,8 @@ vi.mock('#i18n', () => ({
         'plugin.marketplace.searchDropdown.showAllResults': 'Show all search results',
         'plugin.marketplace.searchDropdown.enter': 'Enter',
         'plugin.marketplace.searchDropdown.byAuthor': `by ${options?.author || ''}`,
+        'plugin.marketplace.searchDropdown.noMatchesTitle': 'No matches',
+        'plugin.marketplace.searchDropdown.noMatchesDesc': 'Try different filter options.',
       }
       return translations[fullKey] || key
     },
@@ -581,6 +583,22 @@ describe('SearchDropdown', () => {
       expect(screen.getByText('Dropbox search')).toBeInTheDocument()
       expect(screen.getByText('Tool')).toBeInTheDocument()
       expect(screen.getByText('206 installs')).toBeInTheDocument()
+    })
+
+    it('should render empty state when no results', () => {
+      render(
+        <SearchDropdown
+          query="non-existent"
+          plugins={[]}
+          templates={[]}
+          creators={[]}
+          onShowAll={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('No matches')).toBeInTheDocument()
+      expect(screen.getByText('Try different filter options.')).toBeInTheDocument()
+      expect(screen.queryByText('Show all search results')).not.toBeInTheDocument()
     })
   })
 

@@ -220,6 +220,8 @@
   "marketplace.searchBreadcrumbSearch": "Search",
   "marketplace.searchDropdown.byAuthor": "by {{author}}",
   "marketplace.searchDropdown.enter": "Enter",
+  "marketplace.searchDropdown.noMatchesDesc": "Try different filter options.",
+  "marketplace.searchDropdown.noMatchesTitle": "No matches",
   "marketplace.searchDropdown.plugins": "Plugins",
   "marketplace.searchDropdown.showAllResults": "Show all search results",
   "marketplace.searchFilterAll": "All",
