@@ -290,9 +290,10 @@ class AccountService:
         TenantService.create_owner_tenant_if_not_exist(account=account)
 
         # Enterprise-only: best-effort add the account to the default workspace (does not switch current workspace).
-        from services.enterprise.enterprise_service import try_join_default_workspace
+        if getattr(dify_config, "ENTERPRISE_ENABLED", False):
+            from services.enterprise.enterprise_service import try_join_default_workspace
 
-        try_join_default_workspace(str(account.id))
+            try_join_default_workspace(str(account.id))
 
         return account
 
@@ -1414,9 +1415,10 @@ class RegisterService:
             db.session.commit()
 
             # Enterprise-only: best-effort add the account to the default workspace (does not switch current workspace).
-            from services.enterprise.enterprise_service import try_join_default_workspace
+            if getattr(dify_config, "ENTERPRISE_ENABLED", False):
+                from services.enterprise.enterprise_service import try_join_default_workspace
 
-            try_join_default_workspace(str(account.id))
+                try_join_default_workspace(str(account.id))
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             logger.exception("Register failed")

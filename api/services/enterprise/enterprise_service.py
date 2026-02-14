@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
 from services.enterprise.base import EnterpriseRequest
@@ -45,9 +45,14 @@ class DefaultWorkspaceJoinResult(BaseModel):
     - joined=False means enterprise default workspace is not configured or invalid/archived
     """
 
+    # Only workspace_id can be empty when "no default workspace configured".
     workspace_id: str = ""
-    joined: bool = False
-    message: str = ""
+
+    # These fields are required to avoid silently treating error payloads as "skipped".
+    joined: bool
+    message: str
+
+    model_config = ConfigDict(extra="forbid")
 
 
 def try_join_default_workspace(account_id: str) -> None:
@@ -108,6 +113,8 @@ class EnterpriseService:
         )
         if not isinstance(data, dict):
             raise ValueError("Invalid response format from enterprise default workspace API")
+        if "joined" not in data or "message" not in data:
+            raise ValueError("Invalid response payload from enterprise default workspace API")
         return DefaultWorkspaceJoinResult.model_validate(data)
 
     @classmethod
