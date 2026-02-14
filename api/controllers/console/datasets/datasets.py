@@ -16,6 +16,7 @@ from controllers.console.apikey import (
 )
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.datasets.hit_testing import _get_or_create_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
@@ -32,7 +33,7 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from fields.app_fields import app_detail_kernel_fields, related_app_list
+from fields.app_fields import AppDetailKernel, RelatedAppList
 from fields.dataset_fields import (
     content_fields,
     dataset_detail_fields,
@@ -51,6 +52,7 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
+from libs.helper import AppIconUrlField
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
@@ -97,6 +99,24 @@ dataset_detail_model = get_or_create_model("DatasetDetail", dataset_detail_field
 
 file_info_model = get_or_create_model("DatasetFileInfo", file_info_fields)
 
+app_detail_kernel_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "description": fields.String,
+    "mode": fields.String(attribute="mode_compatible_with_agent"),
+    "icon_type": fields.String,
+    "icon": fields.String,
+    "icon_background": fields.String,
+    "icon_url": AppIconUrlField,
+}
+
+related_app_list = {
+    "data": fields.List(fields.Nested(app_detail_kernel_fields)),
+    "total": fields.Integer,
+}
+
+dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
+register_schema_models(console_ns, AppDetailKernel, RelatedAppList)
 content_fields_copy = content_fields.copy()
 content_fields_copy["file_info"] = fields.Nested(file_info_model, allow_null=True)
 content_model = get_or_create_model("DatasetContent", content_fields_copy)
@@ -663,11 +683,10 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc("get_dataset_related_apps")
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Related apps retrieved successfully", related_app_list_model)
+    @console_ns.response(200, "Related apps retrieved successfully", console_ns.models[RelatedAppList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(related_app_list_model)
     def get(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -688,7 +707,11 @@ class DatasetRelatedAppListApi(Resource):
             if app_model:
                 related_apps.append(app_model)
 
-        return {"data": related_apps, "total": len(related_apps)}, 200
+        response = RelatedAppList(
+            data=[AppDetailKernel.model_validate(app, from_attributes=True) for app in related_apps],
+            total=len(related_apps),
+        )
+        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
