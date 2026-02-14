@@ -3,9 +3,11 @@ import type { FC } from 'react'
 import type { CodeLanguage } from '../../../code/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { RiCrosshairLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import ActionButton from '@/app/components/base/action-button'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
@@ -13,7 +15,9 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import Tooltip from '@/app/components/base/tooltip'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
+import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
@@ -37,6 +41,7 @@ type Props = {
   }[]
   showFileList?: boolean
   showCodeGenerator?: boolean
+  showVariableInspectButton?: boolean
   tip?: React.JSX.Element
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -58,9 +63,11 @@ const Base: FC<Props> = ({
   fileList = [],
   showFileList,
   showCodeGenerator = false,
+  showVariableInspectButton = false,
   tip,
   footer,
 }) => {
+  const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const {
     wrapClassName,
@@ -73,6 +80,9 @@ const Base: FC<Props> = ({
   const editorContentMinHeight = minHeight - 28
   const [editorContentHeight, setEditorContentHeight] = useState(editorContentMinHeight)
 
+  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
     copy(value)
@@ -81,6 +91,13 @@ const Base: FC<Props> = ({
       setIsCopied(false)
     }, 2000)
   }, [value])
+
+  const handleOpenVariableInspect = useCallback(() => {
+    if (nodeId) {
+      setCurrentFocusNodeId(nodeId)
+      setShowVariableInspectPanel(true)
+    }
+  }, [nodeId, setCurrentFocusNodeId, setShowVariableInspectPanel])
 
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
@@ -104,6 +121,13 @@ const Base: FC<Props> = ({
                   nodeId={nodeId!}
                 />
               </div>
+            )}
+            {showVariableInspectButton && nodeId && (
+              <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
+                <ActionButton className="ml-1" onClick={handleOpenVariableInspect}>
+                  <RiCrosshairLine className="h-4 w-4" />
+                </ActionButton>
+              </Tooltip>
             )}
             <ActionButton className="ml-1" onClick={handleCopy}>
               {!isCopied
