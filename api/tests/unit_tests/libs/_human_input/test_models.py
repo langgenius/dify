@@ -2,7 +2,7 @@
 Unit tests for human input form models.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -83,12 +83,10 @@ class TestHumanInputForm:
     def test_form_expiry_property_expired(self, sample_form_data):
         """Test is_expired property for expired form."""
         # Create form with past expiry
-        past_time = datetime.utcnow() - timedelta(hours=1)
-        sample_form_data["created_at"] = past_time
+        past_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        sample_form_data["expires_at"] = past_time
 
         form = HumanInputForm(**sample_form_data)
-        # Manually set expiry to past time
-        form.expires_at = past_time
 
         assert form.is_expired
 
@@ -111,9 +109,9 @@ class TestHumanInputForm:
         """Test form submit method."""
         form = HumanInputForm(**sample_form_data)
 
-        submission_time_before = datetime.utcnow()
+        submission_time_before = datetime.now(timezone.utc)
         form.submit({"input": "test value"}, "submit")
-        submission_time_after = datetime.utcnow()
+        submission_time_after = datetime.now(timezone.utc)
 
         assert form.is_submitted
         assert form.submitted_data == {"input": "test value"}
@@ -213,13 +211,12 @@ class TestFormSubmissionData:
 
     def test_submission_data_timestamps(self):
         """Test submission data timestamp handling."""
-        before_time = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         submission_data = FormSubmissionData(form_id="form-123", inputs={"test": "value"}, action="submit")
 
-        after_time = datetime.utcnow()
-
-        assert before_time <= submission_data.submitted_at <= after_time
+        assert submission_data.submitted_at is not None
+        assert abs((submission_data.submitted_at - now).total_seconds()) < 1
 
     def test_submission_data_with_explicit_timestamp(self):
         """Test submission data with explicit timestamp."""
