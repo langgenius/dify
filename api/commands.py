@@ -3,15 +3,13 @@ import datetime
 import json
 import logging
 import secrets
-import threading
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import click
 import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
-from redis.exceptions import LockNotOwnedError, RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -32,6 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
+from libs.auto_renew_redis_lock import AutoRenewRedisLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -56,34 +55,7 @@ from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from redis.lock import Lock
-
 DB_UPGRADE_LOCK_TTL_SECONDS = 60
-
-
-def _heartbeat_db_upgrade_lock(lock: "Lock", stop_event: threading.Event, ttl_seconds: float) -> None:
-    """
-    Keep the DB upgrade lock alive while migrations are running.
-
-    We intentionally keep the base TTL small (e.g. 60s) so that if the process is killed and can't
-    release the lock, the lock will naturally expire soon. While the process is alive, this
-    heartbeat periodically resets the TTL via `lock.reacquire()`.
-    """
-
-    interval_seconds = max(0.1, ttl_seconds / 3)
-    while not stop_event.wait(interval_seconds):
-        try:
-            lock.reacquire()
-        except LockNotOwnedError:
-            # Another process took over / TTL expired; continuing to retry won't help.
-            logger.warning("DB migration lock is no longer owned during heartbeat; stop renewing.")
-            return
-        except RedisError:
-            # Best-effort: keep trying while the process is alive.
-            logger.warning("Failed to renew DB migration lock due to Redis error; will retry.", exc_info=True)
-        except Exception:
-            logger.warning("Unexpected error while renewing DB migration lock; will retry.", exc_info=True)
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -758,21 +730,14 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    # Use a short base TTL + heartbeat renewal, so a crashed process doesn't block migrations for long.
-    # thread_local=False is required because heartbeat runs in a separate thread.
-    lock = redis_client.lock(
+    lock = AutoRenewRedisLock(
+        redis_client=redis_client,
         name="db_upgrade_lock",
-        timeout=DB_UPGRADE_LOCK_TTL_SECONDS,
-        thread_local=False,
+        ttl_seconds=DB_UPGRADE_LOCK_TTL_SECONDS,
+        logger=logger,
+        log_context="db_migration",
     )
     if lock.acquire(blocking=False):
-        stop_event = threading.Event()
-        heartbeat_thread = threading.Thread(
-            target=_heartbeat_db_upgrade_lock,
-            args=(lock, stop_event, float(DB_UPGRADE_LOCK_TTL_SECONDS)),
-            daemon=True,
-        )
-        heartbeat_thread.start()
         migration_succeeded = False
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
@@ -790,23 +755,8 @@ def upgrade_db():
             click.echo(click.style(f"Database migration failed: {e}", fg="red"))
             raise SystemExit(1)
         finally:
-            stop_event.set()
-            heartbeat_thread.join(timeout=5)
-            # Lock release errors should never mask the real migration failure.
-            try:
-                lock.release()
-            except LockNotOwnedError:
-                status = "successful" if migration_succeeded else "failed"
-                logger.warning(
-                    "DB migration lock not owned on release after %s migration (likely expired); ignoring.", status
-                )
-            except RedisError:
-                status = "successful" if migration_succeeded else "failed"
-                logger.warning(
-                    "Failed to release DB migration lock due to Redis error after %s migration; ignoring.",
-                    status,
-                    exc_info=True,
-                )
+            status = "successful" if migration_succeeded else "failed"
+            lock.release_safely(status=status)
     else:
         click.echo("Database migration skipped")
 
