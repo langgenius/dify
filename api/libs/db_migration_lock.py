@@ -193,4 +193,3 @@ class DbMigrationAutoRenewLock:
                 )
         self._stop_event = None
         self._thread = None
-
