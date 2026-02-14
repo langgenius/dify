@@ -41,6 +41,8 @@ from models.dataset import (
     Dataset,
     DatasetAutoDisableLog,
     DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
     DatasetPermission,
     DatasetPermissionEnum,
     DatasetProcessRule,
@@ -1907,6 +1909,36 @@ class DocumentService:
                         else default_retrieval_model
                     )
 
+        # Handle metadata configuration
+        # 1. Enable built-in metadata if requested
+        if knowledge_config.enable_built_in_metadata and not dataset.built_in_field_enabled:
+            dataset.built_in_field_enabled = True
+            db.session.add(dataset)
+
+        # 2. Process custom metadata - validate and build dict
+        custom_metadata: dict[str, str | int | float | None] = {}
+        metadata_bindings_to_create: list[str] = []
+        if knowledge_config.doc_metadata:
+            # Batch fetch all metadata definitions to avoid N+1 query
+            metadata_ids = [item.metadata_id for item in knowledge_config.doc_metadata]
+            metadata_defs = (
+                db.session.query(DatasetMetadata)
+                .filter(
+                    DatasetMetadata.id.in_(metadata_ids),
+                    DatasetMetadata.dataset_id == dataset.id,
+                )
+                .all()
+            )
+            metadata_map = {md.id: md for md in metadata_defs}
+
+            for item in knowledge_config.doc_metadata:
+                # Validate metadata_id belongs to this dataset
+                metadata_def = metadata_map.get(item.metadata_id)
+                if not metadata_def:
+                    raise ValueError(f"Metadata with id '{item.metadata_id}' not found in this dataset")
+                custom_metadata[metadata_def.name] = item.value
+                metadata_bindings_to_create.append(item.metadata_id)
+
         documents = []
         if knowledge_config.original_document_id:
             document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
@@ -2012,6 +2044,10 @@ class DocumentService:
                                 document.data_source_info = json.dumps(data_source_info)
                                 document.batch = batch
                                 document.indexing_status = "waiting"
+                                if custom_metadata:
+                                    doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
+                                    doc_metadata.update(custom_metadata)
+                                    document.doc_metadata = doc_metadata
                                 db.session.add(document)
                                 documents.append(document)
                                 duplicate_document_ids.append(document.id)
@@ -2029,6 +2065,7 @@ class DocumentService:
                                     account,
                                     file.name,
                                     batch,
+                                    custom_metadata=custom_metadata or None,
                                 )
                                 db.session.add(document)
                                 db.session.flush()
@@ -2081,6 +2118,7 @@ class DocumentService:
                                         account,
                                         truncated_page_name,
                                         batch,
+                                        custom_metadata=custom_metadata or None,
                                     )
                                     db.session.add(document)
                                     db.session.flush()
@@ -2121,12 +2159,46 @@ class DocumentService:
                                 account,
                                 document_name,
                                 batch,
+                                custom_metadata=custom_metadata or None,
                             )
                             db.session.add(document)
                             db.session.flush()
                             document_ids.append(document.id)
                             documents.append(document)
                             position += 1
+                    # Create DatasetMetadataBinding records for custom metadata
+                    # before commit so documents and bindings are in a single transaction.
+                    if metadata_bindings_to_create:
+                        target_document_ids = list(set(document_ids + duplicate_document_ids))
+                        metadata_ids = list(dict.fromkeys(metadata_bindings_to_create))
+                        if target_document_ids and metadata_ids:
+                            existing_binding_pairs = {
+                                (document_id, metadata_id)
+                                for document_id, metadata_id in db.session.query(
+                                    DatasetMetadataBinding.document_id,
+                                    DatasetMetadataBinding.metadata_id,
+                                )
+                                .filter(
+                                    DatasetMetadataBinding.dataset_id == dataset.id,
+                                    DatasetMetadataBinding.document_id.in_(target_document_ids),
+                                    DatasetMetadataBinding.metadata_id.in_(metadata_ids),
+                                )
+                                .all()
+                            }
+
+                            for doc_id in target_document_ids:
+                                for metadata_id in metadata_ids:
+                                    if (doc_id, metadata_id) in existing_binding_pairs:
+                                        continue
+                                    binding = DatasetMetadataBinding(
+                                        tenant_id=dataset.tenant_id,
+                                        dataset_id=dataset.id,
+                                        document_id=doc_id,
+                                        metadata_id=metadata_id,
+                                        created_by=account.id,
+                                    )
+                                    db.session.add(binding)
+
                     db.session.commit()
 
                     # trigger async task
@@ -2441,6 +2513,7 @@ class DocumentService:
         account: Account,
         name: str,
         batch: str,
+        custom_metadata: dict | None = None,
     ):
         # Set need_summary based on dataset's summary_index_setting
         need_summary = False
@@ -2471,6 +2544,9 @@ class DocumentService:
                 BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 BuiltInField.source: data_source_type,
             }
+        # Merge custom metadata if provided
+        if custom_metadata:
+            doc_metadata.update(custom_metadata)
         if doc_metadata:
             document.doc_metadata = doc_metadata
         return document

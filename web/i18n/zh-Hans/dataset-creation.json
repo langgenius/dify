@@ -121,6 +121,8 @@
   "stepTwo.indexSettingTip": "要更改索引方法和 embedding 模型，请转到",
   "stepTwo.maxLength": "分段最大长度",
   "stepTwo.maxLengthCheck": "分段最大长度不能大于 {{limit}}",
+  "stepTwo.metadata.customValues": "自定义值",
+  "stepTwo.metadata.noValues": "未配置任何值",
   "stepTwo.nextStep": "保存并处理",
   "stepTwo.notAvailableForParentChild": "不支持父子索引",
   "stepTwo.notAvailableForQA": "不支持 Q&A 索引",

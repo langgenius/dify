@@ -121,6 +121,8 @@
   "stepTwo.indexSettingTip": "To change the index method & embedding model, please go to the ",
   "stepTwo.maxLength": "Maximum chunk length",
   "stepTwo.maxLengthCheck": "Maximum chunk length should be less than {{limit}}",
+  "stepTwo.metadata.customValues": "Custom Values",
+  "stepTwo.metadata.noValues": "No values configured",
   "stepTwo.nextStep": "Save & Process",
   "stepTwo.notAvailableForParentChild": "Not available for Parent-child Index",
   "stepTwo.notAvailableForQA": "Not available for Q&A Index",

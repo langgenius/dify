@@ -98,7 +98,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
-        disabled: isButtonDisabledWithPipeline,
+        disabled: false,
       })
     }
 

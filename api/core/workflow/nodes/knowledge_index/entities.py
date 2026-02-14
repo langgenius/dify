@@ -150,6 +150,15 @@ class ParentChildStructureChunk(BaseModel):
     data_source_info: Union[FileInfo, OnlineDocumentInfo, WebsiteInfo]
 
 
+class DocMetadata(BaseModel):
+    """
+    Doc Metadata.
+    """
+
+    metadata_id: str
+    value: str | int | float | list[str] | None
+
+
 class KnowledgeIndexNodeData(BaseNodeData):
     """
     Knowledge index Node Data.
@@ -158,5 +167,6 @@ class KnowledgeIndexNodeData(BaseNodeData):
     type: str = "knowledge-index"
     chunk_structure: str
     index_chunk_variable_selector: list[str]
+    doc_metadata: list[DocMetadata] | None = None
     indexing_technique: str | None = None
     summary_index_setting: dict | None = None

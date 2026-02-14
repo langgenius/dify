@@ -1,4 +1,5 @@
 import type {
+  DocMetadataItem,
   KnowledgeBaseNodeType,
   RerankingModel,
   SummaryIndexSetting,
@@ -247,6 +248,18 @@ export const useConfig = (id: string) => {
     })
   }, [handleNodeDataUpdate])
 
+  const handleEnableBuiltInMetadataChange = useCallback((enabled: boolean) => {
+    handleNodeDataUpdate({
+      enable_built_in_metadata: enabled,
+    })
+  }, [handleNodeDataUpdate])
+
+  const handleDocMetadataChange = useCallback((docMetadata: DocMetadataItem[]) => {
+    handleNodeDataUpdate({
+      doc_metadata: docMetadata,
+    })
+  }, [handleNodeDataUpdate])
+
   const handleSummaryIndexSettingChange = useCallback((summaryIndexSetting: SummaryIndexSetting) => {
     const nodeData = getNodeData()
     handleNodeDataUpdate({
@@ -271,6 +284,8 @@ export const useConfig = (id: string) => {
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleEnableBuiltInMetadataChange,
+    handleDocMetadataChange,
     handleSummaryIndexSettingChange,
   }
 }

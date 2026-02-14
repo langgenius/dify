@@ -22,7 +22,7 @@ const InputCombined: FC<Props> = ({
   onChange,
   readOnly,
 }) => {
-  const className = cn('h-6 grow p-0.5 text-xs')
+  const className = cn('h-6 grow p-0.5')
   if (type === DataType.time) {
     return (
       <Datepicker
@@ -37,7 +37,7 @@ const InputCombined: FC<Props> = ({
     return (
       <div className="grow text-[0]">
         <InputNumber
-          className={cn(className, 'rounded-l-md')}
+          className={cn(className, 'rounded-l-md text-xs')}
           value={value}
           onChange={onChange}
           size="regular"
@@ -51,7 +51,7 @@ const InputCombined: FC<Props> = ({
   return (
     <Input
       wrapperClassName={configClassName}
-      className={cn(className, 'rounded-md')}
+      className={cn(className, 'rounded-md text-xs')}
       value={value}
       onChange={e => onChange(e.target.value)}
       readOnly={readOnly}

@@ -86,6 +86,8 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
         process_rule=None,
         duplicate=False,
         doc_language="en",
+        enable_built_in_metadata=False,
+        doc_metadata=None,
     )
 
     account = fake_current_user

@@ -452,6 +452,8 @@
   "nodes.common.retry.times": "times",
   "nodes.common.typeSwitch.input": "Input value",
   "nodes.common.typeSwitch.variable": "Use variable",
+  "nodes.common.valueType.constant": "Constant",
+  "nodes.common.valueType.variable": "Variable",
   "nodes.dataSource.add": "Add data source",
   "nodes.dataSource.supportedFileFormats": "Supported file formats",
   "nodes.dataSource.supportedFileFormatsPlaceholder": "File extension, e.g. doc",

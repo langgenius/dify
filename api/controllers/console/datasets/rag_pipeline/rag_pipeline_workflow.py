@@ -44,6 +44,7 @@ from models.dataset import Pipeline
 from models.model import EndUser
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
+from services.metadata_service import MetadataService
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
@@ -612,7 +613,38 @@ class PublishedRagPipelineApi(Resource):
             session.add(pipeline)
             workflow_created_at = TimestampField().format(workflow.created_at)
 
+            # Extract built-in metadata flag before commit (workflow is in session).
+            # If ANY knowledge-index node enables built-in metadata, the dataset
+            # flag should be True (consistent with check_built_in_enabled_in_published_pipeline).
+            node_built_in_enabled: bool | None = None
+            dataset = pipeline.retrieve_dataset(session=session)
+            dataset_id: str | None = dataset.id if dataset else None
+            try:
+                node_built_in_enabled = any(
+                    node_data.get("enable_built_in_metadata") is True
+                    for node_data in MetadataService.iter_knowledge_index_nodes(workflow)
+                )
+            except Exception:
+                logger.exception(
+                    "Skip post-publish built-in metadata sync extraction: failed to parse workflow %s graph",
+                    workflow.id,
+                )
+
             session.commit()
+
+        # After commit: pipeline.workflow_id points to the new workflow.
+        # Sync dataset.built_in_field_enabled with the published node config.
+        # This is best-effort: publish already succeeded, so sync failures
+        # must not turn the response into an error.
+        if dataset_id is not None and node_built_in_enabled is not None:
+            try:
+                MetadataService.sync_built_in_field_on_publish(dataset_id, node_built_in_enabled)
+            except Exception:
+                logger.exception(
+                    "Post-publish built-in metadata sync failed for dataset %s; "
+                    "the Documents page may show a stale toggle until the next publish.",
+                    dataset_id,
+                )
 
         return {
             "result": "success",

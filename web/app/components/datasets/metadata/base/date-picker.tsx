@@ -39,7 +39,7 @@ const WrappedDatePicker = ({
       <div onClick={handleClickTrigger} className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
         <div
           className={cn(
-            'grow',
+            'grow truncate system-xs-regular',
             value ? 'text-text-secondary' : 'text-text-tertiary',
           )}
         >
