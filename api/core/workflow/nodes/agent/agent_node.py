@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.file import File, FileTransferMethod
+from core.helper import encrypter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
@@ -26,6 +27,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.variables import SecretVariable
 from core.variables.segments import ArrayFileSegment, StringSegment
 from core.workflow.enums import (
     NodeType,
@@ -117,6 +119,19 @@ class AgentNode(Node[AgentNodeData]):
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
 
+        # to store secret variables used in the Agent block.
+        secret_variables = set()
+        # get secret variables used.
+        for section_vars in self.graph_runtime_state.variable_pool.variable_dictionary.values():
+            # Iterate over all the sections. e.g. sys, env etc.
+            if isinstance(section_vars, dict):
+                # Iterate over each variable in the section
+                for variable in section_vars.values():
+                    # Check if the variable is a SecretVariable
+                    if isinstance(variable, SecretVariable):
+                        # Add the variable name to the set
+                        secret_variables.add(variable.name)
+
         try:
             message_stream = strategy.invoke(
                 params=parameters,
@@ -149,6 +164,7 @@ class AgentNode(Node[AgentNodeData]):
                 node_type=self.node_type,
                 node_id=self._node_id,
                 node_execution_id=self.id,
+                secret_variables=secret_variables,
             )
         except PluginDaemonClientSideError as e:
             transform_error = AgentMessageTransformError(
@@ -480,6 +496,7 @@ class AgentNode(Node[AgentNodeData]):
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
+        secret_variables: set[str] | None = None,
     ) -> Generator[NodeEventBase, None, None]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
@@ -668,9 +685,9 @@ class AgentNode(Node[AgentNodeData]):
                     parent_id=message.message.parent_id,
                     error=message.message.error,
                     status=message.message.status.value,
-                    data=message.message.data,
+                    data=encrypter.encrypt_secret_keys(message.message.data, secret_variables, None),
                     label=message.message.label,
-                    metadata=message.message.metadata,
+                    metadata=encrypter.encrypt_secret_keys(message.message.metadata, secret_variables, None),
                     node_id=node_id,
                 )
 
