@@ -614,11 +614,13 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         variable_pool_copy.add([self._node_id, "item"], item)
 
         # Create a new GraphRuntimeState for this iteration
+        # cleanup_mcp_sessions=False: MCP sessions are managed by the parent workflow
         graph_runtime_state_copy = GraphRuntimeState(
             variable_pool=variable_pool_copy,
             start_at=self.graph_runtime_state.start_at,
             total_tokens=0,
             node_run_steps=0,
+            cleanup_mcp_sessions=False,
         )
 
         # Create a new node factory with the new GraphRuntimeState
