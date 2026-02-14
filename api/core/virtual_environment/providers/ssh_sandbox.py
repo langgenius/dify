@@ -27,6 +27,7 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 from core.virtual_environment.channel.exec import TransportEOFError
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import TransportWriteCloser
+from core.virtual_environment.constants import COMMAND_EXECUTION_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +56,8 @@ class SSHSandboxEnvironment(VirtualEnvironment):
     _DEFAULT_SSH_HOST = "agentbox"
     _DEFAULT_SSH_PORT = 22
     _DEFAULT_BASE_WORKING_PATH = "/workspace/sandboxes"
-    _DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS = 10
-    _DEFAULT_SSH_OPERATION_TIMEOUT_SECONDS = 30
-    _DEFAULT_COMMAND_MAX_RUNTIME_SECONDS = 60 * 60
+    _SSH_CONNECT_TIMEOUT_SECONDS = 10
+    _SSH_OPERATION_TIMEOUT_SECONDS = 30
     _COMMAND_TIMEOUT_EXIT_CODE = 124
 
     class OptionsKey(StrEnum):
@@ -150,7 +150,7 @@ class SSHSandboxEnvironment(VirtualEnvironment):
             raise RuntimeError("SSH transport is not available")
 
         channel = transport.open_session()
-        channel.settimeout(self._DEFAULT_SSH_OPERATION_TIMEOUT_SECONDS)
+        channel.settimeout(self._SSH_OPERATION_TIMEOUT_SECONDS)
         channel.set_combine_stderr(False)
 
         execution_command = self._build_exec_command(command, environments, cwd)
@@ -166,7 +166,7 @@ class SSHSandboxEnvironment(VirtualEnvironment):
 
         threading.Thread(
             target=self._consume_channel_output,
-            args=(pid, channel, stdout_transport, stderr_transport, self._DEFAULT_COMMAND_MAX_RUNTIME_SECONDS),
+            args=(pid, channel, stdout_transport, stderr_transport, COMMAND_EXECUTION_TIMEOUT_SECONDS),
             daemon=True,
         ).start()
 
@@ -274,9 +274,9 @@ class SSHSandboxEnvironment(VirtualEnvironment):
                 password=password,
                 look_for_keys=False,
                 allow_agent=False,
-                timeout=cls._DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
-                banner_timeout=cls._DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
-                auth_timeout=cls._DEFAULT_SSH_CONNECT_TIMEOUT_SECONDS,
+                timeout=cls._SSH_CONNECT_TIMEOUT_SECONDS,
+                banner_timeout=cls._SSH_CONNECT_TIMEOUT_SECONDS,
+                auth_timeout=cls._SSH_CONNECT_TIMEOUT_SECONDS,
             )
             transport = client.get_transport()
             if transport is not None:
@@ -361,15 +361,15 @@ class SSHSandboxEnvironment(VirtualEnvironment):
 
     @classmethod
     def _run_command(cls, client: Any, command: str) -> bytes:
-        _, stdout, stderr = client.exec_command(command, timeout=cls._DEFAULT_SSH_OPERATION_TIMEOUT_SECONDS)
-        stdout.channel.settimeout(cls._DEFAULT_SSH_OPERATION_TIMEOUT_SECONDS)
+        _, stdout, stderr = client.exec_command(command, timeout=cls._SSH_OPERATION_TIMEOUT_SECONDS)
+        stdout.channel.settimeout(cls._SSH_OPERATION_TIMEOUT_SECONDS)
 
-        deadline = time.monotonic() + cls._DEFAULT_COMMAND_MAX_RUNTIME_SECONDS
+        deadline = time.monotonic() + COMMAND_EXECUTION_TIMEOUT_SECONDS
         while not stdout.channel.exit_status_ready():
             if time.monotonic() >= deadline:
                 with contextlib.suppress(Exception):
                     stdout.channel.close()
-                raise TimeoutError(f"SSH command timed out after {cls._DEFAULT_COMMAND_MAX_RUNTIME_SECONDS}s")
+                raise TimeoutError(f"SSH command timed out after {COMMAND_EXECUTION_TIMEOUT_SECONDS}s")
             time.sleep(0.05)
 
         exit_code = stdout.channel.recv_exit_status()
@@ -428,7 +428,7 @@ class SSHSandboxEnvironment(VirtualEnvironment):
 
     def _set_sftp_operation_timeout(self, sftp: Any) -> None:
         with contextlib.suppress(Exception):
-            sftp.get_channel().settimeout(self._DEFAULT_SSH_OPERATION_TIMEOUT_SECONDS)
+            sftp.get_channel().settimeout(self._SSH_OPERATION_TIMEOUT_SECONDS)
 
     @staticmethod
     def _parse_arch(raw_arch: str) -> Arch:

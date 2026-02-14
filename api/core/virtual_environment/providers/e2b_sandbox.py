@@ -30,6 +30,7 @@ from core.virtual_environment.channel.transport import (
     TransportReadCloser,
     TransportWriteCloser,
 )
+from core.virtual_environment.constants import COMMAND_EXECUTION_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +293,7 @@ class E2BEnvironment(VirtualEnvironment):
                 cwd=cwd,
                 on_stdout=lambda data: stdout_stream_write_handler.write(data.encode()),
                 on_stderr=lambda data: stderr_stream_write_handler.write(data.encode()),
+                timeout=COMMAND_EXECUTION_TIMEOUT_SECONDS,
             )
         except Exception as e:
             # Capture exceptions and write to stderr stream so they can be retrieved via CommandFuture
