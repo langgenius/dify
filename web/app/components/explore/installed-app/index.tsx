@@ -24,9 +24,9 @@ const InstalledApp = ({
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
-  const { isLoading: isLoadingWebAppAccessMode, data: webAppAccessMode, error: webAppAccessModeError } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
-  const { isLoading: isLoadingAppParams, data: appParams, error: appParamsError } = useGetInstalledAppParams(installedApp?.id ?? null)
-  const { isLoading: isLoadingAppMeta, data: appMeta, error: appMetaError } = useGetInstalledAppMeta(installedApp?.id ?? null)
+  const { isPending: isPendingWebAppAccessMode, data: webAppAccessMode, error: webAppAccessModeError } = useGetInstalledAppAccessModeByAppId(installedApp?.id ?? null)
+  const { isPending: isPendingAppParams, data: appParams, error: appParamsError } = useGetInstalledAppParams(installedApp?.id ?? null)
+  const { isPending: isPendingAppMeta, data: appMeta, error: appMetaError } = useGetInstalledAppMeta(installedApp?.id ?? null)
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: installedApp?.app.id, isInstalledApp: true })
 
   useEffect(() => {
@@ -97,7 +97,7 @@ const InstalledApp = ({
       </div>
     )
   }
-  if (isLoadingAppParams || isLoadingAppMeta || isLoadingWebAppAccessMode || isPendingInstalledApps) {
+  if (isPendingInstalledApps || (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading />

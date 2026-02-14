@@ -506,14 +506,8 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/app/app-publisher/suggested-action.tsx": {
@@ -1233,11 +1227,8 @@
     "react/no-nested-component-definitions": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    },
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/apps/empty.tsx": {
@@ -4049,16 +4040,6 @@
     }
   },
   "app/components/develop/secret-key/secret-key-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/explore/app-card/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/explore/app-list/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
