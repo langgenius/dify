@@ -147,6 +147,7 @@ class WorkflowBasedAppRunner:
     def _prepare_single_node_execution(
         self,
         workflow: Workflow,
+        user_id: str,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
@@ -156,6 +157,7 @@ class WorkflowBasedAppRunner:
 
         Args:
             workflow: The workflow instance
+            user_id: The user ID
             single_iteration_run: SingleIterationRunEntity if running single iteration, None otherwise
             single_loop_run: SingleLoopRunEntity if running single loop, None otherwise
 
@@ -181,6 +183,7 @@ class WorkflowBasedAppRunner:
                 workflow=workflow,
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
+                user_id=user_id,
                 graph_runtime_state=graph_runtime_state,
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
@@ -190,6 +193,7 @@ class WorkflowBasedAppRunner:
                 workflow=workflow,
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
+                user_id=user_id,
                 graph_runtime_state=graph_runtime_state,
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
@@ -206,6 +210,7 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         node_id: str,
         user_inputs: dict[str, Any],
+        user_id: str,
         graph_runtime_state: GraphRuntimeState,
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
@@ -217,6 +222,7 @@ class WorkflowBasedAppRunner:
             workflow: The workflow instance
             node_id: The node ID to execute
             user_inputs: User inputs for the node
+            user_id: The user ID
             graph_runtime_state: The graph runtime state
             node_type_filter_key: The key to filter nodes ('iteration_id' or 'loop_id')
             node_type_label: Label for error messages ('iteration' or 'loop')
@@ -271,7 +277,7 @@ class WorkflowBasedAppRunner:
             app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id="",
+            user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,

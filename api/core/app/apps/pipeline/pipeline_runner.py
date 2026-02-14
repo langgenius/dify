@@ -103,6 +103,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             # Handle single iteration or single loop run
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=workflow,
+                user_id=user_id or "",
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
             )
