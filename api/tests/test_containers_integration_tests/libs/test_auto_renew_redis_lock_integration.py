@@ -1,5 +1,5 @@
 """
-Integration tests for AutoRenewRedisLock using real Redis via TestContainers.
+Integration tests for DbMigrationAutoRenewLock using real Redis via TestContainers.
 """
 
 import time
@@ -8,20 +8,20 @@ import uuid
 import pytest
 
 from extensions.ext_redis import redis_client
-from libs.auto_renew_redis_lock import AutoRenewRedisLock
+from libs.db_migration_lock import DbMigrationAutoRenewLock
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")
-def test_auto_renew_redis_lock_renews_ttl_and_releases():
-    lock_name = f"test:auto_renew_lock:{uuid.uuid4().hex}"
+def test_db_migration_lock_renews_ttl_and_releases():
+    lock_name = f"test:db_migration_auto_renew_lock:{uuid.uuid4().hex}"
 
     # Keep base TTL very small, and renew frequently so the test is stable even on slower CI.
-    lock = AutoRenewRedisLock(
+    lock = DbMigrationAutoRenewLock(
         redis_client=redis_client,
         name=lock_name,
         ttl_seconds=1.0,
         renew_interval_seconds=0.2,
-        log_context="test_auto_renew_redis_lock",
+        log_context="test_db_migration_lock",
     )
 
     acquired = lock.acquire(blocking=True, blocking_timeout=5)

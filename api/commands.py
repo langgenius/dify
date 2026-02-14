@@ -30,7 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
-from libs.auto_renew_redis_lock import AutoRenewRedisLock
+from libs.db_migration_lock import DbMigrationAutoRenewLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -730,7 +730,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    lock = AutoRenewRedisLock(
+    lock = DbMigrationAutoRenewLock(
         redis_client=redis_client,
         name="db_upgrade_lock",
         ttl_seconds=DB_UPGRADE_LOCK_TTL_SECONDS,

@@ -1,15 +1,13 @@
 """
-Auto-renewing Redis distributed lock (redis-py Lock).
+DB migration Redis lock with heartbeat renewal.
 
-Why this exists:
-- A fixed, long lock TTL can leave a stale lock for a long time if the process is killed
-  before releasing it.
-- A fixed, short lock TTL can expire during long critical sections (e.g. DB migrations),
-  allowing another instance to acquire the same lock concurrently.
+This is intentionally migration-specific. Background renewal is a trade-off that makes sense
+for unbounded, blocking operations like DB migrations (DDL/DML) where the main thread cannot
+periodically refresh the lock TTL.
 
-This wrapper keeps a short base TTL and renews it in a daemon thread using `Lock.reacquire()`
-while the process is alive. If the process is terminated, the renewal stops and the lock
-expires soon.
+Do NOT use this as a general-purpose lock primitive for normal application code. Prefer explicit
+lock lifecycle management (e.g. redis-py Lock context manager + `extend()` / `reacquire()` from
+the same thread) when execution flow is under control.
 """
 
 from __future__ import annotations
@@ -23,9 +21,9 @@ from redis.exceptions import LockNotOwnedError, RedisError
 logger = logging.getLogger(__name__)
 
 
-class AutoRenewRedisLock:
+class DbMigrationAutoRenewLock:
     """
-    Redis lock wrapper that automatically renews TTL while held.
+    Redis lock wrapper that automatically renews TTL while held (migration-only).
 
     Notes:
     - We force `thread_local=False` when creating the underlying redis-py lock, because the
@@ -76,7 +74,7 @@ class AutoRenewRedisLock:
 
     def acquire(self, *args: Any, **kwargs: Any) -> bool:
         """
-        Acquire the lock and start auto-renew heartbeat on success.
+        Acquire the lock and start heartbeat renewal on success.
 
         Accepts the same args/kwargs as redis-py `Lock.acquire()`.
         """
@@ -111,7 +109,7 @@ class AutoRenewRedisLock:
             target=self._heartbeat_loop,
             args=(self._lock, self._stop_event),
             daemon=True,
-            name=f"AutoRenewRedisLock({self._name})",
+            name=f"DbMigrationAutoRenewLock({self._name})",
         )
         self._thread.start()
 
@@ -121,20 +119,20 @@ class AutoRenewRedisLock:
                 lock.reacquire()
             except LockNotOwnedError:
                 self._logger.warning(
-                    "Auto-renew lock is no longer owned during heartbeat%s; stop renewing.",
+                    "DB migration lock is no longer owned during heartbeat%s; stop renewing.",
                     f" ({self._log_context})" if self._log_context else "",
                     exc_info=True,
                 )
                 return
             except RedisError:
                 self._logger.warning(
-                    "Failed to renew auto-renew lock due to Redis error%s; will retry.",
+                    "Failed to renew DB migration lock due to Redis error%s; will retry.",
                     f" ({self._log_context})" if self._log_context else "",
                     exc_info=True,
                 )
             except Exception:
                 self._logger.warning(
-                    "Unexpected error while renewing auto-renew lock%s; will retry.",
+                    "Unexpected error while renewing DB migration lock%s; will retry.",
                     f" ({self._log_context})" if self._log_context else "",
                     exc_info=True,
                 )
@@ -157,21 +155,21 @@ class AutoRenewRedisLock:
             lock.release()
         except LockNotOwnedError:
             self._logger.warning(
-                "Auto-renew lock not owned on release%s%s; ignoring.",
+                "DB migration lock not owned on release%s%s; ignoring.",
                 f" after {status} operation" if status else "",
                 f" ({self._log_context})" if self._log_context else "",
                 exc_info=True,
             )
         except RedisError:
             self._logger.warning(
-                "Failed to release auto-renew lock due to Redis error%s%s; ignoring.",
+                "Failed to release DB migration lock due to Redis error%s%s; ignoring.",
                 f" after {status} operation" if status else "",
                 f" ({self._log_context})" if self._log_context else "",
                 exc_info=True,
             )
         except Exception:
             self._logger.warning(
-                "Unexpected error while releasing auto-renew lock%s%s; ignoring.",
+                "Unexpected error while releasing DB migration lock%s%s; ignoring.",
                 f" after {status} operation" if status else "",
                 f" ({self._log_context})" if self._log_context else "",
                 exc_info=True,
@@ -189,7 +187,7 @@ class AutoRenewRedisLock:
             self._thread.join(timeout=join_timeout_seconds)
             if self._thread.is_alive():
                 self._logger.warning(
-                    "Auto-renew lock heartbeat thread did not stop within %.2fs%s; ignoring.",
+                    "DB migration lock heartbeat thread did not stop within %.2fs%s; ignoring.",
                     join_timeout_seconds,
                     f" ({self._log_context})" if self._log_context else "",
                 )
