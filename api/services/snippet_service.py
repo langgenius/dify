@@ -524,6 +524,30 @@ class SnippetService:
 
         return node_executions
 
+    # --- Node Execution Operations ---
+
+    def get_snippet_node_last_run(
+        self,
+        *,
+        snippet: CustomizedSnippet,
+        workflow: Workflow,
+        node_id: str,
+    ) -> WorkflowNodeExecutionModel | None:
+        """
+        Get the most recent execution for a specific node in a snippet workflow.
+
+        :param snippet: CustomizedSnippet instance
+        :param workflow: Workflow instance
+        :param node_id: Node identifier
+        :return: WorkflowNodeExecutionModel or None
+        """
+        return self._node_execution_service_repo.get_node_last_execution(
+            tenant_id=snippet.tenant_id,
+            app_id=snippet.id,
+            workflow_id=workflow.id,
+            node_id=node_id,
+        )
+
     # --- Use Count ---
 
     @staticmethod

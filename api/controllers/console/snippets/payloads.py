@@ -69,6 +69,33 @@ class WorkflowRunQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
 
 
+class SnippetDraftRunPayload(BaseModel):
+    """Payload for running snippet draft workflow."""
+
+    inputs: dict[str, Any]
+    files: list[dict[str, Any]] | None = None
+
+
+class SnippetDraftNodeRunPayload(BaseModel):
+    """Payload for running a single node in snippet draft workflow."""
+
+    inputs: dict[str, Any]
+    query: str = ""
+    files: list[dict[str, Any]] | None = None
+
+
+class SnippetIterationNodeRunPayload(BaseModel):
+    """Payload for running an iteration node in snippet draft workflow."""
+
+    inputs: dict[str, Any] | None = None
+
+
+class SnippetLoopNodeRunPayload(BaseModel):
+    """Payload for running a loop node in snippet draft workflow."""
+
+    inputs: dict[str, Any] | None = None
+
+
 class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
