@@ -98,6 +98,10 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
+            # NOTE(QuantumGhost): We explicitly set `pause_state_config` to `None`
+            # because workflow pausing mechanisms (such as HumanInput) are not
+            # supported within WorkflowTool execution context.
+            pause_state_config=None,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})

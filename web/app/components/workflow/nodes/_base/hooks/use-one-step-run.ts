@@ -24,6 +24,7 @@ import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
@@ -69,6 +70,7 @@ const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
+const { checkValid: checkHumanInputValid } = HumanInputDefault
 
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
@@ -86,6 +88,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
+  [BlockEnum.HumanInput]: checkHumanInputValid,
 }
 
 type RequestError = {
@@ -313,20 +316,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [
-    isRunAfterSingleRun,
-    runningStatus,
-    flowId,
-    id,
-    store,
-    appendNodeInspectVars,
-    updateNodeInspectRunningState,
-    invalidLastRun,
-    isStartNode,
-    isTriggerNode,
-    invalidateSysVarValues,
-    invalidateConversationVarValues,
-  ])
+  }, [isRunAfterSingleRun, runningStatus, flowType, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, isTriggerNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
