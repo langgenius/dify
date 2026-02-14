@@ -784,11 +784,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/dataset-config/card-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4043,14 +4038,6 @@
       "count": 9
     }
   },
-  "app/components/develop/doc.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/develop/md.tsx": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -4698,14 +4685,6 @@
   "app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/plugins/install-plugin/install-bundle/steps/install-multi.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 5
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/plugins/install-plugin/install-bundle/steps/install.tsx": {
@@ -5729,11 +5708,6 @@
   "app/components/tools/types.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/tools/workflow-tool/configure-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/tools/workflow-tool/index.tsx": {
