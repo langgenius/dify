@@ -1,5 +1,6 @@
 import logging
 import uuid
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -10,6 +11,14 @@ from services.enterprise.base import EnterpriseRequest
 logger = logging.getLogger(__name__)
 
 DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
+DEFAULT_WORKSPACE_JOIN_ASYNC_MAX_WORKERS = 1
+
+# Fire-and-forget executor for signup-time enterprise side effects.
+# Best-effort means we accept that tasks may be dropped on process restart.
+_default_workspace_join_executor = ThreadPoolExecutor(
+    max_workers=DEFAULT_WORKSPACE_JOIN_ASYNC_MAX_WORKERS,
+    thread_name_prefix="enterprise-default-workspace-join",
+)
 
 
 class WebAppSettings(BaseModel):
@@ -81,6 +90,32 @@ def try_join_default_workspace(account_id: str) -> None:
             )
     except Exception:
         logger.warning("Failed to join enterprise default workspace for account %s", account_id, exc_info=True)
+
+
+def try_join_default_workspace_async(account_id: str) -> None:
+    """
+    Async best-effort wrapper for try_join_default_workspace().
+
+    This is intended for request paths (signup/registration) where we do not want to
+    add latency or tie up web workers waiting on the enterprise service.
+    """
+
+    if not dify_config.ENTERPRISE_ENABLED:
+        return
+
+    future: Future[None] = _default_workspace_join_executor.submit(try_join_default_workspace, account_id)
+
+    def _on_done(f: Future[None], *, _account_id: str = account_id) -> None:
+        try:
+            f.result()
+        except Exception:
+            logger.warning(
+                "Async join enterprise default workspace failed for account %s",
+                _account_id,
+                exc_info=True,
+            )
+
+    future.add_done_callback(_on_done)
 
 
 class EnterpriseService:
