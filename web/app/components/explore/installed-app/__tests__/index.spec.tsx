@@ -1,19 +1,14 @@
 import type { Mock } from 'vitest'
 import type { InstalledApp as InstalledAppType } from '@/models/explore'
 import { render, screen, waitFor } from '@testing-library/react'
-import { useContext } from 'use-context-selector'
 
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
+import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import InstalledApp from '../index'
 
-vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(),
-  createContext: vi.fn(() => ({})),
-}))
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
 }))
@@ -24,28 +19,9 @@ vi.mock('@/service/use-explore', () => ({
   useGetInstalledAppAccessModeByAppId: vi.fn(),
   useGetInstalledAppParams: vi.fn(),
   useGetInstalledAppMeta: vi.fn(),
+  useGetInstalledApps: vi.fn(),
 }))
 
-/**
- * Mock child components for unit testing
- *
- * RATIONALE FOR MOCKING:
- * - TextGenerationApp: 648 lines, complex batch processing, task management, file uploads
- * - ChatWithHistory: 576-line custom hook, complex conversation/history management, 30+ context values
- *
- * These components are too complex to test as real components. Using real components would:
- * 1. Require mocking dozens of their dependencies (services, contexts, hooks)
- * 2. Make tests fragile and coupled to child component implementation details
- * 3. Violate the principle of testing one component in isolation
- *
- * For a container component like InstalledApp, its responsibility is to:
- * - Correctly route to the appropriate child component based on app mode
- * - Pass the correct props to child components
- * - Handle loading/error states before rendering children
- *
- * The internal logic of ChatWithHistory and TextGenerationApp should be tested
- * in their own dedicated test files.
- */
 vi.mock('@/app/components/share/text-generation', () => ({
   default: ({ isInstalledApp, installedAppInfo, isWorkflow }: {
     isInstalledApp?: boolean
@@ -115,13 +91,29 @@ describe('InstalledApp', () => {
     result: true,
   }
 
+  const setupMocks = (
+    installedApps: InstalledAppType[] = [mockInstalledApp],
+    options: {
+      isPending?: boolean
+      isFetching?: boolean
+    } = {},
+  ) => {
+    const {
+      isPending = false,
+      isFetching = false,
+    } = options
+
+    ;(useGetInstalledApps as Mock).mockReturnValue({
+      data: { installed_apps: installedApps },
+      isPending,
+      isFetching,
+    })
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
 
-    ;(useContext as Mock).mockReturnValue({
-      installedApps: [mockInstalledApp],
-      isFetchingInstalledApps: false,
-    })
+    setupMocks()
 
     ;(useWebAppStore as unknown as Mock).mockImplementation((
       selector: (state: {
@@ -143,19 +135,19 @@ describe('InstalledApp', () => {
     })
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-      isFetching: false,
+      isPending: false,
       data: mockWebAppAccessMode,
       error: null,
     })
 
     ;(useGetInstalledAppParams as Mock).mockReturnValue({
-      isFetching: false,
+      isPending: false,
       data: mockAppParams,
       error: null,
     })
 
     ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-      isFetching: false,
+      isPending: false,
       data: mockAppMeta,
       error: null,
     })
@@ -174,7 +166,7 @@ describe('InstalledApp', () => {
 
     it('should render loading state when fetching app params', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: true,
+        isPending: true,
         data: null,
         error: null,
       })
@@ -186,7 +178,7 @@ describe('InstalledApp', () => {
 
     it('should render loading state when fetching app meta', () => {
       ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isFetching: true,
+        isPending: true,
         data: null,
         error: null,
       })
@@ -198,7 +190,7 @@ describe('InstalledApp', () => {
 
     it('should render loading state when fetching web app access mode', () => {
       ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isFetching: true,
+        isPending: true,
         data: null,
         error: null,
       })
@@ -209,10 +201,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching installed apps', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [mockInstalledApp],
-        isFetchingInstalledApps: true,
-      })
+      setupMocks([mockInstalledApp], { isPending: true })
 
       const { container } = render(<InstalledApp id="installed-app-123" />)
       const svg = container.querySelector('svg.spin-animation')
@@ -220,10 +209,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render app not found (404) when installedApp does not exist', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([])
 
       render(<InstalledApp id="nonexistent-app" />)
       expect(screen.getByText(/404/)).toBeInTheDocument()
@@ -234,7 +220,7 @@ describe('InstalledApp', () => {
     it('should render error when app params fails to load', () => {
       const error = new Error('Failed to load app params')
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error,
       })
@@ -246,7 +232,7 @@ describe('InstalledApp', () => {
     it('should render error when app meta fails to load', () => {
       const error = new Error('Failed to load app meta')
       ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error,
       })
@@ -258,7 +244,7 @@ describe('InstalledApp', () => {
     it('should render error when web app access mode fails to load', () => {
       const error = new Error('Failed to load access mode')
       ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error,
       })
@@ -305,10 +291,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.ADVANCED_CHAT,
         },
       }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [advancedChatApp],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([advancedChatApp])
 
       render(<InstalledApp id="installed-app-123" />)
       expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
@@ -323,10 +306,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.AGENT_CHAT,
         },
       }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [agentChatApp],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([agentChatApp])
 
       render(<InstalledApp id="installed-app-123" />)
       expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
@@ -341,10 +321,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.COMPLETION,
         },
       }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [completionApp],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([completionApp])
 
       render(<InstalledApp id="installed-app-123" />)
       expect(screen.getByText(/Text Generation App/i)).toBeInTheDocument()
@@ -359,10 +336,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.WORKFLOW,
         },
       }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [workflowApp],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([workflowApp])
 
       render(<InstalledApp id="installed-app-123" />)
       expect(screen.getByText(/Text Generation App/i)).toBeInTheDocument()
@@ -374,10 +348,7 @@ describe('InstalledApp', () => {
     it('should use id prop to find installed app', () => {
       const app1 = { ...mockInstalledApp, id: 'app-1' }
       const app2 = { ...mockInstalledApp, id: 'app-2' }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [app1, app2],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([app1, app2])
 
       render(<InstalledApp id="app-2" />)
       expect(screen.getByText(/app-2/)).toBeInTheDocument()
@@ -416,10 +387,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update app info to null when installedApp is not found', async () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([])
 
       render(<InstalledApp id="nonexistent-app" />)
 
@@ -488,7 +456,7 @@ describe('InstalledApp', () => {
 
     it('should not update app params when data is null', async () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error: null,
       })
@@ -504,7 +472,7 @@ describe('InstalledApp', () => {
 
     it('should not update app meta when data is null', async () => {
       ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error: null,
       })
@@ -520,7 +488,7 @@ describe('InstalledApp', () => {
 
     it('should not update access mode when data is null', async () => {
       ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error: null,
       })
@@ -537,10 +505,7 @@ describe('InstalledApp', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty installedApps array', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([])
 
       render(<InstalledApp id="installed-app-123" />)
       expect(screen.getByText(/404/)).toBeInTheDocument()
@@ -555,10 +520,7 @@ describe('InstalledApp', () => {
           name: 'Other App',
         },
       }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [otherApp, mockInstalledApp],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([otherApp, mockInstalledApp])
 
       render(<InstalledApp id="installed-app-123" />)
       expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
@@ -568,10 +530,7 @@ describe('InstalledApp', () => {
     it('should handle rapid id prop changes', async () => {
       const app1 = { ...mockInstalledApp, id: 'app-1' }
       const app2 = { ...mockInstalledApp, id: 'app-2' }
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [app1, app2],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([app1, app2])
 
       const { rerender } = render(<InstalledApp id="app-1" />)
       expect(screen.getByText(/app-1/)).toBeInTheDocument()
@@ -593,10 +552,7 @@ describe('InstalledApp', () => {
     })
 
     it('should call service hooks with null when installedApp is not found', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([])
 
       render(<InstalledApp id="nonexistent-app" />)
 
@@ -613,7 +569,7 @@ describe('InstalledApp', () => {
   describe('Render Priority', () => {
     it('should show error before loading state', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: true,
+        isPending: true,
         data: null,
         error: new Error('Some error'),
       })
@@ -624,7 +580,7 @@ describe('InstalledApp', () => {
 
     it('should show error before permission check', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: false,
+        isPending: false,
         data: null,
         error: new Error('Params error'),
       })
@@ -639,10 +595,7 @@ describe('InstalledApp', () => {
     })
 
     it('should show permission error before 404', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
+      setupMocks([])
       ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
@@ -653,16 +606,8 @@ describe('InstalledApp', () => {
       expect(screen.queryByText(/404/)).not.toBeInTheDocument()
     })
 
-    it('should show loading before 404', () => {
-      ;(useContext as Mock).mockReturnValue({
-        installedApps: [],
-        isFetchingInstalledApps: false,
-      })
-      ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isFetching: true,
-        data: null,
-        error: null,
-      })
+    it('should show loading before 404 while installed apps are refetching', () => {
+      setupMocks([], { isFetching: true })
 
       const { container } = render(<InstalledApp id="nonexistent-app" />)
       const svg = container.querySelector('svg.spin-animation')
