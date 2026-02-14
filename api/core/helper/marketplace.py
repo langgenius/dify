@@ -5,6 +5,7 @@ import httpx
 from yarl import URL
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.helper.download import download_with_size_limit
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
 from extensions.ext_redis import redis_client
@@ -44,9 +45,19 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
     return data.get("data", {}).get("plugins", [])
 
 
-def record_install_plugin_event(plugin_unique_identifier: str):
+def record_install_plugin_event(plugin_unique_identifier: str) -> None:
+    """
+    Record plugin installation event in marketplace.
+
+    Args:
+        plugin_unique_identifier: Unique identifier of the installed plugin
+    """
     url = str(marketplace_api_url / "api/v1/stats/plugins/install_count")
-    response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier})
+    response = ssrf_proxy.post(
+        url,
+        json={"unique_identifier": plugin_unique_identifier},
+        headers={"X-Dify-Version": dify_config.project.version},
+    )
     response.raise_for_status()
 
 
@@ -64,7 +75,7 @@ def fetch_global_plugin_manifest(cache_key_prefix: str, cache_ttl: int) -> None:
         Exception: If any other error occurs during fetching or caching
     """
     url = str(marketplace_api_url / "api/v1/dist/plugins/manifest.json")
-    response = httpx.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
+    response = ssrf_proxy.get(url, headers={"X-Dify-Version": dify_config.project.version}, timeout=30)
     response.raise_for_status()
 
     raw_json = response.json()
