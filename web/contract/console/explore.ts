@@ -1,6 +1,8 @@
+import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
+import type { AppMeta } from '@/models/share'
 import type { AppModeEnum } from '@/types/app'
 import { type } from '@orpc/contract'
 import { base } from '../base'
@@ -85,6 +87,30 @@ export const exploreInstalledAppAccessModeContract = base
   })
   .input(type<{ query: { appId: string } }>())
   .output(type<AppAccessModeResponse>())
+
+export const exploreInstalledAppParametersContract = base
+  .route({
+    path: '/installed-apps/{appId}/parameters',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+  }>())
+  .output(type<ChatConfig>())
+
+export const exploreInstalledAppMetaContract = base
+  .route({
+    path: '/installed-apps/{appId}/meta',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+  }>())
+  .output(type<AppMeta>())
 
 export const exploreBannersContract = base
   .route({

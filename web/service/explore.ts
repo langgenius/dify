@@ -1,4 +1,6 @@
+import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { ExploreAppDetailResponse } from '@/contract/console/explore'
+import type { AppMeta } from '@/models/share'
 import { consoleClient } from './client'
 
 export const fetchAppList = (language?: string) => {
@@ -47,6 +49,18 @@ export const getAppAccessModeByAppId = (appId: string) => {
   return consoleClient.explore.appAccessMode({
     query: { appId },
   })
+}
+
+export const fetchInstalledAppParams = (appId: string) => {
+  return consoleClient.explore.installedAppParameters({
+    params: { appId },
+  }) as Promise<ChatConfig>
+}
+
+export const fetchInstalledAppMeta = (appId: string) => {
+  return consoleClient.explore.installedAppMeta({
+    params: { appId },
+  }) as Promise<AppMeta>
 }
 
 export const fetchBanners = (language?: string) => {

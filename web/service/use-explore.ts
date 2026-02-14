@@ -4,8 +4,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from './client'
-import { fetchAppList, fetchBanners, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
-import { AppSourceType, fetchAppMeta, fetchAppParams } from './share'
+import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 
 type ExploreAppListData = {
   categories: AppCategory[]
@@ -17,11 +16,12 @@ export const useExploreAppList = () => {
   const exploreAppsInput = locale
     ? { query: { language: locale } }
     : {}
+  const exploreAppsLanguage = exploreAppsInput?.query?.language
 
   return useQuery<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.queryKey({ input: exploreAppsInput }), locale],
+    queryKey: [...consoleQuery.explore.apps.queryKey({ input: exploreAppsInput }), exploreAppsLanguage],
     queryFn: async () => {
-      const { categories, recommended_apps } = await fetchAppList(locale)
+      const { categories, recommended_apps } = await fetchAppList(exploreAppsLanguage)
       return {
         categories,
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
@@ -68,12 +68,13 @@ export const useUpdateAppPinStatus = () => {
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const appAccessModeInput = { query: { appId: appId ?? '' } }
+  const installedAppId = appAccessModeInput.query.appId
 
   return useQuery({
     queryKey: [
       ...consoleQuery.explore.appAccessMode.queryKey({ input: appAccessModeInput }),
       systemFeatures.webapp_auth.enabled,
-      appId,
+      installedAppId,
     ],
     queryFn: () => {
       if (systemFeatures.webapp_auth.enabled === false) {
@@ -81,36 +82,42 @@ export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
           accessMode: AccessMode.PUBLIC,
         }
       }
-      if (!appId)
+      if (!installedAppId)
         return Promise.reject(new Error('App code is required to get access mode'))
 
-      return getAppAccessModeByAppId(appId)
+      return getAppAccessModeByAppId(installedAppId)
     },
-    enabled: !!appId,
+    enabled: !!installedAppId,
   })
 }
 
 export const useGetInstalledAppParams = (appId: string | null) => {
+  const installedAppParamsInput = { params: { appId: appId ?? '' } }
+  const installedAppId = installedAppParamsInput.params.appId
+
   return useQuery({
-    queryKey: ['explore', 'appParams', appId],
+    queryKey: [...consoleQuery.explore.installedAppParameters.queryKey({ input: installedAppParamsInput }), installedAppId],
     queryFn: () => {
-      if (!appId || appId.length === 0)
+      if (!installedAppId)
         return Promise.reject(new Error('App ID is required to get app params'))
-      return fetchAppParams(AppSourceType.installedApp, appId)
+      return fetchInstalledAppParams(installedAppId)
     },
-    enabled: !!appId,
+    enabled: !!installedAppId,
   })
 }
 
 export const useGetInstalledAppMeta = (appId: string | null) => {
+  const installedAppMetaInput = { params: { appId: appId ?? '' } }
+  const installedAppId = installedAppMetaInput.params.appId
+
   return useQuery({
-    queryKey: ['explore', 'appMeta', appId],
+    queryKey: [...consoleQuery.explore.installedAppMeta.queryKey({ input: installedAppMetaInput }), installedAppId],
     queryFn: () => {
-      if (!appId || appId.length === 0)
+      if (!installedAppId)
         return Promise.reject(new Error('App ID is required to get app meta'))
-      return fetchAppMeta(AppSourceType.installedApp, appId)
+      return fetchInstalledAppMeta(installedAppId)
     },
-    enabled: !!appId,
+    enabled: !!installedAppId,
   })
 }
 
@@ -118,11 +125,12 @@ export const useGetBanners = (locale?: string) => {
   const bannersInput = locale
     ? { query: { language: locale } }
     : {}
+  const bannersLanguage = bannersInput?.query?.language
 
   return useQuery({
-    queryKey: [...consoleQuery.explore.banners.queryKey({ input: bannersInput }), locale],
+    queryKey: [...consoleQuery.explore.banners.queryKey({ input: bannersInput }), bannersLanguage],
     queryFn: () => {
-      return fetchBanners(locale)
+      return fetchBanners(bannersLanguage)
     },
   })
 }

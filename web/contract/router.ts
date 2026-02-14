@@ -5,6 +5,8 @@ import {
   exploreAppsContract,
   exploreBannersContract,
   exploreInstalledAppAccessModeContract,
+  exploreInstalledAppMetaContract,
+  exploreInstalledAppParametersContract,
   exploreInstalledAppPinContract,
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
@@ -47,6 +49,8 @@ export const consoleRouterContract = {
     uninstallInstalledApp: exploreInstalledAppUninstallContract,
     updateInstalledApp: exploreInstalledAppPinContract,
     appAccessMode: exploreInstalledAppAccessModeContract,
+    installedAppParameters: exploreInstalledAppParametersContract,
+    installedAppMeta: exploreInstalledAppMetaContract,
     banners: exploreBannersContract,
   },
   trialApps: {
