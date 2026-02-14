@@ -38,6 +38,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -290,28 +291,29 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
                 # Determine the correct span kind based on node type
                 span_kind = OpenInferenceSpanKindValues.CHAIN
-                if node_execution.node_type == "llm":
-                    span_kind = OpenInferenceSpanKindValues.LLM
-                    provider = process_data.get("model_provider")
-                    model = process_data.get("model_name")
-                    if provider:
-                        node_metadata["ls_provider"] = provider
-                    if model:
-                        node_metadata["ls_model_name"] = model
+                match node_execution.node_type:
+                    case NodeType.LLM:
+                        span_kind = OpenInferenceSpanKindValues.LLM
+                        provider = process_data.get("model_provider")
+                        model = process_data.get("model_name")
+                        if provider:
+                            node_metadata["ls_provider"] = provider
+                        if model:
+                            node_metadata["ls_model_name"] = model
 
-                    usage_data = (
-                        process_data.get("usage", {}) if "usage" in process_data else outputs_value.get("usage", {})
-                    )
-                    if usage_data:
-                        node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
-                        node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
-                        node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
-                elif node_execution.node_type == "dataset_retrieval":
-                    span_kind = OpenInferenceSpanKindValues.RETRIEVER
-                elif node_execution.node_type == "tool":
-                    span_kind = OpenInferenceSpanKindValues.TOOL
-                else:
-                    span_kind = OpenInferenceSpanKindValues.CHAIN
+                        usage_data = (
+                            process_data.get("usage", {}) if "usage" in process_data else outputs_value.get("usage", {})
+                        )
+                        if usage_data:
+                            node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
+                            node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
+                            node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
+                    case "dataset_retrieval":  # TODO: https://github.com/langgenius/dify/issues/31840
+                        span_kind = OpenInferenceSpanKindValues.RETRIEVER
+                    case NodeType.TOOL:
+                        span_kind = OpenInferenceSpanKindValues.TOOL
+                    case _:
+                        span_kind = OpenInferenceSpanKindValues.CHAIN
 
                 workflow_span_context = set_span_in_context(workflow_span)
                 node_span = self.tracer.start_span(
