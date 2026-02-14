@@ -36,4 +36,3 @@ def test_db_migration_lock_renews_ttl_and_releases():
 
     # After release, the key should not exist.
     assert redis_client.exists(lock_name) == 0
-
