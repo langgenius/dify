@@ -53,6 +53,16 @@ class TestJoinDefaultWorkspace:
         with pytest.raises(ValueError):
             EnterpriseService.join_default_workspace(account_id="not-a-uuid")
 
+    def test_join_default_workspace_missing_required_fields_raises(self):
+        account_id = "11111111-1111-1111-1111-111111111111"
+        response = {"workspace_id": "", "message": "ok"}  # missing "joined"
+
+        with patch("services.enterprise.enterprise_service.EnterpriseRequest.send_request") as mock_send_request:
+            mock_send_request.return_value = response
+
+            with pytest.raises(ValueError, match="Invalid response payload"):
+                EnterpriseService.join_default_workspace(account_id=account_id)
+
 
 class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_enterprise_disabled_noop(self):
