@@ -660,6 +660,19 @@ class AppCopyApi(Resource):
             )
             session.commit()
 
+            # Inherit web app permission from original app
+            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+                try:
+                    # Get the original app's access mode
+                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
+                    access_mode = original_settings.access_mode
+                except Exception:
+                    # If original app has no settings (old app), default to public to match fallback behavior
+                    access_mode = "public"
+
+                # Apply the same access mode to the copied app
+                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
+
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
 
