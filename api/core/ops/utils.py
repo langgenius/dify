@@ -1,12 +1,24 @@
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Union
+from typing import Any, Union
 from urllib.parse import urlparse
 
 from sqlalchemy import select
 
+from core.workflow.enums import NodeType
 from models.engine import db
 from models.model import Message
+
+
+def should_trace_as_llm(node_type: NodeType, process_data: dict[str, Any] | None) -> bool:
+    """Determine whether a workflow node should be traced as an LLM generation.
+
+    Returns True for LLM nodes (identified by model_mode == "chat" in process_data)
+    and for agent nodes (which wrap LLM calls internally).
+    """
+    is_llm_generation = bool(process_data and process_data.get("model_mode") == "chat")
+    is_agent_node = node_type == NodeType.AGENT
+    return is_llm_generation or is_agent_node
 
 
 def filter_none_values(data: dict):
