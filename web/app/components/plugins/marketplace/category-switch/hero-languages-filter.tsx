@@ -82,7 +82,7 @@ const HeroLanguagesFilter = ({
           />
           <div className="system-md-medium flex items-center gap-0.5">
             {!hasSelected && (
-              <span>{t('marketplace.searchFilterLanguage', { ns: 'plugin' })}</span>
+              <span>{t('marketplace.languages', { ns: 'plugin' })}</span>
             )}
             {hasSelected && (
               <span className="text-saas-dify-blue-inverted">
