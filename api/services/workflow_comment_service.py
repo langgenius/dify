@@ -5,6 +5,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
 from werkzeug.exceptions import Forbidden, NotFound
 
+from configs import dify_config
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import uuid_value
@@ -61,7 +62,7 @@ class WorkflowCommentService:
         mentioned_user_ids: Sequence[str],
         content: str,
     ) -> list[dict[str, str]]:
-        """Prepare email payloads for mentioned users."""
+        """Prepare email payloads for mentioned users, including the workflow app link."""
         if not mentioned_user_ids:
             return []
 
@@ -72,6 +73,8 @@ class WorkflowCommentService:
         app_name = session.scalar(select(App.name).where(App.id == app_id, App.tenant_id == tenant_id)) or "Dify app"
         commenter_name = session.scalar(select(Account.name).where(Account.id == mentioner_id)) or "Dify user"
         comment_excerpt = WorkflowCommentService._format_comment_excerpt(content)
+        base_url = dify_config.CONSOLE_WEB_URL.rstrip("/")
+        app_url = f"{base_url}/app/{app_id}/workflow"
 
         accounts = session.scalars(
             select(Account)
@@ -89,6 +92,7 @@ class WorkflowCommentService:
                     "commenter_name": commenter_name,
                     "app_name": app_name,
                     "comment_content": comment_excerpt,
+                    "app_url": app_url,
                 }
             )
         return payloads

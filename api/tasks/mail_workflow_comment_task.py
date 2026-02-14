@@ -18,6 +18,7 @@ def send_workflow_comment_mention_email_task(
     commenter_name: str,
     app_name: str,
     comment_content: str,
+    app_url: str,
 ):
     """
     Send workflow comment mention email with internationalization support.
@@ -29,6 +30,7 @@ def send_workflow_comment_mention_email_task(
         commenter_name: Name of the comment author
         app_name: Name of the app where the comment was made
         comment_content: Comment content excerpt
+        app_url: Link to the app workflow page
     """
     if not mail.is_inited():
         return
@@ -48,6 +50,7 @@ def send_workflow_comment_mention_email_task(
                 "commenter_name": commenter_name,
                 "app_name": app_name,
                 "comment_content": comment_content,
+                "app_url": app_url,
             },
         )
 
