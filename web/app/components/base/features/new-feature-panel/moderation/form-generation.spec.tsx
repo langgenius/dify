@@ -3,7 +3,7 @@ import type { CodeBasedExtensionForm } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import FormGeneration from './form-generation'
 
-const i18n = (en: string, zh = en) => ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText
+const i18n = (en: string, zh = en): I18nText => ({ 'en-US': en, 'zh-Hans': zh })
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',

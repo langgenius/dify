@@ -1,4 +1,5 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { InputVar, InputVarType } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import OpeningSettingModal from './modal'
 
@@ -48,6 +49,14 @@ const defaultData: OpeningStatement = {
   opening_statement: 'Hello, how can I help?',
   suggested_questions: ['Question 1', 'Question 2'],
 }
+
+const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
+  variable: 'name',
+  label: 'Name',
+  type: 'string' as InputVarType,
+  required: true,
+  ...overrides,
+})
 
 describe('OpeningSettingModal', () => {
   beforeEach(() => {
@@ -391,7 +400,7 @@ describe('OpeningSettingModal', () => {
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
         onCancel={vi.fn()}
-        workflowVariables={[{ variable: 'name', label: 'Name', type: 'string', required: true } as unknown as import('@/app/components/workflow/types').InputVar]}
+        workflowVariables={[createMockInputVar()]}
       />,
     )
 
@@ -408,7 +417,7 @@ describe('OpeningSettingModal', () => {
         data={{ ...defaultData, opening_statement: 'Hello {{unknown}}' }}
         onSave={vi.fn()}
         onCancel={vi.fn()}
-        workflowVariables={[{ variable: 'name', label: 'Name', type: 'string', required: true } as unknown as import('@/app/components/workflow/types').InputVar]}
+        workflowVariables={[createMockInputVar()]}
       />,
     )
 
