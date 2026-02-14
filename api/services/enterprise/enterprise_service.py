@@ -123,8 +123,8 @@ class EnterpriseService:
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
-            if access_mode not in ["public", "private", "private_all"]:
-                raise ValueError("access_mode must be either 'public', 'private', or 'private_all'")
+            if access_mode not in ["public", "private", "private_all", "sso_verified"]:
+                raise ValueError("access_mode must be either 'public', 'private', 'private_all', or 'sso_verified'")
 
             data = {"appId": app_id, "accessMode": access_mode}
 
