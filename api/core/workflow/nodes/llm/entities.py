@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
 
@@ -59,6 +60,7 @@ class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
 
 
 class LLMNodeData(BaseNodeData):
+    type: NodeType = NodeType.LLM
     model: ModelConfig
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)

@@ -12,6 +12,7 @@ from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
@@ -148,7 +149,7 @@ class WorkflowEntry:
         node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data["type"])
+        node_type = node_config_data.type
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -302,10 +303,7 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config = {
-            "id": node_id,
-            "data": node_data,
-        }
+        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node: Node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,

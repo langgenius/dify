@@ -31,6 +31,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -310,7 +311,7 @@ class WorkflowBasedAppRunner:
 
         try:
             variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=target_node_config
+                graph_config=workflow.graph_dict, config=NodeConfigDictAdapter.validate_python(target_node_config)
             )
         except NotImplementedError:
             variable_mapping = {}

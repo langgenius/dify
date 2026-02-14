@@ -3,6 +3,7 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import BaseNodeData
 
 
@@ -16,6 +17,8 @@ class DatasourceEntity(BaseModel):
 
 
 class DatasourceNodeData(BaseNodeData, DatasourceEntity):
+    type: NodeType = NodeType.DATASOURCE
+
     class DatasourceInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]

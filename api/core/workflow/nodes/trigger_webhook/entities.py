@@ -1,10 +1,25 @@
 from collections.abc import Sequence
 from enum import StrEnum
-from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.variables.types import SegmentType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
+
+_WEBHOOK_ALLOWED_TYPES = frozenset(
+    {
+        SegmentType.STRING,
+        SegmentType.NUMBER,
+        SegmentType.BOOLEAN,
+        SegmentType.OBJECT,
+        SegmentType.ARRAY_STRING,
+        SegmentType.ARRAY_NUMBER,
+        SegmentType.ARRAY_BOOLEAN,
+        SegmentType.ARRAY_OBJECT,
+        SegmentType.FILE,
+    }
+)
 
 
 class Method(StrEnum):
@@ -28,25 +43,30 @@ class WebhookParameter(BaseModel):
     """Parameter definition for headers, query params, or body."""
 
     name: str
+    type: SegmentType = SegmentType.STRING
     required: bool = False
+
+    @field_validator("type", mode="after")
+    @classmethod
+    def validate_type(cls, v: SegmentType) -> SegmentType:
+        if v not in _WEBHOOK_ALLOWED_TYPES:
+            raise ValueError(f"Unsupported webhook parameter type: {v}")
+        return v
 
 
 class WebhookBodyParameter(BaseModel):
     """Body parameter with type information."""
 
     name: str
-    type: Literal[
-        "string",
-        "number",
-        "boolean",
-        "object",
-        "array[string]",
-        "array[number]",
-        "array[boolean]",
-        "array[object]",
-        "file",
-    ] = "string"
+    type: SegmentType = SegmentType.STRING
     required: bool = False
+
+    @field_validator("type", mode="after")
+    @classmethod
+    def validate_type(cls, v: SegmentType) -> SegmentType:
+        if v not in _WEBHOOK_ALLOWED_TYPES:
+            raise ValueError(f"Unsupported webhook body parameter type: {v}")
+        return v
 
 
 class WebhookData(BaseNodeData):
@@ -57,6 +77,7 @@ class WebhookData(BaseNodeData):
     class SyncMode(StrEnum):
         SYNC = "async"  # only support
 
+    type: NodeType = NodeType.TRIGGER_WEBHOOK
     method: Method = Method.GET
     content_type: ContentType = Field(default=ContentType.JSON)
     headers: Sequence[WebhookParameter] = Field(default_factory=list)

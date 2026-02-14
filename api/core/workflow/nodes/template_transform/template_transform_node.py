@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
@@ -26,7 +27,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -87,12 +88,10 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
+        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: TemplateTransformNodeData
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = TemplateTransformNodeData.model_validate(node_data)
-
+        _ = graph_config  # Explicitly mark as unused
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in typed_node_data.variables
+            for variable_selector in node_data.variables
         }

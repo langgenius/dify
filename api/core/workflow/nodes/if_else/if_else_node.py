@@ -97,13 +97,11 @@ class IfElseNode(Node[IfElseNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IfElseNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IfElseNodeData.model_validate(node_data)
-
         var_mapping: dict[str, list[str]] = {}
-        for case in typed_node_data.cases or []:
+        _ = graph_config  # Explicitly mark as unused
+        for case in node_data.cases or []:
             for condition in case.conditions:
                 key = f"{node_id}.#{'.'.join(condition.variable_selector)}#"
                 var_mapping[key] = condition.variable_selector

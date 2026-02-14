@@ -175,7 +175,7 @@ class TestWebhookService:
             assert workflow.app_id == test_data["app"].id
             assert node_config is not None
             assert node_config["id"] == "webhook_node"
-            assert node_config["data"]["title"] == "Test Webhook"
+            assert node_config["data"].title == "Test Webhook"
 
     def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers):
         """Test webhook trigger not found scenario."""

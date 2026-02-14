@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 
@@ -62,6 +63,7 @@ class ExtractConfig(BaseModel):
 
 
 class ListOperatorNodeData(BaseNodeData):
+    type: NodeType = NodeType.LIST_OPERATOR
     variable: Sequence[str] = Field(default_factory=list)
     filter_by: FilterBy
     order_by: OrderByConfig

@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 from .enums import InputType, Operation
@@ -22,5 +23,6 @@ class VariableOperationItem(BaseModel):
 
 
 class VariableAssignerNodeData(BaseNodeData):
+    type: NodeType = NodeType.VARIABLE_ASSIGNER
     version: str = "2"
     items: Sequence[VariableOperationItem] = Field(default_factory=list)

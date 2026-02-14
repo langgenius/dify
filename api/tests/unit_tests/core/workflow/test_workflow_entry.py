@@ -11,6 +11,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.runtime import VariablePool
@@ -124,7 +125,7 @@ class TestWorkflowEntry:
 
             def get_node_config_by_id(self, target_id: str):
                 assert target_id == node_id
-                return node_config
+                return NodeConfigDictAdapter.validate_python(node_config)
 
         workflow = StubWorkflow()
         variable_pool = VariablePool(system_variables=SystemVariable.default(), user_inputs={})

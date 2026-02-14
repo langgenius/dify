@@ -8,6 +8,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from configs import dify_config
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 
@@ -69,6 +70,7 @@ class HttpRequestNodeData(BaseNodeData):
     Code Node Data.
     """
 
+    type: NodeType = NodeType.HTTP_REQUEST
     method: Literal[
         "get",
         "post",

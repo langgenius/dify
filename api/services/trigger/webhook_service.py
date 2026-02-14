@@ -2,7 +2,7 @@ import json
 import logging
 import mimetypes
 import secrets
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 import orjson
@@ -17,8 +17,15 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
-from core.variables.types import SegmentType
+from core.variables.types import ArrayValidation, SegmentType
+from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from core.workflow.enums import NodeType
+from core.workflow.nodes.trigger_webhook.entities import (
+    ContentType,
+    WebhookBodyParameter,
+    WebhookData,
+    WebhookParameter,
+)
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -57,7 +64,7 @@ class WebhookService:
     @classmethod
     def get_webhook_trigger_and_workflow(
         cls, webhook_id: str, is_debug: bool = False
-    ) -> tuple[WorkflowWebhookTrigger, Workflow, Mapping[str, Any]]:
+    ) -> tuple[WorkflowWebhookTrigger, Workflow, NodeConfigDict]:
         """Get webhook trigger, workflow, and node configuration.
 
         Args:
@@ -129,13 +136,13 @@ class WebhookService:
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
 
-            node_config = workflow.get_node_config_by_id(webhook_trigger.node_id)
+            node_config = NodeConfigDictAdapter.validate_python(workflow.get_node_config_by_id(webhook_trigger.node_id))
 
             return webhook_trigger, workflow, node_config
 
     @classmethod
     def extract_and_validate_webhook_data(
-        cls, webhook_trigger: WorkflowWebhookTrigger, node_config: Mapping[str, Any]
+        cls, webhook_trigger: WorkflowWebhookTrigger, node_config: NodeConfigDict
     ) -> dict[str, Any]:
         """Extract and validate webhook data in a single unified process.
 
@@ -153,7 +160,7 @@ class WebhookService:
         raw_data = cls.extract_webhook_data(webhook_trigger)
 
         # Validate HTTP metadata (method, content-type)
-        node_data = node_config.get("data", {})
+        node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
         validation_result = cls._validate_http_metadata(raw_data, node_data)
         if not validation_result["valid"]:
             raise ValueError(validation_result["error"])
@@ -192,7 +199,7 @@ class WebhookService:
         content_type = cls._extract_content_type(dict(request.headers))
 
         # Route to appropriate extractor based on content type
-        extractors = {
+        extractors: dict[str, Callable[[], tuple[dict[str, Any], dict[str, Any]]]] = {
             "application/json": cls._extract_json_body,
             "application/x-www-form-urlencoded": cls._extract_form_body,
             "multipart/form-data": lambda: cls._extract_multipart_body(webhook_trigger),
@@ -214,7 +221,7 @@ class WebhookService:
         return data
 
     @classmethod
-    def _process_and_validate_data(cls, raw_data: dict[str, Any], node_data: dict[str, Any]) -> dict[str, Any]:
+    def _process_and_validate_data(cls, raw_data: dict[str, Any], node_data: WebhookData) -> dict[str, Any]:
         """Process and validate webhook data according to node configuration.
 
         Args:
@@ -230,18 +237,13 @@ class WebhookService:
         result = raw_data.copy()
 
         # Validate and process headers
-        cls._validate_required_headers(raw_data["headers"], node_data.get("headers", []))
+        cls._validate_required_headers(raw_data["headers"], node_data.headers)
 
         # Process query parameters with type conversion and validation
-        result["query_params"] = cls._process_parameters(
-            raw_data["query_params"], node_data.get("params", []), is_form_data=True
-        )
+        result["query_params"] = cls._process_parameters(raw_data["query_params"], node_data.params, is_form_data=True)
 
         # Process body parameters based on content type
-        configured_content_type = node_data.get("content_type", "application/json").lower()
-        result["body"] = cls._process_body_parameters(
-            raw_data["body"], node_data.get("body", []), configured_content_type
-        )
+        result["body"] = cls._process_body_parameters(raw_data["body"], node_data.body, node_data.content_type)
 
         return result
 
@@ -424,7 +426,11 @@ class WebhookService:
 
     @classmethod
     def _process_parameters(
-        cls, raw_params: dict[str, str], param_configs: list, is_form_data: bool = False
+        cls,
+        raw_params: dict[str, str],
+        param_configs: Sequence[WebhookParameter],
+        *,
+        is_form_data: bool = False,
     ) -> dict[str, Any]:
         """Process parameters with unified validation and type conversion.
 
@@ -440,13 +446,13 @@ class WebhookService:
             ValueError: If required parameters are missing or validation fails
         """
         processed = {}
-        configured_params = {config.get("name", ""): config for config in param_configs}
+        configured_params = {config.name: config for config in param_configs}
 
         # Process configured parameters
         for param_config in param_configs:
-            name = param_config.get("name", "")
-            param_type = param_config.get("type", SegmentType.STRING)
-            required = param_config.get("required", False)
+            name = param_config.name
+            param_type = param_config.type
+            required = param_config.required
 
             # Check required parameters
             if required and name not in raw_params:
@@ -465,7 +471,10 @@ class WebhookService:
 
     @classmethod
     def _process_body_parameters(
-        cls, raw_body: dict[str, Any], body_configs: list, content_type: str
+        cls,
+        raw_body: dict[str, Any],
+        body_configs: Sequence[WebhookBodyParameter],
+        content_type: ContentType,
     ) -> dict[str, Any]:
         """Process body parameters based on content type and configuration.
 
@@ -480,25 +489,28 @@ class WebhookService:
         Raises:
             ValueError: If required body parameters are missing or validation fails
         """
-        if content_type in ["text/plain", "application/octet-stream"]:
-            # For text/plain and octet-stream, validate required content exists
-            if body_configs and any(config.get("required", False) for config in body_configs):
-                raw_content = raw_body.get("raw")
-                if not raw_content:
-                    raise ValueError(f"Required body content missing for {content_type} request")
-            return raw_body
+        match content_type:
+            case ContentType.TEXT | ContentType.BINARY:
+                # For text/plain and octet-stream, validate required content exists
+                if body_configs and any(config.required for config in body_configs):
+                    raw_content = raw_body.get("raw")
+                    if not raw_content:
+                        raise ValueError(f"Required body content missing for {content_type} request")
+                return raw_body
+            case _:
+                pass
 
         # For structured data (JSON, form-data, etc.)
         processed = {}
-        configured_params = {config.get("name", ""): config for config in body_configs}
+        configured_params: dict[str, WebhookBodyParameter] = {config.name: config for config in body_configs}
 
         for body_config in body_configs:
-            name = body_config.get("name", "")
-            param_type = body_config.get("type", SegmentType.STRING)
-            required = body_config.get("required", False)
+            name = body_config.name
+            param_type = body_config.type
+            required = body_config.required
 
             # Handle file parameters for multipart data
-            if param_type == SegmentType.FILE and content_type == "multipart/form-data":
+            if param_type == SegmentType.FILE and content_type == ContentType.FORM_DATA:
                 # File validation is handled separately in extract phase
                 continue
 
@@ -508,7 +520,7 @@ class WebhookService:
 
             if name in raw_body:
                 raw_value = raw_body[name]
-                is_form_data = content_type in ["application/x-www-form-urlencoded", "multipart/form-data"]
+                is_form_data = content_type in (ContentType.FORM_URLENCODED, ContentType.FORM_DATA)
                 processed[name] = cls._validate_and_convert_value(name, raw_value, param_type, is_form_data)
 
         # Include unconfigured parameters
@@ -519,7 +531,9 @@ class WebhookService:
         return processed
 
     @classmethod
-    def _validate_and_convert_value(cls, param_name: str, value: Any, param_type: str, is_form_data: bool) -> Any:
+    def _validate_and_convert_value(
+        cls, param_name: str, value: Any, param_type: SegmentType | str, is_form_data: bool
+    ) -> Any:
         """Unified validation and type conversion for parameter values.
 
         Args:
@@ -545,7 +559,7 @@ class WebhookService:
             raise ValueError(f"Parameter '{param_name}' validation failed: {str(e)}")
 
     @classmethod
-    def _convert_form_value(cls, param_name: str, value: str, param_type: str) -> Any:
+    def _convert_form_value(cls, param_name: str, value: str, param_type: SegmentType | str) -> Any:
         """Convert form data string values to specified types.
 
         Args:
@@ -559,24 +573,28 @@ class WebhookService:
         Raises:
             ValueError: If the value cannot be converted to the specified type
         """
-        if param_type == SegmentType.STRING:
+        param_type_enum = cls._coerce_segment_type(param_type, param_name=param_name)
+        if param_type_enum is None:
+            raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+
+        if param_type_enum == SegmentType.STRING:
             return value
-        elif param_type == SegmentType.NUMBER:
+        elif param_type_enum == SegmentType.NUMBER:
             if not cls._can_convert_to_number(value):
                 raise ValueError(f"Cannot convert '{value}' to number")
             numeric_value = float(value)
             return int(numeric_value) if numeric_value.is_integer() else numeric_value
-        elif param_type == SegmentType.BOOLEAN:
+        elif param_type_enum == SegmentType.BOOLEAN:
             lower_value = value.lower()
             bool_map = {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
             if lower_value not in bool_map:
                 raise ValueError(f"Cannot convert '{value}' to boolean")
             return bool_map[lower_value]
         else:
-            raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+            raise ValueError(f"Unsupported type '{param_type_enum.value}' for form data parameter '{param_name}'")
 
     @classmethod
-    def _validate_json_value(cls, param_name: str, value: Any, param_type: str) -> Any:
+    def _validate_json_value(cls, param_name: str, value: Any, param_type: SegmentType | str) -> Any:
         """Validate JSON values against expected types.
 
         Args:
@@ -590,43 +608,42 @@ class WebhookService:
         Raises:
             ValueError: If the value type doesn't match the expected type
         """
-        type_validators = {
-            SegmentType.STRING: (lambda v: isinstance(v, str), "string"),
-            SegmentType.NUMBER: (lambda v: isinstance(v, (int, float)), "number"),
-            SegmentType.BOOLEAN: (lambda v: isinstance(v, bool), "boolean"),
-            SegmentType.OBJECT: (lambda v: isinstance(v, dict), "object"),
-            SegmentType.ARRAY_STRING: (
-                lambda v: isinstance(v, list) and all(isinstance(item, str) for item in v),
-                "array of strings",
-            ),
-            SegmentType.ARRAY_NUMBER: (
-                lambda v: isinstance(v, list) and all(isinstance(item, (int, float)) for item in v),
-                "array of numbers",
-            ),
-            SegmentType.ARRAY_BOOLEAN: (
-                lambda v: isinstance(v, list) and all(isinstance(item, bool) for item in v),
-                "array of booleans",
-            ),
-            SegmentType.ARRAY_OBJECT: (
-                lambda v: isinstance(v, list) and all(isinstance(item, dict) for item in v),
-                "array of objects",
-            ),
-        }
-
-        validator_info = type_validators.get(SegmentType(param_type))
-        if not validator_info:
-            logger.warning("Unknown parameter type: %s for parameter %s", param_type, param_name)
+        param_type_enum = cls._coerce_segment_type(param_type, param_name=param_name)
+        if param_type_enum is None:
             return value
 
-        validator, expected_type = validator_info
-        if not validator(value):
+        if not param_type_enum.is_valid(value, array_validation=ArrayValidation.ALL):
             actual_type = type(value).__name__
+            expected_type = cls._expected_type_label(param_type_enum)
             raise ValueError(f"Expected {expected_type}, got {actual_type}")
-
         return value
 
     @classmethod
-    def _validate_required_headers(cls, headers: dict[str, Any], header_configs: list) -> None:
+    def _coerce_segment_type(cls, param_type: SegmentType | str, *, param_name: str) -> SegmentType | None:
+        if isinstance(param_type, SegmentType):
+            return param_type
+        try:
+            return SegmentType(param_type)
+        except Exception:
+            logger.warning("Unknown parameter type: %s for parameter %s", param_type, param_name)
+            return None
+
+    @staticmethod
+    def _expected_type_label(param_type: SegmentType) -> str:
+        match param_type:
+            case SegmentType.ARRAY_STRING:
+                return "array of strings"
+            case SegmentType.ARRAY_NUMBER:
+                return "array of numbers"
+            case SegmentType.ARRAY_BOOLEAN:
+                return "array of booleans"
+            case SegmentType.ARRAY_OBJECT:
+                return "array of objects"
+            case _:
+                return param_type.value
+
+    @classmethod
+    def _validate_required_headers(cls, headers: dict[str, Any], header_configs: Sequence[WebhookParameter]) -> None:
         """Validate required headers are present.
 
         Args:
@@ -639,14 +656,14 @@ class WebhookService:
         headers_lower = {k.lower(): v for k, v in headers.items()}
         headers_sanitized = {cls._sanitize_key(k).lower(): v for k, v in headers.items()}
         for header_config in header_configs:
-            if header_config.get("required", False):
-                header_name = header_config.get("name", "")
+            if header_config.required:
+                header_name = header_config.name
                 sanitized_name = cls._sanitize_key(header_name).lower()
                 if header_name.lower() not in headers_lower and sanitized_name not in headers_sanitized:
                     raise ValueError(f"Required header missing: {header_name}")
 
     @classmethod
-    def _validate_http_metadata(cls, webhook_data: dict[str, Any], node_data: dict[str, Any]) -> dict[str, Any]:
+    def _validate_http_metadata(cls, webhook_data: dict[str, Any], node_data: WebhookData) -> dict[str, Any]:
         """Validate HTTP method and content-type.
 
         Args:
@@ -657,13 +674,13 @@ class WebhookService:
             dict[str, Any]: Validation result with 'valid' key and optional 'error' key
         """
         # Validate HTTP method
-        configured_method = node_data.get("method", "get").upper()
+        configured_method = node_data.method.value.upper()
         request_method = webhook_data["method"].upper()
         if configured_method != request_method:
             return cls._validation_error(f"HTTP method mismatch. Expected {configured_method}, got {request_method}")
 
         # Validate Content-type
-        configured_content_type = node_data.get("content_type", "application/json").lower()
+        configured_content_type = node_data.content_type.value.lower()
         request_content_type = cls._extract_content_type(webhook_data["headers"])
 
         if configured_content_type != request_content_type:
@@ -788,7 +805,7 @@ class WebhookService:
             raise
 
     @classmethod
-    def generate_webhook_response(cls, node_config: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
+    def generate_webhook_response(cls, node_config: NodeConfigDict) -> tuple[dict[str, Any], int]:
         """Generate HTTP response based on node configuration.
 
         Args:
@@ -797,11 +814,11 @@ class WebhookService:
         Returns:
             tuple[dict[str, Any], int]: Response data and HTTP status code
         """
-        node_data = node_config.get("data", {})
+        node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
 
         # Get configured status code and response body
-        status_code = node_data.get("status_code", 200)
-        response_body = node_data.get("response_body", "")
+        status_code = node_data.status_code
+        response_body = node_data.response_body
 
         # Parse response body as JSON if it's valid JSON, otherwise return as text
         try:

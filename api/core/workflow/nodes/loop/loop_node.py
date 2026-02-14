@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables import Segment, SegmentType
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.enums import (
     NodeExecutionType,
     NodeType,
@@ -298,11 +299,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LoopNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = LoopNodeData.model_validate(node_data)
-
         variable_mapping = {}
 
         # Extract loop node IDs statically from graph_config
@@ -327,7 +325,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=NodeConfigDictAdapter.validate_python(sub_node_config)
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
@@ -342,7 +340,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
-        for loop_variable in typed_node_data.loop_variables or []:
+        for loop_variable in node_data.loop_variables or []:
             if loop_variable.value_type == "variable":
                 assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
                 # add loop variable to variable mapping

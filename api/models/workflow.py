@@ -252,12 +252,9 @@ class Workflow(Base):  # bug
         return NodeConfigDictAdapter.validate_python(node_config)
 
     @staticmethod
-    def get_node_type_from_node_config(node_config: Mapping[str, Any]) -> NodeType:
+    def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
         """Extract type of a node from the node configuration returned by `get_node_config_by_id`."""
-        node_config_data = node_config.get("data", {})
-        # Get node class
-        node_type = NodeType(node_config_data.get("type"))
-        return node_type
+        return node_config["data"].type
 
     @staticmethod
     def get_enclosing_node_type_and_id(

@@ -4,12 +4,15 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from core.trigger.entities.entities import EventParameter
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.trigger_plugin.exc import TriggerEventParameterError
 
 
 class TriggerEventNodeData(BaseNodeData):
     """Plugin trigger node data"""
+
+    type: NodeType = NodeType.TRIGGER_PLUGIN
 
     class TriggerEventInput(BaseModel):
         value: Union[Any, list[str]]
@@ -38,7 +41,6 @@ class TriggerEventNodeData(BaseNodeData):
                 raise ValueError("value must be a string, int, float, bool or dict")
             return type
 
-    title: str
     desc: str | None = None
     plugin_id: str = Field(..., description="Plugin ID")
     provider_id: str = Field(..., description="Provider ID")

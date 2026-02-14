@@ -3,6 +3,7 @@ from typing import Literal, Union
 from pydantic import BaseModel
 
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 
@@ -155,7 +156,7 @@ class KnowledgeIndexNodeData(BaseNodeData):
     Knowledge index Node Data.
     """
 
-    type: str = "knowledge-index"
+    type: NodeType = NodeType.KNOWLEDGE_INDEX
     chunk_structure: str
     index_chunk_variable_selector: list[str]
     indexing_technique: str | None = None

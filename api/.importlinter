@@ -254,6 +254,7 @@ ignore_imports =
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.variables.types
     core.workflow.nodes.tool.tool_node -> core.variables.segments
     core.workflow.nodes.tool.tool_node -> core.variables.variables
+    core.workflow.nodes.trigger_webhook.entities -> core.variables.types
     core.workflow.nodes.trigger_webhook.node -> core.variables.types
     core.workflow.nodes.trigger_webhook.node -> core.variables.variables
     core.workflow.nodes.variable_aggregator.entities -> core.variables.types

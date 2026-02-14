@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
@@ -10,7 +10,7 @@ from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.entities.graph_config import NodeConfigDict
+from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from core.workflow.enums import NodeType
 from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
@@ -80,7 +80,7 @@ class DifyNodeFactory(NodeFactory):
         self._rag_retrieval = DatasetRetrieval()
 
     @override
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data using the traditional mapping.
 
@@ -89,14 +89,12 @@ class DifyNodeFactory(NodeFactory):
         :raises ValueError: if node type is unknown or configuration is invalid
         """
         # Get node_id from config
-        node_id = node_config["id"]
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        node_id = typed_node_config["id"]
 
         # Get node type from config
-        node_data = node_config["data"]
-        try:
-            node_type = NodeType(node_data["type"])
-        except ValueError:
-            raise ValueError(f"Unknown node type: {node_data['type']}")
+        node_data = typed_node_config["data"]
+        node_type = node_data.type
 
         # Get node class
         node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
@@ -104,7 +102,7 @@ class DifyNodeFactory(NodeFactory):
             raise ValueError(f"No class mapping found for node type: {node_type}")
 
         latest_node_class = node_mapping.get(LATEST_VERSION)
-        node_version = str(node_data.get("version", "1"))
+        node_version = str(node_data.version)
         matched_node_class = node_mapping.get(node_version)
         node_class = matched_node_class or latest_node_class
         if not node_class:
@@ -114,7 +112,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.CODE:
             return CodeNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 code_executor=self._code_executor,
@@ -125,7 +123,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.TEMPLATE_TRANSFORM:
             return TemplateTransformNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 template_renderer=self._template_renderer,
@@ -135,7 +133,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.HTTP_REQUEST:
             return HttpRequestNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 http_client=self._http_request_http_client,
@@ -146,7 +144,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
             return KnowledgeRetrievalNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 rag_retrieval=self._rag_retrieval,
@@ -154,7 +152,7 @@ class DifyNodeFactory(NodeFactory):
 
         return node_class(
             id=node_id,
-            config=node_config,
+            config=typed_node_config,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
         )

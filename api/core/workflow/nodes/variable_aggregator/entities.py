@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 from core.variables.types import SegmentType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 
@@ -28,6 +29,7 @@ class VariableAggregatorNodeData(BaseNodeData):
     Variable Aggregator Node Data.
     """
 
+    type: NodeType = NodeType.VARIABLE_AGGREGATOR
     output_type: str
     variables: list[list[str]]
     advanced_settings: AdvancedSettings | None = None

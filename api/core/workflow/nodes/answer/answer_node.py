@@ -48,12 +48,10 @@ class AnswerNode(Node[AnswerNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: AnswerNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = AnswerNodeData.model_validate(node_data)
-
-        variable_template_parser = VariableTemplateParser(template=typed_node_data.answer)
+        _ = graph_config  # Explicitly mark as unused
+        variable_template_parser = VariableTemplateParser(template=node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()
 
         variable_mapping = {}

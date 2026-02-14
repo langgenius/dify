@@ -19,6 +19,7 @@ from core.repositories.human_input_repository import HumanInputFormRepositoryImp
 from core.variables import VariableBase
 from core.variables.variables import Variable
 from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -669,7 +670,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config.get("data", {})
+        node_data = node_config["data"]
         if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -679,7 +680,7 @@ class WorkflowService:
                     workflow=draft_workflow,
                 )
                 if node_type is NodeType.START:
-                    start_data = StartNodeData.model_validate(node_data)
+                    start_data = StartNodeData.model_validate(node_data, from_attributes=True)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
                     )
@@ -1038,6 +1039,7 @@ class WorkflowService:
         node_config: Mapping[str, Any],
         variable_pool: VariablePool,
     ) -> HumanInputNode:
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
         graph_init_params = GraphInitParams(
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
@@ -1053,8 +1055,8 @@ class WorkflowService:
             start_at=time.perf_counter(),
         )
         node = HumanInputNode(
-            id=node_config.get("id", str(uuid.uuid4())),
-            config=node_config,
+            id=typed_node_config["id"],
+            config=typed_node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
@@ -1068,6 +1070,7 @@ class WorkflowService:
         node_config: Mapping[str, Any],
         manual_inputs: Mapping[str, Any],
     ) -> VariablePool:
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
             draft_var_srv.prefill_conversation_variable_default_values(workflow)
@@ -1086,7 +1089,7 @@ class WorkflowService:
         )
         variable_mapping = HumanInputNode.extract_variable_selector_to_variable_mapping(
             graph_config=workflow.graph_dict,
-            config=node_config,
+            config=typed_node_config,
         )
         normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
 

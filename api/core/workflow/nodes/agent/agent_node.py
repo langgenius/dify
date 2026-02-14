@@ -367,12 +367,11 @@ class AgentNode(Node[AgentNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: AgentNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = AgentNodeData.model_validate(node_data)
-
+        _ = graph_config  # Explicitly mark as unused
         result: dict[str, Any] = {}
+        typed_node_data = node_data
         for parameter_name in typed_node_data.agent_parameters:
             input = typed_node_data.agent_parameters[parameter_name]
             match input.type:

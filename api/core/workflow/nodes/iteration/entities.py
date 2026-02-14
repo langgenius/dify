@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic import Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseIterationNodeData, BaseIterationState, BaseNodeData
 
 
@@ -17,6 +18,7 @@ class IterationNodeData(BaseIterationNodeData):
     Iteration Node Data.
     """
 
+    type: NodeType = NodeType.ITERATION
     parent_loop_id: str | None = None  # redundant field, not used currently
     iterator_selector: list[str]  # variable selector
     output_selector: list[str]  # output selector
@@ -31,7 +33,7 @@ class IterationStartNodeData(BaseNodeData):
     Iteration Start Node Data.
     """
 
-    pass
+    type: NodeType = NodeType.ITERATION_START
 
 
 class IterationState(BaseIterationState):

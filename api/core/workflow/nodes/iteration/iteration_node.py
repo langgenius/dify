@@ -11,6 +11,7 @@ from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.variables.variables import Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
+from core.workflow.entities.graph_config import NodeConfigDictAdapter
 from core.workflow.enums import (
     NodeExecutionType,
     NodeType,
@@ -460,21 +461,24 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IterationNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IterationNodeData.model_validate(node_data)
-
         variable_mapping: dict[str, Sequence[str]] = {
-            f"{node_id}.input_selector": typed_node_data.iterator_selector,
+            f"{node_id}.input_selector": node_data.iterator_selector,
         }
         iteration_node_ids = set()
 
         # Find all nodes that belong to this loop
-        nodes = graph_config.get("nodes", [])
-        for node in nodes:
-            node_data = node.get("data", {})
-            if node_data.get("iteration_id") == node_id:
+        nodes_value = graph_config.get("nodes", [])
+        for node in nodes_value:
+            if not isinstance(node, Mapping):
+                continue
+
+            node_data_value = node.get("data", {})
+            if not isinstance(node_data_value, Mapping):
+                continue
+
+            if node_data_value.get("iteration_id") == node_id:
                 in_iteration_node_id = node.get("id")
                 if in_iteration_node_id:
                     iteration_node_ids.add(in_iteration_node_id)
@@ -497,7 +501,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=NodeConfigDictAdapter.validate_python(sub_node_config)
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:

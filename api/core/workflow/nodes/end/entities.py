@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import BaseNodeData, OutputVariableEntity
 
 
@@ -8,6 +9,7 @@ class EndNodeData(BaseNodeData):
     END Node Data.
     """
 
+    type: NodeType = NodeType.END
     outputs: list[OutputVariableEntity]
 
 

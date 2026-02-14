@@ -12,6 +12,7 @@ from core.variables import (
 )
 from core.variables.segments import ArrayObjectSegment
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import (
     NodeType,
     WorkflowNodeExecutionMetadataKey,
@@ -48,7 +49,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         rag_retrieval: RAGRetrievalProtocol,
@@ -260,15 +261,12 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: KnowledgeRetrievalNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # graph_config is not used in this node type
-        # Create typed NodeData from dict
-        typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
-
         variable_mapping = {}
-        if typed_node_data.query_variable_selector:
-            variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
-        if typed_node_data.query_attachment_selector:
-            variable_mapping[node_id + ".queryAttachment"] = typed_node_data.query_attachment_selector
+        _ = graph_config  # Explicitly mark as unused
+        if node_data.query_variable_selector:
+            variable_mapping[node_id + ".query"] = node_data.query_variable_selector
+        if node_data.query_attachment_selector:
+            variable_mapping[node_id + ".queryAttachment"] = node_data.query_attachment_selector
         return variable_mapping

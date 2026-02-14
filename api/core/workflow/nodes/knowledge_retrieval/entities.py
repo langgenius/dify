@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 
@@ -113,7 +114,7 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     Knowledge retrieval Node Data.
     """
 
-    type: str = "knowledge-retrieval"
+    type: NodeType = NodeType.KNOWLEDGE_RETRIEVAL
     query_variable_selector: list[str] | None | str = None
     query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]
