@@ -100,6 +100,28 @@ describe('Explore', () => {
         expect(screen.getByText('edit-yes')).toBeInTheDocument()
       })
     })
+
+    it('should deny edit permission when current user is not in members list', async () => {
+      ; (useAppContext as Mock).mockReturnValue({
+        userProfile: { id: 'user-1' },
+        isCurrentWorkspaceDatasetOperator: false,
+      });
+      (useMembers as Mock).mockReturnValue({
+        data: {
+          accounts: [{ id: 'user-2', role: 'admin' }],
+        },
+      })
+
+      render((
+        <Explore>
+          <ContextReader />
+        </Explore>
+      ))
+
+      await waitFor(() => {
+        expect(screen.getByText('edit-no')).toBeInTheDocument()
+      })
+    })
   })
 
   describe('Effects', () => {

@@ -27,9 +27,8 @@ const Explore: FC<IExploreProps> = ({
 
   useDocumentTitle(t('menus.explore', { ns: 'common' }))
 
-  const hasEditPermission = membersData?.accounts
-    ? membersData.accounts.find(account => account.id === userProfile.id)?.role !== 'normal'
-    : false
+  const userAccount = membersData?.accounts?.find(account => account.id === userProfile.id)
+  const hasEditPermission = !!userAccount && userAccount.role !== 'normal'
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>(undefined)
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)

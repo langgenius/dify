@@ -20,17 +20,11 @@ vi.mock('@/context/app-context', () => ({
 type AppContextMock = {
   isCurrentWorkspaceDatasetOperator: boolean
   isLoadingCurrentWorkspace: boolean
-  currentWorkspace: {
-    id: string
-  }
 }
 
 const baseContext: AppContextMock = {
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
-  currentWorkspace: {
-    id: 'workspace-1',
-  },
 }
 
 const setAppContext = (overrides: Partial<AppContextMock> = {}) => {
@@ -63,7 +57,7 @@ describe('RoleRouteGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect dataset operator to datasets path when current path is not datasets', async () => {
+  it('should redirect dataset operator on guarded routes', async () => {
     setAppContext({
       isCurrentWorkspaceDatasetOperator: true,
     })
@@ -80,8 +74,8 @@ describe('RoleRouteGuard', () => {
     })
   })
 
-  it('should allow dataset operator to stay on datasets path', () => {
-    mockPathname = '/datasets/list'
+  it('should allow dataset operator on non-guarded routes', () => {
+    mockPathname = '/plugins'
     setAppContext({
       isCurrentWorkspaceDatasetOperator: true,
     })
@@ -93,6 +87,23 @@ describe('RoleRouteGuard', () => {
     ))
 
     expect(screen.getByTestId('guarded-content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should not block non-guarded routes while workspace is loading', () => {
+    mockPathname = '/plugins'
+    setAppContext({
+      isLoadingCurrentWorkspace: true,
+    })
+
+    render((
+      <RoleRouteGuard>
+        <div data-testid="guarded-content">content</div>
+      </RoleRouteGuard>
+    ))
+
+    expect(screen.getByTestId('guarded-content')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 })
