@@ -26,7 +26,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunType,
     LangSmithRunUpdateModel,
 )
-from core.ops.utils import filter_none_values, generate_dotted_order
+from core.ops.utils import filter_none_values, generate_dotted_order, should_trace_as_llm
 from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
@@ -189,7 +189,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
             process_data = node_execution.process_data or {}
 
-            if process_data and process_data.get("model_mode") == "chat":
+            if should_trace_as_llm(node_type, process_data):
                 run_type = LangSmithRunType.llm
                 metadata.update(
                     {

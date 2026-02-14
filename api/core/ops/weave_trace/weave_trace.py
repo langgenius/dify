@@ -29,6 +29,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import should_trace_as_llm
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
@@ -200,7 +201,8 @@ class WeaveDataTrace(BaseTraceInstance):
             )
 
             process_data = node_execution.process_data or {}
-            if process_data and process_data.get("model_mode") == "chat":
+
+            if should_trace_as_llm(node_type, process_data):
                 attributes.update(
                     {
                         "ls_provider": process_data.get("model_provider", ""),
