@@ -1,6 +1,6 @@
 import type { AccessMode } from '@/models/access-control'
 import type { Banner } from '@/models/app'
-import type { App, AppCategory } from '@/models/explore'
+import type { App, AppCategory, InstalledApp } from '@/models/explore'
 import { del, get, patch } from './base'
 
 export const fetchAppList = () => {
@@ -16,7 +16,7 @@ export const fetchAppDetail = (id: string): Promise<any> => {
 }
 
 export const fetchInstalledAppList = (app_id?: string | null) => {
-  return get(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`)
+  return get<{ installed_apps: InstalledApp[] }>(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`)
 }
 
 export const uninstallApp = (id: string) => {

@@ -116,13 +116,7 @@ const renderWithContext = (hasEditPermission = false, onSuccess?: () => void, se
     <NuqsTestingAdapter searchParams={searchParams}>
       <ExploreContext.Provider
         value={{
-          controlUpdateInstalledApps: 0,
-          setControlUpdateInstalledApps: vi.fn(),
           hasEditPermission,
-          installedApps: [],
-          setInstalledApps: vi.fn(),
-          isFetchingInstalledApps: false,
-          setIsFetchingInstalledApps: vi.fn(),
           isShowTryAppPanel: false,
           setShowTryAppPanel: vi.fn(),
         }}
@@ -374,13 +368,7 @@ describe('AppList', () => {
         <NuqsTestingAdapter>
           <ExploreContext.Provider
             value={{
-              controlUpdateInstalledApps: 0,
-              setControlUpdateInstalledApps: vi.fn(),
               hasEditPermission: true,
-              installedApps: [],
-              setInstalledApps: vi.fn(),
-              isFetchingInstalledApps: false,
-              setIsFetchingInstalledApps: vi.fn(),
               isShowTryAppPanel: true,
               setShowTryAppPanel: mockSetShowTryAppPanel,
               currentApp: { appId: 'app-1', app },
@@ -410,13 +398,7 @@ describe('AppList', () => {
         <NuqsTestingAdapter>
           <ExploreContext.Provider
             value={{
-              controlUpdateInstalledApps: 0,
-              setControlUpdateInstalledApps: vi.fn(),
               hasEditPermission: true,
-              installedApps: [],
-              setInstalledApps: vi.fn(),
-              isFetchingInstalledApps: false,
-              setIsFetchingInstalledApps: vi.fn(),
               isShowTryAppPanel: true,
               setShowTryAppPanel: vi.fn(),
               currentApp: { appId: 'app-1' } as CurrentTryAppParams,
@@ -444,13 +426,7 @@ describe('AppList', () => {
         <NuqsTestingAdapter>
           <ExploreContext.Provider
             value={{
-              controlUpdateInstalledApps: 0,
-              setControlUpdateInstalledApps: vi.fn(),
               hasEditPermission: true,
-              installedApps: [],
-              setInstalledApps: vi.fn(),
-              isFetchingInstalledApps: false,
-              setIsFetchingInstalledApps: vi.fn(),
               isShowTryAppPanel: true,
               setShowTryAppPanel: vi.fn(),
             }}

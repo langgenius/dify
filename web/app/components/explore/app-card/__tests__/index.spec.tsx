@@ -145,13 +145,7 @@ describe('AppCard', () => {
       render(
         <ExploreContext.Provider
           value={{
-            controlUpdateInstalledApps: 0,
-            setControlUpdateInstalledApps: vi.fn(),
             hasEditPermission: false,
-            installedApps: [],
-            setInstalledApps: vi.fn(),
-            isFetchingInstalledApps: false,
-            setIsFetchingInstalledApps: vi.fn(),
             isShowTryAppPanel: false,
             setShowTryAppPanel: mockSetShowTryAppPanel,
           }}

@@ -8,19 +8,12 @@
 import type { Mock } from 'vitest'
 import type { InstalledApp as InstalledAppModel } from '@/models/explore'
 import { render, screen, waitFor } from '@testing-library/react'
-import { useContext } from 'use-context-selector'
 import InstalledApp from '@/app/components/explore/installed-app'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
+import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
-
-// Mock external dependencies
-vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(),
-  createContext: vi.fn(() => ({})),
-}))
 
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
@@ -34,6 +27,7 @@ vi.mock('@/service/use-explore', () => ({
   useGetInstalledAppAccessModeByAppId: vi.fn(),
   useGetInstalledAppParams: vi.fn(),
   useGetInstalledAppMeta: vi.fn(),
+  useGetInstalledApps: vi.fn(),
 }))
 
 vi.mock('@/app/components/share/text-generation', () => ({
@@ -86,18 +80,18 @@ describe('Installed App Flow', () => {
   }
 
   type MockOverrides = {
-    context?: { installedApps?: InstalledAppModel[], isFetchingInstalledApps?: boolean }
-    accessMode?: { isFetching?: boolean, data?: unknown, error?: unknown }
-    params?: { isFetching?: boolean, data?: unknown, error?: unknown }
-    meta?: { isFetching?: boolean, data?: unknown, error?: unknown }
+    installedApps?: { apps?: InstalledAppModel[], isPending?: boolean }
+    accessMode?: { isLoading?: boolean, data?: unknown, error?: unknown }
+    params?: { isLoading?: boolean, data?: unknown, error?: unknown }
+    meta?: { isLoading?: boolean, data?: unknown, error?: unknown }
     userAccess?: { data?: unknown, error?: unknown }
   }
 
   const setupDefaultMocks = (app?: InstalledAppModel, overrides: MockOverrides = {}) => {
-    ;(useContext as Mock).mockReturnValue({
-      installedApps: app ? [app] : [],
-      isFetchingInstalledApps: false,
-      ...overrides.context,
+    ;(useGetInstalledApps as Mock).mockReturnValue({
+      data: { installed_apps: app ? [app] : [] },
+      isPending: false,
+      ...overrides.installedApps,
     })
 
     ;(useWebAppStore as unknown as Mock).mockImplementation((selector: (state: Record<string, Mock>) => unknown) => {
@@ -111,21 +105,21 @@ describe('Installed App Flow', () => {
     })
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-      isFetching: false,
+      isLoading: false,
       data: { accessMode: AccessMode.PUBLIC },
       error: null,
       ...overrides.accessMode,
     })
 
     ;(useGetInstalledAppParams as Mock).mockReturnValue({
-      isFetching: false,
+      isLoading: false,
       data: mockAppParams,
       error: null,
       ...overrides.params,
     })
 
     ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-      isFetching: false,
+      isLoading: false,
       data: { tool_icons: {} },
       error: null,
       ...overrides.meta,
@@ -182,7 +176,7 @@ describe('Installed App Flow', () => {
   describe('Data Loading Flow', () => {
     it('should show loading spinner when params are being fetched', () => {
       const app = createInstalledApp()
-      setupDefaultMocks(app, { params: { isFetching: true, data: null } })
+      setupDefaultMocks(app, { params: { isLoading: true, data: null } })
 
       const { container } = render(<InstalledApp id="installed-app-1" />)
 

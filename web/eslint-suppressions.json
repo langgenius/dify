@@ -4100,11 +4100,6 @@
       "count": 1
     }
   },
-  "app/components/explore/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/explore/item-operation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -4113,14 +4108,6 @@
   "app/components/explore/sidebar/app-nav-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/explore/sidebar/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/explore/sidebar/no-apps/index.tsx": {

@@ -127,13 +127,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 })
 
 const createContextValue = (hasEditPermission = true) => ({
-  controlUpdateInstalledApps: 0,
-  setControlUpdateInstalledApps: vi.fn(),
   hasEditPermission,
-  installedApps: [] as never[],
-  setInstalledApps: vi.fn(),
-  isFetchingInstalledApps: false,
-  setIsFetchingInstalledApps: vi.fn(),
   isShowTryAppPanel: false,
   setShowTryAppPanel: vi.fn(),
 })

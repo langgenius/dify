@@ -32,9 +32,8 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('@/service/use-explore', () => ({
   useGetInstalledApps: () => ({
-    isFetching: false,
+    isPending: false,
     data: mockInstalledAppsData,
-    refetch: vi.fn(),
   }),
   useUninstallApp: () => ({
     mutateAsync: vi.fn(),
