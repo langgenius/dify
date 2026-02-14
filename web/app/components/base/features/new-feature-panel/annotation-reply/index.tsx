@@ -27,8 +27,8 @@ const AnnotationReply = ({
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
-  const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const matched = /\/app\/([^/]+)/.exec(pathname)
+  const appId = matched?.[1] ?? ''
   const featuresStore = useFeaturesStore()
   const annotationReply = useFeatures(s => s.features.annotationReply)
 
