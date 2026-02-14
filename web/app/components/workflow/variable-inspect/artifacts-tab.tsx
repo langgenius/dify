@@ -204,7 +204,7 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
               ? (
                   <div className="min-h-0 grow">
                     {isDownloadUrlLoading
-                      ? <Loading type="area" />
+                      ? <div className="flex h-full items-center justify-center"><Loading type="area" /></div>
                       : downloadUrlData?.download_url
                         ? (
                             <ReadOnlyFilePreview
