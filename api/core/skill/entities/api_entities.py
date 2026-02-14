@@ -10,3 +10,8 @@ class NodeSkillInfo(BaseModel):
     tool_dependencies: list[ToolDependency] = Field(
         default_factory=list, description="Tool dependencies extracted from skill prompts"
     )
+
+    @staticmethod
+    def empty(node_id: str = "") -> "NodeSkillInfo":
+        """Create an empty NodeSkillInfo with no tool dependencies."""
+        return NodeSkillInfo(node_id=node_id, tool_dependencies=[])

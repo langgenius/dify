@@ -4,8 +4,10 @@ from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, current_account_with_tenant, setup_required
+from core.skill.entities.api_entities import NodeSkillInfo
 from libs.login import login_required
 from models import App
+from models._workflow_exc import NodeNotFoundError
 from models.model import AppMode
 from services.skill_service import SkillService
 from services.workflow_service import WorkflowService
@@ -40,12 +42,15 @@ class NodeSkillsApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        skill_info = SkillService.get_node_skill_info(
-            app=app_model,
-            workflow=workflow,
-            node_id=node_id,
-            user_id=current_user.id,
-        )
+        try:
+            skill_info = SkillService.get_node_skill_info(
+                app=app_model,
+                workflow=workflow,
+                node_id=node_id,
+                user_id=current_user.id,
+            )
+        except NodeNotFoundError:
+            return NodeSkillInfo.empty(node_id=node_id).model_dump()
         return skill_info.model_dump()
 
 

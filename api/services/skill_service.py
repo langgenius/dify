@@ -7,7 +7,9 @@ from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.skill.skill_compiler import SkillCompiler
 from core.skill.skill_manager import SkillManager
+from core.workflow.entities.graph_config import NodeConfigData, NodeConfigDict
 from core.workflow.enums import NodeType
+from models._workflow_exc import NodeNotFoundError
 from models.model import App
 from models.workflow import Workflow
 from services.app_asset_service import AppAssetService
@@ -34,8 +36,10 @@ class SkillService:
         Returns:
             NodeSkillInfo containing tool dependencies for the node
         """
-        node_config = workflow.get_node_config_by_id(node_id)
-        node_data = node_config.get("data", {})
+        node_config: NodeConfigDict = workflow.get_node_config_by_id(node_id)
+        if not node_config:
+            raise NodeNotFoundError(f"Node with ID {node_id} not found in workflow {workflow.id}")
+        node_data: NodeConfigData = node_config["data"]
         node_type = node_data.get("type", "")
 
         # Only LLM nodes support skills currently
@@ -84,7 +88,7 @@ class SkillService:
         return result
 
     @staticmethod
-    def _has_skill(node_data: dict[str, Any]) -> bool:
+    def _has_skill(node_data: NodeConfigData) -> bool:
         """Check if node has any skill prompts."""
         prompt_template = node_data.get("prompt_template", [])
         if isinstance(prompt_template, list):
