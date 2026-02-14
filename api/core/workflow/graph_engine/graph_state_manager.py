@@ -224,6 +224,8 @@ class GraphStateManager:
         Returns:
             Number of executing nodes
         """
+        # This count is a best-effort snapshot and can change concurrently.
+        # Only use it for pause-drain checks where scheduling is already frozen.
         with self._lock:
             return len(self._executing_nodes)
 

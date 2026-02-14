@@ -104,6 +104,7 @@ class TestCelerySSLConfiguration:
     def test_celery_init_applies_ssl_to_broker_and_backend(self):
         """Test that SSL options are applied to both broker and backend when using Redis."""
         mock_config = MagicMock()
+        mock_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.CELERY_BACKEND = "redis"
         mock_config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
@@ -132,6 +133,8 @@ class TestCelerySSLConfiguration:
         mock_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK = 0
         mock_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK = False
         mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
+        mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
+        mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
 
         with patch("extensions.ext_celery.dify_config", mock_config):
             from dify_app import DifyApp

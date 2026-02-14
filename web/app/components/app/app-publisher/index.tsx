@@ -2,18 +2,6 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-  RiBuildingLine,
-  RiGlobalLine,
-  RiLockLine,
-  RiPlanetLine,
-  RiPlayCircleLine,
-  RiPlayList2Line,
-  RiTerminalBoxLine,
-  RiVerifiedBadgeLine,
-} from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import {
   memo,
@@ -57,22 +45,22 @@ import SuggestedAction from './suggested-action'
 
 type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
 
-const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: React.ElementType }> = {
+const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: string }> = {
   [AccessMode.ORGANIZATION]: {
     label: 'organization',
-    icon: RiBuildingLine,
+    icon: 'i-ri-building-line',
   },
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: {
     label: 'specific',
-    icon: RiLockLine,
+    icon: 'i-ri-lock-line',
   },
   [AccessMode.PUBLIC]: {
     label: 'anyone',
-    icon: RiGlobalLine,
+    icon: 'i-ri-global-line',
   },
   [AccessMode.EXTERNAL_MEMBERS]: {
     label: 'external',
-    icon: RiVerifiedBadgeLine,
+    icon: 'i-ri-verified-badge-line',
   },
 }
 
@@ -82,13 +70,13 @@ const AccessModeDisplay: React.FC<{ mode?: AccessMode }> = ({ mode }) => {
   if (!mode || !ACCESS_MODE_MAP[mode])
     return null
 
-  const { icon: Icon, label } = ACCESS_MODE_MAP[mode]
+  const { icon, label } = ACCESS_MODE_MAP[mode]
 
   return (
     <>
-      <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
+      <span className={`${icon} h-4 w-4 shrink-0 text-text-secondary`} />
       <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
+        <span className="text-text-secondary system-sm-medium">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
     </>
   )
@@ -115,6 +103,7 @@ export type AppPublisherProps = {
   missingStartNode?: boolean
   hasTriggerNode?: boolean // Whether workflow currently contains any trigger nodes (used to hide missing-start CTA when triggers exist).
   startNodeLimitExceeded?: boolean
+  hasHumanInputNode?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -138,13 +127,14 @@ const AppPublisher = ({
   missingStartNode = false,
   hasTriggerNode = false,
   startNodeLimitExceeded = false,
+  hasHumanInputNode = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
 
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
+
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   const appDetail = useAppStore(state => state.appDetail)
@@ -161,6 +151,13 @@ const AppPublisher = ({
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   const openAsyncWindow = useAsyncWindowOpen()
 
+  const isAppAccessSet = useMemo(() => {
+    if (appDetail && appAccessSubjects) {
+      return !(appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
+    }
+    return true
+  }, [appAccessSubjects, appDetail])
+
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
 
@@ -171,24 +168,12 @@ const AppPublisher = ({
       return t('noUserInputNode', { ns: 'app' })
     if (noAccessPermission)
       return t('noAccessPermission', { ns: 'app' })
-  }, [missingStartNode, noAccessPermission, publishedAt])
+  }, [missingStartNode, noAccessPermission, publishedAt, t])
 
   useEffect(() => {
     if (systemFeatures.webapp_auth.enabled && open && appDetail)
       refetch()
   }, [open, appDetail, refetch, systemFeatures])
-
-  useEffect(() => {
-    if (appDetail && appAccessSubjects) {
-      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-        setIsAppAccessSet(false)
-      else
-        setIsAppAccessSet(true)
-    }
-    else {
-      setIsAppAccessSet(true)
-    }
-  }, [appAccessSubjects, appDetail])
 
   const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
     try {
@@ -228,7 +213,7 @@ const AppPublisher = ({
     await openAsyncWindow(async () => {
       if (!appDetail?.id)
         throw new Error('App not found')
-      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
+      const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
         return `${basePath}/explore/installed/${installed_apps[0].id}`
       throw new Error('No app found in Explore')
@@ -287,19 +272,19 @@ const AppPublisher = ({
             disabled={disabled}
           >
             {t('common.publish', { ns: 'workflow' })}
-            <RiArrowDownSLine className="h-4 w-4 text-components-button-primary-text" />
+            <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[11]">
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <div className="p-4 pt-3">
-              <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
+              <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
                 {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
               </div>
               {publishedAt
                 ? (
                     <div className="flex items-center justify-between">
-                      <div className="system-sm-medium flex items-center text-text-secondary">
+                      <div className="flex items-center text-text-secondary system-sm-medium">
                         {t('common.publishedAt', { ns: 'workflow' })}
                         {' '}
                         {formatTimeFromNow(publishedAt)}
@@ -317,7 +302,7 @@ const AppPublisher = ({
                     </div>
                   )
                 : (
-                    <div className="system-sm-medium flex items-center text-text-secondary">
+                    <div className="flex items-center text-text-secondary system-sm-medium">
                       {t('common.autoSaved', { ns: 'workflow' })}
                       {' '}
                       ·
@@ -380,10 +365,10 @@ const AppPublisher = ({
                     {systemFeatures.webapp_auth.enabled && (
                       <div className="p-4 pt-3">
                         <div className="flex h-6 items-center">
-                          <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
+                          <p className="text-text-tertiary system-xs-medium">{t('publishApp.title', { ns: 'app' })}</p>
                         </div>
                         <div
-                          className="flex h-8 cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
+                          className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
                           onClick={() => {
                             setShowAppAccessControl(true)
                           }}
@@ -391,12 +376,12 @@ const AppPublisher = ({
                           <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
                             <AccessModeDisplay mode={appDetail?.access_mode} />
                           </div>
-                          {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+                          {!isAppAccessSet && <p className="shrink-0 text-text-tertiary system-xs-regular">{t('publishApp.notSet', { ns: 'app' })}</p>}
                           <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                            <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
+                            <span className="i-ri-arrow-right-s-line h-4 w-4 text-text-quaternary" />
                           </div>
                         </div>
-                        {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
+                        {!isAppAccessSet && <p className="mt-1 text-text-warning system-xs-regular">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
                       </div>
                     )}
                     {
@@ -408,7 +393,7 @@ const AppPublisher = ({
                               className="flex-1"
                               disabled={disabledFunctionButton}
                               link={appURL}
-                              icon={<RiPlayCircleLine className="h-4 w-4" />}
+                              icon={<span className="i-ri-play-circle-line h-4 w-4" />}
                             >
                               {t('common.runApp', { ns: 'workflow' })}
                             </SuggestedAction>
@@ -420,7 +405,7 @@ const AppPublisher = ({
                                     className="flex-1"
                                     disabled={disabledFunctionButton}
                                     link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                                    icon={<RiPlayList2Line className="h-4 w-4" />}
+                                    icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
                                   >
                                     {t('common.batchRunApp', { ns: 'workflow' })}
                                   </SuggestedAction>
@@ -446,7 +431,7 @@ const AppPublisher = ({
                                   handleOpenInExplore()
                               }}
                               disabled={disabledFunctionButton}
-                              icon={<RiPlanetLine className="h-4 w-4" />}
+                              icon={<span className="i-ri-planet-line h-4 w-4" />}
                             >
                               {t('common.openInExplore', { ns: 'workflow' })}
                             </SuggestedAction>
@@ -456,12 +441,12 @@ const AppPublisher = ({
                               className="flex-1"
                               disabled={!publishedAt || missingStartNode}
                               link="./develop"
-                              icon={<RiTerminalBoxLine className="h-4 w-4" />}
+                              icon={<span className="i-ri-terminal-box-line h-4 w-4" />}
                             >
                               {t('common.accessAPIReference', { ns: 'workflow' })}
                             </SuggestedAction>
                           </Tooltip>
-                          {appDetail?.mode === AppModeEnum.WORKFLOW && (
+                          {appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && (
                             <WorkflowToolConfigureButton
                               disabled={workflowToolDisabled}
                               published={!!toolPublished}

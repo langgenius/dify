@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { z } from 'zod'
+import * as z from 'zod'
 import Button from '@/app/components/base/button'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
@@ -22,13 +22,15 @@ import { encryptPassword as encodePassword } from '@/utils/encryption'
 import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'error.emailInValid' })
-    .email('error.emailInValid'),
-  name: z.string().min(1, { message: 'error.nameEmpty' }),
+  email: z.email('error.emailInValid')
+    .min(1, {
+      error: 'error.emailInValid',
+    }),
+  name: z.string().min(1, {
+    error: 'error.nameEmpty',
+  }),
   password: z.string().min(8, {
-    message: 'error.passwordLengthInValid',
+    error: 'error.passwordLengthInValid',
   }).regex(validPassword, 'error.passwordInvalid'),
 })
 
@@ -197,7 +199,7 @@ const InstallForm = () => {
                       </div>
 
                       <div className={cn('mt-1 text-xs text-text-secondary', {
-                        'text-red-400 !text-sm': passwordErrors && passwordErrors.length > 0,
+                        '!text-sm text-red-400': passwordErrors && passwordErrors.length > 0,
                       })}
                       >
                         {t('error.passwordInvalid', { ns: 'login' })}

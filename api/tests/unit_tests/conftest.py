@@ -51,6 +51,8 @@ def _patch_redis_clients_on_loaded_modules():
             continue
         if hasattr(module, "redis_client"):
             module.redis_client = redis_mock
+        if hasattr(module, "_pubsub_redis_client"):
+            module.pubsub_redis_client = redis_mock
 
 
 @pytest.fixture
@@ -68,7 +70,10 @@ def _provide_app_context(app: Flask):
 def _patch_redis_clients():
     """Patch redis_client to MagicMock only for unit test executions."""
 
-    with patch.object(ext_redis, "redis_client", redis_mock):
+    with (
+        patch.object(ext_redis, "redis_client", redis_mock),
+        patch.object(ext_redis, "_pubsub_redis_client", redis_mock),
+    ):
         _patch_redis_clients_on_loaded_modules()
         yield
 
