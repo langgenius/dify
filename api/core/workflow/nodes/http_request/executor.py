@@ -14,8 +14,9 @@ from configs import dify_config
 from core.file.enums import FileTransferMethod
 from core.file.file_manager import file_manager as default_file_manager
 from core.helper.ssrf_proxy import ssrf_proxy
-from core.variables.segments import ArrayFileSegment, FileSegment
+from core.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from core.workflow.runtime import VariablePool
+from core.workflow.runtime.variable_pool import VARIABLE_PATTERN
 
 from ..protocols import FileManagerProtocol, HttpClientProtocol
 from .entities import (
@@ -189,12 +190,16 @@ class Executor:
                 case "json":
                     if len(data) != 1:
                         raise RequestBodyError("json body type should have exactly one item")
-                    json_string = self.variable_pool.convert_template(data[0].value).text
+                    json_string = self._convert_template_for_json(data[0].value)
                     try:
-                        repaired = repair_json(json_string)
-                        json_object = json.loads(repaired, strict=False)
-                    except json.JSONDecodeError as e:
-                        raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
+                        json_object = json.loads(json_string, strict=False)
+                    except json.JSONDecodeError:
+                        # Fall back to repair_json for malformed templates
+                        try:
+                            repaired = repair_json(json_string)
+                            json_object = json.loads(repaired, strict=False)
+                        except json.JSONDecodeError as e:
+                            raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
@@ -263,6 +268,52 @@ class Executor:
                                 self.files.append((key, file_tuple))
 
                     self.data = form_data
+
+    def _convert_template_for_json(self, template: str) -> str:
+        """Convert a template string into valid JSON by properly encoding variable values.
+
+        Unlike the generic convert_template().text approach which does raw string
+        concatenation, this method JSON-encodes string variable values so that
+        quotes, backslashes, newlines and other special characters don't break
+        the JSON structure.
+        """
+        # Split the template into alternating [literal, var_ref, literal, var_ref, ...] parts.
+        # VARIABLE_PATTERN captures the group inside {{#...#}}, so odd-indexed
+        # parts (1, 3, 5, ...) are variable references and even-indexed parts
+        # (0, 2, 4, ...) are literal template text.
+        parts = VARIABLE_PATTERN.split(template)
+        result: list[str] = []
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                # Literal template text — keep as-is (this is the JSON structure)
+                result.append(part)
+            else:
+                # Variable reference — resolve from pool
+                selector = part.split(".")
+                variable = self.variable_pool.get(selector)
+                if variable is None:
+                    # Unresolved variable — leave empty string
+                    result.append("")
+                elif isinstance(variable, StringSegment):
+                    # Check if the variable is already wrapped in quotes by the template,
+                    # e.g. "{{#var#}}".  In that case we only need to escape the value
+                    # without adding outer quotes.
+                    preceding = result[-1] if result else ""
+                    following_idx = i + 1
+                    following = parts[following_idx] if following_idx < len(parts) else ""
+                    if preceding.rstrip().endswith('"') and following.lstrip().startswith('"'):
+                        # Already quoted — just escape special chars without adding quotes
+                        escaped = json.dumps(variable.value, ensure_ascii=False)
+                        # Strip the outer quotes that json.dumps adds
+                        result.append(escaped[1:-1])
+                    else:
+                        # Not quoted — json.dumps adds quotes and escapes
+                        result.append(json.dumps(variable.value, ensure_ascii=False))
+                else:
+                    # Numbers, booleans, objects, arrays — their .text already
+                    # produces valid JSON tokens
+                    result.append(variable.text)
+        return "".join(result)
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.auth)
@@ -460,6 +511,7 @@ class Executor:
         raw += body_string
 
         return raw
+
 
 
 def _generate_random_string(n: int) -> str:

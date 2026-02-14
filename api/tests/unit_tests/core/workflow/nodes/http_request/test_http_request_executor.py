@@ -602,3 +602,90 @@ def test_executor_with_json_body_preserves_numbers_and_strings():
 
     assert executor.json["count"] == 42
     assert executor.json["id"] == "abc-123"
+
+
+def test_executor_with_json_body_and_string_with_special_chars():
+    """Test that string variables containing JSON-special characters (quotes,
+    backslashes, newlines) are properly escaped in JSON body, instead of
+    corrupting the JSON structure.
+
+    Regression test for https://github.com/langgenius/dify/issues/31927
+    """
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    # String value with double quotes, backslashes, and newlines
+    complex_string = 'hello "world" with \\backslash and\nnewline'
+    variable_pool.add(["code_node", "result"], complex_string)
+
+    node_data = HttpRequestNodeData(
+        title="Test JSON Body with special char string",
+        method="post",
+        url="https://api.example.com/data",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="Content-Type: application/json",
+        params="",
+        body=HttpRequestNodeBody(
+            type="json",
+            data=[
+                BodyData(
+                    key="",
+                    type="text",
+                    value='{"model": "pro", "messages": [{"role": "user", "content": {{#code_node.result#}}}]}',
+                )
+            ],
+        ),
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    assert executor.json["model"] == "pro"
+    assert executor.json["messages"][0]["role"] == "user"
+    # The content should be preserved exactly, not corrupted by json_repair
+    assert executor.json["messages"][0]["content"] == complex_string
+
+
+def test_executor_with_json_body_and_markdown_table_string():
+    """Test that markdown table content with pipe characters and special
+    formatting doesn't get corrupted when used in a JSON body template.
+
+    Regression test for https://github.com/langgenius/dify/issues/31927
+    """
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={},
+    )
+    markdown = '| col1 | col2 |\n| --- | --- |\n| "val1" | val2 |'
+    variable_pool.add(["code_node", "result"], markdown)
+
+    node_data = HttpRequestNodeData(
+        title="Test JSON Body with markdown table",
+        method="post",
+        url="https://api.example.com/chat",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="",
+        params="",
+        body=HttpRequestNodeBody(
+            type="json",
+            data=[
+                BodyData(
+                    key="",
+                    type="text",
+                    value='{"content": {{#code_node.result#}}}',
+                )
+            ],
+        ),
+    )
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    assert executor.json["content"] == markdown
