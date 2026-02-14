@@ -4,7 +4,7 @@ import types
 from unittest.mock import MagicMock
 
 import commands
-from libs.auto_renew_redis_lock import LockNotOwnedError, RedisError
+from libs.db_migration_lock import LockNotOwnedError, RedisError
 
 HEARTBEAT_WAIT_TIMEOUT_SECONDS = 5.0
 
