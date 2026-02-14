@@ -403,6 +403,10 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def feedback_trace(self, trace_info: FeedbackTraceInfo):
         trace_id = trace_info.message_id
+        if not trace_id:
+            logger.warning("Cannot send feedback to Langfuse without a message_id")
+            return
+
         score_value = 1.0 if trace_info.rating == "like" else 0.0
         try:
             self.langfuse_client.score(

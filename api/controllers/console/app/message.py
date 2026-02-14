@@ -25,6 +25,8 @@ from controllers.console.wraps import (
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
@@ -356,11 +358,8 @@ class MessageFeedbackApi(Resource):
 
         db.session.commit()
 
-        if args.rating is not None:
+        if args.rating in ("like", "dislike"):
             try:
-                from core.ops.entities.trace_entity import TraceTaskName
-                from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-
                 trace_manager = TraceQueueManager(app_id=app_model.id)
                 trace_manager.add_trace_task(
                     TraceTask(

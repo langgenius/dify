@@ -912,7 +912,10 @@ class TraceTask:
         if not message_id:
             return {}
 
-        rating = kwargs.get("rating", "")
+        rating = kwargs.get("rating")
+        if rating not in ("like", "dislike"):
+            return {}
+
         content = kwargs.get("content")
         from_source = kwargs.get("from_source", "user")
 

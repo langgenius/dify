@@ -3,6 +3,8 @@ import logging
 from collections.abc import Sequence
 from typing import Union
 
+logger = logging.getLogger(__name__)
+
 from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -206,7 +208,7 @@ class MessageService:
 
         db.session.commit()
 
-        if rating is not None:
+        if rating in ("like", "dislike"):
             try:
                 from_source = "user" if isinstance(user, EndUser) else "admin"
                 trace_manager = TraceQueueManager(app_id=app_model.id)
@@ -220,7 +222,7 @@ class MessageService:
                     )
                 )
             except Exception:
-                logging.exception("Failed to enqueue feedback trace task")
+                logger.exception("Failed to enqueue feedback trace task")
 
         return feedback
 
