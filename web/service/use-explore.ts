@@ -83,7 +83,7 @@ export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
         }
       }
       if (!installedAppId)
-        return Promise.reject(new Error('App code is required to get access mode'))
+        return Promise.reject(new Error('App ID is required to get access mode'))
 
       return getAppAccessModeByAppId(installedAppId)
     },
