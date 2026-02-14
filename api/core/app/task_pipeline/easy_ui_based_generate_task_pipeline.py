@@ -7,6 +7,9 @@ from typing import Union, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+# Maximum length for tool file extension before defaulting to .bin
+MAX_TOOL_FILE_EXTENSION_LENGTH = 10
+
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
@@ -453,6 +456,86 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             model, credentials, prompt_tokens, completion_tokens
         )
 
+    def _prepare_file_dict(self, message_file: MessageFile, upload_files_map: dict[str, UploadFile]) -> dict:
+        """
+        Prepare file dictionary for message end response.
+
+        :param message_file: MessageFile instance
+        :param upload_files_map: Dictionary mapping upload_file_id to UploadFile
+        :return: Dictionary containing file information
+        """
+        # Get upload file info if it's a local file
+        upload_file = None
+        if message_file.transfer_method == FileTransferMethod.LOCAL_FILE and message_file.upload_file_id:
+            upload_file = upload_files_map.get(message_file.upload_file_id)
+
+        # Generate URL based on transfer method
+        url = None
+        filename = "file"
+        mime_type = "application/octet-stream"
+        size = 0
+        extension = ""
+
+        if message_file.transfer_method == FileTransferMethod.REMOTE_URL:
+            url = message_file.url
+            if message_file.url:
+                filename = message_file.url.split("/")[-1].split("?")[0]  # Remove query params
+                # Extract extension from filename
+                if "." in filename:
+                    extension = "." + filename.rsplit(".", 1)[1]
+        elif message_file.transfer_method == FileTransferMethod.LOCAL_FILE:
+            if upload_file:
+                url = file_helpers.get_signed_file_url(upload_file_id=str(upload_file.id))
+                filename = upload_file.name
+                mime_type = upload_file.mime_type or "application/octet-stream"
+                size = upload_file.size or 0
+                extension = f".{upload_file.extension}" if upload_file.extension else ""
+            elif message_file.upload_file_id:
+                # Fallback: generate URL even if upload_file not found
+                url = file_helpers.get_signed_file_url(upload_file_id=str(message_file.upload_file_id))
+        elif message_file.transfer_method == FileTransferMethod.TOOL_FILE and message_file.url:
+            # For tool files, use URL directly if it's HTTP, otherwise sign it
+            if message_file.url.startswith("http"):
+                url = message_file.url
+                filename = message_file.url.split("/")[-1].split("?")[0]
+                # Extract extension from filename
+                if "." in filename:
+                    extension = "." + filename.rsplit(".", 1)[1]
+            else:
+                # Extract tool file id and extension from URL
+                url_parts = message_file.url.split("/")
+                if url_parts:
+                    file_part = url_parts[-1].split("?")[0]  # Remove query params first
+                    # Use rsplit to correctly handle filenames with multiple dots
+                    if "." in file_part:
+                        tool_file_id, ext = file_part.rsplit(".", 1)
+                        extension = f".{ext}"
+                        if len(extension) > MAX_TOOL_FILE_EXTENSION_LENGTH:
+                            extension = ".bin"
+                    else:
+                        tool_file_id = file_part
+                        extension = ".bin"
+                    url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
+                    filename = file_part
+
+        # Format file response according to FileResponse type
+        # FileTransferMethod is a StrEnum, so it always has .value attribute
+        transfer_method_value = message_file.transfer_method.value
+        remote_url = message_file.url if message_file.transfer_method == FileTransferMethod.REMOTE_URL else ""
+        file_dict = {
+            "related_id": message_file.id,
+            "extension": extension,
+            "filename": filename,
+            "size": size,
+            "mime_type": mime_type,
+            "transfer_method": transfer_method_value,
+            "type": message_file.type,
+            "url": url or "",
+            "upload_file_id": message_file.upload_file_id or message_file.id,
+            "remote_url": remote_url,
+        }
+        return file_dict
+
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """
         Message end to stream response.
@@ -460,10 +543,36 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
         metadata_dict = self._task_state.metadata.model_dump()
+
+        # Fetch files associated with this message
+        files = None
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
+
+            if message_files:
+                # Fetch all required UploadFile objects in a single query to avoid N+1 problem
+                upload_file_ids = [
+                    mf.upload_file_id
+                    for mf in message_files
+                    if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
+                ]
+                upload_files_map = {}
+                if upload_file_ids:
+                    upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+                    upload_files_map = {uf.id: uf for uf in upload_files}
+
+                files_list = []
+                for message_file in message_files:
+                    file_dict = self._prepare_file_dict(message_file, upload_files_map)
+                    files_list.append(file_dict)
+
+                files = files_list or None
+
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             metadata=metadata_dict,
+            files=files,
         )
 
     def _record_files(self):
