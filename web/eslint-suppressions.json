@@ -4088,11 +4088,6 @@
       "count": 3
     }
   },
-  "app/components/explore/try-app/app-info/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/explore/try-app/app/chat.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
