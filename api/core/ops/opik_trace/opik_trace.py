@@ -13,6 +13,7 @@ from core.ops.entities.config_entity import OpikConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -93,6 +94,8 @@ class OpikDataTrace(BaseTraceInstance):
             self.tool_trace(trace_info)
         if isinstance(trace_info, GenerateNameTraceInfo):
             self.generate_name_trace(trace_info)
+        if isinstance(trace_info, FeedbackTraceInfo):
+            logger.debug("Opik does not support feedback trace, skipping")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         dify_trace_id = trace_info.trace_id or trace_info.workflow_run_id

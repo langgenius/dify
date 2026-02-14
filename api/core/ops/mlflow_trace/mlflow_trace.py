@@ -15,6 +15,7 @@ from core.ops.entities.config_entity import DatabricksConfig, MLflowConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -102,6 +103,8 @@ class MLflowDataTrace(BaseTraceInstance):
                 self.suggested_question_trace(trace_info)
             elif isinstance(trace_info, GenerateNameTraceInfo):
                 self.generate_name_trace(trace_info)
+            elif isinstance(trace_info, FeedbackTraceInfo):
+                logger.debug("[MLflow] Feedback trace not supported, skipping")
         except Exception:
             logger.exception("[MLflow] Trace error")
             raise
