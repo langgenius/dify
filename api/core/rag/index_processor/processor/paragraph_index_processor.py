@@ -469,7 +469,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not isinstance(result, LLMResult):
             raise ValueError("Expected LLMResult when stream=False")
 
-        summary_content = getattr(result.message, "content", "")
+        summary_content = result.message.get_text_content()
         usage = result.usage
 
         # Deduct quota for summary generation (same as workflow nodes)
