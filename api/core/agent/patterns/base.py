@@ -451,6 +451,37 @@ class AgentPattern(ABC):
 
         return response_content, tool_files, None
 
+    def _validate_tool_args(self, tool_instance: Tool, tool_args: dict[str, Any]) -> str | None:
+        """Validate tool arguments against the tool's required parameters.
+
+        Checks that all required LLM-facing parameters are present and non-empty
+        before actual execution, preventing wasted tool invocations when the model
+        generates calls with missing arguments (e.g. empty ``{}``).
+
+        Returns:
+            Error message if validation fails, None if all required parameters are satisfied.
+        """
+        prompt_tool = tool_instance.to_prompt_message_tool()
+        required_params: list[str] = prompt_tool.parameters.get("required", [])
+
+        if not required_params:
+            return None
+
+        missing = [
+            p for p in required_params
+            if p not in tool_args
+            or tool_args[p] is None
+            or (isinstance(tool_args[p], str) and not tool_args[p].strip())
+        ]
+
+        if not missing:
+            return None
+
+        return (
+            f"Missing required parameter(s): {', '.join(missing)}. "
+            f"Please provide all required parameters before calling this tool."
+        )
+
     def _find_tool_by_name(self, tool_name: str) -> Tool | None:
         """Find a tool instance by its name."""
         for tool in self.tools:
