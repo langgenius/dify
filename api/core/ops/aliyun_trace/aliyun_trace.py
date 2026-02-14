@@ -48,6 +48,7 @@ from core.ops.entities.config_entity import AliyunConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -88,6 +89,8 @@ class AliyunDataTrace(BaseTraceInstance):
             self.tool_trace(trace_info)
         if isinstance(trace_info, GenerateNameTraceInfo):
             pass
+        if isinstance(trace_info, FeedbackTraceInfo):
+            logger.debug("Aliyun does not support feedback trace, skipping")
 
     def api_check(self):
         return self.trace_client.api_check()

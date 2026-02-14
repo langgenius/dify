@@ -10,6 +10,7 @@ from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -64,6 +65,8 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.tool_trace(trace_info)
         if isinstance(trace_info, GenerateNameTraceInfo):
             self.generate_name_trace(trace_info)
+        if isinstance(trace_info, FeedbackTraceInfo):
+            self.feedback_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_id = trace_info.trace_id or trace_info.workflow_run_id
@@ -397,6 +400,21 @@ class LangFuseDataTrace(BaseTraceInstance):
             metadata=trace_info.metadata,
         )
         self.add_span(langfuse_span_data=name_generation_span_data)
+
+    def feedback_trace(self, trace_info: FeedbackTraceInfo):
+        trace_id = trace_info.message_id
+        score_value = 1.0 if trace_info.rating == "like" else 0.0
+        try:
+            self.langfuse_client.score(
+                name="user-feedback",
+                value=score_value,
+                trace_id=trace_id,
+                comment=trace_info.content,
+                data_type="BOOLEAN",
+            )
+            logger.debug("LangFuse Feedback score created successfully")
+        except Exception as e:
+            raise ValueError(f"LangFuse Failed to create feedback score: {str(e)}") from e
 
     def add_trace(self, langfuse_trace_data: LangfuseTrace | None = None):
         format_trace_data = filter_none_values(langfuse_trace_data.model_dump()) if langfuse_trace_data else {}

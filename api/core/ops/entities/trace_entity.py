@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
@@ -114,6 +114,12 @@ class GenerateNameTraceInfo(BaseTraceInfo):
     tenant_id: str
 
 
+class FeedbackTraceInfo(BaseTraceInfo):
+    rating: Literal["like", "dislike"]
+    content: str | None = None
+    from_source: Literal["user", "admin"]
+
+
 class TaskData(BaseModel):
     app_id: str
     trace_info_type: str
@@ -128,6 +134,7 @@ trace_info_info_map = {
     "DatasetRetrievalTraceInfo": DatasetRetrievalTraceInfo,
     "ToolTraceInfo": ToolTraceInfo,
     "GenerateNameTraceInfo": GenerateNameTraceInfo,
+    "FeedbackTraceInfo": FeedbackTraceInfo,
 }
 
 
@@ -140,4 +147,5 @@ class TraceTaskName(StrEnum):
     DATASET_RETRIEVAL_TRACE = "dataset_retrieval"
     TOOL_TRACE = "tool"
     GENERATE_NAME_TRACE = "generate_conversation_name"
+    FEEDBACK_TRACE = "feedback"
     DATASOURCE_TRACE = "datasource"
