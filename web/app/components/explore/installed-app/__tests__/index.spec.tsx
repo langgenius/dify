@@ -91,10 +91,22 @@ describe('InstalledApp', () => {
     result: true,
   }
 
-  const setupMocks = (installedApps: InstalledAppType[] = [mockInstalledApp], isPending = false) => {
+  const setupMocks = (
+    installedApps: InstalledAppType[] = [mockInstalledApp],
+    options: {
+      isPending?: boolean
+      isFetching?: boolean
+    } = {},
+  ) => {
+    const {
+      isPending = false,
+      isFetching = false,
+    } = options
+
     ;(useGetInstalledApps as Mock).mockReturnValue({
       data: { installed_apps: installedApps },
       isPending,
+      isFetching,
     })
   }
 
@@ -123,19 +135,19 @@ describe('InstalledApp', () => {
     })
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-      isLoading: false,
+      isPending: false,
       data: mockWebAppAccessMode,
       error: null,
     })
 
     ;(useGetInstalledAppParams as Mock).mockReturnValue({
-      isLoading: false,
+      isPending: false,
       data: mockAppParams,
       error: null,
     })
 
     ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-      isLoading: false,
+      isPending: false,
       data: mockAppMeta,
       error: null,
     })
@@ -154,7 +166,7 @@ describe('InstalledApp', () => {
 
     it('should render loading state when fetching app params', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isLoading: true,
+        isPending: true,
         data: null,
         error: null,
       })
@@ -166,7 +178,7 @@ describe('InstalledApp', () => {
 
     it('should render loading state when fetching app meta', () => {
       ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isLoading: true,
+        isPending: true,
         data: null,
         error: null,
       })
@@ -178,7 +190,7 @@ describe('InstalledApp', () => {
 
     it('should render loading state when fetching web app access mode', () => {
       ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isLoading: true,
+        isPending: true,
         data: null,
         error: null,
       })
@@ -189,7 +201,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching installed apps', () => {
-      setupMocks([mockInstalledApp], true)
+      setupMocks([mockInstalledApp], { isPending: true })
 
       const { container } = render(<InstalledApp id="installed-app-123" />)
       const svg = container.querySelector('svg.spin-animation')
@@ -208,7 +220,7 @@ describe('InstalledApp', () => {
     it('should render error when app params fails to load', () => {
       const error = new Error('Failed to load app params')
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error,
       })
@@ -220,7 +232,7 @@ describe('InstalledApp', () => {
     it('should render error when app meta fails to load', () => {
       const error = new Error('Failed to load app meta')
       ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error,
       })
@@ -232,7 +244,7 @@ describe('InstalledApp', () => {
     it('should render error when web app access mode fails to load', () => {
       const error = new Error('Failed to load access mode')
       ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error,
       })
@@ -444,7 +456,7 @@ describe('InstalledApp', () => {
 
     it('should not update app params when data is null', async () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error: null,
       })
@@ -460,7 +472,7 @@ describe('InstalledApp', () => {
 
     it('should not update app meta when data is null', async () => {
       ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error: null,
       })
@@ -476,7 +488,7 @@ describe('InstalledApp', () => {
 
     it('should not update access mode when data is null', async () => {
       ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error: null,
       })
@@ -557,7 +569,7 @@ describe('InstalledApp', () => {
   describe('Render Priority', () => {
     it('should show error before loading state', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isLoading: true,
+        isPending: true,
         data: null,
         error: new Error('Some error'),
       })
@@ -568,7 +580,7 @@ describe('InstalledApp', () => {
 
     it('should show error before permission check', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isLoading: false,
+        isPending: false,
         data: null,
         error: new Error('Params error'),
       })
@@ -594,13 +606,8 @@ describe('InstalledApp', () => {
       expect(screen.queryByText(/404/)).not.toBeInTheDocument()
     })
 
-    it('should show loading before 404', () => {
-      setupMocks([])
-      ;(useGetInstalledAppParams as Mock).mockReturnValue({
-        isLoading: true,
-        data: null,
-        error: null,
-      })
+    it('should show loading before 404 while installed apps are refetching', () => {
+      setupMocks([], { isFetching: true })
 
       const { container } = render(<InstalledApp id="nonexistent-app" />)
       const svg = container.querySelector('svg.spin-animation')

@@ -17,7 +17,7 @@ const InstalledApp = ({
 }: {
   id: string
 }) => {
-  const { data, isPending: isPendingInstalledApps } = useGetInstalledApps()
+  const { data, isPending: isPendingInstalledApps, isFetching: isFetchingInstalledApps } = useGetInstalledApps()
   const installedApp = data?.installed_apps?.find(item => item.id === id)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const updateWebAppAccessMode = useWebAppStore(s => s.updateWebAppAccessMode)
@@ -97,7 +97,11 @@ const InstalledApp = ({
       </div>
     )
   }
-  if (isPendingInstalledApps || (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))) {
+  if (
+    isPendingInstalledApps
+    || (!installedApp && isFetchingInstalledApps)
+    || (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
+  ) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading />

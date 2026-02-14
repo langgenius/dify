@@ -80,17 +80,20 @@ describe('Installed App Flow', () => {
   }
 
   type MockOverrides = {
-    installedApps?: { apps?: InstalledAppModel[], isPending?: boolean }
-    accessMode?: { isLoading?: boolean, data?: unknown, error?: unknown }
-    params?: { isLoading?: boolean, data?: unknown, error?: unknown }
-    meta?: { isLoading?: boolean, data?: unknown, error?: unknown }
+    installedApps?: { apps?: InstalledAppModel[], isPending?: boolean, isFetching?: boolean }
+    accessMode?: { isPending?: boolean, data?: unknown, error?: unknown }
+    params?: { isPending?: boolean, data?: unknown, error?: unknown }
+    meta?: { isPending?: boolean, data?: unknown, error?: unknown }
     userAccess?: { data?: unknown, error?: unknown }
   }
 
   const setupDefaultMocks = (app?: InstalledAppModel, overrides: MockOverrides = {}) => {
+    const installedApps = overrides.installedApps?.apps ?? (app ? [app] : [])
+
     ;(useGetInstalledApps as Mock).mockReturnValue({
-      data: { installed_apps: app ? [app] : [] },
+      data: { installed_apps: installedApps },
       isPending: false,
+      isFetching: false,
       ...overrides.installedApps,
     })
 
@@ -105,21 +108,21 @@ describe('Installed App Flow', () => {
     })
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
-      isLoading: false,
+      isPending: false,
       data: { accessMode: AccessMode.PUBLIC },
       error: null,
       ...overrides.accessMode,
     })
 
     ;(useGetInstalledAppParams as Mock).mockReturnValue({
-      isLoading: false,
+      isPending: false,
       data: mockAppParams,
       error: null,
       ...overrides.params,
     })
 
     ;(useGetInstalledAppMeta as Mock).mockReturnValue({
-      isLoading: false,
+      isPending: false,
       data: { tool_icons: {} },
       error: null,
       ...overrides.meta,
@@ -176,12 +179,23 @@ describe('Installed App Flow', () => {
   describe('Data Loading Flow', () => {
     it('should show loading spinner when params are being fetched', () => {
       const app = createInstalledApp()
-      setupDefaultMocks(app, { params: { isLoading: true, data: null } })
+      setupDefaultMocks(app, { params: { isPending: true, data: null } })
 
       const { container } = render(<InstalledApp id="installed-app-1" />)
 
       expect(container.querySelector('svg.spin-animation')).toBeInTheDocument()
       expect(screen.queryByTestId('chat-with-history')).not.toBeInTheDocument()
+    })
+
+    it('should defer 404 while installed apps are refetching without a match', () => {
+      setupDefaultMocks(undefined, {
+        installedApps: { apps: [], isPending: false, isFetching: true },
+      })
+
+      const { container } = render(<InstalledApp id="nonexistent" />)
+
+      expect(container.querySelector('svg.spin-animation')).toBeInTheDocument()
+      expect(screen.queryByText(/404/)).not.toBeInTheDocument()
     })
 
     it('should render content when all data is available', () => {
