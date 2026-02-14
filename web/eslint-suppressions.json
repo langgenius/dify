@@ -506,14 +506,8 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/app/app-publisher/suggested-action.tsx": {
@@ -1233,11 +1227,8 @@
     "react/no-nested-component-definitions": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    },
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/apps/empty.tsx": {
@@ -4053,16 +4044,6 @@
       "count": 1
     }
   },
-  "app/components/explore/app-card/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/explore/app-list/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/explore/banner/banner-item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -4092,11 +4073,6 @@
       "count": 1
     }
   },
-  "app/components/explore/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/explore/item-operation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -4107,20 +4083,7 @@
       "count": 2
     }
   },
-  "app/components/explore/sidebar/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/explore/sidebar/no-apps/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/explore/try-app/app-info/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
