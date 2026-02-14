@@ -16,9 +16,10 @@ from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.external_tool_utils import resolve_tool_results, resolve_tools
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, ToolCallMode
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
@@ -78,12 +79,12 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param streaming: is stream
         """
-        if not args.get("query"):
-            raise ValueError("query is required")
-
-        query = args["query"]
+        query = args.get("query", "")
         if not isinstance(query, str):
             raise ValueError("query must be a string")
+
+        if not query and not args.get("tool_results"):
+            raise ValueError("query is required")
 
         query = query.replace("\x00", "")
         inputs = args["inputs"]
@@ -144,6 +145,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
         )
 
+        tools = resolve_tools(args)
+        tool_choice = args.get("tool_choice")
+        tool_results = resolve_tool_results(args)
+        tool_call_mode = self._resolve_tool_call_mode(args)
+
         # init application generate entity
         application_generate_entity = ChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -162,6 +168,10 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             extras=extras,
             trace_manager=trace_manager,
             stream=streaming,
+            tools=tools,
+            tool_choice=tool_choice,
+            tool_results=tool_results,
+            tool_call_mode=tool_call_mode,
         )
 
         # init generate records
@@ -203,6 +213,18 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         )
 
         return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+
+    @staticmethod
+    def _resolve_tool_call_mode(args: Mapping[str, Any]) -> ToolCallMode:
+        mode = args.get("tool_call_mode")
+        if isinstance(mode, ToolCallMode):
+            return mode
+        if isinstance(mode, str):
+            try:
+                return ToolCallMode.value_of(mode)
+            except ValueError:
+                return ToolCallMode.STRUCTURED
+        return ToolCallMode.STRUCTURED
 
     def _generate_worker(
         self,

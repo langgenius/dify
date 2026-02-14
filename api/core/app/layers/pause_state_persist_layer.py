@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Annotated, Literal, Self, TypeAlias
 
@@ -12,6 +13,8 @@ from core.workflow.graph_events.graph import GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+
+logger = logging.getLogger(__name__)
 
 
 # Wrapper types for `WorkflowAppGenerateEntity` and
@@ -108,6 +111,8 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         if not isinstance(event, GraphRunPausedEvent):
             return
 
+        logger.debug("[persist_layer] GraphRunPausedEvent received, reasons=%s", event.reasons)
+
         entity_wrapper: _GenerateEntityUnion
         if isinstance(self._generate_entity, WorkflowAppGenerateEntity):
             entity_wrapper = _WorkflowGenerateEntityWrapper(entity=self._generate_entity)
@@ -121,6 +126,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
 
         workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id
         assert workflow_run_id is not None
+        logger.debug("[persist_layer] persisting state run=%s len=%d", workflow_run_id, len(state.dumps()))
         repo = self._get_repo()
         repo.create_workflow_pause(
             workflow_run_id=workflow_run_id,
@@ -128,6 +134,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             state=state.dumps(),
             pause_reasons=event.reasons,
         )
+        logger.debug("[persist_layer] pause state persisted OK")
 
     def on_graph_end(self, error: Exception | None) -> None:
         """

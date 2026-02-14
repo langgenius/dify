@@ -1071,6 +1071,7 @@ class Message(Base):
     status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
     error: Mapped[str | None] = mapped_column(LongText)
     message_metadata: Mapped[str | None] = mapped_column(LongText)
+    tool_calls: Mapped[list[dict[str, Any]] | None] = mapped_column(sa.JSON, nullable=True)
     invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
@@ -1405,6 +1406,7 @@ class Message(Base):
             status=data["status"],
             error=data["error"],
             message_metadata=json.dumps(data["message_metadata"]),
+            tool_calls=data.get("tool_calls"),
             from_source=data["from_source"],
             from_end_user_id=data["from_end_user_id"],
             from_account_id=data["from_account_id"],

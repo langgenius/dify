@@ -37,6 +37,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageContentUnionTypes,
     PromptMessageRole,
     SystemPromptMessage,
+    ToolPromptMessage,
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
@@ -59,6 +60,7 @@ from core.variables import (
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.pause_reason import ToolCallPending
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -69,6 +71,7 @@ from core.workflow.node_events import (
     ModelInvokeCompletedEvent,
     NodeEventBase,
     NodeRunResult,
+    PauseRequestedEvent,
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
@@ -156,134 +159,195 @@ class LLMNode(Node[LLMNodeData]):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         reasoning_content = None
+        tool_calls = None
         variable_pool = self.graph_runtime_state.variable_pool
 
+        # Get external tools from system variables
+        external_tools = None
+        external_tool_choice = None
+        external_tool_results = None
+        external_tool_call_mode = None
+
+        if variable_pool.system_variables:
+            external_tools = variable_pool.system_variables.external_tools
+            external_tool_choice = variable_pool.system_variables.external_tool_choice
+            external_tool_results = variable_pool.system_variables.external_tool_results
+            external_tool_call_mode = getattr(variable_pool.system_variables, "external_tool_call_mode", None)
+
+        # Check if this is a resume from tool call pause
+        tool_call_state = self._get_tool_call_state(variable_pool)
+        logger.debug(
+            "[llm_node:%s] state=%s tool_results=%s mode=%s",
+            self._node_id,
+            bool(tool_call_state),
+            bool(external_tool_results),
+            external_tool_call_mode,
+        )
+
         try:
-            # init messages template
-            self.node_data.prompt_template = self._transform_chat_messages(self.node_data.prompt_template)
-
-            # fetch variables and fetch values from variable pool
-            inputs = self._fetch_inputs(node_data=self.node_data)
-
-            # fetch jinja2 inputs
-            jinja_inputs = self._fetch_jinja_inputs(node_data=self.node_data)
-
-            # merge inputs
-            inputs.update(jinja_inputs)
-
-            # fetch files
-            files = (
-                llm_utils.fetch_files(
-                    variable_pool=variable_pool,
-                    selector=self.node_data.vision.configs.variable_selector,
-                )
-                if self.node_data.vision.enabled
-                else []
-            )
-
-            if files:
-                node_inputs["#files#"] = [file.to_dict() for file in files]
-
-            # fetch context value
-            generator = self._fetch_context(node_data=self.node_data)
-            context = None
-            context_files: list[File] = []
-            for event in generator:
-                context = event.context
-                context_files = event.context_files or []
-                yield event
-            if context:
-                node_inputs["#context#"] = context
-
-            if context_files:
-                node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
-
-            # fetch model config
+            # fetch model config (needed for both first-run and resume)
             model_instance, model_config = LLMNode._fetch_model_config(
                 node_data_model=self.node_data.model,
                 tenant_id=self.tenant_id,
             )
 
-            # fetch memory
-            memory = llm_utils.fetch_memory(
-                variable_pool=variable_pool,
-                app_id=self.app_id,
-                node_data_memory=self.node_data.memory,
-                model_instance=model_instance,
+            if tool_call_state:
+                # === RESUME PATH: restore state and inject tool results ===
+                logger.debug("[llm_node:%s] RESUME round=%s", self._node_id, tool_call_state.get("round"))
+                prompt_messages, stop, tool_call_history, current_round = self._resume_from_tool_call_state(
+                    tool_call_state, variable_pool, external_tool_results
+                )
+                # Clear tool_results for invoke_llm since they're already in prompt_messages
+                resume_tool_results = None
+            else:
+                logger.debug("[llm_node:%s] FIRST-RUN path", self._node_id)
+                # === FIRST-RUN PATH: normal prompt construction ===
+                # If external_tool_results exist but this node has no saved state,
+                # these results belong to a previously completed node — ignore them.
+                if external_tool_results:
+                    logger.debug("[llm_node:%s] ignoring stale external_tool_results (no saved state)", self._node_id)
+                    external_tool_results = None
+                prompt_messages, stop, tool_call_history, current_round = yield from self._first_run_build_prompt(
+                    node_inputs,
+                    variable_pool,
+                    model_instance,
+                    model_config,
+                    external_tools,
+                    external_tool_choice,
+                    external_tool_results,
+                )
+                resume_tool_results = None
+
+            # Invoke LLM
+            (
+                result_text,
+                clean_text,
+                usage,
+                finish_reason,
+                reasoning_content,
+                tool_calls,
+                structured_output,
+            ) = yield from self._invoke_and_collect(
+                model_instance,
+                model_config,
+                prompt_messages,
+                stop,
+                external_tools,
+                external_tool_choice,
+                resume_tool_results,
             )
 
-            query: str | None = None
-            if self.node_data.memory:
-                query = self.node_data.memory.query_prompt_template
-                if not query and (
-                    query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
-                ):
-                    query = query_variable.text
-
-            prompt_messages, stop = LLMNode.fetch_prompt_messages(
-                sys_query=query,
-                sys_files=files,
-                context=context,
-                memory=memory,
-                model_config=model_config,
-                prompt_template=self.node_data.prompt_template,
-                memory_config=self.node_data.memory,
-                vision_enabled=self.node_data.vision.enabled,
-                vision_detail=self.node_data.vision.configs.detail,
-                variable_pool=variable_pool,
-                jinja2_variables=self.node_data.prompt_config.jinja2_variables,
-                tenant_id=self.tenant_id,
-                context_files=context_files,
+            # External tool callback: if LLM returned tool_calls and feature is enabled, pause
+            # Only activate when tool_call_mode is "structured" (explicit opt-in from caller)
+            logger.debug(
+                "[llm_node:%s] pause check: calls=%s cb=%s tools=%s mode=%s round=%d/%d",
+                self._node_id,
+                bool(tool_calls),
+                self.node_data.external_tool_callback_enabled,
+                bool(external_tools),
+                external_tool_call_mode,
+                current_round,
+                self.node_data.max_tool_call_rounds,
             )
+            if (
+                tool_calls
+                and self.node_data.external_tool_callback_enabled
+                and external_tools
+                and external_tool_call_mode == "structured"
+                and current_round < self.node_data.max_tool_call_rounds
+            ):
+                logger.debug(
+                    "[llm_node:%s] PAUSING round=%d calls=%s",
+                    self._node_id,
+                    current_round + 1,
+                    [(tc["function"]["name"], tc["id"][:12]) for tc in tool_calls],
+                )
+                # Record this round in history
+                tool_call_history.append({"round": current_round + 1, "tool_calls": tool_calls, "tool_results": []})
 
-            # handle invoke result
-            generator = LLMNode.invoke_llm(
-                node_data_model=self.node_data.model,
-                model_instance=model_instance,
-                prompt_messages=prompt_messages,
-                stop=stop,
-                user_id=self.user_id,
-                structured_output_enabled=self.node_data.structured_output_enabled,
-                structured_output=self.node_data.structured_output,
-                file_saver=self._llm_file_saver,
-                file_outputs=self._file_outputs,
-                node_id=self._node_id,
-                node_type=self.node_type,
-                reasoning_format=self.node_data.reasoning_format,
-            )
-
-            structured_output: LLMStructuredOutput | None = None
-
-            for event in generator:
-                if isinstance(event, StreamChunkEvent):
-                    yield event
-                elif isinstance(event, ModelInvokeCompletedEvent):
-                    # Raw text
-                    result_text = event.text
-                    usage = event.usage
-                    finish_reason = event.finish_reason
-                    reasoning_content = event.reasoning_content or ""
-
-                    # For downstream nodes, determine clean text based on reasoning_format
-                    if self.node_data.reasoning_format == "tagged":
-                        # Keep <think> tags for backward compatibility
-                        clean_text = result_text
-                    else:
-                        # Extract clean text from <think> tags
-                        clean_text, _ = LLMNode._split_reasoning(result_text, self.node_data.reasoning_format)
-
-                    # Process structured output if available from the event.
-                    structured_output = (
-                        LLMStructuredOutput(structured_output=event.structured_output)
-                        if event.structured_output
-                        else None
+                # Append assistant message with tool_calls to prompt_messages for next round
+                prompt_messages = list(prompt_messages)
+                prompt_messages.append(
+                    AssistantPromptMessage(
+                        content=result_text or "",
+                        tool_calls=[
+                            AssistantPromptMessage.ToolCall(
+                                id=tc["id"],
+                                type=tc.get("type", "function"),
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=tc["function"]["name"],
+                                    arguments=tc["function"]["arguments"],
+                                ),
+                            )
+                            for tc in tool_calls
+                        ],
                     )
+                )
 
-                    # deduct quota
-                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
-                    break
-                elif isinstance(event, LLMStructuredOutput):
-                    structured_output = event
+                # Save state to variable_pool for resume
+                state = {
+                    "round": current_round + 1,
+                    "prompt_messages": LLMNode._serialize_prompt_messages(prompt_messages),
+                    "tool_call_history": tool_call_history,
+                    "stop": list(stop or []),
+                }
+                variable_pool.add((self._node_id, "__tool_call_state__"), json.dumps(state, ensure_ascii=False))
+
+                yield PauseRequestedEvent(
+                    reason=ToolCallPending(
+                        node_id=self._node_id,
+                        tool_calls=tool_calls,
+                        round=current_round + 1,
+                    ),
+                    process_data={
+                        "tool_calls": tool_calls,
+                        "tool_call_history": tool_call_history,
+                    },
+                )
+                return
+
+            # Max tool call rounds reached: re-invoke LLM without tools to get a text answer
+            if (
+                tool_calls
+                and self.node_data.external_tool_callback_enabled
+                and external_tool_call_mode == "structured"
+                and current_round >= self.node_data.max_tool_call_rounds
+            ):
+                logger.debug(
+                    "[llm_node:%s] max tool rounds reached (%d), re-invoking without tools",
+                    self._node_id,
+                    self.node_data.max_tool_call_rounds,
+                )
+                prompt_messages = list(prompt_messages)
+                prompt_messages.append(
+                    AssistantPromptMessage(content=result_text or ""),
+                )
+                prompt_messages.append(
+                    SystemPromptMessage(
+                        content=(
+                            "You have reached the maximum number of tool call rounds. "
+                            "Do NOT call any more tools. Summarize what you have done so far "
+                            "and answer the user's question directly with the information available."
+                        ),
+                    ),
+                )
+                (
+                    result_text,
+                    clean_text,
+                    usage,
+                    finish_reason,
+                    reasoning_content,
+                    tool_calls,
+                    structured_output,
+                ) = yield from self._invoke_and_collect(
+                    model_instance,
+                    model_config,
+                    prompt_messages,
+                    stop,
+                    None,  # no tools
+                    None,  # no tool_choice
+                    None,  # no resume_tool_results
+                )
 
             process_data = {
                 "model_mode": model_config.mode,
@@ -295,6 +359,8 @@ class LLMNode(Node[LLMNodeData]):
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
+            if tool_call_state:
+                process_data["external_tool_callback_round"] = current_round
 
             outputs = {
                 "text": clean_text,
@@ -304,8 +370,31 @@ class LLMNode(Node[LLMNodeData]):
             }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
+            if tool_calls:
+                outputs["tool_calls"] = tool_calls
+            if tool_call_history:
+                outputs["tool_call_history"] = tool_call_history
+                # Readable summary for downstream nodes: "round 1: exec({...}) → ok | round 2: read({...}) → ok"
+                summary_parts = []
+                for entry in tool_call_history:
+                    r = entry.get("round", "?")
+                    for tc in entry.get("tool_calls", []):
+                        name = tc.get("function", {}).get("name", tc.get("name", "?"))
+                        args = tc.get("function", {}).get("arguments", tc.get("arguments", ""))
+                        args_short = args[:80] + "..." if len(str(args)) > 80 else str(args)
+                        summary_parts.append(f"round {r}: {name}({args_short})")
+                    for tr in entry.get("tool_results", []):
+                        out = str(tr.get("output", ""))
+                        out_short = out[:120] + "..." if len(out) > 120 else out
+                        summary_parts.append(f"  → {out_short}")
+                outputs["tool_call_summary"] = "\n".join(summary_parts)
+                logger.debug("[llm_node:%s] completed with %d tool rounds", self._node_id, len(tool_call_history))
             if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
+
+            # Clear external_tool_results to prevent leaking to downstream nodes
+            if variable_pool.system_variables and variable_pool.system_variables.external_tool_results:
+                variable_pool.system_variables.external_tool_results = None
 
             # Send final chunk event to indicate streaming is complete
             yield StreamChunkEvent(
@@ -352,6 +441,265 @@ class LLMNode(Node[LLMNodeData]):
                 )
             )
 
+    def _get_tool_call_state(self, variable_pool: VariablePool) -> dict | None:
+        """Check if there's a saved tool call state from a previous pause."""
+        state_var = variable_pool.get((self._node_id, "__tool_call_state__"))
+        if state_var is None:
+            return None
+        raw = getattr(state_var, "value", None) or getattr(state_var, "text", None)
+        if not raw:
+            return None
+        try:
+            return json.loads(raw) if isinstance(raw, str) else raw
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    def _resume_from_tool_call_state(
+        self,
+        state: dict,
+        variable_pool: VariablePool,
+        external_tool_results: list | None,
+    ) -> tuple[list[PromptMessage], list[str], list[dict], int]:
+        """Restore prompt_messages from saved state and inject tool results."""
+        current_round = state.get("round", 1)
+        stop = state.get("stop", [])
+        tool_call_history = state.get("tool_call_history", [])
+        prompt_messages = LLMNode._deserialize_prompt_messages(state.get("prompt_messages", []))
+
+        # Inject tool results into prompt_messages
+        if external_tool_results:
+            # Build set of tool_call_ids from the last assistant message
+            last_assistant_tool_call_ids: set[str] = set()
+            for msg in reversed(prompt_messages):
+                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                    last_assistant_tool_call_ids = {tc.id for tc in msg.tool_calls}
+                    break
+
+            results_for_history = []
+            for result in external_tool_results:
+                tool_call_id = getattr(result, "tool_call_id", None) or (
+                    result.get("tool_call_id") if isinstance(result, dict) else None
+                )
+                output = getattr(result, "output", None) or (result.get("output") if isinstance(result, dict) else None)
+                if tool_call_id and tool_call_id in last_assistant_tool_call_ids and output is not None:
+                    output_str = str(output)
+                    prompt_messages.append(ToolPromptMessage(content=output_str, tool_call_id=tool_call_id))
+                    results_for_history.append({"tool_call_id": tool_call_id, "output": output_str})
+
+            # Update the last history entry with tool_results
+            if tool_call_history and results_for_history:
+                tool_call_history[-1]["tool_results"] = results_for_history
+
+        return prompt_messages, stop, tool_call_history, current_round
+
+    def _first_run_build_prompt(
+        self,
+        node_inputs: dict,
+        variable_pool: VariablePool,
+        model_instance: ModelInstance,
+        model_config: ModelConfigWithCredentialsEntity,
+        external_tools,
+        external_tool_choice,
+        external_tool_results,
+    ) -> Generator:
+        """First-run path: build prompt messages from scratch. Returns (prompt_messages, stop, [], 0)."""
+        # init messages template
+        self.node_data.prompt_template = self._transform_chat_messages(self.node_data.prompt_template)
+
+        # fetch variables and fetch values from variable pool
+        inputs = self._fetch_inputs(node_data=self.node_data)
+
+        # fetch jinja2 inputs
+        jinja_inputs = self._fetch_jinja_inputs(node_data=self.node_data)
+
+        # merge inputs
+        inputs.update(jinja_inputs)
+
+        # fetch files
+        files = (
+            llm_utils.fetch_files(
+                variable_pool=variable_pool,
+                selector=self.node_data.vision.configs.variable_selector,
+            )
+            if self.node_data.vision.enabled
+            else []
+        )
+
+        if files:
+            node_inputs["#files#"] = [file.to_dict() for file in files]
+
+        # fetch context value
+        generator = self._fetch_context(node_data=self.node_data)
+        context = None
+        context_files: list[File] = []
+        for event in generator:
+            context = event.context
+            context_files = event.context_files or []
+            yield event
+        if context:
+            node_inputs["#context#"] = context
+
+        if context_files:
+            node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
+
+        # fetch memory
+        memory = llm_utils.fetch_memory(
+            variable_pool=variable_pool,
+            app_id=self.app_id,
+            node_data_memory=self.node_data.memory,
+            model_instance=model_instance,
+        )
+
+        query: str | None = None
+        if self.node_data.memory:
+            query = self.node_data.memory.query_prompt_template
+            if not query and (query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))):
+                query = query_variable.text
+
+        if external_tool_results:
+            query = None
+
+        prompt_messages, stop = LLMNode.fetch_prompt_messages(
+            sys_query=query,
+            sys_files=files,
+            context=context,
+            memory=memory,
+            model_config=model_config,
+            prompt_template=self.node_data.prompt_template,
+            memory_config=self.node_data.memory,
+            vision_enabled=self.node_data.vision.enabled,
+            vision_detail=self.node_data.vision.configs.detail,
+            variable_pool=variable_pool,
+            jinja2_variables=self.node_data.prompt_config.jinja2_variables,
+            tenant_id=self.tenant_id,
+            context_files=context_files,
+        )
+
+        return prompt_messages, stop, [], 0
+
+    def _invoke_and_collect(
+        self,
+        model_instance: ModelInstance,
+        model_config: ModelConfigWithCredentialsEntity,
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        external_tools,
+        external_tool_choice,
+        external_tool_results,
+    ) -> Generator:
+        """Invoke LLM and collect results.
+
+        Returns (result_text, clean_text, usage, finish_reason,
+        reasoning_content, tool_calls, structured_output).
+        """
+        generator = LLMNode.invoke_llm(
+            node_data_model=self.node_data.model,
+            model_instance=model_instance,
+            prompt_messages=prompt_messages,
+            stop=stop,
+            user_id=self.user_id,
+            structured_output_enabled=self.node_data.structured_output_enabled,
+            structured_output=self.node_data.structured_output,
+            file_saver=self._llm_file_saver,
+            file_outputs=self._file_outputs,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            reasoning_format=self.node_data.reasoning_format,
+            tools=external_tools,
+            tool_choice=external_tool_choice,
+            tool_results=external_tool_results,
+        )
+
+        result_text = ""
+        clean_text = ""
+        usage = LLMUsage.empty_usage()
+        finish_reason = None
+        reasoning_content = None
+        tool_calls = None
+        structured_output: LLMStructuredOutput | None = None
+
+        for event in generator:
+            if isinstance(event, StreamChunkEvent):
+                yield event
+            elif isinstance(event, ModelInvokeCompletedEvent):
+                result_text = event.text
+                usage = event.usage
+                finish_reason = event.finish_reason
+                reasoning_content = event.reasoning_content or ""
+
+                if self.node_data.reasoning_format == "tagged":
+                    clean_text = result_text
+                else:
+                    clean_text, _ = LLMNode._split_reasoning(result_text, self.node_data.reasoning_format)
+
+                structured_output = (
+                    LLMStructuredOutput(structured_output=event.structured_output) if event.structured_output else None
+                )
+
+                tool_calls = event.tool_calls
+
+                llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+                break
+            elif isinstance(event, LLMStructuredOutput):
+                structured_output = event
+
+        return result_text, clean_text, usage, finish_reason, reasoning_content, tool_calls, structured_output
+
+    @staticmethod
+    def _serialize_prompt_messages(messages: Sequence[PromptMessage]) -> list[dict]:
+        """Serialize prompt messages to JSON-compatible dicts for state persistence."""
+        result = []
+        for msg in messages:
+            d: dict[str, Any] = {"role": msg.role.value, "content": msg.content if isinstance(msg.content, str) else ""}
+            if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                d["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    }
+                    for tc in msg.tool_calls
+                ]
+            if isinstance(msg, ToolPromptMessage):
+                d["tool_call_id"] = msg.tool_call_id
+            result.append(d)
+        return result
+
+    @staticmethod
+    def _deserialize_prompt_messages(data: list[dict]) -> list[PromptMessage]:
+        """Deserialize prompt messages from JSON dicts."""
+        role_map = {
+            "system": SystemPromptMessage,
+            "user": UserPromptMessage,
+            "assistant": AssistantPromptMessage,
+            "tool": ToolPromptMessage,
+        }
+        messages: list[PromptMessage] = []
+        for d in data:
+            role = d.get("role", "user")
+            content = d.get("content", "")
+            cls = role_map.get(role, UserPromptMessage)
+
+            if role == "assistant":
+                tool_calls_data = d.get("tool_calls", [])
+                tool_calls = [
+                    AssistantPromptMessage.ToolCall(
+                        id=tc["id"],
+                        type=tc.get("type", "function"),
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name=tc["function"]["name"],
+                            arguments=tc["function"]["arguments"],
+                        ),
+                    )
+                    for tc in tool_calls_data
+                ]
+                messages.append(AssistantPromptMessage(content=content, tool_calls=tool_calls))
+            elif role == "tool":
+                messages.append(ToolPromptMessage(content=content, tool_call_id=d.get("tool_call_id", "")))
+            else:
+                messages.append(cls(content=content))
+        return messages
+
     @staticmethod
     def invoke_llm(
         *,
@@ -367,12 +715,71 @@ class LLMNode(Node[LLMNodeData]):
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        tools: list[PromptMessageTool] | None = None,
+        tool_choice: Any | None = None,
+        tool_results: list[Any] | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
         )
         if not model_schema:
             raise ValueError(f"Model schema not found for {node_data_model.name}")
+
+        # Handle tool_results and tool_choice
+        current_prompt_messages = list(prompt_messages)
+
+        # In multi-LLM-node chatflows all nodes share the same
+        # external_tool_results.  Filter to only results whose tool_call_id
+        # actually appears in *this* node's prompt history.
+        relevant_results: list[Any] = []
+        if tool_results:
+            history_tool_call_ids: set[str] = set()
+            for msg in current_prompt_messages:
+                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                    history_tool_call_ids.update(tc.id for tc in msg.tool_calls)
+            relevant_results = [r for r in tool_results if getattr(r, "tool_call_id", None) in history_tool_call_ids]
+
+        if relevant_results:
+            result_ids = {getattr(r, "tool_call_id", None) for r in relevant_results}
+
+            # Strip tool_calls from assistant messages not in the result set.
+            for i, msg in enumerate(current_prompt_messages):
+                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                    if not any(tc.id in result_ids for tc in msg.tool_calls):
+                        current_prompt_messages[i] = AssistantPromptMessage(
+                            content=msg.content,
+                            tool_calls=[],
+                        )
+
+            for result in relevant_results:
+                tool_call_id = getattr(result, "tool_call_id", None)
+                output = getattr(result, "output", None)
+                if tool_call_id and output is not None:
+                    current_prompt_messages.append(
+                        ToolPromptMessage(
+                            content=output,
+                            tool_call_id=tool_call_id,
+                        )
+                    )
+        else:
+            # No relevant tool_results — strip orphaned tool_calls from history
+            # that don't have matching ToolPromptMessages following them.
+            existing_tool_msg_ids = {
+                msg.tool_call_id
+                for msg in current_prompt_messages
+                if isinstance(msg, ToolPromptMessage) and msg.tool_call_id
+            }
+            for i, msg in enumerate(current_prompt_messages):
+                if isinstance(msg, AssistantPromptMessage) and msg.tool_calls:
+                    if not any(tc.id in existing_tool_msg_ids for tc in msg.tool_calls):
+                        current_prompt_messages[i] = AssistantPromptMessage(
+                            content=msg.content,
+                            tool_calls=[],
+                        )
+
+        current_model_parameters = node_data_model.completion_params.copy() if node_data_model.completion_params else {}
+        if tool_choice:
+            current_model_parameters["tool_choice"] = tool_choice
 
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
@@ -384,9 +791,9 @@ class LLMNode(Node[LLMNodeData]):
                 provider=model_instance.provider,
                 model_schema=model_schema,
                 model_instance=model_instance,
-                prompt_messages=prompt_messages,
+                prompt_messages=current_prompt_messages,
                 json_schema=output_schema,
-                model_parameters=node_data_model.completion_params,
+                model_parameters=current_model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
@@ -395,11 +802,12 @@ class LLMNode(Node[LLMNodeData]):
             request_start_time = time.perf_counter()
 
             invoke_result = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
-                model_parameters=node_data_model.completion_params,
+                prompt_messages=current_prompt_messages,
+                model_parameters=current_model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
+                tools=tools,
             )
 
         return LLMNode.handle_invoke_result(
@@ -453,6 +861,8 @@ class LLMNode(Node[LLMNodeData]):
         has_content = False
 
         collected_structured_output = None  # Collect structured_output from streaming chunks
+        collected_tool_calls = []
+        current_tool_call = None
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
@@ -462,6 +872,95 @@ class LLMNode(Node[LLMNodeData]):
                         collected_structured_output = dict(result.structured_output)
                     yield result
                 if isinstance(result, LLMResultChunk):
+                    if result.delta.message.tool_calls:
+                        # Yield tool call chunk for SSE
+                        tool_calls_dict = []
+                        # Helper to track indices within this chunk's processing context
+                        # We need to simulate the state evolution to get correct indices for multiple tool calls
+                        temp_collected_ids = [c["id"] for c in collected_tool_calls]
+
+                        for tc in result.delta.message.tool_calls:
+                            tc_args = tc.function.arguments
+                            if isinstance(tc_args, dict):
+                                try:
+                                    tc_args = json.dumps(tc_args, ensure_ascii=False)
+                                except Exception:
+                                    tc_args = str(tc_args)
+                            elif tc_args is None:
+                                tc_args = ""
+                            elif not isinstance(tc_args, str):
+                                tc_args = str(tc_args)
+
+                            # Calculate index
+                            idx = 0
+                            if tc.id:
+                                if tc.id in temp_collected_ids:
+                                    idx = temp_collected_ids.index(tc.id)
+                                else:
+                                    idx = len(temp_collected_ids)
+                                    temp_collected_ids.append(tc.id)
+                            elif current_tool_call:
+                                # No ID, implies continuation of current tool call
+                                # Find index of current_tool_call in collected_tool_calls
+                                for i, c in enumerate(collected_tool_calls):
+                                    if c is current_tool_call:
+                                        idx = i
+                                        break
+
+                            tool_calls_dict.append(
+                                {
+                                    "index": idx,
+                                    "id": tc.id,
+                                    "type": tc.type,
+                                    "function": {"name": tc.function.name, "arguments": tc_args},
+                                }
+                            )
+
+                        yield StreamChunkEvent(
+                            selector=[node_id, "tool_calls"],
+                            chunk=json.dumps(tool_calls_dict, ensure_ascii=False),
+                            is_final=False,
+                        )
+
+                        for tc in result.delta.message.tool_calls:
+                            # Try to find existing tool call by ID if available
+                            target_tool_call = None
+
+                            # Normalize arguments to string
+                            new_args = tc.function.arguments
+                            if new_args is None:
+                                new_args = ""
+                            elif isinstance(new_args, dict):
+                                try:
+                                    new_args = json.dumps(new_args, ensure_ascii=False)
+                                except Exception:
+                                    new_args = str(new_args)
+                            elif not isinstance(new_args, str):
+                                new_args = str(new_args)
+
+                            if tc.id:
+                                # Check if we already have this ID in our collected list
+                                for existing in collected_tool_calls:
+                                    if existing["id"] == tc.id:
+                                        target_tool_call = existing
+                                        break
+
+                            if target_tool_call:
+                                # Append delta arguments (standard OpenAI streaming behavior)
+                                target_tool_call["function"]["arguments"] += new_args
+                                # Update current_tool_call pointer just in case subsequent chunks drop ID
+                                current_tool_call = target_tool_call
+
+                            elif tc.id:
+                                current_tool_call = {
+                                    "id": tc.id,
+                                    "type": tc.type,
+                                    "function": {"name": tc.function.name, "arguments": new_args},
+                                }
+                                collected_tool_calls.append(current_tool_call)
+                            elif current_tool_call:
+                                current_tool_call["function"]["arguments"] += new_args
+
                     contents = result.delta.message.content
                     for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
                         contents=contents,
@@ -524,6 +1023,7 @@ class LLMNode(Node[LLMNodeData]):
             reasoning_content=reasoning_content,
             # Pass structured output if collected from streaming chunks
             structured_output=collected_structured_output,
+            tool_calls=collected_tool_calls,
         )
 
     @staticmethod

@@ -232,6 +232,7 @@ class GraphEngine:
             self._initialize_layers()
 
             is_resume = self._graph_execution.started
+            logger.debug("[engine] is_resume=%s", is_resume)
             if not is_resume:
                 self._graph_execution.start()
             else:
@@ -252,6 +253,7 @@ class GraphEngine:
 
             # Handle completion
             if self._graph_execution.is_paused:
+                logger.debug("[engine] execution paused, reasons=%s", self._graph_execution.pause_reasons)
                 pause_reasons = self._graph_execution.pause_reasons
                 assert pause_reasons, "pause_reasons should not be empty when execution is paused."
                 # Ensure we have a valid PauseReason for the event

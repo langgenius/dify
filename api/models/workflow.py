@@ -31,7 +31,13 @@ from core.workflow.constants import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from core.workflow.entities.pause_reason import (
+    HumanInputRequired,
+    PauseReason,
+    PauseReasonType,
+    SchedulingPause,
+    ToolCallPending,
+)
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -1869,6 +1875,8 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
             )
         elif isinstance(pause_reason, SchedulingPause):
             return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+        elif isinstance(pause_reason, ToolCallPending):
+            return cls(type_=PauseReasonType.TOOL_CALL_PENDING, node_id=pause_reason.node_id)
         else:
             raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
@@ -1882,5 +1890,7 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
             )
         elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
             return SchedulingPause(message=self.message)
+        elif self.type_ == PauseReasonType.TOOL_CALL_PENDING:
+            return ToolCallPending(node_id=self.node_id, tool_calls=[], round=0)
         else:
             raise AssertionError(f"Unknown pause reason type: {self.type_}")

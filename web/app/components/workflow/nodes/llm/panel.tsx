@@ -64,6 +64,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    handleExternalToolCallbackEnabledChange,
+    handleMaxToolCallRoundsChange,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -252,6 +254,36 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           onChange={handleReasoningFormatChange}
           readonly={readOnly}
         />
+
+        {/* External Tool Callback */}
+        <Split />
+        <Field
+          title={t(`${i18nPrefix}.externalToolCallback`, { ns: 'workflow' })}
+          tooltip={t(`${i18nPrefix}.externalToolCallbackTip`, { ns: 'workflow' })!}
+          operations={(
+            <Switch
+              defaultValue={!!inputs.external_tool_callback_enabled}
+              onChange={handleExternalToolCallbackEnabledChange}
+              size="md"
+              disabled={readOnly}
+            />
+          )}
+        >
+          {inputs.external_tool_callback_enabled && (
+            <div className="mt-1 flex items-center space-x-2">
+              <span className="text-xs text-text-tertiary">{t(`${i18nPrefix}.maxToolCallRounds`, { ns: 'workflow' })}</span>
+              <input
+                type="number"
+                className="w-16 rounded-md border border-components-input-border-active bg-components-input-bg-normal px-2 py-1 text-xs"
+                value={inputs.max_tool_call_rounds ?? 10}
+                min={1}
+                max={50}
+                onChange={e => handleMaxToolCallRoundsChange(Number.parseInt(e.target.value) || 10)}
+                disabled={readOnly}
+              />
+            </div>
+          )}
+        </Field>
       </div>
       <Split />
       <OutputVars

@@ -10,6 +10,7 @@ from core.workflow.nodes.human_input.entities import FormInput, UserAction
 class PauseReasonType(StrEnum):
     HUMAN_INPUT_REQUIRED = auto()
     SCHEDULED_PAUSE = auto()
+    TOOL_CALL_PENDING = auto()
 
 
 class HumanInputRequired(BaseModel):
@@ -47,4 +48,12 @@ class SchedulingPause(BaseModel):
     message: str
 
 
-PauseReason: TypeAlias = Annotated[HumanInputRequired | SchedulingPause, Field(discriminator="TYPE")]
+class ToolCallPending(BaseModel):
+    TYPE: Literal[PauseReasonType.TOOL_CALL_PENDING] = PauseReasonType.TOOL_CALL_PENDING
+
+    node_id: str
+    tool_calls: list[dict]
+    round: int
+
+
+PauseReason: TypeAlias = Annotated[HumanInputRequired | SchedulingPause | ToolCallPending, Field(discriminator="TYPE")]

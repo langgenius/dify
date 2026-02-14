@@ -33,7 +33,13 @@ from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from core.workflow.entities.pause_reason import (
+    HumanInputRequired,
+    PauseReason,
+    PauseReasonType,
+    SchedulingPause,
+    ToolCallPending,
+)
 from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from core.workflow.nodes.human_input.entities import FormDefinition
 from extensions.ext_storage import storage
@@ -784,6 +790,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         pause_id=pause_model.id,
                         type_=reason.TYPE,
                         message=reason.message,
+                    )
+                elif isinstance(reason, ToolCallPending):
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        node_id=reason.node_id,
                     )
                 else:
                     raise AssertionError(f"unkown reason type: {type(reason)}")

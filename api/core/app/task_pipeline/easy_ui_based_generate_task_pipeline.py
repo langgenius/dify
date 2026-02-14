@@ -1,5 +1,8 @@
+import json
 import logging
+import re
 import time
+import uuid
 from collections.abc import Generator
 from threading import Thread
 from typing import Union, cast
@@ -13,6 +16,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    ToolCallMode,
 )
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
@@ -41,6 +45,7 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     StreamEvent,
     StreamResponse,
+    ToolCallStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -113,6 +118,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             application_generate_entity=application_generate_entity,
             task_state=self._task_state,
         )
+
+        self._tool_call_cache: dict[str, AssistantPromptMessage.ToolCall] = {}
+        self._emitted_tool_call_ids: set[str] = set()
 
         self._conversation_name_generate_thread: Thread | None = None
 
@@ -295,6 +303,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     # Save message
                     self._save_message(session=session, trace_manager=trace_manager)
                     session.commit()
+                if isinstance(event, QueueMessageEndEvent):
+                    yield from self._build_text_tool_calls()
                 message_end_resp = self._message_end_to_stream_response()
                 yield message_end_resp
             elif isinstance(event, QueueRetrieverResourcesEvent):
@@ -313,6 +323,20 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     yield response
             elif isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent):
                 chunk = event.chunk
+                if chunk.delta.message.tool_calls:
+                    for tool_call in chunk.delta.message.tool_calls:
+                        merged_tool_call = self._resolve_tool_call(tool_call)
+                        if not merged_tool_call.function.name:
+                            continue
+                        tool_call_id = merged_tool_call.id
+                        if tool_call_id not in self._emitted_tool_call_ids:
+                            self._emitted_tool_call_ids.add(tool_call_id)
+                            yield ToolCallStreamResponse(
+                                task_id=self._application_generate_entity.task_id,
+                                tool_call_id=tool_call_id,
+                                name=merged_tool_call.function.name,
+                                arguments=merged_tool_call.function.arguments,
+                            )
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
                     continue
@@ -372,6 +396,136 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             publisher.publish(None)
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
+
+    def _build_text_tool_calls(self) -> list[ToolCallStreamResponse]:
+        if not self._should_parse_text_tool_calls():
+            return []
+        answer = cast(str, self._task_state.llm_result.message.content) if self._task_state.llm_result.message else ""
+        if not answer:
+            return []
+        tool_calls = self._extract_text_tool_calls(answer)
+        responses: list[ToolCallStreamResponse] = []
+        for name, arguments in tool_calls:
+            tool_call_id = f"call_{uuid.uuid4().hex}"
+            self._emitted_tool_call_ids.add(tool_call_id)
+            responses.append(
+                ToolCallStreamResponse(
+                    task_id=self._application_generate_entity.task_id,
+                    tool_call_id=tool_call_id,
+                    name=name,
+                    arguments=arguments,
+                )
+            )
+        return responses
+
+    def _should_parse_text_tool_calls(self) -> bool:
+        mode = getattr(self._application_generate_entity, "tool_call_mode", ToolCallMode.STRUCTURED)
+        return mode == ToolCallMode.OPENCLAW_TEXT and not self._emitted_tool_call_ids
+
+    @staticmethod
+    def _extract_text_tool_calls(answer: str) -> list[tuple[str, str]]:
+        code_fence_re = re.compile(r"```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```", re.MULTILINE)
+        tool_line_re = re.compile(r"^\s*([A-Za-z_][\w]*)\s*\((.*)\)\s*$")
+        found: list[tuple[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+
+        def add_call(name: str, arguments: str):
+            key = (name, arguments)
+            if key in seen:
+                return
+            seen.add(key)
+            found.append((name, arguments))
+
+        def resolve_single_arg_key(tool_name: str) -> str | None:
+            mapping = {
+                "memory_search": "query",
+                "memory_get": "path",
+                "read": "path",
+                "exec": "command",
+                "web_search": "query",
+                "web_fetch": "url",
+            }
+            return mapping.get(tool_name.lower())
+
+        def stringify_args(tool_name: str, raw_args: str) -> str:
+            raw_args = raw_args.strip()
+            if not raw_args:
+                return "{}"
+            if raw_args[0] in "[{":
+                try:
+                    json.loads(raw_args)
+                    return raw_args
+                except json.JSONDecodeError:
+                    pass
+            if len(raw_args) >= 2 and raw_args[0] == raw_args[-1] and raw_args[0] in {'"', "'"}:
+                value = raw_args[1:-1]
+            else:
+                value = raw_args
+            key = resolve_single_arg_key(tool_name)
+            payload = {key: value} if key else {"input": value}
+            return json.dumps(payload, ensure_ascii=False)
+
+        for match in code_fence_re.finditer(answer):
+            block = match.group(1).strip()
+            if not block:
+                continue
+            lines = [line.strip() for line in block.splitlines() if line.strip()]
+            if not lines:
+                continue
+            first = lines[0]
+            if re.fullmatch(r"[A-Za-z_][\w]*", first):
+                tool_name = first
+                rest = "\n".join(lines[1:]).strip()
+                arguments = stringify_args(tool_name, rest)
+                add_call(tool_name, arguments)
+                continue
+            for line in lines:
+                match_line = tool_line_re.match(line)
+                if not match_line:
+                    continue
+                tool_name = match_line.group(1)
+                raw_args = match_line.group(2)
+                arguments = stringify_args(tool_name, raw_args)
+                add_call(tool_name, arguments)
+
+        remainder = code_fence_re.sub("", answer)
+        for line in remainder.splitlines():
+            match_line = tool_line_re.match(line)
+            if not match_line:
+                continue
+            tool_name = match_line.group(1)
+            raw_args = match_line.group(2)
+            arguments = stringify_args(tool_name, raw_args)
+            add_call(tool_name, arguments)
+
+        return found
+
+    def _resolve_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> AssistantPromptMessage.ToolCall:
+        tool_call_id = tool_call.id
+        if not tool_call_id:
+            tool_call_id = f"call_{uuid.uuid4().hex}"
+        existing = self._tool_call_cache.get(tool_call_id)
+        if existing is None:
+            copied = tool_call.model_copy(deep=True)
+            copied.id = tool_call_id
+            self._tool_call_cache[tool_call_id] = copied
+            return copied
+
+        self._merge_tool_call_delta(existing, tool_call)
+        return existing
+
+    @staticmethod
+    def _merge_tool_call_delta(
+        tool_call: AssistantPromptMessage.ToolCall, delta: AssistantPromptMessage.ToolCall
+    ) -> None:
+        if delta.id:
+            tool_call.id = delta.id
+        if delta.type:
+            tool_call.type = delta.type
+        if delta.function.name:
+            tool_call.function.name = delta.function.name
+        if delta.function.arguments:
+            tool_call.function.arguments += delta.function.arguments
 
     def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
         """

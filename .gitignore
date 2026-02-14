@@ -236,3 +236,4 @@ scripts/stress-test/reports/
 # settings
 *.local.json
 *.local.md
+docs/taichuy/*

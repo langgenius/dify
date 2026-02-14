@@ -131,6 +131,24 @@ class AppGenerateService:
             elif app_model.mode == AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                tool_call_mode = args.get("tool_call_mode")
+                if tool_call_mode == "structured":
+                    # Structured tool callback mode: use synchronous thread path
+                    # so that pause/resume works without requiring Celery worker.
+                    return rate_limit.generate(
+                        AdvancedChatAppGenerator.convert_to_event_stream(
+                            AdvancedChatAppGenerator().generate(
+                                app_model=app_model,
+                                workflow=workflow,
+                                user=user,
+                                args=args,
+                                invoke_from=invoke_from,
+                                workflow_run_id=str(uuid.uuid4()),
+                                streaming=streaming,
+                            ),
+                        ),
+                        request_id=request_id,
+                    )
                 with rate_limit_context(rate_limit, request_id):
                     payload = AppExecutionParams.new(
                         app_model=app_model,
