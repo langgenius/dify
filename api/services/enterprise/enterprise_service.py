@@ -1,3 +1,4 @@
+import atexit
 import logging
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -19,6 +20,27 @@ _default_workspace_join_executor = ThreadPoolExecutor(
     max_workers=DEFAULT_WORKSPACE_JOIN_ASYNC_MAX_WORKERS,
     thread_name_prefix="enterprise-default-workspace-join",
 )
+
+
+def _shutdown_default_workspace_join_executor() -> None:
+    """
+    Best-effort cleanup for the module-level executor.
+
+    We wait for the currently running task (at most one worker), but cancel any queued
+    tasks to avoid blocking process shutdown for too long.
+    """
+
+    try:
+        _default_workspace_join_executor.shutdown(wait=True, cancel_futures=True)
+    except Exception:
+        logger.debug("Failed to shutdown default workspace join executor", exc_info=True)
+
+
+def _register_shutdown_hook() -> None:
+    atexit.register(_shutdown_default_workspace_join_executor)
+
+
+_register_shutdown_hook()
 
 
 class WebAppSettings(BaseModel):
@@ -137,7 +159,10 @@ class EnterpriseService:
         """
 
         # Ensure we are sending a UUID-shaped string (enterprise side validates too).
-        uuid.UUID(account_id)
+        try:
+            uuid.UUID(account_id)
+        except ValueError as e:
+            raise ValueError(f"account_id must be a valid UUID: {account_id}") from e
 
         data = EnterpriseRequest.send_request(
             "POST",
