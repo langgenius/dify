@@ -56,7 +56,14 @@ class BaseRequest:
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
         with httpx.Client(mounts=mounts) as client:
-            response = client.request(method, url, json=json, params=params, headers=headers, timeout=timeout)
+            # IMPORTANT:
+            # - In httpx, passing timeout=None disables timeouts (infinite) and overrides the library default.
+            # - To preserve httpx's default timeout behavior for existing call sites, only pass the kwarg when set.
+            request_kwargs: dict[str, Any] = {"json": json, "params": params, "headers": headers}
+            if timeout is not None:
+                request_kwargs["timeout"] = timeout
+
+            response = client.request(method, url, **request_kwargs)
             if raise_for_status:
                 response.raise_for_status()
         return response.json()
