@@ -1419,9 +1419,6 @@
     }
   },
   "app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1431,11 +1428,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
   },
