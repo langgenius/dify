@@ -1418,7 +1418,7 @@ class RegisterService:
         except Exception as e:
             db.session.rollback()
             logger.exception("Register failed")
-            raise AccountRegisterError(f"Registration failed: {e}") from e
+            raise AccountRegisterError("Registration failed.") from e
 
         return account
 
