@@ -86,11 +86,17 @@ class DbMigrationAutoRenewLock:
 
         Accepts the same args/kwargs as redis-py `Lock.acquire()`.
         """
-        self._lock = self._redis_client.lock(
-            name=self._name,
-            timeout=self._ttl_seconds,
-            thread_local=False,
-        )
+        # Prevent accidental double-acquire which could leave the previous heartbeat thread running.
+        if self._acquired:
+            raise RuntimeError("DB migration lock is already acquired; call release_safely() before acquiring again.")
+
+        # Reuse the lock object if we already created one.
+        if self._lock is None:
+            self._lock = self._redis_client.lock(
+                name=self._name,
+                timeout=self._ttl_seconds,
+                thread_local=False,
+            )
         acquired = bool(self._lock.acquire(*args, **kwargs))
         self._acquired = acquired
         if acquired:
@@ -184,6 +190,7 @@ class DbMigrationAutoRenewLock:
             )
         finally:
             self._acquired = False
+            self._lock = None
 
     def _stop_heartbeat(self) -> None:
         if self._stop_event is None:
