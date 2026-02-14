@@ -1,12 +1,10 @@
 'use client'
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import { RiInformation2Line } from '@remixicon/react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import ExploreContext from '@/context/explore-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -17,25 +15,24 @@ export type AppCardProps = {
   app: App
   canCreate: boolean
   onCreate: () => void
-  isExplore: boolean
+  onTry: (params: TryAppSelection) => void
+  isExplore?: boolean
 }
 
 const AppCard = ({
   app,
   canCreate,
   onCreate,
-  isExplore,
+  onTry,
+  isExplore = true,
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
   const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
-  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
-  const showTryAPPPanel = useCallback((appId: string) => {
-    return () => {
-      setShowTryAppPanel?.(true, { appId, app })
-    }
-  }, [setShowTryAppPanel, app])
+  const handleTryApp = () => {
+    onTry({ appId: app.app_id, app })
+  }
 
   return (
     <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
@@ -67,7 +64,7 @@ const AppCard = ({
           </div>
         </div>
       </div>
-      <div className="description-wrapper system-xs-regular h-[90px] px-[14px] text-text-tertiary">
+      <div className="description-wrapper h-[90px] px-[14px] text-text-tertiary system-xs-regular">
         <div className="line-clamp-4 group-hover:line-clamp-2">
           {app.description}
         </div>
@@ -83,7 +80,7 @@ const AppCard = ({
                 </Button>
               )
             }
-            <Button className="h-7" onClick={showTryAPPPanel(app.app_id)}>
+            <Button className="h-7" onClick={handleTryApp}>
               <RiInformation2Line className="mr-1 size-4" />
               <span>{t('appCard.try', { ns: 'explore' })}</span>
             </Button>
