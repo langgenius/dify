@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
 import * as React from 'react'
 import { useState } from 'react'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
 import { IS_CLOUD_EDITION } from '@/config'
@@ -35,7 +36,7 @@ const TryApp: FC<Props> = ({
   const canUseTryTab = IS_CLOUD_EDITION && (app ? isTrialApp : true)
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
   const activeType = canUseTryTab ? type : TypeEnum.DETAIL
-  const { data: appDetail, isLoading } = useGetTryAppInfo(appId)
+  const { data: appDetail, isLoading, isError, error } = useGetTryAppInfo(appId)
 
   return (
     <Modal
@@ -46,6 +47,14 @@ const TryApp: FC<Props> = ({
       {isLoading ? (
         <div className="flex h-full items-center justify-center">
           <Loading type="area" />
+        </div>
+      ) : isError ? (
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable className="h-auto w-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
+        </div>
+      ) : !appDetail ? (
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable className="h-auto w-auto" isUnknownReason />
         </div>
       ) : (
         <div className="flex h-full flex-col">
@@ -61,15 +70,15 @@ const TryApp: FC<Props> = ({
               className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
               onClick={onClose}
             >
-              <span className="i-ri-close-line size-5" onClick={onClose} />
+              <span className="i-ri-close-line size-5" />
             </Button>
           </div>
           {/* Main content */}
           <div className="mt-2 flex h-0 grow justify-between space-x-2">
-            {activeType === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail!} /> : <Preview appId={appId} appDetail={appDetail!} />}
+            {activeType === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail} /> : <Preview appId={appId} appDetail={appDetail} />}
             <AppInfo
               className="w-[360px] shrink-0"
-              appDetail={appDetail!}
+              appDetail={appDetail}
               appId={appId}
               category={category}
               onCreate={onCreate}
