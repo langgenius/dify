@@ -209,8 +209,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/decode/from_identifier",
             PluginDecodeResponse,
-            data={"plugin_unique_identifier": plugin_unique_identifier},
-            headers={"Content-Type": "application/json"},
+            params={"plugin_unique_identifier": plugin_unique_identifier},
         )
 
     def fetch_plugin_installation_by_ids(
