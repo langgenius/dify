@@ -20,6 +20,12 @@ from redis.exceptions import LockNotOwnedError, RedisError
 
 logger = logging.getLogger(__name__)
 
+MIN_RENEW_INTERVAL_SECONDS = 0.1
+DEFAULT_RENEW_INTERVAL_DIVISOR = 3
+MIN_JOIN_TIMEOUT_SECONDS = 0.5
+MAX_JOIN_TIMEOUT_SECONDS = 5.0
+JOIN_TIMEOUT_MULTIPLIER = 2.0
+
 
 class DbMigrationAutoRenewLock:
     """
@@ -58,7 +64,9 @@ class DbMigrationAutoRenewLock:
         self._name = name
         self._ttl_seconds = float(ttl_seconds)
         self._renew_interval_seconds = (
-            float(renew_interval_seconds) if renew_interval_seconds is not None else max(0.1, self._ttl_seconds / 3)
+            float(renew_interval_seconds)
+            if renew_interval_seconds is not None
+            else max(MIN_RENEW_INTERVAL_SECONDS, self._ttl_seconds / DEFAULT_RENEW_INTERVAL_DIVISOR)
         )
         self._logger = logger or logging.getLogger(__name__)
         self._log_context = log_context
@@ -119,21 +127,21 @@ class DbMigrationAutoRenewLock:
                 lock.reacquire()
             except LockNotOwnedError:
                 self._logger.warning(
-                    "DB migration lock is no longer owned during heartbeat%s; stop renewing.",
-                    f" ({self._log_context})" if self._log_context else "",
+                    "DB migration lock is no longer owned during heartbeat; stop renewing. log_context=%s",
+                    self._log_context,
                     exc_info=True,
                 )
                 return
             except RedisError:
                 self._logger.warning(
-                    "Failed to renew DB migration lock due to Redis error%s; will retry.",
-                    f" ({self._log_context})" if self._log_context else "",
+                    "Failed to renew DB migration lock due to Redis error; will retry. log_context=%s",
+                    self._log_context,
                     exc_info=True,
                 )
             except Exception:
                 self._logger.warning(
-                    "Unexpected error while renewing DB migration lock%s; will retry.",
-                    f" ({self._log_context})" if self._log_context else "",
+                    "Unexpected error while renewing DB migration lock; will retry. log_context=%s",
+                    self._log_context,
                     exc_info=True,
                 )
 
@@ -155,23 +163,23 @@ class DbMigrationAutoRenewLock:
             lock.release()
         except LockNotOwnedError:
             self._logger.warning(
-                "DB migration lock not owned on release%s%s; ignoring.",
-                f" after {status} operation" if status else "",
-                f" ({self._log_context})" if self._log_context else "",
+                "DB migration lock not owned on release; ignoring. status=%s log_context=%s",
+                status,
+                self._log_context,
                 exc_info=True,
             )
         except RedisError:
             self._logger.warning(
-                "Failed to release DB migration lock due to Redis error%s%s; ignoring.",
-                f" after {status} operation" if status else "",
-                f" ({self._log_context})" if self._log_context else "",
+                "Failed to release DB migration lock due to Redis error; ignoring. status=%s log_context=%s",
+                status,
+                self._log_context,
                 exc_info=True,
             )
         except Exception:
             self._logger.warning(
-                "Unexpected error while releasing DB migration lock%s%s; ignoring.",
-                f" after {status} operation" if status else "",
-                f" ({self._log_context})" if self._log_context else "",
+                "Unexpected error while releasing DB migration lock; ignoring. status=%s log_context=%s",
+                status,
+                self._log_context,
                 exc_info=True,
             )
         finally:
@@ -183,13 +191,16 @@ class DbMigrationAutoRenewLock:
         self._stop_event.set()
         if self._thread is not None:
             # Best-effort join: if Redis calls are blocked, the daemon thread may remain alive.
-            join_timeout_seconds = max(0.5, min(5.0, self._renew_interval_seconds * 2))
+            join_timeout_seconds = max(
+                MIN_JOIN_TIMEOUT_SECONDS,
+                min(MAX_JOIN_TIMEOUT_SECONDS, self._renew_interval_seconds * JOIN_TIMEOUT_MULTIPLIER),
+            )
             self._thread.join(timeout=join_timeout_seconds)
             if self._thread.is_alive():
                 self._logger.warning(
-                    "DB migration lock heartbeat thread did not stop within %.2fs%s; ignoring.",
+                    "DB migration lock heartbeat thread did not stop within %.2fs; ignoring. log_context=%s",
                     join_timeout_seconds,
-                    f" ({self._log_context})" if self._log_context else "",
+                    self._log_context,
                 )
         self._stop_event = None
         self._thread = None
