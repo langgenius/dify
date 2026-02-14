@@ -1080,9 +1080,7 @@ class TestRegisterService:
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
             patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
-            patch(
-                "services.enterprise.enterprise_service.try_join_default_workspace_async"
-            ) as mock_join_default_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
         ):
             mock_create_account.return_value = mock_account
 
@@ -1113,9 +1111,7 @@ class TestRegisterService:
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
             patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
-            patch(
-                "services.enterprise.enterprise_service.try_join_default_workspace_async"
-            ) as mock_join_default_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
         ):
             mock_create_account.return_value = mock_account
 
@@ -1195,9 +1191,7 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch(
-                "services.enterprise.enterprise_service.try_join_default_workspace_async"
-            ) as mock_join_default_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
         ):
             mock_create_account.return_value = mock_account
 
@@ -1227,9 +1221,7 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch(
-                "services.enterprise.enterprise_service.try_join_default_workspace_async"
-            ) as mock_join_default_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
         ):
             mock_create_account.return_value = mock_account
 

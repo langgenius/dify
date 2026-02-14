@@ -6,7 +6,6 @@ This module covers the enterprise-only default workspace auto-join behavior:
 - Failures (network/invalid response/invalid UUID): soft-fail wrapper must not raise
 """
 
-from concurrent.futures import Future
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +14,6 @@ from services.enterprise.enterprise_service import (
     DefaultWorkspaceJoinResult,
     EnterpriseService,
     try_join_default_workspace,
-    try_join_default_workspace_async,
 )
 
 
@@ -137,46 +135,3 @@ class TestTryJoinDefaultWorkspace:
 
             # Should not raise even though UUID parsing fails inside join_default_workspace
             try_join_default_workspace("not-a-uuid")
-
-
-class TestTryJoinDefaultWorkspaceAsync:
-    def test_try_join_default_workspace_async_enterprise_disabled_noop(self):
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service._default_workspace_join_executor") as mock_executor,
-        ):
-            mock_config.ENTERPRISE_ENABLED = False
-
-            try_join_default_workspace_async("11111111-1111-1111-1111-111111111111")
-
-            mock_executor.submit.assert_not_called()
-
-    def test_try_join_default_workspace_async_submits_task(self):
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service._default_workspace_join_executor") as mock_executor,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
-
-            future: Future[None] = Future()
-            future.set_result(None)
-            mock_executor.submit.return_value = future
-
-            try_join_default_workspace_async("11111111-1111-1111-1111-111111111111")
-
-            assert mock_executor.submit.call_count == 1
-
-    def test_try_join_default_workspace_async_logs_warning_on_future_exception(self, caplog):
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service._default_workspace_join_executor") as mock_executor,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
-
-            future: Future[None] = Future()
-            future.set_exception(Exception("boom"))
-            mock_executor.submit.return_value = future
-
-            try_join_default_workspace_async("11111111-1111-1111-1111-111111111111")
-
-            assert "Async join enterprise default workspace failed" in caplog.text
