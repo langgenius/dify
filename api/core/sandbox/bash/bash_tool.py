@@ -18,7 +18,7 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 
 from ..utils.debug import sandbox_debug
 
-COMMAND_TIMEOUT_SECONDS = 60 * 60
+COMMAND_TIMEOUT_SECONDS = 60 * 60 * 2  # 2 hours, can be adjusted based on expected command execution times
 
 # Output truncation settings to avoid overwhelming model context
 # 8000 chars ≈ 2000-2700 tokens, safe for models with 8K+ context
