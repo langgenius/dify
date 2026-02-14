@@ -105,12 +105,22 @@ export const hasDuplicateStr = (strArr: string[]) => {
   return !!Object.keys(strObj).find(key => strObj[key] > 1)
 }
 
-const varRegex = /\{\{([a-z_]\w*)\}\}/gi
+const varRegex = /\{\{[a-z_]\w*\}\}/gi
 export const getVars = (value: string) => {
   if (!value)
     return []
 
-  const keys = value.match(varRegex)?.filter((item) => {
+  const matches = []
+  let m
+  // varRegex is global, reset lastIndex just in case
+  varRegex.lastIndex = 0
+  m = varRegex.exec(value)
+  while (m !== null) {
+    matches.push(m[0])
+    m = varRegex.exec(value)
+  }
+
+  const keys = matches.filter((item) => {
     return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
   }).map((item) => {
     return item.replace('{{', '').replace('}}', '')

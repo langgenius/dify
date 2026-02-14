@@ -1285,7 +1285,15 @@ const matchNotSystemVars = (prompts: string[]) => {
     VAR_REGEX.lastIndex = 0
     if (typeof prompt !== 'string')
       return
-    allVars.push(...(prompt.match(VAR_REGEX) || []))
+    const matches: string[] = []
+    let m
+    VAR_REGEX.lastIndex = 0
+    m = VAR_REGEX.exec(prompt)
+    while (m !== null) {
+      matches.push(m[0])
+      m = VAR_REGEX.exec(prompt)
+    }
+    allVars.push(...matches)
   })
   const uniqVars = uniq(allVars).map(v =>
     v.replaceAll('{{#', '').replace('#}}', '').split('.'),

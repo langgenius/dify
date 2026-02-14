@@ -39,7 +39,8 @@ export const formatNumber = (num: number | string) => {
   // Force fixed decimal for small numbers to avoid scientific notation
   if (Math.abs(n) < 0.001 && n !== 0) {
     const str = n.toString()
-    const match = str.match(/e-(\d+)$/)
+    const regex = /e-(\d+)$/
+    const match = regex.exec(str)
     let precision: number
     if (match) {
       // Scientific notation: precision is exponent + decimal digits in mantissa
