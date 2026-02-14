@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, final
 from typing_extensions import override
 
 from configs import dify_config
-from core.file.file_manager import file_manager
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
@@ -12,6 +11,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType
+from core.workflow.file.file_manager import file_manager
 from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
