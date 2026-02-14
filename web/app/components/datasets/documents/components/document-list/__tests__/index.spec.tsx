@@ -3,7 +3,7 @@ import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentList from '../../list'
 
@@ -19,6 +19,24 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset: { doc_form: string } }) => unknown) =>
     selector({ dataset: { doc_form: ChunkingMode.text } }),
 }))
+
+// Mock network to avoid accidental real HTTP calls returning HTML (which causes JSON parse errors in tests).
+const originalFetch = globalThis.fetch
+const mockFetch: typeof fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
+  const headers = new Headers({ 'Content-Type': 'application/json' })
+  // For downloads, return an empty blob with correct content-type
+  if (typeof input === 'string' && /\/files\//.test(input))
+    return new Response(new Blob(['']), { status: 200, headers: new Headers({ 'Content-Type': 'application/octet-stream' }) })
+  return new Response(JSON.stringify({ result: 'ok' }), { status: 200, headers })
+}
+
+beforeAll(() => {
+  vi.stubGlobal('fetch', mockFetch)
+})
+
+afterAll(() => {
+  vi.stubGlobal('fetch', originalFetch as typeof fetch)
+})
 
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
