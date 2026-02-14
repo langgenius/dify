@@ -11,6 +11,7 @@ import {
   getFileExtension,
   getFileNameFromUrl,
   getFilesInLogs,
+  getFileUploadErrorMessage,
   getProcessedFiles,
   getProcessedFilesFromResponse,
   getSupportFileExtensionList,
@@ -30,11 +31,34 @@ vi.mock('@/service/base', () => ({
 
 describe('file-uploader utils', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+  })
+
+  describe('getFileUploadErrorMessage', () => {
+    const createMockT = () => vi.fn().mockImplementation((key: string) => key) as unknown as import('i18next').TFunction
+
+    it('should return forbidden message when error code is forbidden', () => {
+      const error = { response: { code: 'forbidden', message: 'Access denied' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('Access denied')
+    })
+
+    it('should return file_extension_blocked translation when error code matches', () => {
+      const error = { response: { code: 'file_extension_blocked' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('fileUploader.fileExtensionBlocked')
+    })
+
+    it('should return default message for other errors', () => {
+      const error = { response: { code: 'unknown_error' } }
+      expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe('Upload failed')
+    })
+
+    it('should return default message when error has no response', () => {
+      expect(getFileUploadErrorMessage(null, 'Upload failed', createMockT())).toBe('Upload failed')
+    })
   })
 
   describe('fileUpload', () => {
-    it('should handle successful file upload', () => {
+    it('should handle successful file upload', async () => {
       const mockFile = new File(['test'], 'test.txt')
       const mockCallbacks = {
         onProgressCallback: vi.fn(),
@@ -50,6 +74,56 @@ describe('file-uploader utils', () => {
       })
 
       expect(upload).toHaveBeenCalled()
+
+      // Wait for the promise to resolve and call onSuccessCallback
+      await vi.waitFor(() => {
+        expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledWith({ id: '123' })
+      })
+    })
+
+    it('should call onErrorCallback when upload fails', async () => {
+      const mockFile = new File(['test'], 'test.txt')
+      const mockCallbacks = {
+        onProgressCallback: vi.fn(),
+        onSuccessCallback: vi.fn(),
+        onErrorCallback: vi.fn(),
+      }
+
+      const uploadError = new Error('Upload failed')
+      vi.mocked(upload).mockRejectedValue(uploadError)
+
+      fileUpload({
+        file: mockFile,
+        ...mockCallbacks,
+      })
+
+      await vi.waitFor(() => {
+        expect(mockCallbacks.onErrorCallback).toHaveBeenCalledWith(uploadError)
+      })
+    })
+
+    it('should call onProgressCallback when progress event is computable', () => {
+      const mockFile = new File(['test'], 'test.txt')
+      const mockCallbacks = {
+        onProgressCallback: vi.fn(),
+        onSuccessCallback: vi.fn(),
+        onErrorCallback: vi.fn(),
+      }
+
+      vi.mocked(upload).mockImplementation(({ onprogress }) => {
+        // Simulate a progress event
+        if (onprogress)
+          onprogress.call({} as XMLHttpRequest, { lengthComputable: true, loaded: 50, total: 100 } as ProgressEvent)
+
+        return Promise.resolve({ id: '123' })
+      })
+
+      fileUpload({
+        file: mockFile,
+        ...mockCallbacks,
+      })
+
+      expect(mockCallbacks.onProgressCallback).toHaveBeenCalledWith(50)
     })
   })
 
@@ -241,6 +315,12 @@ describe('file-uploader utils', () => {
       vi.mocked(mime.getAllExtensions).mockReturnValue(null)
       expect(getFileAppearanceType('file.txt', 'text/plain'))
         .toBe(FileAppearanceTypeEnum.document)
+    })
+
+    it('should return custom type for unrecognized extensions', () => {
+      vi.mocked(mime.getAllExtensions).mockReturnValue(new Set(['xyz']))
+      expect(getFileAppearanceType('file.xyz', 'application/xyz'))
+        .toBe(FileAppearanceTypeEnum.custom)
     })
   })
 
