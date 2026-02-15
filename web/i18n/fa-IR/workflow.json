@@ -211,7 +211,7 @@
   "common.setVarValuePlaceholder": "تنظیم متغیر",
   "common.showRunHistory": "نمایش تاریخچه اجرا",
   "common.syncingData": "همگام‌سازی داده‌ها، چند ثانیه صبر کنید",
-  "common.tagBound": "{{num}} اپلیکیشن از این تگ استفاده می‌کنند",
+  "common.tagBound": "تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند",
   "common.undo": "بازگشت (Undo)",
   "common.unpublished": "منتشر نشده",
   "common.update": "به‌روزرسانی",
