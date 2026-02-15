@@ -377,8 +377,8 @@ class FileAccessConfig(BaseSettings):
         description="Base URL for storage file ticket API endpoints."
         " Used by sandbox containers (internal or external like e2b) that need"
         " an absolute, routable address to upload/download files via the API."
-        " Falls back to FILES_URL if not specified."
-        " For Docker deployments, set to http://api:5001.",
+        " For all-in-one Docker deployments, set to http://localhost."
+        " For public sandbox environments, set to a public domain or IP.",
         default="",
     )
 

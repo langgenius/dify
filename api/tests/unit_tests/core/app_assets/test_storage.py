@@ -156,6 +156,7 @@ def test_bundle_import_zip_storage_key():
 def test_storage_ticket_service(monkeypatch: pytest.MonkeyPatch):
     """Test StorageTicketService creates and retrieves tickets."""
     monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(dify_config, "FILES_API_URL", "http://files-api.local", raising=False)
 
     mock_redis = MagicMock()
     stored_data = {}
@@ -172,7 +173,7 @@ def test_storage_ticket_service(monkeypatch: pytest.MonkeyPatch):
     with patch("services.storage_ticket_service.redis_client", mock_redis):
         url = StorageTicketService.create_download_url("test/path/file.txt", expires_in=300, filename="file.txt")
 
-        assert url.startswith("http://files.local/files/storage-files/")
+        assert url.startswith("http://files-api.local/files/storage-files/")
         token = url.split("/")[-1]
 
         ticket = StorageTicketService.get_ticket(token)
@@ -207,6 +208,7 @@ def test_ticket_url_generation(monkeypatch: pytest.MonkeyPatch):
     key = AssetPaths.draft(tenant_id, app_id, resource_id)
 
     monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(dify_config, "FILES_API_URL", "http://files-api.local", raising=False)
 
     mock_redis = MagicMock()
     mock_redis.setex = MagicMock()
@@ -222,7 +224,7 @@ def test_ticket_url_generation(monkeypatch: pytest.MonkeyPatch):
         )
         url = storage.get_download_url(key, expires_in=120)
 
-        assert url.startswith("http://files.local/files/storage-files/")
+        assert url.startswith("http://files-api.local/files/storage-files/")
         token = url.split("/")[-1]
         assert len(token) == 36  # UUID format
 
@@ -235,6 +237,7 @@ def test_upload_ticket_url_generation(monkeypatch: pytest.MonkeyPatch):
     key = AssetPaths.draft(tenant_id, app_id, resource_id)
 
     monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(dify_config, "FILES_API_URL", "http://files-api.local", raising=False)
 
     mock_redis = MagicMock()
     mock_redis.setex = MagicMock()
@@ -249,7 +252,7 @@ def test_upload_ticket_url_generation(monkeypatch: pytest.MonkeyPatch):
         )
         url = storage.get_upload_url(key, expires_in=120)
 
-        assert url.startswith("http://files.local/files/storage-files/")
+        assert url.startswith("http://files-api.local/files/storage-files/")
         token = url.split("/")[-1]
         assert len(token) == 36  # UUID format
 
@@ -289,3 +292,32 @@ def test_storage_ticket_pydantic():
     upload_json = upload_ticket.model_dump_json()
     restored_upload = StorageTicket.model_validate_json(upload_json)
     assert restored_upload.max_bytes == 1024
+
+
+def test_storage_ticket_uses_files_api_url_when_set(monkeypatch: pytest.MonkeyPatch):
+    """Test that FILES_API_URL is used for runtime ticket URLs."""
+    monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(dify_config, "FILES_API_URL", "https://runtime.example.com", raising=False)
+
+    mock_redis = MagicMock()
+    mock_redis.setex = MagicMock()
+
+    with patch("services.storage_ticket_service.redis_client", mock_redis):
+        url = StorageTicketService.create_download_url("test/path/file.txt", expires_in=300, filename="file.txt")
+
+    assert url.startswith("https://runtime.example.com/files/storage-files/")
+
+
+def test_storage_ticket_requires_files_api_url(monkeypatch: pytest.MonkeyPatch):
+    """Test that ticket generation fails when FILES_API_URL is empty."""
+    monkeypatch.setattr(dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(dify_config, "FILES_API_URL", "", raising=False)
+
+    mock_redis = MagicMock()
+    mock_redis.setex = MagicMock()
+
+    with (
+        patch("services.storage_ticket_service.redis_client", mock_redis),
+        pytest.raises(ValueError, match="FILES_API_URL is required"),
+    ):
+        StorageTicketService.create_download_url("test/path/file.txt", expires_in=300, filename="file.txt")

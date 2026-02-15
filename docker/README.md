@@ -45,6 +45,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 1. **Running Middleware Services**:
    - Navigate to the `docker` directory.
    - Execute `docker compose --env-file middleware.env -f docker-compose.middleware.yaml -p dify up -d` to start PostgreSQL/MySQL (per `DB_TYPE`) plus the bundled Weaviate instance.
+   - If you use a public/remote sandbox runtime (e.g., e2b or remote SSH sandbox), set `FILES_API_URL` in `api/.env` to a publicly reachable domain/IP.
 
 > Compose automatically loads `COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate` from `middleware.env`, so no extra `--profile` flags are needed. Adjust variables in `middleware.env` if you want a different combination of services.
 

@@ -14,7 +14,7 @@ Usage:
     url = StorageTicketService.create_upload_url("path/to/file.txt", expires_in=300, max_bytes=10*1024*1024)
 
 URL format:
-    {FILES_API_URL}/files/storage-files/{token}  (falls back to FILES_URL)
+    {FILES_API_URL}/files/storage-files/{token}
 
 The token is validated by looking up the Redis key, which contains:
     - op: "download" or "upload"
@@ -137,6 +137,17 @@ class StorageTicketService:
 
     @classmethod
     def _build_url(cls, token: str) -> str:
-        """Build the full URL for a token."""
-        base_url = dify_config.FILES_API_URL
+        """Build the full URL for a token.
+
+        FILES_API_URL is dedicated to sandbox runtime file access (agentbox/e2b/etc.).
+        This endpoint must be routable from the runtime environment.
+        """
+        base_url = dify_config.FILES_API_URL.strip()
+        if not base_url:
+            raise ValueError(
+                "FILES_API_URL is required for sandbox runtime file access. "
+                "Set FILES_API_URL to a URL reachable by your sandbox runtime. "
+                "For public sandbox environments (e.g. e2b), use a public domain or IP."
+            )
+        base_url = base_url.rstrip("/")
         return f"{base_url}/files/storage-files/{token}"

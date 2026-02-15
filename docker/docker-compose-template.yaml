@@ -278,8 +278,12 @@ services:
       AGENTBOX_SSH_USERNAME: ${AGENTBOX_SSH_USERNAME:-agentbox}
       AGENTBOX_SSH_PASSWORD: ${AGENTBOX_SSH_PASSWORD:-agentbox}
       AGENTBOX_SSH_PORT: ${AGENTBOX_SSH_PORT:-22}
+      # localhost:5001 -> api:5001 (API direct access)
       AGENTBOX_SOCAT_TARGET_HOST: ${AGENTBOX_SOCAT_TARGET_HOST:-api}
       AGENTBOX_SOCAT_TARGET_PORT: ${AGENTBOX_SOCAT_TARGET_PORT:-5001}
+      # localhost:80 -> nginx:80 (for FILES_API_URL=http://localhost)
+      AGENTBOX_NGINX_HOST: ${AGENTBOX_NGINX_HOST:-nginx}
+      AGENTBOX_NGINX_PORT: ${AGENTBOX_NGINX_PORT:-80}
     command: >
       sh -c "
       set -e;
@@ -299,10 +303,12 @@ services:
       fi;
       grep -q '^PasswordAuthentication' /etc/ssh/sshd_config && sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config || echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config;
       nohup socat TCP-LISTEN:$${AGENTBOX_SOCAT_TARGET_PORT},bind=127.0.0.1,fork,reuseaddr TCP:$${AGENTBOX_SOCAT_TARGET_HOST}:$${AGENTBOX_SOCAT_TARGET_PORT} >/tmp/socat.log 2>&1 &
+      nohup socat TCP-LISTEN:$${AGENTBOX_NGINX_PORT},bind=127.0.0.1,fork,reuseaddr TCP:$${AGENTBOX_NGINX_HOST}:$${AGENTBOX_NGINX_PORT} >/tmp/socat_nginx.log 2>&1 &
       exec /usr/sbin/sshd -D -p $${AGENTBOX_SSH_PORT}
       "
     depends_on:
       - api
+      - nginx
 
   # plugin daemon
   plugin_daemon:
