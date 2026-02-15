@@ -21,12 +21,16 @@ jobs:
       issues: write
       id-token: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.BOT_GITHUB_TOKEN }}
-          model: "claude-sonnet-4-20250514"
-          timeout_minutes: 30
         env:
           ANTHROPIC_BASE_URL: https://api.acedata.cloud
+          ANTHROPIC_DEFAULT_SONNET_MODEL: claude-sonnet-4-20250514
