@@ -320,6 +320,32 @@ describe('useDocumentListQueryState', () => {
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(update.searchParams.get('limit')).toBe('25')
     })
+
+    it('should sanitize invalid page to default and omit page from URL', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter()
+
+      act(() => {
+        result.current.updateQuery({ page: -1 })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.has('page')).toBe(false)
+      expect(result.current.query.page).toBe(1)
+    })
+
+    it('should sanitize invalid limit to default and omit limit from URL', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter()
+
+      act(() => {
+        result.current.updateQuery({ limit: 999 })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.has('limit')).toBe(false)
+      expect(result.current.query.limit).toBe(10)
+    })
   })
 
   describe('resetQuery', () => {

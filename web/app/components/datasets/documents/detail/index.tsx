@@ -149,6 +149,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     return chunkMode === ChunkingMode.parentChild && parentMode === 'full-doc'
   }, [documentDetail?.doc_form, parentMode])
 
+  const backButtonLabel = t('operation.back', { ns: 'common' })
+  const metadataToggleLabel = `${showMetadata
+    ? t('operation.close', { ns: 'common' })
+    : t('operation.view', { ns: 'common' })} ${t('metadata.title', { ns: 'datasetDocuments' })}`
+
   return (
     <DocumentContext.Provider value={{
       datasetId,
@@ -162,10 +167,15 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           <button
             type="button"
             data-testid="document-detail-back-button"
+            aria-label={backButtonLabel}
+            title={backButtonLabel}
             onClick={backToPrev}
             className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg"
           >
-            <span className="i-ri-arrow-left-line h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary" />
+            <span
+              aria-hidden="true"
+              className="i-ri-arrow-left-line h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary"
+            />
           </button>
           <DocumentTitle
             datasetId={datasetId}
@@ -219,13 +229,16 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             <button
               type="button"
               data-testid="document-detail-metadata-toggle"
+              aria-label={metadataToggleLabel}
+              aria-pressed={showMetadata}
+              title={metadataToggleLabel}
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {
                 showMetadata
-                  ? <span className="i-ri-layout-left-2-line h-4 w-4 text-components-button-secondary-text" />
-                  : <span className="i-ri-layout-right-2-line h-4 w-4 text-components-button-secondary-text" />
+                  ? <span aria-hidden="true" className="i-ri-layout-left-2-line h-4 w-4 text-components-button-secondary-text" />
+                  : <span aria-hidden="true" className="i-ri-layout-right-2-line h-4 w-4 text-components-button-secondary-text" />
               }
             </button>
           </div>

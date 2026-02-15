@@ -296,6 +296,16 @@ describe('DocumentDetail', () => {
       expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
     })
 
+    it('should expose aria semantics for metadata toggle button', () => {
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      const toggle = screen.getByTestId('document-detail-metadata-toggle')
+      expect(toggle).toHaveAttribute('aria-label')
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+      fireEvent.click(toggle)
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    })
+
     it('should pass correct props to Metadata', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       const metadata = screen.getByTestId('metadata')
@@ -309,6 +319,11 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('document-detail-back-button'))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
+    })
+
+    it('should expose aria label for back button', () => {
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      expect(screen.getByTestId('document-detail-back-button')).toHaveAttribute('aria-label')
     })
 
     it('should preserve query params when navigating back', () => {

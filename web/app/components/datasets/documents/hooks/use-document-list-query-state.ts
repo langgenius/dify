@@ -12,6 +12,14 @@ const sanitizeSortValue = (value?: string | null): SortType => {
   return (ALLOWED_SORT_VALUES.includes(value as SortType) ? value : '-created_at') as SortType
 }
 
+const sanitizePageValue = (value: number): number => {
+  return Number.isInteger(value) && value > 0 ? value : 1
+}
+
+const sanitizeLimitValue = (value: number): number => {
+  return Number.isInteger(value) && value > 0 && value <= 100 ? value : 10
+}
+
 export type DocumentListQuery = {
   page: number
   limit: number
@@ -76,6 +84,10 @@ function useDocumentListQueryState() {
 
   const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
     const patch = { ...updates }
+    if ('page' in patch && patch.page !== undefined)
+      patch.page = sanitizePageValue(patch.page)
+    if ('limit' in patch && patch.limit !== undefined)
+      patch.limit = sanitizeLimitValue(patch.limit)
     if ('status' in patch)
       patch.status = sanitizeStatusValue(patch.status)
     if ('sort' in patch)
