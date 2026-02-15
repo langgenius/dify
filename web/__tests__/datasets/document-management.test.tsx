@@ -6,8 +6,11 @@
  * Validates the data contract between documents page hooks and list component hooks.
  */
 
+import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
+import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
 
@@ -33,6 +36,17 @@ const { default: useDocumentListQueryState } = await import(
 )
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
+
+const renderQueryStateHook = (searchParams = '') => {
+  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      {children}
+    </NuqsTestingAdapter>
+  )
+  const rendered = renderHook(() => useDocumentListQueryState(), { wrapper })
+  return { ...rendered, onUrlUpdate }
+}
 
 const createDoc = (overrides?: Partial<LocalDoc>): LocalDoc => ({
   id: `doc-${Math.random().toString(36).slice(2, 8)}`,
@@ -85,7 +99,7 @@ describe('Document Management Flow', () => {
 
   describe('URL-based Query State', () => {
     it('should parse default query from empty URL params', () => {
-      const { result } = renderHook(() => useDocumentListQueryState())
+      const { result } = renderQueryStateHook()
 
       expect(result.current.query).toEqual({
         page: 1,
@@ -96,31 +110,31 @@ describe('Document Management Flow', () => {
       })
     })
 
-    it('should update query and push to router', () => {
-      const { result } = renderHook(() => useDocumentListQueryState())
+    it('should update query and push to router', async () => {
+      const { result, onUrlUpdate } = renderQueryStateHook()
 
       act(() => {
         result.current.updateQuery({ keyword: 'test', page: 2 })
       })
 
-      expect(mockPush).toHaveBeenCalled()
-      // The push call should contain the updated query params
-      const pushUrl = mockPush.mock.calls[0][0] as string
-      expect(pushUrl).toContain('keyword=test')
-      expect(pushUrl).toContain('page=2')
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.options.history).toBe('push')
+      expect(update.searchParams.get('keyword')).toBe('test')
+      expect(update.searchParams.get('page')).toBe('2')
     })
 
-    it('should reset query to defaults', () => {
-      const { result } = renderHook(() => useDocumentListQueryState())
+    it('should reset query to defaults', async () => {
+      const { result, onUrlUpdate } = renderQueryStateHook()
 
       act(() => {
         result.current.resetQuery()
       })
 
-      expect(mockPush).toHaveBeenCalled()
-      // Default query omits default values from URL
-      const pushUrl = mockPush.mock.calls[0][0] as string
-      expect(pushUrl).toBe('/datasets/ds-1/documents')
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.options.history).toBe('push')
+      expect(update.searchParams.toString()).toBe('')
     })
   })
 
@@ -309,7 +323,7 @@ describe('Document Management Flow', () => {
   describe('Cross-Module: Query State → Sort → Selection Pipeline', () => {
     it('should maintain consistent default state across all hooks', () => {
       const docs = [createDoc({ id: 'doc-1' })]
-      const { result: queryResult } = renderHook(() => useDocumentListQueryState())
+      const { result: queryResult } = renderQueryStateHook()
       const { result: sortResult } = renderHook(() => useDocumentSort({
         documents: docs,
         statusFilterValue: queryResult.current.query.status,
