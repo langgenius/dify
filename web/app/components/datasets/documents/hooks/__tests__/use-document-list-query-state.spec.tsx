@@ -94,9 +94,9 @@ describe('useDocumentListQueryState', () => {
       expect(result.current.query.keyword).toBe('hello world')
     })
 
-    it('should parse legacy double-encoded keyword from search params', () => {
+    it('should preserve legacy double-encoded keyword text after URL decoding', () => {
       const { result } = renderWithAdapter('?keyword=test%2520query')
-      expect(result.current.query.keyword).toBe('test query')
+      expect(result.current.query.keyword).toBe('test%20query')
     })
 
     it('should return empty keyword when not present', () => {
@@ -226,7 +226,7 @@ describe('useDocumentListQueryState', () => {
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('keyword')).toBe(encodeURIComponent('test query'))
+      expect(update.searchParams.get('keyword')).toBe('test query')
     })
 
     it('should remove keyword from URL when keyword is empty', async () => {
@@ -263,11 +263,11 @@ describe('useDocumentListQueryState', () => {
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('keyword')).toBe(encodeURIComponent('%2F'))
+      expect(update.searchParams.get('keyword')).toBe('%2F')
       expect(result.current.query.keyword).toBe('%2F')
     })
 
-    it('should keep decoded keyword state when updating query from legacy URL', async () => {
+    it('should keep keyword text unchanged when updating query from legacy URL', async () => {
       const { result, onUrlUpdate } = renderWithAdapter('?keyword=test%2520query')
 
       act(() => {
@@ -275,7 +275,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      expect(result.current.query.keyword).toBe('test query')
+      expect(result.current.query.keyword).toBe('test%20query')
     })
 
     it('should sanitize invalid status to all and not include in URL', async () => {

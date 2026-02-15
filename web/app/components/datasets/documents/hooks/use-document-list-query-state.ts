@@ -1,5 +1,5 @@
 import type { SortType } from '@/service/datasets'
-import { createParser, useQueryStates } from 'nuqs'
+import { createParser, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { sanitizeStatusValue } from '../status-filter'
 
@@ -54,21 +54,7 @@ const parseAsDocSort = createParser<SortType>({
   serialize: value => value,
 }).withDefault('-created_at' as SortType)
 
-const parseAsKeyword = createParser<string>({
-  parse: (value) => {
-    if (!value)
-      return ''
-    try {
-      // Backward compatibility: legacy URLs may contain double-encoded keywords.
-      return decodeURIComponent(value)
-    }
-    catch {
-      return value
-    }
-  },
-  // Keep parse/serialize symmetric while preserving legacy URL behavior.
-  serialize: value => encodeURIComponent(value),
-}).withDefault('')
+const parseAsKeyword = parseAsString.withDefault('')
 
 export const documentListParsers = {
   page: parseAsPage,
