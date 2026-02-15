@@ -1,9 +1,8 @@
 import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 import List from '../list'
@@ -186,15 +185,13 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
-// Render helper wrapping with NuqsTestingAdapter
+// Render helper wrapping with shared nuqs testing helper.
 const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
 const renderList = (searchParams = '') => {
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      {children}
-    </NuqsTestingAdapter>
+  return renderWithNuqs(
+    <List />,
+    { searchParams, onUrlUpdate },
   )
-  return render(<List />, { wrapper })
 }
 
 describe('List', () => {
@@ -391,18 +388,10 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = render(
-        <NuqsTestingAdapter>
-          <List />
-        </NuqsTestingAdapter>,
-      )
+      const { rerender } = renderWithNuqs(<List />)
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
-      rerender(
-        <NuqsTestingAdapter>
-          <List />
-        </NuqsTestingAdapter>,
-      )
+      rerender(<List />)
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 

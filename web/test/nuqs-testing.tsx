@@ -14,6 +14,10 @@ type NuqsTestOptions = {
   onUrlUpdate?: NuqsOnUrlUpdateSpy
 }
 
+type NuqsHookTestOptions<Props> = NuqsTestOptions & {
+  initialProps?: Props
+}
+
 type NuqsWrapperProps = {
   children: ReactNode
 }
@@ -42,9 +46,13 @@ export const renderWithNuqs = (ui: ReactElement, options: NuqsTestOptions = {}) 
   }
 }
 
-export const renderHookWithNuqs = <Result,>(callback: () => Result, options: NuqsTestOptions = {}) => {
-  const { wrapper, onUrlUpdate } = createNuqsTestWrapper(options)
-  const rendered = renderHook(callback, { wrapper })
+export const renderHookWithNuqs = <Result, Props = void>(
+  callback: (props: Props) => Result,
+  options: NuqsHookTestOptions<Props> = {},
+) => {
+  const { initialProps, ...nuqsOptions } = options
+  const { wrapper, onUrlUpdate } = createNuqsTestWrapper(nuqsOptions)
+  const rendered = renderHook(callback, { wrapper, initialProps })
   return {
     ...rendered,
     onUrlUpdate,
