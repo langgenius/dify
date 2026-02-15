@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     documentError: null as Error | null,
     documentMetadata: null as Record<string, unknown> | null,
     media: 'desktop' as string,
+    searchParams: '' as string,
   }
   return {
     state,
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => {
 // --- External mocks ---
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
+  useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -193,6 +195,7 @@ describe('DocumentDetail', () => {
     mocks.state.documentError = null
     mocks.state.documentMetadata = null
     mocks.state.media = 'desktop'
+    mocks.state.searchParams = ''
   })
 
   afterEach(() => {
@@ -286,12 +289,10 @@ describe('DocumentDetail', () => {
     })
 
     it('should toggle metadata panel when button clicked', () => {
-      const { container } = render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('metadata')).toBeInTheDocument()
 
-      const svgs = container.querySelectorAll('svg')
-      const toggleBtn = svgs[svgs.length - 1].closest('button')!
-      fireEvent.click(toggleBtn)
+      fireEvent.click(screen.getByTestId('document-detail-metadata-toggle'))
       expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
     })
 
@@ -305,20 +306,16 @@ describe('DocumentDetail', () => {
 
   describe('Navigation', () => {
     it('should navigate back when back button clicked', () => {
-      const { container } = render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const backBtn = container.querySelector('svg')!.parentElement!
-      fireEvent.click(backBtn)
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByTestId('document-detail-back-button'))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
     it('should preserve query params when navigating back', () => {
-      const origLocation = window.location
-      window.history.pushState({}, '', '?page=2&status=active')
-      const { container } = render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const backBtn = container.querySelector('svg')!.parentElement!
-      fireEvent.click(backBtn)
+      mocks.state.searchParams = 'page=2&status=active'
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByTestId('document-detail-back-button'))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
-      window.history.pushState({}, '', origLocation.href)
     })
   })
 

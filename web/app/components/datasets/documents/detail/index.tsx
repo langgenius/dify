@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceInfo, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
-import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,6 +34,7 @@ type DocumentDetailProps = {
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { t } = useTranslation()
 
   const media = useBreakpoints()
@@ -98,11 +98,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   })
 
   const backToPrev = () => {
-    // Preserve pagination and filter states when navigating back
-    const searchParams = new URLSearchParams(window.location.search)
     const queryString = searchParams.toString()
-    const separator = queryString ? '?' : ''
-    const backPath = `/datasets/${datasetId}/documents${separator}${queryString}`
+    const backPath = `/datasets/${datasetId}/documents${queryString ? `?${queryString}` : ''}`
     router.push(backPath)
   }
 
@@ -162,9 +159,14 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     >
       <div className="flex h-full flex-col bg-background-default">
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4">
-          <div onClick={backToPrev} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg">
-            <RiArrowLeftLine className="h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            data-testid="document-detail-back-button"
+            onClick={backToPrev}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg"
+          >
+            <span className="i-ri-arrow-left-line h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary" />
+          </button>
           <DocumentTitle
             datasetId={datasetId}
             extension={documentUploadFile?.extension}
@@ -216,13 +218,14 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             />
             <button
               type="button"
+              data-testid="document-detail-metadata-toggle"
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {
                 showMetadata
-                  ? <RiLayoutLeft2Line className="h-4 w-4 text-components-button-secondary-text" />
-                  : <RiLayoutRight2Line className="h-4 w-4 text-components-button-secondary-text" />
+                  ? <span className="i-ri-layout-left-2-line h-4 w-4 text-components-button-secondary-text" />
+                  : <span className="i-ri-layout-right-2-line h-4 w-4 text-components-button-secondary-text" />
               }
             </button>
           </div>
