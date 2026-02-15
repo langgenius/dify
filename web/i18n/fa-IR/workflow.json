@@ -512,7 +512,7 @@
   "nodes.humanInput.deliveryMethod.emailConfigure.body": "محتوا",
   "nodes.humanInput.deliveryMethod.emailConfigure.bodyPlaceholder": "محتوای ایمیل را وارد کنید",
   "nodes.humanInput.deliveryMethod.emailConfigure.debugMode": "حالت اشکال‌زدایی",
-  "nodes.humanInput.deliveryMethod.emailConfigure.debugModeTip1": "در حالت اشکال‌زدایی، ایمیل فقط به نشانی ایمیل شما <email>{{email}}</email> ارسال می‌شود.",
+  "nodes.humanInput.deliveryMethod.emailConfigure.debugModeTip1": "در حالت اشکال‌زدایی، ایمیل فقط به حساب ایمیل شما <email>{{email}}</email> ارسال می‌شود.",
   "nodes.humanInput.deliveryMethod.emailConfigure.debugModeTip2": "محیط عملیاتی تحت تأثیر قرار نمی‌گیرد.",
   "nodes.humanInput.deliveryMethod.emailConfigure.description": "ارسال درخواست ورودی از طریق ایمیل",
   "nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add": "+ افزودن",
