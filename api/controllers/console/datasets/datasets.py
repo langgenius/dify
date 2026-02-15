@@ -757,8 +757,14 @@ class DatasetApiKeyApi(Resource):
     @marshal_with(api_key_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
+
+        # only return tenant-level keys
         keys = db.session.scalars(
-            select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
+            select(ApiToken).where(
+                ApiToken.type == self.resource_type,
+                ApiToken.tenant_id == current_tenant_id,
+                ApiToken.app_id.is_(None),
+            )
         ).all()
         return {"items": keys}
 
