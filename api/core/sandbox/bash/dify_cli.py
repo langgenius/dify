@@ -140,7 +140,7 @@ class DifyCliConfig(BaseModel):
 
         return cls(
             env=DifyCliEnvConfig(
-                files_url=dify_config.FILES_URL,
+                files_url=dify_config.FILES_API_URL,
                 cli_api_url=cli_api_url,
                 cli_api_session_id=session.id,
                 cli_api_secret=session.secret,
