@@ -61,7 +61,7 @@
 <p align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
-Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production. Here's a list of the core features:
+Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features (including [Langfuse](https://docs.langfuse.com), [Arize Phoenix](https://docs.arize.com/phoenix), and [Opik](https://www.comet.com/docs/opik/integrations/dify)) and more, letting you quickly go from prototype to production. Here's a list of the core features:
 </br> </br>
 
 **1. Workflow**:
