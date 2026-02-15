@@ -235,7 +235,7 @@ describe('useDocumentListQueryState', () => {
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('keyword')).toBe('test query')
+      expect(update.searchParams.get('keyword')).toBe(encodeURIComponent('test query'))
     })
 
     it('should remove keyword from URL when keyword is empty', async () => {
@@ -248,6 +248,32 @@ describe('useDocumentListQueryState', () => {
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(update.searchParams.has('keyword')).toBe(false)
+    })
+
+    it('should remove keyword from URL when keyword contains only whitespace', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter('?keyword=existing')
+
+      act(() => {
+        result.current.updateQuery({ keyword: '   ' })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.has('keyword')).toBe(false)
+      expect(result.current.query.keyword).toBe('')
+    })
+
+    it('should preserve literal percent-encoded-like keyword values', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter()
+
+      act(() => {
+        result.current.updateQuery({ keyword: '%2F' })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.get('keyword')).toBe(encodeURIComponent('%2F'))
+      expect(result.current.query.keyword).toBe('%2F')
     })
 
     it('should keep decoded keyword state when updating query from legacy URL', async () => {

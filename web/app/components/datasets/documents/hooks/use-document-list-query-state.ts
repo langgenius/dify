@@ -66,7 +66,8 @@ const parseAsKeyword = createParser<string>({
       return value
     }
   },
-  serialize: value => value,
+  // Keep parse/serialize symmetric while preserving legacy URL behavior.
+  serialize: value => encodeURIComponent(value),
 }).withDefault('')
 
 export const documentListParsers = {
@@ -92,6 +93,8 @@ function useDocumentListQueryState() {
       patch.status = sanitizeStatusValue(patch.status)
     if ('sort' in patch)
       patch.sort = sanitizeSortValue(patch.sort)
+    if ('keyword' in patch && typeof patch.keyword === 'string' && patch.keyword.trim() === '')
+      patch.keyword = ''
     setQuery(patch)
   }, [setQuery])
 
