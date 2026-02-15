@@ -28,3 +28,5 @@ jobs:
           github_token: ${{ secrets.BOT_GITHUB_TOKEN }}
           model: "claude-sonnet-4-20250514"
           timeout_minutes: 30
+        env:
+          ANTHROPIC_BASE_URL: https://api.acedata.cloud
