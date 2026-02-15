@@ -983,7 +983,7 @@
   "nodes.triggerWebhook.noHeaders": "بدون هدر",
   "nodes.triggerWebhook.noParameters": "بدون پارامتر",
   "nodes.triggerWebhook.noQueryParameters": "بدون پارامتر Query",
-  "nodes.triggerWebhook.nodeTitle": "وب‌هوک",
+  "nodes.triggerWebhook.nodeTitle": "🔗وب‌هوک",
   "nodes.triggerWebhook.parameterName": "نام پارامتر",
   "nodes.triggerWebhook.queryParameters": "پارامترهای Query",
   "nodes.triggerWebhook.requestBodyParameters": "پارامترهای Request Body",
