@@ -101,7 +101,7 @@ describe('Document Management Flow', () => {
       })
     })
 
-    it('should update query and push to router', async () => {
+    it('should update keyword query with replace history', async () => {
       const { result, onUrlUpdate } = renderQueryStateHook()
 
       act(() => {
@@ -110,7 +110,7 @@ describe('Document Management Flow', () => {
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.options.history).toBe('push')
+      expect(update.options.history).toBe('replace')
       expect(update.searchParams.get('keyword')).toBe('test')
       expect(update.searchParams.get('page')).toBe('2')
     })
@@ -124,7 +124,7 @@ describe('Document Management Flow', () => {
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.options.history).toBe('push')
+      expect(update.options.history).toBe('replace')
       expect(update.searchParams.toString()).toBe('')
     })
   })
