@@ -61,7 +61,7 @@ export type DocumentListQuery = inferParserType<typeof documentListParsers>
 
 const KEYWORD_URL_UPDATE_THROTTLE = throttle(300)
 
-function useDocumentListQueryState() {
+export function useDocumentListQueryState() {
   const [query, setQuery] = useQueryStates(documentListParsers)
 
   const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
@@ -98,5 +98,3 @@ function useDocumentListQueryState() {
     resetQuery,
   }), [query, updateQuery, resetQuery])
 }
-
-export default useDocumentListQueryState

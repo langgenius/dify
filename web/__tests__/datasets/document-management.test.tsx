@@ -29,7 +29,7 @@ const { useDocumentSort } = await import(
 const { useDocumentSelection } = await import(
   '@/app/components/datasets/documents/components/document-list/hooks/use-document-selection',
 )
-const { default: useDocumentListQueryState } = await import(
+const { useDocumentListQueryState } = await import(
   '@/app/components/datasets/documents/hooks/use-document-list-query-state',
 )
 

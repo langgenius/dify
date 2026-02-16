@@ -2,7 +2,7 @@ import type { DocumentListQuery } from '../use-document-list-query-state'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
-import useDocumentListQueryState from '../use-document-list-query-state'
+import { useDocumentListQueryState } from '../use-document-list-query-state'
 
 vi.mock('@/models/datasets', () => ({
   DisplayStatusList: [

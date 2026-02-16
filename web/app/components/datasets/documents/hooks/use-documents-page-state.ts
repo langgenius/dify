@@ -3,7 +3,7 @@ import type { SortType } from '@/service/datasets'
 import { useDebounce, useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { normalizeStatusForQuery, sanitizeStatusValue } from '../status-filter'
-import useDocumentListQueryState from './use-document-list-query-state'
+import { useDocumentListQueryState } from './use-document-list-query-state'
 
 /**
  * Custom hook to manage documents page state including:
