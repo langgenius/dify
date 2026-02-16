@@ -1,0 +1,40 @@
+identity:
+  name: classify_text
+  author: NeuroSD
+  label:
+    en_US: Classify Text
+    zh_Hans: 文本分类
+    ru_RU: Классификация текста
+description:
+  human:
+    en_US: Classify text into service and type categories. Input a customer inquiry text and receive the predicted service and type.
+    zh_Hans: 将文本分类为服务和类型类别。输入客户查询文本并接收预测的服务和类型。
+    ru_RU: Классифицирует текст по категориям сервиса и типа. Введите текст обращения клиента и получите предсказанный сервис и тип.
+  llm: A tool to classify customer inquiry text into service category and type category. Returns the predicted service name and type name for the input text.
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+      zh_Hans: 文本
+      ru_RU: Текст
+    human_description:
+      en_US: The text to classify
+      zh_Hans: 要分类的文本
+      ru_RU: Текст для классификации
+    llm_description: The customer inquiry text to classify into service and type categories
+    form: llm
+  - name: api_url
+    type: string
+    required: false
+    default: http://172.17.0.1:8000
+    label:
+      en_US: API URL
+      zh_Hans: API地址
+      ru_RU: URL API
+    human_description:
+      en_US: The URL of the classification API (default uses Docker bridge gateway IP)
+      zh_Hans: 分类API的URL（默认使用Docker网桥网关IP）
+      ru_RU: URL API классификации (по умолчанию Docker bridge gateway IP)
+    form: form

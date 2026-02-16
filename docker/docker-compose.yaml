@@ -749,6 +749,9 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      # Mount custom AI classification tool
+      - ../api/core/tools/builtin_tool/providers/ai_classification:/app/api/core/tools/builtin_tool/providers/ai_classification
+      - ../api/core/tools/builtin_tool/_position.yaml:/app/api/core/tools/builtin_tool/_position.yaml
     networks:
       - ssrf_proxy_network
       - default
@@ -788,6 +791,9 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      # Mount custom AI classification tool
+      - ../api/core/tools/builtin_tool/providers/ai_classification:/app/api/core/tools/builtin_tool/providers/ai_classification
+      - ../api/core/tools/builtin_tool/_position.yaml:/app/api/core/tools/builtin_tool/_position.yaml
     networks:
       - ssrf_proxy_network
       - default

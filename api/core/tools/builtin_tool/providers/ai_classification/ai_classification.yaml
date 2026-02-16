@@ -1,0 +1,14 @@
+identity:
+  author: NeuroSD
+  name: ai_classification
+  label:
+    en_US: AI Text Classification
+    zh_Hans: AI文本分类
+    ru_RU: AI Классификация текста
+  description:
+    en_US: Classify text into service and type categories using neural network.
+    zh_Hans: 使用神经网络将文本分类为服务和类型类别。
+    ru_RU: Классифицирует текст по категориям сервиса и типа с помощью нейросети.
+  icon: icon.svg
+  tags:
+    - utilities
