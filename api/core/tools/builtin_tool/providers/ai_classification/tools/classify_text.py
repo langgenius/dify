@@ -13,7 +13,7 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
 
-DEFAULT_API_URL = "http://172.17.0.1:8000"
+DEFAULT_API_URL = "http://127.0.0.1:8000"
 CLASSIFICATION_TIMEOUT = (10, 60)  # (connect_timeout, read_timeout)
 
 

@@ -28,7 +28,7 @@ parameters:
   - name: api_url
     type: string
     required: false
-    default: http://172.17.0.1:8000
+    default: http://127.0.0.1:8000
     label:
       en_US: API URL
       zh_Hans: API地址
