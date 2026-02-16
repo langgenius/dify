@@ -1655,21 +1655,8 @@
     }
   },
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/base/chat/embedded-chatbot/inputs-form/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/chat/utils.ts": {
