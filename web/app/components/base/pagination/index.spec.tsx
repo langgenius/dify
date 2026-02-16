@@ -5,6 +5,7 @@ vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: unknown[]) => void) => ({
     run: fn,
     cancel: vi.fn(),
+    flush: vi.fn(),
   }),
 }))
 

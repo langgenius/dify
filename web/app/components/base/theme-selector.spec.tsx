@@ -38,9 +38,9 @@ describe('ThemeSelector', () => {
     it('should show all theme options when dropdown is opened', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      expect(screen.getByText(/common\.theme\.light/i)).toBeInTheDocument()
-      expect(screen.getByText(/common\.theme\.dark/i)).toBeInTheDocument()
-      expect(screen.getByText(/common\.theme\.auto/i)).toBeInTheDocument()
+      expect(screen.getByText(/light/i)).toBeInTheDocument()
+      expect(screen.getByText(/dark/i)).toBeInTheDocument()
+      expect(screen.getByText(/auto/i)).toBeInTheDocument()
     })
   })
 
@@ -48,7 +48,7 @@ describe('ThemeSelector', () => {
     it('should call setTheme with light when light option is clicked', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      const lightButton = screen.getByText(/common\.theme\.light/i).closest('button')!
+      const lightButton = screen.getByText(/light/i).closest('button')!
       fireEvent.click(lightButton)
       expect(mockSetTheme).toHaveBeenCalledWith('light')
     })
@@ -56,7 +56,7 @@ describe('ThemeSelector', () => {
     it('should call setTheme with dark when dark option is clicked', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      const darkButton = screen.getByText(/common\.theme\.dark/i).closest('button')!
+      const darkButton = screen.getByText(/dark/i).closest('button')!
       fireEvent.click(darkButton)
       expect(mockSetTheme).toHaveBeenCalledWith('dark')
     })
@@ -64,7 +64,7 @@ describe('ThemeSelector', () => {
     it('should call setTheme with system when system option is clicked', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      const systemButton = screen.getByText(/common\.theme\.auto/i).closest('button')!
+      const systemButton = screen.getByText(/auto/i).closest('button')!
       fireEvent.click(systemButton)
       expect(mockSetTheme).toHaveBeenCalledWith('system')
     })

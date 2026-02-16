@@ -2,10 +2,6 @@ import { render, screen } from '@testing-library/react'
 import Badge from './badge'
 
 describe('Badge', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<Badge text="beta" />)
