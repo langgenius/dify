@@ -63,7 +63,7 @@ describe('Explore', () => {
   })
 
   describe('Effects', () => {
-    it('should redirect dataset operators to /datasets', async () => {
+    it('should not redirect dataset operators at component level', async () => {
       ;(useAppContext as Mock).mockReturnValue({
         isCurrentWorkspaceDatasetOperator: true,
       })
@@ -75,7 +75,7 @@ describe('Explore', () => {
       ))
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets')
+        expect(mockReplace).not.toHaveBeenCalled()
       })
     })
 
