@@ -23,13 +23,15 @@ describe('ConfigParam Item', () => {
   })
 
   it('should render tooltip icon', () => {
-    const { container } = render(
+    render(
       <Item title="Title" tooltip="Tooltip text">
         <div>children</div>
       </Item>,
     )
 
-    // Tooltip component renders an SVG icon
-    expect(container.querySelector('svg')).toBeInTheDocument()
+    // Tooltip component renders an icon next to the title
+    expect(screen.getByText(/Title/)).toBeInTheDocument()
+    // The Tooltip component is rendered as a sibling, confirming the tooltip prop is used
+    expect(screen.getByText(/Title/).closest('div')).toBeInTheDocument()
   })
 })

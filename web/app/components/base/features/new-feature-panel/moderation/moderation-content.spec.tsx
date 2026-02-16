@@ -44,9 +44,11 @@ describe('ModerationContent', () => {
   })
 
   it('should not render info when not provided', () => {
-    const { container } = renderComponent()
+    renderComponent()
 
-    expect(container.querySelector('[title]')).toBeNull()
+    // When info is not provided, only the title "Test Title" should be shown
+    expect(screen.getByText(/Test Title/)).toBeInTheDocument()
+    expect(screen.queryByText(/Some info text/)).not.toBeInTheDocument()
   })
 
   it('should render a switch toggle', () => {

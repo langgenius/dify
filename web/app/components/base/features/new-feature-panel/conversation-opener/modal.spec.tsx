@@ -138,8 +138,11 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const closeIcon = document.querySelector('.cursor-pointer')
-    fireEvent.click(closeIcon!)
+    // The modal has two ways to cancel: the cancel button and the close icon
+    // Both call onCancel. We test the cancel button here since the close icon
+    // is not easily queryable with RTL
+    const cancelButtons = screen.getAllByText(/operation\.cancel/)
+    fireEvent.click(cancelButtons[0])
 
     expect(onCancel).toHaveBeenCalled()
   })
@@ -184,34 +187,45 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
+    // Before adding: 2 existing questions
+    expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Question 2')).toBeInTheDocument()
+
     fireEvent.click(screen.getByText(/variableConfig\.addOption/))
 
-    // Now there should be 3 inputs (2 existing + 1 new)
-    // prompt-editor is also a textbox, so we check for input types
-    const questionInputs = document.querySelectorAll('input[type="input"]')
-    expect(questionInputs.length).toBe(3)
+    // After adding: the 2 existing questions still present plus 1 new empty one
+    expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Question 2')).toBeInTheDocument()
+    // The new empty question renders as an input with empty value
+    const allInputs = screen.getAllByDisplayValue('')
+    expect(allInputs.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('should delete a suggested question', () => {
+  it('should delete a suggested question via save verification', () => {
+    const onSave = vi.fn()
     render(
       <OpeningSettingModal
-        data={defaultData}
-        onSave={vi.fn()}
+        data={{ ...defaultData, suggested_questions: ['Question 1'] }}
+        onSave={onSave}
         onCancel={vi.fn()}
       />,
     )
 
-    // Find the delete bins - they're inside the question items
-    const deleteBins = document.querySelectorAll('input[type="input"]')
-    expect(deleteBins.length).toBe(2)
+    // Question should be present initially
+    expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
 
-    // Click the delete icon for the first question
-    const deleteIcons = document.querySelectorAll('[class*="absolute"][class*="right"]')
-    if (deleteIcons.length > 0) {
-      fireEvent.click(deleteIcons[0])
-      const remainingInputs = document.querySelectorAll('input[type="input"]')
-      expect(remainingInputs.length).toBe(1)
-    }
+    // The delete icon is inside the question row. We find it by traversing from the input.
+    const question1Input = screen.getByDisplayValue('Question 1') as HTMLInputElement
+    // The input's parentElement is the row div that also contains the delete icon wrapper
+    const questionRow = question1Input.parentElement!
+    // Get all SVGs in the row - the last one is the delete bin icon's parent
+    const svgs = questionRow.querySelectorAll('svg')
+    const deleteIconWrapper = svgs[svgs.length - 1]?.parentElement
+    expect(deleteIconWrapper).toBeTruthy()
+    fireEvent.click(deleteIconWrapper!)
+
+    // After deletion, Question 1 should be gone
+    expect(screen.queryByDisplayValue('Question 1')).not.toBeInTheDocument()
   })
 
   it('should update a suggested question value', () => {
@@ -334,12 +348,15 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const deleteIcons = document.querySelectorAll('[class*="absolute"][class*="right"]')
-    if (deleteIcons.length > 0) {
-      fireEvent.mouseEnter(deleteIcons[0])
-      fireEvent.mouseLeave(deleteIcons[0])
+    const question1Input = screen.getByDisplayValue('Question 1') as HTMLInputElement
+    const questionRow = question1Input.parentElement!
+    const svgs = questionRow.querySelectorAll('svg')
+    const deleteIconWrapper = svgs[svgs.length - 1]?.parentElement
+    if (deleteIconWrapper) {
+      fireEvent.mouseEnter(deleteIconWrapper)
+      fireEvent.mouseLeave(deleteIconWrapper)
     }
-    // Just verifying no errors thrown during hover states
+    // Verifying no errors thrown during hover states and question still present
     expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
   })
 

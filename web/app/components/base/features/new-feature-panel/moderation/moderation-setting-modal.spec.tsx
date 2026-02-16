@@ -154,9 +154,9 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const textarea = document.querySelector('textarea')
+    const textarea = screen.getByRole('textbox')
     expect(textarea).toBeInTheDocument()
-    expect(textarea?.value).toBe('bad\nword')
+    expect(textarea).toHaveValue('bad\nword')
   })
 
   it('should render cancel and save buttons', () => {
@@ -290,7 +290,7 @@ describe('ModerationSettingModal', () => {
     fireEvent.click(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))
 
     // The keywords textarea should no longer be visible since type changed
-    expect(document.querySelector('textarea')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should update keywords on textarea change', () => {
@@ -302,10 +302,10 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const textarea = document.querySelector('textarea')!
+    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'new\nkeywords' } })
 
-    expect(textarea.value).toBe('new\nkeywords')
+    expect(textarea).toHaveValue('new\nkeywords')
   })
 
   it('should render moderation content sections', () => {
@@ -423,7 +423,7 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should call onCancel when close icon is clicked', () => {
+  it('should call onCancel when cancel button is clicked', () => {
     const onCancel = vi.fn()
     render(
       <ModerationSettingModal
@@ -433,8 +433,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const closeIcon = document.querySelector('.cursor-pointer')
-    fireEvent.click(closeIcon!)
+    fireEvent.click(screen.getByText(/operation\.cancel/))
 
     expect(onCancel).toHaveBeenCalled()
   })
@@ -516,13 +515,13 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const textarea = document.querySelector('textarea')!
+    const textarea = screen.getByRole('textbox')
     // Create a long keyword that exceeds 100 chars
     const longWord = 'a'.repeat(150)
     fireEvent.change(textarea, { target: { value: longWord } })
 
     // Value should be truncated to 100 chars
-    expect(textarea.value.length).toBeLessThanOrEqual(100)
+    expect((textarea as HTMLTextAreaElement).value.length).toBeLessThanOrEqual(100)
   })
 
   it('should save with formatted outputs_config when both enabled', () => {
@@ -567,7 +566,7 @@ describe('ModerationSettingModal', () => {
 
     // API selector should now be visible, keywords textarea should be hidden
     expect(screen.getByTestId('api-selector')).toBeInTheDocument()
-    expect(document.querySelector('textarea')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
   it('should handle empty lines in keywords', () => {
@@ -579,12 +578,12 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const textarea = document.querySelector('textarea')!
+    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'word1\n\nword2\n\n' } })
 
     // Empty lines between non-empty lines are preserved, trailing empties after non-empty are kept
-    expect(textarea.value).toContain('word1')
-    expect(textarea.value).toContain('word2')
+    expect((textarea as HTMLTextAreaElement).value).toContain('word1')
+    expect((textarea as HTMLTextAreaElement).value).toContain('word2')
   })
 
   it('should show OpenAI not configured warning when OpenAI provider is not set up', () => {

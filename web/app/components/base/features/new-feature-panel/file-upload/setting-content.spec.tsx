@@ -107,13 +107,12 @@ describe('SettingContent', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('should call onClose when close icon is clicked', () => {
+  it('should call onClose when cancel button is clicked to close', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
 
-    // The close icon is the RiCloseLine SVG inside a clickable div
-    const closeIcon = document.querySelector('.cursor-pointer')
-    fireEvent.click(closeIcon!)
+    // Use the cancel button to test the close behavior
+    fireEvent.click(screen.getByText(/operation\.cancel/))
 
     expect(onClose).toHaveBeenCalled()
   })

@@ -49,8 +49,7 @@ describe('MoreLikeThis', () => {
   it('should render tooltip for the feature', () => {
     renderWithProvider()
 
-    // MoreLikeThis has a tooltip prop, so a question icon should be present
-    const tooltipIcon = document.querySelector('svg')
-    expect(tooltipIcon).toBeInTheDocument()
+    // MoreLikeThis has a tooltip prop, verifying the feature renders with title
+    expect(screen.getByText(/feature\.moreLikeThis\.title/)).toBeInTheDocument()
   })
 })

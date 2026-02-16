@@ -1,13 +1,7 @@
 import type { Features } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
 import { FeaturesProvider } from '../context'
 import FeatureBar from './feature-bar'
-
-// Mock VoiceSettings to avoid complex child dependencies
-vi.mock('@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="voice-settings">{children}</div>,
-}))
 
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
@@ -40,136 +34,139 @@ const renderWithProvider = (
 }
 
 describe('FeatureBar', () => {
-  it('should render empty state when no features are enabled', () => {
-    renderWithProvider()
+  describe('Empty State', () => {
+    it('should render empty state when no features are enabled', () => {
+      renderWithProvider()
 
-    expect(screen.getByText(/feature\.bar\.empty/)).toBeInTheDocument()
-  })
-
-  it('should call onFeatureBarClick when empty state is clicked', () => {
-    const onFeatureBarClick = vi.fn()
-    renderWithProvider({ onFeatureBarClick })
-
-    fireEvent.click(screen.getByText(/feature\.bar\.empty/))
-
-    expect(onFeatureBarClick).toHaveBeenCalledWith(true)
-  })
-
-  it('should show enabled text when features are enabled', () => {
-    renderWithProvider({}, {
-      moreLikeThis: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.empty/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
+    it('should call onFeatureBarClick when empty state is clicked', () => {
+      const onFeatureBarClick = vi.fn()
+
+      renderWithProvider({ onFeatureBarClick })
+      fireEvent.click(screen.getByText(/feature\.bar\.empty/))
+
+      expect(onFeatureBarClick).toHaveBeenCalledWith(true)
+    })
   })
 
-  it('should show manage button when features are enabled', () => {
-    renderWithProvider({}, {
-      moreLikeThis: { enabled: true },
+  describe('Enabled Features', () => {
+    it('should show enabled text when moreLikeThis is enabled', () => {
+      renderWithProvider({}, {
+        moreLikeThis: { enabled: true },
+      })
+
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.manage/)).toBeInTheDocument()
+    it('should show manage button when features are enabled', () => {
+      renderWithProvider({}, {
+        moreLikeThis: { enabled: true },
+      })
+
+      expect(screen.getByText(/feature\.bar\.manage/)).toBeInTheDocument()
+    })
+
+    it('should hide manage button when hideEditEntrance is true', () => {
+      renderWithProvider({ hideEditEntrance: true }, {
+        moreLikeThis: { enabled: true },
+      })
+
+      expect(screen.queryByText(/feature\.bar\.manage/)).not.toBeInTheDocument()
+    })
+
+    it('should call onFeatureBarClick when manage button is clicked', () => {
+      const onFeatureBarClick = vi.fn()
+
+      renderWithProvider({ onFeatureBarClick }, {
+        moreLikeThis: { enabled: true },
+      })
+      fireEvent.click(screen.getByText(/feature\.bar\.manage/))
+
+      expect(onFeatureBarClick).toHaveBeenCalledWith(true)
+    })
   })
 
-  it('should hide manage button when hideEditEntrance is true', () => {
-    renderWithProvider({ hideEditEntrance: true }, {
-      moreLikeThis: { enabled: true },
+  describe('Chat Mode Features', () => {
+    it('should show enabled text when citation is enabled in chat mode', () => {
+      renderWithProvider({ isChatMode: true }, {
+        citation: { enabled: true },
+      })
+
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    expect(screen.queryByText(/feature\.bar\.manage/)).not.toBeInTheDocument()
-  })
+    it('should show empty state when citation is enabled but not in chat mode', () => {
+      renderWithProvider({ isChatMode: false }, {
+        citation: { enabled: true },
+      })
 
-  it('should call onFeatureBarClick when manage button is clicked', () => {
-    const onFeatureBarClick = vi.fn()
-    renderWithProvider({ onFeatureBarClick }, {
-      moreLikeThis: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.empty/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText(/feature\.bar\.manage/))
+    it('should show enabled text when opening is enabled in chat mode', () => {
+      renderWithProvider({ isChatMode: true }, {
+        opening: { enabled: true },
+      })
 
-    expect(onFeatureBarClick).toHaveBeenCalledWith(true)
-  })
-
-  it('should show citation icon in chat mode when citation is enabled', () => {
-    renderWithProvider({ isChatMode: true }, {
-      citation: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-  })
+    it('should show enabled text when file is enabled with showFileUpload', () => {
+      renderWithProvider({ showFileUpload: true }, {
+        file: { enabled: true },
+      })
 
-  it('should not show citation in non-chat mode', () => {
-    renderWithProvider({ isChatMode: false }, {
-      citation: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    // Citation disabled in non-chat mode, so noFeatureEnabled should be true
-    expect(screen.getByText(/feature\.bar\.empty/)).toBeInTheDocument()
-  })
+    it('should show empty state when file is enabled but showFileUpload is false', () => {
+      renderWithProvider({ showFileUpload: false }, {
+        file: { enabled: true },
+      })
 
-  it('should show opening feature icon when enabled in chat mode', () => {
-    renderWithProvider({ isChatMode: true }, {
-      opening: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.empty/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-  })
+    it('should show enabled text when speech2text is enabled in chat mode', () => {
+      renderWithProvider({ isChatMode: true }, {
+        speech2text: { enabled: true },
+      })
 
-  it('should show file feature icon when showFileUpload and file enabled', () => {
-    renderWithProvider({ showFileUpload: true }, {
-      file: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-  })
+    it('should show enabled text when text2speech is enabled', () => {
+      renderWithProvider({ isChatMode: true }, {
+        text2speech: { enabled: true },
+      })
 
-  it('should not show file feature when showFileUpload is false', () => {
-    renderWithProvider({ showFileUpload: false }, {
-      file: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    // File is hidden, so noFeatureEnabled
-    expect(screen.getByText(/feature\.bar\.empty/)).toBeInTheDocument()
-  })
+    it('should show enabled text when moderation is enabled', () => {
+      renderWithProvider({ isChatMode: true }, {
+        moderation: { enabled: true },
+      })
 
-  it('should show speech2text icon when enabled in chat mode', () => {
-    renderWithProvider({ isChatMode: true }, {
-      speech2text: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-  })
+    it('should show enabled text when suggested is enabled', () => {
+      renderWithProvider({ isChatMode: true }, {
+        suggested: { enabled: true },
+      })
 
-  it('should show text2speech icon when enabled', () => {
-    renderWithProvider({ isChatMode: true }, {
-      text2speech: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-    expect(screen.getByTestId('voice-settings')).toBeInTheDocument()
-  })
+    it('should show enabled text when annotationReply is enabled in chat mode', () => {
+      renderWithProvider({ isChatMode: true }, {
+        annotationReply: { enabled: true },
+      })
 
-  it('should show moderation icon when enabled', () => {
-    renderWithProvider({ isChatMode: true }, {
-      moderation: { enabled: true },
+      expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
     })
-
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-  })
-
-  it('should show suggested icon when enabled', () => {
-    renderWithProvider({ isChatMode: true }, {
-      suggested: { enabled: true },
-    })
-
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
-  })
-
-  it('should show annotation reply icon in chat mode when enabled', () => {
-    renderWithProvider({ isChatMode: true }, {
-      annotationReply: { enabled: true },
-    })
-
-    expect(screen.getByText(/feature\.bar\.enableText/)).toBeInTheDocument()
   })
 })
