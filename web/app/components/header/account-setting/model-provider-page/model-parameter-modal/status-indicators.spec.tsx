@@ -39,42 +39,50 @@ describe('StatusIndicators', () => {
   })
 
   it('should render warning states when provider model is disabled', () => {
+    const parentClick = vi.fn()
     const { rerender } = render(
-      <StatusIndicators
-        needsConfiguration={false}
-        modelProvider={true}
-        inModelList={true}
-        disabled={true}
-        pluginInfo={null}
-        t={t}
-      />,
+      <div onClick={parentClick}>
+        <StatusIndicators
+          needsConfiguration={false}
+          modelProvider={true}
+          inModelList={true}
+          disabled={true}
+          pluginInfo={null}
+          t={t}
+        />
+      </div>,
     )
     expect(screen.getByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
 
     rerender(
-      <StatusIndicators
-        needsConfiguration={false}
-        modelProvider={true}
-        inModelList={false}
-        disabled={true}
-        pluginInfo={null}
-        t={t}
-      />,
+      <div onClick={parentClick}>
+        <StatusIndicators
+          needsConfiguration={false}
+          modelProvider={true}
+          inModelList={false}
+          disabled={true}
+          pluginInfo={null}
+          t={t}
+        />
+      </div>,
     )
     expect(screen.getByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
-    expect(screen.getByText('nodes.agent.linkToPlugin')).toBeInTheDocument()
+    expect(screen.getByText('nodes.agent.linkToPlugin').closest('a')).toHaveAttribute('href', '/plugins')
     fireEvent.click(screen.getByText('nodes.agent.modelNotSupport.title'))
     fireEvent.click(screen.getByText('nodes.agent.linkToPlugin'))
+    expect(parentClick).not.toHaveBeenCalled()
 
     rerender(
-      <StatusIndicators
-        needsConfiguration={false}
-        modelProvider={true}
-        inModelList={false}
-        disabled={true}
-        pluginInfo={{ name: 'demo-plugin' }}
-        t={t}
-      />,
+      <div onClick={parentClick}>
+        <StatusIndicators
+          needsConfiguration={false}
+          modelProvider={true}
+          inModelList={false}
+          disabled={true}
+          pluginInfo={{ name: 'demo-plugin' }}
+          t={t}
+        />
+      </div>,
     )
     expect(screen.getByText('SwitchVersion:demo@1.0.0')).toBeInTheDocument()
   })

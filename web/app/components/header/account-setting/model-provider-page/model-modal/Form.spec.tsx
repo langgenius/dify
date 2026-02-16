@@ -230,7 +230,7 @@ describe('Form', () => {
           ],
         }),
       ]
-      const value: FormValue = { region: 'us', toggle: 'off', __model_name: 'a' }
+      const value: FormValue = { region: 'us', toggle: 'on', __model_name: 'a' }
       const onChange = vi.fn()
 
       render(
@@ -245,12 +245,11 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.queryByText('EU')).not.toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('US'))
+      expect(screen.getByText('EU')).toBeInTheDocument()
+      fireEvent.click(screen.getByText('EU'))
       fireEvent.click(screen.getByText('Locked A'))
 
-      expect(onChange).toHaveBeenCalledWith({ region: 'us', toggle: 'off', __model_name: 'a' })
+      expect(onChange).toHaveBeenCalledWith({ region: 'eu', toggle: 'on', __model_name: 'a' })
       expect(onChange).toHaveBeenCalledTimes(1)
     })
 

@@ -108,6 +108,7 @@ describe('ParameterItem', () => {
     expect(props.onChange).toHaveBeenCalledWith(0.4)
 
     fireEvent.blur(input)
+    expect(input).toHaveValue(0.7)
 
     const minBoundedProps = createProps({
       parameterRule: createRule({ type: 'float', min: 1, max: 2 }),
@@ -181,9 +182,18 @@ describe('ParameterItem', () => {
       value: undefined,
     })
     view.unmount()
-    render(<ParameterItem {...tagDefaultProps} />)
+    const tagView = render(<ParameterItem {...tagDefaultProps} />)
     fireEvent.click(screen.getByText('Switch'))
     expect(tagDefaultProps.onSwitch).toHaveBeenCalledWith(true, ['one'])
+
+    const zeroValueProps = createProps({
+      parameterRule: createRule({ type: 'float', default: 0.5 }),
+      value: 0,
+    })
+    tagView.unmount()
+    render(<ParameterItem {...zeroValueProps} />)
+    fireEvent.click(screen.getByText('Switch'))
+    expect(zeroValueProps.onSwitch).toHaveBeenCalledWith(false, 0)
   })
 
   it('should support text and tag parameter interactions', () => {

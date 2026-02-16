@@ -24,6 +24,10 @@ vi.mock('../hooks', () => ({
   useLanguage: () => mockLanguage,
 }))
 
+vi.mock('@/app/components/base/icons/src/public/llm', () => ({
+  OpenaiYellow: () => <svg data-testid="openai-yellow-icon" />,
+}))
+
 const createI18nText = (value: string): I18nText => ({
   en_US: value,
   zh_Hans: value,
@@ -91,6 +95,7 @@ describe('ModelIcon', () => {
     render(<ModelIcon provider={provider} modelName="o1" />)
 
     expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
+    expect(screen.getByTestId('openai-yellow-icon')).toBeInTheDocument()
   })
 
   // Edge case
