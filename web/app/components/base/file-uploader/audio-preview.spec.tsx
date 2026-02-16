@@ -1,11 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import AudioPreview from './audio-preview'
-
-vi.mock('@remixicon/react', () => ({
-  RiCloseLine: ({ className }: { className?: string }) => (
-    <svg data-testid="close-icon" className={className} />
-  ),
-}))
 
 vi.mock('react-hotkeys-hook', () => ({
   useHotkeys: vi.fn(),
@@ -32,26 +26,27 @@ describe('AudioPreview', () => {
     expect(source).toHaveAttribute('type', 'audio/mpeg')
   })
 
-  it('should render close button', () => {
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+  it('should render close button with icon', () => {
+    const { baseElement } = render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
-    expect(screen.getByTestId('close-icon')).toBeInTheDocument()
+    const closeIcon = baseElement.querySelector('svg')
+    expect(closeIcon).toBeInTheDocument()
   })
 
   it('should call onCancel when close button is clicked', () => {
     const onCancel = vi.fn()
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
+    const { baseElement } = render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
 
-    const closeButton = screen.getByTestId('close-icon').closest('div[class*="cursor-pointer"]')
-    fireEvent.click(closeButton!)
+    const closeIcon = baseElement.querySelector('svg')
+    fireEvent.click(closeIcon!.parentElement!)
 
     expect(onCancel).toHaveBeenCalled()
   })
 
   it('should stop propagation when backdrop is clicked', () => {
-    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+    const { baseElement } = render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
-    const backdrop = document.querySelector('.fixed.inset-0')
+    const backdrop = baseElement.querySelector('[tabindex="-1"]')
     const event = new MouseEvent('click', { bubbles: true })
     const stopPropagation = vi.spyOn(event, 'stopPropagation')
     backdrop!.dispatchEvent(event)
@@ -71,7 +66,7 @@ describe('AudioPreview', () => {
   it('should render in a portal attached to document.body', () => {
     render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
-    const backdrop = document.querySelector('.fixed.inset-0')
-    expect(backdrop?.parentElement).toBe(document.body)
+    const audio = document.querySelector('audio')
+    expect(audio?.closest('[tabindex="-1"]')?.parentElement).toBe(document.body)
   })
 })

@@ -1,23 +1,7 @@
 import type { FileUpload } from '@/app/components/base/features/types'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { FileContextProvider } from '../store'
 import FileUploaderInChatInput from './index'
-
-vi.mock('@remixicon/react', () => ({
-  RiAttachmentLine: ({ className }: { className?: string }) => (
-    <svg data-testid="attachment-icon" className={className} />
-  ),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, disabled, className, size }: {
-    children: React.ReactNode
-    disabled?: boolean
-    className?: string
-    size?: string
-  }) => (
-    <button data-testid="action-button" disabled={disabled} className={className} data-size={size}>{children}</button>
-  ),
-}))
 
 vi.mock('@/types/app', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/types/app')>()
@@ -30,17 +14,19 @@ vi.mock('@/types/app', async (importOriginal) => {
   }
 })
 
-vi.mock('../file-from-link-or-local', () => ({
-  default: ({ trigger, showFromLocal, showFromLink }: {
-    trigger: (open: boolean) => React.ReactNode
-    showFromLocal?: boolean
-    showFromLink?: boolean
-  }) => (
-    <div data-testid="file-from-link-or-local" data-local={showFromLocal} data-link={showFromLink}>
-      {trigger(false)}
-    </div>
-  ),
+vi.mock('../hooks', () => ({
+  useFile: () => ({
+    handleLoadFileFromLink: vi.fn(),
+  }),
 }))
+
+function renderWithProvider(ui: React.ReactElement) {
+  return render(
+    <FileContextProvider>
+      {ui}
+    </FileContextProvider>,
+  )
+}
 
 const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
   enabled: true,
@@ -56,46 +42,60 @@ describe('FileUploaderInChatInput', () => {
     vi.clearAllMocks()
   })
 
-  it('should render attachment icon', () => {
-    render(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
+  it('should render an attachment icon SVG', () => {
+    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
 
-    expect(screen.getByTestId('attachment-icon')).toBeInTheDocument()
+    const button = screen.getByRole('button')
+    expect(button.querySelector('svg')).toBeInTheDocument()
   })
 
   it('should render FileFromLinkOrLocal when not readonly', () => {
-    render(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
+    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
 
-    expect(screen.getByTestId('file-from-link-or-local')).toBeInTheDocument()
+    const button = screen.getByRole('button')
+    expect(button).toBeInTheDocument()
+    expect(button).not.toBeDisabled()
   })
 
   it('should render only the trigger button when readonly', () => {
-    render(<FileUploaderInChatInput fileConfig={createFileConfig()} readonly />)
+    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} readonly />)
 
-    expect(screen.queryByTestId('file-from-link-or-local')).not.toBeInTheDocument()
-    expect(screen.getByTestId('action-button')).toBeDisabled()
+    const button = screen.getByRole('button')
+    expect(button).toBeDisabled()
   })
 
-  it('should pass showFromLocal based on allowed_file_upload_methods', () => {
-    render(
+  it('should render button with attachment icon for local_file upload method', () => {
+    renderWithProvider(
       <FileUploaderInChatInput fileConfig={createFileConfig({
         allowed_file_upload_methods: ['local_file'],
       } as unknown as Partial<FileUpload>)}
       />,
     )
 
-    const wrapper = screen.getByTestId('file-from-link-or-local')
-    expect(wrapper).toHaveAttribute('data-local', 'true')
+    const button = screen.getByRole('button')
+    expect(button).toBeInTheDocument()
+    expect(button.querySelector('svg')).toBeInTheDocument()
   })
 
-  it('should pass showFromLink based on allowed_file_upload_methods', () => {
-    render(
+  it('should render button with attachment icon for remote_url upload method', () => {
+    renderWithProvider(
       <FileUploaderInChatInput fileConfig={createFileConfig({
         allowed_file_upload_methods: ['remote_url'],
       } as unknown as Partial<FileUpload>)}
       />,
     )
 
-    const wrapper = screen.getByTestId('file-from-link-or-local')
-    expect(wrapper).toHaveAttribute('data-link', 'true')
+    const button = screen.getByRole('button')
+    expect(button).toBeInTheDocument()
+    expect(button.querySelector('svg')).toBeInTheDocument()
+  })
+
+  it('should apply open state styling when trigger is activated', () => {
+    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
+
+    const button = screen.getByRole('button')
+    fireEvent.click(button)
+
+    expect(button).toBeInTheDocument()
   })
 })

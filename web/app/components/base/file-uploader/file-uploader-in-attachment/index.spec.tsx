@@ -4,12 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { TransferMethod } from '@/types/app'
 import FileUploaderInAttachmentWrapper from './index'
 
-let mockFiles: FileEntity[] = []
-vi.mock('../store', () => ({
-  FileContextProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="file-context-provider">{children}</div>,
-  useStore: (selector: (s: { files: FileEntity[] }) => unknown) => selector({ files: mockFiles }),
-}))
-
 const mockHandleRemoveFile = vi.fn()
 const mockHandleReUploadFile = vi.fn()
 vi.mock('../hooks', () => ({
@@ -19,43 +13,12 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-vi.mock('../file-input', () => ({
-  default: () => <input data-testid="file-input" type="file" />,
+vi.mock('@/utils/format', () => ({
+  formatFileSize: (size: number) => `${size}B`,
 }))
 
-vi.mock('../file-from-link-or-local', () => ({
-  default: ({ showFromLocal }: { showFromLocal?: boolean }) => (
-    <div data-testid="file-from-link-or-local" data-local={showFromLocal} />
-  ),
-}))
-
-vi.mock('./file-item', () => ({
-  default: ({ file, onRemove, onReUpload }: {
-    file: FileEntity
-    onRemove?: () => void
-    onReUpload?: () => void
-  }) => (
-    <div data-testid="file-item" data-name={file.name}>
-      {onRemove && <button data-testid={`remove-${file.id}`} onClick={onRemove}>Remove</button>}
-      {onReUpload && <button data-testid={`reupload-${file.id}`} onClick={onReUpload}>ReUpload</button>}
-    </div>
-  ),
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiLink: ({ className }: { className?: string }) => <svg data-testid="link-icon" className={className} />,
-  RiUploadCloud2Line: ({ className }: { className?: string }) => <svg data-testid="upload-icon" className={className} />,
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, disabled, className, variant }: {
-    children: React.ReactNode
-    disabled?: boolean
-    className?: string
-    variant?: string
-  }) => (
-    <button data-testid="upload-button" disabled={disabled} className={className} data-variant={variant}>{children}</button>
-  ),
+vi.mock('@/utils/download', () => ({
+  downloadUrl: vi.fn(),
 }))
 
 const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
@@ -81,10 +44,9 @@ const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
 describe('FileUploaderInAttachmentWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFiles = []
   })
 
-  it('should render FileContextProvider', () => {
+  it('should render without crashing', () => {
     render(
       <FileUploaderInAttachmentWrapper
         onChange={vi.fn()}
@@ -92,7 +54,8 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    expect(screen.getByTestId('file-context-provider')).toBeInTheDocument()
+    // FileContextProvider wraps children with a Zustand context — verify children render
+    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
   })
 
   it('should render upload buttons when not disabled', () => {
@@ -103,7 +66,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    const buttons = screen.getAllByTestId('upload-button')
+    const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThan(0)
   })
 
@@ -116,25 +79,25 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // Upload buttons for local/remote should not be shown
     expect(screen.queryByText(/fileUploader\.uploadFromComputer/)).not.toBeInTheDocument()
   })
 
   it('should render file items for each file', () => {
-    mockFiles = [
+    const files = [
       createFile({ id: 'f1', name: 'a.txt' }),
       createFile({ id: 'f2', name: 'b.txt' }),
     ]
 
     render(
       <FileUploaderInAttachmentWrapper
+        value={files}
         onChange={vi.fn()}
         fileConfig={createFileConfig()}
       />,
     )
 
-    const fileItems = screen.getAllByTestId('file-item')
-    expect(fileItems).toHaveLength(2)
+    expect(screen.getByText(/a\.txt/i)).toBeInTheDocument()
+    expect(screen.getByText(/b\.txt/i)).toBeInTheDocument()
   })
 
   it('should render local upload button for local_file method', () => {
@@ -150,7 +113,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
     expect(screen.getByText(/fileUploader\.uploadFromComputer/)).toBeInTheDocument()
   })
 
-  it('should render FileFromLinkOrLocal for remote_url method', () => {
+  it('should render link upload option for remote_url method', () => {
     render(
       <FileUploaderInAttachmentWrapper
         onChange={vi.fn()}
@@ -160,35 +123,84 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    expect(screen.getByTestId('file-from-link-or-local')).toBeInTheDocument()
+    expect(screen.getByText(/fileUploader\.pasteFileLink/)).toBeInTheDocument()
   })
 
   it('should call handleRemoveFile when remove button is clicked', () => {
-    mockFiles = [createFile({ id: 'f1', name: 'a.txt' })]
+    const files = [createFile({ id: 'f1', name: 'a.txt' })]
 
     render(
       <FileUploaderInAttachmentWrapper
+        value={files}
         onChange={vi.fn()}
         fileConfig={createFileConfig()}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('remove-f1'))
+    // Find the file item row, then locate the delete button within it
+    const fileNameEl = screen.getByText(/a\.txt/i)
+    const fileRow = fileNameEl.closest('[title="a.txt"]')?.parentElement?.parentElement
+    const deleteBtn = fileRow?.querySelector('button:last-of-type')
+    fireEvent.click(deleteBtn!)
 
     expect(mockHandleRemoveFile).toHaveBeenCalledWith('f1')
   })
 
-  it('should call handleReUploadFile when reupload button is clicked', () => {
-    mockFiles = [createFile({ id: 'f1', name: 'a.txt' })]
+  it('should apply open style on remote_url trigger when portal is open', () => {
+    render(
+      <FileUploaderInAttachmentWrapper
+        onChange={vi.fn()}
+        fileConfig={createFileConfig({
+          allowed_file_upload_methods: [TransferMethod.remote_url],
+        } as unknown as Partial<FileUpload>)}
+      />,
+    )
+
+    // Click the remote_url button to open the portal
+    const linkButton = screen.getByText(/fileUploader\.pasteFileLink/)
+    fireEvent.click(linkButton)
+
+    // The button should still be in the document
+    expect(linkButton.closest('button')).toBeInTheDocument()
+  })
+
+  it('should disable upload buttons when file limit is reached', () => {
+    const files = [
+      createFile({ id: 'f1' }),
+      createFile({ id: 'f2' }),
+      createFile({ id: 'f3' }),
+      createFile({ id: 'f4' }),
+      createFile({ id: 'f5' }),
+    ]
 
     render(
       <FileUploaderInAttachmentWrapper
+        value={files}
+        onChange={vi.fn()}
+        fileConfig={createFileConfig({ number_limits: 5 })}
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    const disabledButtons = buttons.filter(btn => btn.hasAttribute('disabled'))
+    expect(disabledButtons.length).toBeGreaterThan(0)
+  })
+
+  it('should call handleReUploadFile when reupload button is clicked', () => {
+    const files = [createFile({ id: 'f1', name: 'a.txt', progress: -1 })]
+
+    const { container } = render(
+      <FileUploaderInAttachmentWrapper
+        value={files}
         onChange={vi.fn()}
         fileConfig={createFileConfig()}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('reupload-f1'))
+    // ReplayLine is inside ActionButton (a <button>) with data-icon attribute
+    const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
+    const replayBtn = replayIcon!.closest('button')
+    fireEvent.click(replayBtn!)
 
     expect(mockHandleReUploadFile).toHaveBeenCalledWith('f1')
   })

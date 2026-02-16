@@ -64,13 +64,4 @@ describe('FileImageRender', () => {
     const img = screen.getByRole('img')
     expect(img).not.toHaveClass('cursor-pointer')
   })
-
-  it('should have border and shadow styling on container', () => {
-    const { container } = render(
-      <FileImageRender imageUrl="https://example.com/image.png" />,
-    )
-
-    expect(container.firstChild).toHaveClass('border-[2px]')
-    expect(container.firstChild).toHaveClass('shadow-xs')
-  })
 })

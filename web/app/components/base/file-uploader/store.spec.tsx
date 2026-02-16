@@ -20,6 +20,11 @@ describe('createFileStore', () => {
     expect(store.getState().files).toEqual([])
   })
 
+  it('should create a store with empty array when value is falsy', () => {
+    const store = createFileStore(undefined)
+    expect(store.getState().files).toEqual([])
+  })
+
   it('should create a store with initial files', () => {
     const files = [createMockFile()]
     const store = createFileStore(files)
@@ -133,5 +138,31 @@ describe('FileContextProvider', () => {
     )
 
     expect(screen.getByTestId('files')).toHaveTextContent('1')
+  })
+
+  it('should reuse store on re-render instead of creating a new one', () => {
+    const TestChild = () => {
+      const storeFiles = useStore(s => s.files)
+      return <div data-testid="files">{storeFiles.length}</div>
+    }
+
+    const { rerender } = render(
+      <FileContextProvider>
+        <TestChild />
+      </FileContextProvider>,
+    )
+
+    expect(screen.getByTestId('files')).toHaveTextContent('0')
+
+    // Re-render with new value prop - store should be reused (storeRef.current exists)
+    rerender(
+      <FileContextProvider value={[createMockFile()]}>
+        <TestChild />
+      </FileContextProvider>,
+    )
+
+    // Store was created once on first render, so the value prop change won't create a new store
+    // The files count should still be 0 since storeRef.current is already set
+    expect(screen.getByTestId('files')).toHaveTextContent('0')
   })
 })

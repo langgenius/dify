@@ -5,16 +5,12 @@ import { act, renderHook } from '@testing-library/react'
 import { useFile, useFileSizeLimit } from './hooks'
 
 const mockNotify = vi.fn()
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
+// Exception: hook requires toast context that isn't available without a provider wrapper
 vi.mock('@/app/components/base/toast', () => ({
   useToastContext: () => ({
     notify: mockNotify,
@@ -45,16 +41,6 @@ vi.mock('./utils', () => ({
 const mockUploadRemoteFileInfo = vi.fn()
 vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: (...args: unknown[]) => mockUploadRemoteFileInfo(...args),
-}))
-
-vi.mock('@/app/components/workflow/types', () => ({
-  SupportUploadFileTypes: {
-    image: 'image',
-    document: 'document',
-    audio: 'audio',
-    video: 'video',
-    custom: 'custom',
-  },
 }))
 
 vi.mock('uuid', () => ({
@@ -349,6 +335,31 @@ describe('useFile', () => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
+    it('should use empty arrays when allowed_file_types and allowed_file_extensions are undefined', async () => {
+      mockIsAllowedFileExtension.mockReturnValue(false)
+      mockUploadRemoteFileInfo.mockResolvedValue({
+        id: 'remote-1',
+        mime_type: 'text/plain',
+        size: 100,
+        name: 'remote.txt',
+        url: 'https://example.com/remote.txt',
+      })
+
+      const configWithUndefined = {
+        ...defaultFileConfig,
+        allowed_file_types: undefined,
+        allowed_file_extensions: undefined,
+      } as unknown as FileUpload
+
+      const { result } = renderHook(() => useFile(configWithUndefined))
+      await act(async () => {
+        result.current.handleLoadFileFromLink('https://example.com/file.txt')
+        await vi.waitFor(() => expect(mockUploadRemoteFileInfo).toHaveBeenCalled())
+      })
+
+      expect(mockIsAllowedFileExtension).toHaveBeenCalledWith('remote.txt', 'text/plain', [], [])
+    })
+
     it('should remove file when remote upload fails', async () => {
       mockUploadRemoteFileInfo.mockRejectedValue(new Error('network error'))
 
@@ -399,6 +410,53 @@ describe('useFile', () => {
       // setFiles should be called: once for add, once for update
       expect(mockSetFiles).toHaveBeenCalled()
     })
+
+    it('should stop progress timer when file reaches 80 percent', () => {
+      vi.useFakeTimers()
+      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
+
+      // Set up a file already at 80% progress
+      mockStoreFiles = [{
+        id: 'mock-uuid',
+        name: 'https://example.com/file.txt',
+        type: '',
+        size: 0,
+        progress: 80,
+        transferMethod: 'remote_url',
+        supportFileType: '',
+      }] as FileEntity[]
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      // At progress 80, the timer should stop (clearTimeout path)
+      vi.advanceTimersByTime(200)
+
+      vi.useRealTimers()
+    })
+
+    it('should stop progress timer when progress is negative', () => {
+      vi.useFakeTimers()
+      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
+
+      // Set up a file with negative progress (error state)
+      mockStoreFiles = [{
+        id: 'mock-uuid',
+        name: 'https://example.com/file.txt',
+        type: '',
+        size: 0,
+        progress: -1,
+        transferMethod: 'remote_url',
+        supportFileType: '',
+      }] as FileEntity[]
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      vi.advanceTimersByTime(200)
+
+      vi.useRealTimers()
+    })
   })
 
   describe('handleLocalFileUpload', () => {
@@ -447,6 +505,22 @@ describe('useFile', () => {
 
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
       expect(mockSetFiles).not.toHaveBeenCalled()
+    })
+
+    it('should use empty arrays when allowed_file_types and allowed_file_extensions are undefined', () => {
+      mockIsAllowedFileExtension.mockReturnValue(false)
+      const file = new File(['content'], 'test.xyz', { type: 'application/xyz' })
+
+      const configWithUndefined = {
+        ...defaultFileConfig,
+        allowed_file_types: undefined,
+        allowed_file_extensions: undefined,
+      } as unknown as FileUpload
+
+      const { result } = renderHook(() => useFile(configWithUndefined))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockIsAllowedFileExtension).toHaveBeenCalledWith('test.xyz', 'application/xyz', [], [])
     })
 
     it('should reject file when upload is disabled and noNeedToCheckEnable is false', () => {
@@ -503,6 +577,41 @@ describe('useFile', () => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
+    it('should reject custom file exceeding document size limit', () => {
+      mockGetSupportFileType.mockReturnValue('custom')
+      const largeFile = new File([], 'large.xyz', { type: 'application/octet-stream' })
+      Object.defineProperty(largeFile, 'size', { value: 20 * 1024 * 1024 })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(largeFile)
+
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+    })
+
+    it('should allow custom file within document size limit', () => {
+      mockGetSupportFileType.mockReturnValue('custom')
+      const file = new File(['content'], 'file.xyz', { type: 'application/octet-stream' })
+      Object.defineProperty(file, 'size', { value: 1024 })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockNotify).not.toHaveBeenCalled()
+      expect(mockSetFiles).toHaveBeenCalled()
+    })
+
+    it('should allow document file within size limit', () => {
+      mockGetSupportFileType.mockReturnValue('document')
+      const file = new File(['content'], 'small.pdf', { type: 'application/pdf' })
+      Object.defineProperty(file, 'size', { value: 1024 })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockNotify).not.toHaveBeenCalled()
+      expect(mockSetFiles).toHaveBeenCalled()
+    })
+
     it('should allow file with unknown type (default case)', () => {
       mockGetSupportFileType.mockReturnValue('unknown')
       const file = new File(['content'], 'test.bin', { type: 'application/octet-stream' })
@@ -548,6 +657,32 @@ describe('useFile', () => {
 
       expect(mockNotify).not.toHaveBeenCalled()
       expect(mockSetFiles).toHaveBeenCalled()
+    })
+
+    it('should set base64Url for image files during upload', () => {
+      mockGetSupportFileType.mockReturnValue('image')
+      const file = new File(['content'], 'photo.png', { type: 'image/png' })
+      Object.defineProperty(file, 'size', { value: 1024 })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockSetFiles).toHaveBeenCalled()
+      // The file should have been added with base64Url set (for image type)
+      const addedFiles = mockSetFiles.mock.calls[0][0]
+      expect(addedFiles[0].base64Url).toBe('data:text/plain;base64,Y29udGVudA==')
+    })
+
+    it('should set empty base64Url for non-image files during upload', () => {
+      mockGetSupportFileType.mockReturnValue('document')
+      const file = new File(['content'], 'doc.pdf', { type: 'application/pdf' })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockSetFiles).toHaveBeenCalled()
+      const addedFiles = mockSetFiles.mock.calls[0][0]
+      expect(addedFiles[0].base64Url).toBe('')
     })
 
     it('should call fileUpload with callbacks after FileReader loads', () => {

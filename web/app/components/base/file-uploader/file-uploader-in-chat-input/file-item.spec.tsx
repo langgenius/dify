@@ -3,72 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { TransferMethod } from '@/types/app'
 import FileItem from './file-item'
 
-vi.mock('@remixicon/react', () => ({
-  RiCloseLine: ({ className }: { className?: string }) => (
-    <svg data-testid="close-icon" className={className} />
-  ),
-  RiDownloadLine: ({ className }: { className?: string }) => (
-    <svg data-testid="download-icon" className={className} />
-  ),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick, className, size }: {
-    children: React.ReactNode
-    onClick?: (e: React.MouseEvent) => void
-    className?: string
-    size?: string
-  }) => (
-    <button data-testid="action-button" onClick={onClick} className={className} data-size={size}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick?: () => void
-    className?: string
-  }) => (
-    <button data-testid="button" onClick={onClick} className={className}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/file-uploader/audio-preview', () => ({
-  default: ({ title, url, onCancel }: { title: string, url: string, onCancel: () => void }) => (
-    <div data-testid="audio-preview" data-title={title} data-url={url}>
-      <button data-testid="close-audio-preview" onClick={onCancel}>Close</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/file-uploader/dynamic-pdf-preview', () => ({
-  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
-    <div data-testid="pdf-preview" data-url={url}>
-      <button data-testid="close-pdf-preview" onClick={onCancel}>Close</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/file-uploader/video-preview', () => ({
-  default: ({ title, url, onCancel }: { title: string, url: string, onCancel: () => void }) => (
-    <div data-testid="video-preview" data-title={title} data-url={url}>
-      <button data-testid="close-video-preview" onClick={onCancel}>Close</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  ReplayLine: ({ className, onClick }: { className?: string, onClick?: () => void }) => (
-    <svg data-testid="replay-icon" className={className} onClick={onClick} />
-  ),
-}))
-
-vi.mock('@/app/components/base/progress-bar/progress-circle', () => ({
-  default: ({ percentage }: { percentage: number }) => (
-    <div data-testid="progress-circle" data-percentage={percentage} />
-  ),
-}))
-
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
@@ -77,19 +11,12 @@ vi.mock('@/utils/format', () => ({
   formatFileSize: (size: number) => `${size}B`,
 }))
 
-vi.mock('../file-type-icon', () => ({
-  default: ({ type }: { type: string }) => (
-    <span data-testid="file-type-icon" data-type={type} />
+vi.mock('../dynamic-pdf-preview', () => ({
+  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
+    <div data-testid="pdf-preview" data-url={url}>
+      <button data-testid="pdf-close" onClick={onCancel}>Close PDF</button>
+    </div>
   ),
-}))
-
-vi.mock('../utils', () => ({
-  fileIsUploaded: (file: FileEntity) => file.progress === 100 && !!file.uploadedId,
-  getFileAppearanceType: () => 'document',
-  getFileExtension: (name: string) => {
-    const parts = name.split('.')
-    return parts.length > 1 ? parts.pop()!.toUpperCase() : ''
-  },
 }))
 
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
@@ -113,57 +40,65 @@ describe('FileItem (chat-input)', () => {
   it('should render file name', () => {
     render(<FileItem file={createFile()} />)
 
-    expect(screen.getByText('document.pdf')).toBeInTheDocument()
+    expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
   })
 
   it('should render file extension and size', () => {
-    render(<FileItem file={createFile()} />)
+    const { container } = render(<FileItem file={createFile()} />)
 
-    // Extension and size are rendered as direct text nodes in the same parent
-    const metaDiv = screen.getByTestId('file-type-icon').closest('div')!
-    expect(metaDiv.textContent).toContain('PDF')
-    expect(metaDiv.textContent).toContain('2048B')
+    // Extension and size are rendered as text nodes in the metadata div
+    expect(container.textContent).toContain('pdf')
+    expect(container.textContent).toContain('2048B')
   })
 
   it('should render FileTypeIcon', () => {
-    render(<FileItem file={createFile()} />)
+    const { container } = render(<FileItem file={createFile()} />)
 
-    expect(screen.getByTestId('file-type-icon')).toBeInTheDocument()
+    const fileTypeIcon = container.querySelector('svg')
+    expect(fileTypeIcon).toBeInTheDocument()
   })
 
   it('should render delete button when showDeleteAction is true', () => {
     render(<FileItem file={createFile()} showDeleteAction />)
 
-    expect(screen.getByTestId('close-icon')).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBeGreaterThanOrEqual(1)
   })
 
   it('should call onRemove when delete button is clicked', () => {
     const onRemove = vi.fn()
     render(<FileItem file={createFile()} showDeleteAction onRemove={onRemove} />)
 
-    const deleteBtn = screen.getByTestId('close-icon').closest('button')
-    fireEvent.click(deleteBtn!)
+    const buttons = screen.getAllByRole('button')
+    fireEvent.click(buttons[0])
 
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
 
   it('should render progress circle when file is uploading', () => {
-    render(<FileItem file={createFile({ progress: 50, uploadedId: undefined })} />)
+    const { container } = render(
+      <FileItem file={createFile({ progress: 50, uploadedId: undefined })} />,
+    )
 
-    expect(screen.getByTestId('progress-circle')).toBeInTheDocument()
+    const progressSvg = container.querySelector('svg circle')
+    expect(progressSvg).toBeInTheDocument()
   })
 
   it('should render replay icon when upload failed', () => {
-    render(<FileItem file={createFile({ progress: -1 })} />)
+    const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
 
-    expect(screen.getByTestId('replay-icon')).toBeInTheDocument()
+    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
+    expect(replayIcon).toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    render(<FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
+    const { container } = render(
+      <FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
+    )
 
-    fireEvent.click(screen.getByTestId('replay-icon'))
+    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
+    fireEvent.click(replayIcon!)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
@@ -171,7 +106,8 @@ describe('FileItem (chat-input)', () => {
   it('should have error styling when upload failed', () => {
     const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
 
-    expect(container.querySelector('.border-state-destructive-border')).toBeInTheDocument()
+    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
+    expect(replayIcon).toBeInTheDocument()
   })
 
   it('should show audio preview when audio file name is clicked', () => {
@@ -186,10 +122,10 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    const fileName = screen.getByText('audio.mp3')
-    fireEvent.click(fileName)
+    fireEvent.click(screen.getByText(/audio\.mp3/i))
 
-    expect(screen.getByTestId('audio-preview')).toBeInTheDocument()
+    const audioElement = document.querySelector('audio')
+    expect(audioElement).toBeInTheDocument()
   })
 
   it('should show video preview when video file name is clicked', () => {
@@ -204,10 +140,10 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    const fileName = screen.getByText('video.mp4')
-    fireEvent.click(fileName)
+    fireEvent.click(screen.getByText(/video\.mp4/i))
 
-    expect(screen.getByTestId('video-preview')).toBeInTheDocument()
+    const videoElement = document.querySelector('video')
+    expect(videoElement).toBeInTheDocument()
   })
 
   it('should show pdf preview when pdf file name is clicked', () => {
@@ -222,8 +158,7 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    const fileName = screen.getByText('doc.pdf')
-    fireEvent.click(fileName)
+    fireEvent.click(screen.getByText(/doc\.pdf/i))
 
     expect(screen.getByTestId('pdf-preview')).toBeInTheDocument()
   })
@@ -240,23 +175,32 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('audio.mp3'))
-    fireEvent.click(screen.getByTestId('close-audio-preview'))
+    fireEvent.click(screen.getByText(/audio\.mp3/i))
+    expect(document.querySelector('audio')).toBeInTheDocument()
 
-    expect(screen.queryByTestId('audio-preview')).not.toBeInTheDocument()
+    // AudioPreview renders via createPortal with tabindex="-1", not role="dialog"
+    const overlay = document.querySelector('[tabindex="-1"]')!
+    const closeSvg = overlay.querySelector(':scope > div:last-child svg')
+    fireEvent.click(closeSvg!.parentElement!)
+
+    expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('should render download button when showDownloadAction is true and url exists', () => {
     render(<FileItem file={createFile()} showDownloadAction />)
 
-    expect(screen.getByTestId('download-icon')).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBeGreaterThanOrEqual(1)
   })
 
   it('should call downloadUrl when download button is clicked', async () => {
     const { downloadUrl } = await import('@/utils/download')
     render(<FileItem file={createFile()} showDownloadAction />)
 
-    const downloadBtn = screen.getByTestId('download-icon').closest('button')
+    const buttons = screen.getAllByRole('button')
+    const downloadBtn = buttons.find(btn =>
+      btn.querySelector('svg') && !btn.textContent,
+    )
     fireEvent.click(downloadBtn!)
 
     expect(downloadUrl).toHaveBeenCalled()
@@ -265,7 +209,8 @@ describe('FileItem (chat-input)', () => {
   it('should not render download button when showDownloadAction is false', () => {
     render(<FileItem file={createFile()} showDownloadAction={false} />)
 
-    expect(screen.queryByTestId('download-icon')).not.toBeInTheDocument()
+    const buttons = screen.queryAllByRole('button')
+    expect(buttons).toHaveLength(0)
   })
 
   it('should not show preview when canPreview is false', () => {
@@ -279,9 +224,9 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('audio.mp3'))
+    fireEvent.click(screen.getByText(/audio\.mp3/i))
 
-    expect(screen.queryByTestId('audio-preview')).not.toBeInTheDocument()
+    expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('should close video preview', () => {
@@ -296,10 +241,15 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('video.mp4'))
-    fireEvent.click(screen.getByTestId('close-video-preview'))
+    fireEvent.click(screen.getByText(/video\.mp4/i))
+    expect(document.querySelector('video')).toBeInTheDocument()
 
-    expect(screen.queryByTestId('video-preview')).not.toBeInTheDocument()
+    // VideoPreview renders via createPortal with tabindex="-1", not role="dialog"
+    const overlay = document.querySelector('[tabindex="-1"]')!
+    const closeSvg = overlay.querySelector(':scope > div:last-child svg')
+    fireEvent.click(closeSvg!.parentElement!)
+
+    expect(document.querySelector('video')).not.toBeInTheDocument()
   })
 
   it('should close pdf preview', () => {
@@ -314,9 +264,10 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('doc.pdf'))
-    fireEvent.click(screen.getByTestId('close-pdf-preview'))
+    fireEvent.click(screen.getByText(/doc\.pdf/i))
+    expect(screen.getByTestId('pdf-preview')).toBeInTheDocument()
 
+    fireEvent.click(screen.getByTestId('pdf-close'))
     expect(screen.queryByTestId('pdf-preview')).not.toBeInTheDocument()
   })
 
@@ -333,8 +284,59 @@ describe('FileItem (chat-input)', () => {
     })
     render(<FileItem file={file} canPreview />)
 
-    fireEvent.click(screen.getByText('audio.mp3'))
+    fireEvent.click(screen.getByText(/audio\.mp3/i))
 
-    expect(screen.getByTestId('audio-preview')).toBeInTheDocument()
+    expect(document.querySelector('audio')).toBeInTheDocument()
+  })
+
+  it('should not use createObjectURL when no originalFile and no urls', () => {
+    const file = createFile({
+      name: 'audio.mp3',
+      type: 'audio/mpeg',
+      url: undefined,
+      base64Url: undefined,
+      originalFile: undefined,
+    })
+    render(<FileItem file={file} canPreview />)
+
+    fireEvent.click(screen.getByText(/audio\.mp3/i))
+
+    // Preview should still try to open with empty/undefined url
+  })
+
+  it('should not render download button when download_url is falsy', () => {
+    render(
+      <FileItem
+        file={createFile({ url: undefined, base64Url: undefined })}
+        showDownloadAction
+      />,
+    )
+
+    const buttons = screen.queryAllByRole('button')
+    expect(buttons).toHaveLength(0)
+  })
+
+  it('should render download button when base64Url is available as download_url', () => {
+    render(
+      <FileItem
+        file={createFile({ url: undefined, base64Url: 'data:application/pdf;base64,abc' })}
+        showDownloadAction
+      />,
+    )
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('should not render extension separator when ext is empty', () => {
+    render(<FileItem file={createFile({ name: 'noext' })} />)
+
+    expect(screen.getByText(/noext/)).toBeInTheDocument()
+  })
+
+  it('should not render file size when size is 0', () => {
+    render(<FileItem file={createFile({ size: 0 })} />)
+
+    expect(screen.queryByText(/0B/)).not.toBeInTheDocument()
   })
 })

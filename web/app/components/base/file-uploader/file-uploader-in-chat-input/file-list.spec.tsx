@@ -2,20 +2,8 @@ import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen } from '@testing-library/react'
 import { TransferMethod } from '@/types/app'
+import { FileContextProvider } from '../store'
 import { FileList, FileListInChatInput } from './file-list'
-
-vi.mock('@/app/components/workflow/types', () => ({
-  SupportUploadFileTypes: {
-    image: 'image',
-    document: 'document',
-  },
-  InputVarType: {},
-}))
-
-let mockStoreFiles: FileEntity[] = []
-vi.mock('../store', () => ({
-  useStore: (selector: (s: { files: FileEntity[] }) => unknown) => selector({ files: mockStoreFiles }),
-}))
 
 vi.mock('../hooks', () => ({
   useFile: () => ({
@@ -24,16 +12,12 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-vi.mock('./file-image-item', () => ({
-  default: ({ file }: { file: FileEntity }) => (
-    <div data-testid="file-image-item" data-name={file.name} />
-  ),
+vi.mock('@/utils/format', () => ({
+  formatFileSize: (size: number) => `${size}B`,
 }))
 
-vi.mock('./file-item', () => ({
-  default: ({ file }: { file: FileEntity }) => (
-    <div data-testid="file-item" data-name={file.name} />
-  ),
+vi.mock('@/utils/download', () => ({
+  downloadUrl: vi.fn(),
 }))
 
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
@@ -55,11 +39,13 @@ describe('FileList', () => {
   it('should render FileImageItem for image files', () => {
     const files = [createFile({
       name: 'photo.png',
+      type: 'image/png',
       supportFileType: 'image',
+      base64Url: 'data:image/png;base64,abc',
     })]
     render(<FileList files={files} />)
 
-    expect(screen.getByTestId('file-image-item')).toBeInTheDocument()
+    expect(screen.getByRole('img')).toBeInTheDocument()
   })
 
   it('should render FileItem for non-image files', () => {
@@ -69,26 +55,30 @@ describe('FileList', () => {
     })]
     render(<FileList files={files} />)
 
-    expect(screen.getByTestId('file-item')).toBeInTheDocument()
+    expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
   })
 
   it('should render both image and non-image files', () => {
     const files = [
-      createFile({ name: 'photo.png', supportFileType: 'image' }),
+      createFile({
+        name: 'photo.png',
+        type: 'image/png',
+        supportFileType: 'image',
+        base64Url: 'data:image/png;base64,abc',
+      }),
       createFile({ name: 'doc.pdf', supportFileType: 'document' }),
     ]
     render(<FileList files={files} />)
 
-    expect(screen.getByTestId('file-image-item')).toBeInTheDocument()
-    expect(screen.getByTestId('file-item')).toBeInTheDocument()
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    expect(screen.getByText(/doc\.pdf/i)).toBeInTheDocument()
   })
 
   it('should render empty list when no files', () => {
     const { container } = render(<FileList files={[]} />)
 
-    expect(container.querySelector('.flex.flex-wrap')).toBeInTheDocument()
-    expect(screen.queryByTestId('file-item')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('file-image-item')).not.toBeInTheDocument()
+    expect(container.firstChild).toBeInTheDocument()
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
   })
 
   it('should apply custom className', () => {
@@ -105,11 +95,15 @@ describe('FileList', () => {
     ]
     render(<FileList files={files} />)
 
-    expect(screen.getAllByTestId('file-item')).toHaveLength(3)
+    expect(screen.getByText(/a\.pdf/i)).toBeInTheDocument()
+    expect(screen.getByText(/b\.pdf/i)).toBeInTheDocument()
+    expect(screen.getByText(/c\.pdf/i)).toBeInTheDocument()
   })
 })
 
 describe('FileListInChatInput', () => {
+  let mockStoreFiles: FileEntity[] = []
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockStoreFiles = []
@@ -119,16 +113,25 @@ describe('FileListInChatInput', () => {
     mockStoreFiles = [createFile({ name: 'test.pdf' })]
     const fileConfig = { enabled: true, allowed_file_types: ['document'] } as FileUpload
 
-    render(<FileListInChatInput fileConfig={fileConfig} />)
+    render(
+      <FileContextProvider value={mockStoreFiles}>
+        <FileListInChatInput fileConfig={fileConfig} />
+      </FileContextProvider>,
+    )
 
-    expect(screen.getByTestId('file-item')).toBeInTheDocument()
+    expect(screen.getByText(/test\.pdf/i)).toBeInTheDocument()
   })
 
   it('should render empty FileList when store has no files', () => {
     const fileConfig = { enabled: true, allowed_file_types: ['document'] } as FileUpload
 
-    render(<FileListInChatInput fileConfig={fileConfig} />)
+    render(
+      <FileContextProvider value={mockStoreFiles}>
+        <FileListInChatInput fileConfig={fileConfig} />
+      </FileContextProvider>,
+    )
 
-    expect(screen.queryByTestId('file-item')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
+    expect(screen.queryByText(/\.pdf/i)).not.toBeInTheDocument()
   })
 })
