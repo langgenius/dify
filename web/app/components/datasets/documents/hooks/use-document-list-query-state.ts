@@ -89,7 +89,7 @@ export function useDocumentListQueryState() {
   }, [setQuery])
 
   const resetQuery = useCallback(() => {
-    setQuery(null)
+    setQuery(null, { history: 'replace' })
   }, [setQuery])
 
   return useMemo(() => ({
