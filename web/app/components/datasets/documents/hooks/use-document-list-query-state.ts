@@ -59,6 +59,7 @@ export const documentListParsers = {
 
 export type DocumentListQuery = inferParserType<typeof documentListParsers>
 
+// Search input updates can be frequent; throttle URL writes to reduce history/api churn.
 const KEYWORD_URL_UPDATE_THROTTLE = throttle(300)
 
 export function useDocumentListQueryState() {
@@ -77,6 +78,8 @@ export function useDocumentListQueryState() {
     if ('keyword' in patch && typeof patch.keyword === 'string' && patch.keyword.trim() === '')
       patch.keyword = ''
 
+    // If keyword is part of this patch (even with page reset), treat it as a search update:
+    // use replace to avoid creating a history entry per input-driven change.
     if ('keyword' in patch) {
       setQuery(patch, {
         history: 'replace',
