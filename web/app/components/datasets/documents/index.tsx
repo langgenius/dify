@@ -118,7 +118,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   // Render content based on loading and data state
   const renderContent = () => {
-    if (isListLoading)
+    if (isListLoading && !documentsRes)
       return <Loading type="app" />
 
     if (total > 0) {

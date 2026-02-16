@@ -313,6 +313,33 @@ describe('Documents', () => {
       expect(screen.queryByTestId('documents-list')).not.toBeInTheDocument()
     })
 
+    it('should keep rendering list when loading with existing data', () => {
+      vi.mocked(useDocumentList).mockReturnValueOnce({
+        data: {
+          data: [
+            {
+              id: 'doc-1',
+              name: 'Document 1',
+              indexing_status: 'completed',
+              data_source_type: 'upload_file',
+              position: 1,
+              enabled: true,
+            },
+          ],
+          total: 1,
+          page: 1,
+          limit: 10,
+          has_more: false,
+        } as DocumentListResponse,
+        isLoading: true,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDocumentList>)
+
+      render(<Documents {...defaultProps} />)
+      expect(screen.getByTestId('documents-list')).toBeInTheDocument()
+      expect(screen.getByTestId('list-documents-count')).toHaveTextContent('1')
+    })
+
     it('should render empty element when no documents exist', () => {
       vi.mocked(useDocumentList).mockReturnValueOnce({
         data: { data: [], total: 0, page: 1, limit: 10, has_more: false },

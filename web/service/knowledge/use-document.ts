@@ -3,6 +3,7 @@ import type { DocumentDownloadResponse, DocumentDownloadZipRequest, MetadataType
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
@@ -45,6 +46,7 @@ export const useDocumentList = (payload: {
     queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
       params,
     }),
+    placeholderData: keepPreviousData,
     refetchInterval,
   })
 }
