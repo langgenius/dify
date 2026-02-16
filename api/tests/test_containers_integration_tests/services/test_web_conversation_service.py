@@ -149,7 +149,6 @@ class TestWebConversationService:
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,
             dialogue_count=0,
-            is_deleted=False,
         )
 
         from extensions.ext_database import db
