@@ -227,6 +227,21 @@ describe('useDocumentListQueryState', () => {
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(update.searchParams.get('keyword')).toBe('test query')
+      expect(update.options.history).toBe('replace')
+    })
+
+    it('should use replace history when keyword update also resets page', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter('?page=3')
+
+      act(() => {
+        result.current.updateQuery({ keyword: 'hello', page: 1 })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.get('keyword')).toBe('hello')
+      expect(update.searchParams.has('page')).toBe(false)
+      expect(update.options.history).toBe('replace')
     })
 
     it('should remove keyword from URL when keyword is empty', async () => {
@@ -239,6 +254,7 @@ describe('useDocumentListQueryState', () => {
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(update.searchParams.has('keyword')).toBe(false)
+      expect(update.options.history).toBe('replace')
     })
 
     it('should remove keyword from URL when keyword contains only whitespace', async () => {
