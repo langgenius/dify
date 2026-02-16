@@ -35,7 +35,7 @@ describe('usePagination', () => {
 
   describe('hasPreviousPage / hasNextPage', () => {
     it('should have no previous page on first page', () => {
-      const { result } = renderHook(() => usePagination({ ...defaultProps, currentPage: 0 }))
+      const { result } = renderHook(() => usePagination({ ...defaultProps, currentPage: 1 }))
       expect(result.current.hasPreviousPage).toBe(false)
     })
 
@@ -45,7 +45,7 @@ describe('usePagination', () => {
     })
 
     it('should have next page when not on last page', () => {
-      const { result } = renderHook(() => usePagination({ ...defaultProps, currentPage: 0 }))
+      const { result } = renderHook(() => usePagination({ ...defaultProps, currentPage: 1 }))
       expect(result.current.hasNextPage).toBe(true)
     })
 
