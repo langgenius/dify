@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, final
+from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
@@ -45,7 +45,6 @@ class DifyNodeFactory(NodeFactory):
         self,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        *,
         code_executor: type[CodeExecutor] | None = None,
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits | None = None,
@@ -119,17 +118,13 @@ class DifyNodeFactory(NodeFactory):
         if not node_class:
             raise ValueError(f"No latest version class found for node type: {node_type}")
 
-        common_kwargs: dict[str, Any] = {
-            "id": node_id,
-            "config": node_config,
-            "graph_init_params": self.graph_init_params,
-            "graph_runtime_state": self.graph_runtime_state,
-        }
-
         # Create node instance
         if node_type == NodeType.CODE:
             return CodeNode(
-                **common_kwargs,
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
                 code_executor=self._code_executor,
                 code_providers=self._code_providers,
                 code_limits=self._code_limits,
@@ -137,14 +132,20 @@ class DifyNodeFactory(NodeFactory):
 
         if node_type == NodeType.TEMPLATE_TRANSFORM:
             return TemplateTransformNode(
-                **common_kwargs,
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
                 template_renderer=self._template_renderer,
                 max_output_length=self._template_transform_max_output_length,
             )
 
         if node_type == NodeType.HTTP_REQUEST:
             return HttpRequestNode(
-                **common_kwargs,
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
@@ -161,8 +162,16 @@ class DifyNodeFactory(NodeFactory):
 
         if node_type == NodeType.DOCUMENT_EXTRACTOR:
             return DocumentExtractorNode(
-                **common_kwargs,
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
             )
 
-        return node_class(**common_kwargs)
+        return node_class(
+            id=node_id,
+            config=node_config,
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=self.graph_runtime_state,
+        )
