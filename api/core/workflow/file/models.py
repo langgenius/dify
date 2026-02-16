@@ -1,14 +1,24 @@
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
-from core.tools.signature import sign_tool_file
 
 from . import helpers
 from .constants import FILE_MODEL_IDENTITY
 from .enums import FileTransferMethod, FileType
+
+
+def sign_tool_file(*, tool_file_id: str, extension: str, for_external: bool = True) -> str:
+    """Compatibility shim for tests and legacy callers patching ``models.sign_tool_file``."""
+    return helpers.get_signed_tool_file_url(
+        tool_file_id=tool_file_id,
+        extension=extension,
+        for_external=for_external,
+    )
 
 
 class ImageConfig(BaseModel):
@@ -122,7 +132,11 @@ class File(BaseModel):
         elif self.transfer_method in [FileTransferMethod.TOOL_FILE, FileTransferMethod.DATASOURCE_FILE]:
             assert self.related_id is not None
             assert self.extension is not None
-            return sign_tool_file(tool_file_id=self.related_id, extension=self.extension, for_external=for_external)
+            return sign_tool_file(
+                tool_file_id=self.related_id,
+                extension=self.extension,
+                for_external=for_external,
+            )
         return None
 
     def to_plugin_parameter(self) -> dict[str, Any]:
@@ -137,7 +151,7 @@ class File(BaseModel):
         }
 
     @model_validator(mode="after")
-    def validate_after(self):
+    def validate_after(self) -> File:
         match self.transfer_method:
             case FileTransferMethod.REMOTE_URL:
                 if not self.remote_url:
@@ -160,5 +174,5 @@ class File(BaseModel):
         return self._storage_key
 
     @storage_key.setter
-    def storage_key(self, value: str):
+    def storage_key(self, value: str) -> None:
         self._storage_key = value

@@ -10,11 +10,11 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file import File
 from extensions.ext_database import db
 from models.model import App, Message
 
