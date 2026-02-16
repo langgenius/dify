@@ -1,4 +1,3 @@
-import type { DocumentListResponse } from '@/models/datasets'
 import type { SortType } from '@/service/datasets'
 import { useDebounce } from 'ahooks'
 import { useCallback, useState } from 'react'
@@ -19,7 +18,6 @@ export function useDocumentsPageState() {
   const limit = query.limit
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [timerCanRun, setTimerCanRun] = useState(true)
 
   const handlePageChange = useCallback((newPage: number) => {
     updateQuery({ page: newPage + 1 })
@@ -55,34 +53,6 @@ export function useDocumentsPageState() {
     updateQuery({ sort: next, page: 1 })
   }, [sortValue, updateQuery])
 
-  const updatePollingState = useCallback((documentsRes: DocumentListResponse | undefined) => {
-    if (!documentsRes?.data)
-      return
-
-    let completedNum = 0
-    documentsRes.data.forEach((documentItem) => {
-      const { indexing_status } = documentItem
-      const isEmbedded = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
-      if (isEmbedded)
-        completedNum++
-    })
-
-    const hasIncompleteDocuments = completedNum !== documentsRes.data.length
-    const transientStatuses = ['queuing', 'indexing', 'paused']
-    const shouldForcePolling = normalizedStatusFilterValue === 'all'
-      ? false
-      : transientStatuses.includes(normalizedStatusFilterValue)
-    setTimerCanRun(shouldForcePolling || hasIncompleteDocuments)
-  }, [normalizedStatusFilterValue])
-
-  const adjustPageForTotal = useCallback((documentsRes: DocumentListResponse | undefined) => {
-    if (!documentsRes)
-      return
-    const totalPages = Math.ceil(documentsRes.total / limit)
-    if (currPage > 0 && currPage + 1 > totalPages)
-      handlePageChange(totalPages > 0 ? totalPages - 1 : 0)
-  }, [limit, currPage, handlePageChange])
-
   return {
     inputValue,
     debouncedSearchValue,
@@ -102,9 +72,5 @@ export function useDocumentsPageState() {
 
     selectedIds,
     setSelectedIds,
-
-    timerCanRun,
-    updatePollingState,
-    adjustPageForTotal,
   }
 }

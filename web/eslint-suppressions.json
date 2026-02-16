@@ -3696,11 +3696,6 @@
       "count": 3
     }
   },
-  "app/components/datasets/documents/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    }
-  },
   "app/components/datasets/external-api/external-api-modal/Form.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2

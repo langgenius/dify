@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
@@ -18,6 +18,10 @@ import { useDocumentsPageState } from './hooks/use-documents-page-state'
 type IDocumentsProps = {
   datasetId: string
 }
+
+const POLLING_INTERVAL = 2500
+const TERMINAL_INDEXING_STATUSES = new Set(['completed', 'paused', 'error'])
+const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
@@ -44,9 +48,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     handleLimitChange,
     selectedIds,
     setSelectedIds,
-    timerCanRun,
-    updatePollingState,
-    adjustPageForTotal,
   } = useDocumentsPageState()
 
   // Fetch document list
@@ -59,18 +60,16 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       status: normalizedStatusFilterValue,
       sort: sortValue,
     },
-    refetchInterval: timerCanRun ? 2500 : 0,
+    refetchInterval: (query) => {
+      const shouldForcePolling = normalizedStatusFilterValue !== 'all'
+        && FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
+      const documents = query.state.data?.data
+      if (!documents)
+        return POLLING_INTERVAL
+      const hasIncompleteDocuments = documents.some(({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status))
+      return shouldForcePolling || hasIncompleteDocuments ? POLLING_INTERVAL : false
+    },
   })
-
-  // Update polling state when documents change
-  useEffect(() => {
-    updatePollingState(documentsRes)
-  }, [documentsRes, updatePollingState])
-
-  // Adjust page when total changes
-  useEffect(() => {
-    adjustPageForTotal(documentsRes)
-  }, [documentsRes, adjustPageForTotal])
 
   // Invalidation hooks
   const invalidDocumentList = useInvalidDocumentList(datasetId)

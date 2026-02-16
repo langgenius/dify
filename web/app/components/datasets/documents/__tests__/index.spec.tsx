@@ -117,8 +117,6 @@ const mockHandleStatusFilterClear = vi.fn()
 const mockHandleSortChange = vi.fn()
 const mockHandlePageChange = vi.fn()
 const mockHandleLimitChange = vi.fn()
-const mockUpdatePollingState = vi.fn()
-const mockAdjustPageForTotal = vi.fn()
 
 vi.mock('../hooks/use-documents-page-state', () => ({
   useDocumentsPageState: vi.fn(() => ({
@@ -137,9 +135,6 @@ vi.mock('../hooks/use-documents-page-state', () => ({
     handleLimitChange: mockHandleLimitChange,
     selectedIds: [] as string[],
     setSelectedIds: mockSetSelectedIds,
-    timerCanRun: false,
-    updatePollingState: mockUpdatePollingState,
-    adjustPageForTotal: mockAdjustPageForTotal,
   })),
 }))
 
@@ -483,17 +478,75 @@ describe('Documents', () => {
     })
   })
 
-  describe('Side Effects and Cleanup', () => {
-    it('should call updatePollingState when documents response changes', () => {
+  describe('Query Options', () => {
+    it('should pass function refetchInterval to useDocumentList', () => {
       render(<Documents {...defaultProps} />)
 
-      expect(mockUpdatePollingState).toHaveBeenCalled()
+      const payload = vi.mocked(useDocumentList).mock.calls.at(-1)?.[0]
+      expect(payload).toBeDefined()
+      expect(typeof payload?.refetchInterval).toBe('function')
     })
 
-    it('should call adjustPageForTotal when documents response changes', () => {
+    it('should stop polling when all documents are in terminal statuses', () => {
       render(<Documents {...defaultProps} />)
 
-      expect(mockAdjustPageForTotal).toHaveBeenCalled()
+      const payload = vi.mocked(useDocumentList).mock.calls.at(-1)?.[0]
+      const refetchInterval = payload?.refetchInterval
+      expect(typeof refetchInterval).toBe('function')
+      if (typeof refetchInterval !== 'function')
+        throw new Error('Expected function refetchInterval')
+
+      const interval = refetchInterval({
+        state: {
+          data: {
+            data: [
+              { indexing_status: 'completed' },
+              { indexing_status: 'paused' },
+              { indexing_status: 'error' },
+            ],
+          },
+        },
+      } as unknown as Parameters<typeof refetchInterval>[0])
+
+      expect(interval).toBe(false)
+    })
+
+    it('should keep polling for transient status filters', () => {
+      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
+        inputValue: '',
+        debouncedSearchValue: '',
+        handleInputChange: mockHandleInputChange,
+        statusFilterValue: 'indexing',
+        sortValue: '-created_at' as const,
+        normalizedStatusFilterValue: 'indexing',
+        handleStatusFilterChange: mockHandleStatusFilterChange,
+        handleStatusFilterClear: mockHandleStatusFilterClear,
+        handleSortChange: mockHandleSortChange,
+        currPage: 0,
+        limit: 10,
+        handlePageChange: mockHandlePageChange,
+        handleLimitChange: mockHandleLimitChange,
+        selectedIds: [] as string[],
+        setSelectedIds: mockSetSelectedIds,
+      })
+
+      render(<Documents {...defaultProps} />)
+
+      const payload = vi.mocked(useDocumentList).mock.calls.at(-1)?.[0]
+      const refetchInterval = payload?.refetchInterval
+      expect(typeof refetchInterval).toBe('function')
+      if (typeof refetchInterval !== 'function')
+        throw new Error('Expected function refetchInterval')
+
+      const interval = refetchInterval({
+        state: {
+          data: {
+            data: [{ indexing_status: 'completed' }],
+          },
+        },
+      } as unknown as Parameters<typeof refetchInterval>[0])
+
+      expect(interval).toBe(2500)
     })
   })
 
@@ -590,35 +643,6 @@ describe('Documents', () => {
     })
   })
 
-  describe('Polling State', () => {
-    it('should enable polling when documents are indexing', () => {
-      vi.mocked(useDocumentsPageState).mockReturnValueOnce({
-        inputValue: '',
-        debouncedSearchValue: '',
-        handleInputChange: mockHandleInputChange,
-        statusFilterValue: 'all',
-        sortValue: '-created_at' as const,
-        normalizedStatusFilterValue: 'all',
-        handleStatusFilterChange: mockHandleStatusFilterChange,
-        handleStatusFilterClear: mockHandleStatusFilterClear,
-        handleSortChange: mockHandleSortChange,
-        currPage: 0,
-        limit: 10,
-        handlePageChange: mockHandlePageChange,
-        handleLimitChange: mockHandleLimitChange,
-        selectedIds: [] as string[],
-        setSelectedIds: mockSetSelectedIds,
-        timerCanRun: true,
-        updatePollingState: mockUpdatePollingState,
-        adjustPageForTotal: mockAdjustPageForTotal,
-      })
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('documents-list')).toBeInTheDocument()
-    })
-  })
-
   describe('Pagination', () => {
     it('should display correct total in list', () => {
       render(<Documents {...defaultProps} />)
@@ -647,9 +671,6 @@ describe('Documents', () => {
         handleLimitChange: mockHandleLimitChange,
         selectedIds: [] as string[],
         setSelectedIds: mockSetSelectedIds,
-        timerCanRun: false,
-        updatePollingState: mockUpdatePollingState,
-        adjustPageForTotal: mockAdjustPageForTotal,
       })
 
       render(<Documents {...defaultProps} />)
@@ -675,9 +696,6 @@ describe('Documents', () => {
         handleLimitChange: mockHandleLimitChange,
         selectedIds: ['doc-1', 'doc-2'],
         setSelectedIds: mockSetSelectedIds,
-        timerCanRun: false,
-        updatePollingState: mockUpdatePollingState,
-        adjustPageForTotal: mockAdjustPageForTotal,
       })
 
       render(<Documents {...defaultProps} />)
@@ -703,9 +721,6 @@ describe('Documents', () => {
         handleLimitChange: mockHandleLimitChange,
         selectedIds: [] as string[],
         setSelectedIds: mockSetSelectedIds,
-        timerCanRun: false,
-        updatePollingState: mockUpdatePollingState,
-        adjustPageForTotal: mockAdjustPageForTotal,
       })
 
       render(<Documents {...defaultProps} />)
