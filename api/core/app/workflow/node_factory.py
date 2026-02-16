@@ -16,7 +16,6 @@ from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request.node import HttpRequestNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
@@ -45,6 +44,7 @@ class DifyNodeFactory(NodeFactory):
         self,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
+        *,
         code_executor: type[CodeExecutor] | None = None,
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits | None = None,
@@ -53,7 +53,6 @@ class DifyNodeFactory(NodeFactory):
         http_request_http_client: HttpClientProtocol | None = None,
         http_request_tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
         http_request_file_manager: FileManagerProtocol | None = None,
-        document_extractor_unstructured_api_config: UnstructuredApiConfig | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
@@ -79,13 +78,6 @@ class DifyNodeFactory(NodeFactory):
         self._http_request_tool_file_manager_factory = http_request_tool_file_manager_factory
         self._http_request_file_manager = http_request_file_manager or file_manager
         self._rag_retrieval = DatasetRetrieval()
-        self._document_extractor_unstructured_api_config = (
-            document_extractor_unstructured_api_config
-            or UnstructuredApiConfig(
-                api_url=dify_config.UNSTRUCTURED_API_URL,
-                api_key=dify_config.UNSTRUCTURED_API_KEY or "",
-            )
-        )
 
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:
@@ -158,15 +150,6 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 rag_retrieval=self._rag_retrieval,
-            )
-
-        if node_type == NodeType.DOCUMENT_EXTRACTOR:
-            return DocumentExtractorNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                unstructured_api_config=self._document_extractor_unstructured_api_config,
             )
 
         return node_class(
