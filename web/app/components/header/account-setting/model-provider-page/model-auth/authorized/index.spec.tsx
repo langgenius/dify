@@ -1,4 +1,4 @@
-import type { Credential, ModelProvider } from '../../declarations'
+import type { Credential, CustomModel, ModelProvider } from '../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelTypeEnum } from '../../declarations'
 import Authorized from './index'
@@ -55,19 +55,20 @@ vi.mock('@/app/components/base/confirm', () => ({
 }))
 
 vi.mock('./authorized-item', () => ({
-  default: ({ credentials, onEdit, onDelete, onItemClick }: {
+  default: ({ credentials, model, onEdit, onDelete, onItemClick }: {
     credentials: Credential[]
-    onEdit?: (credential: Credential) => void
-    onDelete?: (credential: Credential) => void
-    onItemClick?: (credential: Credential) => void
+    model?: CustomModel
+    onEdit?: (credential: Credential, model?: CustomModel) => void
+    onDelete?: (credential: Credential, model?: CustomModel) => void
+    onItemClick?: (credential: Credential, model?: CustomModel) => void
   }) => (
     <div data-testid="authorized-item">
       {credentials.map((cred: Credential) => (
         <div key={cred.credential_id}>
           <span>{cred.credential_name}</span>
-          <button onClick={() => onEdit?.(cred)}>Edit</button>
-          <button onClick={() => onDelete?.(cred)}>Delete</button>
-          <button onClick={() => onItemClick?.(cred)}>Select</button>
+          <button onClick={() => onEdit?.(cred, model)}>Edit</button>
+          <button onClick={() => onDelete?.(cred, model)}>Delete</button>
+          <button onClick={() => onItemClick?.(cred, model)}>Select</button>
         </div>
       ))}
     </div>
@@ -87,6 +88,10 @@ describe('Authorized', () => {
 
   const mockItems = [
     {
+      model: {
+        model: 'gpt-4',
+        model_type: ModelTypeEnum.textGeneration,
+      },
       credentials: mockCredentials,
     },
   ]
@@ -284,6 +289,25 @@ describe('Authorized', () => {
       expect(mockHandleOpenModal).toHaveBeenCalled()
     })
 
+    it('should call handleOpenModal with credential and model when edit is clicked', () => {
+      render(
+        <Authorized
+          provider={mockProvider}
+          configurationMethod={ConfigurationMethodEnum.predefinedModel}
+          items={mockItems}
+          renderTrigger={mockRenderTrigger}
+          isOpen
+        />,
+      )
+
+      fireEvent.click(screen.getAllByText('Edit')[0])
+
+      expect(mockHandleOpenModal).toHaveBeenCalledWith(
+        mockCredentials[0],
+        mockItems[0].model,
+      )
+    })
+
     it('should pass current model fields when adding model credential', () => {
       render(
         <Authorized
@@ -324,7 +348,7 @@ describe('Authorized', () => {
 
       fireEvent.click(screen.getAllByText('Select')[0])
 
-      expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], undefined)
+      expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockItems[0].model)
     })
 
     it('should call handleActiveCredential when onItemClick is not provided', () => {
@@ -340,7 +364,7 @@ describe('Authorized', () => {
 
       fireEvent.click(screen.getAllByText('Select')[0])
 
-      expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], undefined)
+      expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0].model)
     })
 
     it('should not call onItemClick when disableItemClick is true', () => {

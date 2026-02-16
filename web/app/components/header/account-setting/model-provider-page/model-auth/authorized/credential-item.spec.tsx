@@ -2,6 +2,12 @@ import type { Credential } from '../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import CredentialItem from './credential-item'
 
+vi.mock('@remixicon/react', () => ({
+  RiCheckLine: () => <div data-testid="check-icon" />,
+  RiDeleteBinLine: () => <div data-testid="delete-icon" />,
+  RiEqualizer2Line: () => <div data-testid="edit-icon" />,
+}))
+
 vi.mock('@/app/components/header/indicator', () => ({
   default: () => <div data-testid="indicator" />,
 }))
@@ -55,8 +61,8 @@ describe('CredentialItem', () => {
 
     render(<CredentialItem credential={credential} onEdit={onEdit} onDelete={onDelete} />)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getByTestId('edit-icon').closest('button') as HTMLButtonElement)
+    fireEvent.click(screen.getByTestId('delete-icon').closest('button') as HTMLButtonElement)
 
     expect(onEdit).toHaveBeenCalledWith(credential)
     expect(onDelete).toHaveBeenCalledWith(credential)
@@ -75,7 +81,7 @@ describe('CredentialItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(screen.getByTestId('delete-icon').closest('button') as HTMLButtonElement)
 
     expect(onDelete).not.toHaveBeenCalled()
   })
