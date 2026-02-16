@@ -19,7 +19,7 @@ describe('SortHeader', () => {
 
     it('should render the sort icon', () => {
       const { container } = render(<SortHeader {...defaultProps} />)
-      const icon = container.querySelector('.i-ri-arrow-down-line')
+      const icon = container.querySelector('button span')
       expect(icon).toBeInTheDocument()
     })
   })
@@ -27,13 +27,13 @@ describe('SortHeader', () => {
   describe('inactive state', () => {
     it('should have disabled text color when not active', () => {
       const { container } = render(<SortHeader {...defaultProps} />)
-      const icon = container.querySelector('.i-ri-arrow-down-line')
+      const icon = container.querySelector('button span')
       expect(icon).toHaveClass('text-text-disabled')
     })
 
     it('should not be rotated when not active', () => {
       const { container } = render(<SortHeader {...defaultProps} />)
-      const icon = container.querySelector('.i-ri-arrow-down-line')
+      const icon = container.querySelector('button span')
       expect(icon).not.toHaveClass('rotate-180')
     })
   })
@@ -43,7 +43,7 @@ describe('SortHeader', () => {
       const { container } = render(
         <SortHeader {...defaultProps} currentSortField="created_at" />,
       )
-      const icon = container.querySelector('.i-ri-arrow-down-line')
+      const icon = container.querySelector('button span')
       expect(icon).toHaveClass('text-text-tertiary')
     })
 
@@ -51,7 +51,7 @@ describe('SortHeader', () => {
       const { container } = render(
         <SortHeader {...defaultProps} currentSortField="created_at" sortOrder="desc" />,
       )
-      const icon = container.querySelector('.i-ri-arrow-down-line')
+      const icon = container.querySelector('button span')
       expect(icon).not.toHaveClass('rotate-180')
     })
 
@@ -59,7 +59,7 @@ describe('SortHeader', () => {
       const { container } = render(
         <SortHeader {...defaultProps} currentSortField="created_at" sortOrder="asc" />,
       )
-      const icon = container.querySelector('.i-ri-arrow-down-line')
+      const icon = container.querySelector('button span')
       expect(icon).toHaveClass('rotate-180')
     })
   })

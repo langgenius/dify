@@ -130,78 +130,56 @@ describe('Document Management Flow', () => {
   })
 
   describe('Document Sort Integration', () => {
-    it('should return documents unsorted when no sort field set', () => {
-      const docs = [
-        createDoc({ id: 'doc-1', name: 'Banana.txt', word_count: 300 }),
-        createDoc({ id: 'doc-2', name: 'Apple.txt', word_count: 100 }),
-        createDoc({ id: 'doc-3', name: 'Cherry.txt', word_count: 200 }),
-      ]
-
+    it('should derive sort field and order from remote sort value', () => {
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: '',
         remoteSortValue: '-created_at',
+        onRemoteSortChange: vi.fn(),
       }))
 
-      expect(result.current.sortField).toBeNull()
-      expect(result.current.sortedDocuments).toHaveLength(3)
+      expect(result.current.sortField).toBe('created_at')
+      expect(result.current.sortOrder).toBe('desc')
     })
 
-    it('should sort by name descending', () => {
-      const docs = [
-        createDoc({ id: 'doc-1', name: 'Banana.txt' }),
-        createDoc({ id: 'doc-2', name: 'Apple.txt' }),
-        createDoc({ id: 'doc-3', name: 'Cherry.txt' }),
-      ]
-
+    it('should call remote sort change with descending sort for a new field', () => {
+      const onRemoteSortChange = vi.fn()
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: '',
         remoteSortValue: '-created_at',
+        onRemoteSortChange,
       }))
 
       act(() => {
-        result.current.handleSort('name')
+        result.current.handleSort('hit_count')
       })
 
-      expect(result.current.sortField).toBe('name')
-      expect(result.current.sortOrder).toBe('desc')
-      const names = result.current.sortedDocuments.map(d => d.name)
-      expect(names).toEqual(['Cherry.txt', 'Banana.txt', 'Apple.txt'])
+      expect(onRemoteSortChange).toHaveBeenCalledWith('-hit_count')
     })
 
-    it('should toggle sort order on same field click', () => {
-      const docs = [createDoc({ id: 'doc-1', name: 'A.txt' }), createDoc({ id: 'doc-2', name: 'B.txt' })]
-
+    it('should toggle descending to ascending when clicking active field', () => {
+      const onRemoteSortChange = vi.fn()
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: '',
-        remoteSortValue: '-created_at',
+        remoteSortValue: '-hit_count',
+        onRemoteSortChange,
       }))
 
-      act(() => result.current.handleSort('name'))
-      expect(result.current.sortOrder).toBe('desc')
+      act(() => {
+        result.current.handleSort('hit_count')
+      })
 
-      act(() => result.current.handleSort('name'))
-      expect(result.current.sortOrder).toBe('asc')
+      expect(onRemoteSortChange).toHaveBeenCalledWith('hit_count')
     })
 
-    it('should filter by status before sorting', () => {
-      const docs = [
-        createDoc({ id: 'doc-1', name: 'A.txt', display_status: 'available' }),
-        createDoc({ id: 'doc-2', name: 'B.txt', display_status: 'error' }),
-        createDoc({ id: 'doc-3', name: 'C.txt', display_status: 'available' }),
-      ]
-
+    it('should ignore null sort field updates', () => {
+      const onRemoteSortChange = vi.fn()
       const { result } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: 'available',
         remoteSortValue: '-created_at',
+        onRemoteSortChange,
       }))
 
-      // Only 'available' documents should remain
-      expect(result.current.sortedDocuments).toHaveLength(2)
-      expect(result.current.sortedDocuments.every(d => d.display_status === 'available')).toBe(true)
+      act(() => {
+        result.current.handleSort(null)
+      })
+
+      expect(onRemoteSortChange).not.toHaveBeenCalled()
     })
   })
 
@@ -316,12 +294,11 @@ describe('Document Management Flow', () => {
       const docs = [createDoc({ id: 'doc-1' })]
       const { result: queryResult } = renderQueryStateHook()
       const { result: sortResult } = renderHook(() => useDocumentSort({
-        documents: docs,
-        statusFilterValue: queryResult.current.query.status,
         remoteSortValue: queryResult.current.query.sort,
+        onRemoteSortChange: vi.fn(),
       }))
       const { result: selResult } = renderHook(() => useDocumentSelection({
-        documents: sortResult.current.sortedDocuments,
+        documents: docs,
         selectedIds: [],
         onSelectedIdChange: vi.fn(),
       }))
@@ -330,8 +307,9 @@ describe('Document Management Flow', () => {
       expect(queryResult.current.query.sort).toBe('-created_at')
       expect(queryResult.current.query.status).toBe('all')
 
-      // Sort inherits 'all' status → no filtering applied
-      expect(sortResult.current.sortedDocuments).toHaveLength(1)
+      // Sort state is derived from URL default sort.
+      expect(sortResult.current.sortField).toBe('created_at')
+      expect(sortResult.current.sortOrder).toBe('desc')
 
       // Selection starts empty
       expect(selResult.current.isAllSelected).toBe(false)
