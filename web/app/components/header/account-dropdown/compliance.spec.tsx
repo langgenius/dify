@@ -35,25 +35,19 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-vi.mock('../../base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
 describe('Compliance', () => {
   const mockSetShowPricingModal = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
+  let queryClient: QueryClient
 
   beforeEach(() => {
     vi.clearAllMocks()
-    queryClient.clear()
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
       plan: {
@@ -65,6 +59,8 @@ describe('Compliance', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
+
+    vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {
@@ -81,111 +77,143 @@ describe('Compliance', () => {
     fireEvent.click(screen.getByRole('button'))
   }
 
-  it('renders compliance menu trigger', () => {
-    renderWithQueryClient(<Compliance />)
-    expect(screen.getByText('common.userProfile.compliance')).toBeDefined()
-  })
+  describe('Rendering', () => {
+    it('should render compliance menu trigger', () => {
+      // Act
+      renderWithQueryClient(<Compliance />)
 
-  it('shows SOC2, ISO, GDPR items when opened', () => {
-    openMenuAndRender()
-    expect(screen.getByText('common.compliance.soc2Type1')).toBeDefined()
-    expect(screen.getByText('common.compliance.soc2Type2')).toBeDefined()
-    expect(screen.getByText('common.compliance.iso27001')).toBeDefined()
-    expect(screen.getByText('common.compliance.gdpr')).toBeDefined()
-  })
-
-  it('shows Upgrade badge for sandbox plan on restricted docs', () => {
-    openMenuAndRender()
-    // SOC2 Type I is restricted for sandbox
-    expect(screen.getAllByText('billing.upgradeBtn.encourageShort').length).toBeGreaterThan(0)
-  })
-
-  it('shows Download button for plan that allows it', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.team,
-      },
-    })
-    openMenuAndRender()
-    expect(screen.getAllByText('common.operation.download').length).toBeGreaterThan(0)
-  })
-
-  it('triggers download mutation successfully', async () => {
-    const mockUrl = 'http://example.com/doc.pdf'
-    vi.mocked(getDocDownloadUrl).mockResolvedValue({ url: mockUrl })
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.team,
-      },
+      // Assert
+      expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
     })
 
-    openMenuAndRender()
-    const downloadButtons = screen.getAllByText('common.operation.download')
-    fireEvent.click(downloadButtons[0])
+    it('should show SOC2, ISO, GDPR items when opened', () => {
+      // Act
+      openMenuAndRender()
 
-    await waitFor(() => {
-      expect(getDocDownloadUrl).toHaveBeenCalled()
-      expect(downloadUrl).toHaveBeenCalledWith({ url: mockUrl })
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        message: 'common.operation.downloadSuccess',
-      }))
+      // Assert
+      expect(screen.getByText('common.compliance.soc2Type1')).toBeInTheDocument()
+      expect(screen.getByText('common.compliance.soc2Type2')).toBeInTheDocument()
+      expect(screen.getByText('common.compliance.iso27001')).toBeInTheDocument()
+      expect(screen.getByText('common.compliance.gdpr')).toBeInTheDocument()
     })
   })
 
-  it('handles download mutation error', async () => {
-    vi.mocked(getDocDownloadUrl).mockRejectedValue(new Error('Download failed'))
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.team,
-      },
+  describe('Plan-based Content', () => {
+    it('should show Upgrade badge for sandbox plan on restricted docs', () => {
+      // Act
+      openMenuAndRender()
+
+      // Assert
+      // SOC2 Type I is restricted for sandbox
+      expect(screen.getAllByText('billing.upgradeBtn.encourageShort').length).toBeGreaterThan(0)
     })
 
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    it('should show Download button for plan that allows it', () => {
+      // Arrange
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.team,
+        },
+      })
 
-    openMenuAndRender()
-    const downloadButtons = screen.getAllByText('common.operation.download')
-    fireEvent.click(downloadButtons[0])
+      // Act
+      openMenuAndRender()
 
-    await waitFor(() => {
-      expect(getDocDownloadUrl).toHaveBeenCalled()
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'common.operation.downloadFailed',
-      }))
+      // Assert
+      expect(screen.getAllByText('common.operation.download').length).toBeGreaterThan(0)
     })
-    expect(consoleSpy).toHaveBeenCalled()
-    consoleSpy.mockRestore()
   })
 
-  it('handles upgrade click on badge for sandbox plan', () => {
-    openMenuAndRender()
-    const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
-    fireEvent.click(upgradeBadges[0])
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
-  })
+  describe('Actions', () => {
+    it('should trigger download mutation successfully', async () => {
+      // Arrange
+      const mockUrl = 'http://example.com/doc.pdf'
+      vi.mocked(getDocDownloadUrl).mockResolvedValue({ url: mockUrl })
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.team,
+        },
+      })
 
-  it('handles upgrade click on badge for non-sandbox plan', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: Plan.professional,
-      },
+      // Act
+      openMenuAndRender()
+      const downloadButtons = screen.getAllByText('common.operation.download')
+      fireEvent.click(downloadButtons[0])
+
+      // Assert
+      await waitFor(() => {
+        expect(getDocDownloadUrl).toHaveBeenCalled()
+        expect(downloadUrl).toHaveBeenCalledWith({ url: mockUrl })
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+          message: 'common.operation.downloadSuccess',
+        }))
+      })
     })
 
-    openMenuAndRender()
-    // SOC2 Type II is restricted for professional
-    const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
-    fireEvent.click(upgradeBadges[0])
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
+    it('should handle download mutation error', async () => {
+      // Arrange
+      vi.mocked(getDocDownloadUrl).mockRejectedValue(new Error('Download failed'))
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.team,
+        },
+      })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
+      // Act
+      openMenuAndRender()
+      const downloadButtons = screen.getAllByText('common.operation.download')
+      fireEvent.click(downloadButtons[0])
+
+      // Assert
+      await waitFor(() => {
+        expect(getDocDownloadUrl).toHaveBeenCalled()
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'error',
+          message: 'common.operation.downloadFailed',
+        }))
+      })
+      expect(consoleSpy).toHaveBeenCalled()
+      consoleSpy.mockRestore()
+    })
+
+    it('should handle upgrade click on badge for sandbox plan', () => {
+      // Act
+      openMenuAndRender()
+      const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
+      fireEvent.click(upgradeBadges[0])
+
+      // Assert
+      expect(mockSetShowPricingModal).toHaveBeenCalled()
+    })
+
+    it('should handle upgrade click on badge for non-sandbox plan', () => {
+      // Arrange
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.professional,
+        },
+      })
+
+      // Act
+      openMenuAndRender()
+      // SOC2 Type II is restricted for professional
+      const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
+      fireEvent.click(upgradeBadges[0])
+
+      // Assert
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+        payload: ACCOUNT_SETTING_TAB.BILLING,
+      })
     })
   })
 })

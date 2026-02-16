@@ -5,6 +5,7 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
@@ -12,7 +13,35 @@ import { useProviderContext } from '@/context/provider-context'
 import { useLogout } from '@/service/use-common'
 import AppSelector from './index'
 
-// Mock local contexts and services
+vi.mock('./support', () => ({
+  default: () => <div data-testid="support">common.userProfile.support</div>,
+}))
+
+vi.mock('./compliance', () => ({
+  default: () => <div data-testid="compliance">common.userProfile.compliance</div>,
+}))
+
+vi.mock('./workplace-selector', () => ({
+  default: () => <div data-testid="workplace-selector">WorkplaceSelector</div>,
+}))
+
+vi.mock('../account-setting', () => ({
+  default: () => <div data-testid="account-setting">AccountSetting</div>,
+}))
+
+vi.mock('../account-about', () => ({
+  default: ({ onCancel }: { onCancel: () => void }) => (
+    <div data-testid="account-about">
+      Version
+      <button onClick={onCancel}>Close</button>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/header/github-star', () => ({
+  default: () => <div data-testid="github-star">GithubStar</div>,
+}))
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
@@ -41,27 +70,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
-// Mock sub-components with prop tracking
-type AccountAboutProps = {
-  onCancel: () => void
-}
-vi.mock('../account-about', () => ({
-  default: ({ onCancel }: AccountAboutProps) => (
-    <div data-testid="account-about">
-      <button onClick={onCancel} data-testid="about-cancel">Cancel</button>
-    </div>
-  ),
-}))
-vi.mock('../github-star', () => ({ default: () => <div data-testid="github-star" /> }))
-type IndicatorProps = {
-  color?: string
-}
-vi.mock('../indicator', () => ({
-  default: ({ color }: IndicatorProps) => <div data-testid="indicator" data-color={color} />,
-}))
-vi.mock('./compliance', () => ({ default: () => <div data-testid="compliance" /> }))
-vi.mock('./support', () => ({ default: () => <div data-testid="support" /> }))
-
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
@@ -73,7 +81,11 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
     },
   },
 }))
-vi.mock('@/config', () => mockConfig)
+vi.mock('@/config', () => ({
+  get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  IS_DEV: false,
+  IS_CE_EDITION: false,
+}))
 vi.mock('@/env', () => mockEnv)
 
 describe('AccountDropdown', () => {
@@ -121,6 +133,7 @@ describe('AccountDropdown', () => {
     })
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
+      plan: { type: Plan.sandbox },
     } as unknown as ProviderContextState)
     vi.mocked(useModalContext).mockReturnValue({
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -130,139 +143,164 @@ describe('AccountDropdown', () => {
     } as unknown as ReturnType<typeof useLogout>)
   })
 
-  it('renders user profile correctly', () => {
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
+  describe('Rendering', () => {
+    it('should render user profile correctly', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
 
-    expect(screen.getByText('Test User')).toBeDefined()
-    expect(screen.getByText('test@example.com')).toBeDefined()
-  })
+      // Assert
+      expect(screen.getByText('Test User')).toBeInTheDocument()
+      expect(screen.getByText('test@example.com')).toBeInTheDocument()
+    })
 
-  it('shows EDU badge for education accounts', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      isEducationAccount: true,
-    } as unknown as ProviderContextState)
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.getByText('EDU')).toBeDefined()
-  })
+    it('should show EDU badge for education accounts', () => {
+      // Arrange
+      vi.mocked(useProviderContext).mockReturnValue({
+        isEducationAccount: true,
+        plan: { type: Plan.sandbox },
+      } as unknown as ProviderContextState)
 
-  it('triggers setShowAccountSettingModal when settings is clicked', () => {
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('common.userProfile.settings'))
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
-  })
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
 
-  it('handles logout correctly', async () => {
-    mockLogout.mockResolvedValue({})
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('common.userProfile.logout'))
-
-    await waitFor(() => {
-      expect(mockLogout).toHaveBeenCalled()
-      // In vitest.setup.ts, localStorage.removeItem is already vi.fn()
-      expect(localStorage.removeItem).toHaveBeenCalledWith('setup_status')
-      expect(mockPush).toHaveBeenCalledWith('/signin')
+      // Assert
+      expect(screen.getByText('EDU')).toBeInTheDocument()
     })
   })
 
-  it('shows About section when about button is clicked and can close it', () => {
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('common.userProfile.about'))
-    expect(screen.getByTestId('account-about')).toBeDefined()
+  describe('Settings and Support', () => {
+    it('should trigger setShowAccountSettingModal when settings is clicked', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByText('common.userProfile.settings'))
 
-    fireEvent.click(screen.getByTestId('about-cancel'))
-    expect(screen.queryByTestId('account-about')).toBeNull()
-  })
-
-  it('hides sections when branding is enabled', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
-      const fullState = { systemFeatures: { branding: { enabled: true } }, setSystemFeatures: vi.fn() }
-      return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
+      // Assert
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
     })
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
 
-    expect(screen.queryByText('common.userProfile.helpCenter')).toBeNull()
-    expect(screen.queryByText('common.userProfile.roadmap')).toBeNull()
+    it('should show Compliance in Cloud Edition for workspace owner', () => {
+      // Arrange
+      mockConfig.IS_CLOUD_EDITION = true
+      vi.mocked(useAppContext).mockReturnValue({
+        userProfile: { name: 'User' },
+        isCurrentWorkspaceOwner: true,
+        langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
+      } as unknown as AppContextValue)
+
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
+    })
   })
 
-  it('shows Compliance in Cloud Edition for workspace owner', () => {
-    mockConfig.IS_CLOUD_EDITION = true
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { name: 'User' },
-      isCurrentWorkspaceOwner: true,
-      langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
-    } as unknown as AppContextValue)
+  describe('Actions', () => {
+    it('should handle logout correctly', async () => {
+      // Arrange
+      mockLogout.mockResolvedValue({})
 
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.getByTestId('compliance')).toBeDefined()
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByText('common.userProfile.logout'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockLogout).toHaveBeenCalled()
+        expect(localStorage.removeItem).toHaveBeenCalledWith('setup_status')
+        expect(mockPush).toHaveBeenCalledWith('/signin')
+      })
+    })
+
+    it('should show About section when about button is clicked and can close it', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByText('common.userProfile.about'))
+
+      // Assert
+      expect(screen.getByTestId('account-about')).toBeInTheDocument()
+
+      // Act
+      fireEvent.click(screen.getByText('Close'))
+
+      // Assert
+      expect(screen.queryByTestId('account-about')).not.toBeInTheDocument()
+    })
   })
 
-  it('hides Compliance in Cloud Edition for non-owner', () => {
-    mockConfig.IS_CLOUD_EDITION = true
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { name: 'User' },
-      isCurrentWorkspaceOwner: false,
-      langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
-    } as unknown as AppContextValue)
+  describe('Branding and Environment', () => {
+    it('should hide sections when branding is enabled', () => {
+      // Arrange
+      vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
+        const fullState = { systemFeatures: { branding: { enabled: true } }, setSystemFeatures: vi.fn() }
+        return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
+      })
 
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.queryByTestId('compliance')).toBeNull()
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.queryByText('common.userProfile.helpCenter')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.userProfile.roadmap')).not.toBeInTheDocument()
+    })
+
+    it('should hide About section when NEXT_PUBLIC_SITE_ABOUT is hide', () => {
+      // Arrange
+      mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'hide'
+
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.queryByText('common.userProfile.about')).not.toBeInTheDocument()
+    })
   })
 
-  it('hides Compliance in non-Cloud Edition for owner', () => {
-    mockConfig.IS_CLOUD_EDITION = false
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { name: 'User' },
-      isCurrentWorkspaceOwner: true,
-      langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
-    } as unknown as AppContextValue)
+  describe('Version Indicators', () => {
+    it('should show orange indicator when version is not latest', () => {
+      // Arrange
+      vi.mocked(useAppContext).mockReturnValue({
+        userProfile: { name: 'User' },
+        langGeniusVersionInfo: {
+          current_version: '0.6.0',
+          latest_version: '0.7.0',
+        },
+      } as unknown as AppContextValue)
 
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.queryByTestId('compliance')).toBeNull()
-  })
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
 
-  it('hides About section when NEXT_PUBLIC_SITE_ABOUT is hide', () => {
-    mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'hide'
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.queryByText('common.userProfile.about')).toBeNull()
-  })
+      // Assert
+      const indicator = screen.getByTestId('status-indicator')
+      expect(indicator).toHaveClass('bg-components-badge-status-light-warning-bg')
+    })
 
-  it('shows orange indicator when version is not latest', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { name: 'User' },
-      langGeniusVersionInfo: {
-        current_version: '0.6.0',
-        latest_version: '0.7.0',
-      },
-    } as unknown as AppContextValue)
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
+    it('should show green indicator when version is latest', () => {
+      // Arrange
+      vi.mocked(useAppContext).mockReturnValue({
+        userProfile: { name: 'User' },
+        langGeniusVersionInfo: {
+          current_version: '0.7.0',
+          latest_version: '0.7.0',
+        },
+      } as unknown as AppContextValue)
 
-    const indicator = screen.getByTestId('indicator')
-    expect(indicator.getAttribute('data-color')).toBe('orange')
-  })
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
 
-  it('shows green indicator when version is latest', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { name: 'User' },
-      langGeniusVersionInfo: {
-        current_version: '0.7.0',
-        latest_version: '0.7.0',
-      },
-    } as unknown as AppContextValue)
-    renderWithRouter(<AppSelector />)
-    fireEvent.click(screen.getByRole('button'))
-
-    const indicator = screen.getByTestId('indicator')
-    expect(indicator.getAttribute('data-color')).toBe('green')
+      // Assert
+      const indicator = screen.getByTestId('status-indicator')
+      expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
+    })
   })
 })

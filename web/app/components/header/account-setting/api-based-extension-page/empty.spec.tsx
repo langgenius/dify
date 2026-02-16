@@ -1,14 +1,19 @@
 import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import Empty from './empty'
 
 describe('Empty State', () => {
-  it('renders title and documentation link', () => {
-    render(<Empty />)
+  describe('Rendering', () => {
+    it('should render title and documentation link', () => {
+      // Act
+      render(<Empty />)
 
-    expect(screen.getByText('common.apiBasedExtension.title')).toBeInTheDocument()
-    const link = screen.getByText('common.apiBasedExtension.link')
-    expect(link).toBeInTheDocument()
-    // The real useDocLink includes the language prefix (defaulting to /en in tests)
-    expect(link.closest('a')).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/api-extension/api-extension')
+      // Assert
+      expect(screen.getByText('common.apiBasedExtension.title')).toBeInTheDocument()
+      const link = screen.getByText('common.apiBasedExtension.link')
+      expect(link).toBeInTheDocument()
+      // The real useDocLink includes the language prefix (defaulting to /en in tests)
+      expect(link.closest('a')).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/api-extension/api-extension')
+    })
   })
 })

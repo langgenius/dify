@@ -1,6 +1,6 @@
 import type { AppContextValue } from '@/context/app-context'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -97,156 +97,167 @@ describe('AccountSetting', () => {
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
 
-  it('renders the sidebar with correct menu items', () => {
-    render(<AccountSetting onCancel={mockOnCancel} />)
+  describe('Rendering', () => {
+    it('should render the sidebar with correct menu items', () => {
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
 
-    expect(screen.getByText('common.userProfile.settings')).toBeInTheDocument()
-    expect(screen.getByText('common.settings.provider')).toBeInTheDocument()
-    expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
-    expect(screen.getByText('common.settings.billing')).toBeInTheDocument()
-    expect(screen.getByText('common.settings.dataSource')).toBeInTheDocument()
-    expect(screen.getByText('common.settings.apiBasedExtension')).toBeInTheDocument()
-    expect(screen.getByText('custom.custom')).toBeInTheDocument()
-    expect(screen.getAllByText('common.settings.language').length).toBeGreaterThan(0)
-  })
-
-  it('changes active tab when clicking on menu item', () => {
-    render(<AccountSetting onCancel={mockOnCancel} onTabChange={mockOnTabChange} />)
-
-    fireEvent.click(screen.getByText('common.settings.provider'))
-
-    expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.PROVIDER)
-    expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
-  })
-
-  it('calls onCancel when clicking close button', () => {
-    render(<AccountSetting onCancel={mockOnCancel} />)
-
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0])
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
-
-  it('calls onCancel when pressing Escape key', () => {
-    render(<AccountSetting onCancel={mockOnCancel} />)
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
-
-  it('filters items for dataset operator', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      ...baseAppContextValue,
-      isCurrentWorkspaceDatasetOperator: true,
+      // Assert
+      expect(screen.getByText('common.userProfile.settings')).toBeInTheDocument()
+      expect(screen.getByText('common.settings.provider')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+      expect(screen.getByText('common.settings.billing')).toBeInTheDocument()
+      expect(screen.getByText('common.settings.dataSource')).toBeInTheDocument()
+      expect(screen.getByText('common.settings.apiBasedExtension')).toBeInTheDocument()
+      expect(screen.getByText('custom.custom')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.language').length).toBeGreaterThan(0)
     })
 
-    render(<AccountSetting onCancel={mockOnCancel} />)
+    it('should respect the activeTab prop', () => {
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} activeTab={ACCOUNT_SETTING_TAB.DATA_SOURCE} />)
 
-    expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.settings.members')).not.toBeInTheDocument()
-    expect(screen.getByText('common.settings.language')).toBeInTheDocument()
-  })
-
-  it('hides billing and custom when disabled', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: false,
-      enableReplaceWebAppLogo: false,
+      // Assert
+      expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
     })
 
-    render(<AccountSetting onCancel={mockOnCancel} />)
+    it('should hide sidebar labels on mobile', () => {
+      // Arrange
+      vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
 
-    expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
-    expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
-  })
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
 
-  it('shows custom tab when only enableReplaceWebAppLogo is true', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: false,
-      enableReplaceWebAppLogo: true,
+      // Assert
+      // On mobile, the labels should not be rendered as per the implementation
+      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
     })
 
-    render(<AccountSetting onCancel={mockOnCancel} />)
-    expect(screen.getByText('custom.custom')).toBeInTheDocument()
-  })
+    it('should filter items for dataset operator', () => {
+      // Arrange
+      vi.mocked(useAppContext).mockReturnValue({
+        ...baseAppContextValue,
+        isCurrentWorkspaceDatasetOperator: true,
+      })
 
-  it('shows custom tab when only enableBilling is true', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      enableReplaceWebAppLogo: false,
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.members')).not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.language')).toBeInTheDocument()
     })
 
-    render(<AccountSetting onCancel={mockOnCancel} />)
-    expect(screen.getByText('custom.custom')).toBeInTheDocument()
+    it('should hide billing and custom tabs when disabled', () => {
+      // Arrange
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        enableBilling: false,
+        enableReplaceWebAppLogo: false,
+      })
+
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
+      expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
+    })
   })
 
-  it('updates search value in provider tab', () => {
-    render(<AccountSetting onCancel={mockOnCancel} />)
+  describe('Tab Navigation', () => {
+    it('should change active tab when clicking on menu item', () => {
+      // Arrange
+      render(<AccountSetting onCancel={mockOnCancel} onTabChange={mockOnTabChange} />)
 
-    fireEvent.click(screen.getByText('common.settings.provider'))
-    const input = screen.getByRole('textbox')
-    fireEvent.change(input, { target: { value: 'test-search' } })
+      // Act
+      fireEvent.click(screen.getByText('common.settings.provider'))
 
-    expect(input).toHaveValue('test-search')
-    expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+      // Assert
+      expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.PROVIDER)
+      expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+    })
+
+    it('should navigate through various tabs and show correct details', () => {
+      // Act & Assert
+      render(<AccountSetting onCancel={mockOnCancel} />)
+
+      // Billing
+      fireEvent.click(screen.getByText('common.settings.billing'))
+      expect(screen.getByTestId('billing-page')).toBeInTheDocument()
+
+      // Data Source
+      fireEvent.click(screen.getByText('common.settings.dataSource'))
+      expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+
+      // API Based Extension
+      fireEvent.click(screen.getByText('common.settings.apiBasedExtension'))
+      expect(screen.getByTestId('api-based-extension-page')).toBeInTheDocument()
+
+      // Custom
+      fireEvent.click(screen.getByText('custom.custom'))
+      expect(screen.getByTestId('custom-page')).toBeInTheDocument()
+
+      // Language
+      fireEvent.click(screen.getAllByText('common.settings.language')[0])
+      expect(screen.getByTestId('language-page')).toBeInTheDocument()
+
+      // Members
+      fireEvent.click(screen.getAllByText('common.settings.members')[0])
+      expect(screen.getByTestId('members-page')).toBeInTheDocument()
+    })
   })
 
-  it('handles scroll event in panel', () => {
-    render(<AccountSetting onCancel={mockOnCancel} />)
-    const scrollContainer = screen.getByRole('dialog').querySelector('.overflow-y-auto')
+  describe('Interactions', () => {
+    it('should call onCancel when clicking close button', () => {
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
+      const buttons = screen.getAllByRole('button')
+      fireEvent.click(buttons[0])
 
-    expect(scrollContainer).toBeInTheDocument()
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
 
-    if (scrollContainer) {
-      // Scroll down
-      fireEvent.scroll(scrollContainer, { target: { scrollTop: 100 } })
-      expect(scrollContainer).toHaveClass('overflow-y-auto') // Class check to ensure it's the right element
+    it('should call onCancel when pressing Escape key', () => {
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
+      fireEvent.keyDown(document, { key: 'Escape' })
 
-      // Scroll back up
-      fireEvent.scroll(scrollContainer, { target: { scrollTop: 0 } })
-    }
-  })
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
 
-  it('respects the activeTab prop', () => {
-    render(<AccountSetting onCancel={mockOnCancel} activeTab={ACCOUNT_SETTING_TAB.DATA_SOURCE} />)
-    expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
-  })
+    it('should update search value in provider tab', () => {
+      // Arrange
+      render(<AccountSetting onCancel={mockOnCancel} />)
+      fireEvent.click(screen.getByText('common.settings.provider'))
 
-  it('hides sidebar labels on mobile', () => {
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
-    render(<AccountSetting onCancel={mockOnCancel} />)
+      // Act
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'test-search' } })
 
-    // On mobile, the labels should not be rendered
-    expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
-  })
+      // Assert
+      expect(input).toHaveValue('test-search')
+      expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+    })
 
-  it('navigates through all tabs and shows correct details', () => {
-    render(<AccountSetting onCancel={mockOnCancel} />)
+    it('should handle scroll event in panel', () => {
+      // Act
+      render(<AccountSetting onCancel={mockOnCancel} />)
+      const scrollContainer = screen.getByRole('dialog').querySelector('.overflow-y-auto')
 
-    // Billing
-    fireEvent.click(screen.getByText('common.settings.billing'))
-    expect(screen.getByTestId('billing-page')).toBeInTheDocument()
-    expect(screen.getByTestId('billing-page')).toBeInTheDocument()
+      // Assert
+      expect(scrollContainer).toBeInTheDocument()
+      if (scrollContainer) {
+        // Scroll down
+        fireEvent.scroll(scrollContainer, { target: { scrollTop: 100 } })
+        expect(scrollContainer).toHaveClass('overflow-y-auto')
 
-    // Data Source
-    fireEvent.click(screen.getByText('common.settings.dataSource'))
-    expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
-
-    // API Based Extension
-    fireEvent.click(screen.getByText('common.settings.apiBasedExtension'))
-    expect(screen.getByTestId('api-based-extension-page')).toBeInTheDocument()
-
-    // Custom
-    fireEvent.click(screen.getByText('custom.custom'))
-    expect(screen.getByTestId('custom-page')).toBeInTheDocument()
-
-    // Language
-    fireEvent.click(screen.getAllByText('common.settings.language')[0])
-    expect(screen.getByTestId('language-page')).toBeInTheDocument()
-
-    // Members
-    fireEvent.click(screen.getAllByText('common.settings.members')[0])
-    expect(screen.getByTestId('members-page')).toBeInTheDocument()
+        // Scroll back up
+        fireEvent.scroll(scrollContainer, { target: { scrollTop: 0 } })
+      }
+    })
   })
 })

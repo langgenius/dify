@@ -9,22 +9,17 @@ vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: vi.fn(),
 }))
 
+vi.mock('@remixicon/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@remixicon/react')>()
+  return {
+    ...actual,
+    RiCloseLine: (props: Record<string, unknown>) => <div data-testid="close-icon" {...props} />,
+  }
+})
+
 let mockIsCEEdition = false
 vi.mock('@/config', () => ({
   get IS_CE_EDITION() { return mockIsCEEdition },
-}))
-
-vi.mock('@/app/components/header/plan-badge', () => ({
-  default: ({ plan }: { plan: string }) => <div data-testid="plan-badge">{plan}</div>,
-}))
-
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, onClose }: { children: React.ReactNode, onClose: () => void }) => (
-    <div data-testid="modal">
-      <button onClick={onClose} data-testid="modal-close">Close</button>
-      {children}
-    </div>
-  ),
 }))
 
 type GlobalPublicStore = {
@@ -53,50 +48,87 @@ describe('AccountAbout', () => {
     } as unknown as GlobalPublicStore))
   })
 
-  it('renders correctly with version information', () => {
-    render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
-    expect(screen.getByText(/^Version/)).toBeDefined()
-    expect(screen.getAllByText(/0.6.0/).length).toBeGreaterThan(0)
+  describe('Rendering', () => {
+    it('should render correctly with version information', () => {
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.getByText(/^Version/)).toBeInTheDocument()
+      expect(screen.getAllByText(/0.6.0/).length).toBeGreaterThan(0)
+    })
+
+    it('should render branding logo if enabled', () => {
+      // Arrange
+      vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
+        systemFeatures: { branding: { enabled: true, workspace_logo: 'custom-logo.png' } },
+      } as unknown as GlobalPublicStore))
+
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+
+      // Assert
+      const img = screen.getByAltText('logo')
+      expect(img).toBeInTheDocument()
+      expect(img).toHaveAttribute('src', 'custom-logo.png')
+    })
   })
 
-  it('shows "Latest Available" when current version equals latest', () => {
-    render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
-    expect(screen.getByText(/about.latestAvailable/)).toBeDefined()
+  describe('Version Logic', () => {
+    it('should show "Latest Available" when current version equals latest', () => {
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.getByText(/about.latestAvailable/)).toBeInTheDocument()
+    })
+
+    it('should show "Now Available" when current version is behind', () => {
+      // Arrange
+      const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
+
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.getByText(/about.nowAvailable/)).toBeInTheDocument()
+      expect(screen.getByText(/about.updateNow/)).toBeInTheDocument()
+    })
   })
 
-  it('shows "Now Available" when current version is behind', () => {
-    const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
-    render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
-    expect(screen.getByText(/about.nowAvailable/)).toBeDefined()
-    expect(screen.getByText(/about.updateNow/)).toBeDefined()
+  describe('Community Edition', () => {
+    it('should render correctly in Community Edition', () => {
+      // Arrange
+      mockIsCEEdition = true
+
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.getByText(/Open Source License/)).toBeInTheDocument()
+    })
+
+    it('should hide update button in Community Edition when behind version', () => {
+      // Arrange
+      mockIsCEEdition = true
+      const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
+
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+
+      // Assert
+      expect(screen.queryByText(/about.updateNow/)).not.toBeInTheDocument()
+    })
   })
 
-  it('calls onCancel when close button is clicked', () => {
-    render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
-    fireEvent.click(screen.getByTestId('modal-close'))
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
+  describe('User Interactions', () => {
+    it('should call onCancel when close button is clicked', () => {
+      // Act
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      fireEvent.click(screen.getByTestId('close-icon'))
 
-  it('renders correctly in Community Edition (IS_CE_EDITION = true)', () => {
-    mockIsCEEdition = true
-    render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
-    expect(screen.getByText(/Open Source License/)).toBeDefined()
-  })
-
-  it('hides update button in Community Edition when behind version', () => {
-    mockIsCEEdition = true
-    const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
-    render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
-    expect(screen.queryByText(/about.updateNow/)).toBeNull()
-  })
-
-  it('renders branding logo if enabled', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { branding: { enabled: true, workspace_logo: 'custom-logo.png' } },
-    } as unknown as GlobalPublicStore))
-    render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
-    const img = screen.getByAltText('logo')
-    expect(img).toBeDefined()
-    expect(img.getAttribute('src')).toBe('custom-logo.png')
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
   })
 })
