@@ -3,7 +3,6 @@ import mimetypes
 from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from configs import dify_config
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.segments import ArrayFileSegment
@@ -19,23 +18,28 @@ from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtoco
 from factories import file_factory
 
 from .entities import (
+    HTTP_REQUEST_CONFIG_FILTER_KEY,
+    HttpRequestNodeConfig,
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
     Response,
 )
 from .exc import HttpRequestNodeError, RequestBodyError
 
-HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
-    connect=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
-    read=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
-    write=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
-)
-
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
+
+
+def _resolve_http_request_config(filters: Mapping[str, object] | None) -> HttpRequestNodeConfig:
+    if not filters:
+        raise ValueError("http_request_config is required to build HTTP request default config")
+    config = filters.get(HTTP_REQUEST_CONFIG_FILTER_KEY)
+    if not isinstance(config, HttpRequestNodeConfig):
+        raise ValueError("http_request_config must be an HttpRequestNodeConfig instance")
+    return config
 
 
 class HttpRequestNode(Node[HttpRequestNodeData]):
@@ -48,6 +52,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
+        http_request_config: HttpRequestNodeConfig,
         http_client: HttpClientProtocol | None = None,
         tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
         file_manager: FileManagerProtocol | None = None,
@@ -58,12 +63,15 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        self._http_request_config = http_request_config
         self._http_client = http_client or ssrf_proxy
         self._tool_file_manager_factory = tool_file_manager_factory
         self._file_manager = file_manager or default_file_manager
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
+        http_request_config = _resolve_http_request_config(filters)
+        default_timeout = http_request_config.default_timeout()
         return {
             "type": "http-request",
             "config": {
@@ -73,15 +81,15 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 },
                 "body": {"type": "none"},
                 "timeout": {
-                    **HTTP_REQUEST_DEFAULT_TIMEOUT.model_dump(),
-                    "max_connect_timeout": dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
-                    "max_read_timeout": dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
-                    "max_write_timeout": dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                    **default_timeout.model_dump(),
+                    "max_connect_timeout": http_request_config.max_connect_timeout,
+                    "max_read_timeout": http_request_config.max_read_timeout,
+                    "max_write_timeout": http_request_config.max_write_timeout,
                 },
-                "ssl_verify": dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                "ssl_verify": http_request_config.ssl_verify,
             },
             "retry_config": {
-                "max_retries": dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                "max_retries": http_request_config.ssrf_default_max_retries,
                 "retry_interval": 0.5 * (2**2),
                 "retry_enabled": True,
             },
@@ -98,7 +106,9 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 node_data=self.node_data,
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
+                http_request_config=self._http_request_config,
                 max_retries=0,
+                ssl_verify=self._resolve_ssl_verify(self.node_data),
                 http_client=self._http_client,
                 file_manager=self._file_manager,
             )
@@ -142,15 +152,18 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 error_type=type(e).__name__,
             )
 
-    @staticmethod
-    def _get_request_timeout(node_data: HttpRequestNodeData) -> HttpRequestNodeTimeout:
+    def _resolve_ssl_verify(self, node_data: HttpRequestNodeData) -> bool:
+        return self._http_request_config.ssl_verify if node_data.ssl_verify is None else node_data.ssl_verify
+
+    def _get_request_timeout(self, node_data: HttpRequestNodeData) -> HttpRequestNodeTimeout:
+        default_timeout = self._http_request_config.default_timeout()
         timeout = node_data.timeout
         if timeout is None:
-            return HTTP_REQUEST_DEFAULT_TIMEOUT
+            return default_timeout
 
-        timeout.connect = timeout.connect or HTTP_REQUEST_DEFAULT_TIMEOUT.connect
-        timeout.read = timeout.read or HTTP_REQUEST_DEFAULT_TIMEOUT.read
-        timeout.write = timeout.write or HTTP_REQUEST_DEFAULT_TIMEOUT.write
+        timeout.connect = timeout.connect or default_timeout.connect
+        timeout.read = timeout.read or default_timeout.read
+        timeout.write = timeout.write or default_timeout.write
         return timeout
 
     @classmethod
