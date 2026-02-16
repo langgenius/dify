@@ -3,21 +3,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 
-// Import after mocks
-import Apps from './index'
+import Apps from '../index'
 
-// Track mock calls
 let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
 
-// Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
   default: (title: string) => {
     documentTitleCalls.push(title)
   },
 }))
 
-// Mock useEducationInit hook
 vi.mock('@/app/education-apply/hooks', () => ({
   useEducationInit: () => {
     educationInitCalls++
@@ -33,8 +29,7 @@ vi.mock('@/hooks/use-import-dsl', () => ({
   }),
 }))
 
-// Mock List component
-vi.mock('./list', () => ({
+vi.mock('../list', () => ({
   default: () => {
     return React.createElement('div', { 'data-testid': 'apps-list' }, 'Apps List')
   },
@@ -100,10 +95,7 @@ describe('Apps', () => {
     it('should render full component tree', () => {
       renderWithClient(<Apps />)
 
-      // Verify container exists
       expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-
-      // Verify hooks were called
       expect(documentTitleCalls.length).toBeGreaterThanOrEqual(1)
       expect(educationInitCalls).toBeGreaterThanOrEqual(1)
     })

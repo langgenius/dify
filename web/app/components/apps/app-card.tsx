@@ -248,7 +248,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       try {
         await openAsyncWindow(async () => {
-          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+          const { installed_apps } = await fetchInstalledAppList(app.id)
           if (installed_apps?.length > 0)
             return `${basePath}/explore/installed/${installed_apps[0].id}`
           throw new Error('No app found in Explore')
@@ -258,21 +258,22 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           },
         })
       }
-      catch (e: any) {
-        Toast.notify({ type: 'error', message: `${e.message || e}` })
+      catch (e: unknown) {
+        const message = e instanceof Error ? e.message : `${e}`
+        Toast.notify({ type: 'error', message })
       }
     }
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickSettings}>
-          <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
+          <span className="text-text-secondary system-sm-regular">{t('editApp', { ns: 'app' })}</span>
         </button>
         <Divider className="my-1" />
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickDuplicate}>
-          <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
+          <span className="text-text-secondary system-sm-regular">{t('duplicate', { ns: 'app' })}</span>
         </button>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
-          <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
+          <span className="text-text-secondary system-sm-regular">{t('export', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -293,7 +294,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
+                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -301,7 +302,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
+                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -323,7 +324,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           className="group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover"
           onClick={onClickDelete}
         >
-          <span className="system-sm-regular text-text-secondary group-hover:text-text-destructive">
+          <span className="text-text-secondary system-sm-regular group-hover:text-text-destructive">
             {t('operation.delete', { ns: 'common' })}
           </span>
         </button>

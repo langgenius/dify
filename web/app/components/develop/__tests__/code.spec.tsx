@@ -6,12 +6,10 @@ vi.mock('@/utils/clipboard', () => ({
   writeTextToClipboard: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Suppress expected React act() warnings and jsdom unimplemented API errors
-vi.spyOn(console, 'error').mockImplementation(() => {})
-
 describe('code.tsx components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     // jsdom does not implement scrollBy; mock it to prevent stderr noise
     window.scrollBy = vi.fn()
@@ -20,6 +18,7 @@ describe('code.tsx components', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('Code', () => {

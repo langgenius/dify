@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import Empty from './empty'
+import Empty from '../empty'
 
 describe('Empty', () => {
   beforeEach(() => {
@@ -21,7 +21,6 @@ describe('Empty', () => {
 
     it('should display the no apps found message', () => {
       render(<Empty />)
-      // Use pattern matching for resilient text assertions
       expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
     })
   })

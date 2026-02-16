@@ -23,6 +23,10 @@ describe('VersionMismatchModal', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('rendering', () => {
     it('should render dialog when isShow is true', () => {
       render(<VersionMismatchModal {...defaultProps} />)

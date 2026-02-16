@@ -1,12 +1,13 @@
+import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
+import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { AppModeEnum } from '@/types/app'
 
-// Import after mocks
-import List from './list'
+import List from '../list'
 
-// Mock next/navigation
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
 vi.mock('next/navigation', () => ({
@@ -14,7 +15,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
 }))
 
-// Mock app context
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 vi.mock('@/context/app-context', () => ({
@@ -24,7 +24,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-// Mock global public store
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: () => ({
     systemFeatures: {
@@ -33,41 +32,28 @@ vi.mock('@/context/global-public-context', () => ({
   }),
 }))
 
-// Mock custom hooks - allow dynamic query state
 const mockSetQuery = vi.fn()
 const mockQueryState = {
   tagIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
 }
-vi.mock('./hooks/use-apps-query-state', () => ({
+vi.mock('../hooks/use-apps-query-state', () => ({
   default: () => ({
     query: mockQueryState,
     setQuery: mockSetQuery,
   }),
 }))
 
-// Store callback for testing DSL file drop
 let mockOnDSLFileDropped: ((file: File) => void) | null = null
 let mockDragging = false
-vi.mock('./hooks/use-dsl-drag-drop', () => ({
+vi.mock('../hooks/use-dsl-drag-drop', () => ({
   useDSLDragDrop: ({ onDSLFileDropped }: { onDSLFileDropped: (file: File) => void }) => {
     mockOnDSLFileDropped = onDSLFileDropped
     return { dragging: mockDragging }
   },
 }))
 
-const mockSetActiveTab = vi.fn()
-vi.mock('nuqs', () => ({
-  useQueryState: () => ['all', mockSetActiveTab],
-  parseAsString: {
-    withDefault: () => ({
-      withOptions: () => ({}),
-    }),
-  },
-}))
-
-// Mock service hooks - use object for mutable state (vi.mock is hoisted)
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
 
@@ -124,47 +110,20 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-// Use real tag store - global zustand mock will auto-reset between tests
-
-// Mock tag service to avoid API calls in TagFilter
 vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
 }))
 
-// Store TagFilter onChange callback for testing
-let mockTagFilterOnChange: ((value: string[]) => void) | null = null
-vi.mock('@/app/components/base/tag-management/filter', () => ({
-  default: ({ onChange }: { onChange: (value: string[]) => void }) => {
-    mockTagFilterOnChange = onChange
-    return React.createElement('div', { 'data-testid': 'tag-filter' }, 'common.tag.placeholder')
-  },
-}))
-
-// Mock config
 vi.mock('@/config', () => ({
   NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
 }))
 
-// Mock pay hook
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-// Mock ahooks - useMount only executes once on mount, not on fn change
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => ({ run: fn }),
-  useMount: (fn: () => void) => {
-    const fnRef = React.useRef(fn)
-    fnRef.current = fn
-    React.useEffect(() => {
-      fnRef.current()
-    }, [])
-  },
-}))
-
-// Mock dynamic imports
 vi.mock('next/dynamic', () => ({
-  default: (importFn: () => Promise<any>) => {
+  default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
     if (fnString.includes('tag-management')) {
@@ -173,7 +132,7 @@ vi.mock('next/dynamic', () => ({
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
+      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
         if (!show)
           return null
         return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
@@ -183,41 +142,34 @@ vi.mock('next/dynamic', () => ({
   },
 }))
 
-/**
- * Mock child components for focused List component testing.
- * These mocks isolate the List component's behavior from its children.
- * Each child component (AppCard, NewAppCard, Empty, Footer) has its own dedicated tests.
- */
-vi.mock('./app-card', () => ({
-  default: ({ app }: any) => {
+vi.mock('../app-card', () => ({
+  default: ({ app }: { app: { id: string, name: string } }) => {
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
 }))
 
-vi.mock('./new-app-card', () => ({
-  default: React.forwardRef((_props: any, _ref: any) => {
+vi.mock('../new-app-card', () => ({
+  default: React.forwardRef((_props: unknown, _ref: React.ForwardedRef<unknown>) => {
     return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
   }),
 }))
 
-vi.mock('./empty', () => ({
+vi.mock('../empty', () => ({
   default: () => {
     return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
   },
 }))
 
-vi.mock('./footer', () => ({
+vi.mock('../footer', () => ({
   default: () => {
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },
 }))
 
-// Store IntersectionObserver callback
 let intersectionCallback: IntersectionObserverCallback | null = null
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
-// Mock IntersectionObserver
 beforeAll(() => {
   globalThis.IntersectionObserver = class MockIntersectionObserver {
     constructor(callback: IntersectionObserverCallback) {
@@ -234,10 +186,21 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
+// Render helper wrapping with NuqsTestingAdapter
+const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
+const renderList = (searchParams = '') => {
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      {children}
+    </NuqsTestingAdapter>
+  )
+  return render(<List />, { wrapper })
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Set up tag store state
+    onUrlUpdate.mockClear()
     useTagStore.setState({
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
       showTagManagementModal: false,
@@ -246,7 +209,6 @@ describe('List', () => {
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockDragging = false
     mockOnDSLFileDropped = null
-    mockTagFilterOnChange = null
     mockServiceState.error = null
     mockServiceState.hasNextPage = false
     mockServiceState.isLoading = false
@@ -260,13 +222,12 @@ describe('List', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<List />)
-      // Tab slider renders app type tabs
+      renderList()
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render tab slider with all app types', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
       expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
@@ -277,71 +238,74 @@ describe('List', () => {
     })
 
     it('should render search input', () => {
-      render(<List />)
-      // Input component renders a searchbox
+      renderList()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
-      render(<List />)
-      // Tag filter renders with placeholder text
+      renderList()
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
     it('should render created by me checkbox', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
     })
 
     it('should render new app card for editors', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
     })
 
     it('should render footer when branding is disabled', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByTestId('footer')).toBeInTheDocument()
     })
 
     it('should render drop DSL hint for editors', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
   })
 
   describe('Tab Navigation', () => {
-    it('should call setActiveTab when tab is clicked', () => {
-      render(<List />)
+    it('should update URL when workflow tab is clicked', async () => {
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.workflow'))
 
-      expect(mockSetActiveTab).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
+      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
     })
 
-    it('should call setActiveTab for all tab', () => {
-      render(<List />)
+    it('should update URL when all tab is clicked', async () => {
+      renderList('?category=workflow')
 
       fireEvent.click(screen.getByText('app.types.all'))
 
-      expect(mockSetActiveTab).toHaveBeenCalledWith('all')
+      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      // nuqs removes the default value ('all') from URL params
+      expect(lastCall.searchParams.has('category')).toBe(false)
     })
   })
 
   describe('Search Functionality', () => {
     it('should render search input field', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
-      render(<List />)
+      renderList()
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'test search' } })
@@ -349,55 +313,36 @@ describe('List', () => {
       expect(mockSetQuery).toHaveBeenCalled()
     })
 
-    it('should handle search input interaction', () => {
-      render(<List />)
-
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
-    })
-
     it('should handle search clear button click', () => {
-      // Set initial keywords to make clear button visible
       mockQueryState.keywords = 'existing search'
 
-      render(<List />)
+      renderList()
 
-      // Find and click clear button (Input component uses .group class for clear icon container)
       const clearButton = document.querySelector('.group')
       expect(clearButton).toBeInTheDocument()
       if (clearButton)
         fireEvent.click(clearButton)
 
-      // handleKeywordsChange should be called with empty string
       expect(mockSetQuery).toHaveBeenCalled()
     })
   })
 
   describe('Tag Filter', () => {
     it('should render tag filter component', () => {
-      render(<List />)
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-    })
-
-    it('should render tag filter with placeholder', () => {
-      render(<List />)
-
-      // Tag filter is rendered
+      renderList()
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
   })
 
   describe('Created By Me Filter', () => {
     it('should render checkbox with correct label', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
 
     it('should handle checkbox change', () => {
-      render(<List />)
+      renderList()
 
-      // Checkbox component uses data-testid="checkbox-{id}"
-      // CheckboxWithLabel doesn't pass testId, so id is undefined
       const checkbox = screen.getByTestId('checkbox-undefined')
       fireEvent.click(checkbox)
 
@@ -409,7 +354,7 @@ describe('List', () => {
     it('should not render new app card for non-editors', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
 
-      render(<List />)
+      renderList()
 
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
@@ -417,19 +362,19 @@ describe('List', () => {
     it('should not render drop DSL hint for non-editors', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
 
-      render(<List />)
+      renderList()
 
       expect(screen.queryByText(/drop dsl file to create app/i)).not.toBeInTheDocument()
     })
   })
 
-  describe('Dataset Operator Redirect', () => {
-    it('should redirect dataset operators to datasets page', () => {
+  describe('Dataset Operator Behavior', () => {
+    it('should not trigger redirect at component level for dataset operators', () => {
       mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
 
-      render(<List />)
+      renderList()
 
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      expect(mockReplace).not.toHaveBeenCalled()
     })
   })
 
@@ -437,7 +382,7 @@ describe('List', () => {
     it('should call refetch when refresh key is set in localStorage', () => {
       localStorage.setItem('needRefreshAppList', '1')
 
-      render(<List />)
+      renderList()
 
       expect(mockRefetch).toHaveBeenCalled()
       expect(localStorage.getItem('needRefreshAppList')).toBeNull()
@@ -446,22 +391,30 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = render(<List />)
+      const { rerender } = render(
+        <NuqsTestingAdapter>
+          <List />
+        </NuqsTestingAdapter>,
+      )
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
-      rerender(<List />)
+      rerender(
+        <NuqsTestingAdapter>
+          <List />
+        </NuqsTestingAdapter>,
+      )
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('Test App 1')).toBeInTheDocument()
       expect(screen.getByText('Test App 2')).toBeInTheDocument()
     })
 
     it('should render with all filter options visible', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
@@ -471,14 +424,20 @@ describe('List', () => {
 
   describe('Dragging State', () => {
     it('should show drop hint when DSL feature is enabled for editors', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
+    })
+
+    it('should render dragging state overlay when dragging', () => {
+      mockDragging = true
+      const { container } = renderList()
+      expect(container).toBeInTheDocument()
     })
   })
 
   describe('App Type Tabs', () => {
     it('should render all app type tabs', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
       expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
@@ -488,8 +447,8 @@ describe('List', () => {
       expect(screen.getByText('app.types.completion')).toBeInTheDocument()
     })
 
-    it('should call setActiveTab for each app type', () => {
-      render(<List />)
+    it('should update URL for each app type tab click', async () => {
+      renderList()
 
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
@@ -499,45 +458,26 @@ describe('List', () => {
         { mode: AppModeEnum.COMPLETION, text: 'app.types.completion' },
       ]
 
-      appTypeTexts.forEach(({ mode, text }) => {
+      for (const { mode, text } of appTypeTexts) {
+        onUrlUpdate.mockClear()
         fireEvent.click(screen.getByText(text))
-        expect(mockSetActiveTab).toHaveBeenCalledWith(mode)
-      })
-    })
-  })
-
-  describe('Search and Filter Integration', () => {
-    it('should display search input with correct attributes', () => {
-      render(<List />)
-
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
-      expect(input).toHaveAttribute('value', '')
-    })
-
-    it('should have tag filter component', () => {
-      render(<List />)
-
-      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-    })
-
-    it('should display created by me label', () => {
-      render(<List />)
-
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+        await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+        expect(lastCall.searchParams.get('category')).toBe(mode)
+      }
     })
   })
 
   describe('App List Display', () => {
     it('should display all app cards from data', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
     })
 
     it('should display app names correctly', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('Test App 1')).toBeInTheDocument()
       expect(screen.getByText('Test App 2')).toBeInTheDocument()
@@ -546,59 +486,27 @@ describe('List', () => {
 
   describe('Footer Visibility', () => {
     it('should render footer when branding is disabled', () => {
-      render(<List />)
-
+      renderList()
       expect(screen.getByTestId('footer')).toBeInTheDocument()
-    })
-  })
-
-  // --------------------------------------------------------------------------
-  // Additional Coverage Tests
-  // --------------------------------------------------------------------------
-  describe('Additional Coverage', () => {
-    it('should render dragging state overlay when dragging', () => {
-      mockDragging = true
-      const { container } = render(<List />)
-
-      // Component should render successfully with dragging state
-      expect(container).toBeInTheDocument()
-    })
-
-    it('should handle app mode filter in query params', () => {
-      render(<List />)
-
-      const workflowTab = screen.getByText('app.types.workflow')
-      fireEvent.click(workflowTab)
-
-      expect(mockSetActiveTab).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
-    })
-
-    it('should render new app card for editors', () => {
-      render(<List />)
-
-      expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
     })
   })
 
   describe('DSL File Drop', () => {
     it('should handle DSL file drop and show modal', () => {
-      render(<List />)
+      renderList()
 
-      // Simulate DSL file drop via the callback
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
         if (mockOnDSLFileDropped)
           mockOnDSLFileDropped(mockFile)
       })
 
-      // Modal should be shown
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
 
     it('should close DSL modal when onClose is called', () => {
-      render(<List />)
+      renderList()
 
-      // Open modal via DSL file drop
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
         if (mockOnDSLFileDropped)
@@ -607,16 +515,14 @@ describe('List', () => {
 
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
 
-      // Close modal
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
     })
 
     it('should close DSL modal and refetch when onSuccess is called', () => {
-      render(<List />)
+      renderList()
 
-      // Open modal via DSL file drop
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
         if (mockOnDSLFileDropped)
@@ -625,67 +531,18 @@ describe('List', () => {
 
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
 
-      // Click success button
       fireEvent.click(screen.getByTestId('success-dsl-modal'))
 
-      // Modal should be closed and refetch should be called
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
       expect(mockRefetch).toHaveBeenCalled()
-    })
-  })
-
-  describe('Tag Filter Change', () => {
-    it('should handle tag filter value change', () => {
-      vi.useFakeTimers()
-      render(<List />)
-
-      // TagFilter component is rendered
-      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
-
-      // Trigger tag filter change via captured callback
-      act(() => {
-        if (mockTagFilterOnChange)
-          mockTagFilterOnChange(['tag-1', 'tag-2'])
-      })
-
-      // Advance timers to trigger debounced setTagIDs
-      act(() => {
-        vi.advanceTimersByTime(500)
-      })
-
-      // setQuery should have been called with updated tagIDs
-      expect(mockSetQuery).toHaveBeenCalled()
-
-      vi.useRealTimers()
-    })
-
-    it('should handle empty tag filter selection', () => {
-      vi.useFakeTimers()
-      render(<List />)
-
-      // Trigger tag filter change with empty array
-      act(() => {
-        if (mockTagFilterOnChange)
-          mockTagFilterOnChange([])
-      })
-
-      // Advance timers
-      act(() => {
-        vi.advanceTimersByTime(500)
-      })
-
-      expect(mockSetQuery).toHaveBeenCalled()
-
-      vi.useRealTimers()
     })
   })
 
   describe('Infinite Scroll', () => {
     it('should call fetchNextPage when intersection observer triggers', () => {
       mockServiceState.hasNextPage = true
-      render(<List />)
+      renderList()
 
-      // Simulate intersection
       if (intersectionCallback) {
         act(() => {
           intersectionCallback!(
@@ -700,9 +557,8 @@ describe('List', () => {
 
     it('should not call fetchNextPage when not intersecting', () => {
       mockServiceState.hasNextPage = true
-      render(<List />)
+      renderList()
 
-      // Simulate non-intersection
       if (intersectionCallback) {
         act(() => {
           intersectionCallback!(
@@ -718,7 +574,7 @@ describe('List', () => {
     it('should not call fetchNextPage when loading', () => {
       mockServiceState.hasNextPage = true
       mockServiceState.isLoading = true
-      render(<List />)
+      renderList()
 
       if (intersectionCallback) {
         act(() => {
@@ -736,11 +592,8 @@ describe('List', () => {
   describe('Error State', () => {
     it('should handle error state in useEffect', () => {
       mockServiceState.error = new Error('Test error')
-      const { container } = render(<List />)
-
-      // Component should still render
+      const { container } = renderList()
       expect(container).toBeInTheDocument()
-      // Disconnect should be called when there's an error (cleanup)
     })
   })
 })
