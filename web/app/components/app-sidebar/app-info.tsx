@@ -26,10 +26,12 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import AppIcon from '../base/app-icon'
 import AppOperations from './app-operations'
 
@@ -66,6 +68,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
+  const invalidateAppList = useInvalidateAppList()
   const [open, setOpen] = useState(openState)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
@@ -143,13 +146,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         appID: appDetail.id,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${appDetail.name}.yml`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
@@ -191,6 +189,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     try {
       await deleteApp(appDetail.id)
       notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -202,7 +201,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 

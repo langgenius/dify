@@ -337,7 +337,7 @@ Test file under review:
 ${testPath}
 
 Checklist (ensure every item is addressed in your review):
-- Confirm the tests satisfy all requirements listed above and in web/testing/TESTING.md.
+- Confirm the tests satisfy all requirements listed above and in web/docs/test.md.
 - Verify Arrange → Act → Assert structure, mocks, and cleanup follow project conventions.
 - Ensure all detected component features (state, effects, routing, API, events, etc.) are exercised, including edge cases and error paths.
 - Check coverage of prop variations, null/undefined inputs, and high-priority workflows implied by usage score.
@@ -382,7 +382,7 @@ Examples:
   # Review existing test
   pnpm analyze-component app/components/base/button/index.tsx --review
 
-For complete testing guidelines, see: web/testing/testing.md
+For complete testing guidelines, see: web/docs/test.md
 `)
 }
 

@@ -203,7 +203,7 @@ const Annotation: FC<Props> = (props) => {
         </Filter>
         {isLoading
           ? <Loading type="app" />
-          // eslint-disable-next-line sonarjs/no-nested-conditional
+
           : total > 0
             ? (
                 <List

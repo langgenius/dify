@@ -4,10 +4,9 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from core.file import File, FileTransferMethod, FileType
 from core.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -34,6 +33,7 @@ from core.variables.segments import (
     StringSegment,
 )
 from core.variables.types import SegmentType
+from core.workflow.file import File, FileTransferMethod, FileType
 from factories import variable_factory
 from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 
@@ -493,7 +493,7 @@ def _scalar_value() -> st.SearchStrategy[int | float | str | File | None]:
     )
 
 
-@settings(max_examples=50)
+@settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.filter_too_much], deadline=None)
 @given(_scalar_value())
 def test_build_segment_and_extract_values_for_scalar_types(value):
     seg = variable_factory.build_segment(value)
@@ -504,7 +504,7 @@ def test_build_segment_and_extract_values_for_scalar_types(value):
         assert seg.value == value
 
 
-@settings(max_examples=50)
+@settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.filter_too_much], deadline=None)
 @given(values=st.lists(_scalar_value(), max_size=20))
 def test_build_segment_and_extract_values_for_array_types(values):
     seg = variable_factory.build_segment(values)

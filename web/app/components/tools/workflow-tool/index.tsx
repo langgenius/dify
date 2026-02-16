@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import { RiErrorWarningLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -21,9 +21,25 @@ import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import { buildWorkflowOutputParameters } from './utils'
 
+export type WorkflowToolModalPayload = {
+  icon: Emoji
+  label: string
+  name: string
+  description: string
+  parameters: WorkflowToolProviderParameter[]
+  outputParameters: WorkflowToolProviderOutputParameter[]
+  labels: string[]
+  privacy_policy: string
+  tool?: {
+    output_schema?: WorkflowToolProviderOutputSchema
+  }
+  workflow_tool_id?: string
+  workflow_app_id?: string
+}
+
 type Props = {
   isAdd?: boolean
-  payload: any
+  payload: WorkflowToolModalPayload
   onHide: () => void
   onRemove?: () => void
   onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
@@ -73,7 +89,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     },
   ]
 
-  const handleParameterChange = (key: string, value: any, index: number) => {
+  const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
       if (key === 'description')
         draft[index].description = value
@@ -136,13 +152,13 @@ const WorkflowToolAsModal: FC<Props> = ({
     if (!isAdd) {
       onSave?.({
         ...requestParams,
-        workflow_tool_id: payload.workflow_tool_id,
+        workflow_tool_id: payload.workflow_tool_id!,
       })
     }
     else {
       onCreate?.({
         ...requestParams,
-        workflow_app_id: payload.workflow_app_id,
+        workflow_app_id: payload.workflow_app_id!,
       })
     }
   }

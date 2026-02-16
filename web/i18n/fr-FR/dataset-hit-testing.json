@@ -3,7 +3,7 @@
   "dateTimeFormat": "JJ/MM/AAAA hh:mm A",
   "desc": "Testez l'effet d'impact de la Connaissance basée sur le texte de la requête donnée.",
   "hit.emptyTip": "Les résultats des tests de récupération s'afficheront ici",
-  "hit.title": "PARAGRAPHES DE RÉCUPÉRATION",
+  "hit.title": "{{num}} paragraphes récupérés",
   "hitChunks": "Appuyez sur {{num}} morceaux enfants",
   "imageUploader.dropZoneTip": "Faites glisser le fichier ici pour le télécharger",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Le nombre de pièces jointes à bloc unique ne peut pas dépasser {{limit}}",

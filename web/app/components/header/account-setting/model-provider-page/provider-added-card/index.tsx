@@ -3,6 +3,7 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import type { ModelProviderQuotaGetPaid } from '../utils'
 import {
   RiArrowRightSLine,
   RiInformation2Fill,
@@ -28,7 +29,6 @@ import {
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
-import QuotaPanel from './quota-panel'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -49,7 +49,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
   const { isCurrentWorkspaceManager } = useAppContext()
-  const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
+  const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
   const getModelList = async (providerName: string) => {
@@ -105,13 +105,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           </div>
         </div>
         {
-          showQuota && (
-            <QuotaPanel
-              provider={provider}
-            />
-          )
-        }
-        {
           showCredential && (
             <CredentialPanel
               provider={provider}
@@ -122,7 +115,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       {
         collapsed && (
           <div className="system-xs-medium group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary">
-            {(showQuota || !notConfigured) && (
+            {(showModelProvider || !notConfigured) && (
               <>
                 <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
                   {
@@ -150,7 +143,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 </div>
               </>
             )}
-            {!showQuota && notConfigured && (
+            {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
                 <RiInformation2Fill className="mr-1 h-4 w-4 text-text-accent" />
                 <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>

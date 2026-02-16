@@ -116,6 +116,8 @@ class KnowledgeConfiguration(BaseModel):
     embedding_model: str = ""
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
+    # add summary index setting
+    summary_index_setting: dict | None = None
 
     @field_validator("embedding_model_provider", mode="before")
     @classmethod

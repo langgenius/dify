@@ -52,7 +52,7 @@ export default function Radio({
       )}
       onClick={() => handleChange(value)}
     >
-      {children && (
+      {!!children && (
         <label
           className={
             cn(labelClassName, 'cursor-pointer text-sm')

@@ -37,6 +37,7 @@ from . import (
     apikey,
     extension,
     feature,
+    human_input_form,
     init_validate,
     ping,
     setup,
@@ -107,10 +108,12 @@ from .datasets.rag_pipeline import (
 
 # Import explore controllers
 from .explore import (
+    banner,
     installed_app,
     parameter,
     recommended_app,
     saved_message,
+    trial,
 )
 
 # Import tag controllers
@@ -145,6 +148,7 @@ __all__ = [
     "apikey",
     "app",
     "audio",
+    "banner",
     "billing",
     "bp",
     "completion",
@@ -168,6 +172,7 @@ __all__ = [
     "forgot_password",
     "generator",
     "hit_testing",
+    "human_input_form",
     "init_validate",
     "installed_app",
     "load_balancing_config",
@@ -198,6 +203,7 @@ __all__ = [
     "statistic",
     "tags",
     "tool_providers",
+    "trial",
     "trigger_providers",
     "version",
     "website",

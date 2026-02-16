@@ -40,12 +40,14 @@ class MockNodeMixin:
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
+        **kwargs: Any,
     ):
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            **kwargs,
         )
         self.mock_config = mock_config
 
@@ -564,7 +566,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         # Import dependencies
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.runtime import GraphRuntimeState
 
@@ -621,6 +623,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
             graph=iteration_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine
@@ -639,7 +642,7 @@ class MockLoopNode(MockNodeMixin, LoopNode):
         # Import dependencies
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.runtime import GraphRuntimeState
 
@@ -683,6 +686,7 @@ class MockLoopNode(MockNodeMixin, LoopNode):
             graph=loop_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine

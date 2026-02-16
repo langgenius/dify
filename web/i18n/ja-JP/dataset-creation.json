@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "キャンセル",
   "stepOne.uploader.change": "変更",
   "stepOne.uploader.failed": "アップロードに失敗しました",
-  "stepOne.uploader.tip": "{{supportTypes}}をサポートしています。1 つあたりの最大サイズは{{size}}MB です。",
+  "stepOne.uploader.tip": "{{supportTypes}}をサポートしています。1バッチあたり最大{{batchCount}}ファイル、各ファイル{{size}}MB まで。合計最大{{totalCount}}ファイル。",
   "stepOne.uploader.title": "テキストファイルをアップロード",
   "stepOne.uploader.validation.count": "複数のファイルはサポートされていません",
   "stepOne.uploader.validation.filesNumber": "バッチアップロードの制限（{{filesNumber}}個）に達しました。",

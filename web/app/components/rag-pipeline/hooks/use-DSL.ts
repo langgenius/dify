@@ -11,6 +11,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
@@ -37,13 +38,8 @@ export const useDSL = () => {
         pipelineId,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${knowledgeName}.pipeline`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
     }
     catch {
       notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })

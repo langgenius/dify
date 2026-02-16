@@ -113,7 +113,7 @@
   "overview.triggerInfo.noTriggerAdded": "ยังไม่ได้เพิ่มทริกเกอร์",
   "overview.triggerInfo.title": "สิ่งกระตุ้น",
   "overview.triggerInfo.triggerStatusDescription": "สถานะของโหนดตัวเรียกปรากฏที่นี่ (อาจมีอยู่แล้วในร่าง และจะมีผลหลังจากเผยแพร่)",
-  "overview.triggerInfo.triggersAdded": "เพิ่มทริกเกอร์เรียบร้อยแล้ว",
+  "overview.triggerInfo.triggersAdded": "{{count}} ทริกเกอร์ที่เพิ่มแล้ว",
   "welcome.enterKeyTip": "ป้อนคีย์ OpenAI API ของคุณด้านล่าง",
   "welcome.firstStepTip": "ในการเริ่มต้น",
   "welcome.getKeyTip": "รับคีย์ API ของคุณจากแดชบอร์ด OpenAI",

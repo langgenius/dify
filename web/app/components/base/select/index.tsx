@@ -379,7 +379,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                   {selectedItem?.name ?? localPlaceholder}
                 </span>
                 <div className="mx-0.5">
-                  {installedValue && selectedItem && selectedItem.value !== installedValue && (
+                  {!!(installedValue && selectedItem && selectedItem.value !== installedValue) && (
                     <Badge>
                       {installedValue}
                       {' '}

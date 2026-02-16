@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
@@ -18,9 +18,9 @@ class ReadOnlyVariablePoolWrapper:
     def __init__(self, variable_pool: VariablePool) -> None:
         self._variable_pool = variable_pool
 
-    def get(self, node_id: str, variable_key: str) -> Segment | None:
+    def get(self, selector: Sequence[str], /) -> Segment | None:
         """Return a copy of a variable value if present."""
-        value = self._variable_pool.get([node_id, variable_key])
+        value = self._variable_pool.get(selector)
         return deepcopy(value) if value is not None else None
 
     def get_all_by_node(self, node_id: str) -> Mapping[str, object]:

@@ -1,7 +1,3 @@
-import {
-  RiClipboardLine,
-  RiCloseLine,
-} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -12,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import {
@@ -25,6 +22,8 @@ import {
   WorkflowRunningStatus,
 } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
+import HumanInputFilledFormList from './human-input-filled-form-list'
+import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 
 const WorkflowPreview = () => {
@@ -37,6 +36,8 @@ const WorkflowPreview = () => {
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
+  const humanInputFormDataList = useStore(s => s.workflowRunningData?.humanInputFormDataList)
+  const humanInputFilledFormDataList = useStore(s => s.workflowRunningData?.humanInputFilledFormDataList)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
   const switchTab = async (tab: string) => {
@@ -45,7 +46,7 @@ const WorkflowPreview = () => {
 
   useEffect(() => {
     if (showDebugAndPreviewPanel && showInputsPanel)
-      setCurrentTab('INPUT')
+      switchTab('INPUT')
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
@@ -60,6 +61,8 @@ const WorkflowPreview = () => {
 
     if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
+    if (status === WorkflowRunningStatus.Paused)
+      switchTab('RESULT')
   }, [workflowRunningData])
 
   const [isResizing, setIsResizing] = useState(false)
@@ -94,6 +97,10 @@ const WorkflowPreview = () => {
     }
   }, [resize, stopResizing])
 
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+    await submitHumanInputForm(formToken, formData)
+  }, [])
+
   return (
     <div
       className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
@@ -104,9 +111,9 @@ const WorkflowPreview = () => {
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
-        {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at)}`}
+        {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
         <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
         </div>
       </div>
       <div className="relative flex grow flex-col">
@@ -174,9 +181,21 @@ const WorkflowPreview = () => {
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
           {currentTab === 'RESULT' && (
-            <>
+            <div className="p-2">
+              {humanInputFormDataList && humanInputFormDataList.length > 0 && (
+                <HumanInputFormList
+                  humanInputFormDataList={humanInputFormDataList}
+                  onHumanInputFormSubmit={handleSubmitHumanInputForm}
+                />
+              )}
+              {humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
+                <HumanInputFilledFormList
+                  humanInputFilledFormDataList={humanInputFilledFormDataList}
+                />
+              )}
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
                 outputs={workflowRunningData?.resultText}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
@@ -194,11 +213,11 @@ const WorkflowPreview = () => {
                     Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
                   }}
                 >
-                  <RiClipboardLine className="h-3.5 w-3.5" />
+                  <span className="i-ri-clipboard-line h-3.5 w-3.5" />
                   <div>{t('operation.copy', { ns: 'common' })}</div>
                 </Button>
               )}
-            </>
+            </div>
           )}
           {currentTab === 'DETAIL' && (
             <ResultPanel

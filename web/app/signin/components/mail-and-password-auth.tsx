@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { login } from '@/service/common'
+import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
@@ -64,7 +65,10 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
-        // Track login success event
+        if (res?.data?.access_token) {
+          // Track login success event
+          setWebAppAccessToken(res.data.access_token)
+        }
         trackEvent('user_login_success', {
           method: 'email_password',
           is_invite: isInvite,

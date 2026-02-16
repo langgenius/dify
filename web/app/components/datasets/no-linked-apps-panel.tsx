@@ -15,7 +15,7 @@ const NoLinkedAppsPanel = () => {
       <div className="my-2 text-xs text-text-tertiary">{t('datasetMenus.emptyTip', { ns: 'common' })}</div>
       <a
         className="mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent"
-        href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+        href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
         target="_blank"
         rel="noopener noreferrer"
       >

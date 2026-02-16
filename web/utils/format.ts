@@ -8,6 +8,7 @@ import 'dayjs/locale/fr'
 import 'dayjs/locale/hi'
 import 'dayjs/locale/id'
 import 'dayjs/locale/it'
+import 'dayjs/locale/nl'
 import 'dayjs/locale/ja'
 import 'dayjs/locale/ko'
 import 'dayjs/locale/pl'
@@ -26,11 +27,39 @@ import 'dayjs/locale/zh-tw'
  * Formats a number with comma separators.
  * @example formatNumber(1234567) will return '1,234,567'
  * @example formatNumber(1234567.89) will return '1,234,567.89'
+ * @example formatNumber(0.0000008) will return '0.0000008'
  */
 export const formatNumber = (num: number | string) => {
   if (!num)
     return num
-  const parts = num.toString().split('.')
+  const n = typeof num === 'string' ? Number(num) : num
+
+  let numStr: string
+
+  // Force fixed decimal for small numbers to avoid scientific notation
+  if (Math.abs(n) < 0.001 && n !== 0) {
+    const str = n.toString()
+    const match = str.match(/e-(\d+)$/)
+    let precision: number
+    if (match) {
+      // Scientific notation: precision is exponent + decimal digits in mantissa
+      const exponent = Number.parseInt(match[1], 10)
+      const mantissa = str.split('e')[0]
+      const mantissaDecimalPart = mantissa.split('.')[1]
+      precision = exponent + (mantissaDecimalPart?.length || 0)
+    }
+    else {
+      // Decimal notation: count decimal places
+      const decimalPart = str.split('.')[1]
+      precision = decimalPart?.length || 0
+    }
+    numStr = n.toFixed(precision)
+  }
+  else {
+    numStr = n.toString()
+  }
+
+  const parts = numStr.split('.')
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return parts.join('.')
 }
@@ -70,17 +99,6 @@ export const formatTime = (seconds: number) => {
     index++
   }
   return `${seconds.toFixed(2)} ${units[index]}`
-}
-
-export const downloadFile = ({ data, fileName }: { data: Blob, fileName: string }) => {
-  const url = window.URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  window.URL.revokeObjectURL(url)
 }
 
 /**
@@ -124,8 +142,30 @@ export const formatNumberAbbreviated = (num: number) => {
         : `${formatted}${units[unitIndex].symbol}`
     }
   }
+  // Fallback: if no threshold matched, return the number string
+  return num.toString()
 }
 
 export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
   return time.locale(localeMap[local] ?? 'en').format(format)
+}
+
+/**
+ * Get file extension from file name.
+ * @param fileName file name
+ * @example getFileExtension('document.pdf') will return 'pdf'
+ * @example getFileExtension('archive.tar.gz') will return 'gz'
+ * @example getFileExtension('.gitignore') will return '' (hidden file with no extension)
+ * @example getFileExtension('.hidden.txt') will return 'txt'
+ */
+export const getFileExtension = (fileName: string): string => {
+  if (!fileName)
+    return ''
+
+  // Handle hidden files (starting with dot) by finding dot after the first character
+  const dotIndex = fileName.indexOf('.', fileName.startsWith('.') ? 1 : 0)
+  if (dotIndex === -1 || dotIndex === fileName.length - 1)
+    return ''
+
+  return fileName.slice(dotIndex + 1).split('.').pop()?.toLowerCase() ?? ''
 }

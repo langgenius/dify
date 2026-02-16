@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { DatePickerProps } from './types'
 import { useState } from 'react'
 import { fn } from 'storybook/test'

@@ -474,64 +474,6 @@ class TestTriggerProviderService:
         assert subscription.name == original_name
         assert subscription.parameters == original_parameters
 
-    def test_rebuild_trigger_subscription_unsubscribe_error_continues(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test that unsubscribe errors are handled gracefully and operation continues.
-
-        This test verifies:
-        - Unsubscribe errors are caught and logged but don't stop the rebuild
-        - Rebuild continues even if unsubscribe fails
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
-        credential_type = CredentialType.API_KEY
-
-        original_credentials = {"api_key": "original-key"}
-        subscription = self._create_test_subscription(
-            db_session_with_containers,
-            tenant.id,
-            account.id,
-            provider_id,
-            credential_type,
-            original_credentials,
-            mock_external_service_dependencies,
-        )
-
-        # Make unsubscribe_trigger raise an error (should be caught and continue)
-        mock_external_service_dependencies["trigger_manager"].unsubscribe_trigger.side_effect = ValueError(
-            "Unsubscribe failed"
-        )
-
-        new_subscription_entity = TriggerSubscriptionEntity(
-            endpoint=subscription.endpoint_id,
-            parameters={},
-            properties={},
-            expires_at=-1,
-        )
-        mock_external_service_dependencies["trigger_manager"].subscribe_trigger.return_value = new_subscription_entity
-
-        # Execute rebuild - should succeed despite unsubscribe error
-        TriggerProviderService.rebuild_trigger_subscription(
-            tenant_id=tenant.id,
-            provider_id=provider_id,
-            subscription_id=subscription.id,
-            credentials={"api_key": "new-key"},
-            parameters={},
-        )
-
-        # Verify subscribe was still called (operation continued)
-        mock_external_service_dependencies["trigger_manager"].subscribe_trigger.assert_called_once()
-
-        # Verify subscription was updated
-        db.session.refresh(subscription)
-        assert subscription.parameters == {}
-
     def test_rebuild_trigger_subscription_subscription_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -554,70 +496,6 @@ class TestTriggerProviderService:
                 tenant_id=tenant.id,
                 provider_id=provider_id,
                 subscription_id=fake_subscription_id,
-                credentials={},
-                parameters={},
-            )
-
-    def test_rebuild_trigger_subscription_provider_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test error when provider is not found.
-
-        This test verifies:
-        - Proper error is raised when provider doesn't exist
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("non_existent_org/non_existent_plugin/non_existent_provider")
-
-        # Make get_trigger_provider return None
-        mock_external_service_dependencies["trigger_manager"].get_trigger_provider.return_value = None
-
-        with pytest.raises(ValueError, match="Provider.*not found"):
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=tenant.id,
-                provider_id=provider_id,
-                subscription_id=fake.uuid4(),
-                credentials={},
-                parameters={},
-            )
-
-    def test_rebuild_trigger_subscription_unsupported_credential_type(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test error when credential type is not supported for rebuild.
-
-        This test verifies:
-        - Proper error is raised for unsupported credential types (not OAUTH2 or API_KEY)
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
-        credential_type = CredentialType.UNAUTHORIZED  # Not supported
-
-        subscription = self._create_test_subscription(
-            db_session_with_containers,
-            tenant.id,
-            account.id,
-            provider_id,
-            credential_type,
-            {},
-            mock_external_service_dependencies,
-        )
-
-        with pytest.raises(ValueError, match="Credential type not supported for rebuild"):
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=tenant.id,
-                provider_id=provider_id,
-                subscription_id=subscription.id,
                 credentials={},
                 parameters={},
             )

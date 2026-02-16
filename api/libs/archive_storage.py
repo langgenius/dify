@@ -7,7 +7,6 @@ to S3-compatible object storage.
 
 import base64
 import datetime
-import gzip
 import hashlib
 import logging
 from collections.abc import Generator
@@ -39,7 +38,7 @@ class ArchiveStorage:
     """
     S3-compatible storage client for archiving or exporting.
 
-    This client provides methods for storing and retrieving archived data in JSONL+gzip format.
+    This client provides methods for storing and retrieving archived data in JSONL format.
     """
 
     def __init__(self, bucket: str):
@@ -69,7 +68,10 @@ class ArchiveStorage:
             aws_access_key_id=dify_config.ARCHIVE_STORAGE_ACCESS_KEY,
             aws_secret_access_key=dify_config.ARCHIVE_STORAGE_SECRET_KEY,
             region_name=dify_config.ARCHIVE_STORAGE_REGION,
-            config=Config(s3={"addressing_style": "path"}),
+            config=Config(
+                s3={"addressing_style": "path"},
+                max_pool_connections=64,
+            ),
         )
 
         # Verify bucket accessibility
@@ -100,12 +102,18 @@ class ArchiveStorage:
         """
         checksum = hashlib.md5(data).hexdigest()
         try:
-            self.client.put_object(
+            response = self.client.put_object(
                 Bucket=self.bucket,
                 Key=key,
                 Body=data,
                 ContentMD5=self._content_md5(data),
             )
+            etag = response.get("ETag")
+            if not etag:
+                raise ArchiveStorageError(f"Missing ETag for '{key}'")
+            normalized_etag = etag.strip('"')
+            if normalized_etag != checksum:
+                raise ArchiveStorageError(f"ETag mismatch for '{key}': expected={checksum}, actual={normalized_etag}")
             logger.debug("Uploaded object: %s (size=%d, checksum=%s)", key, len(data), checksum)
             return checksum
         except ClientError as e:
@@ -240,19 +248,18 @@ class ArchiveStorage:
         return base64.b64encode(hashlib.md5(data).digest()).decode()
 
     @staticmethod
-    def serialize_to_jsonl_gz(records: list[dict[str, Any]]) -> bytes:
+    def serialize_to_jsonl(records: list[dict[str, Any]]) -> bytes:
         """
-        Serialize records to gzipped JSONL format.
+        Serialize records to JSONL format.
 
         Args:
             records: List of dictionaries to serialize
 
         Returns:
-            Gzipped JSONL bytes
+            JSONL bytes
         """
         lines = []
         for record in records:
-            # Convert datetime objects to ISO format strings
             serialized = ArchiveStorage._serialize_record(record)
             lines.append(orjson.dumps(serialized))
 
@@ -260,23 +267,22 @@ class ArchiveStorage:
         if jsonl_content:
             jsonl_content += b"\n"
 
-        return gzip.compress(jsonl_content)
+        return jsonl_content
 
     @staticmethod
-    def deserialize_from_jsonl_gz(data: bytes) -> list[dict[str, Any]]:
+    def deserialize_from_jsonl(data: bytes) -> list[dict[str, Any]]:
         """
-        Deserialize gzipped JSONL data to records.
+        Deserialize JSONL data to records.
 
         Args:
-            data: Gzipped JSONL bytes
+            data: JSONL bytes
 
         Returns:
             List of dictionaries
         """
-        jsonl_content = gzip.decompress(data)
         records = []
 
-        for line in jsonl_content.splitlines():
+        for line in data.splitlines():
             if line:
                 records.append(orjson.loads(line))
 

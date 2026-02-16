@@ -2,6 +2,8 @@
 Broadcast channel for Pub/Sub messaging.
 """
 
+from __future__ import annotations
+
 import types
 from abc import abstractmethod
 from collections.abc import Iterator
@@ -129,6 +131,6 @@ class BroadcastChannel(Protocol):
     """
 
     @abstractmethod
-    def topic(self, topic: str) -> "Topic":
+    def topic(self, topic: str) -> Topic:
         """topic returns a `Topic` instance for the given topic name."""
         ...

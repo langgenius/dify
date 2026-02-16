@@ -13,10 +13,12 @@ x-shared-env: &shared-api-worker-env
   APP_WEB_URL: ${APP_WEB_URL:-}
   FILES_URL: ${FILES_URL:-}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
-  LANG: ${LANG:-en_US.UTF-8}
-  LC_ALL: ${LC_ALL:-en_US.UTF-8}
+  LANG: ${LANG:-C.UTF-8}
+  LC_ALL: ${LC_ALL:-C.UTF-8}
   PYTHONIOENCODING: ${PYTHONIOENCODING:-utf-8}
+  UV_CACHE_DIR: ${UV_CACHE_DIR:-/tmp/.uv-cache}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
   LOG_FILE: ${LOG_FILE:-/app/logs/server.log}
   LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
   LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
@@ -104,6 +106,7 @@ x-shared-env: &shared-api-worker-env
   CELERY_SENTINEL_MASTER_NAME: ${CELERY_SENTINEL_MASTER_NAME:-}
   CELERY_SENTINEL_PASSWORD: ${CELERY_SENTINEL_PASSWORD:-}
   CELERY_SENTINEL_SOCKET_TIMEOUT: ${CELERY_SENTINEL_SOCKET_TIMEOUT:-0.1}
+  CELERY_TASK_ANNOTATIONS: ${CELERY_TASK_ANNOTATIONS:-null}
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
   COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
@@ -424,6 +427,7 @@ x-shared-env: &shared-api-worker-env
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
+  SMTP_LOCAL_HOSTNAME: ${SMTP_LOCAL_HOSTNAME:-}
   SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
@@ -466,6 +470,7 @@ x-shared-env: &shared-api-worker-env
   WORKFLOW_LOG_CLEANUP_ENABLED: ${WORKFLOW_LOG_CLEANUP_ENABLED:-false}
   WORKFLOW_LOG_RETENTION_DAYS: ${WORKFLOW_LOG_RETENTION_DAYS:-30}
   WORKFLOW_LOG_CLEANUP_BATCH_SIZE: ${WORKFLOW_LOG_CLEANUP_BATCH_SIZE:-100}
+  WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: ${WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS:-}
   ALIYUN_SLS_ACCESS_KEY_ID: ${ALIYUN_SLS_ACCESS_KEY_ID:-}
   ALIYUN_SLS_ACCESS_KEY_SECRET: ${ALIYUN_SLS_ACCESS_KEY_SECRET:-}
   ALIYUN_SLS_ENDPOINT: ${ALIYUN_SLS_ENDPOINT:-}
@@ -474,6 +479,7 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_SLS_LOGSTORE_TTL: ${ALIYUN_SLS_LOGSTORE_TTL:-365}
   LOGSTORE_DUAL_WRITE_ENABLED: ${LOGSTORE_DUAL_WRITE_ENABLED:-false}
   LOGSTORE_DUAL_READ_ENABLED: ${LOGSTORE_DUAL_READ_ENABLED:-true}
+  LOGSTORE_ENABLE_PUT_GRAPH_FIELD: ${LOGSTORE_ENABLE_PUT_GRAPH_FIELD:-true}
   HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   HTTP_REQUEST_NODE_SSL_VERIFY: ${HTTP_REQUEST_NODE_SSL_VERIFY:-True}
@@ -586,6 +592,7 @@ x-shared-env: &shared-api-worker-env
   PLUGIN_DAEMON_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
   PLUGIN_DAEMON_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
   PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+  PLUGIN_MODEL_SCHEMA_CACHE_TTL: ${PLUGIN_MODEL_SCHEMA_CACHE_TTL:-3600}
   PLUGIN_PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
   PLUGIN_DEBUGGING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
   PLUGIN_DEBUGGING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
@@ -660,6 +667,7 @@ x-shared-env: &shared-api-worker-env
   ENABLE_CREATE_TIDB_SERVERLESS_TASK: ${ENABLE_CREATE_TIDB_SERVERLESS_TASK:-false}
   ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK: ${ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK:-false}
   ENABLE_CLEAN_MESSAGES: ${ENABLE_CLEAN_MESSAGES:-false}
+  ENABLE_WORKFLOW_RUN_CLEANUP_TASK: ${ENABLE_WORKFLOW_RUN_CLEANUP_TASK:-false}
   ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: ${ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:-false}
   ENABLE_DATASETS_QUEUE_MONITOR: ${ENABLE_DATASETS_QUEUE_MONITOR:-false}
   ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: ${ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:-true}
@@ -677,7 +685,14 @@ x-shared-env: &shared-api-worker-env
   AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
   SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: ${SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD:-21}
   SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: ${SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE:-1000}
+  SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: ${SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL:-200}
   SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: ${SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS:-30}
+  PUBSUB_REDIS_URL: ${PUBSUB_REDIS_URL:-}
+  PUBSUB_REDIS_CHANNEL_TYPE: ${PUBSUB_REDIS_CHANNEL_TYPE:-pubsub}
+  PUBSUB_REDIS_USE_CLUSTERS: ${PUBSUB_REDIS_USE_CLUSTERS:-false}
+  ENABLE_HUMAN_INPUT_TIMEOUT_TASK: ${ENABLE_HUMAN_INPUT_TIMEOUT_TASK:-true}
+  HUMAN_INPUT_TIMEOUT_TASK_INTERVAL: ${HUMAN_INPUT_TIMEOUT_TASK_INTERVAL:-1}
+  SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: ${SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL:-90000}
 
 services:
   # Init container to fix permissions
@@ -701,7 +716,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.2
+    image: langgenius/dify-api:1.13.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -743,7 +758,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.2
+    image: langgenius/dify-api:1.13.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -782,7 +797,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.2
+    image: langgenius/dify-api:1.13.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -812,7 +827,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.2
+    image: langgenius/dify-web:1.13.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -950,7 +965,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.2-local
+    image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -1155,7 +1170,8 @@ services:
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       OB_SERVER_IP: 127.0.0.1
       MODE: mini
-      LANG: en_US.UTF-8
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     ports:
       - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
     healthcheck:
@@ -1341,13 +1357,14 @@ services:
       - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
       - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
     volumes:
-      - ./volumes/iris:/opt/iris
+      - ./volumes/iris:/durable
       - ./iris/iris-init.script:/iris-init.script
       - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
     entrypoint: ["/custom-entrypoint.sh"]
     tty: true
     environment:
       TZ: ${IRIS_TIMEZONE:-UTC}
+      ISC_DATA_DIRECTORY: /durable/iris
 
   # Oracle vector database
   oracle:

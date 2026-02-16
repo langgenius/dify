@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
@@ -242,7 +244,7 @@ class CredentialType(enum.StrEnum):
         return [item.value for item in cls]
 
     @classmethod
-    def of(cls, credential_type: str) -> "CredentialType":
+    def of(cls, credential_type: str) -> CredentialType:
         type_name = credential_type.lower()
         if type_name in {"api-key", "api_key"}:
             return cls.API_KEY

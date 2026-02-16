@@ -1,9 +1,9 @@
 from flask import request
-from flask_restx import Resource, marshal_with  # type: ignore
+from flask_restx import Resource, fields, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -12,7 +12,11 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.rag_pipeline_fields import pipeline_import_check_dependencies_fields, pipeline_import_fields
+from fields.rag_pipeline_fields import (
+    leaked_dependency_fields,
+    pipeline_import_check_dependencies_fields,
+    pipeline_import_fields,
+)
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Pipeline
 from services.app_dsl_service import ImportStatus
@@ -38,13 +42,25 @@ class IncludeSecretQuery(BaseModel):
 register_schema_models(console_ns, RagPipelineImportPayload, IncludeSecretQuery)
 
 
+pipeline_import_model = get_or_create_model("RagPipelineImport", pipeline_import_fields)
+
+leaked_dependency_model = get_or_create_model("RagPipelineLeakedDependency", leaked_dependency_fields)
+pipeline_import_check_dependencies_fields_copy = pipeline_import_check_dependencies_fields.copy()
+pipeline_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(
+    fields.Nested(leaked_dependency_model)
+)
+pipeline_import_check_dependencies_model = get_or_create_model(
+    "RagPipelineImportCheckDependencies", pipeline_import_check_dependencies_fields_copy
+)
+
+
 @console_ns.route("/rag/pipelines/imports")
 class RagPipelineImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @marshal_with(pipeline_import_fields)
+    @marshal_with(pipeline_import_model)
     @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
     def post(self):
         # Check user role first
@@ -81,7 +97,7 @@ class RagPipelineImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @marshal_with(pipeline_import_fields)
+    @marshal_with(pipeline_import_model)
     def post(self, import_id):
         current_user, _ = current_account_with_tenant()
 
@@ -106,7 +122,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
-    @marshal_with(pipeline_import_check_dependencies_fields)
+    @marshal_with(pipeline_import_check_dependencies_model)
     def get(self, pipeline: Pipeline):
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)

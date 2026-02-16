@@ -1,11 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
 import HistoryPanel from './history-panel'
-
-const mockDocLink = vi.fn(() => 'doc-link')
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockDocLink,
-}))
 
 vi.mock('@/app/components/app/configuration/base/operation-btn', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
@@ -24,12 +18,10 @@ describe('HistoryPanel', () => {
     vi.clearAllMocks()
   })
 
-  it('should render warning content and link when showWarning is true', () => {
+  it('should render warning content when showWarning is true', () => {
     render(<HistoryPanel showWarning onShowEditModal={vi.fn()} />)
 
     expect(screen.getByText('appDebug.feature.conversationHistory.tip')).toBeInTheDocument()
-    const link = screen.getByText('appDebug.feature.conversationHistory.learnMore')
-    expect(link).toHaveAttribute('href', 'doc-link')
   })
 
   it('should hide warning when showWarning is false', () => {

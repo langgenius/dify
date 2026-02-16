@@ -1,3 +1,4 @@
+import type { ExtraContent } from '../chat/type'
 import type {
   Callback,
   ChatConfig,
@@ -9,6 +10,7 @@ import type {
   AppData,
   ConversationItem,
 } from '@/models/share'
+import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -25,8 +27,9 @@ import { useToastContext } from '@/app/components/base/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n-config/client'
 import {
+  AppSourceType,
   delConversation,
   pinConversation,
   renameConversation,
@@ -56,6 +59,24 @@ function getFormattedChatList(messages: any[]) {
       parentMessageId: item.parent_message_id || undefined,
     })
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+    const humanInputFormDataList: HumanInputFormData[] = []
+    const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
+    let workflowRunId = ''
+    if (item.status === 'paused') {
+      item.extra_contents?.forEach((content: ExtraContent) => {
+        if (content.type === 'human_input' && !content.submitted) {
+          humanInputFormDataList.push(content.form_definition)
+          workflowRunId = content.workflow_run_id
+        }
+      })
+    }
+    else if (item.status === 'normal') {
+      item.extra_contents?.forEach((content: ExtraContent) => {
+        if (content.type === 'human_input' && content.submitted) {
+          humanInputFilledFormDataList.push(content.form_submission_data)
+        }
+      })
+    }
     newChatList.push({
       id: item.id,
       content: item.answer,
@@ -65,6 +86,9 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: `question-${item.id}`,
+      humanInputFormDataList,
+      humanInputFilledFormDataList,
+      workflow_run_id: workflowRunId,
     })
   })
   return newChatList
@@ -72,6 +96,7 @@ function getFormattedChatList(messages: any[]) {
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const appInfo = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const appMeta = useWebAppStore(s => s.appMeta)
@@ -177,7 +202,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [currentConversationId, newConversationId])
 
   const { data: appPinnedConversationData } = useShareConversations({
-    isInstalledApp,
+    appSourceType,
     appId,
     pinned: true,
     limit: 100,
@@ -190,7 +215,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     data: appConversationData,
     isLoading: appConversationDataLoading,
   } = useShareConversations({
-    isInstalledApp,
+    appSourceType,
     appId,
     pinned: false,
     limit: 100,
@@ -204,7 +229,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     isLoading: appChatListDataLoading,
   } = useShareChatList({
     conversationId: chatShouldReloadKey,
-    isInstalledApp,
+    appSourceType,
     appId,
   }, {
     enabled: !!chatShouldReloadKey,
@@ -334,10 +359,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const { data: newConversation } = useShareConversationName({
     conversationId: newConversationId,
-    isInstalledApp,
+    appSourceType,
     appId,
   }, {
     refetchOnWindowFocus: false,
+    enabled: !!newConversationId,
   })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
@@ -462,16 +488,16 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [invalidateShareConversations])
 
   const handlePinConversation = useCallback(async (conversationId: string) => {
-    await pinConversation(isInstalledApp, appId, conversationId)
+    await pinConversation(appSourceType, appId, conversationId)
     notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
     handleUpdateConversationList()
-  }, [isInstalledApp, appId, notify, t, handleUpdateConversationList])
+  }, [appSourceType, appId, notify, t, handleUpdateConversationList])
 
   const handleUnpinConversation = useCallback(async (conversationId: string) => {
-    await unpinConversation(isInstalledApp, appId, conversationId)
+    await unpinConversation(appSourceType, appId, conversationId)
     notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
     handleUpdateConversationList()
-  }, [isInstalledApp, appId, notify, t, handleUpdateConversationList])
+  }, [appSourceType, appId, notify, t, handleUpdateConversationList])
 
   const [conversationDeleting, setConversationDeleting] = useState(false)
   const handleDeleteConversation = useCallback(async (
@@ -485,7 +511,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     try {
       setConversationDeleting(true)
-      await delConversation(isInstalledApp, appId, conversationId)
+      await delConversation(appSourceType, appId, conversationId)
       notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
       onSuccess()
     }
@@ -520,7 +546,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     setConversationRenaming(true)
     try {
-      await renameConversation(isInstalledApp, appId, conversationId, newName)
+      await renameConversation(appSourceType, appId, conversationId, newName)
 
       notify({
         type: 'success',
@@ -550,9 +576,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [handleConversationIdInfoChange, invalidateShareConversations])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
-  }, [isInstalledApp, appId, t, notify])
+  }, [appSourceType, appId, t, notify])
 
   return {
     isInstalledApp,

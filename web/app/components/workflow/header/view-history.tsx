@@ -1,18 +1,8 @@
 import {
-  RiCheckboxCircleLine,
-  RiCloseLine,
-  RiErrorWarningLine,
-} from '@remixicon/react'
-import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import {
-  ClockPlay,
-  ClockPlaySlim,
-} from '@/app/components/base/icons/src/vender/line/time'
 import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
@@ -89,9 +79,7 @@ const ViewHistory = ({
                 open && 'bg-components-button-secondary-bg-hover',
               )}
               >
-                <ClockPlay
-                  className="mr-1 h-4 w-4"
-                />
+                <span className="i-custom-vender-line-time-clock-play mr-1 h-4 w-4" />
                 {t('common.showRunHistory', { ns: 'workflow' })}
               </div>
             )
@@ -107,7 +95,7 @@ const ViewHistory = ({
                     onClearLogAndMessageModal?.()
                   }}
                 >
-                  <ClockPlay className={cn('h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
+                  <span className={cn('i-custom-vender-line-time-clock-play', 'h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
                 </div>
               </Tooltip>
             )
@@ -129,7 +117,7 @@ const ViewHistory = ({
                   setOpen(false)
                 }}
               >
-                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
               </div>
             </div>
             {
@@ -145,7 +133,7 @@ const ViewHistory = ({
                   {
                     !data?.data.length && (
                       <div className="py-12">
-                        <ClockPlaySlim className="mx-auto mb-2 h-8 w-8 text-text-quaternary" />
+                        <span className="i-custom-vender-line-time-clock-play-slim mx-auto mb-2 h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
                           {t('common.notRunning', { ns: 'workflow' })}
                         </div>
@@ -175,18 +163,18 @@ const ViewHistory = ({
                         }}
                       >
                         {
-                          !isChatMode && item.status === WorkflowRunningStatus.Stopped && (
-                            <AlertTriangle className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
+                          !isChatMode && [WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Paused].includes(item.status) && (
+                            <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <RiErrorWarningLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
+                            <span className="i-ri-error-warning-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <RiCheckboxCircleLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
+                            <span className="i-ri-checkbox-circle-line mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
                           )
                         }
                         <div>
@@ -196,7 +184,7 @@ const ViewHistory = ({
                               item.id === historyWorkflowData?.id && 'text-text-accent',
                             )}
                           >
-                            {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at)}`}
+                            {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
                           </div>
                           <div className="flex items-center text-xs leading-[18px] text-text-tertiary">
                             {item.created_by_account?.name}

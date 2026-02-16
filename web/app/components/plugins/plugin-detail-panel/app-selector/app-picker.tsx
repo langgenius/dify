@@ -180,7 +180,14 @@ const AppPicker: FC<Props> = ({
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={app.name} className="system-sm-medium grow text-components-input-text-filled">{app.name}</div>
+                <div title={`${app.name} (${app.id})`} className="system-sm-medium grow text-components-input-text-filled">
+                  <span className="mr-1">{app.name}</span>
+                  <span className="text-text-tertiary">
+                    (
+                    {app.id.slice(0, 8)}
+                    )
+                  </span>
+                </div>
                 <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary">{getAppType(app)}</div>
               </div>
             ))}

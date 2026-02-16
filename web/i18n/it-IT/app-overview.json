@@ -113,7 +113,7 @@
   "overview.triggerInfo.noTriggerAdded": "Nessun trigger aggiunto",
   "overview.triggerInfo.title": "Inneschi",
   "overview.triggerInfo.triggerStatusDescription": "Lo stato del nodo trigger appare qui. (Può già esistere in bozza, prende effetto dopo la pubblicazione)",
-  "overview.triggerInfo.triggersAdded": "Trigger aggiunti",
+  "overview.triggerInfo.triggersAdded": "{{count}} trigger aggiunti",
   "welcome.enterKeyTip": "inserisci la tua OpenAI API Key qui sotto",
   "welcome.firstStepTip": "Per iniziare,",
   "welcome.getKeyTip": "Ottieni la tua API Key dalla dashboard di OpenAI",

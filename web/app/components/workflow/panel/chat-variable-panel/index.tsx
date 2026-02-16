@@ -21,13 +21,11 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
@@ -148,17 +146,6 @@ const ChatVariablePanel = () => {
             <div className="system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">TIPS</div>
             <div className="system-sm-regular mb-4 mt-1 text-text-secondary">
               {t('chatVariable.panelDescription', { ns: 'workflow' })}
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-accent"
-                href={docLink('/guides/workflow/variables#conversation-variables', {
-                  'zh-Hans': '/guides/workflow/variables#会话变量',
-                  'ja-JP': '/guides/workflow/variables#会話変数',
-                })}
-              >
-                {t('chatVariable.docLink', { ns: 'workflow' })}
-              </a>
             </div>
             <div className="flex items-center gap-2">
               <div className="radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">

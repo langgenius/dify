@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -25,8 +25,7 @@ const VariableModal = ({
 }: ModalPropsType) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const envList = useStore(s => s.environmentVariables)
-  const envSecrets = useStore(s => s.envSecrets)
+  const workflowStore = useWorkflowStore()
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
@@ -58,6 +57,7 @@ const VariableModal = ({
       return notify({ type: 'error', message: 'value can not be empty' })
 
     // Add check for duplicate name when editing
+    const envList = workflowStore.getState().environmentVariables
     if (env && env.name !== name && envList.some(e => e.name === name))
       return notify({ type: 'error', message: 'name is existed' })
     // Original check for create new variable
@@ -78,10 +78,11 @@ const VariableModal = ({
     if (env) {
       setType(env.value_type)
       setName(env.name)
+      const envSecrets = workflowStore.getState().envSecrets
       setValue(env.value_type === 'secret' ? envSecrets[env.id] : env.value)
       setDescription(env.description)
     }
-  }, [env, envSecrets])
+  }, [env, workflowStore])
 
   return (
     <div

@@ -16,7 +16,7 @@ import {
   useInvalidCustomizedTemplateList,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
-import { downloadFile } from '@/utils/format'
+import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
 import Details from './details'
@@ -108,10 +108,7 @@ const TemplateCard = ({
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadFile({
-          data: blob,
-          fileName: `${pipeline.name}.pipeline`,
-        })
+        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
         Toast.notify({
           type: 'success',
           message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),

@@ -1,7 +1,6 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Item } from '@/app/components/base/select'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import { RiCloseLine } from '@remixicon/react'
@@ -19,8 +18,6 @@ import { languages } from '@/i18n-config/language'
 import { useAppVoices } from '@/service/use-apps'
 import { TtsAutoPlay } from '@/types/app'
 import { cn } from '@/utils/classnames'
-
-type VoiceLanguageKey = I18nKeysWithPrefix<'common', 'voice.language.'>
 
 type VoiceParamConfigProps = {
   onClose: () => void
@@ -101,7 +98,9 @@ const VoiceParamConfig = ({
               className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
             >
               <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
-                {languageItem?.name ? t(`voice.language.${replace(languageItem?.value, '-', '')}`, { ns: 'common' }) : localLanguagePlaceholder}
+                {languageItem?.name
+                  ? t(`voice.language.${replace(languageItem?.value ?? '', '-', '')}`, languageItem?.name, { ns: 'common' as const })
+                  : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
@@ -132,7 +131,7 @@ const VoiceParamConfig = ({
                         <span
                           className={cn('block', selected && 'font-normal')}
                         >
-                          {t(`voice.language.${replace((item.value), '-', '')}`, { ns: 'common' })}
+                          {t(`voice.language.${replace((item.value), '-', '')}`, item.name, { ns: 'common' as const })}
                         </span>
                         {(selected || item.value === text2speech?.language) && (
                           <span

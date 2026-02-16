@@ -1,18 +1,49 @@
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from configs import dify_config
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
+from core.workflow.nodes.template_transform.template_renderer import (
+    CodeExecutorJinja2TemplateRenderer,
+    Jinja2TemplateRenderer,
+    TemplateRenderError,
+)
 
-MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
+
+DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH = 400_000
 
 
 class TemplateTransformNode(Node[TemplateTransformNodeData]):
     node_type = NodeType.TEMPLATE_TRANSFORM
+    _template_renderer: Jinja2TemplateRenderer
+    _max_output_length: int
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        template_renderer: Jinja2TemplateRenderer | None = None,
+        max_output_length: int | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
+
+        if max_output_length is not None and max_output_length <= 0:
+            raise ValueError("max_output_length must be a positive integer")
+        self._max_output_length = max_output_length or DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -39,21 +70,19 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
             variables[variable_name] = value.to_object() if value else None
         # Run code
         try:
-            result = CodeExecutor.execute_workflow_code_template(
-                language=CodeLanguage.JINJA2, code=self.node_data.template, inputs=variables
-            )
-        except CodeExecutionError as e:
+            rendered = self._template_renderer.render_template(self.node_data.template, variables)
+        except TemplateRenderError as e:
             return NodeRunResult(inputs=variables, status=WorkflowNodeExecutionStatus.FAILED, error=str(e))
 
-        if len(result["result"]) > MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH:
+        if len(rendered) > self._max_output_length:
             return NodeRunResult(
                 inputs=variables,
                 status=WorkflowNodeExecutionStatus.FAILED,
-                error=f"Output length exceeds {MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH} characters",
+                error=f"Output length exceeds {self._max_output_length} characters",
             )
 
         return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs={"output": result["result"]}
+            status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs={"output": rendered}
         )
 
     @classmethod

@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { useDocLink } from '@/context/i18n'
 
 type Props = {
   showWarning: boolean
@@ -17,8 +16,6 @@ const HistoryPanel: FC<Props> = ({
   onShowEditModal,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
-
   return (
     <Panel
       className="mt-2"
@@ -45,14 +42,6 @@ const HistoryPanel: FC<Props> = ({
         <div className="flex justify-between rounded-b-xl bg-background-section-burn px-3 py-2 text-xs text-text-secondary">
           <div>
             {t('feature.conversationHistory.tip', { ns: 'appDebug' })}
-            <a
-              href={docLink('/learn-more/extended-reading/what-is-llmops', { 'zh-Hans': '/learn-more/extended-reading/prompt-engineering/README' })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#155EEF]"
-            >
-              {t('feature.conversationHistory.learnMore', { ns: 'appDebug' })}
-            </a>
           </div>
         </div>
       )}

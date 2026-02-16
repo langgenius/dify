@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
@@ -28,34 +28,27 @@ from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
 
 
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
 def _build_dataset_detail_model():
-    keyword_setting_model = _get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
-    vector_setting_model = _get_or_create_model("DatasetVectorSetting", vector_setting_fields)
+    keyword_setting_model = get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
+    vector_setting_model = get_or_create_model("DatasetVectorSetting", vector_setting_fields)
 
     weighted_score_fields_copy = weighted_score_fields.copy()
     weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
     weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
-    weighted_score_model = _get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
+    weighted_score_model = get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
 
-    reranking_model = _get_or_create_model("DatasetRerankingModel", reranking_model_fields)
+    reranking_model = get_or_create_model("DatasetRerankingModel", reranking_model_fields)
 
     dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
     dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
     dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
-    dataset_retrieval_model = _get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
+    dataset_retrieval_model = get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
 
-    tag_model = _get_or_create_model("Tag", tag_fields)
-    doc_metadata_model = _get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
-    external_knowledge_info_model = _get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
-    external_retrieval_model = _get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
-    icon_info_model = _get_or_create_model("DatasetIconInfo", icon_info_fields)
+    tag_model = get_or_create_model("Tag", tag_fields)
+    doc_metadata_model = get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
+    external_knowledge_info_model = get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
+    external_retrieval_model = get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
+    icon_info_model = get_or_create_model("DatasetIconInfo", icon_info_fields)
 
     dataset_detail_fields_copy = dataset_detail_fields.copy()
     dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
@@ -64,7 +57,7 @@ def _build_dataset_detail_model():
     dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
     dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
     dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
-    return _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
+    return get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
 
 
 try:
@@ -81,7 +74,7 @@ class ExternalKnowledgeApiPayload(BaseModel):
 class ExternalDatasetCreatePayload(BaseModel):
     external_knowledge_api_id: str
     external_knowledge_id: str
-    name: str = Field(..., min_length=1, max_length=40)
+    name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=400)
     external_retrieval_model: dict[str, object] | None = None
 
@@ -98,12 +91,19 @@ class BedrockRetrievalPayload(BaseModel):
     knowledge_id: str
 
 
+class ExternalApiTemplateListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+
+
 register_schema_models(
     console_ns,
     ExternalKnowledgeApiPayload,
     ExternalDatasetCreatePayload,
     ExternalHitTestingPayload,
     BedrockRetrievalPayload,
+    ExternalApiTemplateListQuery,
 )
 
 
@@ -124,19 +124,17 @@ class ExternalApiTemplateListApi(Resource):
     @account_initialization_required
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
+        query = ExternalApiTemplateListQuery.model_validate(request.args.to_dict())
 
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            page, limit, current_tenant_id, search
+            query.page, query.limit, current_tenant_id, query.keyword
         )
         response = {
             "data": [item.to_dict() for item in external_knowledge_apis],
-            "has_more": len(external_knowledge_apis) == limit,
-            "limit": limit,
+            "has_more": len(external_knowledge_apis) == query.limit,
+            "limit": query.limit,
             "total": total,
-            "page": page,
+            "page": query.page,
         }
         return response, 200
 

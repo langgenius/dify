@@ -163,7 +163,7 @@ const EducationApplyAge = () => {
           <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
             className="system-xs-regular flex items-center text-text-accent"
-            href={docLink('/getting-started/dify-for-education')}
+            href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
             target="_blank"
           >
             {t('learn', { ns: 'education' })}

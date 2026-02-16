@@ -99,7 +99,6 @@ class ModelProviderService:
                 description=provider_configuration.provider.description,
                 icon_small=provider_configuration.provider.icon_small,
                 icon_small_dark=provider_configuration.provider.icon_small_dark,
-                icon_large=provider_configuration.provider.icon_large,
                 background=provider_configuration.provider.background,
                 help=provider_configuration.provider.help,
                 supported_model_types=provider_configuration.provider.supported_model_types,
@@ -423,7 +422,6 @@ class ModelProviderService:
                     label=first_model.provider.label,
                     icon_small=first_model.provider.icon_small,
                     icon_small_dark=first_model.provider.icon_small_dark,
-                    icon_large=first_model.provider.icon_large,
                     status=CustomConfigurationStatus.ACTIVE,
                     models=[
                         ProviderModelWithStatusEntity(
@@ -488,7 +486,6 @@ class ModelProviderService:
                         provider=result.provider.provider,
                         label=result.provider.label,
                         icon_small=result.provider.icon_small,
-                        icon_large=result.provider.icon_large,
                         supported_model_types=result.provider.supported_model_types,
                     ),
                 )
@@ -522,7 +519,7 @@ class ModelProviderService:
 
         :param tenant_id: workspace id
         :param provider: provider name
-        :param icon_type: icon type (icon_small or icon_large)
+        :param icon_type: icon type (icon_small or icon_small_dark)
         :param lang: language (zh_Hans or en_US)
         :return:
         """

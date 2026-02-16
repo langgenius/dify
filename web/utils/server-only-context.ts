@@ -2,7 +2,7 @@
 
 import { cache } from 'react'
 
-export default <T>(defaultValue: T): [() => T, (v: T) => void] => {
+export function serverOnlyContext<T>(defaultValue: T): [() => T, (v: T) => void] {
   const getRef = cache(() => ({ current: defaultValue }))
 
   const getValue = (): T => getRef().current

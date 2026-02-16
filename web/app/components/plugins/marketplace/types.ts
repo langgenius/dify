@@ -30,9 +30,9 @@ export type MarketplaceCollectionPluginsResponse = {
 export type PluginsSearchParams = {
   query: string
   page?: number
-  pageSize?: number
-  sortBy?: string
-  sortOrder?: string
+  page_size?: number
+  sort_by?: string
+  sort_order?: string
   category?: string
   tags?: string[]
   exclude?: string[]

@@ -8,7 +8,6 @@ Create Date: 2025-08-20 17:47:17.015695
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from libs.uuid_utils import uuidv7
 
 
 def _is_pg(conn):

@@ -37,6 +37,20 @@ def _client_error(code: str) -> ClientError:
 def _mock_client(monkeypatch):
     client = MagicMock()
     client.head_bucket.return_value = None
+    # Configure put_object to return a proper ETag that matches the MD5 hash
+    # The ETag format is typically the MD5 hash wrapped in quotes
+
+    def mock_put_object(**kwargs):
+        md5_hash = kwargs.get("Body", b"")
+        if isinstance(md5_hash, bytes):
+            md5_hash = hashlib.md5(md5_hash).hexdigest()
+        else:
+            md5_hash = hashlib.md5(md5_hash.encode()).hexdigest()
+        response = MagicMock()
+        response.get.return_value = f'"{md5_hash}"'
+        return response
+
+    client.put_object.side_effect = mock_put_object
     boto_client = MagicMock(return_value=client)
     monkeypatch.setattr(storage_module.boto3, "client", boto_client)
     return client, boto_client
@@ -254,8 +268,8 @@ def test_serialization_roundtrip():
         {"id": "2", "value": 123},
     ]
 
-    data = ArchiveStorage.serialize_to_jsonl_gz(records)
-    decoded = ArchiveStorage.deserialize_from_jsonl_gz(data)
+    data = ArchiveStorage.serialize_to_jsonl(records)
+    decoded = ArchiveStorage.deserialize_from_jsonl(data)
 
     assert decoded[0]["id"] == "1"
     assert decoded[0]["payload"]["nested"] == "value"

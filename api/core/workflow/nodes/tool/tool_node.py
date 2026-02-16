@@ -5,7 +5,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file import File, FileTransferMethod
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -20,6 +19,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
@@ -244,7 +244,7 @@ class ToolNode(Node[ToolNodeData]):
 
         text = ""
         files: list[File] = []
-        json: list[dict] = []
+        json: list[dict | list] = []
 
         variables: dict[str, Any] = {}
 
@@ -400,7 +400,7 @@ class ToolNode(Node[ToolNodeData]):
                         message.message.metadata = dict_metadata
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output: list[dict[str, Any]] = []
+        json_output: list[dict[str, Any] | list[Any]] = []
 
         # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
         if json:
@@ -482,16 +482,17 @@ class ToolNode(Node[ToolNodeData]):
         result = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]
-            if input.type == "mixed":
-                assert isinstance(input.value, str)
-                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
-                for selector in selectors:
-                    result[selector.variable] = selector.value_selector
-            elif input.type == "variable":
-                selector_key = ".".join(input.value)
-                result[f"#{selector_key}#"] = input.value
-            elif input.type == "constant":
-                pass
+            match input.type:
+                case "mixed":
+                    assert isinstance(input.value, str)
+                    selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                    for selector in selectors:
+                        result[selector.variable] = selector.value_selector
+                case "variable":
+                    selector_key = ".".join(input.value)
+                    result[f"#{selector_key}#"] = input.value
+                case "constant":
+                    pass
 
         result = {node_id + "." + key: value for key, value in result.items()}
 

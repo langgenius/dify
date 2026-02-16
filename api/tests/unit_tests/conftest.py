@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import create_engine
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -36,6 +37,7 @@ import sys
 
 sys.path.insert(0, PROJECT_DIR)
 
+from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
 
 
@@ -49,6 +51,8 @@ def _patch_redis_clients_on_loaded_modules():
             continue
         if hasattr(module, "redis_client"):
             module.redis_client = redis_mock
+        if hasattr(module, "_pubsub_redis_client"):
+            module.pubsub_redis_client = redis_mock
 
 
 @pytest.fixture
@@ -66,7 +70,10 @@ def _provide_app_context(app: Flask):
 def _patch_redis_clients():
     """Patch redis_client to MagicMock only for unit test executions."""
 
-    with patch.object(ext_redis, "redis_client", redis_mock):
+    with (
+        patch.object(ext_redis, "redis_client", redis_mock),
+        patch.object(ext_redis, "_pubsub_redis_client", redis_mock),
+    ):
         _patch_redis_clients_on_loaded_modules()
         yield
 
@@ -102,3 +109,18 @@ def reset_secret_key():
         yield
     finally:
         dify_config.SECRET_KEY = original
+
+
+@pytest.fixture(scope="session")
+def _unit_test_engine():
+    engine = create_engine("sqlite:///:memory:")
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _configure_session_factory(_unit_test_engine):
+    try:
+        session_factory.get_session_maker()
+    except RuntimeError:
+        configure_session_factory(_unit_test_engine, expire_on_commit=False)

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os
+import socket
 import threading
 import time
 from collections.abc import Sequence
@@ -33,7 +36,7 @@ class AliyunLogStore:
     Ensures only one instance exists to prevent multiple PG connection pools.
     """
 
-    _instance: "AliyunLogStore | None" = None
+    _instance: AliyunLogStore | None = None
     _initialized: bool = False
 
     # Track delayed PG connection for newly created projects
@@ -66,7 +69,7 @@ class AliyunLogStore:
         "\t",
     ]
 
-    def __new__(cls) -> "AliyunLogStore":
+    def __new__(cls) -> AliyunLogStore:
         """Implement singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -177,8 +180,17 @@ class AliyunLogStore:
         self.region: str = os.environ.get("ALIYUN_SLS_REGION", "")
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
         self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 365))
-        self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
+        self.log_enabled: bool = (
+            os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
+            or os.environ.get("LOGSTORE_SQL_ECHO", "false").lower() == "true"
+        )
         self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
+
+        # Get timeout configuration
+        check_timeout = int(os.environ.get("ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT", 30))
+
+        # Pre-check endpoint connectivity to prevent indefinite hangs
+        self._check_endpoint_connectivity(self.endpoint, check_timeout)
 
         # Initialize SDK client
         self.client = LogClient(
@@ -196,6 +208,49 @@ class AliyunLogStore:
         self._use_pg_protocol: bool = False
 
         self.__class__._initialized = True
+
+    @staticmethod
+    def _check_endpoint_connectivity(endpoint: str, timeout: int) -> None:
+        """
+        Check if the SLS endpoint is reachable before creating LogClient.
+        Prevents indefinite hangs when the endpoint is unreachable.
+
+        Args:
+            endpoint: SLS endpoint URL
+            timeout: Connection timeout in seconds
+
+        Raises:
+            ConnectionError: If endpoint is not reachable
+        """
+        # Parse endpoint URL to extract hostname and port
+        from urllib.parse import urlparse
+
+        parsed_url = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}")
+        hostname = parsed_url.hostname
+        port = parsed_url.port or (443 if parsed_url.scheme == "https" else 80)
+
+        if not hostname:
+            raise ConnectionError(f"Invalid endpoint URL: {endpoint}")
+
+        sock = None
+        try:
+            # Create socket and set timeout
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((hostname, port))
+        except Exception as e:
+            # Catch all exceptions and provide clear error message
+            error_type = type(e).__name__
+            raise ConnectionError(
+                f"Cannot connect to {hostname}:{port} (timeout={timeout}s): [{error_type}] {e}"
+            ) from e
+        finally:
+            # Ensure socket is properly closed
+            if sock:
+                try:
+                    sock.close()
+                except Exception:  # noqa: S110
+                    pass  # Ignore errors during cleanup
 
     @property
     def supports_pg_protocol(self) -> bool:
@@ -218,19 +273,16 @@ class AliyunLogStore:
         try:
             self._use_pg_protocol = self._pg_client.init_connection()
             if self._use_pg_protocol:
-                logger.info("Successfully connected to project %s using PG protocol", self.project_name)
+                logger.info("Using PG protocol for project %s", self.project_name)
                 # Check if scan_index is enabled for all logstores
                 self._check_and_disable_pg_if_scan_index_disabled()
                 return True
             else:
-                logger.info("PG connection failed for project %s. Will use SDK mode.", self.project_name)
+                logger.info("Using SDK mode for project %s", self.project_name)
                 return False
         except Exception as e:
-            logger.warning(
-                "Failed to establish PG connection for project %s: %s. Will use SDK mode.",
-                self.project_name,
-                str(e),
-            )
+            logger.info("Using SDK mode for project %s", self.project_name)
+            logger.debug("PG connection details: %s", str(e))
             self._use_pg_protocol = False
             return False
 
@@ -244,10 +296,6 @@ class AliyunLogStore:
         if self._use_pg_protocol:
             return
 
-        logger.info(
-            "Attempting delayed PG connection for newly created project %s ...",
-            self.project_name,
-        )
         self._attempt_pg_connection_init()
         self.__class__._pg_connection_timer = None
 
@@ -282,11 +330,7 @@ class AliyunLogStore:
         if project_is_new:
             # For newly created projects, schedule delayed PG connection
             self._use_pg_protocol = False
-            logger.info(
-                "Project %s is newly created. Will use SDK mode and schedule PG connection attempt in %d seconds.",
-                self.project_name,
-                self.__class__._pg_connection_delay,
-            )
+            logger.info("Using SDK mode for project %s (newly created)", self.project_name)
             if self.__class__._pg_connection_timer is not None:
                 self.__class__._pg_connection_timer.cancel()
             self.__class__._pg_connection_timer = threading.Timer(
@@ -297,7 +341,6 @@ class AliyunLogStore:
             self.__class__._pg_connection_timer.start()
         else:
             # For existing projects, attempt PG connection immediately
-            logger.info("Project %s already exists. Attempting PG connection...", self.project_name)
             self._attempt_pg_connection_init()
 
     def _check_and_disable_pg_if_scan_index_disabled(self) -> None:
@@ -316,9 +359,9 @@ class AliyunLogStore:
             existing_config = self.get_existing_index_config(logstore_name)
             if existing_config and not existing_config.scan_index:
                 logger.info(
-                    "Logstore %s has scan_index=false, USE SDK mode for read/write operations. "
-                    "PG protocol requires scan_index to be enabled.",
+                    "Logstore %s requires scan_index enabled, using SDK mode for project %s",
                     logstore_name,
+                    self.project_name,
                 )
                 self._use_pg_protocol = False
                 # Close PG connection if it was initialized
@@ -746,7 +789,6 @@ class AliyunLogStore:
             reverse=reverse,
         )
 
-        # Log query info if SQLALCHEMY_ECHO is enabled
         if self.log_enabled:
             logger.info(
                 "[LogStore] GET_LOGS | logstore=%s | project=%s | query=%s | "
@@ -768,7 +810,6 @@ class AliyunLogStore:
             for log in logs:
                 result.append(log.get_contents())
 
-            # Log result count if SQLALCHEMY_ECHO is enabled
             if self.log_enabled:
                 logger.info(
                     "[LogStore] GET_LOGS RESULT | logstore=%s | returned_count=%d",
@@ -843,7 +884,6 @@ class AliyunLogStore:
                 query=full_query,
             )
 
-            # Log query info if SQLALCHEMY_ECHO is enabled
             if self.log_enabled:
                 logger.info(
                     "[LogStore-SDK] EXECUTE_SQL | logstore=%s | project=%s | from_time=%d | to_time=%d | full_query=%s",
@@ -851,8 +891,7 @@ class AliyunLogStore:
                     self.project_name,
                     from_time,
                     to_time,
-                    query,
-                    sql,
+                    full_query,
                 )
 
             try:
@@ -863,7 +902,6 @@ class AliyunLogStore:
                 for log in logs:
                     result.append(log.get_contents())
 
-                # Log result count if SQLALCHEMY_ECHO is enabled
                 if self.log_enabled:
                     logger.info(
                         "[LogStore-SDK] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",

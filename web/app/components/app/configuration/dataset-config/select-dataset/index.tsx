@@ -175,7 +175,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   </div>
                 )}
                 {
-                  item.indexing_technique && (
+                  !!item.indexing_technique && (
                     <Badge
                       className="shrink-0"
                       text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
@@ -189,6 +189,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 }
               </div>
             ))}
+            {isFetchingNextPage && <Loading />}
           </div>
         </>
       )}

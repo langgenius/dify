@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Nu au fost găsite baze de cunoștințe",
   "gotoAnything.emptyState.noPluginsFound": "Nu au fost găsite plugin-uri",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Nu au fost găsite noduri de flux de lucru",
-  "gotoAnything.emptyState.tryDifferentTerm": "Încercați un termen de căutare diferit sau eliminați filtrul {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Încercați un termen de căutare diferit",
   "gotoAnything.emptyState.trySpecificSearch": "Încercați {{shortcuts}} pentru căutări specifice",
   "gotoAnything.groups.apps": "Aplicații",
   "gotoAnything.groups.commands": "Comenzi",

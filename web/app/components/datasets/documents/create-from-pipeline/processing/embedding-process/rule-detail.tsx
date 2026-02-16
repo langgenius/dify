@@ -28,10 +28,10 @@ const RuleDetail = ({
       case 'mode':
         value = !sourceData?.mode
           ? value
-          // eslint-disable-next-line sonarjs/no-nested-conditional
+
           : sourceData.mode === ProcessMode.general
             ? (t('embedding.custom', { ns: 'datasetDocuments' }) as string)
-            // eslint-disable-next-line sonarjs/no-nested-conditional
+
             : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
               ? t('parentMode.paragraph', { ns: 'dataset' })
               : t('parentMode.fullDoc', { ns: 'dataset' })}`
@@ -70,7 +70,7 @@ const RuleDetail = ({
             src={
               retrievalMethod === RETRIEVE_METHOD.fullText
                 ? retrievalIcon.fullText
-                // eslint-disable-next-line sonarjs/no-nested-conditional
+
                 : retrievalMethod === RETRIEVE_METHOD.hybrid
                   ? retrievalIcon.hybrid
                   : retrievalIcon.vector

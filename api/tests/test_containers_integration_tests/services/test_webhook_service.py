@@ -90,6 +90,7 @@ class TestWebhookService:
                     "id": "webhook_node",
                     "type": "webhook",
                     "data": {
+                        "type": "trigger-webhook",
                         "title": "Test Webhook",
                         "method": "post",
                         "content_type": "application/json",

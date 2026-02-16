@@ -79,7 +79,7 @@
   "pipelineNameAndIcon": "Numele și pictograma conductei",
   "publishPipeline.error.message": "Nu s-a reușit publicarea canalului de cunoștințe",
   "publishPipeline.success.message": "Fluxul de cunoștințe publicat",
-  "publishPipeline.success.tip": "Accesați Documente pentru a adăuga sau a gestiona documente.",
+  "publishPipeline.success.tip": "Accesați <CustomLink>Documente</CustomLink> pentru a adăuga sau a gestiona documente.",
   "publishTemplate.error.message": "Nu s-a reușit publicarea șablonului de conductă",
   "publishTemplate.success.learnMore": "Află mai multe",
   "publishTemplate.success.message": "Șablon de conductă publicat",

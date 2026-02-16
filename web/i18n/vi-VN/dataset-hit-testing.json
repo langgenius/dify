@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "Kiểm tra hiệu quả truy xuất của Kiến thức dựa trên văn bản truy vấn đã cho.",
   "hit.emptyTip": "Kết quả kiểm tra truy vấn sẽ hiển thị ở đây",
-  "hit.title": "CÁC ĐOẠN VĂN ĐƯỢC TRUY XUẤT",
+  "hit.title": "{{num}} đoạn văn được truy xuất",
   "hitChunks": "Nhấn {{num}} đoạn con",
   "imageUploader.dropZoneTip": "Kéo tệp vào đây để tải lên",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Số lượng phụ kiện khối đơn không được vượt quá {{limit}}",

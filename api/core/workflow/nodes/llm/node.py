@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import io
 import json
@@ -10,7 +12,6 @@ from typing import TYPE_CHECKING, Any, Literal
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -63,6 +64,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod, FileType, file_manager
 from core.workflow.node_events import (
     ModelInvokeCompletedEvent,
     NodeEventBase,
@@ -99,7 +101,7 @@ from .exc import (
 from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from core.workflow.file.models import File
     from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
@@ -113,7 +115,7 @@ class LLMNode(Node[LLMNodeData]):
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
-    _file_outputs: list["File"]
+    _file_outputs: list[File]
 
     _llm_file_saver: LLMFileSaver
 
@@ -121,8 +123,8 @@ class LLMNode(Node[LLMNodeData]):
         self,
         id: str,
         config: Mapping[str, Any],
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
         *,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -361,7 +363,7 @@ class LLMNode(Node[LLMNodeData]):
         structured_output_enabled: bool,
         structured_output: Mapping[str, Any] | None = None,
         file_saver: LLMFileSaver,
-        file_outputs: list["File"],
+        file_outputs: list[File],
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
@@ -415,7 +417,7 @@ class LLMNode(Node[LLMNodeData]):
         *,
         invoke_result: LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None],
         file_saver: LLMFileSaver,
-        file_outputs: list["File"],
+        file_outputs: list[File],
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
@@ -525,7 +527,7 @@ class LLMNode(Node[LLMNodeData]):
         )
 
     @staticmethod
-    def _image_file_to_markdown(file: "File", /):
+    def _image_file_to_markdown(file: File, /):
         text_chunk = f"![]({file.generate_url()})"
         return text_chunk
 
@@ -683,6 +685,8 @@ class LLMNode(Node[LLMNodeData]):
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
+                        if item.get("summary"):
+                            context_str += item["summary"] + "\n"
                         context_str += item["content"] + "\n"
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
@@ -744,6 +748,7 @@ class LLMNode(Node[LLMNodeData]):
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
                 files=context_dict.get("files"),
+                summary=context_dict.get("summary"),
             )
 
             return source
@@ -774,7 +779,7 @@ class LLMNode(Node[LLMNodeData]):
     def fetch_prompt_messages(
         *,
         sys_query: str | None = None,
-        sys_files: Sequence["File"],
+        sys_files: Sequence[File],
         context: str | None = None,
         memory: TokenBufferMemory | None = None,
         model_config: ModelConfigWithCredentialsEntity,
@@ -785,7 +790,7 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
-        context_files: list["File"] | None = None,
+        context_files: list[File] | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
@@ -847,18 +852,16 @@ class LLMNode(Node[LLMNodeData]):
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
             # For issue #11247 - Check if prompt content is a string or a list
-            prompt_content_type = type(prompt_content)
-            if prompt_content_type == str:
+            if isinstance(prompt_content, str):
                 prompt_content = str(prompt_content)
                 if "#histories#" in prompt_content:
                     prompt_content = prompt_content.replace("#histories#", memory_text)
                 else:
                     prompt_content = memory_text + "\n" + prompt_content
                 prompt_messages[0].content = prompt_content
-            elif prompt_content_type == list:
-                prompt_content = prompt_content if isinstance(prompt_content, list) else []
+            elif isinstance(prompt_content, list):
                 for content_item in prompt_content:
-                    if content_item.type == PromptMessageContentType.TEXT:
+                    if isinstance(content_item, TextPromptMessageContent):
                         if "#histories#" in content_item.data:
                             content_item.data = content_item.data.replace("#histories#", memory_text)
                         else:
@@ -868,13 +871,12 @@ class LLMNode(Node[LLMNodeData]):
 
             # Add current query to the prompt message
             if sys_query:
-                if prompt_content_type == str:
+                if isinstance(prompt_content, str):
                     prompt_content = str(prompt_messages[0].content).replace("#sys.query#", sys_query)
                     prompt_messages[0].content = prompt_content
-                elif prompt_content_type == list:
-                    prompt_content = prompt_content if isinstance(prompt_content, list) else []
+                elif isinstance(prompt_content, list):
                     for content_item in prompt_content:
-                        if content_item.type == PromptMessageContentType.TEXT:
+                        if isinstance(content_item, TextPromptMessageContent):
                             content_item.data = sys_query + "\n" + content_item.data
                 else:
                     raise ValueError("Invalid prompt content type")
@@ -1028,14 +1030,14 @@ class LLMNode(Node[LLMNodeData]):
         if typed_node_data.prompt_config:
             enable_jinja = False
 
-            if isinstance(prompt_template, list):
+            if isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
+                if prompt_template.edition_type == "jinja2":
+                    enable_jinja = True
+            else:
                 for prompt in prompt_template:
                     if prompt.edition_type == "jinja2":
                         enable_jinja = True
                         break
-            else:
-                if prompt_template.edition_type == "jinja2":
-                    enable_jinja = True
 
             if enable_jinja:
                 for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
@@ -1137,7 +1139,7 @@ class LLMNode(Node[LLMNodeData]):
         *,
         invoke_result: LLMResult | LLMResultWithStructuredOutput,
         saver: LLMFileSaver,
-        file_outputs: list["File"],
+        file_outputs: list[File],
         reasoning_format: Literal["separated", "tagged"] = "tagged",
         request_latency: float | None = None,
     ) -> ModelInvokeCompletedEvent:
@@ -1179,7 +1181,7 @@ class LLMNode(Node[LLMNodeData]):
         *,
         content: ImagePromptMessageContent,
         file_saver: LLMFileSaver,
-    ) -> "File":
+    ) -> File:
         """_save_multimodal_output saves multi-modal contents generated by LLM plugins.
 
         There are two kinds of multimodal outputs:
@@ -1229,7 +1231,7 @@ class LLMNode(Node[LLMNodeData]):
         *,
         contents: str | list[PromptMessageContentUnionTypes] | None,
         file_saver: LLMFileSaver,
-        file_outputs: list["File"],
+        file_outputs: list[File],
     ) -> Generator[str, None, None]:
         """Convert intermediate prompt messages into strings and yield them to the caller.
 

@@ -148,6 +148,13 @@ const data = {
       supported: true,
     },
     {
+      value: 'nl-NL',
+      name: 'Nederlands (Nederland)',
+      prompt_name: 'Dutch',
+      example: 'Hallo, Dify!',
+      supported: true,
+    },
+    {
       value: 'ar-TN',
       name: 'العربية (تونس)',
       prompt_name: 'Tunisian Arabic',

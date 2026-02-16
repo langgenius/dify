@@ -5,13 +5,17 @@ import { ChunkingMode } from '@/models/datasets'
 
 type GeneralChunkPreview = {
   content: string
+  summary?: string
 }
 
 const formatGeneralChunks = (outputs: any) => {
   const chunkInfo: GeneralChunks = []
   const chunks = outputs.preview as GeneralChunkPreview[]
   chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM).forEach((chunk) => {
-    chunkInfo.push(chunk.content)
+    chunkInfo.push({
+      content: chunk.content,
+      summary: chunk.summary,
+    })
   })
 
   return chunkInfo
@@ -20,6 +24,7 @@ const formatGeneralChunks = (outputs: any) => {
 type ParentChildChunkPreview = {
   content: string
   child_chunks: string[]
+  summary?: string
 }
 
 const formatParentChildChunks = (outputs: any, parentMode: ParentMode) => {
@@ -32,6 +37,7 @@ const formatParentChildChunks = (outputs: any, parentMode: ParentMode) => {
     chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM).forEach((chunk) => {
       chunkInfo.parent_child_chunks?.push({
         parent_content: chunk.content,
+        parent_summary: chunk.summary,
         child_contents: chunk.child_chunks,
         parent_mode: parentMode,
       })

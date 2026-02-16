@@ -144,7 +144,7 @@ const EditAnnotationModal: FC<Props> = ({
                         <MessageCheckRemove />
                         <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
                       </div>
-                      {createdAt && (
+                      {!!createdAt && (
                         <div>
                           {t('editModal.createdAt', { ns: 'appAnnotation' })}
 &nbsp;

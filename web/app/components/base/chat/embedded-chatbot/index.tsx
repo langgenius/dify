@@ -1,4 +1,5 @@
 'use client'
+import type { AppData } from '@/models/share'
 import {
   useEffect,
 } from 'react'
@@ -11,6 +12,7 @@ import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { AppSourceType } from '@/service/share'
 import { cn } from '@/utils/classnames'
 import {
   EmbeddedChatbotContext,
@@ -132,11 +134,12 @@ const EmbeddedChatbotWrapper = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
-  } = useEmbeddedChatbot()
+  } = useEmbeddedChatbot(AppSourceType.webApp)
 
   return (
     <EmbeddedChatbotContext.Provider value={{
-      appData,
+      appSourceType: AppSourceType.webApp,
+      appData: (appData as AppData) || null,
       appParams,
       appMeta,
       appChatListDataLoading,

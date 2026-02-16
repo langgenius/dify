@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import CodeBlock from './code-block'
 
 const SAMPLE_CODE = `const greet = (name: string) => {

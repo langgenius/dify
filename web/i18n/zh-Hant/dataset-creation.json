@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "取消",
   "stepOne.uploader.change": "更改檔案",
   "stepOne.uploader.failed": "上傳失敗",
-  "stepOne.uploader.tip": "已支援 {{supportTypes}}，每個檔案不超過 {{size}}MB。",
+  "stepOne.uploader.tip": "支援 {{supportTypes}}。每批最多 {{batchCount}} 個檔案，每個檔案不超過 {{size}} MB，總數不超過 {{totalCount}} 個檔案。",
   "stepOne.uploader.title": "上傳文字檔案",
   "stepOne.uploader.validation.count": "暫不支援多個檔案",
   "stepOne.uploader.validation.filesNumber": "批次上傳限制 {{filesNumber}}。",

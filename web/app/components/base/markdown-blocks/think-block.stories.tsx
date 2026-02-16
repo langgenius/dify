@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context'
 import ThinkBlock from './think-block'

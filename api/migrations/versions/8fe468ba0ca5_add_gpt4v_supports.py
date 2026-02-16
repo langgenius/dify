@@ -57,12 +57,9 @@ def upgrade():
         batch_op.create_index('message_file_created_by_idx', ['created_by'], unique=False)
         batch_op.create_index('message_file_message_idx', ['message_id'], unique=False)
 
-    if _is_pg(conn):
-        with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('file_upload', sa.Text(), nullable=True))
-    else:
-        with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('file_upload', models.types.LongText(), nullable=True))
+
+    with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('file_upload', models.types.LongText(), nullable=True))
 
     if _is_pg(conn):
         with op.batch_alter_table('upload_files', schema=None) as batch_op:

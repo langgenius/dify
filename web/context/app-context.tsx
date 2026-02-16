@@ -10,6 +10,7 @@ import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { env } from '@/env'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
@@ -29,6 +30,7 @@ export type AppContextValue = {
   langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
+  isValidatingCurrentWorkspace: boolean
 }
 
 const userProfilePlaceholder = {
@@ -58,6 +60,9 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   created_at: 0,
   role: 'normal',
   providers: [],
+  trial_credits: 200,
+  trial_credits_used: 0,
+  next_credit_reset_date: 0,
 }
 
 const AppContext = createContext<AppContextValue>({
@@ -72,6 +77,7 @@ const AppContext = createContext<AppContextValue>({
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
   useSelector,
   isLoadingCurrentWorkspace: false,
+  isValidatingCurrentWorkspace: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
@@ -86,7 +92,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const queryClient = useQueryClient()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { data: userProfileResp } = useUserProfile()
-  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace } = useCurrentWorkspace()
+  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useCurrentWorkspace()
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
@@ -195,10 +201,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
+      isValidatingCurrentWorkspace,
     }}
     >
       <div className="flex h-full flex-col overflow-y-auto">
-        {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
+        {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
         <div className="relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body">
           {children}
         </div>

@@ -1,3 +1,5 @@
+from typing import Any
+
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
@@ -88,33 +90,38 @@ class LoginApi(Resource):
     def post(self):
         """Authenticate user and login."""
         args = LoginPayload.model_validate(console_ns.payload)
+        request_email = args.email
+        normalized_email = request_email.lower()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args.email):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args.email)
+        is_login_error_rate_limit = AccountService.is_login_error_rate_limit(normalized_email)
         if is_login_error_rate_limit:
             raise EmailPasswordLoginLimitError()
 
-        # TODO: why invitation is re-assigned with different type?
-        invitation = args.invite_token  # type: ignore
-        if invitation:
-            invitation = RegisterService.get_invitation_if_token_valid(None, args.email, invitation)  # type: ignore
+        invite_token = args.invite_token
+        invitation_data: dict[str, Any] | None = None
+        if invite_token:
+            invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
+            if invitation_data is None:
+                invite_token = None
 
         try:
-            if invitation:
-                data = invitation.get("data", {})  # type: ignore
+            if invitation_data:
+                data = invitation_data.get("data", {})
                 invitee_email = data.get("email") if data else None
-                if invitee_email != args.email:
+                invitee_email_normalized = invitee_email.lower() if isinstance(invitee_email, str) else invitee_email
+                if invitee_email_normalized != normalized_email:
                     raise InvalidEmailError()
-                account = AccountService.authenticate(args.email, args.password, args.invite_token)
-            else:
-                account = AccountService.authenticate(args.email, args.password)
+            account = _authenticate_account_with_case_fallback(
+                request_email, normalized_email, args.password, invite_token
+            )
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
-        except services.errors.account.AccountPasswordError:
-            AccountService.add_login_error_rate_limit(args.email)
-            raise AuthenticationFailedError()
+        except services.errors.account.AccountPasswordError as exc:
+            AccountService.add_login_error_rate_limit(normalized_email)
+            raise AuthenticationFailedError() from exc
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
@@ -129,7 +136,7 @@ class LoginApi(Resource):
                 }
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(args.email)
+        AccountService.reset_login_error_rate_limit(normalized_email)
 
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})
@@ -169,18 +176,19 @@ class ResetPasswordSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
+        normalized_email = args.email.lower()
 
         if args.language is not None and args.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
         try:
-            account = AccountService.get_user_through_email(args.email)
+            account = _get_account_with_case_fallback(args.email)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         token = AccountService.send_reset_password_email(
-            email=args.email,
+            email=normalized_email,
             account=account,
             language=language,
             is_allow_register=FeatureService.get_system_features().is_allow_register,
@@ -195,6 +203,7 @@ class EmailCodeLoginSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
+        normalized_email = args.email.lower()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -205,13 +214,13 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             language = "en-US"
         try:
-            account = AccountService.get_user_through_email(args.email)
+            account = _get_account_with_case_fallback(args.email)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_email_code_login_email(email=args.email, language=language)
+                token = AccountService.send_email_code_login_email(email=normalized_email, language=language)
             else:
                 raise AccountNotFound()
         else:
@@ -228,14 +237,17 @@ class EmailCodeLoginApi(Resource):
     def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
 
-        user_email = args.email
+        original_email = args.email
+        user_email = original_email.lower()
         language = args.language
 
         token_data = AccountService.get_email_code_login_data(args.token)
         if token_data is None:
             raise InvalidTokenError()
 
-        if token_data["email"] != args.email:
+        token_email = token_data.get("email")
+        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+        if normalized_token_email != user_email:
             raise InvalidEmailError()
 
         if token_data["code"] != args.code:
@@ -243,7 +255,7 @@ class EmailCodeLoginApi(Resource):
 
         AccountService.revoke_email_code_login_token(args.token)
         try:
-            account = AccountService.get_user_through_email(user_email)
+            account = _get_account_with_case_fallback(original_email)
         except AccountRegisterError:
             raise AccountInFreezeError()
         if account:
@@ -274,7 +286,7 @@ class EmailCodeLoginApi(Resource):
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(args.email)
+        AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})
@@ -308,3 +320,22 @@ class RefreshTokenApi(Resource):
             return response
         except Exception as e:
             return {"result": "fail", "message": str(e)}, 401
+
+
+def _get_account_with_case_fallback(email: str):
+    account = AccountService.get_user_through_email(email)
+    if account or email == email.lower():
+        return account
+
+    return AccountService.get_user_through_email(email.lower())
+
+
+def _authenticate_account_with_case_fallback(
+    original_email: str, normalized_email: str, password: str, invite_token: str | None
+):
+    try:
+        return AccountService.authenticate(original_email, password, invite_token)
+    except services.errors.account.AccountPasswordError:
+        if original_email == normalized_email:
+            raise
+        return AccountService.authenticate(normalized_email, password, invite_token)

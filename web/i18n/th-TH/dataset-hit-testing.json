@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "ทดสอบเอฟเฟกต์การตีของความรู้ตามข้อความแบบสอบถามที่กําหนด",
   "hit.emptyTip": "ผลการทดสอบการดึงข้อมูลจะแสดงที่นี่",
-  "hit.title": "ย่อหน้าดึงข้อมูล",
+  "hit.title": "{{num}} ย่อหน้าดึงข้อมูล",
   "hitChunks": "กด {{num}} ก้อนลูก",
   "imageUploader.dropZoneTip": "ลากไฟล์มาที่นี่เพื่ออัปโหลด",
   "imageUploader.singleChunkAttachmentLimitTooltip": "จำนวนของไฟล์แนบแบบชิ้นเดียวไม่สามารถเกิน {{limit}}",

@@ -29,7 +29,7 @@ const More: FC<MoreProps> = ({
             >
               {`${t('detail.tokenCost', { ns: 'appLog' })} ${formatNumber(more.tokens)}`}
             </div>
-            {more.tokens_per_second && (
+            {!!more.tokens_per_second && (
               <div
                 className="mr-2 max-w-[25%] shrink-0 truncate"
                 title={`${more.tokens_per_second} tokens/s`}

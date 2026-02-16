@@ -79,7 +79,7 @@ const AgentLogItem = ({
           {label}
         </div>
         {
-          metadata?.elapsed_time && (
+          !!metadata?.elapsed_time && (
             <div className="system-xs-regular mr-2 shrink-0 text-text-tertiary">
               {metadata?.elapsed_time?.toFixed(3)}
               s

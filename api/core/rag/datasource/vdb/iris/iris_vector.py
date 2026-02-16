@@ -154,7 +154,7 @@ class IrisConnectionPool:
                 # Add to cache to skip future checks
                 self._schemas_initialized.add(schema)
 
-            except Exception as e:
+            except Exception:
                 conn.rollback()
                 logger.exception("Failed to ensure schema %s exists", schema)
                 raise
@@ -176,6 +176,9 @@ class IrisConnectionPool:
 
 class IrisVector(BaseVector):
     """IRIS vector database implementation using native VECTOR type and HNSW indexing."""
+
+    # Fallback score for full-text search when Rank function unavailable or TEXT_INDEX disabled
+    _FULL_TEXT_FALLBACK_SCORE = 0.5
 
     def __init__(self, collection_name: str, config: IrisVectorConfig) -> None:
         super().__init__(collection_name)
@@ -272,37 +275,131 @@ class IrisVector(BaseVector):
             return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Search documents by full-text using iFind index or fallback to LIKE search."""
+        """Search documents by full-text using iFind index with BM25 relevance scoring.
+
+        When IRIS_TEXT_INDEX is enabled, this method uses the auto-generated Rank
+        function from %iFind.Index.Basic to calculate BM25 relevance scores. The Rank
+        function is automatically created with naming: {schema}.{table_name}_{index}Rank
+
+        Args:
+            query: Search query string
+            **kwargs: Optional parameters including top_k, document_ids_filter
+
+        Returns:
+            List of Document objects with relevance scores in metadata["score"]
+        """
         top_k = kwargs.get("top_k", 5)
+        document_ids_filter = kwargs.get("document_ids_filter")
 
         with self._get_cursor() as cursor:
             if self.config.IRIS_TEXT_INDEX:
-                # Use iFind full-text search with index
+                # Use iFind full-text search with auto-generated Rank function
                 text_index_name = f"idx_{self.table_name}_text"
+                # IRIS removes underscores from function names
+                table_no_underscore = self.table_name.replace("_", "")
+                index_no_underscore = text_index_name.replace("_", "")
+                rank_function = f"{self.schema}.{table_no_underscore}_{index_no_underscore}Rank"
+
+                # Build WHERE clause with document ID filter if provided
+                where_clause = f"WHERE %ID %FIND search_index({text_index_name}, ?)"
+                # First param for Rank function, second for FIND
+                params = [query, query]
+
+                if document_ids_filter:
+                    # Add document ID filter
+                    placeholders = ",".join("?" * len(document_ids_filter))
+                    where_clause += f" AND JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
+                    params.extend(document_ids_filter)
+
                 sql = f"""
-                    SELECT TOP {top_k} id, text, meta
+                    SELECT TOP {top_k}
+                        id,
+                        text,
+                        meta,
+                        {rank_function}(%ID, ?) AS score
                     FROM {self.schema}.{self.table_name}
-                    WHERE %ID %FIND search_index({text_index_name}, ?)
+                    {where_clause}
+                    ORDER BY score DESC
                 """
-                cursor.execute(sql, (query,))
+
+                logger.debug(
+                    "iFind search: query='%s', index='%s', rank='%s'",
+                    query,
+                    text_index_name,
+                    rank_function,
+                )
+
+                try:
+                    cursor.execute(sql, params)
+                except Exception:  # pylint: disable=broad-exception-caught
+                    # Fallback to query without Rank function if it fails
+                    logger.warning(
+                        "Rank function '%s' failed, using fixed score",
+                        rank_function,
+                        exc_info=True,
+                    )
+                    sql_fallback = f"""
+                        SELECT TOP {top_k} id, text, meta, {self._FULL_TEXT_FALLBACK_SCORE} AS score
+                        FROM {self.schema}.{self.table_name}
+                        {where_clause}
+                    """
+                    # Skip first param (for Rank function)
+                    cursor.execute(sql_fallback, params[1:])
             else:
-                # Fallback to LIKE search (inefficient for large datasets)
-                query_pattern = f"%{query}%"
+                # Fallback to LIKE search (IRIS_TEXT_INDEX disabled)
+                from libs.helper import (  # pylint: disable=import-outside-toplevel
+                    escape_like_pattern,
+                )
+
+                escaped_query = escape_like_pattern(query)
+                query_pattern = f"%{escaped_query}%"
+
+                # Build WHERE clause with document ID filter if provided
+                where_clause = "WHERE text LIKE ? ESCAPE '\\\\'"
+                params = [query_pattern]
+
+                if document_ids_filter:
+                    placeholders = ",".join("?" * len(document_ids_filter))
+                    where_clause += f" AND JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
+                    params.extend(document_ids_filter)
+
                 sql = f"""
-                    SELECT TOP {top_k} id, text, meta
+                    SELECT TOP {top_k} id, text, meta, {self._FULL_TEXT_FALLBACK_SCORE} AS score
                     FROM {self.schema}.{self.table_name}
-                    WHERE text LIKE ?
+                    {where_clause}
+                    ORDER BY LENGTH(text) ASC
                 """
-                cursor.execute(sql, (query_pattern,))
+
+                logger.debug(
+                    "LIKE fallback (TEXT_INDEX disabled): query='%s'",
+                    query_pattern,
+                )
+                cursor.execute(sql, params)
 
             docs = []
             for row in cursor.fetchall():
-                if len(row) >= 3:
-                    metadata = json.loads(row[2]) if row[2] else {}
-                    docs.append(Document(page_content=row[1], metadata=metadata))
+                # Expecting 4 columns: id, text, meta, score
+                if len(row) >= 4:
+                    text_content = row[1]
+                    meta_str = row[2]
+                    score_value = row[3]
+
+                    metadata = json.loads(meta_str) if meta_str else {}
+                    # Add score to metadata for hybrid search compatibility
+                    score = float(score_value) if score_value is not None else 0.0
+                    metadata["score"] = score
+
+                    docs.append(Document(page_content=text_content, metadata=metadata))
+
+            logger.info(
+                "Full-text search completed: query='%s', results=%d/%d",
+                query,
+                len(docs),
+                top_k,
+            )
 
             if not docs:
-                logger.info("Full-text search for '%s' returned no results", query)
+                logger.warning("Full-text search for '%s' returned no results", query)
 
             return docs
 
@@ -366,7 +463,11 @@ class IrisVector(BaseVector):
                         AS %iFind.Index.Basic
                         (LANGUAGE = '{language}', LOWER = 1, INDEXOPTION = 0)
                     """
-                    logger.info("Creating text index: %s with language: %s", text_index_name, language)
+                    logger.info(
+                        "Creating text index: %s with language: %s",
+                        text_index_name,
+                        language,
+                    )
                     logger.info("SQL for text index: %s", sql_text_index)
                     cursor.execute(sql_text_index)
                     logger.info("Text index created successfully: %s", text_index_name)

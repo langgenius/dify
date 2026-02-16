@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { Tag } from './constant'
 import { useEffect, useRef } from 'react'
 import { ToastProvider } from '@/app/components/base/toast'

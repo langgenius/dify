@@ -1,9 +1,8 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { useRouter } from 'next/navigation'
 // Libraries
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Button from '@/app/components/base/button'
@@ -14,21 +13,21 @@ import TagFilter from '@/app/components/base/tag-management/filter'
 // Hooks
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
+import ServiceApi from '../extra-info/service-api'
 import DatasetFooter from './dataset-footer'
 import Datasets from './datasets'
 
 const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
-  const router = useRouter()
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const { isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -53,10 +52,8 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  useEffect(() => {
-    if (currentWorkspace.role === 'normal')
-      return router.replace('/apps')
-  }, [currentWorkspace, router])
+  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
     <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
@@ -81,13 +78,18 @@ const List = () => {
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
+          {
+            isCurrentWorkspaceManager && (
+              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
+            )
+          }
           <div className="h-4 w-[1px] bg-divider-regular" />
           <Button
             className="shadows-shadow-xs gap-0.5"
             onClick={() => setShowExternalApiPanel(true)}
           >
             <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text system-sm-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
           </Button>
         </div>
       </div>
@@ -96,7 +98,6 @@ const List = () => {
       {showTagManagementModal && (
         <TagManagementModal type="knowledge" show={showTagManagementModal} />
       )}
-
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )

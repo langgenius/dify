@@ -223,7 +223,6 @@ const Tabs: FC<TabsProps> = ({
             customTools={customTools || []}
             workflowTools={workflowTools || []}
             mcpTools={mcpTools || []}
-            canChooseMCPTool
             onTagsChange={onTagsChange}
             isInRAGPipeline={inRAGPipeline}
             featuredPlugins={featuredPlugins}

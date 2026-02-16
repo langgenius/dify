@@ -45,3 +45,33 @@ def test_streaming_conversation_variables():
     runner = TableTestRunner()
     result = runner.run_test_case(case)
     assert result.success, f"Test failed: {result.error}"
+
+
+def test_streaming_conversation_variables_v1_overwrite_waits_for_assignment():
+    fixture_name = "test_streaming_conversation_variables_v1_overwrite"
+    input_query = "overwrite-value"
+
+    case = WorkflowTestCase(
+        fixture_path=fixture_name,
+        use_auto_mock=False,
+        mock_config=MockConfigBuilder().build(),
+        query=input_query,
+        inputs={},
+        expected_outputs={"answer": f"Current Value Of `conv_var` is:{input_query}"},
+    )
+
+    runner = TableTestRunner()
+    result = runner.run_test_case(case)
+    assert result.success, f"Test failed: {result.error}"
+
+    events = result.events
+    conv_var_chunk_events = [
+        event
+        for event in events
+        if isinstance(event, NodeRunStreamChunkEvent) and tuple(event.selector) == ("conversation", "conv_var")
+    ]
+
+    assert conv_var_chunk_events, "Expected conversation variable chunk events to be emitted"
+    assert all(event.chunk == input_query for event in conv_var_chunk_events), (
+        "Expected streamed conversation variable value to match the input query"
+    )

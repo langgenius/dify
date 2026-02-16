@@ -7,8 +7,7 @@ from contextlib import contextmanager
 from typing import Any
 
 import psycopg2
-import psycopg2.pool
-from psycopg2 import InterfaceError, OperationalError
+from sqlalchemy import create_engine
 
 from configs import dify_config
 
@@ -16,11 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class AliyunLogStorePG:
-    """
-    PostgreSQL protocol support for Aliyun SLS LogStore.
-
-    Handles PG connection pooling and operations for regions that support PG protocol.
-    """
+    """PostgreSQL protocol support for Aliyun SLS LogStore using SQLAlchemy connection pool."""
 
     def __init__(self, access_key_id: str, access_key_secret: str, endpoint: str, project_name: str):
         """
@@ -36,24 +31,11 @@ class AliyunLogStorePG:
         self._access_key_secret = access_key_secret
         self._endpoint = endpoint
         self.project_name = project_name
-        self._pg_pool: psycopg2.pool.SimpleConnectionPool | None = None
+        self._engine: Any = None  # SQLAlchemy Engine
         self._use_pg_protocol = False
 
     def _check_port_connectivity(self, host: str, port: int, timeout: float = 2.0) -> bool:
-        """
-        Check if a TCP port is reachable using socket connection.
-
-        This provides a fast check before attempting full database connection,
-        preventing long waits when connecting to unsupported regions.
-
-        Args:
-            host: Hostname or IP address
-            port: Port number
-            timeout: Connection timeout in seconds (default: 2.0)
-
-        Returns:
-            True if port is reachable, False otherwise
-        """
+        """Fast TCP port check to avoid long waits on unsupported regions."""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
@@ -65,166 +47,101 @@ class AliyunLogStorePG:
             return False
 
     def init_connection(self) -> bool:
-        """
-        Initialize PostgreSQL connection pool for SLS PG protocol support.
-
-        Attempts to connect to SLS using PostgreSQL protocol. If successful, sets
-        _use_pg_protocol to True and creates a connection pool. If connection fails
-        (region doesn't support PG protocol or other errors), returns False.
-
-        Returns:
-            True if PG protocol is supported and initialized, False otherwise
-        """
+        """Initialize SQLAlchemy connection pool with pool_recycle and TCP keepalive support."""
         try:
-            # Extract hostname from endpoint (remove protocol if present)
             pg_host = self._endpoint.replace("http://", "").replace("https://", "")
 
-            # Get pool configuration
-            pg_max_connections = int(os.environ.get("ALIYUN_SLS_PG_MAX_CONNECTIONS", 10))
+            # Pool configuration
+            pool_size = int(os.environ.get("ALIYUN_SLS_PG_POOL_SIZE", 5))
+            max_overflow = int(os.environ.get("ALIYUN_SLS_PG_MAX_OVERFLOW", 5))
+            pool_recycle = int(os.environ.get("ALIYUN_SLS_PG_POOL_RECYCLE", 3600))
+            pool_pre_ping = os.environ.get("ALIYUN_SLS_PG_POOL_PRE_PING", "false").lower() == "true"
 
-            logger.debug(
-                "Check PG protocol connection to SLS: host=%s, project=%s",
-                pg_host,
-                self.project_name,
-            )
+            logger.debug("Check PG protocol connection to SLS: host=%s, project=%s", pg_host, self.project_name)
 
-            # Fast port connectivity check before attempting full connection
-            # This prevents long waits when connecting to unsupported regions
+            # Fast port check to avoid long waits
             if not self._check_port_connectivity(pg_host, 5432, timeout=1.0):
-                logger.info(
-                    "USE SDK mode for read/write operations, host=%s",
-                    pg_host,
-                )
+                logger.debug("Using SDK mode for host=%s", pg_host)
                 return False
 
-            # Create connection pool
-            self._pg_pool = psycopg2.pool.SimpleConnectionPool(
-                minconn=1,
-                maxconn=pg_max_connections,
-                host=pg_host,
-                port=5432,
-                database=self.project_name,
-                user=self._access_key_id,
-                password=self._access_key_secret,
-                sslmode="require",
-                connect_timeout=5,
-                application_name=f"Dify-{dify_config.project.version}",
+            # Build connection URL
+            from urllib.parse import quote_plus
+
+            username = quote_plus(self._access_key_id)
+            password = quote_plus(self._access_key_secret)
+            database_url = (
+                f"postgresql+psycopg2://{username}:{password}@{pg_host}:5432/{self.project_name}?sslmode=require"
             )
 
-            # Note: Skip test query because SLS PG protocol only supports SELECT/INSERT on actual tables
-            # Connection pool creation success already indicates connectivity
+            # Create SQLAlchemy engine with connection pool
+            self._engine = create_engine(
+                database_url,
+                pool_size=pool_size,
+                max_overflow=max_overflow,
+                pool_recycle=pool_recycle,
+                pool_pre_ping=pool_pre_ping,
+                pool_timeout=30,
+                connect_args={
+                    "connect_timeout": 5,
+                    "application_name": f"Dify-{dify_config.project.version}-fixautocommit",
+                    "keepalives": 1,
+                    "keepalives_idle": 60,
+                    "keepalives_interval": 10,
+                    "keepalives_count": 5,
+                },
+            )
 
             self._use_pg_protocol = True
             logger.info(
-                "PG protocol initialized successfully for SLS project=%s. Will use PG for read/write operations.",
+                "PG protocol initialized for SLS project=%s (pool_size=%d, pool_recycle=%ds)",
                 self.project_name,
+                pool_size,
+                pool_recycle,
             )
             return True
 
         except Exception as e:
-            # PG connection failed - fallback to SDK mode
             self._use_pg_protocol = False
-            if self._pg_pool:
+            if self._engine:
                 try:
-                    self._pg_pool.closeall()
+                    self._engine.dispose()
                 except Exception:
-                    logger.debug("Failed to close PG connection pool during cleanup, ignoring")
-            self._pg_pool = None
+                    logger.debug("Failed to dispose engine during cleanup, ignoring")
+            self._engine = None
 
-            logger.info(
-                "PG protocol connection failed (region may not support PG protocol): %s. "
-                "Falling back to SDK mode for read/write operations.",
-                str(e),
-            )
-            return False
-
-    def _is_connection_valid(self, conn: Any) -> bool:
-        """
-        Check if a connection is still valid.
-
-        Args:
-            conn: psycopg2 connection object
-
-        Returns:
-            True if connection is valid, False otherwise
-        """
-        try:
-            # Check if connection is closed
-            if conn.closed:
-                return False
-
-            # Quick ping test - execute a lightweight query
-            # For SLS PG protocol, we can't use SELECT 1 without FROM,
-            # so we just check the connection status
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT 1")
-                cursor.fetchone()
-            return True
-        except Exception:
+            logger.debug("Using SDK mode for region: %s", str(e))
             return False
 
     @contextmanager
     def _get_connection(self):
-        """
-        Context manager to get a PostgreSQL connection from the pool.
+        """Get connection from SQLAlchemy pool. Pool handles recycle, invalidation, and keepalive automatically."""
+        if not self._engine:
+            raise RuntimeError("SQLAlchemy engine is not initialized")
 
-        Automatically validates and refreshes stale connections.
-
-        Note: Aliyun SLS PG protocol does not support transactions, so we always
-        use autocommit mode.
-
-        Yields:
-            psycopg2 connection object
-
-        Raises:
-            RuntimeError: If PG pool is not initialized
-        """
-        if not self._pg_pool:
-            raise RuntimeError("PG connection pool is not initialized")
-
-        conn = self._pg_pool.getconn()
+        connection = self._engine.raw_connection()
         try:
-            # Validate connection and get a fresh one if needed
-            if not self._is_connection_valid(conn):
-                logger.debug("Connection is stale, marking as bad and getting a new one")
-                # Mark connection as bad and get a new one
-                self._pg_pool.putconn(conn, close=True)
-                conn = self._pg_pool.getconn()
-
-            # Aliyun SLS PG protocol does not support transactions, always use autocommit
-            conn.autocommit = True
-            yield conn
+            connection.autocommit = True  # SLS PG protocol does not support transactions
+            yield connection
+        except Exception:
+            raise
         finally:
-            # Return connection to pool (or close if it's bad)
-            if self._is_connection_valid(conn):
-                self._pg_pool.putconn(conn)
-            else:
-                self._pg_pool.putconn(conn, close=True)
+            connection.close()
 
     def close(self) -> None:
-        """Close the PostgreSQL connection pool."""
-        if self._pg_pool:
+        """Dispose SQLAlchemy engine and close all connections."""
+        if self._engine:
             try:
-                self._pg_pool.closeall()
-                logger.info("PG connection pool closed")
+                self._engine.dispose()
+                logger.info("SQLAlchemy engine disposed")
             except Exception:
-                logger.exception("Failed to close PG connection pool")
+                logger.exception("Failed to dispose engine")
 
     def _is_retriable_error(self, error: Exception) -> bool:
-        """
-        Check if an error is retriable (connection-related issues).
-
-        Args:
-            error: Exception to check
-
-        Returns:
-            True if the error is retriable, False otherwise
-        """
-        # Retry on connection-related errors
-        if isinstance(error, (OperationalError, InterfaceError)):
+        """Check if error is retriable (connection-related issues)."""
+        # Check for psycopg2 connection errors directly
+        if isinstance(error, (psycopg2.OperationalError, psycopg2.InterfaceError)):
             return True
 
-        # Check error message for specific connection issues
         error_msg = str(error).lower()
         retriable_patterns = [
             "connection",
@@ -234,34 +151,18 @@ class AliyunLogStorePG:
             "reset by peer",
             "no route to host",
             "network",
+            "operational error",
+            "interface error",
         ]
         return any(pattern in error_msg for pattern in retriable_patterns)
 
     def put_log(self, logstore: str, contents: Sequence[tuple[str, str]], log_enabled: bool = False) -> None:
-        """
-        Write log to SLS using PostgreSQL protocol with automatic retry.
-
-        Note: SLS PG protocol only supports INSERT (not UPDATE). This uses append-only
-        writes with log_version field for versioning, same as SDK implementation.
-
-        Args:
-            logstore: Name of the logstore table
-            contents: List of (field_name, value) tuples
-            log_enabled: Whether to enable logging
-
-        Raises:
-            psycopg2.Error: If database operation fails after all retries
-        """
+        """Write log to SLS using INSERT with automatic retry (3 attempts with exponential backoff)."""
         if not contents:
             return
 
-        # Extract field names and values from contents
         fields = [field_name for field_name, _ in contents]
         values = [value for _, value in contents]
-
-        # Build INSERT statement with literal values
-        # Note: Aliyun SLS PG protocol doesn't support parameterized queries,
-        # so we need to use mogrify to safely create literal values
         field_list = ", ".join([f'"{field}"' for field in fields])
 
         if log_enabled:
@@ -272,67 +173,40 @@ class AliyunLogStorePG:
                 len(contents),
             )
 
-        # Retry configuration
         max_retries = 3
-        retry_delay = 0.1  # Start with 100ms
+        retry_delay = 0.1
 
         for attempt in range(max_retries):
             try:
                 with self._get_connection() as conn:
                     with conn.cursor() as cursor:
-                        # Use mogrify to safely convert values to SQL literals
                         placeholders = ", ".join(["%s"] * len(fields))
                         values_literal = cursor.mogrify(f"({placeholders})", values).decode("utf-8")
                         insert_sql = f'INSERT INTO "{logstore}" ({field_list}) VALUES {values_literal}'
                         cursor.execute(insert_sql)
-                # Success - exit retry loop
                 return
 
             except psycopg2.Error as e:
-                # Check if error is retriable
                 if not self._is_retriable_error(e):
-                    # Not a retriable error (e.g., data validation error), fail immediately
-                    logger.exception(
-                        "Failed to put logs to logstore %s via PG protocol (non-retriable error)",
-                        logstore,
-                    )
+                    logger.exception("Failed to put logs to logstore %s (non-retriable error)", logstore)
                     raise
 
-                # Retriable error - log and retry if we have attempts left
                 if attempt < max_retries - 1:
                     logger.warning(
-                        "Failed to put logs to logstore %s via PG protocol (attempt %d/%d): %s. Retrying...",
+                        "Failed to put logs to logstore %s (attempt %d/%d): %s. Retrying...",
                         logstore,
                         attempt + 1,
                         max_retries,
                         str(e),
                     )
                     time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
+                    retry_delay *= 2
                 else:
-                    # Last attempt failed
-                    logger.exception(
-                        "Failed to put logs to logstore %s via PG protocol after %d attempts",
-                        logstore,
-                        max_retries,
-                    )
+                    logger.exception("Failed to put logs to logstore %s after %d attempts", logstore, max_retries)
                     raise
 
     def execute_sql(self, sql: str, logstore: str, log_enabled: bool = False) -> list[dict[str, Any]]:
-        """
-        Execute SQL query using PostgreSQL protocol with automatic retry.
-
-        Args:
-            sql: SQL query string
-            logstore: Name of the logstore (for logging purposes)
-            log_enabled: Whether to enable logging
-
-        Returns:
-            List of result rows as dictionaries
-
-        Raises:
-            psycopg2.Error: If database operation fails after all retries
-        """
+        """Execute SQL query with automatic retry (3 attempts with exponential backoff)."""
         if log_enabled:
             logger.info(
                 "[LogStore-PG] EXECUTE_SQL | logstore=%s | project=%s | sql=%s",
@@ -341,20 +215,16 @@ class AliyunLogStorePG:
                 sql,
             )
 
-        # Retry configuration
         max_retries = 3
-        retry_delay = 0.1  # Start with 100ms
+        retry_delay = 0.1
 
         for attempt in range(max_retries):
             try:
                 with self._get_connection() as conn:
                     with conn.cursor() as cursor:
                         cursor.execute(sql)
-
-                        # Get column names from cursor description
                         columns = [desc[0] for desc in cursor.description]
 
-                        # Fetch all results and convert to list of dicts
                         result = []
                         for row in cursor.fetchall():
                             row_dict = {}
@@ -372,36 +242,31 @@ class AliyunLogStorePG:
                         return result
 
             except psycopg2.Error as e:
-                # Check if error is retriable
                 if not self._is_retriable_error(e):
-                    # Not a retriable error (e.g., SQL syntax error), fail immediately
                     logger.exception(
-                        "Failed to execute SQL query on logstore %s via PG protocol (non-retriable error): sql=%s",
+                        "Failed to execute SQL on logstore %s (non-retriable error): sql=%s",
                         logstore,
                         sql,
                     )
                     raise
 
-                # Retriable error - log and retry if we have attempts left
                 if attempt < max_retries - 1:
                     logger.warning(
-                        "Failed to execute SQL query on logstore %s via PG protocol (attempt %d/%d): %s. Retrying...",
+                        "Failed to execute SQL on logstore %s (attempt %d/%d): %s. Retrying...",
                         logstore,
                         attempt + 1,
                         max_retries,
                         str(e),
                     )
                     time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
+                    retry_delay *= 2
                 else:
-                    # Last attempt failed
                     logger.exception(
-                        "Failed to execute SQL query on logstore %s via PG protocol after %d attempts: sql=%s",
+                        "Failed to execute SQL on logstore %s after %d attempts: sql=%s",
                         logstore,
                         max_retries,
                         sql,
                     )
                     raise
 
-        # This line should never be reached due to raise above, but makes type checker happy
         return []

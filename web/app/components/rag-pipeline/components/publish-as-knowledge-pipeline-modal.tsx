@@ -11,7 +11,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {
   confirmDisabled?: boolean
@@ -28,10 +28,9 @@ const PublishAsKnowledgePipelineModal = ({
   onConfirm,
 }: PublishAsKnowledgePipelineModalProps) => {
   const { t } = useTranslation()
-  const knowledgeName = useStore(s => s.knowledgeName)
-  const knowledgeIcon = useStore(s => s.knowledgeIcon)
-  const [pipelineName, setPipelineName] = useState(knowledgeName!)
-  const [pipelineIcon, setPipelineIcon] = useState(knowledgeIcon!)
+  const workflowStore = useWorkflowStore()
+  const [pipelineName, setPipelineName] = useState(() => workflowStore.getState().knowledgeName!)
+  const [pipelineIcon, setPipelineIcon] = useState(() => workflowStore.getState().knowledgeIcon!)
   const [description, setDescription] = useState('')
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
 
@@ -85,7 +84,11 @@ const PublishAsKnowledgePipelineModal = ({
       >
         <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
           {t('common.publishAs', { ns: 'pipeline' })}
-          <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
+          <div
+            data-testid="publish-modal-close-btn"
+            className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
+            onClick={onCancel}
+          >
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>

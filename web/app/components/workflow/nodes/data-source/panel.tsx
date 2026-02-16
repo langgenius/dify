@@ -139,20 +139,22 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
 
           return (
             <div key={outputItem.name}>
-              {outputItem.value?.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName="code-sm-semibold text-text-secondary"
-                  payload={wrapStructuredVarItem(outputItem, schemaType)}
-                />
-              ) : (
-                <VarItem
-                  name={outputItem.name}
-                  // eslint-disable-next-line sonarjs/no-nested-template-literals
-                  type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                  description={outputItem.description}
-                  isIndent={hasObjectOutput}
-                />
-              )}
+              {outputItem.value?.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={wrapStructuredVarItem(outputItem, schemaType)}
+                    />
+                  )
+                : (
+                    <VarItem
+                      name={outputItem.name}
+
+                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                      description={outputItem.description}
+                      isIndent={hasObjectOutput}
+                    />
+                  )}
             </div>
           )
         })}

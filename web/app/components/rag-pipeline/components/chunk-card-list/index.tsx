@@ -1,4 +1,4 @@
-import type { ChunkInfo, GeneralChunks, ParentChildChunk, ParentChildChunks, QAChunk, QAChunks } from './types'
+import type { ChunkInfo, GeneralChunk, GeneralChunks, ParentChildChunk, ParentChildChunks, QAChunk, QAChunks } from './types'
 import type { ParentMode } from '@/models/datasets'
 import { useMemo } from 'react'
 import { ChunkingMode } from '@/models/datasets'
@@ -21,13 +21,13 @@ export const ChunkCardList = (props: ChunkCardListProps) => {
     if (chunkType === ChunkingMode.parentChild)
       return (chunkInfo as ParentChildChunks).parent_child_chunks
     return (chunkInfo as QAChunks).qa_chunks
-  }, [chunkInfo])
+  }, [chunkInfo, chunkType])
 
-  const getWordCount = (seg: string | ParentChildChunk | QAChunk) => {
+  const getWordCount = (seg: GeneralChunk | ParentChildChunk | QAChunk) => {
     if (chunkType === ChunkingMode.parentChild)
-      return (seg as ParentChildChunk).parent_content.length
+      return (seg as ParentChildChunk).parent_content?.length
     if (chunkType === ChunkingMode.text)
-      return (seg as string).length
+      return (seg as GeneralChunk).content.length
     return (seg as QAChunk).question.length + (seg as QAChunk).answer.length
   }
 
@@ -41,7 +41,7 @@ export const ChunkCardList = (props: ChunkCardListProps) => {
             key={`${chunkType}-${index}`}
             chunkType={chunkType}
             parentMode={parentMode}
-            content={chunkType === ChunkingMode.parentChild ? (seg as ParentChildChunk).child_contents : (seg as string | QAChunk)}
+            content={seg}
             wordCount={wordCount}
             positionId={index + 1}
           />

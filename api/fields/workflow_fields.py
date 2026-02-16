@@ -1,7 +1,7 @@
 from flask_restx import fields
 
 from core.helper import encrypter
-from core.variables import SecretVariable, SegmentType, Variable
+from core.variables import SecretVariable, SegmentType, VariableBase
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
@@ -21,7 +21,7 @@ class EnvironmentVariableField(fields.Raw):
                 "value_type": value.value_type.value,
                 "description": value.description,
             }
-        if isinstance(value, Variable):
+        if isinstance(value, VariableBase):
             return {
                 "id": value.id,
                 "name": value.name,

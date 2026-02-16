@@ -114,7 +114,7 @@ const DatasetSidebarDropdown = ({
                   </div>
                   <div className="system-2xs-medium-uppercase text-text-tertiary">
                     {isExternalProvider && t('externalTag', { ns: 'dataset' })}
-                    {!isExternalProvider && dataset.doc_form && dataset.indexing_technique && (
+                    {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                       <div className="flex items-center gap-x-2">
                         <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
                         <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>

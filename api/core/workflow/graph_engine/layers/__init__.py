@@ -8,11 +8,9 @@ with middleware-like components that can observe events and interact with execut
 from .base import GraphEngineLayer
 from .debug_logging import DebugLoggingLayer
 from .execution_limits import ExecutionLimitsLayer
-from .observability import ObservabilityLayer
 
 __all__ = [
     "DebugLoggingLayer",
     "ExecutionLimitsLayer",
     "GraphEngineLayer",
-    "ObservabilityLayer",
 ]

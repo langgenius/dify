@@ -1,8 +1,6 @@
 'use client'
-import copy from 'copy-to-clipboard'
-import { debounce } from 'es-toolkit/compat'
-import * as React from 'react'
-import { useState } from 'react'
+import { useClipboard } from 'foxact/use-clipboard'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Copy,
@@ -18,29 +16,24 @@ const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyIcon = ({ content }: Props) => {
   const { t } = useTranslation()
-  const [isCopied, setIsCopied] = useState<boolean>(false)
+  const { copied, copy, reset } = useClipboard()
 
-  const onClickCopy = debounce(() => {
+  const handleCopy = useCallback(() => {
     copy(content)
-    setIsCopied(true)
-  }, 100)
-
-  const onMouseLeave = debounce(() => {
-    setIsCopied(false)
-  }, 100)
+  }, [copy, content])
 
   return (
     <Tooltip
       popupContent={
-        (isCopied
+        (copied
           ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
           : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
       }
     >
-      <div onMouseLeave={onMouseLeave}>
-        {!isCopied
+      <div onMouseLeave={reset}>
+        {!copied
           ? (
-              <Copy className="mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={onClickCopy} />
+              <Copy className="mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} />
             )
           : (
               <CopyCheck className="mx-1 h-3.5 w-3.5 text-text-tertiary" />

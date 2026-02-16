@@ -24,8 +24,12 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
 }
 
 const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
-  if (response.status === 204)
-    return Response.json({ result: 'success' })
+  if (response.status === 204) {
+    return new Response(JSON.stringify({ result: 'success' }), {
+      status: 200,
+      headers: { 'Content-Type': ContentType.json },
+    })
+  }
 }
 
 export type ResponseError = {
@@ -127,8 +131,25 @@ export const getBaseOptions = (): RequestInit => ({
 })
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
-  const baseOptions = getBaseOptions()
-  const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
+  // In fetchCompat mode, skip baseOptions to avoid overriding Request object's method, headers,
+  const baseOptions = otherOptions.fetchCompat
+    ? {
+        mode: 'cors',
+        credentials: 'include', // always send cookies、HTTP Basic authentication.
+        redirect: 'follow',
+      }
+    : {
+        mode: 'cors',
+        credentials: 'include', // always send cookies、HTTP Basic authentication.
+        headers: new Headers({
+          'Content-Type': ContentType.json,
+        }),
+        method: 'GET',
+        redirect: 'follow',
+      }
+  const { params, body, headers: headersFromProps, ...init } = Object.assign({}, baseOptions, options)
+  const headers = new Headers(headersFromProps || {})
+
   const {
     isPublicAPI = false,
     isMarketplaceAPI = false,
@@ -136,6 +157,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     needAllResponseContent,
     deleteContentType,
     getAbortController,
+    fetchCompat = false,
+    request,
   } = otherOptions
 
   let base: string
@@ -154,14 +177,14 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI)
-    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
+    headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType)
-    (headers as any).delete('Content-Type')
+    headers.delete('Content-Type')
 
   // ! For Marketplace API, help to filter tags added in new version
   if (isMarketplaceAPI)
-    (headers as any).set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
+    headers.set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
 
   const client = baseClient.extend({
     hooks: {
@@ -181,7 +204,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  const res = await client(fetchPathname, {
+  const res = await client(request || fetchPathname, {
     ...init,
     headers,
     credentials: isMarketplaceAPI
@@ -190,8 +213,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     retry: {
       methods: [],
     },
-    ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
-    searchParams: params,
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+    searchParams: !fetchCompat ? params : undefined,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
@@ -204,7 +227,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  if (needAllResponseContent)
+  if (needAllResponseContent || fetchCompat)
     return res as T
   const contentType = res.headers.get('content-type')
   if (
@@ -215,6 +238,32 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   }
 
   return await res.json() as T
+}
+
+/**
+ * Fire-and-forget POST with `keepalive: true` for use during page unload.
+ * Includes credentials, Authorization (if available), and CSRF header
+ * so the request is authenticated, matching the headers sent by the
+ * standard `base()` fetch wrapper.
+ */
+export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
+  const headers: Record<string, string> = {
+    'Content-Type': ContentType.json,
+    [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+  }
+
+  // Add Authorization header if an access token is available
+  const accessToken = getWebAppAccessToken()
+  if (accessToken)
+    headers.Authorization = `Bearer ${accessToken}`
+
+  globalThis.fetch(url, {
+    method: 'POST',
+    keepalive: true,
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(body),
+  }).catch(() => {})
 }
 
 export { base }

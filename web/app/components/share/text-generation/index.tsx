@@ -26,15 +26,15 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Toast from '@/app/components/base/toast'
 import Res from '@/app/components/share/text-generation/result'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { appDefaultIconBackground, BATCH_CONCURRENCY, DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { appDefaultIconBackground, BATCH_CONCURRENCY } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n-config/client'
 import { AccessMode } from '@/models/access-control'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -69,10 +69,10 @@ export type IMainProps = {
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
-  installedAppInfo,
   isWorkflow = false,
 }) => {
   const { notify } = Toast
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -102,16 +102,18 @@ const TextGeneration: FC<IMainProps> = ({
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = useCallback(async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
+    if (!appId)
+      return
+    const res: any = await doFetchSavedMessage(appSourceType, appId)
     setSavedMessages(res.data)
-  }, [isInstalledApp, appId])
+  }, [appSourceType, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, appId)
+    await saveMessage(messageId, appSourceType, appId)
     notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, appId)
+    await removeMessage(messageId, appSourceType, appId)
     notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
     fetchSavedMessage()
   }
@@ -256,11 +258,10 @@ const TextGeneration: FC<IMainProps> = ({
       promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
         if (errorRowIndex !== 0)
           return
-        if (varItem.type === 'string') {
-          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
-          if (item[varIndex].length > maxLen) {
+        if (varItem.type === 'string' && varItem.max_length) {
+          if (item[varIndex].length > varItem.max_length) {
             moreThanMaxLengthVarName = varItem.name
-            maxLength = maxLen
+            maxLength = varItem.max_length
             errorRowIndex = index + 1
             return
           }
@@ -424,9 +425,8 @@ const TextGeneration: FC<IMainProps> = ({
       isCallBatchAPI={isCallBatchAPI}
       isPC={isPC}
       isMobile={!isPC}
-      isInstalledApp={isInstalledApp}
+      appSourceType={isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp}
       appId={appId}
-      installedAppInfo={installedAppInfo}
       isError={task?.status === TaskStatus.failed}
       promptConfig={promptConfig}
       moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}

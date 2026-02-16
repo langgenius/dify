@@ -95,7 +95,7 @@ const Base: FC<Props> = ({
             }}
           >
             {headerRight}
-            {showCodeGenerator && codeLanguages && (
+            {!!(showCodeGenerator && codeLanguages) && (
               <div className="ml-1">
                 <CodeGeneratorButton
                   onGenerated={onGenerated}
@@ -119,7 +119,7 @@ const Base: FC<Props> = ({
             </div>
           </div>
         </div>
-        {tip && <div className="px-1 py-0.5">{tip}</div>}
+        {!!tip && <div className="px-1 py-0.5">{tip}</div>}
         <PromptEditorHeightResizeWrap
           height={isExpand ? editorExpandHeight : editorContentHeight}
           minHeight={editorContentMinHeight}

@@ -11,6 +11,7 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
+import { isClient } from '@/utils/client'
 import {
   useEmbeddedChatbotContext,
 } from '../context'
@@ -40,7 +41,6 @@ const Header: FC<IHeaderProps> = ({
     allInputsHidden,
   } = useEmbeddedChatbotContext()
 
-  const isClient = typeof window !== 'undefined'
   const isIframe = isClient ? window.self !== window.top : false
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
@@ -66,7 +66,9 @@ const Header: FC<IHeaderProps> = ({
     const listener = (event: MessageEvent) => handleMessageReceived(event)
     window.addEventListener('message', listener)
 
-    window.parent.postMessage({ type: 'dify-chatbot-iframe-ready' }, '*')
+    // Security: Use document.referrer to get parent origin
+    const targetOrigin = document.referrer ? new URL(document.referrer).origin : '*'
+    window.parent.postMessage({ type: 'dify-chatbot-iframe-ready' }, targetOrigin)
 
     return () => window.removeEventListener('message', listener)
   }, [isIframe, handleMessageReceived])

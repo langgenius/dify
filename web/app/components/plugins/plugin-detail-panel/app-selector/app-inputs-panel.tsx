@@ -1,27 +1,19 @@
 'use client'
-import type { FileUpload } from '@/app/components/base/features/types'
 import type { App } from '@/types/app'
-import * as React from 'react'
-import { useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
-import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useAppDetail } from '@/service/use-apps'
-import { useFileUploadConfig } from '@/service/use-common'
-import { useAppWorkflow } from '@/service/use-workflow'
-import { AppModeEnum, Resolution } from '@/types/app'
-
+import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'
 import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: {
     app_id: string
-    inputs: Record<string, any>
+    inputs: Record<string, unknown>
   }
   appDetail: App
-  onFormChange: (value: Record<string, any>) => void
+  onFormChange: (value: Record<string, unknown>) => void
 }
 
 const AppInputsPanel = ({
@@ -30,155 +22,33 @@ const AppInputsPanel = ({
   onFormChange,
 }: Props) => {
   const { t } = useTranslation()
-  const inputsRef = useRef<any>(value?.inputs || {})
-  const isBasicApp = appDetail.mode !== AppModeEnum.ADVANCED_CHAT && appDetail.mode !== AppModeEnum.WORKFLOW
-  const { data: fileUploadConfig } = useFileUploadConfig()
-  const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
-  const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(isBasicApp ? '' : appDetail.id)
-  const isLoading = isAppLoading || isWorkflowLoading
+  const inputsRef = useRef<Record<string, unknown>>(value?.inputs || {})
 
-  const basicAppFileConfig = useMemo(() => {
-    let fileConfig: FileUpload
-    if (isBasicApp)
-      fileConfig = currentApp?.model_config?.file_upload as FileUpload
-    else
-      fileConfig = currentWorkflow?.features?.file_upload as FileUpload
-    return {
-      image: {
-        detail: fileConfig?.image?.detail || Resolution.high,
-        enabled: !!fileConfig?.image?.enabled,
-        number_limits: fileConfig?.image?.number_limits || 3,
-        transfer_methods: fileConfig?.image?.transfer_methods || ['local_file', 'remote_url'],
-      },
-      enabled: !!(fileConfig?.enabled || fileConfig?.image?.enabled),
-      allowed_file_types: fileConfig?.allowed_file_types || [SupportUploadFileTypes.image],
-      allowed_file_extensions: fileConfig?.allowed_file_extensions || [...FILE_EXTS[SupportUploadFileTypes.image]].map(ext => `.${ext}`),
-      allowed_file_upload_methods: fileConfig?.allowed_file_upload_methods || fileConfig?.image?.transfer_methods || ['local_file', 'remote_url'],
-      number_limits: fileConfig?.number_limits || fileConfig?.image?.number_limits || 3,
-    }
-  }, [currentApp?.model_config?.file_upload, currentWorkflow?.features?.file_upload, isBasicApp])
+  const { inputFormSchema, isLoading } = useAppInputsFormSchema({ appDetail })
 
-  const inputFormSchema = useMemo(() => {
-    if (!currentApp)
-      return []
-    let inputFormSchema = []
-    if (isBasicApp) {
-      inputFormSchema = currentApp.model_config?.user_input_form?.filter((item: any) => !item.external_data_tool).map((item: any) => {
-        if (item.paragraph) {
-          return {
-            ...item.paragraph,
-            type: 'paragraph',
-            required: false,
-          }
-        }
-        if (item.number) {
-          return {
-            ...item.number,
-            type: 'number',
-            required: false,
-          }
-        }
-        if (item.checkbox) {
-          return {
-            ...item.checkbox,
-            type: 'checkbox',
-            required: false,
-          }
-        }
-        if (item.select) {
-          return {
-            ...item.select,
-            type: 'select',
-            required: false,
-          }
-        }
-
-        if (item['file-list']) {
-          return {
-            ...item['file-list'],
-            type: 'file-list',
-            required: false,
-            fileUploadConfig,
-          }
-        }
-
-        if (item.file) {
-          return {
-            ...item.file,
-            type: 'file',
-            required: false,
-            fileUploadConfig,
-          }
-        }
-
-        if (item.json_object) {
-          return {
-            ...item.json_object,
-            type: 'json_object',
-          }
-        }
-
-        return {
-          ...item['text-input'],
-          type: 'text-input',
-          required: false,
-        }
-      }) || []
-    }
-    else {
-      const startNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start) as any
-      inputFormSchema = startNode?.data.variables.map((variable: any) => {
-        if (variable.type === InputVarType.multiFiles) {
-          return {
-            ...variable,
-            required: false,
-            fileUploadConfig,
-          }
-        }
-
-        if (variable.type === InputVarType.singleFile) {
-          return {
-            ...variable,
-            required: false,
-            fileUploadConfig,
-          }
-        }
-        return {
-          ...variable,
-          required: false,
-        }
-      }) || []
-    }
-    if ((currentApp.mode === AppModeEnum.COMPLETION || currentApp.mode === AppModeEnum.WORKFLOW) && basicAppFileConfig.enabled) {
-      inputFormSchema.push({
-        label: 'Image Upload',
-        variable: '#image#',
-        type: InputVarType.singleFile,
-        required: false,
-        ...basicAppFileConfig,
-        fileUploadConfig,
-      })
-    }
-    return inputFormSchema || []
-  }, [basicAppFileConfig, currentApp, currentWorkflow, fileUploadConfig, isBasicApp])
-
-  const handleFormChange = (value: Record<string, any>) => {
-    inputsRef.current = value
-    onFormChange(value)
+  const handleFormChange = (newValue: Record<string, unknown>) => {
+    inputsRef.current = newValue
+    onFormChange(newValue)
   }
+
+  const hasInputs = inputFormSchema.length > 0
 
   return (
     <div className={cn('flex max-h-[240px] flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
       {isLoading && <div className="pt-3"><Loading type="app" /></div>}
       {!isLoading && (
-        <div className="system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary">{t('appSelector.params', { ns: 'app' })}</div>
-      )}
-      {!isLoading && !inputFormSchema.length && (
-        <div className="flex h-16 flex-col items-center justify-center">
-          <div className="system-sm-regular text-text-tertiary">{t('appSelector.noParams', { ns: 'app' })}</div>
+        <div className="system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary">
+          {t('appSelector.params', { ns: 'app' })}
         </div>
       )}
-      {!isLoading && !!inputFormSchema.length && (
+      {!isLoading && !hasInputs && (
+        <div className="flex h-16 flex-col items-center justify-center">
+          <div className="system-sm-regular text-text-tertiary">
+            {t('appSelector.noParams', { ns: 'app' })}
+          </div>
+        </div>
+      )}
+      {!isLoading && hasInputs && (
         <div className="grow overflow-y-auto">
           <AppInputsForm
             inputs={value?.inputs || {}}

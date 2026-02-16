@@ -100,7 +100,7 @@ const RetrievalConfig: FC<Props> = ({
       score_threshold: configs.score_threshold_enabled ? (configs.score_threshold ?? DATASET_DEFAULT.score_threshold) : null,
       reranking_model: retrieval_mode === RETRIEVE_TYPE.oneWay
         ? undefined
-        // eslint-disable-next-line sonarjs/no-nested-conditional
+
         : (!configs.reranking_model?.reranking_provider_name
             ? undefined
             : {

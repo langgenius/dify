@@ -22,6 +22,7 @@ export type ReactMarkdownWrapperProps = {
   customDisallowedElements?: string[]
   customComponents?: Record<string, React.ComponentType<any>>
   pluginInfo?: SimplePluginInfo
+  rehypePlugins?: any// js: PluggableList[]
 }
 
 export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
@@ -30,7 +31,7 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
   return (
     <ReactMarkdown
       remarkPlugins={[
-        RemarkGfm,
+        [RemarkGfm, { singleTilde: false }],
         [RemarkMath, { singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX }],
         RemarkBreaks,
       ]}
@@ -55,6 +56,7 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
             tree.children.forEach(iterate)
           }
         },
+        ...(props.rehypePlugins || []),
       ]}
       urlTransform={customUrlTransform}
       disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}

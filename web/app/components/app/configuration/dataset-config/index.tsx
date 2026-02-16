@@ -30,6 +30,7 @@ import {
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { hasEditPermissionForDataset } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
@@ -38,7 +39,11 @@ import CardItem from './card-item'
 import ContextVar from './context-var'
 import ParamsConfig from './params-config'
 
-const DatasetConfig: FC = () => {
+type Props = {
+  readonly?: boolean
+  hideMetadataFilter?: boolean
+}
+const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)
   const {
@@ -259,17 +264,19 @@ const DatasetConfig: FC = () => {
       className="mt-2"
       title={t('feature.dataSet.title', { ns: 'appDebug' })}
       headerRight={(
-        <div className="flex items-center gap-1">
-          {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
-          <OperationBtn type="add" onClick={showSelectDataSet} />
-        </div>
+        !readonly && (
+          <div className="flex items-center gap-1">
+            {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
+            <OperationBtn type="add" onClick={showSelectDataSet} />
+          </div>
+        )
       )}
       hasHeaderBottomBorder={!hasData}
       noBodySpacing
     >
       {hasData
         ? (
-            <div className="mt-1 flex flex-wrap justify-between px-3 pb-3">
+            <div className={cn('mt-1 grid grid-cols-1 px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
               {formattedDataset.map(item => (
                 <CardItem
                   key={item.id}
@@ -277,6 +284,7 @@ const DatasetConfig: FC = () => {
                   onRemove={onRemove}
                   onSave={handleSave}
                   editable={item.editable}
+                  readonly={readonly}
                 />
               ))}
             </div>
@@ -287,27 +295,29 @@ const DatasetConfig: FC = () => {
             </div>
           )}
 
-      <div className="border-t border-t-divider-subtle py-2">
-        <MetadataFilter
-          metadataList={metadataList}
-          selectedDatasetsLoaded
-          metadataFilterMode={datasetConfigs.metadata_filtering_mode}
-          metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
-          handleAddCondition={handleAddCondition}
-          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
-          handleRemoveCondition={handleRemoveCondition}
-          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
-          handleUpdateCondition={handleUpdateCondition}
-          metadataModelConfig={datasetConfigs.metadata_model_config}
-          handleMetadataModelChange={handleMetadataModelChange}
-          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
-          isCommonVariable
-          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
-          availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
-        />
-      </div>
+      {!hideMetadataFilter && (
+        <div className="border-t border-t-divider-subtle py-2">
+          <MetadataFilter
+            metadataList={metadataList}
+            selectedDatasetsLoaded
+            metadataFilterMode={datasetConfigs.metadata_filtering_mode}
+            metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
+            handleAddCondition={handleAddCondition}
+            handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+            handleRemoveCondition={handleRemoveCondition}
+            handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+            handleUpdateCondition={handleUpdateCondition}
+            metadataModelConfig={datasetConfigs.metadata_model_config}
+            handleMetadataModelChange={handleMetadataModelChange}
+            handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+            isCommonVariable
+            availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
+            availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
+          />
+        </div>
+      )}
 
-      {mode === AppModeEnum.COMPLETION && dataSet.length > 0 && (
+      {!readonly && mode === AppModeEnum.COMPLETION && dataSet.length > 0 && (
         <ContextVar
           value={selectedContextVar?.key}
           options={promptVariablesToSelect}

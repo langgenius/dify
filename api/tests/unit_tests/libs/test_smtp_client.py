@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -17,7 +17,7 @@ def test_smtp_plain_success(mock_smtp_cls: MagicMock):
     client = SMTPClient(server="smtp.example.com", port=25, username="", password="", _from="noreply@example.com")
     client.send(_mail())
 
-    mock_smtp_cls.assert_called_once_with("smtp.example.com", 25, timeout=10)
+    mock_smtp_cls.assert_called_once_with("smtp.example.com", 25, timeout=10, local_hostname=ANY)
     mock_smtp.sendmail.assert_called_once()
     mock_smtp.quit.assert_called_once()
 
@@ -38,7 +38,7 @@ def test_smtp_tls_opportunistic_success(mock_smtp_cls: MagicMock):
     )
     client.send(_mail())
 
-    mock_smtp_cls.assert_called_once_with("smtp.example.com", 587, timeout=10)
+    mock_smtp_cls.assert_called_once_with("smtp.example.com", 587, timeout=10, local_hostname=ANY)
     assert mock_smtp.ehlo.call_count == 2
     mock_smtp.starttls.assert_called_once()
     mock_smtp.login.assert_called_once_with("user", "pass")

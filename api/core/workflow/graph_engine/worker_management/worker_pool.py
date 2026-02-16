@@ -8,22 +8,18 @@ DynamicScaler, and WorkerFactory into a single class.
 import logging
 import queue
 import threading
-from typing import TYPE_CHECKING, final
+from typing import final
 
-from configs import dify_config
+from core.workflow.context import IExecutionContext
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase
 
+from ..config import GraphEngineConfig
 from ..layers.base import GraphEngineLayer
 from ..ready_queue import ReadyQueue
 from ..worker import Worker
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from contextvars import Context
-
-    from flask import Flask
 
 
 @final
@@ -41,12 +37,9 @@ class WorkerPool:
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         layers: list[GraphEngineLayer],
-        flask_app: "Flask | None" = None,
-        context_vars: "Context | None" = None,
-        min_workers: int | None = None,
-        max_workers: int | None = None,
-        scale_up_threshold: int | None = None,
-        scale_down_idle_time: float | None = None,
+        stop_event: threading.Event,
+        config: GraphEngineConfig,
+        execution_context: IExecutionContext | None = None,
     ) -> None:
         """
         Initialize the simple worker pool.
@@ -56,31 +49,22 @@ class WorkerPool:
             event_queue: Queue for worker events
             graph: The workflow graph
             layers: Graph engine layers for node execution hooks
-            flask_app: Optional Flask app for context preservation
-            context_vars: Optional context variables
-            min_workers: Minimum number of workers
-            max_workers: Maximum number of workers
-            scale_up_threshold: Queue depth to trigger scale up
-            scale_down_idle_time: Seconds before scaling down idle workers
+            config: GraphEngine worker pool configuration
+            execution_context: Optional execution context for context preservation
         """
         self._ready_queue = ready_queue
         self._event_queue = event_queue
         self._graph = graph
-        self._flask_app = flask_app
-        self._context_vars = context_vars
+        self._execution_context = execution_context
         self._layers = layers
-
-        # Scaling parameters with defaults
-        self._min_workers = min_workers or dify_config.GRAPH_ENGINE_MIN_WORKERS
-        self._max_workers = max_workers or dify_config.GRAPH_ENGINE_MAX_WORKERS
-        self._scale_up_threshold = scale_up_threshold or dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD
-        self._scale_down_idle_time = scale_down_idle_time or dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME
+        self._config = config
 
         # Worker management
         self._workers: list[Worker] = []
         self._worker_counter = 0
         self._lock = threading.RLock()
         self._running = False
+        self._stop_event = stop_event
 
         # No longer tracking worker states with callbacks to avoid lock contention
 
@@ -101,18 +85,18 @@ class WorkerPool:
             if initial_count is None:
                 node_count = len(self._graph.nodes)
                 if node_count < 10:
-                    initial_count = self._min_workers
+                    initial_count = self._config.min_workers
                 elif node_count < 50:
-                    initial_count = min(self._min_workers + 1, self._max_workers)
+                    initial_count = min(self._config.min_workers + 1, self._config.max_workers)
                 else:
-                    initial_count = min(self._min_workers + 2, self._max_workers)
+                    initial_count = min(self._config.min_workers + 2, self._config.max_workers)
 
                 logger.debug(
                     "Starting worker pool: %d workers (nodes=%d, min=%d, max=%d)",
                     initial_count,
                     node_count,
-                    self._min_workers,
-                    self._max_workers,
+                    self._config.min_workers,
+                    self._config.max_workers,
                 )
 
             # Create initial workers
@@ -135,7 +119,7 @@ class WorkerPool:
             # Wait for workers to finish
             for worker in self._workers:
                 if worker.is_alive():
-                    worker.join(timeout=10.0)
+                    worker.join(timeout=2.0)
 
             self._workers.clear()
 
@@ -150,8 +134,8 @@ class WorkerPool:
             graph=self._graph,
             layers=self._layers,
             worker_id=worker_id,
-            flask_app=self._flask_app,
-            context_vars=self._context_vars,
+            execution_context=self._execution_context,
+            stop_event=self._stop_event,
         )
 
         worker.start()
@@ -181,7 +165,7 @@ class WorkerPool:
         Returns:
             True if scaled up, False otherwise
         """
-        if queue_depth > self._scale_up_threshold and current_count < self._max_workers:
+        if queue_depth > self._config.scale_up_threshold and current_count < self._config.max_workers:
             old_count = current_count
             self._create_worker()
 
@@ -190,7 +174,7 @@ class WorkerPool:
                 old_count,
                 len(self._workers),
                 queue_depth,
-                self._scale_up_threshold,
+                self._config.scale_up_threshold,
             )
             return True
         return False
@@ -209,7 +193,7 @@ class WorkerPool:
             True if scaled down, False otherwise
         """
         # Skip if we're at minimum or have no idle workers
-        if current_count <= self._min_workers or idle_count == 0:
+        if current_count <= self._config.min_workers or idle_count == 0:
             return False
 
         # Check if we have excess capacity
@@ -227,10 +211,10 @@ class WorkerPool:
 
         for worker in self._workers:
             # Check if worker is idle and has exceeded idle time threshold
-            if worker.is_idle and worker.idle_duration >= self._scale_down_idle_time:
+            if worker.is_idle and worker.idle_duration >= self._config.scale_down_idle_time:
                 # Don't remove if it would leave us unable to handle the queue
                 remaining_workers = current_count - len(workers_to_remove) - 1
-                if remaining_workers >= self._min_workers and remaining_workers >= max(1, queue_depth // 2):
+                if remaining_workers >= self._config.min_workers and remaining_workers >= max(1, queue_depth // 2):
                     workers_to_remove.append((worker, worker.worker_id))
                     # Only remove one worker per check to avoid aggressive scaling
                     break
@@ -247,7 +231,7 @@ class WorkerPool:
                 old_count,
                 len(self._workers),
                 len(workers_to_remove),
-                self._scale_down_idle_time,
+                self._config.scale_down_idle_time,
                 queue_depth,
                 active_count,
                 idle_count - len(workers_to_remove),
@@ -291,6 +275,6 @@ class WorkerPool:
             return {
                 "total_workers": len(self._workers),
                 "queue_depth": self._ready_queue.qsize(),
-                "min_workers": self._min_workers,
-                "max_workers": self._max_workers,
+                "min_workers": self._config.min_workers,
+                "max_workers": self._config.max_workers,
             }

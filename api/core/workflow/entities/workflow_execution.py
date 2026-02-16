@@ -5,6 +5,8 @@ Models are independent of the storage mechanism and don't contain
 implementation details like tenant_id, app_id, etc.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -59,7 +61,7 @@ class WorkflowExecution(BaseModel):
         graph: Mapping[str, Any],
         inputs: Mapping[str, Any],
         started_at: datetime,
-    ) -> "WorkflowExecution":
+    ) -> WorkflowExecution:
         return WorkflowExecution(
             id_=id_,
             workflow_id=workflow_id,

@@ -15,10 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
-from core.ops.entities.config_entity import (
-    OPS_FILE_PATH,
-    TracingProviderEnum,
-)
+from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -31,11 +28,10 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.engine import db
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
-from repositories.factory import DifyAPIRepositoryFactory
 from tasks.ops_trace_task import process_trace_tasks
 
 if TYPE_CHECKING:
@@ -470,9 +466,14 @@ class TraceTask:
 
     @classmethod
     def _get_workflow_run_repo(cls):
+        from repositories.factory import DifyAPIRepositoryFactory
+
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
+                    # Lazy import to avoid circular import during module initialization
+                    from repositories.factory import DifyAPIRepositoryFactory
+
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
                     cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo

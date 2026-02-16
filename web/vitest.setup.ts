@@ -1,6 +1,8 @@
-import { cleanup } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
+import * as React from 'react'
 import '@testing-library/jest-dom/vitest'
+import 'vitest-canvas-mock'
 
 mockResizeObserver()
 
@@ -78,12 +80,29 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
 if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView)
   Element.prototype.scrollIntoView = function () { /* noop */ }
 
-afterEach(() => {
-  cleanup()
+afterEach(async () => {
+  // Wrap cleanup in act() to flush pending React scheduler work
+  // This prevents "window is not defined" errors from React 19's scheduler
+  // which uses setImmediate/MessageChannel that can fire after jsdom cleanup
+  await act(async () => {
+    cleanup()
+  })
 })
 
 // mock next/image to avoid width/height requirements for data URLs
 vi.mock('next/image')
+
+// mock foxact/use-clipboard - not available in test environment
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copy: vi.fn(),
+    copied: false,
+  }),
+}))
+
+// mock zustand - auto-resets all stores after each test
+// Based on official Zustand testing guide: https://zustand.docs.pmnd.rs/guides/testing
+vi.mock('zustand')
 
 // mock react-i18next
 vi.mock('react-i18next', async () => {
@@ -92,6 +111,15 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock(),
+  }
+})
+
+// Mock FloatingPortal to render children in the normal DOM flow
+vi.mock('@floating-ui/react', async () => {
+  const actual = await vi.importActual('@floating-ui/react')
+  return {
+    ...actual,
+    FloatingPortal: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-floating-ui-portal': true }, children),
   }
 })
 

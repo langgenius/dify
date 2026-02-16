@@ -8,7 +8,7 @@ import { useParams, usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { audioToText } from '@/service/share'
+import { AppSourceType, audioToText } from '@/service/share'
 import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 import { convertToMp3 } from './utils'
@@ -108,7 +108,7 @@ const VoiceInput = ({
     }
 
     try {
-      const audioResponse = await audioToText(url, isPublic, formData)
+      const audioResponse = await audioToText(url, isPublic ? AppSourceType.webApp : AppSourceType.installedApp, formData)
       onConverted(audioResponse.text)
       onCancel()
     }

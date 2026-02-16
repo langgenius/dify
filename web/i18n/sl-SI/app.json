@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Zbirk znanja ni mogoče najti",
   "gotoAnything.emptyState.noPluginsFound": "Vtičnikov ni mogoče najti",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Vozlišča poteka dela niso bila najdena",
-  "gotoAnything.emptyState.tryDifferentTerm": "Poskusite z drugim iskalnim izrazom ali odstranite filter {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Poskusite z drugim iskalnim izrazom",
   "gotoAnything.emptyState.trySpecificSearch": "Poskusite {{shortcuts}} za specifična iskanja",
   "gotoAnything.groups.apps": "Aplikacije",
   "gotoAnything.groups.commands": "Ukazi",

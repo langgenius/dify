@@ -10,6 +10,7 @@ Key Features:
 - Optimized deduplication using finished_at IS NOT NULL filter
 - Window functions only when necessary (running status queries)
 - Multi-tenant data isolation and security
+- SQL injection prevention via parameter escaping
 """
 
 import logging
@@ -22,6 +23,8 @@ from typing import Any, cast
 from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories import safe_float, safe_int
+from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
@@ -63,10 +66,9 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.created_by_role = data.get("created_by_role") or ""
     model.created_by = data.get("created_by") or ""
 
-    # Numeric fields with defaults
-    model.total_tokens = int(data.get("total_tokens", 0))
-    model.total_steps = int(data.get("total_steps", 0))
-    model.exceptions_count = int(data.get("exceptions_count", 0))
+    model.total_tokens = safe_int(data.get("total_tokens", 0))
+    model.total_steps = safe_int(data.get("total_steps", 0))
+    model.exceptions_count = safe_int(data.get("exceptions_count", 0))
 
     # Optional fields
     model.graph = data.get("graph")
@@ -101,7 +103,8 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     if model.finished_at and model.created_at:
         model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
     else:
-        model.elapsed_time = float(data.get("elapsed_time", 0))
+        # Use safe conversion to handle 'null' strings and None values
+        model.elapsed_time = safe_float(data.get("elapsed_time", 0))
 
     return model
 
@@ -165,16 +168,26 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             status,
         )
         # Convert triggered_from to list if needed
-        if isinstance(triggered_from, WorkflowRunTriggeredFrom):
+        if isinstance(triggered_from, (WorkflowRunTriggeredFrom, str)):
             triggered_from_list = [triggered_from]
         else:
             triggered_from_list = list(triggered_from)
 
-        # Build triggered_from filter
-        triggered_from_filter = " OR ".join([f"triggered_from='{tf.value}'" for tf in triggered_from_list])
+        # Escape parameters to prevent SQL injection
+        escaped_tenant_id = escape_identifier(tenant_id)
+        escaped_app_id = escape_identifier(app_id)
 
-        # Build status filter
-        status_filter = f"AND status='{status}'" if status else ""
+        # Build triggered_from filter with escaped values
+        # Support both enum and string values for triggered_from
+        triggered_from_filter = " OR ".join(
+            [
+                f"triggered_from='{escape_sql_string(tf.value if isinstance(tf, WorkflowRunTriggeredFrom) else tf)}'"
+                for tf in triggered_from_list
+            ]
+        )
+
+        # Build status filter with escaped value
+        status_filter = f"AND status='{escape_sql_string(status)}'" if status else ""
 
         # Build last_id filter for pagination
         # Note: This is simplified. In production, you'd need to track created_at from last record
@@ -188,8 +201,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             SELECT * FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                 FROM {AliyunLogStore.workflow_execution_logstore}
-                WHERE tenant_id='{tenant_id}'
-                  AND app_id='{app_id}'
+                WHERE tenant_id='{escaped_tenant_id}'
+                  AND app_id='{escaped_app_id}'
                   AND ({triggered_from_filter})
                   {status_filter}
                   {last_id_filter}
@@ -232,6 +245,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         logger.debug("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
 
         try:
+            # Escape parameters to prevent SQL injection
+            escaped_run_id = escape_identifier(run_id)
+            escaped_tenant_id = escape_identifier(tenant_id)
+            escaped_app_id = escape_identifier(app_id)
+
             # Check if PG protocol is supported
             if self.logstore_client.supports_pg_protocol:
                 # Use PG protocol with SQL query (get latest version of record)
@@ -240,7 +258,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                         SELECT *, 
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
-                        WHERE id = '{run_id}' AND tenant_id = '{tenant_id}' AND app_id = '{app_id}' AND __time__ > 0
+                        WHERE id = '{escaped_run_id}' 
+                          AND tenant_id = '{escaped_tenant_id}' 
+                          AND app_id = '{escaped_app_id}' 
+                          AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 100
                 """
@@ -250,7 +271,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 )
             else:
                 # Use SDK with LogStore query syntax
-                query = f"id: {run_id} and tenant_id: {tenant_id} and app_id: {app_id}"
+                # Note: Values must be quoted in LogStore query syntax to prevent injection
+                query = (
+                    f"id:{escape_logstore_query_value(run_id)} "
+                    f"and tenant_id:{escape_logstore_query_value(tenant_id)} "
+                    f"and app_id:{escape_logstore_query_value(app_id)}"
+                )
                 from_time = 0
                 to_time = int(time.time())  # now
 
@@ -323,6 +349,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         logger.debug("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
 
         try:
+            # Escape parameter to prevent SQL injection
+            escaped_run_id = escape_identifier(run_id)
+
             # Check if PG protocol is supported
             if self.logstore_client.supports_pg_protocol:
                 # Use PG protocol with SQL query (get latest version of record)
@@ -331,7 +360,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                         SELECT *, 
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
-                        WHERE id = '{run_id}' AND __time__ > 0
+                        WHERE id = '{escaped_run_id}' AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 100
                 """
@@ -341,7 +370,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 )
             else:
                 # Use SDK with LogStore query syntax
-                query = f"id: {run_id}"
+                # Note: Values must be quoted in LogStore query syntax
+                query = f"id:{escape_logstore_query_value(run_id)}"
                 from_time = 0
                 to_time = int(time.time())  # now
 
@@ -410,6 +440,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             triggered_from,
             status,
         )
+        # Escape parameters to prevent SQL injection
+        escaped_tenant_id = escape_identifier(tenant_id)
+        escaped_app_id = escape_identifier(app_id)
+        escaped_triggered_from = escape_sql_string(triggered_from)
+
         # Build time range filter
         time_filter = ""
         if time_range:
@@ -418,6 +453,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         # If status is provided, simple count
         if status:
+            escaped_status = escape_sql_string(status)
+
             if status == "running":
                 # Running status requires window function
                 sql = f"""
@@ -425,9 +462,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                     FROM (
                         SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                         FROM {AliyunLogStore.workflow_execution_logstore}
-                        WHERE tenant_id='{tenant_id}'
-                          AND app_id='{app_id}'
-                          AND triggered_from='{triggered_from}'
+                        WHERE tenant_id='{escaped_tenant_id}'
+                          AND app_id='{escaped_app_id}'
+                          AND triggered_from='{escaped_triggered_from}'
                           AND status='running'
                           {time_filter}
                     ) t
@@ -438,10 +475,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 sql = f"""
                     SELECT COUNT(DISTINCT id) as count
                     FROM {AliyunLogStore.workflow_execution_logstore}
-                    WHERE tenant_id='{tenant_id}'
-                      AND app_id='{app_id}'
-                      AND triggered_from='{triggered_from}'
-                      AND status='{status}'
+                    WHERE tenant_id='{escaped_tenant_id}'
+                      AND app_id='{escaped_app_id}'
+                      AND triggered_from='{escaped_triggered_from}'
+                      AND status='{escaped_status}'
                       AND finished_at IS NOT NULL
                       {time_filter}
                 """
@@ -467,13 +504,14 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # No status filter - get counts grouped by status
         # Use optimized query for finished runs, separate query for running
         try:
+            # Escape parameters (already escaped above, reuse variables)
             # Count finished runs grouped by status
             finished_sql = f"""
                 SELECT status, COUNT(DISTINCT id) as count
                 FROM {AliyunLogStore.workflow_execution_logstore}
-                WHERE tenant_id='{tenant_id}'
-                  AND app_id='{app_id}'
-                  AND triggered_from='{triggered_from}'
+                WHERE tenant_id='{escaped_tenant_id}'
+                  AND app_id='{escaped_app_id}'
+                  AND triggered_from='{escaped_triggered_from}'
                   AND finished_at IS NOT NULL
                   {time_filter}
                 GROUP BY status
@@ -485,9 +523,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 FROM (
                     SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                     FROM {AliyunLogStore.workflow_execution_logstore}
-                    WHERE tenant_id='{tenant_id}'
-                      AND app_id='{app_id}'
-                      AND triggered_from='{triggered_from}'
+                    WHERE tenant_id='{escaped_tenant_id}'
+                      AND app_id='{escaped_app_id}'
+                      AND triggered_from='{escaped_triggered_from}'
                       AND status='running'
                       {time_filter}
                 ) t
@@ -546,7 +584,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         logger.debug(
             "get_daily_runs_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from
         )
-        # Build time range filter
+
+        # Escape parameters to prevent SQL injection
+        escaped_tenant_id = escape_identifier(tenant_id)
+        escaped_app_id = escape_identifier(app_id)
+        escaped_triggered_from = escape_sql_string(triggered_from)
+
+        # Build time range filter (datetime.isoformat() is safe)
         time_filter = ""
         if start_date:
             time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
@@ -557,9 +601,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         sql = f"""
             SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT id) as runs
             FROM {AliyunLogStore.workflow_execution_logstore}
-            WHERE tenant_id='{tenant_id}'
-              AND app_id='{app_id}'
-              AND triggered_from='{triggered_from}'
+            WHERE tenant_id='{escaped_tenant_id}'
+              AND app_id='{escaped_app_id}'
+              AND triggered_from='{escaped_triggered_from}'
               AND finished_at IS NOT NULL
               {time_filter}
             GROUP BY date
@@ -601,7 +645,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             app_id,
             triggered_from,
         )
-        # Build time range filter
+
+        # Escape parameters to prevent SQL injection
+        escaped_tenant_id = escape_identifier(tenant_id)
+        escaped_app_id = escape_identifier(app_id)
+        escaped_triggered_from = escape_sql_string(triggered_from)
+
+        # Build time range filter (datetime.isoformat() is safe)
         time_filter = ""
         if start_date:
             time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
@@ -611,9 +661,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         sql = f"""
             SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT created_by) as terminal_count
             FROM {AliyunLogStore.workflow_execution_logstore}
-            WHERE tenant_id='{tenant_id}'
-              AND app_id='{app_id}'
-              AND triggered_from='{triggered_from}'
+            WHERE tenant_id='{escaped_tenant_id}'
+              AND app_id='{escaped_app_id}'
+              AND triggered_from='{escaped_triggered_from}'
               AND finished_at IS NOT NULL
               {time_filter}
             GROUP BY date
@@ -655,7 +705,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             app_id,
             triggered_from,
         )
-        # Build time range filter
+
+        # Escape parameters to prevent SQL injection
+        escaped_tenant_id = escape_identifier(tenant_id)
+        escaped_app_id = escape_identifier(app_id)
+        escaped_triggered_from = escape_sql_string(triggered_from)
+
+        # Build time range filter (datetime.isoformat() is safe)
         time_filter = ""
         if start_date:
             time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
@@ -665,9 +721,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         sql = f"""
             SELECT DATE(from_unixtime(__time__)) as date, SUM(total_tokens) as token_count
             FROM {AliyunLogStore.workflow_execution_logstore}
-            WHERE tenant_id='{tenant_id}'
-              AND app_id='{app_id}'
-              AND triggered_from='{triggered_from}'
+            WHERE tenant_id='{escaped_tenant_id}'
+              AND app_id='{escaped_app_id}'
+              AND triggered_from='{escaped_triggered_from}'
               AND finished_at IS NOT NULL
               {time_filter}
             GROUP BY date
@@ -709,7 +765,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             app_id,
             triggered_from,
         )
-        # Build time range filter
+
+        # Escape parameters to prevent SQL injection
+        escaped_tenant_id = escape_identifier(tenant_id)
+        escaped_app_id = escape_identifier(app_id)
+        escaped_triggered_from = escape_sql_string(triggered_from)
+
+        # Build time range filter (datetime.isoformat() is safe)
         time_filter = ""
         if start_date:
             time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
@@ -726,9 +788,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                     created_by,
                     COUNT(DISTINCT id) AS interactions
                 FROM {AliyunLogStore.workflow_execution_logstore}
-                WHERE tenant_id='{tenant_id}'
-                  AND app_id='{app_id}'
-                  AND triggered_from='{triggered_from}'
+                WHERE tenant_id='{escaped_tenant_id}'
+                  AND app_id='{escaped_app_id}'
+                  AND triggered_from='{escaped_triggered_from}'
                   AND finished_at IS NOT NULL
                   {time_filter}
                 GROUP BY date, created_by

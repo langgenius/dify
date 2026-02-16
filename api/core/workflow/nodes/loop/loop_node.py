@@ -71,9 +71,9 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         if self.node_data.loop_variables:
             value_processor: dict[Literal["constant", "variable"], Callable[[LoopVariableData], Segment | None]] = {
                 "constant": lambda var: self._get_segment_for_constant(var.var_type, var.value),
-                "variable": lambda var: self.graph_runtime_state.variable_pool.get(var.value)
-                if isinstance(var.value, list)
-                else None,
+                "variable": lambda var: (
+                    self.graph_runtime_state.variable_pool.get(var.value) if isinstance(var.value, list) else None
+                ),
             }
             for loop_variable in self.node_data.loop_variables:
                 if loop_variable.value_type not in value_processor:
@@ -413,11 +413,11 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
         # Import dependencies
+        from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.nodes.node_factory import DifyNodeFactory
         from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes
@@ -452,6 +452,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             graph=loop_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine

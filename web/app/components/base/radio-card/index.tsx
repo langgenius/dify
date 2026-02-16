@@ -56,7 +56,7 @@ const RadioCard: FC<Props> = ({
           </div>
         )}
       </div>
-      {((isChosen && chosenConfig) || noRadio) && (
+      {!!((isChosen && chosenConfig) || noRadio) && (
         <div className="mt-2 flex gap-x-2">
           <div className="size-8 shrink-0"></div>
           <div className={cn(chosenConfigWrapClassName, 'grow')}>

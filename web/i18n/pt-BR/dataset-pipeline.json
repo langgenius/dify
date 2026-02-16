@@ -79,7 +79,7 @@
   "pipelineNameAndIcon": "Nome e ícone do pipeline",
   "publishPipeline.error.message": "Falha ao publicar o pipeline de conhecimento",
   "publishPipeline.success.message": "Pipeline de conhecimento publicado",
-  "publishPipeline.success.tip": "Vá para Documentos para adicionar ou gerenciar documentos.",
+  "publishPipeline.success.tip": "Vá para <CustomLink>Documentos</CustomLink> para adicionar ou gerenciar documentos.",
   "publishTemplate.error.message": "Falha ao publicar o modelo de pipeline",
   "publishTemplate.success.learnMore": "Saiba Mais",
   "publishTemplate.success.message": "Modelo de pipeline publicado",

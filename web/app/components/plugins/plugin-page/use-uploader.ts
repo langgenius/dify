@@ -36,7 +36,7 @@ export const useUploader = ({ onFileChange, containerRef, enabled = true }: Uplo
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length > 0)
       onFileChange(files[0])
   }

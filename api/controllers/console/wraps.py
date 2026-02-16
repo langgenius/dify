@@ -286,13 +286,12 @@ def enable_change_email(view: Callable[P, R]):
 def is_allow_transfer_owner(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _, current_tenant_id = current_account_with_tenant()
-        features = FeatureService.get_features(current_tenant_id)
-        if features.is_allow_transfer_workspace:
-            return view(*args, **kwargs)
+        from libs.workspace_permission import check_workspace_owner_transfer_permission
 
-        # otherwise, return 403
-        abort(403)
+        _, current_tenant_id = current_account_with_tenant()
+        # Check both billing/plan level and workspace policy level permissions
+        check_workspace_owner_transfer_permission(current_tenant_id)
+        return view(*args, **kwargs)
 
     return decorated
 

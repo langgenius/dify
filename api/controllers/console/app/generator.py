@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from typing import Any
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -12,10 +11,12 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.app.app_config.entities import ModelConfig
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
+from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
@@ -26,28 +27,13 @@ from services.workflow_service import WorkflowService
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class RuleGeneratePayload(BaseModel):
-    instruction: str = Field(..., description="Rule generation instruction")
-    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
-    no_variable: bool = Field(default=False, description="Whether to exclude variables")
-
-
-class RuleCodeGeneratePayload(RuleGeneratePayload):
-    code_language: str = Field(default="javascript", description="Programming language for code generation")
-
-
-class RuleStructuredOutputPayload(BaseModel):
-    instruction: str = Field(..., description="Structured output generation instruction")
-    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
-
-
 class InstructionGeneratePayload(BaseModel):
     flow_id: str = Field(..., description="Workflow/Flow ID")
     node_id: str = Field(default="", description="Node ID for workflow context")
     current: str = Field(default="", description="Current instruction text")
     language: str = Field(default="javascript", description="Programming language (javascript/python)")
     instruction: str = Field(..., description="Instruction for generation")
-    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
+    model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
     ideal_output: str = Field(default="", description="Expected ideal output")
 
 
@@ -64,6 +50,7 @@ reg(RuleCodeGeneratePayload)
 reg(RuleStructuredOutputPayload)
 reg(InstructionGeneratePayload)
 reg(InstructionTemplatePayload)
+reg(ModelConfig)
 
 
 @console_ns.route("/rule-generate")
@@ -82,12 +69,7 @@ class RuleGenerateApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         try:
-            rules = LLMGenerator.generate_rule_config(
-                tenant_id=current_tenant_id,
-                instruction=args.instruction,
-                model_config=args.model_config_data,
-                no_variable=args.no_variable,
-            )
+            rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=args)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -118,9 +100,7 @@ class RuleCodeGenerateApi(Resource):
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
-                instruction=args.instruction,
-                model_config=args.model_config_data,
-                code_language=args.code_language,
+                args=args,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -152,8 +132,7 @@ class RuleStructuredOutputGenerateApi(Resource):
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
-                instruction=args.instruction,
-                model_config=args.model_config_data,
+                args=args,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -204,23 +183,29 @@ class InstructionGenerateApi(Resource):
                     case "llm":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
-                            instruction=args.instruction,
-                            model_config=args.model_config_data,
-                            no_variable=True,
+                            args=RuleGeneratePayload(
+                                instruction=args.instruction,
+                                model_config=args.model_config_data,
+                                no_variable=True,
+                            ),
                         )
                     case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
-                            instruction=args.instruction,
-                            model_config=args.model_config_data,
-                            no_variable=True,
+                            args=RuleGeneratePayload(
+                                instruction=args.instruction,
+                                model_config=args.model_config_data,
+                                no_variable=True,
+                            ),
                         )
                     case "code":
                         return LLMGenerator.generate_code(
                             tenant_id=current_tenant_id,
-                            instruction=args.instruction,
-                            model_config=args.model_config_data,
-                            code_language=args.language,
+                            args=RuleCodeGeneratePayload(
+                                instruction=args.instruction,
+                                model_config=args.model_config_data,
+                                code_language=args.language,
+                            ),
                         )
                     case _:
                         return {"error": f"invalid node type: {node_type}"}

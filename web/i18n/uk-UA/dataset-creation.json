@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Скасувати",
   "stepOne.uploader.change": "Змінити",
   "stepOne.uploader.failed": "Завантаження не вдалося",
-  "stepOne.uploader.tip": "Підтримуються {{supportTypes}}. Максимум {{size}} МБ кожен.",
+  "stepOne.uploader.tip": "Підтримуються {{supportTypes}}. Максимум {{batchCount}} файлів за раз, кожен до {{size}} МБ. Загалом максимум {{totalCount}} файлів.",
   "stepOne.uploader.title": "Завантажити текстовий файл",
   "stepOne.uploader.validation.count": "Не підтримується завантаження кількох файлів",
   "stepOne.uploader.validation.filesNumber": "Ліміт масового завантаження {{filesNumber}}.",

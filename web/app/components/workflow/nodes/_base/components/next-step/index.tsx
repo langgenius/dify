@@ -44,11 +44,19 @@ const NextStep = ({
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
 
   const list = useMemo(() => {
+    const resolveNextNodes = (connected: typeof connectedEdges) => {
+      return connected.reduce<Node[]>((acc, edge) => {
+        const nextNode = outgoers.find(outgoer => outgoer.id === edge.target)
+        if (nextNode)
+          acc.push(nextNode)
+        return acc
+      }, [])
+    }
     let items = []
     if (branches?.length) {
       items = branches.map((branch, index) => {
         const connected = connectedEdges.filter(edge => edge.sourceHandle === branch.id)
-        const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
+        const nextNodes = resolveNextNodes(connected)
 
         return {
           branch: {
@@ -61,7 +69,7 @@ const NextStep = ({
     }
     else {
       const connected = connectedEdges.filter(edge => edge.sourceHandle === 'source')
-      const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
+      const nextNodes = resolveNextNodes(connected)
 
       items = [{
         branch: {
@@ -73,7 +81,7 @@ const NextStep = ({
 
       if (data.error_strategy === ErrorHandleTypeEnum.failBranch && hasErrorHandleNode(data.type)) {
         const connected = connectedEdges.filter(edge => edge.sourceHandle === ErrorHandleTypeEnum.failBranch)
-        const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
+        const nextNodes = resolveNextNodes(connected)
 
         items.push({
           branch: {

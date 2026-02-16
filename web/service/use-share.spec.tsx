@@ -3,6 +3,7 @@ import type { AppConversationData, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import {
+  AppSourceType,
   fetchChatList,
   fetchConversations,
   generationConversationName,
@@ -15,15 +16,19 @@ import {
   useShareConversations,
 } from './use-share'
 
-vi.mock('./share', () => ({
-  fetchChatList: vi.fn(),
-  fetchConversations: vi.fn(),
-  generationConversationName: vi.fn(),
-  fetchAppInfo: vi.fn(),
-  fetchAppMeta: vi.fn(),
-  fetchAppParams: vi.fn(),
-  getAppAccessModeByAppCode: vi.fn(),
-}))
+vi.mock('./share', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./share')>()
+  return {
+    ...actual,
+    fetchChatList: vi.fn(),
+    fetchConversations: vi.fn(),
+    generationConversationName: vi.fn(),
+    fetchAppInfo: vi.fn(),
+    fetchAppMeta: vi.fn(),
+    fetchAppParams: vi.fn(),
+    getAppAccessModeByAppCode: vi.fn(),
+  }
+})
 
 const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
@@ -80,6 +85,7 @@ describe('useShareConversations', () => {
       appId: undefined,
       pinned: true,
       limit: 50,
+      appSourceType: AppSourceType.webApp,
     }
     const response = createConversationData()
     mockFetchConversations.mockResolvedValueOnce(response)
@@ -89,7 +95,7 @@ describe('useShareConversations', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchConversations).toHaveBeenCalledWith(false, undefined, undefined, true, 50)
+      expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, undefined, undefined, true, 50)
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -102,6 +108,7 @@ describe('useShareConversations', () => {
     const params = {
       isInstalledApp: true,
       appId: undefined,
+      appSourceType: AppSourceType.installedApp,
     }
 
     // Act
@@ -127,6 +134,7 @@ describe('useShareChatList', () => {
       conversationId: 'conversation-1',
       isInstalledApp: true,
       appId: 'app-1',
+      appSourceType: AppSourceType.installedApp,
     }
     const response = { data: [] }
     mockFetchChatList.mockResolvedValueOnce(response)
@@ -136,7 +144,7 @@ describe('useShareChatList', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', true, 'app-1')
+      expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.installedApp, 'app-1')
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -149,6 +157,7 @@ describe('useShareChatList', () => {
       conversationId: '',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
 
     // Act
@@ -171,6 +180,7 @@ describe('useShareChatList', () => {
       conversationId: 'conversation-1',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
     const initialResponse = { data: [{ id: '1', content: 'initial' }] }
     const updatedResponse = { data: [{ id: '1', content: 'initial' }, { id: '2', content: 'new message' }] }
@@ -219,6 +229,7 @@ describe('useShareConversationName', () => {
       conversationId: 'conversation-2',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
     const response = createConversationItem({ id: 'conversation-2', name: 'Generated' })
     mockGenerationConversationName.mockResolvedValueOnce(response)
@@ -228,7 +239,7 @@ describe('useShareConversationName', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockGenerationConversationName).toHaveBeenCalledWith(false, undefined, 'conversation-2')
+      expect(mockGenerationConversationName).toHaveBeenCalledWith(AppSourceType.webApp, undefined, 'conversation-2')
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -241,6 +252,7 @@ describe('useShareConversationName', () => {
       conversationId: 'conversation-3',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
 
     // Act

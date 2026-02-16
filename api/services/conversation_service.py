@@ -11,13 +11,13 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from core.variables.types import SegmentType
-from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -218,7 +218,9 @@ class ConversationService:
         # Apply variable_name filter if provided
         if variable_name:
             # Filter using JSON extraction to match variable names case-insensitively
-            escaped_variable_name = variable_name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            from libs.helper import escape_like_pattern
+
+            escaped_variable_name = escape_like_pattern(variable_name)
             # Filter using JSON extraction to match variable names case-insensitively
             if dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
                 stmt = stmt.where(
@@ -335,7 +337,7 @@ class ConversationService:
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
             # Use the conversation variable updater to persist the changes
-            updater = conversation_variable_updater_factory()
+            updater = ConversationVariableUpdater(session_factory.get_session_maker())
             updater.update(conversation_id, updated_variable)
             updater.flush()
 

@@ -14,7 +14,6 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
 
 const Item: FC<Props> = ({
@@ -25,7 +24,6 @@ const Item: FC<Props> = ({
   canNotSelectMultiple,
   onSelectMultiple,
   selectedTools,
-  canChooseMCPTool,
 }) => {
   return (
     <div>
@@ -43,7 +41,6 @@ const Item: FC<Props> = ({
             canNotSelectMultiple={canNotSelectMultiple}
             onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
           />
         ))}
       </div>
