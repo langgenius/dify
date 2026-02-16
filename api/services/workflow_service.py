@@ -26,6 +26,7 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, N
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNodeConfig
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
     HumanInputNodeData,
@@ -34,7 +35,6 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNodeConfig
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.repositories.human_input_form_repository import FormCreateParams
