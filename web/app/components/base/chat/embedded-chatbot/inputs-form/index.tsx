@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 import Divider from '@/app/components/base/divider'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { AppSourceType } from '@/service/share'
 import { cn } from '@/utils/classnames'
 import { useEmbeddedChatbotContext } from '../context'
@@ -33,7 +32,10 @@ const InputsFormNode = ({
     return null
 
   return (
-    <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4', isTryApp && 'mb-0 px-0')}>
+    <div
+      data-testid="inputs-form-node"
+      className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4', isTryApp && 'mb-0 px-0')}
+    >
       <div className={cn(
         'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
         collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
@@ -46,13 +48,29 @@ const InputsFormNode = ({
           isMobile && 'px-4 py-3',
         )}
         >
-          <Message3Fill className="h-6 w-6 shrink-0" />
-          <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
+          <div className="grow text-text-secondary system-xl-semibold">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
+            <Button
+              className="uppercase text-text-tertiary"
+              size="small"
+              variant="ghost"
+              onClick={() => setCollapsed(false)}
+              data-testid="inputs-form-edit-button"
+            >
+              {t('operation.edit', { ns: 'common' })}
+            </Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
+            <Button
+              className="uppercase text-text-tertiary"
+              size="small"
+              variant="ghost"
+              onClick={() => setCollapsed(true)}
+              data-testid="inputs-form-close-button"
+            >
+              {t('operation.close', { ns: 'common' })}
+            </Button>
           )}
         </div>
         {!collapsed && (
@@ -66,6 +84,7 @@ const InputsFormNode = ({
               variant="primary"
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
+              data-testid="inputs-form-start-chat-button"
               style={
                 themeBuilder?.theme
                   ? {
