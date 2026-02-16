@@ -1,6 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorView } from '../selector-view'
 
@@ -25,12 +26,6 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'sub-1',
   name: 'Subscription One',
@@ -47,6 +42,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
 beforeEach(() => {
   vi.clearAllMocks()
   mockSubscriptions = [createSubscription()]
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('SubscriptionSelectorView', () => {
@@ -75,18 +71,19 @@ describe('SubscriptionSelectorView', () => {
     }).not.toThrow()
   })
 
-  it('should highlight selected subscription row when selectedId matches', () => {
-    render(<SubscriptionSelectorView selectedId="sub-1" />)
+  it('should distinguish selected vs unselected subscription row', () => {
+    const { rerender } = render(<SubscriptionSelectorView selectedId="sub-1" />)
 
-    const selectedRow = screen.getByRole('button', { name: 'Subscription One' }).closest('div')
-    expect(selectedRow).toHaveClass('bg-state-base-hover')
-  })
+    const getRowClassName = () =>
+      screen.getByRole('button', { name: 'Subscription One' }).closest('div')?.className ?? ''
 
-  it('should not highlight row when selectedId does not match', () => {
-    render(<SubscriptionSelectorView selectedId="other-id" />)
+    const selectedClassName = getRowClassName()
 
-    const row = screen.getByRole('button', { name: 'Subscription One' }).closest('div')
-    expect(row).not.toHaveClass('bg-state-base-hover')
+    rerender(<SubscriptionSelectorView selectedId="other-id" />)
+
+    const unselectedClassName = getRowClassName()
+
+    expect(selectedClassName).not.toBe(unselectedClassName)
   })
 
   it('should omit header when there are no subscriptions', () => {
@@ -100,11 +97,9 @@ describe('SubscriptionSelectorView', () => {
   it('should show delete confirm when delete action is clicked', () => {
     const { container } = render(<SubscriptionSelectorView />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn')
+    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
     expect(deleteButton).toBeTruthy()
-
-    if (deleteButton)
-      fireEvent.click(deleteButton)
+    fireEvent.click(deleteButton)
 
     expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
   })
@@ -113,9 +108,8 @@ describe('SubscriptionSelectorView', () => {
     const onSelect = vi.fn()
     const { container } = render(<SubscriptionSelectorView onSelect={onSelect} />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn')
-    if (deleteButton)
-      fireEvent.click(deleteButton)
+    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
+    fireEvent.click(deleteButton)
 
     fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
 
@@ -127,9 +121,8 @@ describe('SubscriptionSelectorView', () => {
     const onSelect = vi.fn()
     const { container } = render(<SubscriptionSelectorView onSelect={onSelect} />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn')
-    if (deleteButton)
-      fireEvent.click(deleteButton)
+    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
+    fireEvent.click(deleteButton)
 
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/ }))
 

@@ -40,12 +40,14 @@ const createApp = (overrides?: Partial<App>): App => ({
 
 describe('AppCard', () => {
   const onCreate = vi.fn()
+  const onTry = vi.fn()
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
       app: createApp(),
       canCreate: false,
       onCreate,
+      onTry,
       isExplore: false,
       ...props,
     }
@@ -135,6 +137,16 @@ describe('AppCard', () => {
       renderComponent({ app: createApp({ description: '' }) })
 
       expect(screen.getByText('Sample App')).toBeInTheDocument()
+    })
+
+    it('should call onTry when try button is clicked', () => {
+      const app = createApp()
+
+      renderComponent({ app, canCreate: true, isExplore: true })
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+
+      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
     })
   })
 })

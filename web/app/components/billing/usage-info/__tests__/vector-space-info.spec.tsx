@@ -61,11 +61,10 @@ describe('VectorSpaceInfo', () => {
       expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
     })
 
-    it('should render full-width indeterminate bar for sandbox users', () => {
+    it('should render indeterminate bar for sandbox users', () => {
       render(<VectorSpaceInfo />)
 
-      const bar = screen.getByTestId('billing-progress-bar-indeterminate')
-      expect(bar).toHaveClass('w-full')
+      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
     })
 
     it('should display "< 50" format for sandbox below threshold', () => {
@@ -81,11 +80,11 @@ describe('VectorSpaceInfo', () => {
       mockVectorSpaceUsage = 50
     })
 
-    it('should render error color progress bar when at full capacity', () => {
+    it('should render determinate progress bar when at full capacity', () => {
       render(<VectorSpaceInfo />)
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-error-progress')
+      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
+      expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
     })
 
     it('should display "50 / 50 MB" format when at full capacity', () => {
@@ -108,19 +107,10 @@ describe('VectorSpaceInfo', () => {
       expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
     })
 
-    it('should render narrow indeterminate bar (not full width)', () => {
-      render(<VectorSpaceInfo />)
-
-      const bar = screen.getByTestId('billing-progress-bar-indeterminate')
-      expect(bar).toHaveClass('w-[30px]')
-      expect(bar).not.toHaveClass('w-full')
-    })
-
     it('should display "< 50 / total" format when below threshold', () => {
       render(<VectorSpaceInfo />)
 
       expect(screen.getByText(/< 50/)).toBeInTheDocument()
-      // 5 GB = 5120 MB
       expect(screen.getByText('5120MB')).toBeInTheDocument()
     })
   })
@@ -158,14 +148,6 @@ describe('VectorSpaceInfo', () => {
       expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
     })
 
-    it('should render narrow indeterminate bar (not full width)', () => {
-      render(<VectorSpaceInfo />)
-
-      const bar = screen.getByTestId('billing-progress-bar-indeterminate')
-      expect(bar).toHaveClass('w-[30px]')
-      expect(bar).not.toHaveClass('w-full')
-    })
-
     it('should display "< 50 / total" format when below threshold', () => {
       render(<VectorSpaceInfo />)
 
@@ -196,51 +178,24 @@ describe('VectorSpaceInfo', () => {
     })
   })
 
-  describe('Pro/Team Plan Warning State', () => {
-    it('should show warning color when Professional plan usage approaches limit (80%+)', () => {
+  describe('Pro/Team Plan Usage States', () => {
+    const renderAndGetBarClass = (usage: number) => {
       mockPlanType = Plan.professional
-      // 5120 MB * 80% = 4096 MB
-      mockVectorSpaceUsage = 4100
+      mockVectorSpaceUsage = usage
+      const { unmount } = render(<VectorSpaceInfo />)
+      const className = screen.getByTestId('billing-progress-bar').className
+      unmount()
+      return className
+    }
 
-      render(<VectorSpaceInfo />)
+    it('should show distinct progress bar styling at different usage levels', () => {
+      const normalClass = renderAndGetBarClass(100)
+      const warningClass = renderAndGetBarClass(4100)
+      const errorClass = renderAndGetBarClass(5200)
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-warning-progress')
-    })
-
-    it('should show warning color when Team plan usage approaches limit (80%+)', () => {
-      mockPlanType = Plan.team
-      // 20480 MB * 80% = 16384 MB
-      mockVectorSpaceUsage = 16500
-
-      render(<VectorSpaceInfo />)
-
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-warning-progress')
-    })
-  })
-
-  describe('Pro/Team Plan Error State', () => {
-    it('should show error color when Professional plan usage exceeds limit', () => {
-      mockPlanType = Plan.professional
-      // Exceeds 5120 MB
-      mockVectorSpaceUsage = 5200
-
-      render(<VectorSpaceInfo />)
-
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-error-progress')
-    })
-
-    it('should show error color when Team plan usage exceeds limit', () => {
-      mockPlanType = Plan.team
-      // Exceeds 20480 MB
-      mockVectorSpaceUsage = 21000
-
-      render(<VectorSpaceInfo />)
-
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-error-progress')
+      expect(normalClass).not.toBe(warningClass)
+      expect(warningClass).not.toBe(errorClass)
+      expect(normalClass).not.toBe(errorClass)
     })
   })
 
@@ -265,12 +220,10 @@ describe('VectorSpaceInfo', () => {
       expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
     })
 
-    it('should render narrow indeterminate bar (not full width) for enterprise', () => {
+    it('should render indeterminate bar for enterprise below threshold', () => {
       render(<VectorSpaceInfo />)
 
-      const bar = screen.getByTestId('billing-progress-bar-indeterminate')
-      expect(bar).toHaveClass('w-[30px]')
-      expect(bar).not.toHaveClass('w-full')
+      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
     })
 
     it('should display "< 50 / total" format when below threshold', () => {

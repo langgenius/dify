@@ -55,18 +55,27 @@ describe('pluginAction', () => {
   })
 
   it('returns empty array when response has unexpected structure', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { postMarketplace } = await import('@/service/base')
     vi.mocked(postMarketplace).mockResolvedValue({ data: {} })
 
     const results = await pluginAction.search('@plugin', 'test', 'en')
     expect(results).toEqual([])
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Plugin search: Unexpected response structure',
+      expect.anything(),
+    )
+    warnSpy.mockRestore()
   })
 
   it('returns empty array on API failure', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { postMarketplace } = await import('@/service/base')
     vi.mocked(postMarketplace).mockRejectedValue(new Error('fail'))
 
     const results = await pluginAction.search('@plugin', 'fail', 'en')
     expect(results).toEqual([])
+    expect(warnSpy).toHaveBeenCalledWith('Plugin search failed:', expect.any(Error))
+    warnSpy.mockRestore()
   })
 })

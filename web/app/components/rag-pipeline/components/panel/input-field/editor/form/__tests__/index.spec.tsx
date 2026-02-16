@@ -2,6 +2,7 @@ import type { FormData, InputFieldFormProps } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import Toast from '@/app/components/base/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 import InputFieldForm from '../index'
@@ -23,12 +24,6 @@ vi.mock('@/service/use-common', () => ({
     isLoading: false,
     error: null,
   }),
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
 }))
 
 const createFormData = (overrides?: Partial<FormData>): FormData => ({
@@ -84,6 +79,12 @@ const renderWithProviders = (ui: React.ReactElement) => {
 const renderHookWithProviders = <TResult,>(hook: () => TResult) => {
   return renderHook(hook, { wrapper: TestWrapper })
 }
+
+// Silence expected console.error from form submit preventDefault
+beforeEach(() => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+})
 
 describe('InputFieldForm', () => {
   beforeEach(() => {
@@ -197,7 +198,6 @@ describe('InputFieldForm', () => {
     })
 
     it('should show Toast error when form validation fails on submit', async () => {
-      const Toast = await import('@/app/components/base/toast')
       const initialData = createFormData({
         variable: '', // Empty variable should fail validation
         label: 'Test Label',
@@ -210,7 +210,7 @@ describe('InputFieldForm', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(Toast.default.notify).toHaveBeenCalledWith(
+        expect(Toast.notify).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'error',
             message: expect.any(String),
