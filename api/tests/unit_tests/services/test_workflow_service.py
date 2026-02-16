@@ -1005,7 +1005,7 @@ class TestWorkflowService:
             mock_node_class = MagicMock()
             mock_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
 
-            mock_mapping.values.return_value = [{"latest": mock_node_class}]
+            mock_mapping.items.return_value = [(NodeType.LLM, {"latest": mock_node_class})]
 
             with patch("services.workflow_service.LATEST_VERSION", "latest"):
                 result = workflow_service.get_default_block_configs()
