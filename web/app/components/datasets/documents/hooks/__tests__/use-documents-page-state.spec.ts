@@ -28,26 +28,30 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// Mock ahooks debounce utilities: required because tests capture the debounce
-// callback reference to invoke it synchronously, bypassing real timer delays.
-let capturedDebounceFnCallback: (() => void) | null = null
-
 vi.mock('ahooks', () => ({
   useDebounce: (value: unknown, _options?: { wait?: number }) => value,
-  useDebounceFn: (fn: () => void, _options?: { wait?: number }) => {
-    capturedDebounceFnCallback = fn
-    return { run: fn, cancel: vi.fn(), flush: vi.fn() }
-  },
 }))
 
 // Mock the dependent hook
-vi.mock('../use-document-list-query-state', () => ({
-  default: () => ({
-    query: mockQuery,
-    updateQuery: mockUpdateQuery,
-    resetQuery: mockResetQuery,
-  }),
-}))
+vi.mock('../use-document-list-query-state', async () => {
+  const React = await import('react')
+  return {
+    useDocumentListQueryState: () => {
+      const [query, setQuery] = React.useState<DocumentListQuery>(mockQuery)
+      return {
+        query,
+        updateQuery: (updates: Partial<DocumentListQuery>) => {
+          mockUpdateQuery(updates)
+          setQuery(prev => ({ ...prev, ...updates }))
+        },
+        resetQuery: () => {
+          mockResetQuery()
+          setQuery({ page: 1, limit: 10, keyword: '', status: 'all', sort: '-created_at' })
+        },
+      }
+    },
+  }
+})
 
 // Factory for creating DocumentListResponse test data
 function createDocumentListResponse(overrides: Partial<DocumentListResponse> = {}): DocumentListResponse {
@@ -87,7 +91,6 @@ function createDocumentItem(overrides: Record<string, unknown> = {}) {
 describe('useDocumentsPageState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedDebounceFnCallback = null
     mockQuery = { page: 1, limit: 10, keyword: '', status: 'all', sort: '-created_at' }
   })
 
@@ -97,7 +100,6 @@ describe('useDocumentsPageState', () => {
       const { result } = renderHook(() => useDocumentsPageState())
 
       expect(result.current.inputValue).toBe('')
-      expect(result.current.searchValue).toBe('')
       expect(result.current.debouncedSearchValue).toBe('')
     })
 
@@ -135,7 +137,6 @@ describe('useDocumentsPageState', () => {
       const { result } = renderHook(() => useDocumentsPageState())
 
       expect(result.current.inputValue).toBe('initial search')
-      expect(result.current.searchValue).toBe('initial search')
     })
 
     it('should initialize pagination from query with non-default page', () => {
@@ -174,25 +175,18 @@ describe('useDocumentsPageState', () => {
       })
 
       expect(result.current.inputValue).toBe('new value')
+      expect(mockUpdateQuery).toHaveBeenCalledWith({ keyword: 'new value', page: 1 })
     })
 
-    it('should trigger debounced search callback when called', () => {
+    it('should update search value when called', () => {
       const { result } = renderHook(() => useDocumentsPageState())
 
-      // First call sets inputValue and triggers the debounced fn
       act(() => {
         result.current.handleInputChange('search term')
       })
 
-      // The debounced fn captures inputValue from its render closure.
-      // After re-render with new inputValue, calling the captured callback again
-      // should reflect the updated state.
-      act(() => {
-        if (capturedDebounceFnCallback)
-          capturedDebounceFnCallback()
-      })
-
-      expect(result.current.searchValue).toBe('search term')
+      expect(result.current.inputValue).toBe('search term')
+      expect(result.current.debouncedSearchValue).toBe('search term')
     })
   })
 
@@ -666,7 +660,6 @@ describe('useDocumentsPageState', () => {
 
       // Search state
       expect(result.current).toHaveProperty('inputValue')
-      expect(result.current).toHaveProperty('searchValue')
       expect(result.current).toHaveProperty('debouncedSearchValue')
       expect(result.current).toHaveProperty('handleInputChange')
 

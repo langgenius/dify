@@ -4,7 +4,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
-import useDocumentsPageState from '../hooks/use-documents-page-state'
+import { useDocumentsPageState } from '../hooks/use-documents-page-state'
 import Documents from '../index'
 
 // Type for mock selector function - use `as MockState` to bypass strict type checking in tests
@@ -121,9 +121,8 @@ const mockUpdatePollingState = vi.fn()
 const mockAdjustPageForTotal = vi.fn()
 
 vi.mock('../hooks/use-documents-page-state', () => ({
-  default: vi.fn(() => ({
+  useDocumentsPageState: vi.fn(() => ({
     inputValue: '',
-    searchValue: '',
     debouncedSearchValue: '',
     handleInputChange: mockHandleInputChange,
     statusFilterValue: 'all',
@@ -595,7 +594,6 @@ describe('Documents', () => {
     it('should enable polling when documents are indexing', () => {
       vi.mocked(useDocumentsPageState).mockReturnValueOnce({
         inputValue: '',
-        searchValue: '',
         debouncedSearchValue: '',
         handleInputChange: mockHandleInputChange,
         statusFilterValue: 'all',
@@ -635,7 +633,6 @@ describe('Documents', () => {
     it('should handle page changes', () => {
       vi.mocked(useDocumentsPageState).mockReturnValueOnce({
         inputValue: '',
-        searchValue: '',
         debouncedSearchValue: '',
         handleInputChange: mockHandleInputChange,
         statusFilterValue: 'all',
@@ -664,7 +661,6 @@ describe('Documents', () => {
     it('should display selected count', () => {
       vi.mocked(useDocumentsPageState).mockReturnValueOnce({
         inputValue: '',
-        searchValue: '',
         debouncedSearchValue: '',
         handleInputChange: mockHandleInputChange,
         statusFilterValue: 'all',
@@ -693,7 +689,6 @@ describe('Documents', () => {
     it('should pass filter value to list', () => {
       vi.mocked(useDocumentsPageState).mockReturnValueOnce({
         inputValue: 'test search',
-        searchValue: 'test search',
         debouncedSearchValue: 'test search',
         handleInputChange: mockHandleInputChange,
         statusFilterValue: 'completed',

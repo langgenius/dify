@@ -13,7 +13,7 @@ import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata
 import DocumentsHeader from './components/documents-header'
 import EmptyElement from './components/empty-element'
 import List from './components/list'
-import useDocumentsPageState from './hooks/use-documents-page-state'
+import { useDocumentsPageState } from './hooks/use-documents-page-state'
 
 type IDocumentsProps = {
   datasetId: string
