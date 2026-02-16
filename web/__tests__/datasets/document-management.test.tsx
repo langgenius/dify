@@ -6,13 +6,11 @@
  * Validates the data contract between documents page hooks and list component hooks.
  */
 
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -38,14 +36,7 @@ const { default: useDocumentListQueryState } = await import(
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
 
 const renderQueryStateHook = (searchParams = '') => {
-  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      {children}
-    </NuqsTestingAdapter>
-  )
-  const rendered = renderHook(() => useDocumentListQueryState(), { wrapper })
-  return { ...rendered, onUrlUpdate }
+  return renderHookWithNuqs(() => useDocumentListQueryState(), { searchParams })
 }
 
 const createDoc = (overrides?: Partial<LocalDoc>): LocalDoc => ({

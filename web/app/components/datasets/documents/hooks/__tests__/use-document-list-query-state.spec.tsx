@@ -1,9 +1,7 @@
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ReactNode } from 'react'
 import type { DocumentListQuery } from '../use-document-list-query-state'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import useDocumentListQueryState from '../use-document-list-query-state'
 
 vi.mock('@/models/datasets', () => ({
@@ -20,14 +18,7 @@ vi.mock('@/models/datasets', () => ({
 }))
 
 const renderWithAdapter = (searchParams = '') => {
-  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      {children}
-    </NuqsTestingAdapter>
-  )
-  const { result } = renderHook(() => useDocumentListQueryState(), { wrapper })
-  return { result, onUrlUpdate }
+  return renderHookWithNuqs(() => useDocumentListQueryState(), { searchParams })
 }
 
 describe('useDocumentListQueryState', () => {

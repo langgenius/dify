@@ -125,6 +125,31 @@ describe('Component', () => {
 })
 ```
 
+### 2.1 `nuqs` Query State (Preferred: Testing Adapter)
+
+For tests that validate URL query behavior, use `NuqsTestingAdapter` instead of mocking `nuqs` directly.
+
+```typescript
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
+
+it('should sync query to URL with push history', async () => {
+  const { result, onUrlUpdate } = renderHookWithNuqs(() => useMyQueryState(), {
+    searchParams: '?page=1',
+  })
+
+  act(() => {
+    result.current.setQuery({ page: 2 })
+  })
+
+  await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+  const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+  expect(update.options.history).toBe('push')
+  expect(update.searchParams.get('page')).toBe('2')
+})
+```
+
+Use direct `vi.mock('nuqs')` only when URL synchronization is intentionally out of scope.
+
 ### 3. Portal Components (with Shared State)
 
 ```typescript
