@@ -368,13 +368,13 @@ describe('List', () => {
     })
   })
 
-  describe('Dataset Operator Redirect', () => {
-    it('should redirect dataset operators to datasets page', () => {
+  describe('Dataset Operator Behavior', () => {
+    it('should not trigger redirect at component level for dataset operators', () => {
       mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
 
       renderList()
 
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      expect(mockReplace).not.toHaveBeenCalled()
     })
   })
 
