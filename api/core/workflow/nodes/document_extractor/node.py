@@ -562,6 +562,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
 def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.ppt import partition_ppt
+
     api_key = unstructured_api_config.api_key or ""
 
     try:
@@ -589,6 +590,7 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
 def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.pptx import partition_pptx
+
     api_key = unstructured_api_config.api_key or ""
 
     try:
@@ -615,6 +617,7 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
 def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.epub import partition_epub
+
     api_key = unstructured_api_config.api_key or ""
 
     try:
