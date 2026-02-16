@@ -29,6 +29,7 @@ class Parameters(BaseModel):
     annotation_reply: JSONObject
     more_like_this: JSONObject
     user_input_form: list[JSONObject]
+    workflow_output_form: list[JSONObject]  # Added: workflow output schema
     sensitive_word_avoidance: JSONObject
     file_upload: JSONObject
     system_parameters: SystemParameters
