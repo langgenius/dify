@@ -1644,11 +1644,6 @@
       "count": 7
     }
   },
-  "app/components/base/chat/embedded-chatbot/header/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
