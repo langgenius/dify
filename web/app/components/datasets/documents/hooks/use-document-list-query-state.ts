@@ -1,3 +1,4 @@
+import type { inferParserType } from 'nuqs'
 import type { SortType } from '@/service/datasets'
 import { createParser, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
@@ -18,14 +19,6 @@ const sanitizePageValue = (value: number): number => {
 
 const sanitizeLimitValue = (value: number): number => {
   return Number.isInteger(value) && value > 0 && value <= 100 ? value : 10
-}
-
-export type DocumentListQuery = {
-  page: number
-  limit: number
-  keyword: string
-  status: string
-  sort: SortType
 }
 
 const parseAsPage = createParser<number>({
@@ -63,6 +56,8 @@ export const documentListParsers = {
   status: parseAsDocStatus,
   sort: parseAsDocSort,
 }
+
+export type DocumentListQuery = inferParserType<typeof documentListParsers>
 
 function useDocumentListQueryState() {
   const [query, setQuery] = useQueryStates(documentListParsers, {
