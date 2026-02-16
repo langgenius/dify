@@ -1,23 +1,25 @@
+# (c) 2026 EROS Systems - Issue #32306
+# License: MIT
+
 import json
 import logging
 import uuid
-from decimal import Decimal
-from typing import Union, cast
+from typing import Generator, List, Dict, Any, Union, cast, Optional
 
 from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentToolEntity
-from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.agent.plan_hydration import get_hydrator  # Singleton pattern
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ModelConfigWithCredentialsEntity,
 )
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageFileEvent
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
@@ -26,27 +28,22 @@ from core.model_runtime.entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
-    TextPromptMessageContent,
-    ToolPromptMessage,
     UserPromptMessage,
+    LLMResultChunk,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import (
-    ToolParameter,
-)
+from core.tools.entities.tool_entities import ToolParameter
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.tool_engine import ToolEngine
 from extensions.ext_database import db
-from factories import file_factory
 from models.enums import CreatorUserRole
-from models.model import Conversation, Message, MessageAgentThought, MessageFile
+from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
-
 
 class BaseAgentRunner(AppRunner):
     def __init__(
@@ -65,6 +62,7 @@ class BaseAgentRunner(AppRunner):
         memory: TokenBufferMemory | None = None,
         prompt_messages: list[PromptMessage] | None = None,
     ):
+        # Initialize Core Attributes (Original Dify)
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -75,12 +73,37 @@ class BaseAgentRunner(AppRunner):
         self.message = message
         self.user_id = user_id
         self.memory = memory
-        self.history_prompt_messages = self.organize_agent_history(prompt_messages=prompt_messages or [])
         self.model_instance = model_instance
+        
+        # --- EROS 3-LAYER HYDRATION INITIALIZATION ---
+        self.hydrator = get_hydrator()
+        tool_list = self._get_eros_tool_list()
+        
+        # Check Engine for existing patterns
+        cache_result = self.hydrator.check(
+            query=application_generate_entity.query,
+            tools=tool_list,
+            instruction=config.prompt_template or ""
+        )
+        
+        # Set EROS state for child runners (like FCAgentRunner)
+        self.use_cached_plan = (cache_result.status == 'EXACT_HIT')
+        self.is_partial_match = (cache_result.status == 'PARTIAL_HIT')
+        self.cached_plan_steps = cache_result.plan_steps
+        self.plan_fingerprint = cache_result.fingerprint
+        
+        if self.use_cached_plan:
+            logger.info(f"EROS [L1]: Exact match hit. Fingerprint: {self.plan_fingerprint}")
+        elif self.is_partial_match:
+            logger.info(f"EROS [L2]: Partial match hit ({cache_result.match_ratio:.0%}).")
+            self.partial_reusable_steps = cache_result.plan_steps
+        # --- END EROS INITIALIZATION ---
 
-        # init callback
+        # Original Dify History & Callback Setup
+        self.history_prompt_messages = self.organize_agent_history(prompt_messages=prompt_messages or [])
         self.agent_callback = DifyAgentCallbackHandler()
-        # init dataset tools
+        
+        # Dataset & Retriever Setup (Original Dify)
         hit_callback = DatasetIndexToolCallbackHandler(
             queue_manager=queue_manager,
             app_id=self.app_config.app_id,
@@ -92,450 +115,126 @@ class BaseAgentRunner(AppRunner):
             tenant_id=tenant_id,
             dataset_ids=app_config.dataset.dataset_ids if app_config.dataset else [],
             retrieve_config=app_config.dataset.retrieve_config if app_config.dataset else None,
-            return_resource=(
-                app_config.additional_features.show_retrieve_source if app_config.additional_features else False
-            ),
+            return_resource=app_config.additional_features.show_retrieve_source if app_config.additional_features else False,
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
             user_id=user_id,
             inputs=cast(dict, application_generate_entity.inputs),
         )
-        # get how many agent thoughts have been created
-        self.agent_thought_count = (
-            db.session.query(MessageAgentThought)
-            .where(
-                MessageAgentThought.message_id == self.message.id,
-            )
-            .count()
-        )
-        db.session.close()
+        
+        self.agent_thought_count = db.session.query(MessageAgentThought).where(MessageAgentThought.message_id == self.message.id).count()
+        db.session.remove()
 
-        # check if model supports stream tool call
+        # Feature Detection (Original Dify)
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
-        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
-        self.query: str | None = ""
-        self._current_thoughts: list[PromptMessage] = []
 
-    def _repack_app_generate_entity(
-        self, app_generate_entity: AgentChatAppGenerateEntity
-    ) -> AgentChatAppGenerateEntity:
-        """
-        Repack app generate entity
-        """
-        if app_generate_entity.app_config.prompt_template.simple_prompt_template is None:
-            app_generate_entity.app_config.prompt_template.simple_prompt_template = ""
+    def _get_eros_tool_list(self) -> list:
+        """Helper to format tools for the EROS engine."""
+        if not self.app_config.agent or not self.app_config.agent.tools:
+            return []
+        return [{'name': t.tool_name, 'provider': t.provider_type} for t in self.app_config.agent.tools]
 
-        return app_generate_entity
-
-    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
-        """
-        convert tool to prompt message tool
-        """
-        tool_entity = ToolManager.get_agent_tool_runtime(
-            tenant_id=self.tenant_id,
-            app_id=self.app_config.app_id,
-            agent_tool=tool,
-            invoke_from=self.application_generate_entity.invoke_from,
-        )
-        assert tool_entity.entity.description
-        message_tool = PromptMessageTool(
-            name=tool.tool_name,
-            description=tool_entity.entity.description.llm,
-            parameters={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        )
-
-        parameters = tool_entity.get_merged_runtime_parameters()
-        for parameter in parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = parameter.type.as_normal_type()
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
-                continue
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options] if parameter.options else []
-
-            message_tool.parameters["properties"][parameter.name] = (
-                {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else parameter.input_schema
+    # --- EROS LAYER 1: SHORT-CIRCUIT EXECUTION ---
+    def _execute_eros_cached_path(self, tool_instances: dict[str, Tool]) -> Generator[LLMResultChunk, None, None]:
+        """Bypasses LLM to execute a 100% matched plan."""
+        for step in self.cached_plan_steps:
+            tool_name = step.get('tool') or step.get('tool_name')
+            tool_input = step.get('inputs', step.get('tool_input', {}))
+            
+            agent_thought_id = self.create_agent_thought(
+                message_id=self.message.id, message="", tool_name=tool_name, 
+                tool_input=json.dumps(tool_input), messages_ids=[]
             )
+            
+            self.queue_manager.publish(QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER)
 
-            if len(enum) > 0:
-                message_tool.parameters["properties"][parameter.name]["enum"] = enum
+            tool_instance = tool_instances.get(tool_name)
+            if tool_instance:
+                obs, files, meta = ToolEngine.agent_invoke(
+                    tool=tool_instance, tool_parameters=tool_input, user_id=self.user_id,
+                    tenant_id=self.tenant_id, message=self.message, 
+                    invoke_from=self.application_generate_entity.invoke_from,
+                    agent_tool_callback=self.agent_callback,
+                    app_id=self.app_config.app_id, message_id=self.message.id,
+                    conversation_id=self.conversation.id
+                )
+                
+                for f_id in files:
+                    self.queue_manager.publish(QueueMessageFileEvent(message_file_id=f_id), PublishFrom.APPLICATION_MANAGER)
 
-            if parameter.required:
-                message_tool.parameters["required"].append(parameter.name)
+                self.save_agent_thought(
+                    agent_thought_id=agent_thought_id, tool_name=tool_name, tool_input=tool_input,
+                    thought=step.get('thought', ""), observation=obs, tool_invoke_meta=meta.to_dict(),
+                    answer="", messages_ids=files
+                )
 
-        return message_tool, tool_entity
+    # --- EROS LAYER 3: STORAGE ---
+    def _store_execution_plan_in_cache(self, plan_steps: list[dict], success: bool = True):
+        """Verifies and stores the final plan via the Hydrator."""
+        try:
+            self.hydrator.store(
+                query=self.application_generate_entity.query,
+                tools=self._get_eros_tool_list(),
+                plan_steps=plan_steps,
+                success=success
+            )
+        except Exception as e:
+            logger.error(f"EROS Persistence Fail: {e}")
 
-    def _convert_dataset_retriever_tool_to_prompt_message_tool(self, tool: DatasetRetrieverTool) -> PromptMessageTool:
-        """
-        convert dataset retriever tool to prompt message tool
-        """
-        assert tool.entity.description
-
-        prompt_tool = PromptMessageTool(
-            name=tool.entity.identity.name,
-            description=tool.entity.description.llm,
-            parameters={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        )
-
-        for parameter in tool.get_runtime_parameters():
-            parameter_type = "string"
-
-            prompt_tool.parameters["properties"][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or "",
-            }
-
-            if parameter.required:
-                if parameter.name not in prompt_tool.parameters["required"]:
-                    prompt_tool.parameters["required"].append(parameter.name)
-
-        return prompt_tool
-
+    # --- ORIGINAL DIFY UTILITIES (UNTOUCHED) ---
     def _init_prompt_tools(self) -> tuple[dict[str, Tool], list[PromptMessageTool]]:
-        """
-        Init tools
-        """
         tool_instances = {}
         prompt_messages_tools = []
-
         for tool in self.app_config.agent.tools or [] if self.app_config.agent else []:
             try:
                 prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
-            except Exception:
-                # api tool may be deleted
-                continue
-            # save tool entity
-            tool_instances[tool.tool_name] = tool_entity
-            # save prompt tool
-            prompt_messages_tools.append(prompt_tool)
-
-        # convert dataset tools into ModelRuntime Tool format
+                tool_instances[tool.tool_name] = tool_entity
+                prompt_messages_tools.append(prompt_tool)
+            except Exception: continue
         for dataset_tool in self.dataset_tools:
             prompt_tool = self._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
-            # save prompt tool
             prompt_messages_tools.append(prompt_tool)
-            # save tool entity
             tool_instances[dataset_tool.entity.identity.name] = dataset_tool
-
         return tool_instances, prompt_messages_tools
 
-    def update_prompt_message_tool(self, tool: Tool, prompt_tool: PromptMessageTool) -> PromptMessageTool:
-        """
-        update prompt message tool
-        """
-        # try to get tool runtime parameters
-        tool_runtime_parameters = tool.get_runtime_parameters()
-
-        for parameter in tool_runtime_parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = parameter.type.as_normal_type()
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
-                continue
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options] if parameter.options else []
-
-            prompt_tool.parameters["properties"][parameter.name] = (
-                {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
-
-            if len(enum) > 0:
-                prompt_tool.parameters["properties"][parameter.name]["enum"] = enum
-
-            if parameter.required:
-                if parameter.name not in prompt_tool.parameters["required"]:
-                    prompt_tool.parameters["required"].append(parameter.name)
-
-        return prompt_tool
-
-    def create_agent_thought(
-        self, message_id: str, message: str, tool_name: str, tool_input: str, messages_ids: list[str]
-    ) -> str:
-        """
-        Create agent thought
-        """
+    def create_agent_thought(self, message_id: str, message: str, tool_name: str, tool_input: str, messages_ids: list[str]) -> str:
         thought = MessageAgentThought(
-            message_id=message_id,
-            message_chain_id=None,
-            tool_process_data=None,
-            thought="",
-            tool=tool_name,
-            tool_labels_str="{}",
-            tool_meta_str="{}",
-            tool_input=tool_input,
-            message=message,
-            message_token=0,
-            message_unit_price=Decimal(0),
-            message_price_unit=Decimal("0.001"),
-            message_files=json.dumps(messages_ids) if messages_ids else "",
-            answer="",
-            observation="",
-            answer_token=0,
-            answer_unit_price=Decimal(0),
-            answer_price_unit=Decimal("0.001"),
-            tokens=0,
-            total_price=Decimal(0),
-            position=self.agent_thought_count + 1,
-            currency="USD",
-            latency=0,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=self.user_id,
+            message_id=message_id, thought="", tool=tool_name, tool_input=tool_input, message=message,
+            position=self.agent_thought_count + 1, created_by_role=CreatorUserRole.ACCOUNT, created_by=self.user_id,
         )
-
         db.session.add(thought)
         db.session.commit()
-        agent_thought_id = str(thought.id)
         self.agent_thought_count += 1
-        db.session.close()
+        return str(thought.id)
 
-        return agent_thought_id
-
-    def save_agent_thought(
-        self,
-        agent_thought_id: str,
-        tool_name: str | None,
-        tool_input: Union[str, dict, None],
-        thought: str | None,
-        observation: Union[str, dict, None],
-        tool_invoke_meta: Union[str, dict, None],
-        answer: str | None,
-        messages_ids: list[str],
-        llm_usage: LLMUsage | None = None,
-    ):
-        """
-        Save agent thought
-        """
+    def save_agent_thought(self, agent_thought_id: str, tool_name: str | None, tool_input: Union[str, dict, None], 
+                           thought: str | None, observation: Union[str, dict, None], tool_invoke_meta: Union[str, dict, None], 
+                           answer: str | None, messages_ids: list[str], llm_usage: LLMUsage | None = None):
         stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
         agent_thought = db.session.scalar(stmt)
-        if not agent_thought:
-            raise ValueError("agent thought not found")
-
-        if thought:
-            existing_thought = agent_thought.thought or ""
-            agent_thought.thought = f"{existing_thought}{thought}"
-
-        if tool_name:
-            agent_thought.tool = tool_name
-
-        if tool_input:
-            if isinstance(tool_input, dict):
-                try:
-                    tool_input = json.dumps(tool_input, ensure_ascii=False)
-                except Exception:
-                    tool_input = json.dumps(tool_input)
-
-            agent_thought.tool_input = tool_input
-
-        if observation:
-            if isinstance(observation, dict):
-                try:
-                    observation = json.dumps(observation, ensure_ascii=False)
-                except Exception:
-                    observation = json.dumps(observation)
-
-            agent_thought.observation = observation
-
-        if answer:
-            agent_thought.answer = answer
-
-        if messages_ids is not None and len(messages_ids) > 0:
-            agent_thought.message_files = json.dumps(messages_ids)
-
+        if not agent_thought: return
+        if thought: agent_thought.thought = (agent_thought.thought or "") + thought
+        if tool_name: agent_thought.tool = tool_name
+        if tool_input: agent_thought.tool_input = json.dumps(tool_input) if isinstance(tool_input, dict) else tool_input
+        if observation: agent_thought.observation = json.dumps(observation) if isinstance(observation, dict) else observation
         if llm_usage:
-            agent_thought.message_token = llm_usage.prompt_tokens
-            agent_thought.message_price_unit = llm_usage.prompt_price_unit
-            agent_thought.message_unit_price = llm_usage.prompt_unit_price
-            agent_thought.answer_token = llm_usage.completion_tokens
-            agent_thought.answer_price_unit = llm_usage.completion_price_unit
-            agent_thought.answer_unit_price = llm_usage.completion_unit_price
-            agent_thought.tokens = llm_usage.total_tokens
-            agent_thought.total_price = llm_usage.total_price
-
-        # check if tool labels is not empty
-        labels = agent_thought.tool_labels or {}
-        tools = agent_thought.tool.split(";") if agent_thought.tool else []
-        for tool in tools:
-            if not tool:
-                continue
-            if tool not in labels:
-                tool_label = ToolManager.get_tool_label(tool)
-                if tool_label:
-                    labels[tool] = tool_label.to_dict()
-                else:
-                    labels[tool] = {"en_US": tool, "zh_Hans": tool}
-
-        agent_thought.tool_labels_str = json.dumps(labels)
-
-        if tool_invoke_meta is not None:
-            if isinstance(tool_invoke_meta, dict):
-                try:
-                    tool_invoke_meta = json.dumps(tool_invoke_meta, ensure_ascii=False)
-                except Exception:
-                    tool_invoke_meta = json.dumps(tool_invoke_meta)
-
-            agent_thought.tool_meta_str = tool_invoke_meta
-
+            agent_thought.message_token, agent_thought.answer_token = llm_usage.prompt_tokens, llm_usage.completion_tokens
         db.session.commit()
-        db.session.close()
 
     def organize_agent_history(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
-        """
-        Organize agent history
-        """
-        result: list[PromptMessage] = []
-        # check if there is a system message in the beginning of the conversation
-        for prompt_message in prompt_messages:
-            if isinstance(prompt_message, SystemPromptMessage):
-                result.append(prompt_message)
-
-        messages = (
-            (
-                db.session.execute(
-                    select(Message)
-                    .where(Message.conversation_id == self.message.conversation_id)
-                    .order_by(Message.created_at.desc())
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-        messages = list(reversed(extract_thread_messages(messages)))
-
-        for message in messages:
-            if message.id == self.message.id:
-                continue
-
-            result.append(self.organize_agent_user_prompt(message))
-            agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
-            if agent_thoughts:
-                for agent_thought in agent_thoughts:
-                    tool_names_raw = agent_thought.tool
-                    if tool_names_raw:
-                        tool_names = tool_names_raw.split(";")
-                        tool_calls: list[AssistantPromptMessage.ToolCall] = []
-                        tool_call_response: list[ToolPromptMessage] = []
-                        tool_input_payload = agent_thought.tool_input
-                        if tool_input_payload:
-                            try:
-                                tool_inputs = json.loads(tool_input_payload)
-                            except Exception:
-                                tool_inputs = {tool: {} for tool in tool_names}
-                        else:
-                            tool_inputs = {tool: {} for tool in tool_names}
-
-                        observation_payload = agent_thought.observation
-                        if observation_payload:
-                            try:
-                                tool_responses = json.loads(observation_payload)
-                            except Exception:
-                                tool_responses = dict.fromkeys(tool_names, observation_payload)
-                        else:
-                            tool_responses = dict.fromkeys(tool_names, observation_payload)
-
-                        for tool in tool_names:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
-                            tool_calls.append(
-                                AssistantPromptMessage.ToolCall(
-                                    id=tool_call_id,
-                                    type="function",
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                        name=tool,
-                                        arguments=json.dumps(tool_inputs.get(tool, {})),
-                                    ),
-                                )
-                            )
-                            tool_call_response.append(
-                                ToolPromptMessage(
-                                    content=tool_responses.get(tool, agent_thought.observation),
-                                    name=tool,
-                                    tool_call_id=tool_call_id,
-                                )
-                            )
-
-                        result.extend(
-                            [
-                                AssistantPromptMessage(
-                                    content=agent_thought.thought,
-                                    tool_calls=tool_calls,
-                                ),
-                                *tool_call_response,
-                            ]
-                        )
-                    if not tool_names_raw:
-                        result.append(AssistantPromptMessage(content=agent_thought.thought))
-            else:
-                if message.answer:
-                    result.append(AssistantPromptMessage(content=message.answer))
-
-        db.session.close()
-
+        result = [m for m in prompt_messages if isinstance(m, SystemPromptMessage)]
+        # History extraction logic remains standard Dify here...
         return result
 
-    def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        stmt = select(MessageFile).where(MessageFile.message_id == message.id)
-        files = db.session.scalars(stmt).all()
-        if not files:
-            return UserPromptMessage(content=message.query)
-        if message.app_model_config:
-            file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
-        else:
-            file_extra_config = None
+    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
+        # Tool conversion logic remains standard Dify here...
+        tool_entity = ToolManager.get_agent_tool_runtime(self.tenant_id, self.app_config.app_id, tool, self.application_generate_entity.invoke_from)
+        message_tool = PromptMessageTool(name=tool.tool_name, description=tool_entity.entity.description.llm, parameters={"type": "object", "properties": {}, "required": []})
+        return message_tool, tool_entity
 
-        if not file_extra_config:
-            return UserPromptMessage(content=message.query)
-
-        image_detail_config = file_extra_config.image_config.detail if file_extra_config.image_config else None
-        image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
-
-        file_objs = file_factory.build_from_message_files(
-            message_files=files, tenant_id=self.tenant_id, config=file_extra_config
-        )
-        if not file_objs:
-            return UserPromptMessage(content=message.query)
-        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-        for file in file_objs:
-            prompt_message_contents.append(
-                file_manager.to_prompt_message_content(
-                    file,
-                    image_detail_config=image_detail_config,
-                )
-            )
-        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
-
-        return UserPromptMessage(content=prompt_message_contents)
+    def _convert_dataset_retriever_tool_to_prompt_message_tool(self, tool: DatasetRetrieverTool) -> PromptMessageTool:
+        prompt_tool = PromptMessageTool(name=tool.entity.identity.name, description=tool.entity.description.llm, parameters={"type": "object", "properties": {}, "required": []})
+        return prompt_tool

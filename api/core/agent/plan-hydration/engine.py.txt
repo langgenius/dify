@@ -1,0 +1,195 @@
+"""
+EROS (Execution-Ready Optimized Short-circuit) Plan Hydration Engine
+====================================================================
+A production-grade three-layer caching system for Dify Agent Nodes.
+
+Layer 1: Exact Hash Fingerprinting (100% Match)
+Layer 2: Partial Pattern Reconstruction (>50% Match for Hybrid Assembly)
+Layer 3: Peer Review & Safety Guardrails
+
+License: MIT
+Author: @smartass-4ever
+Version: 1.2.0
+"""
+
+import hashlib
+import json
+import logging
+from typing import Dict, List, Optional, Tuple, Any, Set
+from dataclasses import dataclass, field
+from datetime import datetime
+from uuid import uuid4
+
+# Dify / SQLAlchemy dependencies
+from sqlalchemy import select
+from extensions.ext_database import db
+from models.model import MessageAgentThought
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class EROSResult:
+    """Unified response object to guide the Agent Runner's execution path."""
+    status: str  # 'EXACT_HIT', 'PARTIAL_HIT', or 'MISS'
+    plan_steps: List[Dict[str, Any]] = field(default_factory=list)
+    match_ratio: float = 0.0
+    fingerprint: str = ""
+    original_query: Optional[str] = None
+
+class EROS3LayerHydrator:
+    def __init__(self, partial_threshold: float = 0.50):
+        self.partial_threshold = partial_threshold
+        # Expanded stop-words to ensure Layer 2 focuses on functional intent
+        self.stop_words = {
+            'the', 'is', 'at', 'and', 'a', 'an', 'to', 'of', 'for', 'in', 
+            'with', 'on', 'please', 'can', 'you', 'my', 'from'
+        }
+
+    def _tokenize(self, text: str) -> Set[str]:
+        """Extracts high-signal functional tokens from a query."""
+        if not text:
+            return set()
+        return {
+            word.lower() for word in text.split() 
+            if word.lower() not in self.stop_words and len(word) > 2
+        }
+
+    def check(self, query: str, tools: List[Dict], instruction: str = "") -> EROSResult:
+        """
+        Coordinates Layer 1 and Layer 2 checks.
+        
+        Returns an EROSResult indicating if we should Short-Circuit (Exact),
+        Hybrid-Assemble (Partial), or proceed to LLM (Miss).
+        """
+        current_tokens = self._tokenize(query)
+        # Fingerprint includes instruction to ensure context-safety
+        fp_payload = f"{query.strip().lower()}|{instruction.strip().lower()}"
+        fp = hashlib.sha256(fp_payload.encode()).hexdigest()[:16]
+
+        # --- LAYER 1: 100% EXACT PATTERN MATCH ---
+        # Look for the EROS versioned marker in the observation column
+        stmt = (
+            select(MessageAgentThought)
+            .where(MessageAgentThought.observation == f"EROS_V1_{fp}")
+            .order_by(MessageAgentThought.created_at.desc())
+            .limit(1)
+        )
+        exact_match = db.session.scalar(stmt)
+        
+        if exact_match and exact_match.tool_input:
+            try:
+                plan_data = json.loads(exact_match.tool_input)
+                logger.info(f"EROS L1 Hit: Exact match found for fingerprint {fp}")
+                return EROSResult(
+                    status='EXACT_HIT', 
+                    plan_steps=plan_data.get('plan_steps', []), 
+                    fingerprint=fp
+                )
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.error(f"EROS L1 Data Corruption: {e}")
+
+        # --- LAYER 2: PARTIAL PATTERN MATCH (>50%) ---
+        # We fetch the most recent 50 EROS-verified patterns
+        stmt = (
+            select(MessageAgentThought)
+            .where(MessageAgentThought.observation.like("EROS_V1_%"))
+            .order_by(MessageAgentThought.created_at.desc())
+            .limit(50)
+        )
+        candidates = db.session.scalars(stmt).all()
+        
+        for cand in candidates:
+            cached_tokens = self._tokenize(cand.message)
+            if not cached_tokens:
+                continue
+                
+            intersection = current_tokens & cached_tokens
+            ratio = len(intersection) / len(current_tokens) if current_tokens else 0
+
+            if ratio >= self.partial_threshold:
+                try:
+                    plan_data = json.loads(cand.tool_input)
+                    logger.info(f"EROS L2 Hit: Partial match ({ratio:.0%}) with query: {cand.message[:50]}...")
+                    return EROSResult(
+                        status='PARTIAL_HIT', 
+                        plan_steps=plan_data.get('plan_steps', []), 
+                        match_ratio=ratio,
+                        fingerprint=fp,
+                        original_query=cand.message
+                    )
+                except Exception:
+                    continue
+
+        return EROSResult(status='MISS', fingerprint=fp)
+
+    def peer_review(self, plan_steps: List[Dict]) -> Tuple[bool, str]:
+        """
+        --- LAYER 3: PEER REVIEWER ---
+        Validates the final plan structure before execution or storage.
+        """
+        if not plan_steps or not isinstance(plan_steps, list):
+            return False, "INVALID_STRUCTURE"
+        
+        # Guard against recursive loops (same tool called repeatedly with same input)
+        tool_calls = [str(s.get('tool_name', s.get('tool', ''))) for s in plan_steps]
+        if len(tool_calls) > 3 and len(set(tool_calls)) == 1:
+            return False, "CIRCULAR_REDUNDANCY_DETECTED"
+            
+        # Security/Complexity Guard
+        if len(plan_steps) > 12:
+            return False, "PLAN_TOO_COMPLEX_FOR_HYDRATION"
+
+        return True, "VERIFIED"
+
+    def store(self, query: str, tools: List[Dict], plan_steps: List[Dict], success: bool = True):
+        """
+        Commits a successful execution plan to the persistent EROS cache.
+        Only stores if the plan passes the Layer 3 Peer Review.
+        """
+        if not success or not plan_steps:
+            return
+        
+        # Final safety check before caching
+        is_safe, reason = self.peer_review(plan_steps)
+        if not is_safe:
+            logger.warning(f"EROS Store Rejected: {reason}")
+            return
+
+        fp_payload = f"{query.strip().lower()}" # Basic query hash for storage
+        fp = hashlib.sha256(fp_payload.encode()).hexdigest()[:16]
+        marker = f"EROS_V1_{fp}"
+        
+        try:
+            # Prepare the optimized payload
+            plan_body = {
+                'plan_steps': plan_steps,
+                'tool_names': [s.get('tool_name', s.get('tool', '')) for s in plan_steps],
+                'stored_at': datetime.utcnow().isoformat()
+            }
+            
+            # Map to Dify's MessageAgentThought model
+            new_thought = MessageAgentThought(
+                message=query, 
+                observation=marker, 
+                tool_input=json.dumps(plan_body),
+                tool=json.dumps(tools),
+                message_id=str(uuid4()), # DB integrity requirement
+                created_at=datetime.utcnow()
+            )
+            
+            db.session.add(new_thought)
+            db.session.commit()
+            logger.info(f"EROS: Successfully cached plan for fingerprint {fp}")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"EROS Persistence Failure: {e}")
+
+# Global singleton instance for app-wide access
+_hydrator_instance = EROS3LayerHydrator()
+
+def get_hydrator() -> EROS3LayerHydrator:
+    """Returns the global EROS Hydrator instance."""
+    return _hydrator_instance
+        
+
+

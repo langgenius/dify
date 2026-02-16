@@ -1,0 +1,54 @@
+# (c) 2026 EROS Systems - Issue #32306
+# License: MIT
+# Version: 1.0.0
+
+"""
+EROS Plan Hydration for Dify Agent Node
+=======================================
+Three-layer intelligent caching system that eliminates redundant LLM reasoning.
+
+Quick Start:
+    from core.agent.plan_hydration import check_cache, validate_plan, cache_plan
+    
+    # Check for cached plan
+    result = check_cache(query, tools, instruction)
+    
+    if result['cache_hit']:
+        # Use cached plan
+        execute_plan(result['plan'].plan_steps)
+    else:
+        # Generate new plan
+        new_plan = llm_generate_plan(query, tools)
+        
+        # Validate before execution
+        is_valid, reason = validate_plan(new_plan, query)
+        
+        if is_valid:
+            execute_plan(new_plan)
+            cache_plan(query, tools, new_plan, success=True)
+"""
+
+from .engine import (
+    EROS3LayerHydrator,
+    ExactMatcher,
+    SemanticMatcher,
+    PeerReviewer,
+    CachedPlan,
+    check_cache,
+    validate_plan,
+    cache_plan,
+    get_hydrator
+)
+
+__version__ = "1.0.0"
+__all__ = [
+    'EROS3LayerHydrator',
+    'ExactMatcher',
+    'SemanticMatcher',
+    'PeerReviewer',
+    'CachedPlan',
+    'check_cache',
+    'validate_plan',
+    'cache_plan',
+    'get_hydrator'
+]
