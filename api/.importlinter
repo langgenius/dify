@@ -114,7 +114,6 @@ ignore_imports =
     core.workflow.nodes.datasource.datasource_node -> models.model
     core.workflow.nodes.datasource.datasource_node -> models.tools
     core.workflow.nodes.datasource.datasource_node -> services.datasource_provider_service
-    core.workflow.nodes.document_extractor.node -> configs
     core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
     core.workflow.nodes.http_request.entities -> configs
     core.workflow.nodes.http_request.executor -> configs
