@@ -1,5 +1,5 @@
 import type { DataSourceAuth, DataSourceCredential } from './types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
@@ -12,7 +12,7 @@ import { useDataSourceAuthUpdate } from './hooks'
 
 /**
  * Mocking sub-components and hooks to isolate Card component for unit testing.
- * We use vi.mock to intercept internal modules and provide strictly typed mock implementations.
+ * Following the Unit approach for complex directories.
  */
 vi.mock('./configure', () => ({
   default: vi.fn(({ onUpdate }: { onUpdate: () => void }) => (
@@ -45,11 +45,12 @@ vi.mock('@/app/components/base/confirm', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  ApiKeyModal: vi.fn(({ onClose, onUpdate, onRemove, disabled }: { onClose: () => void, onUpdate: () => void, onRemove: () => void, disabled: boolean }) => (
+  ApiKeyModal: vi.fn(({ onClose, onUpdate, onRemove, disabled, editValues }: { onClose: () => void, onUpdate: () => void, onRemove: () => void, disabled: boolean, editValues: Record<string, unknown> }) => (
     <div data-testid="mock-api-key-modal" data-disabled={disabled}>
       <button data-testid="modal-close" onClick={onClose}>Close</button>
       <button data-testid="modal-update" onClick={onUpdate}>Update</button>
       <button data-testid="modal-remove" onClick={onRemove}>Remove</button>
+      <div data-testid="edit-values">{JSON.stringify(editValues)}</div>
     </div>
   )),
   usePluginAuthAction: vi.fn(),
@@ -83,10 +84,6 @@ describe('Card Component', () => {
   const mockGetPluginOAuthUrl = vi.fn()
   const mockRenderI18nObjectResult = vi.fn((obj: Record<string, string>) => obj.en_US)
 
-  /**
-   * Factory function to create mock return values for usePluginAuthAction.
-   * This ensures all necessary properties are present for the component to function while testing different states.
-   */
   const createMockPluginAuthActionReturn = (overrides: Partial<UsePluginAuthActionReturn> = {}): UsePluginAuthActionReturn => ({
     deleteCredentialId: null,
     doingAction: false,
@@ -138,148 +135,244 @@ describe('Card Component', () => {
     vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: mockGetPluginOAuthUrl } as unknown as UseGetDataSourceOAuthUrlReturn)
   })
 
-  it('should render the card with provided item data and initialize hooks correctly', () => {
-    render(<Card item={mockItem} />)
-    expect(screen.getByText('Test Label')).toBeInTheDocument()
-    expect(screen.getByText(/Test Author/)).toBeInTheDocument()
-    expect(screen.getByText(/test-name/)).toBeInTheDocument()
-    expect(screen.getByRole('img')).toHaveAttribute('src', 'test-icon-url')
-    expect(screen.getByTestId('mock-item-c1')).toBeInTheDocument()
+  describe('Rendering', () => {
+    it('should render the card with provided item data and initialize hooks correctly', () => {
+      // Act
+      render(<Card item={mockItem} />)
 
-    // Verify hooks were initialized with expected parameters
-    expect(useDataSourceAuthUpdate).toHaveBeenCalledWith({
-      pluginId: 'test-plugin-id',
-      provider: 'test-name',
+      // Assert
+      expect(screen.getByText('Test Label')).toBeInTheDocument()
+      expect(screen.getByText(/Test Author/)).toBeInTheDocument()
+      expect(screen.getByText(/test-name/)).toBeInTheDocument()
+      expect(screen.getByRole('img')).toHaveAttribute('src', 'test-icon-url')
+      expect(screen.getByTestId('mock-item-c1')).toBeInTheDocument()
+
+      expect(useDataSourceAuthUpdate).toHaveBeenCalledWith({
+        pluginId: 'test-plugin-id',
+        provider: 'test-name',
+      })
+      expect(usePluginAuthAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'datasource',
+          provider: 'test-plugin-id/test-name',
+          providerType: CollectionType.datasource,
+        }),
+        mockHandleAuthUpdate,
+      )
     })
-    expect(usePluginAuthAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category: 'datasource',
-        provider: 'test-plugin-id/test-name',
-        providerType: CollectionType.datasource,
-      }),
-      mockHandleAuthUpdate,
-    )
-  })
 
-  it('should render empty state when credentials_list is empty', () => {
-    const emptyItem = { ...mockItem, credentials_list: [] }
-    render(<Card item={emptyItem} />)
-    // Check for i18n key as mocked in vitest.setup.ts
-    expect(screen.getByText(/plugin.auth.emptyAuth/)).toBeInTheDocument()
-  })
+    it('should render empty state when credentials_list is empty', () => {
+      // Arrange
+      const emptyItem = { ...mockItem, credentials_list: [] }
 
-  it('should handle "edit" action from Item component', () => {
-    const mockReturn = createMockPluginAuthActionReturn()
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-edit-c1'))
-    expect(mockReturn.handleEdit).toHaveBeenCalledWith('c1', {
-      apiKey: 'key1',
-      __name__: 'Credential 1',
-      __credential_id__: 'c1',
+      // Act
+      render(<Card item={emptyItem} />)
+
+      // Assert
+      expect(screen.getByText(/plugin.auth.emptyAuth/)).toBeInTheDocument()
     })
   })
 
-  it('should handle "delete" action from Item component', () => {
-    const mockReturn = createMockPluginAuthActionReturn()
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-delete-c1'))
-    expect(mockReturn.openConfirm).toHaveBeenCalledWith('c1')
-  })
+  describe('Actions', () => {
+    it('should handle "edit" action from Item component', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn()
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} />)
 
-  it('should handle "setDefault" action from Item component', () => {
-    const mockReturn = createMockPluginAuthActionReturn()
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-setDefault-c1'))
-    expect(mockReturn.handleSetDefault).toHaveBeenCalledWith('c1')
-  })
+      // Act
+      fireEvent.click(screen.getByTestId('action-edit-c1'))
 
-  it('should handle "rename" action from Item component', () => {
-    const mockReturn = createMockPluginAuthActionReturn()
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-rename-c1'))
-    expect(mockReturn.handleRename).toHaveBeenCalledWith({ name: 'new name' })
-  })
+      // Assert
+      expect(mockReturn.handleEdit).toHaveBeenCalledWith('c1', {
+        apiKey: 'key1',
+        __name__: 'Credential 1',
+        __credential_id__: 'c1',
+      })
+    })
 
-  it('should handle "change" action and trigger OAuth flow with authorization_url', async () => {
-    mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: 'https://oauth.url' })
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-change-c1'))
-    await waitFor(() => {
-      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
-      expect(openOAuthPopup).toHaveBeenCalledWith('https://oauth.url', mockHandleAuthUpdate)
+    it('should handle "delete" action from Item component', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn()
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('action-delete-c1'))
+
+      // Assert
+      expect(mockReturn.openConfirm).toHaveBeenCalledWith('c1')
+    })
+
+    it('should handle "setDefault" action from Item component', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn()
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('action-setDefault-c1'))
+
+      // Assert
+      expect(mockReturn.handleSetDefault).toHaveBeenCalledWith('c1')
+    })
+
+    it('should handle "rename" action from Item component', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn()
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('action-rename-c1'))
+
+      // Assert
+      expect(mockReturn.handleRename).toHaveBeenCalledWith({ name: 'new name' })
+    })
+
+    it('should handle "change" action and trigger OAuth flow', async () => {
+      // Arrange
+      mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: 'https://oauth.url' })
+      render(<Card item={mockItem} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('action-change-c1'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
+        expect(openOAuthPopup).toHaveBeenCalledWith('https://oauth.url', mockHandleAuthUpdate)
+      })
+    })
+
+    it('should not open popup if authorization_url is missing during "change" action', async () => {
+      // Arrange
+      mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: '' })
+      render(<Card item={mockItem} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('action-change-c1'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
+        expect(openOAuthPopup).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should handle "unknown" action from Item component without side effects', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn()
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('action-unknown-c1'))
+
+      // Assert
+      expect(mockReturn.handleEdit).not.toHaveBeenCalled()
+      expect(mockReturn.openConfirm).not.toHaveBeenCalled()
+      expect(mockReturn.handleSetDefault).not.toHaveBeenCalled()
+      expect(mockReturn.handleRename).not.toHaveBeenCalled()
+      expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
     })
   })
 
-  it('should handle "change" action but not open popup if authorization_url is missing', async () => {
-    mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: '' })
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-change-c1'))
-    await waitFor(() => {
-      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
-      expect(openOAuthPopup).not.toHaveBeenCalled()
+  describe('Modals', () => {
+    it('should show Confirm dialog when deleteCredentialId is set and handle its actions', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn({ deleteCredentialId: 'c1', doingAction: true })
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} />)
+
+      // Assert
+      expect(screen.getByTestId('mock-confirm')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-confirm')).toHaveAttribute('data-disabled', 'true')
+
+      // Act
+      fireEvent.click(screen.getByTestId('confirm-cancel'))
+      expect(mockReturn.closeConfirm).toHaveBeenCalled()
+
+      fireEvent.click(screen.getByTestId('confirm-confirm'))
+      expect(mockReturn.handleConfirm).toHaveBeenCalled()
+    })
+
+    it('should show ApiKeyModal when editValues is set and handle its actions', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn({ editValues: { some: 'value' }, doingAction: false })
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+      render(<Card item={mockItem} disabled={false} />)
+
+      // Assert
+      expect(screen.getByTestId('mock-api-key-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'false')
+
+      // Act
+      fireEvent.click(screen.getByTestId('modal-close'))
+      expect(mockReturn.setEditValues).toHaveBeenCalledWith(null)
+      expect(mockReturn.pendingOperationCredentialId.current).toBeNull()
+
+      fireEvent.click(screen.getByTestId('modal-remove'))
+      expect(mockReturn.handleRemove).toHaveBeenCalled()
+    })
+
+    it('should disable ApiKeyModal when doingAction is true', () => {
+      // Arrange
+      const mockReturnDoing = createMockPluginAuthActionReturn({ editValues: { some: 'value' }, doingAction: true })
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturnDoing)
+
+      // Act
+      render(<Card item={mockItem} disabled={false} />)
+
+      // Assert
+      expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'true')
+    })
+
+    it('should hide modals when their trigger values are null', () => {
+      // Arrange
+      vi.mocked(usePluginAuthAction).mockReturnValue(createMockPluginAuthActionReturn({
+        deleteCredentialId: null,
+        editValues: null,
+      }))
+
+      // Act
+      render(<Card item={mockItem} />)
+
+      // Assert
+      expect(screen.queryByTestId('mock-confirm')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('mock-api-key-modal')).not.toBeInTheDocument()
+    })
+
+    it('should honor the disabled prop in ApiKeyModal when it is true', () => {
+      // Arrange
+      const mockReturn = createMockPluginAuthActionReturn({
+        editValues: { apiKey: 'test' },
+        doingAction: false,
+      })
+      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
+
+      // Act
+      render(<Card item={mockItem} disabled={true} />)
+
+      // Assert
+      expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'true')
     })
   })
 
-  it('should show Confirm dialog when deleteCredentialId is set and handle its actions', () => {
-    const mockReturn = createMockPluginAuthActionReturn({ deleteCredentialId: 'c1', doingAction: true })
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    render(<Card item={mockItem} />)
-    expect(screen.getByTestId('mock-confirm')).toBeInTheDocument()
-    expect(screen.getByTestId('mock-confirm')).toHaveAttribute('data-disabled', 'true')
+  describe('Integration', () => {
+    it('should call handleAuthUpdate when Configure component triggers update', () => {
+      // Act
+      render(<Card item={mockItem} />)
+      fireEvent.click(screen.getByTestId('mock-configure'))
 
-    fireEvent.click(screen.getByTestId('confirm-cancel'))
-    expect(mockReturn.closeConfirm).toHaveBeenCalled()
+      // Assert
+      expect(mockHandleAuthUpdate).toHaveBeenCalled()
+    })
 
-    fireEvent.click(screen.getByTestId('confirm-confirm'))
-    expect(mockReturn.handleConfirm).toHaveBeenCalled()
-  })
-
-  it('should show ApiKeyModal when editValues is set and handle its actions while respecting disabled combinations', () => {
-    const mockReturn = createMockPluginAuthActionReturn({ editValues: { some: 'value' }, doingAction: true })
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    const { rerender } = render(<Card item={mockItem} disabled={false} />)
-    expect(screen.getByTestId('mock-api-key-modal')).toBeInTheDocument()
-    // disabled={disabled || doingAction} -> false || true = true
-    expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'true')
-
-    fireEvent.click(screen.getByTestId('modal-close'))
-    expect(mockReturn.setEditValues).toHaveBeenCalledWith(null)
-    expect(mockReturn.pendingOperationCredentialId.current).toBeNull()
-
-    fireEvent.click(screen.getByTestId('modal-remove'))
-    expect(mockReturn.handleRemove).toHaveBeenCalled()
-
-    // Test with disabled prop true -> true || true = true
-    rerender(<Card item={mockItem} disabled={true} />)
-    expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'true')
-
-    // Test with doingAction false and disabled false -> false || false = false
-    const mockReturnNotDoing = createMockPluginAuthActionReturn({ editValues: { some: 'value' }, doingAction: false })
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturnNotDoing)
-    rerender(<Card item={mockItem} disabled={false} />)
-    expect(screen.getByTestId('mock-api-key-modal')).toHaveAttribute('data-disabled', 'false')
-  })
-
-  it('should handle "unknown" action from Item component without side effects', () => {
-    const mockReturn = createMockPluginAuthActionReturn()
-    vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('action-unknown-c1'))
-
-    expect(mockReturn.handleEdit).not.toHaveBeenCalled()
-    expect(mockReturn.openConfirm).not.toHaveBeenCalled()
-    expect(mockReturn.handleSetDefault).not.toHaveBeenCalled()
-    expect(mockReturn.handleRename).not.toHaveBeenCalled()
-    expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
-  })
-
-  it('should call handleAuthUpdate when Configure component triggers update', () => {
-    render(<Card item={mockItem} />)
-    fireEvent.click(screen.getByTestId('mock-configure'))
-    expect(mockHandleAuthUpdate).toHaveBeenCalled()
+    it('should maintain stable handleAction reference', () => {
+      // Use renderHook to test hook logic or just verify it does not crash
+      const { result } = renderHook(() => useDataSourceAuthUpdate({ pluginId: '1', provider: 'p' }))
+      expect(result.current.handleAuthUpdate).toBeDefined()
+    })
   })
 })

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,32 +10,26 @@ import { createDataSourceApiKeyBinding } from '@/service/datasets'
 import ConfigJinaReaderModal from './config-jina-reader-modal'
 
 /**
- * Mocking dependencies to isolate the ConfigJinaReaderModal component.
+ * ConfigJinaReaderModal Component Tests
+ * Tests validation, save logic, and basic rendering for the Jina Reader configuration modal.
  */
 
-// Mock the service call for creating API key binding
 vi.mock('@/service/datasets', () => ({
   createDataSourceApiKeyBinding: vi.fn(),
 }))
 
-// Mock Toast for notifications
 vi.mock('@/app/components/base/toast', () => ({
   default: {
     notify: vi.fn(),
   },
 }))
 
-/**
- * Mocking Portal components to ensure content is rendered in the testing DOM.
- */
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div data-testid="portal">{children}</div>,
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div data-testid="portal-content">{children}</div>,
+  PortalToFollowElem: ({ children }: { children: ReactNode }) => <div data-testid="portal">{children}</div>,
+  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => <div data-testid="portal-content">{children}</div>,
 }))
 
-/**
- * Mocking Field component to provide a simpler interface for testing interaction.
- */
+// Mock Field component to provide a simpler interface for testing interaction
 vi.mock('@/app/components/datasets/create/website/base/field', () => ({
   default: ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (v: string | number) => void, placeholder?: string }) => (
     <div>
@@ -50,163 +45,124 @@ vi.mock('@/app/components/datasets/create/website/base/field', () => ({
   ),
 }))
 
-/**
- * Internationalization (i18n) Behavior:
- *
- * react-i18next is globally mocked in vitest.setup.ts (via test/i18n-mock.ts).
- * The global mock returns translation keys in the format 'namespace.key' instead of
- * localized strings, making test assertions predictable and independent of locale.
- *
- * For example:
- *   t('jinaReader.configJinaReader', { ns: 'datasetCreation' }) → 'datasetCreation.jinaReader.configJinaReader'
- *   t('operation.save', { ns: 'common' }) → 'common.operation.save'
- *
- * This ensures that:
- * 1. Tests verify the correct translation keys are being used
- * 2. Tests remain stable regardless of translation file changes
- * 3. No additional mocking is needed in individual test files
- */
-
 describe('ConfigJinaReaderModal Component', () => {
+  const user = userEvent.setup()
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
-  let user: ReturnType<typeof userEvent.setup>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Setup userEvent for each test to ensure proper cleanup and isolation
-    user = userEvent.setup()
   })
 
-  /**
-   * Test case: Verify initial rendering of the modal and its components.
-   */
-  it('should render the modal with API Key field and buttons', () => {
-    render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+  describe('Initial Rendering', () => {
+    it('should render the modal with API Key field and buttons', () => {
+      // Act
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    // Verify title and static content
-    expect(screen.getByText('datasetCreation.jinaReader.configJinaReader')).toBeInTheDocument()
-    expect(screen.getByLabelText('API Key')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.save')).toBeInTheDocument()
-
-    // Verify the "Get API Key" link
-    const link = screen.getByRole('link', { name: /datasetCreation\.jinaReader\.getApiKeyLinkText/i })
-    expect(link).toHaveAttribute('href', 'https://jina.ai/reader/')
-    expect(link).toHaveAttribute('target', '_blank')
-  })
-
-  /**
-   * Test case: Verify that API Key value is correctly updated.
-   * Uses userEvent.type to simulate realistic typing behavior.
-   */
-  it('should update state when API Key field changes', async () => {
-    render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const apiKeyInput = screen.getByLabelText('API Key')
-    await user.type(apiKeyInput, 'jina-test-key')
-
-    expect(apiKeyInput).toHaveValue('jina-test-key')
-  })
-
-  /**
-   * Test case: Verify validation error when API Key is missing.
-   * This covers the branch where apiKey is empty.
-   */
-  it('should show error when saving without API Key', async () => {
-    render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const saveButton = screen.getByText('common.operation.save')
-    await user.click(saveButton)
-
-    await waitFor(() => {
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('errorMsg.fieldRequired'),
-      }))
+      // Assert
+      expect(screen.getByText('datasetCreation.jinaReader.configJinaReader')).toBeInTheDocument()
+      expect(screen.getByLabelText('API Key')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.save/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.cancel/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /datasetCreation\.jinaReader\.getApiKeyLinkText/i })).toHaveAttribute('href', 'https://jina.ai/reader/')
     })
-    expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
   })
 
-  /**
-   * Test case: Verify successful save operation.
-   * This covers the happy path and ensures postData is correctly structured.
-   * Note: The finally block is also covered here as it resets isSaving.
-   */
-  it('should save successfully with valid API Key', async () => {
-    vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+  describe('Form Interactions', () => {
+    it('should update state when API Key field changes', async () => {
+      // Arrange
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      const apiKeyInput = screen.getByLabelText('API Key')
 
-    render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      // Act
+      await user.type(apiKeyInput, 'jina-test-key')
 
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const saveButton = screen.getByText('common.operation.save')
+      // Assert
+      expect(apiKeyInput).toHaveValue('jina-test-key')
+    })
 
-    await user.type(apiKeyInput, 'valid-jina-key')
-    await user.click(saveButton)
+    it('should call onCancel when cancel button is clicked', async () => {
+      // Arrange
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    await waitFor(() => {
-      expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
-        category: 'website',
-        provider: DataSourceProvider.jinaReader,
-        credentials: {
-          auth_type: 'bearer',
-          config: {
-            api_key: 'valid-jina-key',
+      // Act
+      await user.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
+  })
+
+  describe('Validation', () => {
+    it('should show error when saving without API Key', async () => {
+      // Arrange
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      // Assert
+      await waitFor(() => {
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'error',
+          message: 'common.errorMsg.fieldRequired:{"field":"API Key"}',
+        }))
+      })
+      expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Saving Logic', () => {
+    it('should save successfully with valid API Key', async () => {
+      // Arrange
+      vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      const apiKeyInput = screen.getByLabelText('API Key')
+
+      // Act
+      await user.type(apiKeyInput, 'valid-jina-key')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      // Assert
+      await waitFor(() => {
+        expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
+          category: 'website',
+          provider: DataSourceProvider.jinaReader,
+          credentials: {
+            auth_type: 'bearer',
+            config: {
+              api_key: 'valid-jina-key',
+            },
           },
-        },
+        })
+      })
+      await waitFor(() => {
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', message: 'common.api.success' }))
+        expect(mockOnSaved).toHaveBeenCalled()
       })
     })
 
-    await waitFor(() => {
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        message: expect.stringContaining('api.success'),
-      }))
-      expect(mockOnSaved).toHaveBeenCalled()
-    })
-  })
+    it('should ignore multiple save clicks while saving is in progress', async () => {
+      // Arrange
+      let resolveSave: (value: { result: 'success' }) => void
+      const savePromise = new Promise<{ result: 'success' }>((resolve) => {
+        resolveSave = resolve
+      })
+      vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(savePromise)
+      render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      await user.type(screen.getByLabelText('API Key'), 'test-key')
+      const saveBtn = screen.getByRole('button', { name: /common\.operation\.save/i })
 
-  /**
-   * Test case: Verify onCancel is called when clicking the cancel button.
-   */
-  it('should call onCancel when cancel button is clicked', async () => {
-    render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      // Act
+      await user.click(saveBtn)
+      await user.click(saveBtn)
 
-    const cancelButton = screen.getByText('common.operation.cancel')
-    await user.click(cancelButton)
+      // Assert
+      expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
 
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
-
-  /**
-   * Test case: Verify that multiple clicks on save are ignored while saving.
-   * This covers the branch 'if (isSaving) return'.
-   */
-  it('should ignore multiple save clicks while saving is in progress', async () => {
-    let resolveSave: (value: { result: 'success' }) => void
-    const savePromise = new Promise<{ result: 'success' }>((resolve) => {
-      resolveSave = resolve
-    })
-    vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(savePromise)
-
-    render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const saveButton = screen.getByText('common.operation.save')
-
-    await user.type(apiKeyInput, 'test-api-key')
-
-    // Trigger save twice rapidly to test re-entrancy guard
-    await user.click(saveButton)
-    await user.click(saveButton)
-
-    expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
-
-    // Finalize the save
-    resolveSave!({ result: 'success' })
-
-    await waitFor(() => {
-      expect(mockOnSaved).toHaveBeenCalledTimes(1)
+      // Cleanup
+      resolveSave!({ result: 'success' })
+      await waitFor(() => expect(mockOnSaved).toHaveBeenCalledTimes(1))
     })
   })
 })

@@ -9,9 +9,10 @@ import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useDataSourceAuthUpdate } from './use-data-source-auth-update'
 
 /**
- * Mocking internal service hooks.
- * We use vi.mock to intercept calls to these service functions.
+ * useDataSourceAuthUpdate Hook Tests
+ * This hook manages the invalidation of various data source related queries.
  */
+
 vi.mock('@/service/use-datasource', () => ({
   useInvalidDataSourceAuth: vi.fn(),
   useInvalidDataSourceListAuth: vi.fn(),
@@ -23,65 +24,62 @@ vi.mock('@/service/use-pipeline', () => ({
 }))
 
 describe('useDataSourceAuthUpdate', () => {
-  // Define mock implementation functions that will be returned by the service hooks
   const mockInvalidateDataSourceAuth = vi.fn()
   const mockInvalidateDataSourceListAuth = vi.fn()
   const mockInvalidDefaultDataSourceListAuth = vi.fn()
   const mockInvalidateDataSourceList = vi.fn()
 
   beforeEach(() => {
-    // Reset all mocks before each test to ensure test isolation
     vi.clearAllMocks()
 
-    // Setup the service hooks to return our mock functions
     vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
     vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(mockInvalidateDataSourceListAuth)
     vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(mockInvalidDefaultDataSourceListAuth)
     vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
   })
 
-  it('should call all invalidate functions when handleAuthUpdate is invoked', () => {
-    const pluginId = 'test-plugin-id'
-    const provider = 'test-provider'
+  describe('handleAuthUpdate', () => {
+    it('should call all invalidate functions when handleAuthUpdate is invoked', () => {
+      // Arrange
+      const pluginId = 'test-plugin-id'
+      const provider = 'test-provider'
+      const { result } = renderHook(() => useDataSourceAuthUpdate({
+        pluginId,
+        provider,
+      }))
 
-    // Render the hook with test parameters
-    const { result } = renderHook(() => useDataSourceAuthUpdate({
-      pluginId,
-      provider,
-    }))
+      // Assert Initialization
+      expect(useInvalidDataSourceAuth).toHaveBeenCalledWith({ pluginId, provider })
 
-    // Verify that the invalidation hooks were initialized correctly
-    expect(useInvalidDataSourceAuth).toHaveBeenCalledWith({ pluginId, provider })
+      // Act
+      act(() => {
+        result.current.handleAuthUpdate()
+      })
 
-    // Execute the handleAuthUpdate callback
-    act(() => {
-      result.current.handleAuthUpdate()
+      // Assert Invalidation
+      expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(1)
+      expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalledTimes(1)
+      expect(mockInvalidateDataSourceList).toHaveBeenCalledTimes(1)
+      expect(mockInvalidateDataSourceAuth).toHaveBeenCalledTimes(1)
     })
 
-    // Assert that all invalidation functions were called exactly once
-    expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(1)
-    expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateDataSourceList).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateDataSourceAuth).toHaveBeenCalledTimes(1)
-  })
+    it('should maintain stable handleAuthUpdate reference if dependencies do not change', () => {
+      // Arrange
+      const props = {
+        pluginId: 'stable-plugin',
+        provider: 'stable-provider',
+      }
+      const { result, rerender } = renderHook(
+        ({ pluginId, provider }) => useDataSourceAuthUpdate({ pluginId, provider }),
+        { initialProps: props },
+      )
+      const firstHandleAuthUpdate = result.current.handleAuthUpdate
 
-  it('should maintain stable handleAuthUpdate reference if dependencies do not change', () => {
-    const props = {
-      pluginId: 'stable-plugin',
-      provider: 'stable-provider',
-    }
+      // Act
+      rerender(props)
 
-    const { result, rerender } = renderHook(
-      ({ pluginId, provider }) => useDataSourceAuthUpdate({ pluginId, provider }),
-      { initialProps: props },
-    )
-
-    const firstHandleAuthUpdate = result.current.handleAuthUpdate
-
-    // Rerender with the same props
-    rerender(props)
-
-    // Check if the reference remained stable
-    expect(result.current.handleAuthUpdate).toBe(firstHandleAuthUpdate)
+      // Assert
+      expect(result.current.handleAuthUpdate).toBe(firstHandleAuthUpdate)
+    })
   })
 })

@@ -8,22 +8,21 @@ import { useMarketplaceAllPlugins } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
 
 /**
- * Mocking third-party and local dependencies to achieve 100% test coverage.
+ * InstallFromMarketplace Component Tests
+ * Using Unit approach to focus on the component's internal state and conditional rendering.
  */
 
-// Mock next-themes
+// Mock external dependencies
 vi.mock('next-themes', () => ({
   useTheme: vi.fn(),
 }))
 
-// Mock next/link
 vi.mock('next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => (
     <a href={href} data-testid="mock-link">{children}</a>
   ),
 }))
 
-// Mock local utilities and components
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: vi.fn((path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`),
 }))
@@ -44,7 +43,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
     emptyClassName?: string
   }) => (
     <div data-testid="mock-list" className={cardContainerClassName}>
-      {plugins.length === 0 && <div className={emptyClassName} />}
+      {plugins.length === 0 && <div className={emptyClassName} aria-label="empty-state" />}
       {plugins.map(plugin => (
         <div key={plugin.plugin_id} data-testid={`list-item-${plugin.plugin_id}`}>
           {cardRender(plugin)}
@@ -86,48 +85,15 @@ describe('InstallFromMarketplace Component', () => {
       type: 'plugin',
       plugin_id: 'plugin-1',
       name: 'Plugin 1',
-      org: 'org1',
-      version: '1.0.0',
-      latest_version: '1.0.0',
-      latest_package_identifier: 'pkg1',
-      icon: 'icon1',
-      verified: true,
-      label: { en_US: 'Label 1' },
-      brief: { en_US: 'Brief 1' },
-      description: { en_US: 'Desc 1' },
-      introduction: 'Intro 1',
-      repository: 'repo1',
       category: PluginCategoryEnum.datasource,
-      install_count: 100,
-      endpoint: { settings: [] },
-      tags: [],
-      badges: [],
-      verification: { authorized_category: 'langgenius' },
-      from: 'marketplace',
-    },
+      // ...other minimal fields
+    } as Plugin,
     {
       type: 'bundle',
       plugin_id: 'bundle-1',
       name: 'Bundle 1',
-      org: 'org2',
-      version: '1.0.0',
-      latest_version: '1.0.0',
-      latest_package_identifier: 'pkg2',
-      icon: 'icon2',
-      verified: true,
-      label: { en_US: 'Bundle 1' },
-      brief: { en_US: 'Brief 2' },
-      description: { en_US: 'Desc 2' },
-      introduction: 'Intro 2',
-      repository: 'repo2',
       category: PluginCategoryEnum.datasource,
-      install_count: 50,
-      endpoint: { settings: [] },
-      tags: [],
-      badges: [],
-      verification: { authorized_category: 'langgenius' },
-      from: 'marketplace',
-    },
+    } as Plugin,
   ]
 
   beforeEach(() => {
@@ -138,75 +104,81 @@ describe('InstallFromMarketplace Component', () => {
       themes: ['light', 'dark'],
       systemTheme: 'light',
       resolvedTheme: 'light',
-    } as ReturnType<typeof useTheme>)
+    } as unknown as ReturnType<typeof useTheme>)
   })
 
-  it('should render correctly when not loading and not collapsed', () => {
-    vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
-      plugins: mockPlugins,
-      isLoading: false,
+  describe('Rendering', () => {
+    it('should render correctly when not loading and not collapsed', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+
+      // Act
+      render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+
+      // Assert
+      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
+      expect(screen.getByTestId('mock-list')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
+      expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('mock-loading')).not.toBeInTheDocument()
     })
 
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    it('should show loading state when marketplace plugins are loading and component is not collapsed', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: [],
+        isLoading: true,
+      })
 
-    // Check header elements
-    expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
-    expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
+      // Act
+      render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
 
-    // Check List and ProviderCard (only for non-bundle)
-    expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-    expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
-    expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('mock-loading')).not.toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('mock-loading')).toBeInTheDocument()
+      expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
+    })
   })
 
-  it('should show loading state when isAllPluginsLoading is true', () => {
-    vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
-      plugins: [],
-      isLoading: true,
+  describe('Interactions', () => {
+    it('should toggle collapse state when clicking the header', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+      render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+      const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
+
+      // Act (Collapse)
+      fireEvent.click(toggleHeader)
+      // Assert
+      expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
+
+      // Act (Expand)
+      fireEvent.click(toggleHeader)
+      // Assert
+      expect(screen.getByTestId('mock-list')).toBeInTheDocument()
     })
 
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    it('should not show loading state even if isLoading is true when component is collapsed', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: [],
+        isLoading: true,
+      })
+      render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+      const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
 
-    expect(screen.getByTestId('mock-loading')).toBeInTheDocument()
-    expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
-  })
+      // Act (Collapse)
+      fireEvent.click(toggleHeader)
 
-  it('should toggle collapse state when clicking the header', () => {
-    vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
-      plugins: mockPlugins,
-      isLoading: false,
+      // Assert
+      expect(screen.queryByTestId('mock-loading')).not.toBeInTheDocument()
     })
-
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-
-    const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
-
-    // Initial state: not collapsed
-    expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-
-    // Click to collapse
-    fireEvent.click(toggleHeader)
-    expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
-
-    // Click to expand
-    fireEvent.click(toggleHeader)
-    expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-  })
-
-  it('should not show loading state if collapsed even if isLoading is true', () => {
-    vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
-      plugins: [],
-      isLoading: true,
-    })
-
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-
-    const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
-
-    // Collapse it
-    fireEvent.click(toggleHeader)
-    expect(screen.queryByTestId('mock-loading')).not.toBeInTheDocument()
   })
 })

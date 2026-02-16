@@ -5,8 +5,10 @@ import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Operator from './operator'
 
 /**
- * Type-safe mock for the Dropdown component.
+ * Operator Component Tests
+ * Using Unit approach with mocked Dropdown to isolate item rendering logic.
  */
+
 type DropdownMockProps = {
   items: { value: string, text: React.ReactNode }[]
   secondItems?: { value: string, text: React.ReactNode }[]
@@ -51,75 +53,107 @@ describe('Operator Component', () => {
     vi.clearAllMocks()
   })
 
-  it('should render correct actions for API_KEY type', () => {
-    const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+  describe('Conditional Action Rendering', () => {
+    it('should render correct actions for API_KEY type', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
 
-    expect(screen.getByText('setDefault')).toBeInTheDocument()
-    expect(screen.getByText('edit')).toBeInTheDocument()
-    expect(screen.getByText('delete')).toBeInTheDocument()
+      // Act
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
-    expect(screen.queryByText('rename')).not.toBeInTheDocument()
-    expect(screen.queryByText('change')).not.toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('setDefault')).toBeInTheDocument()
+      expect(screen.getByText('edit')).toBeInTheDocument()
+      expect(screen.getByText('delete')).toBeInTheDocument()
+      expect(screen.queryByText('rename')).not.toBeInTheDocument()
+      expect(screen.queryByText('change')).not.toBeInTheDocument()
+    })
+
+    it('should render correct actions for OAUTH2 type', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
+
+      // Act
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+
+      // Assert
+      expect(screen.getByText('setDefault')).toBeInTheDocument()
+      expect(screen.getByText('rename')).toBeInTheDocument()
+      expect(screen.getByText('change')).toBeInTheDocument()
+      expect(screen.getByText('delete')).toBeInTheDocument()
+      expect(screen.queryByText('edit')).not.toBeInTheDocument()
+    })
   })
 
-  it('should render correct actions for OAUTH2 type', () => {
-    const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+  describe('Action Callbacks', () => {
+    it('should call onRename when "rename" action is selected', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
-    expect(screen.getByText('setDefault')).toBeInTheDocument()
-    expect(screen.getByText('rename')).toBeInTheDocument()
-    expect(screen.getByText('change')).toBeInTheDocument()
-    expect(screen.getByText('delete')).toBeInTheDocument()
+      // Act
+      fireEvent.click(screen.getByText('rename'))
 
-    expect(screen.queryByText('edit')).not.toBeInTheDocument()
-  })
+      // Assert
+      expect(mockOnRename).toHaveBeenCalledTimes(1)
+      expect(mockOnAction).not.toHaveBeenCalled()
+    })
 
-  it('should call onRename when "rename" action is selected', () => {
-    const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+    it('should handle missing onRename gracefully when "rename" action is selected', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} />)
 
-    fireEvent.click(screen.getByText('rename'))
-    expect(mockOnRename).toHaveBeenCalledTimes(1)
-    expect(mockOnAction).not.toHaveBeenCalled()
-  })
+      // Act & Assert
+      expect(() => fireEvent.click(screen.getByText('rename'))).not.toThrow()
+    })
 
-  it('should handle missing onRename gracefully when "rename" action is selected', () => {
-    const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} />)
+    it('should call onAction for "setDefault" action', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
-    expect(() => fireEvent.click(screen.getByText('rename'))).not.toThrow()
-  })
+      // Act
+      fireEvent.click(screen.getByText('setDefault'))
 
-  it('should call onAction for "setDefault" action', () => {
-    const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      // Assert
+      expect(mockOnAction).toHaveBeenCalledWith('setDefault', credential)
+    })
 
-    fireEvent.click(screen.getByText('setDefault'))
-    expect(mockOnAction).toHaveBeenCalledWith('setDefault', credential)
-  })
+    it('should call onAction for "edit" action', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
-  it('should call onAction for "edit" action', () => {
-    const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      // Act
+      fireEvent.click(screen.getByText('edit'))
 
-    fireEvent.click(screen.getByText('edit'))
-    expect(mockOnAction).toHaveBeenCalledWith('edit', credential)
-  })
+      // Assert
+      expect(mockOnAction).toHaveBeenCalledWith('edit', credential)
+    })
 
-  it('should call onAction for "change" action', () => {
-    const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+    it('should call onAction for "change" action', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
-    fireEvent.click(screen.getByText('change'))
-    expect(mockOnAction).toHaveBeenCalledWith('change', credential)
-  })
+      // Act
+      fireEvent.click(screen.getByText('change'))
 
-  it('should call onAction for "delete" action', () => {
-    const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-    render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      // Assert
+      expect(mockOnAction).toHaveBeenCalledWith('change', credential)
+    })
 
-    fireEvent.click(screen.getByText('delete'))
-    expect(mockOnAction).toHaveBeenCalledWith('delete', credential)
+    it('should call onAction for "delete" action', () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+
+      // Act
+      fireEvent.click(screen.getByText('delete'))
+
+      // Assert
+      expect(mockOnAction).toHaveBeenCalledWith('delete', credential)
+    })
   })
 })

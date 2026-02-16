@@ -1,3 +1,5 @@
+'use client'
+
 import type { JSX } from 'react'
 import type { AppContextValue } from '@/context/app-context'
 import type { CommonResponse } from '@/models/common'
@@ -8,6 +10,11 @@ import { useAppContext } from '@/context/app-context'
 import { DataSourceProvider } from '@/models/common'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
 import DataSourceWebsite from './index'
+
+/**
+ * DataSourceWebsite Component Tests
+ * Tests integration of multiple website scraping providers (Firecrawl, WaterCrawl, Jina Reader).
+ */
 
 type DataSourcesResponse = CommonResponse & {
   sources: Array<{ id: string, provider: DataSourceProvider }>
@@ -98,170 +105,159 @@ describe('DataSourceWebsite Component', () => {
     vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [] } as DataSourcesResponse)
   })
 
-  // Helper to render and wait for initial fetch to complete, avoiding 'act' warnings
+  // Helper to render and wait for initial fetch to complete
   const renderAndWait = async (provider: DataSourceProvider) => {
     const result = render(<DataSourceWebsite provider={provider} />)
     await waitFor(() => expect(fetchDataSources).toHaveBeenCalled())
     return result
   }
 
-  /**
-   * Test case: Verify initial data fetching on mount.
-   */
-  it('should fetch data sources on mount', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: mockSources } as DataSourcesResponse)
+  describe('Data Initialization', () => {
+    it('should fetch data sources on mount and reflect configured status', async () => {
+      // Arrange
+      vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: mockSources } as DataSourcesResponse)
 
-    await renderAndWait(DataSourceProvider.fireCrawl)
+      // Act
+      await renderAndWait(DataSourceProvider.fireCrawl)
 
-    // Check if Panel reflects configured status
-    expect(screen.getByTestId('configured-status')).toHaveTextContent('configured')
-  })
+      // Assert
+      expect(screen.getByTestId('configured-status')).toHaveTextContent('configured')
+    })
 
-  /**
-   * Test case: Verify readOnly status based on workspace manager context.
-   */
-  it('should pass readOnly status to Panel', async () => {
-    vi.mocked(useAppContext).mockReturnValue({ isCurrentWorkspaceManager: false } as unknown as AppContextValue)
+    it('should pass readOnly status based on workspace manager permissions', async () => {
+      // Arrange
+      vi.mocked(useAppContext).mockReturnValue({ isCurrentWorkspaceManager: false } as unknown as AppContextValue)
 
-    await renderAndWait(DataSourceProvider.fireCrawl)
+      // Act
+      await renderAndWait(DataSourceProvider.fireCrawl)
 
-    expect(screen.getByTestId('readonly-status')).toHaveTextContent('readonly')
-  })
-
-  /**
-   * Test case: Verify logo and provider name logic for Firecrawl.
-   */
-  it('should render correct logo and name for Firecrawl', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
-
-    await renderAndWait(DataSourceProvider.fireCrawl)
-
-    expect(await screen.findByTestId('name-1')).toHaveTextContent('Firecrawl')
-    expect(screen.getByText('🔥')).toBeInTheDocument()
-  })
-
-  /**
-   * Test case: Verify logo and provider name logic for WaterCrawl.
-   */
-  it('should render correct logo and name for WaterCrawl', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[1]] } as DataSourcesResponse)
-
-    await renderAndWait(DataSourceProvider.waterCrawl)
-
-    expect(await screen.findByTestId('name-2')).toHaveTextContent('WaterCrawl')
-    // Watercrawl logo is a div containing a span with a CSS class from module
-    const watercrawlLogo = screen.getByTestId('logo-2').firstChild as HTMLElement
-    expect(watercrawlLogo).toBeInTheDocument()
-    expect(watercrawlLogo.tagName.toLowerCase()).toBe('div')
-    expect(watercrawlLogo.querySelector('span')).toBeInTheDocument()
-  })
-
-  /**
-   * Test case: Verify logo and provider name logic for Jina Reader.
-   */
-  it('should render correct logo and name for Jina Reader', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[2]] } as DataSourcesResponse)
-
-    await renderAndWait(DataSourceProvider.jinaReader)
-
-    expect(await screen.findByTestId('name-3')).toHaveTextContent('Jina Reader')
-    // Jina logo is a div containing a span with a CSS class from module
-    const jinaLogo = screen.getByTestId('logo-3').firstChild as HTMLElement
-    expect(jinaLogo).toBeInTheDocument()
-    expect(jinaLogo.tagName.toLowerCase()).toBe('div')
-    expect(jinaLogo.querySelector('span')).toBeInTheDocument()
-  })
-
-  /**
-   * Test case: Verify opening and closing of Config modals.
-   */
-  it('should open and close configuration modals', async () => {
-    await renderAndWait(DataSourceProvider.fireCrawl)
-
-    // Open
-    fireEvent.click(screen.getByTestId('configure-btn'))
-    expect(screen.getByTestId('firecrawl-modal')).toBeInTheDocument()
-
-    // Cancel
-    fireEvent.click(screen.getByTestId('cancel-firecrawl'))
-    expect(screen.queryByTestId('firecrawl-modal')).not.toBeInTheDocument()
-  })
-
-  /**
-   * Test case: Verify behavior after saving configuration.
-   */
-  it('should re-fetch sources after saving configuration', async () => {
-    await renderAndWait(DataSourceProvider.waterCrawl)
-
-    // Open Watercrawl modal
-    fireEvent.click(screen.getByTestId('configure-btn'))
-
-    // Clear initial call from mount
-    vi.mocked(fetchDataSources).mockClear()
-
-    // Click save
-    fireEvent.click(screen.getByTestId('save-watercrawl'))
-
-    await waitFor(() => {
-      expect(fetchDataSources).toHaveBeenCalled()
-      expect(screen.queryByTestId('watercrawl-modal')).not.toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('readonly-status')).toHaveTextContent('readonly')
     })
   })
 
-  /**
-   * Test case: Verify saving Jina Reader modal.
-   */
-  it('should handle Jina Reader configuration save', async () => {
-    await renderAndWait(DataSourceProvider.jinaReader)
+  describe('Provider Specific Rendering', () => {
+    it('should render correct logo and name for Firecrawl', async () => {
+      // Arrange
+      vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
 
-    fireEvent.click(screen.getByTestId('configure-btn'))
-    expect(screen.getByTestId('jina-modal')).toBeInTheDocument()
+      // Act
+      await renderAndWait(DataSourceProvider.fireCrawl)
 
-    // Clear initial call from mount
-    vi.mocked(fetchDataSources).mockClear()
+      // Assert
+      expect(await screen.findByTestId('name-1')).toHaveTextContent('Firecrawl')
+      expect(screen.getByText('🔥')).toBeInTheDocument()
+    })
 
-    fireEvent.click(screen.getByTestId('save-jina'))
+    it('should render correct logo and name for WaterCrawl', async () => {
+      // Arrange
+      vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[1]] } as DataSourcesResponse)
 
-    await waitFor(() => {
-      expect(fetchDataSources).toHaveBeenCalled()
-      expect(screen.queryByTestId('jina-modal')).not.toBeInTheDocument()
+      // Act
+      await renderAndWait(DataSourceProvider.waterCrawl)
+
+      // Assert
+      expect(await screen.findByTestId('name-2')).toHaveTextContent('WaterCrawl')
+      const logoContainer = screen.getByTestId('logo-2').firstChild as HTMLElement
+      expect(logoContainer.tagName.toLowerCase()).toBe('div')
+      expect(logoContainer.querySelector('span')).toBeInTheDocument()
+    })
+
+    it('should render correct logo and name for Jina Reader', async () => {
+      // Arrange
+      vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[2]] } as DataSourcesResponse)
+
+      // Act
+      await renderAndWait(DataSourceProvider.jinaReader)
+
+      // Assert
+      expect(await screen.findByTestId('name-3')).toHaveTextContent('Jina Reader')
+      const logoContainer = screen.getByTestId('logo-3').firstChild as HTMLElement
+      expect(logoContainer.tagName.toLowerCase()).toBe('div')
+      expect(logoContainer.querySelector('span')).toBeInTheDocument()
     })
   })
 
-  /**
-   * Test case: Verify removal of a data source.
-   */
-  it('should remove data source and show notification', async () => {
-    vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
-    vi.mocked(removeDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' } as CommonResponse)
+  describe('Modal Interactions', () => {
+    it('should manage opening and closing of configuration modals', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.fireCrawl)
 
-    await renderAndWait(DataSourceProvider.fireCrawl)
+      // Act (Open)
+      fireEvent.click(screen.getByTestId('configure-btn'))
+      // Assert
+      expect(screen.getByTestId('firecrawl-modal')).toBeInTheDocument()
 
-    await waitFor(() => expect(screen.getByTestId('configured-status')).toHaveTextContent('configured'))
-
-    // Click remove
-    fireEvent.click(screen.getByTestId('remove-btn'))
-
-    await waitFor(() => {
-      expect(removeDataSourceApiKeyBinding).toHaveBeenCalledWith('1')
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        message: expect.stringContaining('api.remove'),
-      }))
+      // Act (Cancel)
+      fireEvent.click(screen.getByTestId('cancel-firecrawl'))
+      // Assert
+      expect(screen.queryByTestId('firecrawl-modal')).not.toBeInTheDocument()
     })
 
-    // Status should update to not-configured
-    expect(screen.getByTestId('configured-status')).toHaveTextContent('not-configured')
+    it('should re-fetch sources after saving configuration (Watercrawl)', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.waterCrawl)
+      fireEvent.click(screen.getByTestId('configure-btn'))
+      vi.mocked(fetchDataSources).mockClear()
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-watercrawl'))
+
+      // Assert
+      await waitFor(() => {
+        expect(fetchDataSources).toHaveBeenCalled()
+        expect(screen.queryByTestId('watercrawl-modal')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should re-fetch sources after saving configuration (Jina Reader)', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.jinaReader)
+      fireEvent.click(screen.getByTestId('configure-btn'))
+      vi.mocked(fetchDataSources).mockClear()
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-jina'))
+
+      // Assert
+      await waitFor(() => {
+        expect(fetchDataSources).toHaveBeenCalled()
+        expect(screen.queryByTestId('jina-modal')).not.toBeInTheDocument()
+      })
+    })
   })
 
-  /**
-   * Test case: Verify removal does nothing if ID is not found.
-   */
-  it('should not call remove API if data source ID is missing', async () => {
-    await renderAndWait(DataSourceProvider.fireCrawl)
+  describe('Management Actions', () => {
+    it('should handle successful data source removal with toast notification', async () => {
+      // Arrange
+      vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
+      vi.mocked(removeDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' } as CommonResponse)
+      await renderAndWait(DataSourceProvider.fireCrawl)
+      await waitFor(() => expect(screen.getByTestId('configured-status')).toHaveTextContent('configured'))
 
-    fireEvent.click(screen.getByTestId('remove-btn'))
+      // Act
+      fireEvent.click(screen.getByTestId('remove-btn'))
 
-    expect(removeDataSourceApiKeyBinding).not.toHaveBeenCalled()
+      // Assert
+      await waitFor(() => {
+        expect(removeDataSourceApiKeyBinding).toHaveBeenCalledWith('1')
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+          message: 'common.api.remove',
+        }))
+      })
+      expect(screen.getByTestId('configured-status')).toHaveTextContent('not-configured')
+    })
+
+    it('should skip removal API call if no data source ID is present', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.fireCrawl)
+
+      // Act
+      fireEvent.click(screen.getByTestId('remove-btn'))
+
+      // Assert
+      expect(removeDataSourceApiKeyBinding).not.toHaveBeenCalled()
+    })
   })
 })

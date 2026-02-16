@@ -8,8 +8,11 @@ import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import Configure from './configure'
 
 /**
- * Mocking internal components to isolate the unit test for Configure.
+ * Configure Component Tests
+ * Using Unit approach to ensure 100% coverage and stable tests.
  */
+
+// Mock internal components to isolate the unit test for Configure.
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: vi.fn(({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange: (val: boolean) => void }) => (
     <div data-testid="portal-wrapper" data-open={open}>
@@ -76,168 +79,200 @@ describe('Configure Component', () => {
     vi.clearAllMocks()
   })
 
-  it('should toggle and manage the open state correctly', () => {
-    render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
-    const trigger = screen.getByTestId('portal-trigger')
-    const wrapper = screen.getByTestId('portal-wrapper')
-    const closeBtn = screen.getByTestId('force-close-portal')
+  describe('Open State Management', () => {
+    it('should toggle and manage the open state correctly', () => {
+      // Act
+      render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
+      const trigger = screen.getByTestId('portal-trigger')
+      const wrapper = screen.getByTestId('portal-wrapper')
+      const closeBtn = screen.getByTestId('force-close-portal')
 
-    // Toggling via trigger
-    expect(wrapper).toHaveAttribute('data-open', 'false')
-    fireEvent.click(trigger)
-    expect(wrapper).toHaveAttribute('data-open', 'true')
-    fireEvent.click(trigger)
-    expect(wrapper).toHaveAttribute('data-open', 'false')
+      // Assert
+      expect(wrapper).toHaveAttribute('data-open', 'false')
 
-    // Closing via direct state change (mocked as button)
-    fireEvent.click(trigger)
-    fireEvent.click(closeBtn)
-    expect(wrapper).toHaveAttribute('data-open', 'false')
+      // Act
+      fireEvent.click(trigger)
+      // Assert
+      expect(wrapper).toHaveAttribute('data-open', 'true')
+
+      // Act
+      fireEvent.click(trigger)
+      // Assert
+      expect(wrapper).toHaveAttribute('data-open', 'false')
+
+      // Act
+      fireEvent.click(trigger)
+      fireEvent.click(closeBtn)
+      // Assert
+      expect(wrapper).toHaveAttribute('data-open', 'false')
+    })
   })
 
-  it('should render AddApiKeyButton when credential_schema is non-empty', () => {
-    const itemWithApiKey: DataSourceAuth = {
-      ...mockItemBase,
-      credential_schema: [mockFormSchema],
-    }
-    render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
+  describe('Conditional Rendering', () => {
+    it('should render AddApiKeyButton when credential_schema is non-empty', () => {
+      // Arrange
+      const itemWithApiKey: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [mockFormSchema],
+      }
 
-    expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
-    expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
-  })
+      // Act
+      render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
 
-  it('should render AddOAuthButton when oauth_schema with client_schema is non-empty', () => {
-    const itemWithOAuth: DataSourceAuth = {
-      ...mockItemBase,
-      oauth_schema: {
-        client_schema: [mockFormSchema],
-      },
-    }
-    render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
+      // Assert
+      expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+    })
 
-    expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
-    expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
-  })
-
-  it('should render both buttons and the OR divider when both schemes are available', () => {
-    const itemWithBoth: DataSourceAuth = {
-      ...mockItemBase,
-      credential_schema: [mockFormSchema],
-      oauth_schema: {
-        client_schema: [mockFormSchema],
-      },
-    }
-    render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
-
-    expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
-    expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
-    expect(screen.getByText('OR')).toBeInTheDocument()
-  })
-
-  it('should call onUpdate and close the portal when an update is triggered', () => {
-    const itemWithApiKey: DataSourceAuth = {
-      ...mockItemBase,
-      credential_schema: [mockFormSchema],
-    }
-    render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} onUpdate={mockOnUpdate} />)
-
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByTestId('add-api-key'))
-
-    expect(mockOnUpdate).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
-  })
-
-  it('should handle missing onUpdate callback gracefully', () => {
-    const itemWithBoth: DataSourceAuth = {
-      ...mockItemBase,
-      credential_schema: [mockFormSchema],
-      oauth_schema: {
-        client_schema: [mockFormSchema],
-      },
-    }
-    render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
-
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByTestId('add-api-key'))
-    expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
-
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByTestId('add-oauth'))
-    expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
-  })
-
-  it('should pass the disabled prop to both configuration buttons', () => {
-    const itemWithBoth: DataSourceAuth = {
-      ...mockItemBase,
-      credential_schema: [mockFormSchema],
-      oauth_schema: {
-        client_schema: [mockFormSchema],
-      },
-    }
-    render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} disabled={true} />)
-
-    expect(screen.getByTestId('add-api-key')).toBeDisabled()
-    expect(screen.getByTestId('add-oauth')).toBeDisabled()
-  })
-
-  it('should handle edge cases for missing, empty, or partial item data', () => {
-    // Missing schemas
-    const { rerender } = render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
-    expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
-
-    // Explicitly empty schemas
-    const itemEmpty: DataSourceAuth = {
-      ...mockItemBase,
-      credential_schema: [],
-      oauth_schema: { client_schema: [] },
-    }
-    rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
-    expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
-
-    // Partial OAuth schema
-    const itemPartialOAuth: DataSourceAuth = {
-      ...mockItemBase,
-      oauth_schema: {
-        is_oauth_custom_client_enabled: true,
-      },
-    }
-    rerender(<Configure item={itemPartialOAuth} pluginPayload={mockPluginPayload} />)
-    expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
-  })
-
-  /**
-   * Specialized test to reach the 'unreachable' branch on line 95.
-   * schema: oAuthData.client_schema || []
-   * To hit the '|| []' part, canOAuth must be truthy (length > 0)
-   * but client_schema must be falsy when evaluated.
-   * We achieve this using a custom getter that changes return values.
-   */
-  it('should reach the unreachable branch on line 95 for 100% coverage', () => {
-    let count = 0
-    const itemWithGlitchedSchema = {
-      ...mockItemBase,
-      oauth_schema: {
-        get client_schema() {
-          count++
-          // First call is for canOAuth (line 44) -> return truthy length
-          // Second call is for schema calculation (line 95) -> return falsy value
-          if (count === 1)
-            return [mockFormSchema]
-          return undefined
+    it('should render AddOAuthButton when oauth_schema with client_schema is non-empty', () => {
+      // Arrange
+      const itemWithOAuth: DataSourceAuth = {
+        ...mockItemBase,
+        oauth_schema: {
+          client_schema: [mockFormSchema],
         },
-        is_oauth_custom_client_enabled: false,
-        is_system_oauth_params_exists: false,
-        oauth_custom_client_params: {},
-        redirect_uri: '',
-      },
-    } as unknown as DataSourceAuth
+      }
 
-    render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)
+      // Act
+      render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
 
-    // The render logic should have triggered the getter twice and hit the || [] branch
-    expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+    })
+
+    it('should render both buttons and the OR divider when both schemes are available', () => {
+      // Arrange
+      const itemWithBoth: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [mockFormSchema],
+        oauth_schema: {
+          client_schema: [mockFormSchema],
+        },
+      }
+
+      // Act
+      render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
+
+      // Assert
+      expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
+      expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
+      expect(screen.getByText('OR')).toBeInTheDocument()
+    })
+  })
+
+  describe('Update Handling', () => {
+    it('should call onUpdate and close the portal when an update is triggered', () => {
+      // Arrange
+      const itemWithApiKey: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [mockFormSchema],
+      }
+      render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} onUpdate={mockOnUpdate} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('add-api-key'))
+
+      // Assert
+      expect(mockOnUpdate).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
+    })
+
+    it('should handle missing onUpdate callback gracefully', () => {
+      // Arrange
+      const itemWithBoth: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [mockFormSchema],
+        oauth_schema: {
+          client_schema: [mockFormSchema],
+        },
+      }
+      render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
+
+      // Act & Assert
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('add-api-key'))
+      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('add-oauth'))
+      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
+    })
+  })
+
+  describe('Props and Edge Cases', () => {
+    it('should pass the disabled prop to both configuration buttons', () => {
+      // Arrange
+      const itemWithBoth: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [mockFormSchema],
+        oauth_schema: {
+          client_schema: [mockFormSchema],
+        },
+      }
+
+      // Act
+      render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} disabled={true} />)
+
+      // Assert
+      expect(screen.getByTestId('add-api-key')).toBeDisabled()
+      expect(screen.getByTestId('add-oauth')).toBeDisabled()
+    })
+
+    it('should handle edge cases for missing, empty, or partial item data', () => {
+      // Act & Assert (Missing schemas)
+      const { rerender } = render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+
+      // Arrange (Empty schemas)
+      const itemEmpty: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [],
+        oauth_schema: { client_schema: [] },
+      }
+      // Act
+      rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
+      // Assert
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+
+      // Arrange (Partial OAuth schema)
+      const itemPartialOAuth: DataSourceAuth = {
+        ...mockItemBase,
+        oauth_schema: {
+          is_oauth_custom_client_enabled: true,
+        },
+      }
+      // Act
+      rerender(<Configure item={itemPartialOAuth} pluginPayload={mockPluginPayload} />)
+      // Assert
+      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+    })
+
+    it('should reach the unreachable branch on line 95 for 100% coverage', () => {
+      // Specialized test to reach the '|| []' part: canOAuth must be truthy but client_schema falsy on second call
+      let count = 0
+      const itemWithGlitchedSchema = {
+        ...mockItemBase,
+        oauth_schema: {
+          get client_schema() {
+            count++
+            if (count === 1)
+              return [mockFormSchema]
+            return undefined
+          },
+          is_oauth_custom_client_enabled: false,
+          is_system_oauth_params_exists: false,
+          oauth_custom_client_params: {},
+          redirect_uri: '',
+        },
+      } as unknown as DataSourceAuth
+
+      render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)
+
+      expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
+    })
   })
 })

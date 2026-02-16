@@ -10,32 +10,26 @@ import { createDataSourceApiKeyBinding } from '@/service/datasets'
 import ConfigWatercrawlModal from './config-watercrawl-modal'
 
 /**
- * Mocking dependencies to isolate the ConfigWatercrawlModal component.
+ * ConfigWatercrawlModal Component Tests
+ * Tests validation, save logic, and basic rendering for the Watercrawl configuration modal.
  */
 
-// Mock the service call for creating API key binding
 vi.mock('@/service/datasets', () => ({
   createDataSourceApiKeyBinding: vi.fn(),
 }))
 
-// Mock Toast for notifications
 vi.mock('@/app/components/base/toast', () => ({
   default: {
     notify: vi.fn(),
   },
 }))
 
-/**
- * Mocking Portal components to ensure content is rendered in the testing DOM.
- */
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children }: { children: ReactNode }) => <div data-testid="portal">{children}</div>,
   PortalToFollowElemContent: ({ children }: { children: ReactNode }) => <div data-testid="portal-content">{children}</div>,
 }))
 
-/**
- * Mocking Field component to provide a simpler interface for testing interaction.
- */
+// Mock Field component to provide a simpler interface for testing interaction
 vi.mock('@/app/components/datasets/create/website/base/field', () => ({
   default: ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (v: string | number) => void, placeholder?: string }) => (
     <div>
@@ -51,17 +45,8 @@ vi.mock('@/app/components/datasets/create/website/base/field', () => ({
   ),
 }))
 
-/**
- * Mock react-i18next to return translation keys instead of localized strings.
- * This makes tests deterministic and independent of locale changes.
- */
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('ConfigWatercrawlModal Component', () => {
+  const user = userEvent.setup()
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
 
@@ -69,224 +54,182 @@ describe('ConfigWatercrawlModal Component', () => {
     vi.clearAllMocks()
   })
 
-  /**
-   * Test case: Verify initial rendering of the modal and its components.
-   */
-  it('should render the modal with all fields and buttons', () => {
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+  describe('Initial Rendering', () => {
+    it('should render the modal with all fields and buttons', () => {
+      // Act
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    // Verify title and static content using translation keys
-    expect(screen.getByText('watercrawl.configWatercrawl')).toBeInTheDocument()
-    expect(screen.getByLabelText('API Key')).toBeInTheDocument()
-    expect(screen.getByLabelText('Base URL')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'operation.cancel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'operation.save' })).toBeInTheDocument()
-
-    // Verify the "Get API Key" link
-    const link = screen.getByRole('link', { name: /watercrawl\.getApiKeyLinkText/i })
-    expect(link).toHaveAttribute('href', 'https://app.watercrawl.dev/')
-  })
-
-  /**
-   * Test case: Verify updates to input fields using userEvent for realistic interaction.
-   */
-  it('should update state when input fields change', async () => {
-    const user = userEvent.setup()
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const baseUrlInput = screen.getByLabelText('Base URL')
-
-    await user.type(apiKeyInput, 'water-key')
-    await user.type(baseUrlInput, 'https://custom.watercrawl.dev')
-
-    expect(apiKeyInput).toHaveValue('water-key')
-    expect(baseUrlInput).toHaveValue('https://custom.watercrawl.dev')
-  })
-
-  /**
-   * Test case: Verify validation error when API Key is missing.
-   * Covers branches for error validation logic.
-   */
-  it('should show error when saving without API Key', async () => {
-    const user = userEvent.setup()
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const saveButton = screen.getByRole('button', { name: 'operation.save' })
-    await user.click(saveButton)
-
-    await waitFor(() => {
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('errorMsg.fieldRequired'),
-      }))
+      // Assert
+      expect(screen.getByText('datasetCreation.watercrawl.configWatercrawl')).toBeInTheDocument()
+      expect(screen.getByLabelText('API Key')).toBeInTheDocument()
+      expect(screen.getByLabelText('Base URL')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.save/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.cancel/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /datasetCreation\.watercrawl\.getApiKeyLinkText/i })).toHaveAttribute('href', 'https://app.watercrawl.dev/')
     })
-    expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
   })
 
-  /**
-   * Test case: Verify validation error for invalid Base URL format.
-   * Covers URL validation branches.
-   */
-  it('should show error for invalid Base URL format', async () => {
-    const user = userEvent.setup()
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+  describe('Form Interactions', () => {
+    it('should update state when input fields change', async () => {
+      // Arrange
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      const apiKeyInput = screen.getByLabelText('API Key')
+      const baseUrlInput = screen.getByLabelText('Base URL')
 
-    const baseUrlInput = screen.getByLabelText('Base URL')
-    const saveButton = screen.getByRole('button', { name: 'operation.save' })
+      // Act
+      await user.type(apiKeyInput, 'water-key')
+      await user.type(baseUrlInput, 'https://custom.watercrawl.dev')
 
-    // Invalid format (not starting with http:// or https://)
-    await user.type(baseUrlInput, 'ftp://invalid-url.com')
-    await user.click(saveButton)
-
-    await waitFor(() => {
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('errorMsg.urlError'),
-      }))
+      // Assert
+      expect(apiKeyInput).toHaveValue('water-key')
+      expect(baseUrlInput).toHaveValue('https://custom.watercrawl.dev')
     })
-    expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
+
+    it('should call onCancel when cancel button is clicked', async () => {
+      // Arrange
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
   })
 
-  /**
-   * Test case: Verify successful save operation with valid input.
-   * Covers happy path and credential structure.
-   */
-  it('should save successfully with valid API Key and custom URL', async () => {
-    const user = userEvent.setup()
-    vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+  describe('Validation', () => {
+    it('should show error when saving without API Key', async () => {
+      // Arrange
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      // Act
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const baseUrlInput = screen.getByLabelText('Base URL')
-    const saveButton = screen.getByRole('button', { name: 'operation.save' })
+      // Assert
+      await waitFor(() => {
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'error',
+          message: 'common.errorMsg.fieldRequired:{"field":"API Key"}',
+        }))
+      })
+      expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
+    })
 
-    await user.type(apiKeyInput, 'valid-water-key')
-    await user.type(baseUrlInput, 'http://my-watercrawl.com')
-    await user.click(saveButton)
+    it('should show error for invalid Base URL format', async () => {
+      // Arrange
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      const baseUrlInput = screen.getByLabelText('Base URL')
 
-    await waitFor(() => {
-      expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
-        category: 'website',
-        provider: 'watercrawl',
-        credentials: {
-          auth_type: 'x-api-key',
-          config: {
-            api_key: 'valid-water-key',
-            base_url: 'http://my-watercrawl.com',
+      // Act
+      await user.type(baseUrlInput, 'ftp://invalid-url.com')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      // Assert
+      await waitFor(() => {
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'error',
+          message: 'common.errorMsg.urlError',
+        }))
+      })
+      expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Saving Logic', () => {
+    it('should save successfully with valid API Key and custom URL', async () => {
+      // Arrange
+      vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+
+      // Act
+      await user.type(screen.getByLabelText('API Key'), 'valid-key')
+      await user.type(screen.getByLabelText('Base URL'), 'http://my-watercrawl.com')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      // Assert
+      await waitFor(() => {
+        expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith({
+          category: 'website',
+          provider: 'watercrawl',
+          credentials: {
+            auth_type: 'x-api-key',
+            config: {
+              api_key: 'valid-key',
+              base_url: 'http://my-watercrawl.com',
+            },
           },
-        },
+        })
+      })
+      await waitFor(() => {
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', message: 'common.api.success' }))
+        expect(mockOnSaved).toHaveBeenCalled()
       })
     })
 
-    await waitFor(() => {
-      expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-        message: expect.stringContaining('api.success'),
-      }))
-      expect(mockOnSaved).toHaveBeenCalled()
-    })
-  })
+    it('should use default Base URL if none is provided during save', async () => {
+      // Arrange
+      vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-  /**
-   * Test case: Verify save operation uses default Base URL if none provided.
-   * Covers the fallback logic for base_url.
-   */
-  it('should use default Base URL if none is provided during save', async () => {
-    const user = userEvent.setup()
-    vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+      // Act
+      await user.type(screen.getByLabelText('API Key'), 'test-api-key')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const saveButton = screen.getByRole('button', { name: 'operation.save' })
-
-    await user.type(apiKeyInput, 'test-api-key')
-    await user.click(saveButton)
-
-    await waitFor(() => {
-      expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
-        credentials: expect.objectContaining({
-          config: expect.objectContaining({
-            base_url: 'https://app.watercrawl.dev',
+      // Assert
+      await waitFor(() => {
+        expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
+          credentials: expect.objectContaining({
+            config: expect.objectContaining({
+              base_url: 'https://app.watercrawl.dev',
+            }),
           }),
-        }),
-      }))
+        }))
+      })
     })
-  })
 
-  /**
-   * Test case: Verify onCancel is called when clicking the cancel button.
-   */
-  it('should call onCancel when cancel button is clicked', async () => {
-    const user = userEvent.setup()
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+    it('should ignore multiple save clicks while saving is in progress', async () => {
+      // Arrange
+      let resolveSave: (value: CommonResponse) => void
+      const savePromise = new Promise<CommonResponse>((resolve) => {
+        resolveSave = resolve
+      })
+      vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(savePromise)
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+      await user.type(screen.getByLabelText('API Key'), 'test-api-key')
+      const saveBtn = screen.getByRole('button', { name: /common\.operation\.save/i })
 
-    const cancelButton = screen.getByRole('button', { name: 'operation.cancel' })
-    await user.click(cancelButton)
+      // Act
+      await user.click(saveBtn)
+      await user.click(saveBtn)
 
-    expect(mockOnCancel).toHaveBeenCalled()
-  })
+      // Assert
+      expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
 
-  /**
-   * Test case: Verify that multiple clicks on save are ignored while saving.
-   * Covers the isSaving re-entrancy branch.
-   */
-  it('should ignore multiple save clicks while saving is in progress', async () => {
-    const user = userEvent.setup()
-    let resolveSave: (value: CommonResponse) => void
-    const savePromise = new Promise<CommonResponse>((resolve) => {
-      resolveSave = resolve
+      // Cleanup
+      resolveSave!({ result: 'success' })
+      await waitFor(() => expect(mockOnSaved).toHaveBeenCalledTimes(1))
     })
-    vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(savePromise)
 
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
+    it('should accept base_url starting with https://', async () => {
+      // Arrange
+      vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
+      render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const saveButton = screen.getByRole('button', { name: 'operation.save' })
+      // Act
+      await user.type(screen.getByLabelText('API Key'), 'test-api-key')
+      await user.type(screen.getByLabelText('Base URL'), 'https://secure-watercrawl.com')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-    await user.type(apiKeyInput, 'test-api-key')
-
-    // Trigger save twice rapidly
-    await user.click(saveButton)
-    await user.click(saveButton)
-
-    expect(createDataSourceApiKeyBinding).toHaveBeenCalledTimes(1)
-
-    // Finish the save to clear the state
-    resolveSave!({ result: 'success' })
-
-    await waitFor(() => {
-      expect(mockOnSaved).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  /**
-   * Test case: Verify branch coverage for https:// prefix in base_url
-   */
-  it('should accept base_url starting with https://', async () => {
-    const user = userEvent.setup()
-    vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
-
-    render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-
-    const apiKeyInput = screen.getByLabelText('API Key')
-    const baseUrlInput = screen.getByLabelText('Base URL')
-    const saveButton = screen.getByRole('button', { name: 'operation.save' })
-
-    await user.type(apiKeyInput, 'test-api-key')
-    await user.type(baseUrlInput, 'https://secure-watercrawl.com')
-    await user.click(saveButton)
-
-    await waitFor(() => {
-      expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
-        credentials: expect.objectContaining({
-          config: expect.objectContaining({
-            base_url: 'https://secure-watercrawl.com',
+      // Assert
+      await waitFor(() => {
+        expect(createDataSourceApiKeyBinding).toHaveBeenCalledWith(expect.objectContaining({
+          credentials: expect.objectContaining({
+            config: expect.objectContaining({
+              base_url: 'https://secure-watercrawl.com',
+            }),
           }),
-        }),
-      }))
+        }))
+      })
     })
   })
 })
