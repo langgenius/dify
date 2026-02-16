@@ -42,12 +42,12 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.enums import ErrorStrategy, NodeType, SystemVariableKey
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNodeConfig
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from core.workflow.graph_events.base import GraphNodeEventBase
 from core.workflow.node_events.base import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNodeConfig
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from core.workflow.runtime import VariablePool
