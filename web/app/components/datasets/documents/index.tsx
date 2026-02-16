@@ -130,8 +130,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           onUpdate={handleUpdate}
           selectedIds={selectedIds}
           onSelectedIdChange={setSelectedIds}
-          statusFilterValue={normalizedStatusFilterValue}
           remoteSortValue={sortValue}
+          onSortChange={handleSortChange}
           pagination={{
             total,
             limit,
