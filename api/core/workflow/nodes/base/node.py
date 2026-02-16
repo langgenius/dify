@@ -632,11 +632,19 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: PauseRequestedEvent) -> NodeRunPauseRequestedEvent:
+        process_data: dict = {}
+        if event.process_data:
+            process_data.update(event.process_data)
+        if hasattr(event.reason, "round"):
+            process_data["external_tool_callback_round"] = event.reason.round
         return NodeRunPauseRequestedEvent(
             id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.PAUSED),
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.PAUSED,
+                process_data=process_data or None,
+            ),
             reason=event.reason,
         )
 

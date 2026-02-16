@@ -412,6 +412,12 @@ const formatItem = (
           children: data.structured_output,
         })
       }
+      if (data.external_tool_callback_enabled) {
+        res.vars.push({
+          variable: 'tool_call_history',
+          type: VarType.arrayObject,
+        })
+      }
 
       break
     }
@@ -2045,6 +2051,12 @@ export const getNodeOutputVars = (
           variable: 'structured_output',
           type: VarType.object,
           children: llmNodeData.structured_output,
+        })
+      }
+      if (llmNodeData.external_tool_callback_enabled) {
+        vars.push({
+          variable: 'tool_call_history',
+          type: VarType.arrayObject,
         })
       }
       varsToValueSelectorList(vars, [id], res)

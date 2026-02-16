@@ -85,6 +85,7 @@ class StreamEvent(StrEnum):
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
+    TOOL_CALL = "tool_call"
     HUMAN_INPUT_REQUIRED = "human_input_required"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
     HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
@@ -195,6 +196,13 @@ class AgentMessageStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.AGENT_MESSAGE
     id: str
     answer: str
+
+
+class ToolCallStreamResponse(StreamResponse):
+    event: StreamEvent = StreamEvent.TOOL_CALL
+    tool_call_id: str
+    name: str
+    arguments: str
 
 
 class WorkflowStartStreamResponse(StreamResponse):
@@ -699,6 +707,22 @@ class TextReplaceStreamResponse(StreamResponse):
         text: str
 
     event: StreamEvent = StreamEvent.TEXT_REPLACE
+    data: Data
+
+
+class MessageToolCallChunkStreamResponse(StreamResponse):
+    """
+    MessageToolCallChunkStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        tool_call_chunks: str
+
+    event: StreamEvent = StreamEvent.TOOL_CALL
     data: Data
 
 

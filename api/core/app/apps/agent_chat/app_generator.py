@@ -19,7 +19,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom, ToolCallMode
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
@@ -151,6 +151,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # get tracing instance
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
 
+        tool_call_mode = self._resolve_tool_call_mode(args)
+
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -170,6 +172,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             extras=extras,
             call_depth=0,
             trace_manager=trace_manager,
+            tool_call_mode=tool_call_mode,
         )
 
         # init generate records
@@ -264,3 +267,15 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
+
+    @staticmethod
+    def _resolve_tool_call_mode(args: Mapping[str, Any]) -> ToolCallMode:
+        mode = args.get("tool_call_mode")
+        if isinstance(mode, ToolCallMode):
+            return mode
+        if isinstance(mode, str):
+            try:
+                return ToolCallMode.value_of(mode)
+            except ValueError:
+                return ToolCallMode.STRUCTURED
+        return ToolCallMode.STRUCTURED

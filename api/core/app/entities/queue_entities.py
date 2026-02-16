@@ -29,6 +29,7 @@ class QueueEvent(StrEnum):
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
     WORKFLOW_PARTIAL_SUCCEEDED = "workflow_partial_succeeded"
+    WORKFLOW_PAUSED = "workflow_paused"
     ITERATION_START = "iteration_start"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
@@ -299,6 +300,17 @@ class QueueWorkflowPartialSuccessEvent(AppQueueEvent):
     outputs: Mapping[str, object] = Field(default_factory=dict)
 
 
+class QueueWorkflowPausedEvent(AppQueueEvent):
+    """
+    QueueWorkflowPausedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.PAUSE
+    reasons: Sequence[PauseReason] = Field(default_factory=list)
+    outputs: Mapping[str, object] = Field(default_factory=dict)
+    paused_nodes: Sequence[str] = Field(default_factory=list)
+
+
 class QueueNodeStartedEvent(AppQueueEvent):
     """
     QueueNodeStartedEvent entity
@@ -545,14 +557,3 @@ class WorkflowQueueMessage(QueueMessage):
     """
 
     pass
-
-
-class QueueWorkflowPausedEvent(AppQueueEvent):
-    """
-    QueueWorkflowPausedEvent entity
-    """
-
-    event: QueueEvent = QueueEvent.PAUSE
-    reasons: Sequence[PauseReason] = Field(default_factory=list)
-    outputs: Mapping[str, object] = Field(default_factory=dict)
-    paused_nodes: Sequence[str] = Field(default_factory=list)

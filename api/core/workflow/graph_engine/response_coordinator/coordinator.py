@@ -5,6 +5,7 @@ This module contains the public ResponseStreamCoordinator class that manages
 response streaming sessions and ensures ordered streaming of responses.
 """
 
+import json
 import logging
 from collections import deque
 from collections.abc import Sequence
@@ -102,6 +103,8 @@ class ResponseStreamCoordinator:
 
         # Track node execution IDs and types for proper event forwarding
         self._node_execution_ids: dict[NodeID, str] = {}  # node_id -> execution_id
+
+        self._tool_call_streamed: set[tuple[str, str]] = set()
 
         # Track response sessions to ensure only one per node
         self._response_sessions: dict[NodeID, ResponseSession] = {}  # node_id -> session
@@ -303,15 +306,30 @@ class ResponseStreamCoordinator:
     ) -> Sequence[NodeRunStreamChunkEvent]:
         with self._lock:
             if isinstance(event, NodeRunStreamChunkEvent):
+                if event.selector and any(seg in {"tool_calls", "tool_call_chunks"} for seg in event.selector):
+                    self._tool_call_streamed.add((event.node_id, event.id))
+                    return [event]
+
                 self._append_stream_chunk(event.selector, event)
                 if event.is_final:
                     self._close_stream(event.selector)
                 return self.try_flush()
             else:
-                # Skip cause we share the same variable pool.
-                #
-                # for variable_name, variable_value in event.node_run_result.outputs.items():
-                #     self._variable_pool.add((event.node_id, variable_name), variable_value)
+                outputs = event.node_run_result.outputs or {}
+                tool_calls = outputs.get("tool_calls")
+                if tool_calls and (event.node_id, event.id) not in self._tool_call_streamed:
+                    chunk = tool_calls if isinstance(tool_calls, str) else json.dumps(tool_calls, ensure_ascii=False)
+                    tool_call_event = NodeRunStreamChunkEvent(
+                        id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        selector=[event.node_id, "tool_calls"],
+                        chunk=chunk,
+                        is_final=True,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
+                    return [tool_call_event, *self.try_flush()]
                 return self.try_flush()
 
     def _create_stream_chunk_event(

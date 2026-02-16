@@ -99,6 +99,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             app_id=app_config.app_id,
             workflow_id=app_config.workflow_id,
             workflow_execution_id=self.application_generate_entity.workflow_run_id,
+            external_tools=self.application_generate_entity.tools,
+            external_tool_choice=self.application_generate_entity.tool_choice,
+            external_tool_results=self.application_generate_entity.tool_results,
+            external_tool_call_mode=self.application_generate_entity.tool_call_mode,
         )
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -117,6 +121,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if resume_state is not None:
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
+            # Inject fresh tool_results from the resume request into the restored variable pool
+            variable_pool.system_variables.external_tool_results = system_inputs.external_tool_results
+            variable_pool.system_variables.external_tool_call_mode = system_inputs.external_tool_call_mode
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -134,6 +141,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_loop_run=self.application_generate_entity.single_loop_run,
             )
         else:
+            logger.debug("[runner] NORMAL path (no resume)")
             inputs = self.application_generate_entity.inputs
             query = self.application_generate_entity.query
 

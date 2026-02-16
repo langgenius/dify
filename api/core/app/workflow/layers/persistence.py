@@ -19,6 +19,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import (
     SystemVariableKey,
     WorkflowExecutionStatus,
@@ -105,7 +106,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def on_event(self, event: GraphEngineEvent) -> None:
         if isinstance(event, GraphRunStartedEvent):
-            self._handle_graph_run_started()
+            self._handle_graph_run_started(event.reason)
             return
 
         if isinstance(event, GraphRunSucceededEvent):
@@ -157,7 +158,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     # Graph-level handlers
     # ------------------------------------------------------------------
-    def _handle_graph_run_started(self) -> None:
+    def _handle_graph_run_started(self, reason: WorkflowStartReason = WorkflowStartReason.INITIAL) -> None:
         execution_id = self._get_execution_id()
         workflow_execution = WorkflowExecution.new(
             id_=execution_id,
@@ -171,6 +172,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution
+
+        # On resume, restore _node_sequence from existing node executions
+        # so that new nodes get sequential index values after the paused ones.
+        if reason == WorkflowStartReason.RESUMPTION:
+            existing = self._workflow_node_execution_repository.get_by_workflow_run(execution_id)
+            self._node_sequence = len(existing)
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()
@@ -295,7 +302,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             event.node_run_result,
             WorkflowNodeExecutionStatus.PAUSED,
             error="",
-            update_outputs=False,
         )
 
     # ------------------------------------------------------------------

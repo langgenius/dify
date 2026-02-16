@@ -47,6 +47,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。
         <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
       </Property>
+      <Property name='tool_call_mode' type='string' key='tool_call_mode'>
+        工具调用兼容模式：
+        - 不传或为空：不启用外部工具回调（默认行为，兼容旧流程）。
+        - `structured`：启用结构化工具调用模式。当 LLM 节点开启了"外部工具回调"且返回 `tool_calls` 时，工作流会暂停并通过 SSE 返回 `workflow_paused` 事件，等待外部系统回传 `tool_results` 后继续执行。
+      </Property>
+      <Property name='tools' type='array[object]' key='tools'>
+        （选填）客户端提供的工具定义列表（OpenAI 格式）。Dify 会将这些工具注册到当前的 LLM 上下文中。
+        包含 `type`（固定为 'function'）和 `function`（包含 name, description, parameters）字段。
+      </Property>
+      <Property name='tool_choice' type='string | object' key='tool_choice'>
+        （选填）控制模型如何调用工具。
+        - `auto` 模型自行决定。
+        - `none` 不调用工具。
+        - `required` 强制调用工具。
+        - 指定具体函数对象 `{"type": "function", "function": {"name": "my_function"}}`。
+      </Property>
+      <Property name='tool_results' type='array[object]' key='tool_results'>
+        （选填）客户端执行工具后的结果回传。用于在多轮对话中向模型反馈工具执行结果。
+        包含 `tool_call_id` (string), `output` (string), `is_error` (bool) 字段。
+      </Property>
       <Property name='user' type='string' key='user'>
         用户标识，用于定义终端用户的身份，方便检索、统计。
         由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。

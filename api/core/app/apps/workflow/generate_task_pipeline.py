@@ -43,6 +43,7 @@ from core.app.entities.task_entities import (
     ErrorStreamResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
+    MessageToolCallChunkStreamResponse,
     PingStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
@@ -522,6 +523,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle text chunk events."""
         delta_text = event.text
         if delta_text is None:
+            return
+
+        # Check if this is a tool call chunk
+        if event.from_variable_selector and event.from_variable_selector[-1] == "tool_calls":
+            yield MessageToolCallChunkStreamResponse(
+                task_id=self._application_generate_entity.task_id,
+                data=MessageToolCallChunkStreamResponse.Data(tool_call_chunks=delta_text),
+            )
             return
 
         # only publish tts message at text chunk streaming

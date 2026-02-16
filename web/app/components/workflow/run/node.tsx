@@ -97,6 +97,7 @@ const NodePanel: FC<Props> = ({
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
+  const isLLMToolCallNode = nodeInfo.node_type === BlockEnum.LLM && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
     let text = t('common.input', { ns: 'workflow' })
@@ -143,6 +144,13 @@ const NodePanel: FC<Props> = ({
             )}
             >
               {nodeInfo.title}
+              {nodeInfo.process_data?.external_tool_callback_round && (
+                <span className="ml-1 text-text-quaternary">
+                  (Tool Callback #
+                  {nodeInfo.process_data.external_tool_callback_round}
+                  )
+                </span>
+              )}
             </div>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
@@ -153,6 +161,9 @@ const NodePanel: FC<Props> = ({
           )}
           {nodeInfo.status === 'succeeded' && (
             <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+          )}
+          {nodeInfo.status === 'paused' && (
+            <RiPauseCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-accent" />
           )}
           {nodeInfo.status === 'failed' && (
             <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
@@ -198,7 +209,7 @@ const NodePanel: FC<Props> = ({
               />
             )}
             {
-              (isAgentNode || isToolNode) && onShowAgentOrToolLog && (
+              (isAgentNode || isToolNode || isLLMToolCallNode) && onShowAgentOrToolLog && (
                 <AgentLogTrigger
                   nodeInfo={nodeInfo}
                   onShowAgentOrToolLog={onShowAgentOrToolLog}

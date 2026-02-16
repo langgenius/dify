@@ -18,6 +18,8 @@ export type LLMNodeType = CommonNodeType & {
   structured_output_enabled?: boolean
   structured_output?: StructuredOutput
   reasoning_format?: 'tagged' | 'separated'
+  external_tool_callback_enabled?: boolean
+  max_tool_call_rounds?: number
 }
 
 export enum Type {

@@ -4,6 +4,7 @@ import type {
 } from '@/types/workflow'
 import { RiArrowRightLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type AgentLogTriggerProps = {
   nodeInfo: NodeTracing
@@ -16,6 +17,7 @@ const AgentLogTrigger = ({
   const { t } = useTranslation()
   const { agentLog, execution_metadata } = nodeInfo
   const agentStrategy = execution_metadata?.tool_info?.agent_strategy
+  const isLLMToolCall = nodeInfo.node_type === BlockEnum.LLM
 
   return (
     <div
@@ -25,13 +27,20 @@ const AgentLogTrigger = ({
       }}
     >
       <div className="system-2xs-medium-uppercase flex items-center px-3 pt-2 text-text-tertiary">
-        {t('nodes.agent.strategy.label', { ns: 'workflow' })}
+        {isLLMToolCall ? 'TOOL CALLBACKS' : t('nodes.agent.strategy.label', { ns: 'workflow' })}
       </div>
       <div className="flex items-center pb-1.5 pl-3 pr-2 pt-1">
         {
-          agentStrategy && (
+          !isLLMToolCall && agentStrategy && (
             <div className="system-xs-medium grow text-text-secondary">
               {agentStrategy}
+            </div>
+          )
+        }
+        {
+          isLLMToolCall && (
+            <div className="system-xs-medium grow text-text-secondary">
+              {`${agentLog?.length || 0} rounds`}
             </div>
           )
         }

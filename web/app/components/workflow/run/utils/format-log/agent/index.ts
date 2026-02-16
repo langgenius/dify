@@ -130,6 +130,28 @@ const listToTree = (logs: AgentLogItem[]) => {
   return tree
 }
 
+const buildToolCallHistoryLog = (item: NodeTracing): AgentLogItemWithChildren[] => {
+  const history = item.outputs?.tool_call_history || item.process_data?.tool_call_history
+  if (!Array.isArray(history) || history.length === 0)
+    return []
+
+  return history.map((round: any) => {
+    const toolNames = (round.tool_calls || []).map((tc: any) => tc.function?.name || tc.name || 'tool').join(', ')
+    return {
+      message_id: `${item.id}-round-${round.round}`,
+      node_execution_id: item.id,
+      node_id: item.node_id,
+      label: `Round ${round.round}: ${toolNames}`,
+      status: 'succeeded',
+      data: {
+        tool_calls: round.tool_calls || [],
+        tool_results: round.tool_results || [],
+      },
+      children: [],
+    } as AgentLogItemWithChildren
+  })
+}
+
 const format = (list: NodeTracing[]): NodeTracing[] => {
   const result: NodeTracing[] = list.map((item) => {
     let treeList: AgentLogItemWithChildren[] = []
@@ -139,6 +161,13 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
     // console.log(JSON.stringify(treeList))
     removedCircleTree = treeList.length > 0 ? treeList.map(t => removeCircleLogItem(t)) : []
     item.agentLog = removedCircleTree
+
+    // LLM nodes with external tool callback: convert tool_call_history to agentLog
+    if (item.node_type === BlockEnum.LLM && !item.agentLog?.length) {
+      const toolCallLog = buildToolCallHistoryLog(item)
+      if (toolCallLog.length > 0)
+        item.agentLog = toolCallLog
+    }
 
     return item
   })

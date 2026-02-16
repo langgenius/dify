@@ -57,6 +57,11 @@ class SystemVariable(BaseModel):
     datasource_info: Mapping[str, Any] | None = None
     invoke_from: str | None = None
 
+    external_tools: Any | None = None
+    external_tool_choice: Any | None = None
+    external_tool_results: Any | None = None
+    external_tool_call_mode: str | None = None
+
     @model_validator(mode="before")
     @classmethod
     def validate_json_fields(cls, data):
