@@ -1,5 +1,6 @@
+import type { inferParserType } from 'nuqs'
 import type { SortType } from '@/service/datasets'
-import { createParser, parseAsString, useQueryStates } from 'nuqs'
+import { createParser, parseAsString, throttle, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { sanitizeStatusValue } from '../status-filter'
 
@@ -18,14 +19,6 @@ const sanitizePageValue = (value: number): number => {
 
 const sanitizeLimitValue = (value: number): number => {
   return Number.isInteger(value) && value > 0 && value <= 100 ? value : 10
-}
-
-export type DocumentListQuery = {
-  page: number
-  limit: number
-  keyword: string
-  status: string
-  sort: SortType
 }
 
 const parseAsPage = createParser<number>({
@@ -64,10 +57,13 @@ export const documentListParsers = {
   sort: parseAsDocSort,
 }
 
-function useDocumentListQueryState() {
-  const [query, setQuery] = useQueryStates(documentListParsers, {
-    history: 'push',
-  })
+export type DocumentListQuery = inferParserType<typeof documentListParsers>
+
+// Search input updates can be frequent; throttle URL writes to reduce history/api churn.
+const KEYWORD_URL_UPDATE_THROTTLE = throttle(300)
+
+export function useDocumentListQueryState() {
+  const [query, setQuery] = useQueryStates(documentListParsers)
 
   const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
     const patch = { ...updates }
@@ -81,11 +77,22 @@ function useDocumentListQueryState() {
       patch.sort = sanitizeSortValue(patch.sort)
     if ('keyword' in patch && typeof patch.keyword === 'string' && patch.keyword.trim() === '')
       patch.keyword = ''
-    setQuery(patch)
+
+    // If keyword is part of this patch (even with page reset), treat it as a search update:
+    // use replace to avoid creating a history entry per input-driven change.
+    if ('keyword' in patch) {
+      setQuery(patch, {
+        history: 'replace',
+        limitUrlUpdates: patch.keyword === '' ? undefined : KEYWORD_URL_UPDATE_THROTTLE,
+      })
+      return
+    }
+
+    setQuery(patch, { history: 'push' })
   }, [setQuery])
 
   const resetQuery = useCallback(() => {
-    setQuery(null)
+    setQuery(null, { history: 'replace' })
   }, [setQuery])
 
   return useMemo(() => ({
@@ -94,5 +101,3 @@ function useDocumentListQueryState() {
     resetQuery,
   }), [query, updateQuery, resetQuery])
 }
-
-export default useDocumentListQueryState

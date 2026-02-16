@@ -1,3 +1,4 @@
+import type { inferParserType } from 'nuqs/server'
 import type { ActivePluginType } from './constants'
 import { parseAsArrayOf, parseAsString, parseAsStringEnum } from 'nuqs/server'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -7,3 +8,5 @@ export const marketplaceSearchParamsParsers = {
   q: parseAsString.withDefault('').withOptions({ history: 'replace' }),
   tags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
 }
+
+export type MarketplaceSearchParams = inferParserType<typeof marketplaceSearchParamsParsers>

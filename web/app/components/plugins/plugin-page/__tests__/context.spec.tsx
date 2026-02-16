@@ -7,6 +7,9 @@ import { PluginPageContext, PluginPageContextProvider, usePluginPageContext } fr
 
 // Mock dependencies
 vi.mock('nuqs', () => ({
+  parseAsStringEnum: vi.fn(() => ({
+    withDefault: vi.fn(() => ({})),
+  })),
   useQueryState: vi.fn(() => ['plugins', vi.fn()]),
 }))
 
