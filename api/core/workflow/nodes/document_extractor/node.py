@@ -353,6 +353,7 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
 
     if not unstructured_api_config.api_url:
         raise TextExtractionError("Unstructured API URL is not configured for DOC file processing.")
+    api_key = unstructured_api_config.api_key or ""
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
@@ -363,7 +364,7 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
                     file=file,
                     metadata_filename=temp_file.name,
                     api_url=unstructured_api_config.api_url,
-                    api_key=unstructured_api_config.api_key,
+                    api_key=api_key,
                 )
             os.unlink(temp_file.name)
         return "\n".join([getattr(element, "text", "") for element in elements])
@@ -561,6 +562,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
 def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.ppt import partition_ppt
+    api_key = unstructured_api_config.api_key or ""
 
     try:
         if unstructured_api_config.api_url:
@@ -572,7 +574,7 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=unstructured_api_config.api_url,
-                        api_key=unstructured_api_config.api_key,
+                        api_key=api_key,
                     )
                 os.unlink(temp_file.name)
         else:
@@ -587,6 +589,7 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
 def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.pptx import partition_pptx
+    api_key = unstructured_api_config.api_key or ""
 
     try:
         if unstructured_api_config.api_url:
@@ -598,7 +601,7 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=unstructured_api_config.api_url,
-                        api_key=unstructured_api_config.api_key,
+                        api_key=api_key,
                     )
                 os.unlink(temp_file.name)
         else:
@@ -612,6 +615,7 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
 def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.epub import partition_epub
+    api_key = unstructured_api_config.api_key or ""
 
     try:
         if unstructured_api_config.api_url:
@@ -623,7 +627,7 @@ def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: Uns
                         file=file,
                         metadata_filename=temp_file.name,
                         api_url=unstructured_api_config.api_url,
-                        api_key=unstructured_api_config.api_key,
+                        api_key=api_key,
                     )
                 os.unlink(temp_file.name)
         else:

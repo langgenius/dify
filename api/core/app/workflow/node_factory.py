@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, cast, final
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
@@ -160,8 +160,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.DOCUMENT_EXTRACTOR:
-            document_extractor_class = cast(type[DocumentExtractorNode], node_class)
-            return document_extractor_class(
+            return DocumentExtractorNode(
                 **common_kwargs,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
             )
