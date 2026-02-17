@@ -1536,9 +1536,6 @@
   "app/components/base/chat/chat/answer/workflow-process.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/chat/chat/chat-input-area/index.tsx": {
