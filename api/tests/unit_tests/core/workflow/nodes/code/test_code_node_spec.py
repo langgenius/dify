@@ -5,6 +5,7 @@ limit enforcement. Assumes CodeNode limits can be overridden per-test and no
 shared state persists across cases.
 """
 
+from collections.abc import Generator
 from types import SimpleNamespace
 from typing import Any, Optional
 
@@ -93,7 +94,7 @@ def node(limits: CodeNodeLimits) -> CodeNode:
 
 
 @pytest.fixture(autouse=True)
-def _code_node_limits() -> None:
+def _code_node_limits() -> Generator[None, None, None]:
     original_limits = getattr(CodeNode, "_limits", None)
     had_limits = hasattr(CodeNode, "_limits")
     CodeNode._limits = CodeNodeLimits(
@@ -593,6 +594,12 @@ class TestCodeNodeInitialization:
 
 
 class TestTransformNoSchema:
+    """Validate _transform_result behavior without a schema.
+
+    Covers allowed scalars/arrays, nesting depth limits, and string/number
+    constraints, asserting DepthLimitError or OutputValidationError when invalid.
+    """
+
     def test_simple_valid_types(self, node):
         result = {"a": 1, "b": "x", "c": True, "d": None}
         assert node._transform_result(result, None) == result
@@ -640,6 +647,8 @@ class TestTransformNoSchema:
 
 
 class TestTransformWithSchema:
+    """Validate _transform_result against explicit output schemas."""
+
     def test_missing_output(self, node):
         schema = {"a": DummyOutput(SegmentType.STRING)}
         with pytest.raises(OutputValidationError):
@@ -752,6 +761,12 @@ class TestTransformWithSchema:
 
 
 class TestRunAndProviders:
+    """Exercise CodeNode execution and provider selection paths.
+
+    Instances are created per test with SimpleNamespace runtime state and use
+    AcceptProvider/RejectProvider or FailingExecutor to drive behavior.
+    """
+
     def test_run_failure(self, limits):
         node = CodeNode.__new__(CodeNode)
         node._limits = limits
@@ -783,6 +798,11 @@ class TestRunAndProviders:
 
 
 class TestExtraBranches:
+    """Cover None handling, boolean/number conversions, and helper utilities.
+
+    Includes array/object None cases, selector mapping, and retry flag checks.
+    """
+
     def test_array_number_bool_conversion(self, node):
         schema = {"a": DummyOutput(SegmentType.ARRAY_NUMBER)}
         result = node._transform_result({"a": [True, False]}, schema)

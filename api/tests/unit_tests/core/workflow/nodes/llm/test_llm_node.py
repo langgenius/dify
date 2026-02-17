@@ -751,9 +751,12 @@ def test_llm_node_run_value_error(llm_node, monkeypatch):
 
 
 def test_llm_node_run_generic_exception(llm_node, monkeypatch):
+    def raise_fetch_model_config(node_data_model, tenant_id):
+        raise Exception("boom")
+
     monkeypatch.setattr(
         "core.workflow.nodes.llm.node.LLMNode._fetch_model_config",
-        lambda **kwargs: (_ for _ in ()).throw(Exception("boom")),
+        raise_fetch_model_config,
     )
 
     events = list(llm_node._run())
@@ -773,9 +776,11 @@ def test_invoke_llm_structured(monkeypatch):
     mock_model_instance.credentials = {}
     mock_model_instance.model_type_instance.get_model_schema.return_value = {"schema": "ok"}
 
+    structured_output = {"schema": {"type": "object"}}
+    invoke_mock = mock.MagicMock(return_value=[])
     monkeypatch.setattr(
         "core.workflow.nodes.llm.node.invoke_llm_with_structured_output",
-        lambda **kwargs: [],
+        invoke_mock,
     )
 
     result = LLMNode.invoke_llm(
@@ -785,7 +790,7 @@ def test_invoke_llm_structured(monkeypatch):
         stop=None,
         user_id="1",
         structured_output_enabled=True,
-        structured_output={"schema": {"type": "object"}},
+        structured_output=structured_output,
         file_saver=mock.MagicMock(),
         file_outputs=[],
         node_id="1",
@@ -793,7 +798,13 @@ def test_invoke_llm_structured(monkeypatch):
         reasoning_format="tagged",
     )
 
-    assert hasattr(result, "__iter__")
+    invoke_mock.assert_called_once()
+    _, call_kwargs = invoke_mock.call_args
+    assert call_kwargs["json_schema"] == structured_output["schema"]
+    assert call_kwargs["stream"] is True
+
+    events = list(result)
+    assert any(isinstance(event, ModelInvokeCompletedEvent) for event in events)
 
 
 # =========================================================
