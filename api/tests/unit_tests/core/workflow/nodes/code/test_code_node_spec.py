@@ -49,13 +49,6 @@ class RejectProvider:
     def is_accept_language(language):
         return False
 
-
-class DummyOutput:
-    def __init__(self, type_, children=None):
-        self.type = type_
-        self.children = children or {}
-
-
 @pytest.fixture
 def limits():
     return CodeNodeLimits(
@@ -63,10 +56,10 @@ def limits():
         max_number=10,
         min_number=0,
         max_precision=2,
-        max_depth=3,
-        max_number_array_length=3,
-        max_string_array_length=3,
-        max_object_array_length=3,
+        max_depth=2,
+        max_number_array_length=2,
+        max_string_array_length=2,
+        max_object_array_length=2,
     )
 
 
@@ -571,41 +564,6 @@ class TestCodeNodeInitialization:
 
         assert result == node._node_data
         assert result.title == "Base Test"
-
-
-import pytest
-
-from core.variables.types import SegmentType
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.exc import CodeNodeError, DepthLimitError, OutputValidationError
-from core.workflow.nodes.code.limits import CodeNodeLimits
-
-
-class DummyOutput:
-    def __init__(self, type_, children=None):
-        self.type = type_
-        self.children = children or {}
-
-
-@pytest.fixture
-def limits():
-    return CodeNodeLimits(
-        max_string_length=5,
-        max_number=10,
-        min_number=0,
-        max_precision=2,
-        max_depth=2,
-        max_number_array_length=2,
-        max_string_array_length=2,
-        max_object_array_length=2,
-    )
-
-
-@pytest.fixture
-def node(limits):
-    node = CodeNode.__new__(CodeNode)
-    node._limits = limits
-    return node
 
 
 class TestTransformNoSchema:

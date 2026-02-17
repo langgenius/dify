@@ -1127,7 +1127,7 @@ def test_fetch_model_config_error(monkeypatch, llm_node):
 
     monkeypatch.setattr(
         "core.workflow.nodes.llm.node.llm_utils.fetch_model_config",
-        lambda **kwargs: (mock_model, mock.MagicMock(parameters={})),
+        lambda tenant_id, node_data_model: (mock_model, mock.MagicMock(parameters={})),
     )
 
     with pytest.raises(ModelNotExistError):
