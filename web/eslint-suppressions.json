@@ -1574,16 +1574,6 @@
       "count": 2
     }
   },
-  "app/components/base/chat/chat/citation/progress-tooltip.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/citation/tooltip.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/chat/context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
