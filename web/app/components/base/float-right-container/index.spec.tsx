@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import FloatRightContainer from './index'
 
 describe('FloatRightContainer', () => {
@@ -93,7 +94,7 @@ describe('FloatRightContainer', () => {
       const closeIcon = screen.getByTestId('close-icon')
       expect(closeIcon).toBeInTheDocument()
 
-      fireEvent.click(closeIcon)
+      await userEvent.click(closeIcon)
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })

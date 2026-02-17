@@ -69,6 +69,13 @@ const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'ho
   )
 }
 
+const mockPlugin = () => ({
+  name: 'mock',
+  options: {},
+  init: vi.fn(),
+  destroy: vi.fn(),
+})
+
 describe('Carousel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -98,15 +105,16 @@ describe('Carousel', () => {
   // Props should be translated into Embla options and visible layout.
   describe('Props', () => {
     it('should configure embla with horizontal axis when orientation is omitted', () => {
+      const plugin = mockPlugin()
       render(
-        <Carousel opts={{ loop: true }} plugins={['plugin-marker' as unknown as never]}>
+        <Carousel opts={{ loop: true }} plugins={[plugin]}>
           <Carousel.Content />
         </Carousel>,
       )
 
       expect(mockedUseEmblaCarousel).toHaveBeenCalledWith(
         { loop: true, axis: 'x' },
-        ['plugin-marker'],
+        [plugin],
       )
     })
 
