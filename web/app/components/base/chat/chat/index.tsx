@@ -187,7 +187,6 @@ const Chat: FC<ChatProps> = ({
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
-      // container padding bottom
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
@@ -197,7 +196,6 @@ const Chat: FC<ChatProps> = ({
       })
       resizeContainerObserver.observe(chatFooterRef.current)
 
-      // footer width
       const resizeFooterObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize } = entry.borderBoxSize[0]
@@ -245,17 +243,11 @@ const Chat: FC<ChatProps> = ({
   }, [chatList])
 
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>
     if (!sidebarCollapseState) {
-      timeoutId = setTimeout(() => {
-        handleWindowResize()
-      }, 200)
+      const timer = setTimeout(() => handleWindowResize(), 200)
+      return () => clearTimeout(timer)
     }
-    return () => {
-      if (timeoutId)
-        clearTimeout(timeoutId)
-    }
-  }, [sidebarCollapseState, handleWindowResize])
+  }, [handleWindowResize, sidebarCollapseState])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
@@ -341,8 +333,7 @@ const Chat: FC<ChatProps> = ({
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                   <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
-                    <div className="i-custom-vender-solid-mediaanddevices-stop-circle mr-1 h-4 w-4" />
-                    {' '}
+                    <div className="i-custom-vender-solid-mediaanddevices-stop-circle mr-[5px] h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
