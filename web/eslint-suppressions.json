@@ -1523,11 +1523,6 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/answer/more.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/chat/answer/operation.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
