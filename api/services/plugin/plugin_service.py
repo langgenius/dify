@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from yarl import URL
 
@@ -524,33 +524,41 @@ class PluginService:
             logger.info("Deleting credentials for plugin: %s", plugin_id)
 
             # Delete provider credentials that match this plugin
-            credential_ids: list[str] = []
-            for credential in session.scalars(
-                select(ProviderCredential).where(
+            credential_ids: list[str] = session.scalars(
+                select(ProviderCredential.id).where(
                     ProviderCredential.tenant_id == tenant_id,
                     ProviderCredential.provider_name.like(f"{plugin_id}/%"),
                 )
-            ):
-                credential_ids.append(credential.id)
-                session.delete(credential)
+            ).all()
 
             if credential_ids:
-                providers = session.scalars(
-                    select(Provider).where(
+                provider_ids: list[str] = session.scalars(
+                    select(Provider.id).where(
                         Provider.tenant_id == tenant_id,
                         Provider.provider_name.like(f"{plugin_id}/%"),
                         Provider.credential_id.in_(credential_ids),
                     )
-                )
+                ).all()
 
-                for provider in providers:
-                    provider.credential_id = None
-                    provider_credentials_cache = ProviderCredentialsCache(
-                        tenant_id=tenant_id,
-                        identity_id=provider.id,
-                        cache_type=ProviderCredentialsCacheType.PROVIDER,
+                if provider_ids:
+                    session.execute(
+                        update(Provider)
+                        .where(Provider.id.in_(provider_ids))
+                        .values(credential_id=None)
                     )
-                    provider_credentials_cache.delete()
+
+                    for provider_id in provider_ids:
+                        ProviderCredentialsCache(
+                            tenant_id=tenant_id,
+                            identity_id=provider_id,
+                            cache_type=ProviderCredentialsCacheType.PROVIDER,
+                        ).delete()
+
+                session.execute(
+                    delete(ProviderCredential).where(
+                        ProviderCredential.id.in_(credential_ids),
+                    )
+                )
 
             logger.info(
                 "Completed deleting credentials and cleaning provider associations for plugin: %s",
