@@ -1590,11 +1590,6 @@
       "count": 3
     }
   },
-  "app/components/base/chat/chat/question.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/chat/try-to-ask.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
