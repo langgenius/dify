@@ -92,13 +92,15 @@ describe('Card Component', () => {
     handleRemove: vi.fn(),
     handleRename: vi.fn(),
     handleSetDefault: vi.fn(),
+    handleSetDoingAction: vi.fn(),
+    setDeleteCredentialId: vi.fn(),
     editValues: null,
     setEditValues: vi.fn(),
     openConfirm: vi.fn(),
     closeConfirm: vi.fn(),
     pendingOperationCredentialId: { current: null },
     ...overrides,
-  } as unknown as UsePluginAuthActionReturn)
+  })
 
   const mockItem: DataSourceAuth = {
     author: 'Test Author',
@@ -127,10 +129,13 @@ describe('Card Component', () => {
     ],
   }
 
+  let mockPluginAuthActionReturn: UsePluginAuthActionReturn
+
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPluginAuthActionReturn = createMockPluginAuthActionReturn()
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: mockHandleAuthUpdate })
-    vi.mocked(usePluginAuthAction).mockReturnValue(createMockPluginAuthActionReturn())
+    vi.mocked(usePluginAuthAction).mockReturnValue(mockPluginAuthActionReturn)
     vi.mocked(useRenderI18nObject).mockReturnValue(mockRenderI18nObjectResult as unknown as UseRenderI18nObjectReturn)
     vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: mockGetPluginOAuthUrl } as unknown as UseGetDataSourceOAuthUrlReturn)
   })
@@ -175,16 +180,12 @@ describe('Card Component', () => {
 
   describe('Actions', () => {
     it('should handle "edit" action from Item component', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn()
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-      render(<Card item={mockItem} />)
-
       // Act
+      render(<Card item={mockItem} />)
       fireEvent.click(screen.getByTestId('action-edit-c1'))
 
       // Assert
-      expect(mockReturn.handleEdit).toHaveBeenCalledWith('c1', {
+      expect(mockPluginAuthActionReturn.handleEdit).toHaveBeenCalledWith('c1', {
         apiKey: 'key1',
         __name__: 'Credential 1',
         __credential_id__: 'c1',
@@ -192,42 +193,30 @@ describe('Card Component', () => {
     })
 
     it('should handle "delete" action from Item component', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn()
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-      render(<Card item={mockItem} />)
-
       // Act
+      render(<Card item={mockItem} />)
       fireEvent.click(screen.getByTestId('action-delete-c1'))
 
       // Assert
-      expect(mockReturn.openConfirm).toHaveBeenCalledWith('c1')
+      expect(mockPluginAuthActionReturn.openConfirm).toHaveBeenCalledWith('c1')
     })
 
     it('should handle "setDefault" action from Item component', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn()
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-      render(<Card item={mockItem} />)
-
       // Act
+      render(<Card item={mockItem} />)
       fireEvent.click(screen.getByTestId('action-setDefault-c1'))
 
       // Assert
-      expect(mockReturn.handleSetDefault).toHaveBeenCalledWith('c1')
+      expect(mockPluginAuthActionReturn.handleSetDefault).toHaveBeenCalledWith('c1')
     })
 
     it('should handle "rename" action from Item component', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn()
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-      render(<Card item={mockItem} />)
-
       // Act
+      render(<Card item={mockItem} />)
       fireEvent.click(screen.getByTestId('action-rename-c1'))
 
       // Assert
-      expect(mockReturn.handleRename).toHaveBeenCalledWith({ name: 'new name' })
+      expect(mockPluginAuthActionReturn.handleRename).toHaveBeenCalledWith({ name: 'new name' })
     })
 
     it('should handle "change" action and trigger OAuth flow', async () => {
@@ -261,19 +250,15 @@ describe('Card Component', () => {
     })
 
     it('should handle "unknown" action from Item component without side effects', () => {
-      // Arrange
-      const mockReturn = createMockPluginAuthActionReturn()
-      vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
-      render(<Card item={mockItem} />)
-
       // Act
+      render(<Card item={mockItem} />)
       fireEvent.click(screen.getByTestId('action-unknown-c1'))
 
       // Assert
-      expect(mockReturn.handleEdit).not.toHaveBeenCalled()
-      expect(mockReturn.openConfirm).not.toHaveBeenCalled()
-      expect(mockReturn.handleSetDefault).not.toHaveBeenCalled()
-      expect(mockReturn.handleRename).not.toHaveBeenCalled()
+      expect(mockPluginAuthActionReturn.handleEdit).not.toHaveBeenCalled()
+      expect(mockPluginAuthActionReturn.openConfirm).not.toHaveBeenCalled()
+      expect(mockPluginAuthActionReturn.handleSetDefault).not.toHaveBeenCalled()
+      expect(mockPluginAuthActionReturn.handleRename).not.toHaveBeenCalled()
       expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
     })
   })

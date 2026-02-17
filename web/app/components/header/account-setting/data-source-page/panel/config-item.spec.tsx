@@ -182,8 +182,11 @@ describe('ConfigItem Component', () => {
           readOnly={false}
         />,
       )
-      const deleteIcon = container.querySelector('svg.remixicon')
-      const deleteBtn = deleteIcon!.parentElement!
+
+      // Note: This selector is brittle but necessary since the delete button lacks
+      // accessible attributes (data-testid, aria-label). Ideally, the component should
+      // be updated to include proper accessibility attributes.
+      const deleteBtn = container.querySelector('div[class*="cursor-pointer"]') as HTMLElement
 
       // Act
       fireEvent.click(deleteBtn)
@@ -204,8 +207,8 @@ describe('ConfigItem Component', () => {
       )
 
       // Assert
-      const deleteIcon = container.querySelector('svg.remixicon')
-      expect(deleteIcon).not.toBeInTheDocument()
+      const deleteBtn = container.querySelector('div[class*="cursor-pointer"]')
+      expect(deleteBtn).not.toBeInTheDocument()
     })
   })
 })

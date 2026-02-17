@@ -186,21 +186,21 @@ describe('DataSourceNotion Component', () => {
       expect(screen.getByTestId('configured-list-count')).toHaveTextContent('0')
     })
 
-    it('Branch 43.1: integrates is nullish', () => {
+    it('should handle integrates being nullish', () => {
       /* eslint-disable-next-line ts/no-explicit-any */
       vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: undefined, isSuccess: true } as any)
       render(<DataSourceNotion />)
       expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
     })
 
-    it('Branch 43.2: integrates is truthy, data is nullish', () => {
+    it('should handle integrates data being nullish', () => {
       /* eslint-disable-next-line ts/no-explicit-any */
       vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: { data: null }, isSuccess: true } as any)
       render(<DataSourceNotion />)
       expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
     })
 
-    it('Branch 43.3: integrates is truthy, data is truthy', () => {
+    it('should handle integrates data being valid', () => {
       /* eslint-disable-next-line ts/no-explicit-any */
       vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: { data: [{ id: '1', is_bound: true, source_info: { workspace_name: 'W', workspace_icon: 'i', total: 1, pages: [] } }] }, isSuccess: true } as any)
       render(<DataSourceNotion />)
