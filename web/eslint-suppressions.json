@@ -1566,12 +1566,6 @@
   },
   "app/components/base/chat/chat/citation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
