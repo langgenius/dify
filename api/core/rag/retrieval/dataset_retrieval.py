@@ -1,13 +1,15 @@
 import json
+import logging
 import math
 import re
 import threading
+import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import and_, literal, or_, select
+from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -18,9 +20,9 @@ from core.app.app_config.entities import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
-from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -58,12 +60,31 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.nodes.knowledge_retrieval import exc
+from core.workflow.repositories.rag_retrieval_protocol import (
+    KnowledgeRetrievalRequest,
+    Source,
+    SourceChildChunk,
+    SourceMetadata,
+)
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
-from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DatasetMetadata,
+    DatasetQuery,
+    DocumentSegment,
+    RateLimitLog,
+    SegmentAttachmentBinding,
+)
 from models.dataset import Document as DatasetDocument
+from models.dataset import Document as DocumentModel
 from services.external_knowledge_service import ExternalDatasetService
+from services.feature_service import FeatureService
 
 default_retrieval_model: dict[str, Any] = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -72,6 +93,8 @@ default_retrieval_model: dict[str, Any] = {
     "top_k": 4,
     "score_threshold_enabled": False,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class DatasetRetrieval:
@@ -90,6 +113,233 @@ class DatasetRetrieval:
             self._llm_usage = usage
         else:
             self._llm_usage = self._llm_usage.plus(usage)
+
+    def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]:
+        self._check_knowledge_rate_limit(request.tenant_id)
+        available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
+        available_datasets_ids = [i.id for i in available_datasets]
+        if not available_datasets_ids:
+            return []
+
+        if not request.query:
+            return []
+
+        metadata_filter_document_ids, metadata_condition = None, None
+
+        if request.metadata_filtering_mode != "disabled":
+            # Convert workflow layer types to app_config layer types
+            if not request.metadata_model_config:
+                raise ValueError("metadata_model_config is required for this method")
+
+            app_metadata_model_config = ModelConfig.model_validate(request.metadata_model_config.model_dump())
+
+            app_metadata_filtering_conditions = None
+            if request.metadata_filtering_conditions is not None:
+                app_metadata_filtering_conditions = MetadataFilteringCondition.model_validate(
+                    request.metadata_filtering_conditions.model_dump()
+                )
+
+            query = request.query if request.query is not None else ""
+
+            metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
+                dataset_ids=available_datasets_ids,
+                query=query,
+                tenant_id=request.tenant_id,
+                user_id=request.user_id,
+                metadata_filtering_mode=request.metadata_filtering_mode,
+                metadata_model_config=app_metadata_model_config,
+                metadata_filtering_conditions=app_metadata_filtering_conditions,
+                inputs={},
+            )
+
+        if request.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
+            planning_strategy = PlanningStrategy.REACT_ROUTER
+            # Ensure required fields are not None for single retrieval mode
+            if request.model_provider is None or request.model_name is None or request.query is None:
+                raise ValueError("model_provider, model_name, and query are required for single retrieval mode")
+
+            model_manager = ModelManager()
+            model_instance = model_manager.get_model_instance(
+                tenant_id=request.tenant_id,
+                model_type=ModelType.LLM,
+                provider=request.model_provider,
+                model=request.model_name,
+            )
+
+            provider_model_bundle = model_instance.provider_model_bundle
+            model_type_instance = model_instance.model_type_instance
+            model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
+            model_credentials = model_instance.credentials
+
+            # check model
+            provider_model = provider_model_bundle.configuration.get_provider_model(
+                model=request.model_name, model_type=ModelType.LLM
+            )
+
+            if provider_model is None:
+                raise exc.ModelNotExistError(f"Model {request.model_name} not exist.")
+
+            if provider_model.status == ModelStatus.NO_CONFIGURE:
+                raise exc.ModelCredentialsNotInitializedError(
+                    f"Model {request.model_name} credentials is not initialized."
+                )
+            elif provider_model.status == ModelStatus.NO_PERMISSION:
+                raise exc.ModelNotSupportedError(f"Dify Hosted OpenAI {request.model_name} currently not support.")
+            elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
+                raise exc.ModelQuotaExceededError(f"Model provider {request.model_provider} quota exceeded.")
+
+            stop = []
+            completion_params = (request.completion_params or {}).copy()
+            if "stop" in completion_params:
+                stop = completion_params["stop"]
+                del completion_params["stop"]
+
+            model_schema = model_type_instance.get_model_schema(request.model_name, model_credentials)
+
+            if not model_schema:
+                raise exc.ModelNotExistError(f"Model {request.model_name} not exist.")
+
+            model_config = ModelConfigWithCredentialsEntity(
+                provider=request.model_provider,
+                model=request.model_name,
+                model_schema=model_schema,
+                mode=request.model_mode or "chat",
+                provider_model_bundle=provider_model_bundle,
+                credentials=model_credentials,
+                parameters=completion_params,
+                stop=stop,
+            )
+            all_documents = self.single_retrieve(
+                request.app_id,
+                request.tenant_id,
+                request.user_id,
+                request.user_from,
+                request.query,
+                available_datasets,
+                model_instance,
+                model_config,
+                planning_strategy,
+                None,  # message_id
+                metadata_filter_document_ids,
+                metadata_condition,
+            )
+        else:
+            all_documents = self.multiple_retrieve(
+                app_id=request.app_id,
+                tenant_id=request.tenant_id,
+                user_id=request.user_id,
+                user_from=request.user_from,
+                available_datasets=available_datasets,
+                query=request.query,
+                top_k=request.top_k,
+                score_threshold=request.score_threshold,
+                reranking_mode=request.reranking_mode,
+                reranking_model=request.reranking_model,
+                weights=request.weights,
+                reranking_enable=request.reranking_enable,
+                metadata_filter_document_ids=metadata_filter_document_ids,
+                metadata_condition=metadata_condition,
+                attachment_ids=request.attachment_ids,
+            )
+
+        dify_documents = [item for item in all_documents if item.provider == "dify"]
+        external_documents = [item for item in all_documents if item.provider == "external"]
+        retrieval_resource_list = []
+        # deal with external documents
+        for item in external_documents:
+            source = Source(
+                metadata=SourceMetadata(
+                    source="knowledge",
+                    dataset_id=item.metadata.get("dataset_id"),
+                    dataset_name=item.metadata.get("dataset_name"),
+                    document_id=item.metadata.get("document_id"),
+                    document_name=item.metadata.get("title"),
+                    data_source_type="external",
+                    retriever_from="workflow",
+                    score=item.metadata.get("score"),
+                    doc_metadata=item.metadata,
+                ),
+                title=item.metadata.get("title"),
+                content=item.page_content,
+            )
+            retrieval_resource_list.append(source)
+        # deal with dify documents
+        if dify_documents:
+            records = RetrievalService.format_retrieval_documents(dify_documents)
+            dataset_ids = [i.segment.dataset_id for i in records]
+            document_ids = [i.segment.document_id for i in records]
+
+            with session_factory.create_session() as session:
+                datasets = session.query(Dataset).where(Dataset.id.in_(dataset_ids)).all()
+                documents = session.query(DatasetDocument).where(DatasetDocument.id.in_(document_ids)).all()
+
+            dataset_map = {i.id: i for i in datasets}
+            document_map = {i.id: i for i in documents}
+
+            if records:
+                for record in records:
+                    segment = record.segment
+                    dataset = dataset_map.get(segment.dataset_id)
+                    document = document_map.get(segment.document_id)
+
+                    if dataset and document:
+                        source = Source(
+                            metadata=SourceMetadata(
+                                source="knowledge",
+                                dataset_id=dataset.id,
+                                dataset_name=dataset.name,
+                                document_id=document.id,
+                                document_name=document.name,
+                                data_source_type=document.data_source_type,
+                                segment_id=segment.id,
+                                retriever_from="workflow",
+                                score=record.score or 0.0,
+                                segment_hit_count=segment.hit_count,
+                                segment_word_count=segment.word_count,
+                                segment_position=segment.position,
+                                segment_index_node_hash=segment.index_node_hash,
+                                doc_metadata=document.doc_metadata,
+                                child_chunks=[
+                                    SourceChildChunk(
+                                        id=str(getattr(chunk, "id", "")),
+                                        content=str(getattr(chunk, "content", "")),
+                                        position=int(getattr(chunk, "position", 0)),
+                                        score=float(getattr(chunk, "score", 0.0)),
+                                    )
+                                    for chunk in (record.child_chunks or [])
+                                ],
+                                position=None,
+                            ),
+                            title=document.name,
+                            files=list(record.files) if record.files else None,
+                            content=segment.get_sign_content(),
+                        )
+                        if segment.answer:
+                            source.content = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
+
+                        if record.summary:
+                            source.summary = record.summary
+
+                        retrieval_resource_list.append(source)
+
+        if retrieval_resource_list:
+
+            def _score(item: Source) -> float:
+                meta = item.metadata
+                score = meta.score
+                if isinstance(score, (int, float)):
+                    return float(score)
+                return 0.0
+
+            retrieval_resource_list = sorted(
+                retrieval_resource_list,
+                key=_score,  # type: ignore[arg-type, return-value]
+                reverse=True,
+            )
+            for position, item in enumerate(retrieval_resource_list, start=1):
+                item.metadata.position = position  # type: ignore[index]
+        return retrieval_resource_list
 
     def retrieve(
         self,
@@ -150,14 +400,7 @@ class DatasetRetrieval:
         if features:
             if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
-        available_datasets = []
-
-        dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
-        datasets: list[Dataset] = db.session.execute(dataset_stmt).scalars().all()  # type: ignore
-        for dataset in datasets:
-            if dataset.available_document_count == 0 and dataset.provider != "external":
-                continue
-            available_datasets.append(dataset)
+        available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
         if inputs:
             inputs = {key: str(value) for key, value in inputs.items()}
@@ -1161,7 +1404,6 @@ class DatasetRetrieval:
             query=query or "",
         )
 
-        result_text = ""
         try:
             # handle invoke result
             invoke_result = cast(
@@ -1192,7 +1434,8 @@ class DatasetRetrieval:
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception:
+        except Exception as e:
+            logger.warning(e, exc_info=True)
             return None
         return automatic_metadata_filters
 
@@ -1406,7 +1649,12 @@ class DatasetRetrieval:
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
-            full_text += text
+            if isinstance(text, str):
+                full_text += text
+            elif isinstance(text, list):
+                for i in text:
+                    if i.data:
+                        full_text += i.data
 
             if not model:
                 model = result.model
@@ -1524,3 +1772,53 @@ class DatasetRetrieval:
                 cancel_event.set()
             if thread_exceptions is not None:
                 thread_exceptions.append(e)
+
+    def _get_available_datasets(self, tenant_id: str, dataset_ids: list[str]) -> list[Dataset]:
+        with session_factory.create_session() as session:
+            subquery = (
+                session.query(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
+                .where(
+                    DocumentModel.indexing_status == "completed",
+                    DocumentModel.enabled == True,
+                    DocumentModel.archived == False,
+                    DocumentModel.dataset_id.in_(dataset_ids),
+                )
+                .group_by(DocumentModel.dataset_id)
+                .having(func.count(DocumentModel.id) > 0)
+                .subquery()
+            )
+
+            results = (
+                session.query(Dataset)
+                .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
+                .where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+                .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
+                .all()
+            )
+
+        available_datasets = []
+        for dataset in results:
+            if not dataset:
+                continue
+            available_datasets.append(dataset)
+        return available_datasets
+
+    def _check_knowledge_rate_limit(self, tenant_id: str):
+        knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(tenant_id)
+        if knowledge_rate_limit.enabled:
+            current_time = int(time.time() * 1000)
+            key = f"rate_limit_{tenant_id}"
+            redis_client.zadd(key, {current_time: current_time})
+            redis_client.zremrangebyscore(key, 0, current_time - 60000)
+            request_count = redis_client.zcard(key)
+            if request_count > knowledge_rate_limit.limit:
+                with session_factory.create_session() as session:
+                    rate_limit_log = RateLimitLog(
+                        tenant_id=tenant_id,
+                        subscription_plan=knowledge_rate_limit.subscription_plan,
+                        operation="knowledge",
+                    )
+                    session.add(rate_limit_log)
+                raise exc.RateLimitExceededError(
+                    "you have reached the knowledge base request rate limit of your subscription."
+                )

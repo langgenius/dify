@@ -5,9 +5,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, Union
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
+    QueueHumanInputFormFilledEvent,
+    QueueHumanInputFormTimeoutEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -19,9 +24,13 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueWorkflowPausedEvent,
 )
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
+    HumanInputFormFilledResponse,
+    HumanInputFormTimeoutResponse,
+    HumanInputRequiredResponse,
     IterationNodeCompletedStreamResponse,
     IterationNodeNextStreamResponse,
     IterationNodeStartStreamResponse,
@@ -31,15 +40,18 @@ from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeRetryStreamResponse,
     NodeStartStreamResponse,
+    StreamResponse,
     WorkflowFinishStreamResponse,
+    WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
-from core.file import FILE_MODEL_IDENTITY, File
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.trigger_manager import TriggerManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
+from core.workflow.entities.pause_reason import HumanInputRequired
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -47,12 +59,16 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import FILE_MODEL_IDENTITY, File
 from core.workflow.runtime import GraphRuntimeState
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
+from models.human_input import HumanInputForm
+from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 NodeExecutionId = NewType("NodeExecutionId", str)
@@ -191,6 +207,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_run_id: str,
         workflow_id: str,
+        reason: WorkflowStartReason,
     ) -> WorkflowStartStreamResponse:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
@@ -204,6 +221,7 @@ class WorkflowResponseConverter:
                 workflow_id=workflow_id,
                 inputs=self._workflow_inputs,
                 created_at=int(started_at.timestamp()),
+                reason=reason,
             ),
         )
 
@@ -261,6 +279,160 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
+            ),
+        )
+
+    def workflow_pause_to_stream_response(
+        self,
+        *,
+        event: QueueWorkflowPausedEvent,
+        task_id: str,
+        graph_runtime_state: GraphRuntimeState,
+    ) -> list[StreamResponse]:
+        run_id = self._ensure_workflow_run_id()
+        started_at = self._workflow_started_at
+        if started_at is None:
+            raise ValueError(
+                "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
+            )
+        paused_at = naive_utc_now()
+        elapsed_time = (paused_at - started_at).total_seconds()
+        encoded_outputs = self._encode_outputs(event.outputs) or {}
+        if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
+            encoded_outputs = {}
+        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
+        human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
+        expiration_times_by_form_id: dict[str, datetime] = {}
+        if human_input_form_ids:
+            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
+                HumanInputForm.id.in_(human_input_form_ids)
+            )
+            with Session(bind=db.engine) as session:
+                for form_id, expiration_time in session.execute(stmt):
+                    expiration_times_by_form_id[str(form_id)] = expiration_time
+
+        responses: list[StreamResponse] = []
+
+        for reason in event.reasons:
+            if isinstance(reason, HumanInputRequired):
+                expiration_time = expiration_times_by_form_id.get(reason.form_id)
+                if expiration_time is None:
+                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
+                responses.append(
+                    HumanInputRequiredResponse(
+                        task_id=task_id,
+                        workflow_run_id=run_id,
+                        data=HumanInputRequiredResponse.Data(
+                            form_id=reason.form_id,
+                            node_id=reason.node_id,
+                            node_title=reason.node_title,
+                            form_content=reason.form_content,
+                            inputs=reason.inputs,
+                            actions=reason.actions,
+                            display_in_ui=reason.display_in_ui,
+                            form_token=reason.form_token,
+                            resolved_default_values=reason.resolved_default_values,
+                            expiration_time=int(expiration_time.timestamp()),
+                        ),
+                    )
+                )
+
+        responses.append(
+            WorkflowPauseStreamResponse(
+                task_id=task_id,
+                workflow_run_id=run_id,
+                data=WorkflowPauseStreamResponse.Data(
+                    workflow_run_id=run_id,
+                    paused_nodes=list(event.paused_nodes),
+                    outputs=encoded_outputs,
+                    reasons=pause_reasons,
+                    status=WorkflowExecutionStatus.PAUSED,
+                    created_at=int(started_at.timestamp()),
+                    elapsed_time=elapsed_time,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                ),
+            )
+        )
+
+        return responses
+
+    def human_input_form_filled_to_stream_response(
+        self, *, event: QueueHumanInputFormFilledEvent, task_id: str
+    ) -> HumanInputFormFilledResponse:
+        run_id = self._ensure_workflow_run_id()
+        return HumanInputFormFilledResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=HumanInputFormFilledResponse.Data(
+                node_id=event.node_id,
+                node_title=event.node_title,
+                rendered_content=event.rendered_content,
+                action_id=event.action_id,
+                action_text=event.action_text,
+            ),
+        )
+
+    def human_input_form_timeout_to_stream_response(
+        self, *, event: QueueHumanInputFormTimeoutEvent, task_id: str
+    ) -> HumanInputFormTimeoutResponse:
+        run_id = self._ensure_workflow_run_id()
+        return HumanInputFormTimeoutResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=HumanInputFormTimeoutResponse.Data(
+                node_id=event.node_id,
+                node_title=event.node_title,
+                expiration_time=int(event.expiration_time.timestamp()),
+            ),
+        )
+
+    @classmethod
+    def workflow_run_result_to_finish_response(
+        cls,
+        *,
+        task_id: str,
+        workflow_run: WorkflowRun,
+        creator_user: Account | EndUser,
+    ) -> WorkflowFinishStreamResponse:
+        run_id = workflow_run.id
+        elapsed_time = workflow_run.elapsed_time
+
+        encoded_outputs = workflow_run.outputs_dict
+        finished_at = workflow_run.finished_at
+        assert finished_at is not None
+
+        created_by: Mapping[str, object]
+        user = creator_user
+        if isinstance(user, Account):
+            created_by = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+            }
+        else:
+            created_by = {
+                "id": user.id,
+                "user": user.session_id,
+            }
+
+        return WorkflowFinishStreamResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=WorkflowFinishStreamResponse.Data(
+                id=run_id,
+                workflow_id=workflow_run.workflow_id,
+                status=workflow_run.status,
+                outputs=encoded_outputs,
+                error=workflow_run.error,
+                elapsed_time=elapsed_time,
+                total_tokens=workflow_run.total_tokens,
+                total_steps=workflow_run.total_steps,
+                created_by=created_by,
+                created_at=int(workflow_run.created_at.timestamp()),
+                finished_at=int(finished_at.timestamp()),
+                files=cls.fetch_files_from_node_outputs(encoded_outputs),
+                exceptions_count=workflow_run.exceptions_count,
             ),
         )
 
@@ -592,7 +764,8 @@ class WorkflowResponseConverter:
             ),
         )
 
-    def fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
+    @classmethod
+    def fetch_files_from_node_outputs(cls, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from node outputs
         :param outputs_dict: node outputs dict
@@ -601,7 +774,7 @@ class WorkflowResponseConverter:
         if not outputs_dict:
             return []
 
-        files = [self._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
+        files = [cls._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
         # Remove None
         files = [file for file in files if file]
         # Flatten list

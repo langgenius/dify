@@ -605,26 +605,20 @@ class TestBatchCreateSegmentToIndexTask:
 
         mock_storage.download.side_effect = mock_download
 
-        # Execute the task
+        # Execute the task - should raise ValueError for empty CSV
         job_id = str(uuid.uuid4())
-        batch_create_segment_to_index_task(
-            job_id=job_id,
-            upload_file_id=upload_file.id,
-            dataset_id=dataset.id,
-            document_id=document.id,
-            tenant_id=tenant.id,
-            user_id=account.id,
-        )
+        with pytest.raises(ValueError, match="The CSV file is empty"):
+            batch_create_segment_to_index_task(
+                job_id=job_id,
+                upload_file_id=upload_file.id,
+                dataset_id=dataset.id,
+                document_id=document.id,
+                tenant_id=tenant.id,
+                user_id=account.id,
+            )
 
         # Verify error handling
-        # Check Redis cache was set to error status
-        from extensions.ext_redis import redis_client
-
-        cache_key = f"segment_batch_import_{job_id}"
-        cache_value = redis_client.get(cache_key)
-        assert cache_value == b"error"
-
-        # Verify no segments were created
+        # Since exception was raised, no segments should be created
         from extensions.ext_database import db
 
         segments = db.session.query(DocumentSegment).all()

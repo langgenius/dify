@@ -16,7 +16,8 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
   | 'disableFeedback'
-  | 'onFeedback'> & {
+  | 'onFeedback'
+  | 'getHumanInputNodeData'> & {
     readonly?: boolean
   }
 
@@ -45,6 +46,7 @@ export const ChatContextProvider = ({
   onAnnotationRemoved,
   disableFeedback,
   onFeedback,
+  getHumanInputNodeData,
 }: ChatContextProviderProps) => {
   return (
     <ChatContext.Provider value={{
@@ -62,6 +64,7 @@ export const ChatContextProvider = ({
       onAnnotationRemoved,
       disableFeedback,
       onFeedback,
+      getHumanInputNodeData,
     }}
     >
       {children}

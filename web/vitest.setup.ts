@@ -1,5 +1,6 @@
 import { act, cleanup } from '@testing-library/react'
 import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
+import * as React from 'react'
 import '@testing-library/jest-dom/vitest'
 import 'vitest-canvas-mock'
 
@@ -110,6 +111,15 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock(),
+  }
+})
+
+// Mock FloatingPortal to render children in the normal DOM flow
+vi.mock('@floating-ui/react', async () => {
+  const actual = await vi.importActual('@floating-ui/react')
+  return {
+    ...actual,
+    FloatingPortal: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-floating-ui-portal': true }, children),
   }
 })
 

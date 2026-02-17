@@ -55,6 +55,43 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     assert exc_info.value.args == ("oops",)
 
 
+def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.MonkeyPatch):
+    entity = ToolEntity(
+        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
+        parameters=[],
+        description=None,
+        has_runtime_parameters=False,
+    )
+    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
+    tool = WorkflowTool(
+        workflow_app_id="",
+        workflow_as_tool_id="",
+        version="1",
+        workflow_entities={},
+        workflow_call_depth=1,
+        entity=entity,
+        runtime=runtime,
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    from unittest.mock import MagicMock, Mock
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
+
+    list(tool.invoke("test_user", {}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert "pause_state_config" in call_kwargs
+    assert call_kwargs["pause_state_config"] is None
+
+
 def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch: pytest.MonkeyPatch):
     """Test that WorkflowTool should generate variable messages when there are outputs"""
     entity = ToolEntity(
@@ -216,6 +253,32 @@ def test_create_variable_message():
         assert message.message.variable_name == var_name
         assert message.message.variable_value == var_value
         assert message.message.stream is False
+
+
+def test_create_file_message_should_include_file_marker():
+    entity = ToolEntity(
+        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
+        parameters=[],
+        description=None,
+        has_runtime_parameters=False,
+    )
+    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
+    tool = WorkflowTool(
+        workflow_app_id="",
+        workflow_as_tool_id="",
+        version="1",
+        workflow_entities={},
+        workflow_call_depth=1,
+        entity=entity,
+        runtime=runtime,
+    )
+
+    file_obj = object()
+    message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
+
+    assert message.type == ToolInvokeMessage.MessageType.FILE
+    assert message.message.file_marker == "file_marker"
+    assert message.meta == {"file": file_obj}
 
 
 def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.MonkeyPatch):

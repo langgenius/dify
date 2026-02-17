@@ -53,6 +53,7 @@ const defaultProviderContext = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
 }
 
 const defaultModalContext: ModalContextState = {

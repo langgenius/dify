@@ -2,9 +2,9 @@ from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, Field
 
-from core.file import File
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelFeature
+from core.workflow.file import File
 from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage
 
 
