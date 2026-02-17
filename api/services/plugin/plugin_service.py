@@ -531,34 +531,36 @@ class PluginService:
                 )
             ).all()
 
-            if credential_ids:
-                provider_ids: list[str] = session.scalars(
-                    select(Provider.id).where(
-                        Provider.tenant_id == tenant_id,
-                        Provider.provider_name.like(f"{plugin_id}/%"),
-                        Provider.credential_id.in_(credential_ids),
-                    )
-                ).all()
+            if not credential_ids:
+                logger.info("No credentials found for plugin: %s", plugin_id)
+                return manager.uninstall(tenant_id, plugin_installation_id)
 
-                if provider_ids:
-                    session.execute(
-                        update(Provider)
-                        .where(Provider.id.in_(provider_ids))
-                        .values(credential_id=None)
-                    )
-
-                    for provider_id in provider_ids:
-                        ProviderCredentialsCache(
-                            tenant_id=tenant_id,
-                            identity_id=provider_id,
-                            cache_type=ProviderCredentialsCacheType.PROVIDER,
-                        ).delete()
-
-                session.execute(
-                    delete(ProviderCredential).where(
-                        ProviderCredential.id.in_(credential_ids),
-                    )
+            provider_ids: list[str] = session.scalars(
+                select(Provider.id).where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name.like(f"{plugin_id}/%"),
+                    Provider.credential_id.in_(credential_ids),
                 )
+            ).all()
+
+            session.execute(
+                update(Provider)
+                .where(Provider.id.in_(provider_ids))
+                .values(credential_id=None)
+            )
+
+            for provider_id in provider_ids:
+                ProviderCredentialsCache(
+                    tenant_id=tenant_id,
+                    identity_id=provider_id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+                ).delete()
+
+            session.execute(
+                delete(ProviderCredential).where(
+                    ProviderCredential.id.in_(credential_ids),
+                )
+            )
 
             logger.info(
                 "Completed deleting credentials and cleaning provider associations for plugin: %s",
