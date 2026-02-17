@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import { cn } from '@/utils/classnames'
 
@@ -21,7 +22,7 @@ const WrappedDatePicker = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  // const { userProfile: { timezone } } = useAppContext()
+  const { userProfile: { timezone } } = useAppContext()
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
@@ -64,6 +65,7 @@ const WrappedDatePicker = ({
   return (
     <DatePicker
       value={dayjs(value ? value * 1000 : Date.now())}
+      timezone={timezone}
       onChange={handleDateChange}
       onClear={handleDateChange}
       renderTrigger={renderTrigger}

@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Schreiben Sie hier Ihr Aufforderungswort, geben Sie '{' ein, um eine Variable einzufügen, geben Sie '/' ein, um einen Aufforderungs-Inhaltsblock einzufügen",
   "promptEditor.query.item.desc": "Benutzerabfragevorlage einfügen",
   "promptEditor.query.item.title": "Abfrage",
+  "promptEditor.requestURL.item.desc": "Anfrage-URL einfügen",
+  "promptEditor.requestURL.item.title": "Anfrage-URL",
   "promptEditor.variable.item.desc": "Variablen & Externe Werkzeuge einfügen",
   "promptEditor.variable.item.title": "Variablen & Externe Werkzeuge",
   "promptEditor.variable.modal.add": "Neue Variable",

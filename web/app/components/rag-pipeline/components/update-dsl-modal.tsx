@@ -1,40 +1,17 @@
 'use client'
 
-import type { MouseEventHandler } from 'react'
 import {
   RiAlertFill,
   RiCloseLine,
   RiFileDownloadLine,
 } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast'
-import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import {
-  initialEdges,
-  initialNodes,
-} from '@/app/components/workflow/utils'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  DSLImportMode,
-  DSLImportStatus,
-} from '@/models/app'
-import {
-  useImportPipelineDSL,
-  useImportPipelineDSLConfirm,
-} from '@/service/use-pipeline'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { useUpdateDSLModal } from '../hooks/use-update-dsl-modal'
+import VersionMismatchModal from './version-mismatch-modal'
 
 type UpdateDSLModalProps = {
   onCancel: () => void
@@ -48,146 +25,17 @@ const UpdateDSLModal = ({
   onImport,
 }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
-  const [currentFile, setDSLFile] = useState<File>()
-  const [fileContent, setFileContent] = useState<string>()
-  const [loading, setLoading] = useState(false)
-  const { eventEmitter } = useEventEmitterContextContext()
-  const [show, setShow] = useState(true)
-  const [showErrorModal, setShowErrorModal] = useState(false)
-  const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
-  const [importId, setImportId] = useState<string>()
-  const { handleCheckPluginDependencies } = usePluginDependencies()
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
-  const workflowStore = useWorkflowStore()
-
-  const readFile = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = function (event) {
-      const content = event.target?.result
-      setFileContent(content as string)
-    }
-    reader.readAsText(file)
-  }
-
-  const handleFile = (file?: File) => {
-    setDSLFile(file)
-    if (file)
-      readFile(file)
-    if (!file)
-      setFileContent('')
-  }
-
-  const handleWorkflowUpdate = useCallback(async (pipelineId: string) => {
-    const {
-      graph,
-      hash,
-      rag_pipeline_variables,
-    } = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
-
-    const { nodes, edges, viewport } = graph
-
-    eventEmitter?.emit({
-      type: WORKFLOW_DATA_UPDATE,
-      payload: {
-        nodes: initialNodes(nodes, edges),
-        edges: initialEdges(edges, nodes),
-        viewport,
-        hash,
-        rag_pipeline_variables: rag_pipeline_variables || [],
-      },
-    } as any)
-  }, [eventEmitter])
-
-  const isCreatingRef = useRef(false)
-  const handleImport: MouseEventHandler = useCallback(async () => {
-    const { pipelineId } = workflowStore.getState()
-    if (isCreatingRef.current)
-      return
-    isCreatingRef.current = true
-    if (!currentFile)
-      return
-    try {
-      if (pipelineId && fileContent) {
-        setLoading(true)
-        const response = await importDSL({ mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, pipeline_id: pipelineId })
-        const { id, status, pipeline_id, imported_dsl_version, current_dsl_version } = response
-
-        if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-          if (!pipeline_id) {
-            notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-            return
-          }
-          handleWorkflowUpdate(pipeline_id)
-          if (onImport)
-            onImport()
-          notify({
-            type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            message: t(status === DSLImportStatus.COMPLETED ? 'common.importSuccess' : 'common.importWarning', { ns: 'workflow' }),
-            children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('common.importWarningDetails', { ns: 'workflow' }),
-          })
-          await handleCheckPluginDependencies(pipeline_id, true)
-          setLoading(false)
-          onCancel()
-        }
-        else if (status === DSLImportStatus.PENDING) {
-          setShow(false)
-          setTimeout(() => {
-            setShowErrorModal(true)
-          }, 300)
-          setVersions({
-            importedVersion: imported_dsl_version ?? '',
-            systemVersion: current_dsl_version ?? '',
-          })
-          setImportId(id)
-        }
-        else {
-          setLoading(false)
-          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-        }
-      }
-    }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
-      setLoading(false)
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-    }
-    isCreatingRef.current = false
-  }, [currentFile, fileContent, onCancel, notify, t, onImport, handleWorkflowUpdate, handleCheckPluginDependencies, workflowStore, importDSL])
-
-  const onUpdateDSLConfirm: MouseEventHandler = async () => {
-    try {
-      if (!importId)
-        return
-      const response = await importDSLConfirm(importId)
-
-      const { status, pipeline_id } = response
-
-      if (status === DSLImportStatus.COMPLETED) {
-        if (!pipeline_id) {
-          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-          return
-        }
-        handleWorkflowUpdate(pipeline_id)
-        await handleCheckPluginDependencies(pipeline_id, true)
-        if (onImport)
-          onImport()
-        notify({ type: 'success', message: t('common.importSuccess', { ns: 'workflow' }) })
-        setLoading(false)
-        onCancel()
-      }
-      else if (status === DSLImportStatus.FAILED) {
-        setLoading(false)
-        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-      }
-    }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
-      setLoading(false)
-      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-    }
-  }
+  const {
+    currentFile,
+    handleFile,
+    show,
+    showErrorModal,
+    setShowErrorModal,
+    loading,
+    versions,
+    handleImport,
+    onUpdateDSLConfirm,
+  } = useUpdateDSLModal({ onCancel, onImport })
 
   return (
     <>
@@ -250,32 +98,12 @@ const UpdateDSLModal = ({
           </Button>
         </div>
       </Modal>
-      <Modal
+      <VersionMismatchModal
         isShow={showErrorModal}
+        versions={versions}
         onClose={() => setShowErrorModal(false)}
-        className="w-[480px]"
-      >
-        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
-            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
-            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
-            <br />
-            <div>
-              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.importedVersion}</span>
-            </div>
-            <div>
-              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.systemVersion}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" destructive onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
-        </div>
-      </Modal>
+        onConfirm={onUpdateDSLConfirm}
+      />
     </>
   )
 }

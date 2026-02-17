@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Scrivi qui il tuo prompt, inserisci '{' per inserire una variabile, inserisci '/' per inserire un blocco di contenuto del prompt",
   "promptEditor.query.item.desc": "Inserisci modello di query dell'utente",
   "promptEditor.query.item.title": "Query",
+  "promptEditor.requestURL.item.desc": "Inserisci URL richiesta",
+  "promptEditor.requestURL.item.title": "URL richiesta",
   "promptEditor.variable.item.desc": "Inserisci Variabili & Strumenti Esterni",
   "promptEditor.variable.item.title": "Variabili & Strumenti Esterni",
   "promptEditor.variable.modal.add": "Nuova variabile",

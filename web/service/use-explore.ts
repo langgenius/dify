@@ -3,10 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
-import { fetchAppList, fetchBanners, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
-import { AppSourceType, fetchAppMeta, fetchAppParams } from './share'
-
-const NAME_SPACE = 'explore'
+import { consoleQuery } from './client'
+import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 
 type ExploreAppListData = {
   categories: AppCategory[]
@@ -15,10 +13,15 @@ type ExploreAppListData = {
 
 export const useExploreAppList = () => {
   const locale = useLocale()
+  const exploreAppsInput = locale
+    ? { query: { language: locale } }
+    : {}
+  const exploreAppsLanguage = exploreAppsInput?.query?.language
+
   return useQuery<ExploreAppListData>({
-    queryKey: [NAME_SPACE, 'appList', locale],
+    queryKey: [...consoleQuery.explore.apps.queryKey({ input: exploreAppsInput }), exploreAppsLanguage],
     queryFn: async () => {
-      const { categories, recommended_apps } = await fetchAppList()
+      const { categories, recommended_apps } = await fetchAppList(exploreAppsLanguage)
       return {
         categories,
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
@@ -29,7 +32,7 @@ export const useExploreAppList = () => {
 
 export const useGetInstalledApps = () => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'installedApps'],
+    queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
     queryFn: () => {
       return fetchInstalledAppList()
     },
@@ -39,10 +42,12 @@ export const useGetInstalledApps = () => {
 export const useUninstallApp = () => {
   const client = useQueryClient()
   return useMutation({
-    mutationKey: [NAME_SPACE, 'uninstallApp'],
+    mutationKey: consoleQuery.explore.uninstallInstalledApp.mutationKey(),
     mutationFn: (appId: string) => uninstallApp(appId),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
+      client.invalidateQueries({
+        queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
+      })
     },
   })
 }
@@ -50,62 +55,82 @@ export const useUninstallApp = () => {
 export const useUpdateAppPinStatus = () => {
   const client = useQueryClient()
   return useMutation({
-    mutationKey: [NAME_SPACE, 'updateAppPinStatus'],
+    mutationKey: consoleQuery.explore.updateInstalledApp.mutationKey(),
     mutationFn: ({ appId, isPinned }: { appId: string, isPinned: boolean }) => updatePinStatus(appId, isPinned),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
+      client.invalidateQueries({
+        queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
+      })
     },
   })
 }
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const appAccessModeInput = { query: { appId: appId ?? '' } }
+  const installedAppId = appAccessModeInput.query.appId
+
   return useQuery({
-    queryKey: [NAME_SPACE, 'appAccessMode', appId, systemFeatures.webapp_auth.enabled],
+    queryKey: [
+      ...consoleQuery.explore.appAccessMode.queryKey({ input: appAccessModeInput }),
+      systemFeatures.webapp_auth.enabled,
+      installedAppId,
+    ],
     queryFn: () => {
       if (systemFeatures.webapp_auth.enabled === false) {
         return {
           accessMode: AccessMode.PUBLIC,
         }
       }
-      if (!appId || appId.length === 0)
-        return Promise.reject(new Error('App code is required to get access mode'))
+      if (!installedAppId)
+        return Promise.reject(new Error('App ID is required to get access mode'))
 
-      return getAppAccessModeByAppId(appId)
+      return getAppAccessModeByAppId(installedAppId)
     },
-    enabled: !!appId,
+    enabled: !!installedAppId,
   })
 }
 
 export const useGetInstalledAppParams = (appId: string | null) => {
+  const installedAppParamsInput = { params: { appId: appId ?? '' } }
+  const installedAppId = installedAppParamsInput.params.appId
+
   return useQuery({
-    queryKey: [NAME_SPACE, 'appParams', appId],
+    queryKey: [...consoleQuery.explore.installedAppParameters.queryKey({ input: installedAppParamsInput }), installedAppId],
     queryFn: () => {
-      if (!appId || appId.length === 0)
+      if (!installedAppId)
         return Promise.reject(new Error('App ID is required to get app params'))
-      return fetchAppParams(AppSourceType.installedApp, appId)
+      return fetchInstalledAppParams(installedAppId)
     },
-    enabled: !!appId,
+    enabled: !!installedAppId,
   })
 }
 
 export const useGetInstalledAppMeta = (appId: string | null) => {
+  const installedAppMetaInput = { params: { appId: appId ?? '' } }
+  const installedAppId = installedAppMetaInput.params.appId
+
   return useQuery({
-    queryKey: [NAME_SPACE, 'appMeta', appId],
+    queryKey: [...consoleQuery.explore.installedAppMeta.queryKey({ input: installedAppMetaInput }), installedAppId],
     queryFn: () => {
-      if (!appId || appId.length === 0)
+      if (!installedAppId)
         return Promise.reject(new Error('App ID is required to get app meta'))
-      return fetchAppMeta(AppSourceType.installedApp, appId)
+      return fetchInstalledAppMeta(installedAppId)
     },
-    enabled: !!appId,
+    enabled: !!installedAppId,
   })
 }
 
 export const useGetBanners = (locale?: string) => {
+  const bannersInput = locale
+    ? { query: { language: locale } }
+    : {}
+  const bannersLanguage = bannersInput?.query?.language
+
   return useQuery({
-    queryKey: [NAME_SPACE, 'banners', locale],
+    queryKey: [...consoleQuery.explore.banners.queryKey({ input: bannersInput }), bannersLanguage],
     queryFn: () => {
-      return fetchBanners(locale)
+      return fetchBanners(bannersLanguage)
     },
   })
 }

@@ -6,6 +6,7 @@ from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, Pos
 from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
+from .cache.redis_pubsub_config import RedisPubSubConfig
 from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
@@ -258,9 +259,18 @@ class CeleryConfig(DatabaseConfig):
         description="Password of the Redis Sentinel master.",
         default=None,
     )
+
     CELERY_SENTINEL_SOCKET_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
+    )
+
+    CELERY_TASK_ANNOTATIONS: dict[str, Any] | None = Field(
+        description=(
+            "Annotations for Celery tasks as a JSON mapping of task name -> options "
+            "(for example, rate limits or other task-specific settings)."
+        ),
+        default=None,
     )
 
     @computed_field
@@ -317,6 +327,7 @@ class MiddlewareConfig(
     CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
+    RedisPubSubConfig,
     # configs of storage and storage providers
     StorageConfig,
     AliyunOSSStorageConfig,

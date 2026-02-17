@@ -496,6 +496,9 @@ class TestSchemaResolverClass:
         avg_time_no_cache = sum(results1) / len(results1)
 
         # Second run (with cache) - run multiple times
+        # Warm up cache first
+        resolve_dify_schema_refs(schema)
+
         results2 = []
         for _ in range(3):
             start = time.perf_counter()
