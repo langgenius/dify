@@ -89,7 +89,7 @@ export default function Drawer({
                     }}
                     role="button"
                     tabIndex={0}
-                    aria-label="Close"
+                    aria-label={t('operation.close', { ns: 'common' })}
                     data-testid="close-icon"
                   />
                 </DialogTitle>
