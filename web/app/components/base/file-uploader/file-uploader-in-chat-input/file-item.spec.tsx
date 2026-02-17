@@ -102,10 +102,10 @@ describe('FileItem (chat-input)', () => {
   })
 
   it('should have error styling when upload failed', () => {
-    render(<FileItem file={createFile({ progress: -1 })} />)
-
-    const replayIcon = screen.getByTestId('replay-icon')
-    expect(replayIcon).toBeInTheDocument()
+    const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
+    const fileItemContainer = container.firstChild as HTMLElement
+    expect(fileItemContainer).toHaveClass('border-state-destructive-border')
+    expect(fileItemContainer).toHaveClass('bg-state-destructive-hover-alt')
   })
 
   it('should show audio preview when audio file name is clicked', async () => {
@@ -172,7 +172,6 @@ describe('FileItem (chat-input)', () => {
         canPreview
       />,
     )
-    screen.debug()
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
     expect(document.querySelector('audio')).toBeInTheDocument()
@@ -238,10 +237,8 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/video\.mp4/i))
     expect(document.querySelector('video')).toBeInTheDocument()
 
-    // VideoPreview renders via createPortal with tabindex="-1", not role="dialog"
-    const overlay = document.querySelector('[tabindex="-1"]')!
-    const closeSvg = overlay.querySelector(':scope > div:last-child svg')
-    fireEvent.click(closeSvg!.parentElement!)
+    const closeBtn = screen.getByTestId('video-preview-close-btn')
+    fireEvent.click(closeBtn)
 
     expect(document.querySelector('video')).not.toBeInTheDocument()
   })

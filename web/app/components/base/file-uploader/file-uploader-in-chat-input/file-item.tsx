@@ -115,7 +115,7 @@ const FileItem = ({
           }
           {
             uploadError && (
-              <span className="i-custom-vender-other-replay-line h-4 w-4 cursor-pointer text-text-tertiary" onClick={() => onReUpload?.(id)} data-testid="replay-icon" />
+              <span className="i-custom-vender-other-replay-line h-4 w-4 cursor-pointer text-text-tertiary" onClick={() => onReUpload?.(id)} data-testid="replay-icon" role="button" tabIndex={0} />
             )
           }
         </div>

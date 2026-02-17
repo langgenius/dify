@@ -25,7 +25,7 @@ vi.mock('react-pdf-highlighter', () => ({
   ),
   PdfHighlighter: ({ enableAreaSelection, highlightTransform, scrollRef, onScrollChange, onSelectionFinished }: {
     enableAreaSelection?: (event: MouseEvent) => boolean
-    highlightTransform?: () => React.ReactNode
+    highlightTransform?: () => ReactNode
     scrollRef?: (ref: unknown) => void
     onScrollChange?: () => void
     onSelectionFinished?: () => unknown
@@ -172,7 +172,9 @@ describe('PdfPreview', () => {
   it('should render the Loading component in PdfLoader beforeLoad', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    // Loading is a real base component - not mocked, renders inside PdfLoader
-    expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
+    const pdfLoader = screen.getByTestId('pdf-loader')
+    expect(pdfLoader).toBeInTheDocument()
+    const loadingIndicator = pdfLoader.querySelector('svg')
+    expect(loadingIndicator).toBeInTheDocument()
   })
 })
