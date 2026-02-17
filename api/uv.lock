@@ -1694,7 +1694,7 @@ dev = [
     { name = "types-flask-cors", specifier = "~=5.0.0" },
     { name = "types-flask-migrate", specifier = "~=4.1.0" },
     { name = "types-gevent", specifier = "~=25.9.0" },
-    { name = "types-greenlet", specifier = "~=3.1.0" },
+    { name = "types-greenlet", specifier = "~=3.3.0" },
     { name = "types-html5lib", specifier = "~=1.1.11" },
     { name = "types-jmespath", specifier = ">=1.0.2.20240106" },
     { name = "types-jsonschema", specifier = "~=4.23.0" },
@@ -6401,11 +6401,11 @@ wheels = [
 
 [[package]]
 name = "types-greenlet"
-version = "3.1.0.20250401"
+version = "3.3.0.20251206"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c0/c9/50405ed194a02f02a418311311e6ee4dd73eed446608b679e6df8170d5b7/types_greenlet-3.1.0.20250401.tar.gz", hash = "sha256:949389b64c34ca9472f6335189e9fe0b2e9704436d4f0850e39e9b7145909082", size = 8460, upload-time = "2025-04-01T03:06:44.216Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/d3/23f4ab29a5ce239935bb3c157defcf50df8648c16c65965fae03980d67f3/types_greenlet-3.3.0.20251206.tar.gz", hash = "sha256:3e1ab312ab7154c08edc2e8110fbf00d9920323edc1144ad459b7b0052063055", size = 8901, upload-time = "2025-12-06T03:01:38.634Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/f3/36c5a6db23761c810d91227146f20b6e501aa50a51a557bd14e021cd9aea/types_greenlet-3.1.0.20250401-py3-none-any.whl", hash = "sha256:77987f3249b0f21415dc0254057e1ae4125a696a9bba28b0bcb67ee9e3dc14f6", size = 8821, upload-time = "2025-04-01T03:06:42.945Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/8f/aabde1b6e49b25a6804c12a707829e44ba0f5520563c09271f05d3196142/types_greenlet-3.3.0.20251206-py3-none-any.whl", hash = "sha256:8d11041c0b0db545619e8c8a1266aa4aaa4ebeae8ae6b4b7049917a6045a5590", size = 8809, upload-time = "2025-12-06T03:01:37.651Z" },
 ]
 
 [[package]]
