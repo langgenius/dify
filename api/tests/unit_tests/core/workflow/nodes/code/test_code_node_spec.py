@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any, Dict, Optional
 
 import pytest
 
@@ -17,36 +18,36 @@ from core.workflow.nodes.code.limits import CodeNodeLimits
 
 
 class DummyOutput:
-    def __init__(self, type_, children=None):
-        self.type = type_
-        self.children = children or {}
+    def __init__(self, type_: str, children: Optional[Dict[str, Any]] = None) -> None:
+        self.type: str = type_
+        self.children: Dict[str, Any] = children or {}
 
 
 class DummyExecutor:
     @staticmethod
-    def execute_workflow_code_template(language, code, inputs):
+    def execute_workflow_code_template(language: str, code: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {"x": 1}
 
 
 class FailingExecutor:
     @staticmethod
-    def execute_workflow_code_template(language, code, inputs):
+    def execute_workflow_code_template(language: str, code: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         raise CodeExecutionError("boom")
 
 
 class AcceptProvider:
     @staticmethod
-    def is_accept_language(language):
+    def is_accept_language(language: str) -> bool:
         return True
 
     @staticmethod
-    def get_default_config():
+    def get_default_config() -> Dict[str, Any]:
         return {"ok": True}
 
 
 class RejectProvider:
     @staticmethod
-    def is_accept_language(language):
+    def is_accept_language(language: str) -> bool:
         return False
 
 
@@ -76,16 +77,25 @@ def node(limits):
     return node
 
 
-CodeNode._limits = CodeNodeLimits(
-    max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
-    max_number=dify_config.CODE_MAX_NUMBER,
-    min_number=dify_config.CODE_MIN_NUMBER,
-    max_precision=dify_config.CODE_MAX_PRECISION,
-    max_depth=dify_config.CODE_MAX_DEPTH,
-    max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
-    max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
-    max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
-)
+@pytest.fixture(autouse=True)
+def _code_node_limits() -> None:
+    original_limits = getattr(CodeNode, "_limits", None)
+    had_limits = hasattr(CodeNode, "_limits")
+    CodeNode._limits = CodeNodeLimits(
+        max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+        max_number=dify_config.CODE_MAX_NUMBER,
+        min_number=dify_config.CODE_MIN_NUMBER,
+        max_precision=dify_config.CODE_MAX_PRECISION,
+        max_depth=dify_config.CODE_MAX_DEPTH,
+        max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+        max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+        max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+    )
+    yield
+    if had_limits:
+        CodeNode._limits = original_limits
+    else:
+        delattr(CodeNode, "_limits")
 
 
 class TestCodeNodeExceptions:

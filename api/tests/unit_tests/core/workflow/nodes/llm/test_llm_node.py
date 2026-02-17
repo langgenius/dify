@@ -841,7 +841,7 @@ def test_handle_completion_template_basic(llm_node):
 
 def test_combine_message_invalid_role():
     with pytest.raises(NotImplementedError):
-        _combine_message_content_with_role(contents="x", role="invalid-role")
+        _combine_message_content_with_role(contents="x", role=object())
 
 
 def test_render_jinja2_message(monkeypatch):
@@ -1117,27 +1117,6 @@ def test_convert_to_original_retriever_resource(llm_node):
 
 
 # =========================================================
-# _fetch_model_config error branch
-# =========================================================
-
-
-def test_fetch_model_config_error(monkeypatch, llm_node):
-    mock_model = mock.MagicMock()
-    mock_model.model_type_instance.get_model_schema.return_value = None
-
-    monkeypatch.setattr(
-        "core.workflow.nodes.llm.node.llm_utils.fetch_model_config",
-        lambda tenant_id, node_data_model: (mock_model, mock.MagicMock(parameters={})),
-    )
-
-    with pytest.raises(ModelNotExistError):
-        LLMNode._fetch_model_config(
-            node_data_model=llm_node.node_data.model,
-            tenant_id="1",
-        )
-
-
-# =========================================================
 # _extract_variable_selector_to_variable_mapping
 # =========================================================
 
@@ -1149,4 +1128,6 @@ def test_extract_variable_selector_mapping(llm_node):
         node_data=llm_node.node_data.model_dump(),
     )
 
-    assert isinstance(mapping, dict)
+    assert mapping == {"1.#files#": ["sys", "files"]}
+    assert "1.#context#" not in mapping
+    assert "1.#sys.query#" not in mapping

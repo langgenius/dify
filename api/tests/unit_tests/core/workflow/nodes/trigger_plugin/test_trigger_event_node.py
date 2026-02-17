@@ -8,8 +8,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import EventParameter, EventParameterType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.graph_init_params import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_plugin.exc import TriggerEventParameterError
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
