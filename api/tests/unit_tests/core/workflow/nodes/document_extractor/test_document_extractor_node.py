@@ -527,8 +527,9 @@ def test_pptx_failure(mock_partition):
         _extract_text_from_pptx(b"data", unstructured_api_config=UnstructuredApiConfig())
 
 
+@patch("pypandoc.download_pandoc")
 @patch("unstructured.partition.epub.partition_epub")
-def test_epub_branch(mock_partition):
+def test_epub_branch(mock_partition, mock_download_pandoc):
     unstructured_api_config = UnstructuredApiConfig()
     mock_partition.return_value = ["text"]
     result = _extract_text_from_epub(b"data", unstructured_api_config=unstructured_api_config)
