@@ -1,5 +1,3 @@
-'use client'
-
 import type { ConfigItemType } from './config-item'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'

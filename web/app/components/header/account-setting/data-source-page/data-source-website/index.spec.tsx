@@ -1,5 +1,3 @@
-'use client'
-
 import type { JSX } from 'react'
 import type { AppContextValue } from '@/context/app-context'
 import type { CommonResponse } from '@/models/common'

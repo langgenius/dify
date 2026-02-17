@@ -1,5 +1,3 @@
-'use client'
-
 import type { ReactNode } from 'react'
 import type { CommonResponse } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
