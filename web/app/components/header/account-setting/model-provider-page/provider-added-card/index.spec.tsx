@@ -1,5 +1,7 @@
-import type { ModelProvider } from '../declarations'
-import { render } from '@testing-library/react'
+import type { ModelItem, ModelProvider } from '../declarations'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { fetchModelProviderModelList } from '@/service/common'
+import { ConfigurationMethodEnum } from '../declarations'
 import ProviderAddedCard from './index'
 
 const mockEventEmitter: { useSubscription: unknown, emit: unknown } = {
@@ -69,5 +71,32 @@ describe('ProviderAddedCard', () => {
   it('should render provider added card component', () => {
     const { container } = render(<ProviderAddedCard provider={mockProvider} />)
     expect(container.firstChild).toBeInTheDocument()
+  })
+
+  it('should call fetchModelProviderModelList and show model list when clicking show models', async () => {
+    vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [{ model: 'gpt-4' }] } as unknown as { data: ModelItem[] })
+    render(<ProviderAddedCard provider={mockProvider} />)
+
+    const showModelsBtn = screen.getAllByText('modelProvider.showModels')[1]
+    fireEvent.click(showModelsBtn)
+
+    expect(fetchModelProviderModelList).toHaveBeenCalledWith(`/workspaces/current/model-providers/${mockProvider.provider}/models`)
+    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
+  })
+
+  it('should render configure tip when notConfigured is true', () => {
+    render(<ProviderAddedCard provider={mockProvider} notConfigured />)
+    expect(screen.getByText('modelProvider.configureTip')).toBeInTheDocument()
+  })
+
+  it('should render custom model management components when appropriate', () => {
+    const customConfigProvider = {
+      ...mockProvider,
+      configurate_methods: [ConfigurationMethodEnum.customizableModel],
+    } as unknown as ModelProvider
+    render(<ProviderAddedCard provider={customConfigProvider} />)
+
+    expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
+    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
   })
 })

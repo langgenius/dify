@@ -95,5 +95,6 @@ describe('ModelListItem', () => {
     )
     const switchEl = screen.getByRole('switch')
     expect(switchEl).toBeInTheDocument()
+    expect(switchEl).toHaveClass('!opacity-50')
   })
 })

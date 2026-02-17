@@ -86,9 +86,13 @@ describe('CredentialPanel', () => {
     expect(container.querySelector('[data-testid="config-provider"]')).toBeInTheDocument()
   })
 
-  it('should render empty when provider has no schema', () => {
-    const providerNoSchema = { ...mockProvider, provider_credential_schema: null } as unknown as ModelProvider
+  it('should not render credential config when provider has no schema and priority selector is not shown', () => {
+    const providerNoSchema = {
+      ...mockProvider,
+      provider_credential_schema: null,
+      system_configuration: { enabled: false },
+    } as unknown as ModelProvider
     const { container } = render(<CredentialPanel provider={providerNoSchema} />)
-    expect(container.firstChild?.childNodes.length || 0).toBeGreaterThanOrEqual(0)
+    expect(container.firstChild).toBeNull()
   })
 })
