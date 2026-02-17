@@ -80,21 +80,43 @@ class AppAssetPackageService:
         tenant_id: str,
         app_id: str,
         user_id: str,
+        storage_key: str = "",
     ) -> None:
-        """Package assets into a ZIP and upload directly to the given URL."""
+        """Package assets into a ZIP and upload directly to the given URL.
+
+        When *assets* is empty an empty ZIP is written directly to storage
+        using *storage_key*, bypassing the HTTP ticket URL.  This avoids a
+        ``ConnectionError`` when the api process cannot reach the ticket
+        endpoint (e.g. ``localhost:80`` inside a Docker container where nginx
+        runs in a separate service).
+
+        For non-empty assets the ZIP is built inside a remote sandbox VM
+        which uploads via ``curl`` to *upload_url* (the sandbox container
+        *can* reach the ticket endpoint thanks to socat forwarding).
+        """
         from services.app_asset_service import AppAssetService
 
         if not assets:
             import io
             import zipfile
 
-            import requests
-
             buf = io.BytesIO()
             with zipfile.ZipFile(buf, "w"):
                 pass
             buf.seek(0)
-            requests.put(upload_url, data=buf.getvalue(), timeout=30)
+
+            # Write directly to storage instead of going through the HTTP
+            # ticket URL.  The ticket URL (FILES_API_URL) is designed for
+            # sandbox containers (agentbox) and is not routable from the api
+            # container in standard Docker Compose deployments.
+            if storage_key:
+                from extensions.ext_storage import storage
+
+                storage.save(storage_key, buf.getvalue())
+            else:
+                import requests
+
+                requests.put(upload_url, data=buf.getvalue(), timeout=30)
             return
 
         asset_storage = AppAssetService.get_storage()
@@ -147,6 +169,7 @@ class AppAssetPackageService:
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=account_id,
+            storage_key=runtime_zip_key,
         )
 
         source_items = AppAssetService.get_draft_assets(tenant_id, app_id)
@@ -158,6 +181,7 @@ class AppAssetPackageService:
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=account_id,
+            storage_key=source_key,
         )
 
         return published
@@ -184,4 +208,5 @@ class AppAssetPackageService:
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,
+            storage_key=key,
         )
