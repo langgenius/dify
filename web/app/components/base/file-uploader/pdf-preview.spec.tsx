@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import PdfPreview from './pdf-preview'
 
@@ -16,7 +17,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 }))
 
 vi.mock('react-pdf-highlighter', () => ({
-  PdfLoader: ({ children, beforeLoad }: { children: (doc: unknown) => React.ReactNode, beforeLoad: React.ReactNode }) => (
+  PdfLoader: ({ children, beforeLoad }: { children: (doc: unknown) => ReactNode, beforeLoad: ReactNode }) => (
     <div data-testid="pdf-loader">
       {beforeLoad}
       {children({ numPages: 1 })}
