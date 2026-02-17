@@ -1,10 +1,10 @@
 from collections.abc import Callable, Sequence
 from typing import Any, TypeAlias, TypeVar
 
-from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
 from core.variables.segments import ArrayAnySegment, ArrayBooleanSegment, ArraySegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 
