@@ -543,11 +543,7 @@ class PluginService:
                 )
             ).all()
 
-            session.execute(
-                update(Provider)
-                .where(Provider.id.in_(provider_ids))
-                .values(credential_id=None)
-            )
+            session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
 
             for provider_id in provider_ids:
                 ProviderCredentialsCache(
