@@ -1,19 +1,14 @@
 import type { TFunction } from 'i18next'
 import type { IToastProps } from '@/app/components/base/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast'
 import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 import ApiBasedExtensionModal from './modal'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: vi.fn(),
 }))
 
 vi.mock('@/service/common', () => ({
@@ -27,13 +22,19 @@ describe('ApiBasedExtensionModal', () => {
   const mockNotify = vi.fn()
   const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai${path || ''}`)
 
+  const render = (ui: React.ReactElement) => RTLRender(
+    <ToastContext.Provider value={{
+      notify: mockNotify as unknown as (props: IToastProps) => void,
+      close: vi.fn(),
+    }}
+    >
+      {ui}
+    </ToastContext.Provider>,
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useDocLink).mockReturnValue(mockDocLink)
-    vi.mocked(useToastContext).mockReturnValue({
-      notify: mockNotify as unknown as (props: IToastProps) => void,
-      close: vi.fn(),
-    })
   })
 
   describe('Rendering', () => {

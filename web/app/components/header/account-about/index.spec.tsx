@@ -1,7 +1,6 @@
 import type { LangGeniusVersionResponse } from '@/models/common'
 import type { SystemFeatures } from '@/types/feature'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import AccountAbout from './index'
 
@@ -116,9 +115,14 @@ describe('AccountAbout', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       // Act
-      const { container } = render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
-      const closeButton = container.querySelector('.remixicon')
-      fireEvent.click(closeButton!)
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
+      // Modal uses Headless UI Dialog which renders into a portal, so we need to use document
+      const closeButton = document.querySelector('div.absolute.cursor-pointer')
+
+      if (!closeButton)
+        throw new Error('Close button not found')
+
+      fireEvent.click(closeButton)
 
       // Assert
       expect(mockOnCancel).toHaveBeenCalled()

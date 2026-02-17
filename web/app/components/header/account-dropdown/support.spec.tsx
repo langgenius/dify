@@ -1,6 +1,5 @@
 import type { AppContextValue } from '@/context/app-context'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'

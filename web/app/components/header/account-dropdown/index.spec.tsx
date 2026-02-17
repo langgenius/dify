@@ -5,7 +5,6 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -49,10 +48,6 @@ vi.mock('@/context/modal-context', () => ({
 
 vi.mock('@/service/use-common', () => ({
   useLogout: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/amplitude/utils', () => ({
-  resetUser: vi.fn(),
 }))
 
 vi.mock('@/context/i18n', () => ({

@@ -1,7 +1,6 @@
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
