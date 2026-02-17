@@ -129,8 +129,9 @@ describe('FloatRightContainer', () => {
           isOpen={true}
           onClose={vi.fn()}
           title="Empty mobile panel"
-          children={undefined}
-        />,
+        >
+          {undefined}
+        </FloatRightContainer>,
       )
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()

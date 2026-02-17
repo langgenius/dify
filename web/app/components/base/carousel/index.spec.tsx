@@ -52,7 +52,9 @@ const createMockEmblaApi = (): MockEmblaApi => ({
 })
 
 const emitEmblaEvent = (event: EmblaEventName, api: MockEmblaApi | undefined = mockApi) => {
-  listeners[event].forEach(callback => callback(api))
+  listeners[event].forEach((callback) => {
+    callback(api)
+  })
 }
 
 const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'horizontal') => {

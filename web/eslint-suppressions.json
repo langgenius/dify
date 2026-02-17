@@ -1363,12 +1363,6 @@
     },
     "react/no-nested-component-definitions": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/base/button/add-button.stories.tsx": {
