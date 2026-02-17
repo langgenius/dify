@@ -296,8 +296,7 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/audio\.mp3/i))
     expect(createObjectURLSpy).not.toHaveBeenCalled()
     createObjectURLSpy.mockRestore()
-
-    // Preview should still try to open with empty/undefined url
+    expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('should not render download button when download_url is falsy', () => {
