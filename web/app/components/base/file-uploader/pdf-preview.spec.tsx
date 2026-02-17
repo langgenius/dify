@@ -44,6 +44,10 @@ vi.mock('react-pdf-highlighter/dist/style.css', () => ({}))
 
 describe('PdfPreview', () => {
   const mockOnCancel = vi.fn()
+  const getHotkeyCallback = (key: string) => {
+    const call = mockUseHotkeys.mock.calls.find((item: unknown[]) => item[0] === key)
+    return call?.[1] as (() => void) | undefined
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -75,8 +79,7 @@ describe('PdfPreview', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
     // Extract the 'up' hotkey callback and invoke it
-    const upCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'up')
-    const zoomInFn = upCall![1] as () => void
+    const zoomInFn = getHotkeyCallback('up')!
     act(() => {
       zoomInFn()
     })
@@ -90,8 +93,7 @@ describe('PdfPreview', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
     // Extract the 'down' hotkey callback and invoke it
-    const downCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'down')
-    const zoomOutFn = downCall![1] as () => void
+    const zoomOutFn = getHotkeyCallback('down')!
     act(() => {
       zoomOutFn()
     })
@@ -105,10 +107,8 @@ describe('PdfPreview', () => {
   it('should zoom out to a non-1 scale and adjust position', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const upCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'up')
-    const zoomInFn = upCall![1] as () => void
-    const downCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'down')
-    const zoomOutFn = downCall![1] as () => void
+    const zoomInFn = getHotkeyCallback('up')!
+    const zoomOutFn = getHotkeyCallback('down')!
 
     // Zoom in twice to scale 1.44, then zoom out to 1.2 (hits else branch since newScale !== 1)
     act(() => {
@@ -130,10 +130,8 @@ describe('PdfPreview', () => {
   it('should zoom in and then zoom out back to scale 1 to reset position', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const upCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'up')
-    const zoomInFn = upCall![1] as () => void
-    const downCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'down')
-    const zoomOutFn = downCall![1] as () => void
+    const zoomInFn = getHotkeyCallback('up')!
+    const zoomOutFn = getHotkeyCallback('down')!
 
     // Zoom in once to 1.2, then zoom out back to 1.0 (hits if branch where newScale === 1)
     act(() => {

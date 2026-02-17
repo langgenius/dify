@@ -27,18 +27,18 @@ describe('VideoPreview', () => {
   })
 
   it('should render close button with icon', () => {
-    const { baseElement } = render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={vi.fn()} />)
+    const { getByTestId } = render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={vi.fn()} />)
 
-    const closeIcon = baseElement.querySelector('svg')
+    const closeIcon = getByTestId('video-preview-close-btn')
     expect(closeIcon).toBeInTheDocument()
   })
 
   it('should call onCancel when close button is clicked', () => {
     const onCancel = vi.fn()
-    const { baseElement } = render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={onCancel} />)
+    const { getByTestId } = render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={onCancel} />)
 
-    const closeIcon = baseElement.querySelector('svg')
-    fireEvent.click(closeIcon!.parentElement!)
+    const closeIcon = getByTestId('video-preview-close-btn')
+    fireEvent.click(closeIcon.parentElement!)
 
     expect(onCancel).toHaveBeenCalled()
   })
