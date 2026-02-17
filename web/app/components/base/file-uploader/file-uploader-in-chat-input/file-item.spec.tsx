@@ -68,10 +68,8 @@ describe('FileItem (chat-input)', () => {
   it('should call onRemove when delete button is clicked', () => {
     const onRemove = vi.fn()
     render(<FileItem file={createFile()} showDeleteAction onRemove={onRemove} />)
-
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0])
-
+    const delete_button = screen.getByTestId('delete-button')
+    fireEvent.click(delete_button)
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
 
@@ -85,32 +83,32 @@ describe('FileItem (chat-input)', () => {
   })
 
   it('should render replay icon when upload failed', () => {
-    const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
+    render(<FileItem file={createFile({ progress: -1 })} />)
 
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
+    const replayIcon = screen.getByTestId('replay-icon')
     expect(replayIcon).toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    const { container } = render(
+    render(
       <FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
     )
 
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
+    const replayIcon = screen.getByTestId('replay-icon')
     fireEvent.click(replayIcon!)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
 
   it('should have error styling when upload failed', () => {
-    const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
+    render(<FileItem file={createFile({ progress: -1 })} />)
 
-    const replayIcon = container.querySelector('[data-icon="ReplayLine"]')
+    const replayIcon = screen.getByTestId('replay-icon')
     expect(replayIcon).toBeInTheDocument()
   })
 
-  it('should show audio preview when audio file name is clicked', () => {
+  it('should show audio preview when audio file name is clicked', async () => {
     render(
       <FileItem
         file={createFile({
@@ -174,14 +172,13 @@ describe('FileItem (chat-input)', () => {
         canPreview
       />,
     )
+    screen.debug()
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
     expect(document.querySelector('audio')).toBeInTheDocument()
 
-    // AudioPreview renders via createPortal with tabindex="-1", not role="dialog"
-    const overlay = document.querySelector('[tabindex="-1"]')!
-    const closeSvg = overlay.querySelector(':scope > div:last-child svg')
-    fireEvent.click(closeSvg!.parentElement!)
+    const deleteButton = screen.getByTestId('close-btn')
+    fireEvent.click(deleteButton)
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
@@ -197,11 +194,8 @@ describe('FileItem (chat-input)', () => {
     const { downloadUrl } = await import('@/utils/download')
     render(<FileItem file={createFile()} showDownloadAction />)
 
-    const buttons = screen.getAllByRole('button')
-    const downloadBtn = buttons.find(btn =>
-      btn.querySelector('svg') && !btn.textContent,
-    )
-    fireEvent.click(downloadBtn!)
+    const downloadBtn = screen.getByTestId('download-button')
+    fireEvent.click(downloadBtn)
 
     expect(downloadUrl).toHaveBeenCalled()
   })
