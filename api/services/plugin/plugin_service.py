@@ -524,7 +524,7 @@ class PluginService:
             logger.info("Deleting credentials for plugin: %s", plugin_id)
 
             # Delete provider credentials that match this plugin
-            credential_ids: list[str] = session.scalars(
+            credential_ids = session.scalars(
                 select(ProviderCredential.id).where(
                     ProviderCredential.tenant_id == tenant_id,
                     ProviderCredential.provider_name.like(f"{plugin_id}/%"),
@@ -535,7 +535,7 @@ class PluginService:
                 logger.info("No credentials found for plugin: %s", plugin_id)
                 return manager.uninstall(tenant_id, plugin_installation_id)
 
-            provider_ids: list[str] = session.scalars(
+            provider_ids = session.scalars(
                 select(Provider.id).where(
                     Provider.tenant_id == tenant_id,
                     Provider.provider_name.like(f"{plugin_id}/%"),
