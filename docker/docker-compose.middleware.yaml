@@ -244,6 +244,22 @@ services:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
       - "${EXPOSE_WEAVIATE_GRPC_PORT:-50051}:50051"
 
+  # MongoDB Atlas Local (simulates Atlas Vector Search)
+  mongodb:
+    image: mongodb/mongodb-atlas-local:latest
+    profiles:
+      - mongodb
+    restart: always
+    env_file:
+      - ./middleware.env
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=${MONGODB_USERNAME:-root}
+      - MONGODB_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-difyai123456}
+    ports:
+      - "${EXPOSE_MONGODB_PORT:-27017}:27017"
+    volumes:
+      - ${MONGODB_HOST_VOLUME:-./volumes/mongodb/data}:/data/db
+
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
