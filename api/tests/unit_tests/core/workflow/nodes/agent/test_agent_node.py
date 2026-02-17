@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.variables.segments import StringSegment
 from core.workflow.enums import (
     NodeType,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.node_events import (
     NodeRunResult,
     StreamChunkEvent,

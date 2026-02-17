@@ -6,10 +6,8 @@ from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.model_runtime.entities.common_entities import I18nObject
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -21,7 +19,8 @@ from core.model_runtime.entities.message_entities import (
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.node_events import (
     ModelInvokeCompletedEvent,
     StreamChunkEvent,
@@ -1035,20 +1034,26 @@ def test_invoke_llm_structured(monkeypatch):
 # =========================================================
 
 
-def test_handle_invoke_result_streaming(monkeypatch):
-    usage = make_usage()
+def test_handle_invoke_result_streaming():
+    usage = LLMUsage.empty_usage()
 
-    # Fake streaming chunk
-    chunk = mock.MagicMock()
-    chunk.delta.message.content = "hello"
-    chunk.delta.usage = usage
-    chunk.delta.finish_reason = "stop"
-    chunk.model = "gpt"
-    chunk.prompt_messages = []
-    chunk.__class__.__name__ = "LLMResultChunk"
+    # Create a simple fake delta object
+    class FakeDelta:
+        def __init__(self):
+            self.message = mock.MagicMock()
+            self.message.content = "hello"
+            self.usage = usage
+            self.finish_reason = "stop"
+
+    # Create fake chunk object
+    class FakeChunk:
+        def __init__(self):
+            self.delta = FakeDelta()
+            self.model = "gpt"
+            self.prompt_messages = []
 
     def generator():
-        yield chunk
+        yield FakeChunk()
 
     events = list(
         LLMNode.handle_invoke_result(
@@ -1056,11 +1061,12 @@ def test_handle_invoke_result_streaming(monkeypatch):
             file_saver=mock.MagicMock(),
             file_outputs=[],
             node_id="1",
-            node_type="llm",
+            node_type=NodeType.LLM,
             reasoning_format="tagged",
         )
     )
 
+    # Ensure completion event exists
     assert any(isinstance(e, ModelInvokeCompletedEvent) for e in events)
 
 

@@ -6,11 +6,10 @@ from unittest.mock import MagicMock, Mock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
 from core.variables import ArrayFileSegment, FileSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.graph import Graph
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base.template import Template

@@ -2,8 +2,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.file import File
-from core.file.models import FileTransferMethod, FileType
 from core.variables.segments import (
     ArrayAnySegment,
     ArrayBooleanSegment,
@@ -12,6 +10,7 @@ from core.variables.segments import (
     ArrayStringSegment,
 )
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.list_operator.entities import FilterOperator, Order
 from core.workflow.nodes.list_operator.exc import (
     InvalidConditionError,

@@ -5,9 +5,10 @@ import pandas as pd
 import pytest
 from docx.table import Table
 
-from core.file import File, FileTransferMethod
 from core.variables.segments import FileSegment
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod
+from core.workflow.nodes.document_extractor.entities import UnstructuredApiConfig
 from core.workflow.nodes.document_extractor.exc import (
     DocumentExtractorError,
     FileDownloadError,
@@ -35,7 +36,6 @@ from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_properties,
     _extract_text_from_vtt,
     _extract_text_from_yaml,
-    dify_config,
 )
 
 
@@ -106,11 +106,19 @@ class TestDocumentExtractorNodeRun:
 class TestRouting:
     def test_unsupported_mime(self):
         with pytest.raises(UnsupportedFileTypeError):
-            _extract_text_by_mime_type(file_content=b"", mime_type="unknown/type")
+            _extract_text_by_mime_type(
+                file_content=b"",
+                mime_type="unknown/type",
+                unstructured_api_config=UnstructuredApiConfig(),
+            )
 
     def test_unsupported_extension(self):
         with pytest.raises(UnsupportedFileTypeError):
-            _extract_text_by_file_extension(file_content=b"", file_extension=".xyz")
+            _extract_text_by_file_extension(
+                file_content=b"",
+                file_extension=".xyz",
+                unstructured_api_config=UnstructuredApiConfig(),
+            )
 
 
 class TestPlainText:
@@ -194,11 +202,9 @@ class TestPDF:
 
 
 class TestDOC:
-    @patch("core.workflow.nodes.document_extractor.node.dify_config")
-    def test_doc_missing_api(self, mock_config):
-        mock_config.UNSTRUCTURED_API_URL = None
+    def test_doc_missing_api(self):
         with pytest.raises(TextExtractionError):
-            _extract_text_from_doc(b"fake")
+            _extract_text_from_doc(b"fake", unstructured_api_config=UnstructuredApiConfig())
 
 
 class TestDownload:
@@ -271,7 +277,11 @@ class TestMimeRouting:
     def test_mime_routing(self, mime, target):
         with patch(f"core.workflow.nodes.document_extractor.node.{target}") as mock_func:
             mock_func.return_value = "ok"
-            result = _extract_text_by_mime_type(file_content=b"data", mime_type=mime)
+            result = _extract_text_by_mime_type(
+                file_content=b"data",
+                mime_type=mime,
+                unstructured_api_config=UnstructuredApiConfig(),
+            )
             assert result == "ok"
 
 
@@ -298,7 +308,11 @@ class TestExtensionRouting:
     def test_extension_routing(self, ext, target):
         with patch(f"core.workflow.nodes.document_extractor.node.{target}") as mock_func:
             mock_func.return_value = "ok"
-            result = _extract_text_by_file_extension(file_content=b"data", file_extension=ext)
+            result = _extract_text_by_file_extension(
+                file_content=b"data",
+                file_extension=ext,
+                unstructured_api_config=UnstructuredApiConfig(),
+            )
             assert result == "ok"
 
 
@@ -312,7 +326,7 @@ class TestExtractTextFromFile:
         mock_download.return_value = b"data"
         mock_ext.return_value = "text"
 
-        result = _extract_text_from_file(file)
+        result = _extract_text_from_file(file, unstructured_api_config=UnstructuredApiConfig())
         assert result == "text"
 
     @patch("core.workflow.nodes.document_extractor.node._download_file_content")
@@ -324,7 +338,7 @@ class TestExtractTextFromFile:
         mock_download.return_value = b"data"
         mock_mime.return_value = "text"
 
-        result = _extract_text_from_file(file)
+        result = _extract_text_from_file(file, unstructured_api_config=UnstructuredApiConfig())
         assert result == "text"
 
     @patch("core.workflow.nodes.document_extractor.node._download_file_content")
@@ -336,7 +350,7 @@ class TestExtractTextFromFile:
         mock_download.return_value = b"data"
 
         with pytest.raises(UnsupportedFileTypeError):
-            _extract_text_from_file(file)
+            _extract_text_from_file(file, unstructured_api_config=UnstructuredApiConfig())
 
 
 class TestDownloadBranches:
@@ -457,14 +471,11 @@ def test_pdf_exception(mock_pdf):
         _extract_text_from_pdf(b"data")
 
 
-@patch("core.workflow.nodes.document_extractor.node.dify_config")
 @patch("unstructured.partition.api.partition_via_api", side_effect=Exception("fail"))
-def test_doc_exception(mock_partition, mock_config):
-    mock_config.UNSTRUCTURED_API_URL = "http://fake"
-    mock_config.UNSTRUCTURED_API_KEY = "key"
-
+def test_doc_exception(mock_partition):
+    unstructured_api_config = UnstructuredApiConfig(api_url="http://fake", api_key="key")
     with pytest.raises(TextExtractionError):
-        _extract_text_from_doc(b"data")
+        _extract_text_from_doc(b"data", unstructured_api_config=unstructured_api_config)
 
 
 @patch("core.workflow.nodes.document_extractor.node.docx.Document")
@@ -500,27 +511,27 @@ def test_excel_outer_exception(mock_excel):
 
 @patch("unstructured.partition.ppt.partition_ppt")
 def test_ppt_no_api(mock_partition):
-    dify_config.UNSTRUCTURED_API_URL = None
+    unstructured_api_config = UnstructuredApiConfig()
 
     element = MagicMock()
     element.text = "text"
     mock_partition.return_value = [element]
 
-    result = _extract_text_from_ppt(b"data")
+    result = _extract_text_from_ppt(b"data", unstructured_api_config=unstructured_api_config)
     assert "text" in result
 
 
 @patch("unstructured.partition.pptx.partition_pptx", side_effect=Exception("fail"))
 def test_pptx_failure(mock_partition):
     with pytest.raises(TextExtractionError):
-        _extract_text_from_pptx(b"data")
+        _extract_text_from_pptx(b"data", unstructured_api_config=UnstructuredApiConfig())
 
 
 @patch("unstructured.partition.epub.partition_epub")
 def test_epub_branch(mock_partition):
-    dify_config.UNSTRUCTURED_API_URL = None
+    unstructured_api_config = UnstructuredApiConfig()
     mock_partition.return_value = ["text"]
-    result = _extract_text_from_epub(b"data")
+    result = _extract_text_from_epub(b"data", unstructured_api_config=unstructured_api_config)
     assert "text" in result
 
 

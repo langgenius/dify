@@ -3,11 +3,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayFileSegment
-from core.workflow.entities import GraphInitParams
-from core.workflow.file import File, FileTransferMethod, FileType
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.node_events import StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.tool.exc import ToolNodeError, ToolParameterError
 from core.workflow.nodes.tool.tool_node import ToolNode

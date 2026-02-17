@@ -4,14 +4,13 @@ import pytest
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.file.enums import FileType
-from core.file.models import File, FileTransferMethod
 from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.variables import StringVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.graph_events import GraphRunFailedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.code.code_node import CodeNode

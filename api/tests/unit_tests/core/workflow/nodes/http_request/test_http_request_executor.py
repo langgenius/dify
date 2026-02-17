@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from configs import dify_config
-from core.file.enums import FileTransferMethod
+from core.workflow.file import FileTransferMethod
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
