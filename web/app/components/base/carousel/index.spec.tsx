@@ -61,6 +61,8 @@ const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'ho
     <Carousel orientation={orientation}>
       <Carousel.Content data-testid="carousel-content">
         <Carousel.Item>Slide 1</Carousel.Item>
+        <Carousel.Item>Slide 2</Carousel.Item>
+        <Carousel.Item>Slide 3</Carousel.Item>
       </Carousel.Content>
       <Carousel.Previous>Prev</Carousel.Previous>
       <Carousel.Next>Next</Carousel.Next>
@@ -98,7 +100,9 @@ describe('Carousel', () => {
 
       expect(screen.getByRole('region')).toHaveAttribute('aria-roledescription', 'carousel')
       expect(screen.getByTestId('carousel-content')).toHaveClass('flex')
-      expect(screen.getByRole('group')).toHaveAttribute('aria-roledescription', 'slide')
+      screen.getAllByRole('group').forEach((slide) => {
+        expect(slide).toHaveAttribute('aria-roledescription', 'slide')
+      })
     })
   })
 

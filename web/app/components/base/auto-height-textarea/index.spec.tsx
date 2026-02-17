@@ -122,7 +122,7 @@ describe('AutoHeightTextarea', () => {
     it('should handle newlines in value', () => {
       const textWithNewlines = 'line1\nline2\nline3'
       render(<AutoHeightTextarea value={textWithNewlines} onChange={vi.fn()} />)
-      const textarea = document.querySelector('textarea')
+      const textarea = screen.getByRole('textbox')
       expect(textarea).toHaveValue(textWithNewlines)
     })
 
