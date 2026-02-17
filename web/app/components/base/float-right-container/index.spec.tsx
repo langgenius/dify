@@ -99,6 +99,46 @@ describe('FloatRightContainer', () => {
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
+    it('should call onClose when close is done using escape key', async () => {
+      const onClose = vi.fn()
+      render(
+        <FloatRightContainer
+          isMobile={true}
+          isOpen={true}
+          onClose={onClose}
+          showClose={true}
+        >
+          <div>Closable content</div>
+        </FloatRightContainer>,
+      )
+
+      const closeIcon = screen.getByTestId('close-icon')
+      closeIcon.focus()
+      await userEvent.keyboard('{Enter}')
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onClose when close is done using space key', async () => {
+      const onClose = vi.fn()
+      render(
+        <FloatRightContainer
+          isMobile={true}
+          isOpen={true}
+          onClose={onClose}
+          showClose={true}
+        >
+          <div>Closable content</div>
+        </FloatRightContainer>,
+      )
+
+      const closeIcon = screen.getByTestId('close-icon')
+      closeIcon.focus()
+      await userEvent.keyboard(' ')
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('should apply drawer className props in mobile drawer mode', async () => {
       render(
         <FloatRightContainer
