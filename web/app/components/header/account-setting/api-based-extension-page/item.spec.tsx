@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ApiBasedExtension } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useModalContext } from '@/context/modal-context'
@@ -106,8 +106,9 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const deleteButtons = screen.getAllByText('common.operation.delete')
-      fireEvent.click(deleteButtons[deleteButtons.length - 1])
+      const dialog = screen.getByTestId('confirm-overlay')
+      const confirmButton = within(dialog).getByText('common.operation.delete')
+      fireEvent.click(confirmButton)
 
       // Assert
       await waitFor(() => {
@@ -123,8 +124,9 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const deleteButtons = screen.getAllByText('common.operation.delete')
-      fireEvent.click(deleteButtons[deleteButtons.length - 1])
+      const dialog = screen.getByTestId('confirm-overlay')
+      const confirmButton = within(dialog).getByText('common.operation.delete')
+      fireEvent.click(confirmButton)
 
       // Assert
       await waitFor(() => {

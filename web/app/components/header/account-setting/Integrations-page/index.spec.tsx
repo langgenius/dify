@@ -25,6 +25,8 @@ describe('IntegrationsPage', () => {
         data: {
           data: mockData,
         },
+        isPending: false,
+        isError: false,
       } as unknown as ReturnType<typeof useAccountIntegrates>)
 
       // Act
@@ -50,6 +52,8 @@ describe('IntegrationsPage', () => {
         data: {
           data: mockData,
         },
+        isPending: false,
+        isError: false,
       } as unknown as ReturnType<typeof useAccountIntegrates>)
 
       // Act
@@ -70,6 +74,8 @@ describe('IntegrationsPage', () => {
         data: {
           data: [],
         },
+        isPending: false,
+        isError: false,
       } as unknown as ReturnType<typeof useAccountIntegrates>)
 
       // Act
@@ -91,6 +97,8 @@ describe('IntegrationsPage', () => {
         data: {
           data: mockData,
         },
+        isPending: false,
+        isError: false,
       } as unknown as ReturnType<typeof useAccountIntegrates>)
 
       // Act
@@ -104,6 +112,8 @@ describe('IntegrationsPage', () => {
       // Arrange
       vi.mocked(useAccountIntegrates).mockReturnValue({
         data: undefined,
+        isPending: false,
+        isError: false,
       } as unknown as ReturnType<typeof useAccountIntegrates>)
 
       // Act

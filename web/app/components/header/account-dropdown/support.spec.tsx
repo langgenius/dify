@@ -50,23 +50,46 @@ vi.mock('../utils/util', () => ({
 describe('Support', () => {
   const mockCloseAccountDropdown = vi.fn()
 
-  const baseAppContextValue = {
+  const baseAppContextValue: AppContextValue = {
     userProfile: {
       id: '1',
       name: 'Test User',
       email: 'test@example.com',
+      avatar: '',
+      avatar_url: '',
+      is_password_set: false,
     },
+    mutateUserProfile: vi.fn(),
     currentWorkspace: {
       id: '1',
       name: 'Workspace',
+      plan: '',
+      status: '',
+      created_at: 0,
       role: 'owner',
+      providers: [],
+      trial_credits: 0,
+      trial_credits_used: 0,
+      next_credit_reset_date: 0,
     },
+    isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: true,
+    isCurrentWorkspaceEditor: true,
+    isCurrentWorkspaceDatasetOperator: false,
+    mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo: {
+      current_env: 'testing',
       current_version: '0.6.0',
       latest_version: '0.6.0',
+      release_date: '',
+      release_notes: '',
+      version: '0.6.0',
+      can_auto_update: false,
     },
-  } as unknown as AppContextValue
+    useSelector: vi.fn(),
+    isLoadingCurrentWorkspace: false,
+    isValidatingCurrentWorkspace: false,
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()

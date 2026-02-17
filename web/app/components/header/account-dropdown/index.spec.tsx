@@ -4,7 +4,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -88,6 +88,47 @@ vi.mock('@/config', () => ({
 }))
 vi.mock('@/env', () => mockEnv)
 
+const baseAppContextValue: AppContextValue = {
+  userProfile: {
+    id: '1',
+    name: 'Test User',
+    email: 'test@example.com',
+    avatar: '',
+    avatar_url: 'avatar.png',
+    is_password_set: false,
+  },
+  mutateUserProfile: vi.fn(),
+  currentWorkspace: {
+    id: '1',
+    name: 'Workspace',
+    plan: '',
+    status: '',
+    created_at: 0,
+    role: 'owner',
+    providers: [],
+    trial_credits: 0,
+    trial_credits_used: 0,
+    next_credit_reset_date: 0,
+  },
+  isCurrentWorkspaceManager: true,
+  isCurrentWorkspaceOwner: true,
+  isCurrentWorkspaceEditor: true,
+  isCurrentWorkspaceDatasetOperator: false,
+  mutateCurrentWorkspace: vi.fn(),
+  langGeniusVersionInfo: {
+    current_env: 'testing',
+    current_version: '0.6.0',
+    latest_version: '0.6.0',
+    release_date: '',
+    release_notes: '',
+    version: '0.6.0',
+    can_auto_update: false,
+  },
+  useSelector: vi.fn(),
+  isLoadingCurrentWorkspace: false,
+  isValidatingCurrentWorkspace: false,
+}
+
 describe('AccountDropdown', () => {
   const mockPush = vi.fn()
   const mockLogout = vi.fn()
@@ -112,21 +153,11 @@ describe('AccountDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('localStorage', { removeItem: vi.fn(), getItem: vi.fn(), setItem: vi.fn() })
     mockConfig.IS_CLOUD_EDITION = false
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: {
-        name: 'Test User',
-        email: 'test@example.com',
-        avatar_url: 'avatar.png',
-      },
-      langGeniusVersionInfo: {
-        current_version: '0.6.0',
-        latest_version: '0.6.0',
-      },
-      isCurrentWorkspaceOwner: true,
-    } as unknown as AppContextValue)
+    vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
     vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
       const fullState = { systemFeatures: { branding: { enabled: false } }, setSystemFeatures: vi.fn() }
       return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
@@ -141,6 +172,10 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   describe('Rendering', () => {
@@ -185,10 +220,11 @@ describe('AccountDropdown', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
       vi.mocked(useAppContext).mockReturnValue({
-        userProfile: { name: 'User' },
+        ...baseAppContextValue,
+        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         isCurrentWorkspaceOwner: true,
-        langGeniusVersionInfo: { current_version: '0.6.0', latest_version: '0.6.0' },
-      } as unknown as AppContextValue)
+        langGeniusVersionInfo: { ...baseAppContextValue.langGeniusVersionInfo, current_version: '0.6.0', latest_version: '0.6.0' },
+      })
 
       // Act
       renderWithRouter(<AppSelector />)
@@ -268,12 +304,14 @@ describe('AccountDropdown', () => {
     it('should show orange indicator when version is not latest', () => {
       // Arrange
       vi.mocked(useAppContext).mockReturnValue({
-        userProfile: { name: 'User' },
+        ...baseAppContextValue,
+        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         langGeniusVersionInfo: {
+          ...baseAppContextValue.langGeniusVersionInfo,
           current_version: '0.6.0',
           latest_version: '0.7.0',
         },
-      } as unknown as AppContextValue)
+      })
 
       // Act
       renderWithRouter(<AppSelector />)
@@ -287,12 +325,14 @@ describe('AccountDropdown', () => {
     it('should show green indicator when version is latest', () => {
       // Arrange
       vi.mocked(useAppContext).mockReturnValue({
-        userProfile: { name: 'User' },
+        ...baseAppContextValue,
+        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         langGeniusVersionInfo: {
+          ...baseAppContextValue.langGeniusVersionInfo,
           current_version: '0.7.0',
           latest_version: '0.7.0',
         },
-      } as unknown as AppContextValue)
+      })
 
       // Act
       renderWithRouter(<AppSelector />)

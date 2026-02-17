@@ -3,7 +3,7 @@ import type { IWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast'
-import { useProviderContext } from '@/context/provider-context'
+import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
 import WorkplaceSelector from './index'
@@ -12,9 +12,13 @@ vi.mock('@/context/workspace-context', () => ({
   useWorkspacesContext: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
+vi.mock('@/context/provider-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/provider-context')>()
+  return {
+    ...actual,
+    useProviderContext: vi.fn(),
+  }
+})
 
 vi.mock('@/service/common', () => ({
   switchWorkspace: vi.fn(),
@@ -35,6 +39,7 @@ describe('WorkplaceSelector', () => {
       workspaces: mockWorkspaces,
     })
     vi.mocked(useProviderContext).mockReturnValue({
+      ...baseProviderContextValue,
       isFetchedPlan: true,
       isEducationWorkspace: false,
     } as ProviderContextState)

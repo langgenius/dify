@@ -55,6 +55,8 @@ describe('ApiBasedExtensionSelector', () => {
     vi.mocked(useApiBasedExtensions).mockReturnValue({
       data: mockData,
       refetch: mockRefetch,
+      isPending: false,
+      isError: false,
     } as unknown as UseQueryResult<ApiBasedExtension[], Error>)
   })
 
