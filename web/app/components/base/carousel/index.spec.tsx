@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import useEmblaCarousel from 'embla-carousel-react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Carousel, useCarousel } from './index'
 
 vi.mock('embla-carousel-react', () => ({

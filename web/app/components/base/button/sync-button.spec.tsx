@@ -13,9 +13,9 @@ describe('SyncButton', () => {
     })
 
     it('should render a refresh icon', () => {
-      const { container } = render(<SyncButton onClick={vi.fn()} />)
-      const svg = container.querySelector('span')
-      expect(svg).toBeInTheDocument()
+      render(<SyncButton onClick={vi.fn()} />)
+      const iconSpan = screen.getByTestId('sync-button').querySelector('span')
+      expect(iconSpan).toBeInTheDocument()
     })
   })
 
@@ -38,7 +38,7 @@ describe('SyncButton', () => {
     it('should call onClick when clicked', () => {
       const onClick = vi.fn()
       render(<SyncButton onClick={onClick} />)
-      const clickableDiv = screen.getByTestId('sync-button')!
+      const clickableDiv = screen.getByTestId('sync-button')
       fireEvent.click(clickableDiv)
       expect(onClick).toHaveBeenCalledTimes(1)
     })
@@ -46,7 +46,7 @@ describe('SyncButton', () => {
     it('should call onClick multiple times on repeated clicks', () => {
       const onClick = vi.fn()
       render(<SyncButton onClick={onClick} />)
-      const clickableDiv = screen.getByTestId('sync-button')!
+      const clickableDiv = screen.getByTestId('sync-button')
       fireEvent.click(clickableDiv)
       fireEvent.click(clickableDiv)
       fireEvent.click(clickableDiv)

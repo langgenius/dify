@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FloatRightContainer from './index'
 
 describe('FloatRightContainer', () => {
@@ -94,7 +93,7 @@ describe('FloatRightContainer', () => {
       const closeIcon = screen.getByTestId('close-icon')
       expect(closeIcon).toBeInTheDocument()
 
-      fireEvent.click(closeIcon!)
+      fireEvent.click(closeIcon)
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })

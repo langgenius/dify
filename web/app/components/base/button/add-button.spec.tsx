@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import AddButton from './add-button'
 
 describe('AddButton', () => {
@@ -9,9 +9,9 @@ describe('AddButton', () => {
     })
 
     it('should render an add icon', () => {
-      const { container } = render(<AddButton onClick={vi.fn()} />)
-      const svg = container.querySelector('span')
-      expect(svg).toBeInTheDocument()
+      render(<AddButton onClick={vi.fn()} />)
+      const iconSpan = screen.getByTestId('add-button').querySelector('span')
+      expect(iconSpan).toBeInTheDocument()
     })
   })
 
