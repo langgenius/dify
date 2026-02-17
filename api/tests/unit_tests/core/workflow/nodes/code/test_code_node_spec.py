@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -18,20 +18,20 @@ from core.workflow.nodes.code.limits import CodeNodeLimits
 
 
 class DummyOutput:
-    def __init__(self, type_: str, children: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, type_: str, children: Optional[dict[str, Any]] = None) -> None:
         self.type: str = type_
-        self.children: Dict[str, Any] = children or {}
+        self.children: dict[str, Any] = children or {}
 
 
 class DummyExecutor:
     @staticmethod
-    def execute_workflow_code_template(language: str, code: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_workflow_code_template(language: str, code: str, inputs: dict[str, Any]) -> dict[str, Any]:
         return {"x": 1}
 
 
 class FailingExecutor:
     @staticmethod
-    def execute_workflow_code_template(language: str, code: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_workflow_code_template(language: str, code: str, inputs: dict[str, Any]) -> dict[str, Any]:
         raise CodeExecutionError("boom")
 
 
@@ -41,7 +41,7 @@ class AcceptProvider:
         return True
 
     @staticmethod
-    def get_default_config() -> Dict[str, Any]:
+    def get_default_config() -> dict[str, Any]:
         return {"ok": True}
 
 
