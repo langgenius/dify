@@ -167,13 +167,21 @@ describe('FileImageItem', () => {
     expect(img).toBeInTheDocument()
   })
 
-  it('should use url with attachment param for download_url when url is available', () => {
+  it('should use url with attachment param for download_url when url is available', async () => {
+    const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: 'https://example.com/photo.png' })
     const { container } = render(<FileImageItem file={file} showDownloadAction />)
 
     // The download SVG should be rendered
     const svgs = container.querySelectorAll('svg')
     expect(svgs.length).toBeGreaterThanOrEqual(1)
+    const downloadSvg = Array.from(svgs).find(
+      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
+    )
+    fireEvent.click(downloadSvg!.parentElement!)
+    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('as_attachment=true'),
+    }))
   })
 
   it('should use base64Url for download_url when url is not available', async () => {

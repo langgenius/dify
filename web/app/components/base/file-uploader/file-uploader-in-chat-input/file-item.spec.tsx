@@ -273,7 +273,7 @@ describe('FileItem (chat-input)', () => {
 
   it('should use createObjectURL when no url or base64Url but has originalFile', () => {
     const mockUrl = 'blob:http://localhost/test-blob'
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockUrl)
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockUrl)
 
     const file = createFile({
       name: 'audio.mp3',
@@ -287,9 +287,12 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/audio\.mp3/i))
 
     expect(document.querySelector('audio')).toBeInTheDocument()
+    expect(createObjectURLSpy).toHaveBeenCalled()
+    createObjectURLSpy.mockRestore()
   })
 
   it('should not use createObjectURL when no originalFile and no urls', () => {
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL')
     const file = createFile({
       name: 'audio.mp3',
       type: 'audio/mpeg',
@@ -300,6 +303,8 @@ describe('FileItem (chat-input)', () => {
     render(<FileItem file={file} canPreview />)
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
+    expect(createObjectURLSpy).not.toHaveBeenCalled()
+    createObjectURLSpy.mockRestore()
 
     // Preview should still try to open with empty/undefined url
   })

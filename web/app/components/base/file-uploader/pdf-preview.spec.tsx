@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import PdfPreview from './pdf-preview'
 
 const mockUseHotkeys = vi.fn()
@@ -162,7 +162,10 @@ describe('PdfPreview', () => {
 
     const overlay = document.querySelector('[tabindex="-1"]')
     expect(overlay).toBeInTheDocument()
-    fireEvent.click(overlay!)
+    const event = new MouseEvent('click', { bubbles: true })
+    const stopPropagation = vi.spyOn(event, 'stopPropagation')
+    overlay!.dispatchEvent(event)
+    expect(stopPropagation).toHaveBeenCalled()
   })
 
   it('should render the Loading component in PdfLoader beforeLoad', () => {
