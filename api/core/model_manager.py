@@ -21,6 +21,7 @@ from core.model_runtime.model_providers.__base.speech2text_model import Speech2T
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
+from core.workflow.utils.generator_timeout import with_first_token_timeout
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -109,6 +110,7 @@ class ModelInstance:
         stream: Literal[True] = True,
         user: str | None = None,
         callbacks: list[Callback] | None = None,
+        first_token_timeout: float | None = None,
     ) -> Generator: ...
 
     @overload
@@ -121,6 +123,7 @@ class ModelInstance:
         stream: Literal[False] = False,
         user: str | None = None,
         callbacks: list[Callback] | None = None,
+        first_token_timeout: float | None = None,
     ) -> LLMResult: ...
 
     @overload
@@ -133,6 +136,7 @@ class ModelInstance:
         stream: bool = True,
         user: str | None = None,
         callbacks: list[Callback] | None = None,
+        first_token_timeout: float | None = None,
     ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
@@ -144,6 +148,7 @@ class ModelInstance:
         stream: bool = True,
         user: str | None = None,
         callbacks: list[Callback] | None = None,
+        first_token_timeout: float | None = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -155,25 +160,30 @@ class ModelInstance:
         :param stream: is stream response
         :param user: unique user id
         :param callbacks: callbacks
+        :param first_token_timeout: timeout in seconds for receiving first token (streaming only)
         :return: full response or stream response chunk generator result
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
-        return cast(
-            Union[LLMResult, Generator],
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model,
-                credentials=self.credentials,
-                prompt_messages=prompt_messages,
-                model_parameters=model_parameters,
-                tools=tools,
-                stop=stop,
-                stream=stream,
-                user=user,
-                callbacks=callbacks,
-            ),
+
+        result = self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model,
+            credentials=self.credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            user=user,
+            callbacks=callbacks,
         )
+
+        # Apply first token timeout wrapper for streaming responses
+        if stream and first_token_timeout and first_token_timeout > 0 and isinstance(result, Generator):
+            result = with_first_token_timeout(result, first_token_timeout)
+
+        return cast(Union[LLMResult, Generator], result)
 
     def get_llm_num_tokens(
         self, prompt_messages: Sequence[PromptMessage], tools: Sequence[PromptMessageTool] | None = None

@@ -237,6 +237,13 @@ class LLMNode(Node[LLMNodeData]):
             )
 
             # handle invoke result
+            # Get first token timeout from retry config if enabled (convert ms to seconds)
+            first_token_timeout = (
+                self.node_data.retry_config.first_token_timeout_seconds
+                if self.node_data.retry_config.has_first_token_timeout
+                else None
+            )
+
             generator = LLMNode.invoke_llm(
                 node_data_model=self.node_data.model,
                 model_instance=model_instance,
@@ -250,6 +257,7 @@ class LLMNode(Node[LLMNodeData]):
                 node_id=self._node_id,
                 node_type=self.node_type,
                 reasoning_format=self.node_data.reasoning_format,
+                first_token_timeout=first_token_timeout,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -367,6 +375,7 @@ class LLMNode(Node[LLMNodeData]):
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        first_token_timeout: float | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
@@ -400,6 +409,7 @@ class LLMNode(Node[LLMNodeData]):
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
+                first_token_timeout=first_token_timeout,
             )
 
         return LLMNode.handle_invoke_result(
