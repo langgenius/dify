@@ -105,13 +105,25 @@ describe('Log', () => {
 
   it('should prevent event propagation on click', async () => {
     const user = userEvent.setup()
-    const stopPropagationSpy = vi.spyOn(MouseEvent.prototype, 'stopPropagation')
+
+    // 1. Spy on both the standard propagation and the immediate propagation
+    const stopPropagationSpy = vi.spyOn(Event.prototype, 'stopPropagation')
+    const stopImmediatePropagationSpy = vi.spyOn(Event.prototype, 'stopImmediatePropagation')
 
     render(<Log logItem={createLogItem()} />)
+
+    // Find the container div that has the onClick handler
     const container = screen.getByRole('button').parentElement
+
     if (container)
       await user.click(container)
 
+    // 2. Assert that both were called
     expect(stopPropagationSpy).toHaveBeenCalled()
+    expect(stopImmediatePropagationSpy).toHaveBeenCalled()
+
+    // 3. Clean up spies (Good practice to avoid interfering with other tests)
+    stopPropagationSpy.mockRestore()
+    stopImmediatePropagationSpy.mockRestore()
   })
 })

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import ContentSwitch from './content-switch'
 
@@ -12,69 +13,67 @@ describe('ContentSwitch', () => {
   }
 
   it('renders nothing when count is 1 or less', () => {
-    const { container } = render(
-      <ContentSwitch {...defaultProps} count={1} />,
-    )
+    const { container } = render(<ContentSwitch {...defaultProps} count={1} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('renders nothing when currentIndex is undefined', () => {
-    const { container } = render(
-      <ContentSwitch {...defaultProps} currentIndex={undefined} />,
-    )
+    const { container } = render(<ContentSwitch {...defaultProps} currentIndex={undefined} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('renders correctly with current page and total count', () => {
     render(<ContentSwitch {...defaultProps} currentIndex={0} count={5} />)
-
-    // The /i makes it case insensitive, the dots handle the spaces/line breaks
     expect(screen.getByText(/1[^\n\r/\u2028\u2029]*\/.*5/)).toBeInTheDocument()
   })
-  it('calls switchSibling with "prev" when left button is clicked', () => {
+
+  it('calls switchSibling with "prev" when left button is clicked', async () => {
+    const user = userEvent.setup()
     const switchSibling = vi.fn()
     render(<ContentSwitch {...defaultProps} switchSibling={switchSibling} />)
 
-    const prevButton = screen.getAllByRole('button')[0]
-    fireEvent.click(prevButton)
+    const prevButton = screen.getByRole('button', { name: /previous/i })
+    await user.click(prevButton)
 
     expect(switchSibling).toHaveBeenCalledWith('prev')
   })
 
-  it('calls switchSibling with "next" when right button is clicked', () => {
+  it('calls switchSibling with "next" when right button is clicked', async () => {
+    const user = userEvent.setup()
     const switchSibling = vi.fn()
     render(<ContentSwitch {...defaultProps} switchSibling={switchSibling} />)
 
-    const nextButton = screen.getAllByRole('button')[1]
-    fireEvent.click(nextButton)
+    const nextButton = screen.getByRole('button', { name: /next/i })
+    await user.click(nextButton)
 
     expect(switchSibling).toHaveBeenCalledWith('next')
   })
 
-  it('applies disabled styles and prevents clicks when prevDisabled is true', () => {
+  it('applies disabled styles and prevents clicks when prevDisabled is true', async () => {
+    const user = userEvent.setup()
     const switchSibling = vi.fn()
     render(<ContentSwitch {...defaultProps} prevDisabled={true} switchSibling={switchSibling} />)
 
-    const prevButton = screen.getAllByRole('button')[0]
+    const prevButton = screen.getByRole('button', { name: /previous/i })
 
-    // Check for the opacity class
     expect(prevButton).toHaveClass('opacity-30')
     expect(prevButton).toBeDisabled()
 
-    fireEvent.click(prevButton)
+    await user.click(prevButton)
     expect(switchSibling).not.toHaveBeenCalled()
   })
 
-  it('applies disabled styles and prevents clicks when nextDisabled is true', () => {
+  it('applies disabled styles and prevents clicks when nextDisabled is true', async () => {
+    const user = userEvent.setup()
     const switchSibling = vi.fn()
     render(<ContentSwitch {...defaultProps} nextDisabled={true} switchSibling={switchSibling} />)
 
-    const nextButton = screen.getAllByRole('button')[1]
+    const nextButton = screen.getByRole('button', { name: /next/i })
 
     expect(nextButton).toHaveClass('opacity-30')
     expect(nextButton).toBeDisabled()
 
-    fireEvent.click(nextButton)
+    await user.click(nextButton)
     expect(switchSibling).not.toHaveBeenCalled()
   })
 })
