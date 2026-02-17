@@ -55,7 +55,7 @@ def verify_plugin_file_signature(
     return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
 
-def verify_image_signature(*, upload_file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
+def verify_image_signature(*, upload_file_id: str, timestamp: str, nonce: str, sign: str, validate_timeout: bool = True) -> bool:
     data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
     secret_key = dify_config.SECRET_KEY.encode()
     recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
@@ -65,11 +65,14 @@ def verify_image_signature(*, upload_file_id: str, timestamp: str, nonce: str, s
     if sign != recalculated_encoded_sign:
         return False
 
-    current_time = int(time.time())
-    return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+    if validate_timeout:
+        current_time = int(time.time())
+        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+    return True
 
 
-def verify_file_signature(*, upload_file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
+def verify_file_signature(*, upload_file_id: str, timestamp: str, nonce: str, sign: str, validate_timeout: bool = True) -> bool:
     data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
     secret_key = dify_config.SECRET_KEY.encode()
     recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
@@ -79,5 +82,8 @@ def verify_file_signature(*, upload_file_id: str, timestamp: str, nonce: str, si
     if sign != recalculated_encoded_sign:
         return False
 
-    current_time = int(time.time())
-    return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+    if validate_timeout:
+        current_time = int(time.time())
+        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+    return True

@@ -43,7 +43,7 @@ def sign_upload_file(upload_file_id: str, extension: str) -> str:
     return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
 
 
-def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
+def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: str, validate_timeout: bool = True) -> bool:
     """
     verify signature
     """
@@ -56,5 +56,8 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
     if sign != recalculated_encoded_sign:
         return False
 
-    current_time = int(time.time())
-    return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+    if validate_timeout:
+        current_time = int(time.time())
+        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+    return True

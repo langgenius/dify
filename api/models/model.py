@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import urllib.parse
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime
@@ -20,7 +22,7 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.file import helpers as file_helpers
-from core.tools.signature import sign_tool_file
+from core.tools.signature import sign_tool_file, verify_tool_file_signature
 from core.workflow.enums import WorkflowExecutionStatus
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
@@ -2003,6 +2005,17 @@ class MessageAgentThought(TypeBase):
 
         re_signed_text = text
         for url in urls:
+            # parse url
+            parsed_url = urllib.parse.urlparse(url)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+
+            timestamp = query_params.get("timestamp", [None])[0]
+            nonce = query_params.get("nonce", [None])[0]
+            sign = query_params.get("sign", [None])[0]
+
+            if not all([timestamp, nonce, sign]):
+                continue
+
             if "files/tools" in url:
                 # get tool file id
                 tool_file_id_pattern = r"\/files\/tools\/([\.\w-]+)?\?timestamp="
@@ -2010,45 +2023,61 @@ class MessageAgentThought(TypeBase):
                 if not result:
                     continue
 
-                tool_file_id = result.group(1)
+                tool_file_id_with_ext = result.group(1)
+                if not tool_file_id_with_ext:
+                    continue
 
                 # get extension
-                if "." in tool_file_id:
-                    split_result = tool_file_id.split(".")
-                    extension = f".{split_result[-1]}"
-                    if len(extension) > 10:
-                        extension = ".bin"
-                    tool_file_id = split_result[0]
+                if "." in tool_file_id_with_ext:
+                    tool_file_id, extension = os.path.splitext(tool_file_id_with_ext)
                 else:
+                    tool_file_id = tool_file_id_with_ext
                     extension = ".bin"
 
-                if not tool_file_id:
+                # verify signature
+                if not verify_tool_file_signature(
+                    file_id=tool_file_id, timestamp=timestamp, nonce=nonce, sign=sign, validate_timeout=False
+                ):
                     continue
 
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
-            elif "file-preview" in url:
+            elif "file-preview" in url or "image-preview" in url:
                 # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/(file-preview|image-preview)\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
 
                 upload_file_id = result.group(1)
+                preview_type = result.group(2)
                 if not upload_file_id:
                     continue
-                sign_url = file_helpers.get_signed_file_url(upload_file_id)
-            elif "image-preview" in url:
-                # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
-                result = re.search(upload_file_id_pattern, url)
-                if not result:
+
+                # verify signature
+                if preview_type == "image-preview":
+                    is_valid = file_helpers.verify_image_signature(
+                        upload_file_id=upload_file_id,
+                        timestamp=timestamp,
+                        nonce=nonce,
+                        sign=sign,
+                        validate_timeout=False,
+                    )
+                else:
+                    is_valid = file_helpers.verify_file_signature(
+                        upload_file_id=upload_file_id,
+                        timestamp=timestamp,
+                        nonce=nonce,
+                        sign=sign,
+                        validate_timeout=False,
+                    )
+
+                if not is_valid:
                     continue
-                upload_file_id = result.group(1)
-                if not upload_file_id:
-                    continue
+
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             else:
                 continue
+
             # if as_attachment is in the url, add it to the sign_url.
             if "as_attachment" in url:
                 sign_url += "&as_attachment=true"
