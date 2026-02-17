@@ -1,3 +1,10 @@
+"""Tests for CodeNode behavior, validation, and limits.
+
+Scope: node data validation, output transformation rules, execution paths, and
+limit enforcement. Assumes CodeNode limits can be overridden per-test and no
+shared state persists across cases.
+"""
+
 from types import SimpleNamespace
 from typing import Any, Optional
 
@@ -18,6 +25,15 @@ from core.workflow.nodes.code.limits import CodeNodeLimits
 
 
 class DummyOutput:
+    """Lightweight output schema test double.
+
+    Holds type and child schema mappings. Instances are independent and
+    mutable; no shared state or concurrency guarantees are assumed.
+    """
+
+    type: str
+    children: dict[str, Any]
+
     def __init__(self, type_: str, children: Optional[dict[str, Any]] = None) -> None:
         self.type: str = type_
         self.children: dict[str, Any] = children or {}
@@ -52,7 +68,7 @@ class RejectProvider:
 
 
 @pytest.fixture
-def limits():
+def limits() -> CodeNodeLimits:
     return CodeNodeLimits(
         max_string_length=5,
         max_number=10,
@@ -66,14 +82,13 @@ def limits():
 
 
 @pytest.fixture
-def node(limits):
+def node(limits: CodeNodeLimits) -> CodeNode:
     node = CodeNode.__new__(CodeNode)
     node._limits = limits
     node._code_executor = DummyExecutor
     node._code_providers = (AcceptProvider,)
-    node.graph_runtime_state = SimpleNamespace(
-        variable_pool=SimpleNamespace(get=lambda x: SimpleNamespace(to_object=lambda: 5))
-    )
+    variable_pool: SimpleNamespace = SimpleNamespace(get=lambda x: SimpleNamespace(to_object=lambda: 5))
+    node.graph_runtime_state = SimpleNamespace(variable_pool=variable_pool)
     return node
 
 

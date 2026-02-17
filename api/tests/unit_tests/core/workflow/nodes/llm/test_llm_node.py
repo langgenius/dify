@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -57,7 +57,7 @@ from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
 
-def make_usage():
+def make_usage() -> LLMUsage:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 10
     usage.total_price = 0.01
@@ -224,242 +224,6 @@ def test_fetch_files_with_non_existent_variable():
     variable_pool = VariablePool.empty()
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
-
-
-# def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
-# TODO: Add test
-# pass
-# prompt_template = []
-# llm_node.node_data.prompt_template = prompt_template
-
-# fake_vision_detail = faker.random_element(
-#     [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
-# )
-# fake_remote_url = faker.url()
-# files = [
-#     File(
-#         id="1",
-#         tenant_id="test",
-#         type=FileType.IMAGE,
-#         filename="test1.jpg",
-#         transfer_method=FileTransferMethod.REMOTE_URL,
-#         remote_url=fake_remote_url,
-#         storage_key="",
-#     )
-# ]
-
-# fake_query = faker.sentence()
-
-# prompt_messages, _ = llm_node._fetch_prompt_messages(
-#     sys_query=fake_query,
-#     sys_files=files,
-#     context=None,
-#     memory=None,
-#     model_config=model_config,
-#     prompt_template=prompt_template,
-#     memory_config=None,
-#     vision_enabled=False,
-#     vision_detail=fake_vision_detail,
-#     variable_pool=llm_node.graph_runtime_state.variable_pool,
-#     jinja2_variables=[],
-# )
-
-# assert prompt_messages == [UserPromptMessage(content=fake_query)]
-
-
-# def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
-# TODO: Add test
-# pass
-# Setup dify config
-# dify_config.MULTIMODAL_SEND_FORMAT = "url"
-
-# # Generate fake values for prompt template
-# fake_assistant_prompt = faker.sentence()
-# fake_query = faker.sentence()
-# fake_context = faker.sentence()
-# fake_window_size = faker.random_int(min=1, max=3)
-# fake_vision_detail = faker.random_element(
-#     [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
-# )
-# fake_remote_url = faker.url()
-
-# # Setup mock memory with history messages
-# mock_history = [
-#     UserPromptMessage(content=faker.sentence()),
-#     AssistantPromptMessage(content=faker.sentence()),
-#     UserPromptMessage(content=faker.sentence()),
-#     AssistantPromptMessage(content=faker.sentence()),
-#     UserPromptMessage(content=faker.sentence()),
-#     AssistantPromptMessage(content=faker.sentence()),
-# ]
-
-# # Setup memory configuration
-# memory_config = MemoryConfig(
-#     role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
-#     window=MemoryConfig.WindowConfig(enabled=True, size=fake_window_size),
-#     query_prompt_template=None,
-# )
-
-# memory = MockTokenBufferMemory(history_messages=mock_history)
-
-# # Test scenarios covering different file input combinations
-# test_scenarios = [
-#     LLMNodeTestScenario(
-#         description="No files",
-#         sys_query=fake_query,
-#         sys_files=[],
-#         features=[],
-#         vision_enabled=False,
-#         vision_detail=None,
-#         window_size=fake_window_size,
-#         prompt_template=[
-#             LLMNodeChatModelMessage(
-#                 text=fake_context,
-#                 role=PromptMessageRole.SYSTEM,
-#                 edition_type="basic",
-#             ),
-#             LLMNodeChatModelMessage(
-#                 text="{#context#}",
-#                 role=PromptMessageRole.USER,
-#                 edition_type="basic",
-#             ),
-#             LLMNodeChatModelMessage(
-#                 text=fake_assistant_prompt,
-#                 role=PromptMessageRole.ASSISTANT,
-#                 edition_type="basic",
-#             ),
-#         ],
-#         expected_messages=[
-#             SystemPromptMessage(content=fake_context),
-#             UserPromptMessage(content=fake_context),
-#             AssistantPromptMessage(content=fake_assistant_prompt),
-#         ]
-#         + mock_history[fake_window_size * -2 :]
-#         + [
-#             UserPromptMessage(content=fake_query),
-#         ],
-#     ),
-#     LLMNodeTestScenario(
-#         description="User files",
-#         sys_query=fake_query,
-#         sys_files=[
-#             File(
-#                 tenant_id="test",
-#                 type=FileType.IMAGE,
-#                 filename="test1.jpg",
-#                 transfer_method=FileTransferMethod.REMOTE_URL,
-#                 remote_url=fake_remote_url,
-#                 extension=".jpg",
-#                 mime_type="image/jpg",
-#                 storage_key="",
-#             )
-#         ],
-#         vision_enabled=True,
-#         vision_detail=fake_vision_detail,
-#         features=[ModelFeature.VISION],
-#         window_size=fake_window_size,
-#         prompt_template=[
-#             LLMNodeChatModelMessage(
-#                 text=fake_context,
-#                 role=PromptMessageRole.SYSTEM,
-#                 edition_type="basic",
-#             ),
-#             LLMNodeChatModelMessage(
-#                 text="{#context#}",
-#                 role=PromptMessageRole.USER,
-#                 edition_type="basic",
-#             ),
-#             LLMNodeChatModelMessage(
-#                 text=fake_assistant_prompt,
-#                 role=PromptMessageRole.ASSISTANT,
-#                 edition_type="basic",
-#             ),
-#         ],
-#         expected_messages=[
-#             SystemPromptMessage(content=fake_context),
-#             UserPromptMessage(content=fake_context),
-#             AssistantPromptMessage(content=fake_assistant_prompt),
-#         ]
-#         + mock_history[fake_window_size * -2 :]
-#         + [
-#             UserPromptMessage(
-#                 content=[
-#                     TextPromptMessageContent(data=fake_query),
-#                     ImagePromptMessageContent(
-#                         url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
-#                     ),
-#                 ]
-#             ),
-#         ],
-#     ),
-#     LLMNodeTestScenario(
-#         description="Prompt template with variable selector of File",
-#         sys_query=fake_query,
-#         sys_files=[],
-#         vision_enabled=False,
-#         vision_detail=fake_vision_detail,
-#         features=[ModelFeature.VISION],
-#         window_size=fake_window_size,
-#         prompt_template=[
-#             LLMNodeChatModelMessage(
-#                 text="{{#input.image#}}",
-#                 role=PromptMessageRole.USER,
-#                 edition_type="basic",
-#             ),
-#         ],
-#         expected_messages=[
-#             UserPromptMessage(
-#                 content=[
-#                     ImagePromptMessageContent(
-#                         url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
-#                     ),
-#                 ]
-#             ),
-#         ]
-#         + mock_history[fake_window_size * -2 :]
-#         + [UserPromptMessage(content=fake_query)],
-#         file_variables={
-#             "input.image": File(
-#                 tenant_id="test",
-#                 type=FileType.IMAGE,
-#                 filename="test1.jpg",
-#                 transfer_method=FileTransferMethod.REMOTE_URL,
-#                 remote_url=fake_remote_url,
-#                 extension=".jpg",
-#                 mime_type="image/jpg",
-#                 storage_key="",
-#             )
-#         },
-#     ),
-# ]
-
-# for scenario in test_scenarios:
-#     model_config.model_schema.features = scenario.features
-
-#     for k, v in scenario.file_variables.items():
-#         selector = k.split(".")
-#         llm_node.graph_runtime_state.variable_pool.add(selector, v)
-
-#     # Call the method under test
-#     prompt_messages, _ = llm_node._fetch_prompt_messages(
-#         sys_query=scenario.sys_query,
-#         sys_files=scenario.sys_files,
-#         context=fake_context,
-#         memory=memory,
-#         model_config=model_config,
-#         prompt_template=scenario.prompt_template,
-#         memory_config=memory_config,
-#         vision_enabled=scenario.vision_enabled,
-#         vision_detail=scenario.vision_detail,
-#         variable_pool=llm_node.graph_runtime_state.variable_pool,
-#         jinja2_variables=[],
-#     )
-
-# # Verify the result
-# assert len(prompt_messages) == len(scenario.expected_messages), f"Scenario failed: {scenario.description}"
-# assert prompt_messages == scenario.expected_messages, (
-#     f"Message content mismatch in scenario: {scenario.description}"
-# )
 
 
 def test_handle_list_messages_basic(llm_node):
@@ -778,7 +542,7 @@ def test_fetch_structured_output_schema_empty():
 
 def test_fetch_structured_output_schema_invalid_json():
     with pytest.raises(LLMNodeError):
-        LLMNode.fetch_structured_output_schema(structured_output={"schema": "not-json"})
+        LLMNode.fetch_structured_output_schema(structured_output={"schema": "{invalid: json"})
 
 
 def test_fetch_structured_output_schema_not_dict():
@@ -966,9 +730,12 @@ def test_llm_node_run_success(llm_node, monkeypatch):
 
 
 def test_llm_node_run_value_error(llm_node, monkeypatch):
+    def raise_fetch_model_config(*_args, **_kwargs):
+        raise ValueError("fail")
+
     monkeypatch.setattr(
         "core.workflow.nodes.llm.node.LLMNode._fetch_model_config",
-        lambda **kwargs: (_ for _ in ()).throw(ValueError("fail")),
+        raise_fetch_model_config,
     )
 
     events = list(llm_node._run())
@@ -1037,23 +804,16 @@ def test_invoke_llm_structured(monkeypatch):
 def test_handle_invoke_result_streaming():
     usage = LLMUsage.empty_usage()
 
-    # Create a simple fake delta object
-    class FakeDelta:
-        def __init__(self):
-            self.message = mock.MagicMock()
-            self.message.content = "hello"
-            self.usage = usage
-            self.finish_reason = "stop"
-
-    # Create fake chunk object
-    class FakeChunk:
-        def __init__(self):
-            self.delta = FakeDelta()
-            self.model = "gpt"
-            self.prompt_messages = []
+    delta = LLMResultChunkDelta(
+        index=0,
+        message=AssistantPromptMessage(content="hello"),
+        usage=usage,
+        finish_reason="stop",
+    )
+    chunk = LLMResultChunk(model="gpt", prompt_messages=[], delta=delta)
 
     def generator():
-        yield FakeChunk()
+        yield chunk
 
     events = list(
         LLMNode.handle_invoke_result(
@@ -1066,7 +826,8 @@ def test_handle_invoke_result_streaming():
         )
     )
 
-    # Ensure completion event exists
+    # Ensure streaming + completion events exist
+    assert any(isinstance(e, StreamChunkEvent) for e in events)
     assert any(isinstance(e, ModelInvokeCompletedEvent) for e in events)
 
 
