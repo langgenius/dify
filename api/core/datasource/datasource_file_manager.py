@@ -213,6 +213,6 @@ class DatasourceFileManager:
 
 
 # init tool_file_parser
-# from core.file.datasource_file_parser import datasource_file_manager
+# from core.workflow.file.datasource_file_parser import datasource_file_manager
 #
 # datasource_file_manager["manager"] = DatasourceFileManager
