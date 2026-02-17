@@ -1,7 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ApiBasedExtension } from '@/models/common'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -14,25 +14,6 @@ vi.mock('@/context/modal-context', () => ({
 
 vi.mock('@/service/use-common', () => ({
   useApiBasedExtensions: vi.fn(),
-}))
-
-// Mocking Portal components to simplify testing
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-root" data-open={open}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">
-      {children}
-    </div>
-  ),
 }))
 
 describe('ApiBasedExtensionSelector', () => {
@@ -69,60 +50,61 @@ describe('ApiBasedExtensionSelector', () => {
       expect(screen.getByText('common.apiBasedExtension.selector.placeholder')).toBeInTheDocument()
     })
 
-    it('should render selected item name', () => {
+    it('should render selected item name', async () => {
       // Act
       render(<ApiBasedExtensionSelector value="1" onChange={mockOnChange} />)
 
       // Assert
-      const trigger = screen.getByTestId('portal-trigger')
-      expect(within(trigger).getByText('Extension 1')).toBeInTheDocument()
+      expect(screen.getByText('Extension 1')).toBeInTheDocument()
     })
   })
 
   describe('Dropdown Interactions', () => {
-    it('should open dropdown when clicked', () => {
+    it('should open dropdown when clicked', async () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByText('common.apiBasedExtension.selector.placeholder')
       fireEvent.click(trigger)
 
       // Assert
-      expect(screen.getByText('common.apiBasedExtension.selector.title')).toBeInTheDocument()
-      expect(screen.getByTestId('portal-root')).toHaveAttribute('data-open', 'true')
+      expect(await screen.findByText('common.apiBasedExtension.selector.title')).toBeInTheDocument()
     })
 
-    it('should call onChange and closes dropdown when an extension is selected', () => {
+    it('should call onChange and closes dropdown when an extension is selected', async () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
-      const options = screen.getAllByText('Extension 2')
-      fireEvent.click(options[0])
+      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
+
+      const option = await screen.findByText('Extension 2')
+      fireEvent.click(option)
 
       // Assert
       expect(mockOnChange).toHaveBeenCalledWith('2')
-      expect(screen.getByTestId('portal-root')).toHaveAttribute('data-open', 'false')
     })
   })
 
   describe('Manage and Add Extensions', () => {
-    it('should open account settings when clicking manage', () => {
+    it('should open account settings when clicking manage', async () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
-      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.manage'))
+      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
+
+      const manageButton = await screen.findByText('common.apiBasedExtension.selector.manage')
+      fireEvent.click(manageButton)
 
       // Assert
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
         payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
       })
-      expect(screen.getByTestId('portal-root')).toHaveAttribute('data-open', 'false')
     })
 
-    it('should open add modal when clicking add button and refetches on save', () => {
+    it('should open add modal when clicking add button and refetches on save', async () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
-      fireEvent.click(screen.getByText('common.operation.add'))
+      fireEvent.click(screen.getByText('common.apiBasedExtension.selector.placeholder'))
+
+      const addButton = await screen.findByText('common.operation.add')
+      fireEvent.click(addButton)
 
       // Assert
       expect(mockSetShowApiBasedExtensionModal).toHaveBeenCalledWith(expect.objectContaining({

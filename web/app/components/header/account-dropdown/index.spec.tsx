@@ -2,6 +2,7 @@ import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,18 +13,6 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useLogout } from '@/service/use-common'
 import AppSelector from './index'
-
-vi.mock('./support', () => ({
-  default: () => <div data-testid="support">common.userProfile.support</div>,
-}))
-
-vi.mock('./compliance', () => ({
-  default: () => <div data-testid="compliance">common.userProfile.compliance</div>,
-}))
-
-vi.mock('./workplace-selector', () => ({
-  default: () => <div data-testid="workplace-selector">WorkplaceSelector</div>,
-}))
 
 vi.mock('../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -144,10 +133,20 @@ describe('AccountDropdown', () => {
       refresh: vi.fn(),
     } as unknown as AppRouterInstance
 
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
     return render(
-      <AppRouterContext.Provider value={mockRouter}>
-        {ui}
-      </AppRouterContext.Provider>,
+      <QueryClientProvider client={queryClient}>
+        <AppRouterContext.Provider value={mockRouter}>
+          {ui}
+        </AppRouterContext.Provider>
+      </QueryClientProvider>,
     )
   }
 

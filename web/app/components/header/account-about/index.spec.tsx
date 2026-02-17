@@ -9,14 +9,6 @@ vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: vi.fn(),
 }))
 
-vi.mock('@remixicon/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@remixicon/react')>()
-  return {
-    ...actual,
-    RiCloseLine: (props: Record<string, unknown>) => <div data-testid="close-icon" {...props} />,
-  }
-})
-
 let mockIsCEEdition = false
 vi.mock('@/config', () => ({
   get IS_CE_EDITION() { return mockIsCEEdition },
@@ -124,8 +116,9 @@ describe('AccountAbout', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       // Act
-      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
-      fireEvent.click(screen.getByTestId('close-icon'))
+      const { container } = render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
+      const closeButton = container.querySelector('.remixicon')
+      fireEvent.click(closeButton!)
 
       // Assert
       expect(mockOnCancel).toHaveBeenCalled()

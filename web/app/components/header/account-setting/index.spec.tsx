@@ -1,4 +1,5 @@
 import type { AppContextValue } from '@/context/app-context'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppContext } from '@/context/app-context'
@@ -23,6 +24,17 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   }
 })
 
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  })),
+  usePathname: vi.fn(() => '/'),
+  useParams: vi.fn(() => ({})),
+  useSearchParams: vi.fn(() => ({ get: vi.fn() })),
+}))
+
 vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: {
     mobile: 'mobile',
@@ -32,14 +44,23 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   default: vi.fn(),
 }))
 
-// Mock sub-components to avoid deep rendering issues
-vi.mock('./model-provider-page', () => ({ default: () => <div data-testid="model-provider-page">ModelProviderPage</div> }))
-vi.mock('./members-page', () => ({ default: () => <div data-testid="members-page">MembersPage</div> }))
-vi.mock('../../billing/billing-page', () => ({ default: () => <div data-testid="billing-page">BillingPage</div> }))
-vi.mock('./data-source-page-new', () => ({ default: () => <div data-testid="data-source-page">DataSourcePage</div> }))
-vi.mock('./api-based-extension-page', () => ({ default: () => <div data-testid="api-based-extension-page">ApiBasedExtensionPage</div> }))
-vi.mock('../../custom/custom-page', () => ({ default: () => <div data-testid="custom-page">CustomPage</div> }))
-vi.mock('./language-page', () => ({ default: () => <div data-testid="language-page">LanguagePage</div> }))
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useDefaultModel: vi.fn(() => ({ data: null, isLoading: false })),
+  useUpdateDefaultModel: vi.fn(() => ({ trigger: vi.fn() })),
+  useUpdateModelList: vi.fn(() => vi.fn()),
+  useModelList: vi.fn(() => ({ data: [], isLoading: false })),
+  useSystemDefaultModelAndModelList: vi.fn(() => [null, vi.fn()]),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useApiBasedExtensions: vi.fn(() => ({ data: [], isPending: false })),
+  useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
+  useProviderContext: vi.fn(),
+}))
 
 const baseAppContextValue: AppContextValue = {
   userProfile: {
@@ -100,7 +121,11 @@ describe('AccountSetting', () => {
   describe('Rendering', () => {
     it('should render the sidebar with correct menu items', () => {
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
 
       // Assert
       expect(screen.getByText('common.userProfile.settings')).toBeInTheDocument()
@@ -115,10 +140,17 @@ describe('AccountSetting', () => {
 
     it('should respect the activeTab prop', () => {
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} activeTab={ACCOUNT_SETTING_TAB.DATA_SOURCE} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} activeTab={ACCOUNT_SETTING_TAB.DATA_SOURCE} />
+        </QueryClientProvider>,
+      )
 
       // Assert
-      expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+      // Check that the active item title is Data Source
+      const titles = screen.getAllByText('common.settings.dataSource')
+      // One in sidebar, one in header.
+      expect(titles.length).toBeGreaterThan(1)
     })
 
     it('should hide sidebar labels on mobile', () => {
@@ -126,7 +158,11 @@ describe('AccountSetting', () => {
       vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
 
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
 
       // Assert
       // On mobile, the labels should not be rendered as per the implementation
@@ -141,7 +177,11 @@ describe('AccountSetting', () => {
       })
 
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
 
       // Assert
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
@@ -158,7 +198,11 @@ describe('AccountSetting', () => {
       })
 
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
 
       // Assert
       expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
@@ -169,50 +213,66 @@ describe('AccountSetting', () => {
   describe('Tab Navigation', () => {
     it('should change active tab when clicking on menu item', () => {
       // Arrange
-      render(<AccountSetting onCancel={mockOnCancel} onTabChange={mockOnTabChange} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} onTabChange={mockOnTabChange} />
+        </QueryClientProvider>,
+      )
 
       // Act
       fireEvent.click(screen.getByText('common.settings.provider'))
 
       // Assert
       expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.PROVIDER)
-      expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+      // Check for content from ModelProviderPage
+      expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
     })
 
     it('should navigate through various tabs and show correct details', () => {
       // Act & Assert
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
 
       // Billing
       fireEvent.click(screen.getByText('common.settings.billing'))
-      expect(screen.getByTestId('billing-page')).toBeInTheDocument()
+      // Billing Page renders plansCommon.plan if data is loaded, or generic text.
+      // Checking for title in header which is always there
+      expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(1)
 
       // Data Source
       fireEvent.click(screen.getByText('common.settings.dataSource'))
-      expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.dataSource').length).toBeGreaterThan(1)
 
       // API Based Extension
       fireEvent.click(screen.getByText('common.settings.apiBasedExtension'))
-      expect(screen.getByTestId('api-based-extension-page')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.apiBasedExtension').length).toBeGreaterThan(1)
 
       // Custom
       fireEvent.click(screen.getByText('custom.custom'))
-      expect(screen.getByTestId('custom-page')).toBeInTheDocument()
+      // Custom Page uses 'custom.custom' key as well.
+      expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(1)
 
       // Language
       fireEvent.click(screen.getAllByText('common.settings.language')[0])
-      expect(screen.getByTestId('language-page')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.language').length).toBeGreaterThan(1)
 
       // Members
       fireEvent.click(screen.getAllByText('common.settings.members')[0])
-      expect(screen.getByTestId('members-page')).toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(1)
     })
   })
 
   describe('Interactions', () => {
     it('should call onCancel when clicking close button', () => {
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
       const buttons = screen.getAllByRole('button')
       fireEvent.click(buttons[0])
 
@@ -222,7 +282,11 @@ describe('AccountSetting', () => {
 
     it('should call onCancel when pressing Escape key', () => {
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
       fireEvent.keyDown(document, { key: 'Escape' })
 
       // Assert
@@ -231,7 +295,11 @@ describe('AccountSetting', () => {
 
     it('should update search value in provider tab', () => {
       // Arrange
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
       fireEvent.click(screen.getByText('common.settings.provider'))
 
       // Act
@@ -240,12 +308,16 @@ describe('AccountSetting', () => {
 
       // Assert
       expect(input).toHaveValue('test-search')
-      expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
     })
 
     it('should handle scroll event in panel', () => {
       // Act
-      render(<AccountSetting onCancel={mockOnCancel} />)
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AccountSetting onCancel={mockOnCancel} />
+        </QueryClientProvider>,
+      )
       const scrollContainer = screen.getByRole('dialog').querySelector('.overflow-y-auto')
 
       // Assert

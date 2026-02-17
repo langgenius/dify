@@ -1,7 +1,7 @@
 import type { AppContextValue } from '@/context/app-context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'
+
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
@@ -31,21 +31,10 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
+    IS_CE_EDITION: false,
     get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value },
   }
 })
-
-vi.mock('@/app/components/base/zendesk/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/zendesk/utils')>()
-  return {
-    ...actual,
-    toggleZendeskWindow: vi.fn(),
-  }
-})
-
-vi.mock('../utils/util', () => ({
-  mailToSupport: vi.fn(() => 'mailto:support@dify.ai'),
-}))
 
 describe('Support', () => {
   const mockCloseAccountDropdown = vi.fn()
@@ -93,6 +82,7 @@ describe('Support', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.zE = vi.fn()
     mockZendeskKey.value = 'test-key'
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
@@ -175,7 +165,7 @@ describe('Support', () => {
       fireEvent.click(screen.getByText('common.userProfile.contactUs'))
 
       // Assert
-      expect(toggleZendeskWindow).toHaveBeenCalledWith(true)
+      expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
       expect(mockCloseAccountDropdown).toHaveBeenCalled()
     })
 
