@@ -1983,6 +1983,87 @@ class MessageAgentThought(TypeBase):
     def tools(self) -> list[str]:
         return self.tool.split(";") if self.tool else []
 
+    def _re_sign_file_url(self, text: str | None) -> str | None:
+        if not text:
+            return text
+
+        pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
+        matches = re.findall(pattern, text)
+
+        if not matches:
+            return text
+
+        urls = [match[0] for match in matches]
+
+        # remove duplicate urls
+        urls = list(set(urls))
+
+        if not urls:
+            return text
+
+        re_signed_text = text
+        for url in urls:
+            if "files/tools" in url:
+                # get tool file id
+                tool_file_id_pattern = r"\/files\/tools\/([\.\w-]+)?\?timestamp="
+                result = re.search(tool_file_id_pattern, url)
+                if not result:
+                    continue
+
+                tool_file_id = result.group(1)
+
+                # get extension
+                if "." in tool_file_id:
+                    split_result = tool_file_id.split(".")
+                    extension = f".{split_result[-1]}"
+                    if len(extension) > 10:
+                        extension = ".bin"
+                    tool_file_id = split_result[0]
+                else:
+                    extension = ".bin"
+
+                if not tool_file_id:
+                    continue
+
+                sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
+            elif "file-preview" in url:
+                # get upload file id
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
+                result = re.search(upload_file_id_pattern, url)
+                if not result:
+                    continue
+
+                upload_file_id = result.group(1)
+                if not upload_file_id:
+                    continue
+                sign_url = file_helpers.get_signed_file_url(upload_file_id)
+            elif "image-preview" in url:
+                # image-preview is deprecated, use file-preview instead
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
+                result = re.search(upload_file_id_pattern, url)
+                if not result:
+                    continue
+                upload_file_id = result.group(1)
+                if not upload_file_id:
+                    continue
+                sign_url = file_helpers.get_signed_file_url(upload_file_id)
+            else:
+                continue
+            # if as_attachment is in the url, add it to the sign_url.
+            if "as_attachment" in url:
+                sign_url += "&as_attachment=true"
+            re_signed_text = re_signed_text.replace(url, sign_url)
+
+        return re_signed_text
+
+    @property
+    def re_sign_file_url_thought(self) -> str | None:
+        return self._re_sign_file_url(self.thought)
+
+    @property
+    def re_sign_file_url_observation(self) -> str | None:
+        return self._re_sign_file_url(self.observation)
+
     @property
     def tool_labels(self) -> dict[str, Any]:
         try:
