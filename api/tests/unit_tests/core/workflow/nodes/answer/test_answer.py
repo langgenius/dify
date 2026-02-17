@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 import time
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
+from core.file.enums import FileTransferMethod, FileType
+from core.file.models import File
+from core.variables import ArrayFileSegment, FileSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.nodes.answer.answer_node import AnswerNode
+from core.workflow.nodes.base.template import Template
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
@@ -91,3 +97,76 @@ def test_execute_answer():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["answer"] == "Today's weather is sunny\nYou are a helpful AI.\n{{img}}\nFin."
+
+
+def _make_file(*, file_id: str) -> File:
+    return File(
+        id=file_id,
+        tenant_id="tenant",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url=f"https://example.com/{file_id}.png",
+        storage_key="key",
+    )
+
+
+def test_extract_files_from_segments() -> None:
+    file_a = _make_file(file_id="a")
+    file_b = _make_file(file_id="b")
+    file_c = _make_file(file_id="c")
+
+    segments = [
+        FileSegment(value=file_a),
+        ArrayFileSegment(value=[file_b, file_c]),
+    ]
+
+    node = AnswerNode.__new__(AnswerNode)
+    files = node._extract_files_from_segments(segments)
+
+    assert files == [file_a, file_b, file_c]
+
+
+def test_answer_node_variable_mapping() -> None:
+    mapping = AnswerNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="answer",
+        node_data={
+            "title": "Answer",
+            "answer": "Hello {{#start.name#}} and {{#llm.text#}}",
+        },
+    )
+
+    assert mapping == {
+        "answer.#start.name#": ["start", "name"],
+        "answer.#llm.text#": ["llm", "text"],
+    }
+
+
+def test_answer_node_streaming_template() -> None:
+    graph_init_params = GraphInitParams(
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        graph_config={},
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+
+    node_config = {
+        "id": "answer",
+        "data": {"title": "Answer", "answer": "Hello {{#start.name#}}"},
+    }
+
+    node = AnswerNode(
+        id="answer",
+        config=node_config,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=Mock(),
+    )
+
+    template = node.get_streaming_template()
+
+    assert isinstance(template, Template)
+    assert str(template) == "Hello {{#start.name#}}"

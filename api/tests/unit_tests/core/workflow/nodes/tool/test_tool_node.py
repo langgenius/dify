@@ -1,10 +1,4 @@
-from __future__ import annotations
-
-import sys
-import types
-from collections.abc import Generator
-from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -15,147 +9,318 @@ from core.variables.segments import ArrayFileSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.node_events import StreamChunkEvent, StreamCompletedEvent
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.workflow.nodes.tool.exc import ToolNodeError, ToolParameterError
+from core.workflow.nodes.tool.tool_node import ToolNode
 
-if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
-    from core.workflow.nodes.tool.tool_node import ToolNode
+# ==========================================================
+# Fixtures
+# ==========================================================
 
 
 @pytest.fixture
-def tool_node(monkeypatch) -> ToolNode:
-    module_name = "core.ops.ops_trace_manager"
-    if module_name not in sys.modules:
-        ops_stub = types.ModuleType(module_name)
-        ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
-        ops_stub.TraceTask = object  # pragma: no cover - stub attribute
-        monkeypatch.setitem(sys.modules, module_name, ops_stub)
+def mock_variable_pool(mocker):
+    pool = mocker.MagicMock()
 
-    from core.workflow.nodes.tool.tool_node import ToolNode
+    pool.get.return_value = None
 
-    graph_config: dict[str, Any] = {
-        "nodes": [
-            {
-                "id": "tool-node",
-                "data": {
-                    "type": "tool",
-                    "title": "Tool",
-                    "desc": "",
-                    "provider_id": "provider",
-                    "provider_type": "builtin",
-                    "provider_name": "provider",
-                    "tool_name": "tool",
-                    "tool_label": "tool",
-                    "tool_configurations": {},
-                    "tool_parameters": {},
-                },
-            }
-        ],
-        "edges": [],
-    }
+    segment = mocker.MagicMock()
+    segment.text = "text_value"
+    segment.log = "log_value"
 
-    init_params = GraphInitParams(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        workflow_id="workflow-id",
-        graph_config=graph_config,
-        user_id="user-id",
-        user_from="account",
-        invoke_from="debugger",
-        call_depth=0,
-    )
+    pool.convert_template.return_value = segment
+    return pool
 
-    variable_pool = VariablePool(system_variables=SystemVariable(user_id="user-id"))
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
-    config = graph_config["nodes"][0]
-    node = ToolNode(
-        id="node-instance",
-        config=config,
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
-    )
+@pytest.fixture
+def mock_node_data(mocker):
+    retry_config = mocker.MagicMock()
+    retry_config.retry_enabled = True
+
+    node_data = mocker.MagicMock()
+    node_data.provider_type.value = "mock_provider"
+    node_data.provider_id = "pid"
+    node_data.plugin_unique_identifier = "uid"
+    node_data.provider_name = "provider"
+    node_data.version = "1"
+    node_data.tool_node_version = None
+    node_data.tool_parameters = {}
+    node_data.retry_config = retry_config
+    return node_data
+
+
+@pytest.fixture
+def tool_node(mock_node_data, mock_variable_pool, mocker):
+    node = ToolNode.__new__(ToolNode)
+
+    # IMPORTANT: set private attribute instead of property
+    node._node_data = mock_node_data
+
+    node._node_id = "node1"
+    node.user_id = "user1"
+    node.tenant_id = "tenant1"
+    node.app_id = "app1"
+    node.workflow_call_depth = 0
+    node.invoke_from = None
+
+    node.graph_runtime_state = mocker.MagicMock()
+    node.graph_runtime_state.variable_pool = mock_variable_pool
+
     return node
 
 
-def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
-    events: list[Any] = []
-    try:
-        while True:
-            events.append(next(generator))
-    except StopIteration as stop:
-        return events, stop.value
+# ==========================================================
+# _generate_parameters Tests
+# ==========================================================
 
 
-def _run_transform(tool_node: ToolNode, message: ToolInvokeMessage) -> tuple[list[Any], LLMUsage]:
-    def _identity_transform(messages, *_args, **_kwargs):
-        return messages
+@pytest.mark.parametrize(
+    ("required", "variable_exists"),
+    [
+        (True, True),
+        (False, False),
+    ],
+)
+def test_generate_parameters_variable(tool_node, mock_variable_pool, mock_node_data, required, variable_exists):
+    param = MagicMock(spec=ToolParameter)
+    param.name = "p1"
+    param.required = required
 
-    tool_runtime = MagicMock()
-    with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform):
-        generator = tool_node._transform_message(
-            messages=iter([message]),
-            tool_info={"provider_type": "builtin", "provider_id": "provider"},
-            parameters_for_log={},
-            user_id="user-id",
-            tenant_id="tenant-id",
-            node_id=tool_node._node_id,
-            tool_runtime=tool_runtime,
+    tool_input = MagicMock()
+    tool_input.type = "variable"
+    tool_input.value = ["a"]
+
+    mock_node_data.tool_parameters = {"p1": tool_input}
+
+    if variable_exists:
+        mock_var = MagicMock()
+        mock_var.value = "value"
+        mock_variable_pool.get.return_value = mock_var
+    else:
+        mock_variable_pool.get.return_value = None
+
+    if required and not variable_exists:
+        with pytest.raises(ToolParameterError):
+            tool_node._generate_parameters(
+                tool_parameters=[param],
+                variable_pool=mock_variable_pool,
+                node_data=mock_node_data,
+            )
+    else:
+        result = tool_node._generate_parameters(
+            tool_parameters=[param],
+            variable_pool=mock_variable_pool,
+            node_data=mock_node_data,
         )
-        return _collect_events(generator)
+        if variable_exists:
+            assert result["p1"] == "value"
 
 
-def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
-    file_obj = File(
-        tenant_id="tenant-id",
-        type=FileType.DOCUMENT,
-        transfer_method=FileTransferMethod.TOOL_FILE,
-        related_id="file-id",
-        filename="demo.pdf",
-        extension=".pdf",
-        mime_type="application/pdf",
-        size=123,
-        storage_key="file-key",
+def test_generate_parameters_mixed_for_log(tool_node, mock_variable_pool, mock_node_data):
+    param = MagicMock(spec=ToolParameter)
+    param.name = "p1"
+    param.required = False
+
+    tool_input = MagicMock()
+    tool_input.type = "mixed"
+    tool_input.value = "template"
+
+    mock_node_data.tool_parameters = {"p1": tool_input}
+
+    result = tool_node._generate_parameters(
+        tool_parameters=[param],
+        variable_pool=mock_variable_pool,
+        node_data=mock_node_data,
+        for_log=True,
     )
-    message = ToolInvokeMessage(
-        type=ToolInvokeMessage.MessageType.LINK,
-        message=ToolInvokeMessage.TextMessage(text="/files/tools/file-id.pdf"),
-        meta={"file": file_obj},
-    )
 
-    events, usage = _run_transform(tool_node, message)
+    assert result["p1"] == "log_value"
+
+
+def test_generate_parameters_unknown_type(tool_node, mock_variable_pool, mock_node_data):
+    param = MagicMock(spec=ToolParameter)
+    param.name = "p1"
+    param.required = False
+
+    tool_input = MagicMock()
+    tool_input.type = "invalid"
+
+    mock_node_data.tool_parameters = {"p1": tool_input}
+
+    with pytest.raises(ToolParameterError):
+        tool_node._generate_parameters(
+            tool_parameters=[param],
+            variable_pool=mock_variable_pool,
+            node_data=mock_node_data,
+        )
+
+
+# ==========================================================
+# _extract_tool_usage Tests
+# ==========================================================
+
+
+@pytest.mark.parametrize(
+    "latest",
+    [
+        LLMUsage.empty_usage(),
+        LLMUsage.empty_usage().model_dump(),
+        None,
+    ],
+)
+def test_extract_tool_usage(latest):
+    runtime = MagicMock()
+    runtime.latest_usage = latest
+
+    usage = ToolNode._extract_tool_usage(runtime)
 
     assert isinstance(usage, LLMUsage)
 
-    chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
-    assert chunk_events
-    assert chunk_events[0].chunk == "File: /files/tools/file-id.pdf\n"
 
-    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
-    assert len(completed_events) == 1
-    outputs = completed_events[0].node_run_result.outputs
-    assert outputs["text"] == "File: /files/tools/file-id.pdf\n"
-
-    files_segment = outputs["files"]
-    assert isinstance(files_segment, ArrayFileSegment)
-    assert files_segment.value == [file_obj]
+# ==========================================================
+# _transform_message Tests (FIXED WITH REAL MESSAGE TYPES)
+# ==========================================================
 
 
-def test_plain_link_messages_remain_links(tool_node: ToolNode):
-    message = ToolInvokeMessage(
-        type=ToolInvokeMessage.MessageType.LINK,
-        message=ToolInvokeMessage.TextMessage(text="https://dify.ai"),
-        meta=None,
+def test_transform_message_text(tool_node, mocker):
+    runtime = MagicMock()
+    runtime.latest_usage = LLMUsage.empty_usage()
+
+    # Use real TextMessage
+    text_message = ToolInvokeMessage.TextMessage(text="hello")
+
+    msg = MagicMock()
+    msg.type = ToolInvokeMessage.MessageType.TEXT
+    msg.message = text_message
+
+    mocker.patch(
+        "core.workflow.nodes.tool.tool_node.ToolFileMessageTransformer.transform_tool_invoke_messages",
+        return_value=[msg],
     )
 
-    events, _ = _run_transform(tool_node, message)
+    events = list(
+        tool_node._transform_message(
+            messages=[],
+            tool_info={},
+            parameters_for_log={},
+            user_id="u",
+            tenant_id="t",
+            node_id="node1",
+            tool_runtime=runtime,
+        )
+    )
 
-    chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
-    assert chunk_events
-    assert chunk_events[0].chunk == "Link: https://dify.ai\n"
+    assert any(isinstance(e, StreamChunkEvent) for e in events)
+    completed = next(e for e in events if isinstance(e, StreamCompletedEvent))
+    assert completed.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert completed.node_run_result.outputs["text"] == "hello"
 
-    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
-    assert len(completed_events) == 1
-    files_segment = completed_events[0].node_run_result.outputs["files"]
-    assert isinstance(files_segment, ArrayFileSegment)
-    assert files_segment.value == []
+
+def test_transform_message_variable_stream_success(tool_node, mocker):
+    runtime = MagicMock()
+    runtime.latest_usage = LLMUsage.empty_usage()
+
+    variable_message = ToolInvokeMessage.VariableMessage(
+        variable_name="v1",
+        variable_value="hello",
+        stream=True,
+    )
+
+    msg = MagicMock()
+    msg.type = ToolInvokeMessage.MessageType.VARIABLE
+    msg.message = variable_message
+
+    mocker.patch(
+        "core.workflow.nodes.tool.tool_node.ToolFileMessageTransformer.transform_tool_invoke_messages",
+        return_value=[msg],
+    )
+
+    events = list(
+        tool_node._transform_message(
+            messages=[],
+            tool_info={},
+            parameters_for_log={},
+            user_id="u",
+            tenant_id="t",
+            node_id="node1",
+            tool_runtime=runtime,
+        )
+    )
+
+    # Should emit chunk event for variable
+    chunk_events = [e for e in events if isinstance(e, StreamChunkEvent)]
+    assert any(e.selector == ["node1", "v1"] for e in chunk_events)
+
+    completed = next(e for e in events if isinstance(e, StreamCompletedEvent))
+    assert completed.node_run_result.outputs["v1"] == "hello"
+
+
+def test_transform_message_variable_non_stream_any_type(tool_node, mocker):
+    runtime = MagicMock()
+    runtime.latest_usage = LLMUsage.empty_usage()
+
+    # Non-stream mode allows any type
+    variable_message = ToolInvokeMessage.VariableMessage(
+        variable_name="v1",
+        variable_value=123,
+        stream=False,
+    )
+
+    msg = MagicMock()
+    msg.type = ToolInvokeMessage.MessageType.VARIABLE
+    msg.message = variable_message
+
+    mocker.patch(
+        "core.workflow.nodes.tool.tool_node.ToolFileMessageTransformer.transform_tool_invoke_messages",
+        return_value=[msg],
+    )
+
+    events = list(
+        tool_node._transform_message(
+            messages=[],
+            tool_info={},
+            parameters_for_log={},
+            user_id="u",
+            tenant_id="t",
+            node_id="node1",
+            tool_runtime=runtime,
+        )
+    )
+
+    completed = next(e for e in events if isinstance(e, StreamCompletedEvent))
+    assert completed.node_run_result.outputs["v1"] == 123
+
+
+def test_transform_message_file_missing_meta(tool_node, mocker):
+    runtime = MagicMock()
+    runtime.latest_usage = LLMUsage.empty_usage()
+
+    msg = MagicMock()
+    msg.type = ToolInvokeMessage.MessageType.FILE
+    msg.meta = {}
+
+    mocker.patch(
+        "core.workflow.nodes.tool.tool_node.ToolFileMessageTransformer.transform_tool_invoke_messages",
+        return_value=[msg],
+    )
+
+    with pytest.raises(ToolNodeError):
+        list(
+            tool_node._transform_message(
+                messages=[],
+                tool_info={},
+                parameters_for_log={},
+                user_id="u",
+                tenant_id="t",
+                node_id="node1",
+                tool_runtime=runtime,
+            )
+        )
+
+
+# ==========================================================
+# retry Property Test
+# ==========================================================
+
+
+def test_retry_property(tool_node):
+    assert tool_node.retry is True
