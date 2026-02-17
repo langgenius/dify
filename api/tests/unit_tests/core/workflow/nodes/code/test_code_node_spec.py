@@ -49,6 +49,7 @@ class RejectProvider:
     def is_accept_language(language):
         return False
 
+
 @pytest.fixture
 def limits():
     return CodeNodeLimits(
