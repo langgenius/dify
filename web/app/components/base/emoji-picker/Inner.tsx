@@ -3,8 +3,6 @@ import type { EmojiMartData } from '@emoji-mart/data'
 import type { ChangeEvent, FC } from 'react'
 import data from '@emoji-mart/data'
 import {
-  ChevronDownIcon,
-  ChevronUpIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { init } from 'emoji-mart'
@@ -97,7 +95,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
         {isSearching && (
           <>
             <div key="category-search" className="flex flex-col">
-              <p className="system-xs-medium-uppercase mb-1 text-text-primary">Search</p>
+              <p className="mb-1 text-text-primary system-xs-medium-uppercase">Search</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {searchedEmojis.map((emoji: string, index: number) => {
                   return (
@@ -108,7 +106,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                         setSelectedEmoji(emoji)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
+                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-search-result-${emoji}`}>
                         <em-emoji id={emoji} />
                       </div>
                     </div>
@@ -122,7 +120,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
         {categories.map((category, index: number) => {
           return (
             <div key={`category-${index}`} className="flex flex-col">
-              <p className="system-xs-medium-uppercase mb-1 text-text-primary">{category.id}</p>
+              <p className="mb-1 text-text-primary system-xs-medium-uppercase">{category.id}</p>
               <div className="grid h-full w-full grid-cols-8 gap-1">
                 {category.emojis.map((emoji, index: number) => {
                   return (
@@ -133,7 +131,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                         setSelectedEmoji(emoji)
                       }}
                     >
-                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1">
+                      <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-container-${emoji}`}>
                         <em-emoji id={emoji} />
                       </div>
                     </div>
@@ -148,10 +146,10 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
 
       {/* Color Select */}
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
-        <p className="system-xs-medium-uppercase mb-2 text-text-primary">Choose Style</p>
+        <p className="mb-2 text-text-primary system-xs-medium-uppercase">Choose Style</p>
         {showStyleColors
-          ? <ChevronDownIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />
-          : <ChevronUpIcon className="h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} />}
+          ? <span className="i-heroicons-chevron-down h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />
+          : <span className="i-heroicons-chevron-up h-4 w-4 cursor-pointer text-text-quaternary" onClick={() => setShowStyleColors(!showStyleColors)} data-testid="toggle-colors" />}
       </div>
       {showStyleColors && (
         <div className="grid w-full grid-cols-8 gap-1 px-3">

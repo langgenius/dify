@@ -128,7 +128,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")

@@ -34,6 +34,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import (
     AgentLogEvent,
     NodeEventBase,

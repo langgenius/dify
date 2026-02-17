@@ -2,6 +2,7 @@ import type { FileEntity } from '../../file-uploader/types'
 import type {
   ChatConfig,
   ChatItem,
+  ChatItemInTree,
   OnSend,
 } from '../types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -16,7 +17,9 @@ import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
+  submitHumanInputForm,
 } from '@/service/share'
+import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { formatBooleanInputs } from '@/utils/model-config'
@@ -73,9 +76,9 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
-    setTargetMessageId,
     handleSend,
     handleStop,
+    handleSwitchSibling,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -122,8 +125,11 @@ const ChatWrapper = () => {
 
     if (fileIsUploading)
       return true
+
+    if (chatList.some(item => item.isAnswer && item.humanInputFormDataList && item.humanInputFormDataList.length > 0))
+      return true
     return false
-  }, [inputsFormValue, inputsForms, allInputsHidden])
+  }, [allInputsHidden, inputsForms, chatList, inputsFormValue])
 
   useEffect(() => {
     if (currentChatInstanceRef.current)
@@ -133,6 +139,40 @@ const ChatWrapper = () => {
   useEffect(() => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
+
+  // Resume paused workflows when chat history is loaded
+  useEffect(() => {
+    if (!appPrevChatTree || appPrevChatTree.length === 0)
+      return
+
+    // Find the last answer item with workflow_run_id that needs resumption (DFS - find deepest first)
+    let lastPausedNode: ChatItemInTree | undefined
+    const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
+      nodes.forEach((node) => {
+        // DFS: recurse to children first
+        if (node.children && node.children.length > 0)
+          findLastPausedWorkflow(node.children)
+
+        // Track the last node with humanInputFormDataList
+        if (node.isAnswer && node.workflow_run_id && node.humanInputFormDataList && node.humanInputFormDataList.length > 0)
+          lastPausedNode = node
+      })
+    }
+
+    findLastPausedWorkflow(appPrevChatTree)
+
+    // Only resume the last paused workflow
+    if (lastPausedNode) {
+      handleSwitchSibling(
+        lastPausedNode.id,
+        {
+          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
+          onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+          isPublicAPI: appSourceType === AppSourceType.webApp,
+        },
+      )
+    }
+  }, [])
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
@@ -149,10 +189,10 @@ const ChatWrapper = () => {
       {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
-        isPublicAPI: !isInstalledApp,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
       },
     )
-  }, [chatList, handleNewConversationCompleted, handleSend, currentConversationId, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
+  }, [inputsForms, currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, appSourceType, appId, isHistoryConversation, handleNewConversationCompleted])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
@@ -160,12 +200,27 @@ const ChatWrapper = () => {
     doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
+  const doSwitchSibling = useCallback((siblingMessageId: string) => {
+    handleSwitchSibling(siblingMessageId, {
+      onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
+      onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+      isPublicAPI: appSourceType === AppSourceType.webApp,
+    })
+  }, [handleSwitchSibling, currentConversationId, handleNewConversationCompleted, appSourceType, appId])
+
   const messageList = useMemo(() => {
     if (currentConversationId || chatList.length > 1)
       return chatList
     // Without messages we are in the welcome screen, so hide the opening statement from chatlist
     return chatList.filter(item => !item.isOpeningStatement)
-  }, [chatList])
+  }, [chatList, currentConversationId])
+
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+    if (isInstalledApp)
+      await submitHumanInputFormService(formToken, formData)
+    else
+      await submitHumanInputForm(formToken, formData)
+  }, [isInstalledApp])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
@@ -274,6 +329,7 @@ const ChatWrapper = () => {
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
+        onHumanInputFormSubmit={handleSubmitHumanInputForm}
         chatNode={(
           <>
             {chatNode}
@@ -286,7 +342,7 @@ const ChatWrapper = () => {
         answerIcon={answerIcon}
         hideProcessDetail
         themeBuilder={themeBuilder}
-        switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+        switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}
         questionIcon={
