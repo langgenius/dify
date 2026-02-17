@@ -51,7 +51,7 @@ describe('AccountAbout', () => {
   describe('Rendering', () => {
     it('should render correctly with version information', () => {
       // Act
-      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
 
       // Assert
       expect(screen.getByText(/^Version/)).toBeInTheDocument()
@@ -65,7 +65,7 @@ describe('AccountAbout', () => {
       } as unknown as GlobalPublicStore))
 
       // Act
-      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
 
       // Assert
       const img = screen.getByAltText('logo')
@@ -77,7 +77,7 @@ describe('AccountAbout', () => {
   describe('Version Logic', () => {
     it('should show "Latest Available" when current version equals latest', () => {
       // Act
-      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
 
       // Assert
       expect(screen.getByText(/about.latestAvailable/)).toBeInTheDocument()
@@ -88,7 +88,7 @@ describe('AccountAbout', () => {
       const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
 
       // Act
-      render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />)
 
       // Assert
       expect(screen.getByText(/about.nowAvailable/)).toBeInTheDocument()
@@ -102,7 +102,7 @@ describe('AccountAbout', () => {
       mockIsCEEdition = true
 
       // Act
-      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
 
       // Assert
       expect(screen.getByText(/Open Source License/)).toBeInTheDocument()
@@ -114,7 +114,7 @@ describe('AccountAbout', () => {
       const behindVersionInfo = { ...mockVersionInfo, latest_version: '0.7.0' }
 
       // Act
-      render(<AccountAbout langGeniusVersionInfo={behindVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={behindVersionInfo} onCancel={mockOnCancel} />)
 
       // Assert
       expect(screen.queryByText(/about.updateNow/)).not.toBeInTheDocument()
@@ -124,7 +124,7 @@ describe('AccountAbout', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       // Act
-      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo as unknown as LangGeniusVersionResponse} onCancel={mockOnCancel} />)
+      render(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
       fireEvent.click(screen.getByTestId('close-icon'))
 
       // Assert

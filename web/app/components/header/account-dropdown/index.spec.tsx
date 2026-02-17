@@ -153,7 +153,7 @@ describe('AccountDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('localStorage', { removeItem: vi.fn(), getItem: vi.fn(), setItem: vi.fn() })
+    vi.stubGlobal('localStorage', { removeItem: vi.fn() })
     mockConfig.IS_CLOUD_EDITION = false
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
