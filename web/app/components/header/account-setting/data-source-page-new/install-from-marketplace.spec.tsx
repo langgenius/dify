@@ -2,7 +2,6 @@ import type { DataSourceAuth } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useMarketplaceAllPlugins } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
@@ -27,13 +26,7 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: vi.fn((path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`),
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: ({ className }: { className: string }) => <div data-testid="mock-divider" className={className} />,
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ type }: { type: string }) => <div data-testid="mock-loading" data-type={type}>Loading...</div>,
-}))
+// Mock marketplace components
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: ({ plugins, cardRender, cardContainerClassName, emptyClassName }: {
@@ -125,7 +118,7 @@ describe('InstallFromMarketplace Component', () => {
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('mock-loading')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should show loading state when marketplace plugins are loading and component is not collapsed', () => {
@@ -139,7 +132,7 @@ describe('InstallFromMarketplace Component', () => {
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
 
       // Assert
-      expect(screen.getByTestId('mock-loading')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
     })
   })
@@ -178,7 +171,7 @@ describe('InstallFromMarketplace Component', () => {
       fireEvent.click(toggleHeader)
 
       // Assert
-      expect(screen.queryByTestId('mock-loading')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
   })
 })

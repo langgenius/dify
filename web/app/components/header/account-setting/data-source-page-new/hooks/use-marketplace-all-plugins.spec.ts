@@ -1,6 +1,5 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,

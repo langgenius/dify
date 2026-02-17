@@ -1,8 +1,6 @@
-import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+
 import { DataSourceProvider } from '@/models/common'
 import { createDataSourceApiKeyBinding } from '@/service/datasets'
 import ConfigJinaReaderModal from './config-jina-reader-modal'
@@ -14,33 +12,6 @@ import ConfigJinaReaderModal from './config-jina-reader-modal'
 
 vi.mock('@/service/datasets', () => ({
   createDataSourceApiKeyBinding: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: ReactNode }) => <div data-testid="portal">{children}</div>,
-  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => <div data-testid="portal-content">{children}</div>,
-}))
-
-// Mock Field component to provide a simpler interface for testing interaction
-vi.mock('@/app/components/datasets/create/website/base/field', () => ({
-  default: ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (v: string | number) => void, placeholder?: string }) => (
-    <div>
-      <label htmlFor={label}>{label}</label>
-      <input
-        id={label}
-        aria-label={label}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
-  ),
 }))
 
 describe('ConfigJinaReaderModal Component', () => {
@@ -59,7 +30,7 @@ describe('ConfigJinaReaderModal Component', () => {
 
       // Assert
       expect(screen.getByText('datasetCreation.jinaReader.configJinaReader')).toBeInTheDocument()
-      expect(screen.getByLabelText('API Key')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.save/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.cancel/i })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /datasetCreation\.jinaReader\.getApiKeyLinkText/i })).toHaveAttribute('href', 'https://jina.ai/reader/')
@@ -70,7 +41,7 @@ describe('ConfigJinaReaderModal Component', () => {
     it('should update state when API Key field changes', async () => {
       // Arrange
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-      const apiKeyInput = screen.getByLabelText('API Key')
+      const apiKeyInput = screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder')
 
       // Act
       await user.type(apiKeyInput, 'jina-test-key')
@@ -101,10 +72,7 @@ describe('ConfigJinaReaderModal Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-          message: 'common.errorMsg.fieldRequired:{"field":"API Key"}',
-        }))
+        expect(screen.getByText('common.errorMsg.fieldRequired:{"field":"API Key"}')).toBeInTheDocument()
       })
       expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
     })
@@ -115,7 +83,7 @@ describe('ConfigJinaReaderModal Component', () => {
       // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-      const apiKeyInput = screen.getByLabelText('API Key')
+      const apiKeyInput = screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder')
 
       // Act
       await user.type(apiKeyInput, 'valid-jina-key')
@@ -135,7 +103,7 @@ describe('ConfigJinaReaderModal Component', () => {
         })
       })
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', message: 'common.api.success' }))
+        expect(screen.getByText('common.api.success')).toBeInTheDocument()
         expect(mockOnSaved).toHaveBeenCalled()
       })
     })
@@ -148,7 +116,7 @@ describe('ConfigJinaReaderModal Component', () => {
       })
       vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(savePromise)
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-      await user.type(screen.getByLabelText('API Key'), 'test-key')
+      await user.type(screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder'), 'test-key')
       const saveBtn = screen.getByRole('button', { name: /common\.operation\.save/i })
 
       // Act

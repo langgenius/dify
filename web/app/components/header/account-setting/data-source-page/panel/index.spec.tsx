@@ -1,6 +1,5 @@
 import type { ConfigItemType } from './config-item'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceProvider } from '@/models/common'
 import Panel from './index'
 import { DataSourceType } from './types'
@@ -10,25 +9,8 @@ import { DataSourceType } from './types'
  * Tests layout, conditional rendering, and interactions for data source panels (Notion and Website).
  */
 
-// Mock ConfigItem to isolate Panel testing
-vi.mock('./config-item', () => ({
-  default: ({ payload }: { payload: ConfigItemType }) => (
-    <div data-testid="mock-config-item">{payload.name}</div>
-  ),
-}))
-
-// Mock Button component to verify usage and props
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, className }: { children: React.ReactNode, onClick: () => void, disabled: boolean, className?: string }) => (
-    <button
-      data-testid="mock-button"
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-    >
-      {children}
-    </button>
-  ),
+vi.mock('../data-source-notion/operate', () => ({
+  default: () => <div data-testid="mock-operate" />,
 }))
 
 describe('Panel Component', () => {
@@ -103,11 +85,10 @@ describe('Panel Component', () => {
       )
 
       // Assert
-      expect(screen.getByTestId('mock-button')).toHaveTextContent('common.dataSource.configure')
+      expect(screen.getByRole('button', { name: 'common.dataSource.configure' })).toBeInTheDocument()
       expect(screen.getByText('common.dataSource.notion.connectedWorkspace')).toBeInTheDocument()
-      const items = screen.getAllByTestId('mock-config-item')
-      expect(items).toHaveLength(2)
-      expect(items[0]).toHaveTextContent('Item 1')
+      expect(screen.getByText('Item 1')).toBeInTheDocument()
+      expect(screen.getByText('Item 2')).toBeInTheDocument()
     })
 
     it('should hide connect button for Notion if isSupportList is false', () => {
@@ -142,7 +123,7 @@ describe('Panel Component', () => {
       )
 
       // Assert
-      const btn = screen.getByTestId('mock-button')
+      const btn = screen.getByRole('button', { name: 'common.dataSource.configure' })
       expect(btn).toBeDisabled()
     })
   })
@@ -238,7 +219,8 @@ describe('Panel Component', () => {
 
       // Assert
       expect(screen.getByText('common.dataSource.website.configuredCrawlers')).toBeInTheDocument()
-      expect(screen.getAllByTestId('mock-config-item')).toHaveLength(2)
+      expect(screen.getByText('Item 1')).toBeInTheDocument()
+      expect(screen.getByText('Item 2')).toBeInTheDocument()
     })
   })
 })

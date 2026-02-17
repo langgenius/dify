@@ -1,6 +1,5 @@
 import type { DataSourceCredential } from './types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Item from './item'
 
@@ -9,14 +8,13 @@ import Item from './item'
  * Using Unit approach to focus on the renaming logic and view state.
  */
 
-// Mock the Operator component to isolate the Item component tests.
-vi.mock('./operator', () => ({
-  default: vi.fn(({ onRename }: { onRename: () => void }) => (
-    <button data-testid="operator-rename" onClick={onRename}>
-      Trigger Rename
-    </button>
-  )),
-}))
+// Helper to trigger rename via the real Operator component's dropdown
+const triggerRename = async () => {
+  const dropdownTrigger = screen.getByRole('button')
+  fireEvent.click(dropdownTrigger)
+  const renameOption = await screen.findByText('common.operation.rename')
+  fireEvent.click(renameOption)
+}
 
 describe('Item Component', () => {
   const mockOnAction = vi.fn()
@@ -24,7 +22,7 @@ describe('Item Component', () => {
     id: 'test-id',
     name: 'Test Credential',
     credential: {},
-    type: CredentialTypeEnum.API_KEY,
+    type: CredentialTypeEnum.OAUTH2,
     is_default: false,
     avatar_url: '',
   }
@@ -41,29 +39,26 @@ describe('Item Component', () => {
       // Assert
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
       expect(screen.getByText('connected')).toBeInTheDocument()
-      expect(screen.getByTestId('operator-rename')).toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument() // Dropdown trigger
     })
   })
 
   describe('Rename Mode Interactions', () => {
-    it('should switch to rename mode when Trigger Rename is clicked', () => {
+    it('should switch to rename mode when Trigger Rename is clicked', async () => {
       // Arrange
       render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
 
       // Act
-      fireEvent.click(screen.getByTestId('operator-rename'))
-
-      // Assert
-      expect(screen.queryByText('Test Credential')).not.toBeInTheDocument()
+      await triggerRename()
       expect(screen.getByPlaceholderText('common.placeholder.input')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
       expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
     })
 
-    it('should update rename input value when changed', () => {
+    it('should update rename input value when changed', async () => {
       // Arrange
       render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
-      fireEvent.click(screen.getByTestId('operator-rename'))
+      await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
 
       // Act
@@ -73,10 +68,10 @@ describe('Item Component', () => {
       expect(input).toHaveValue('Updated Name')
     })
 
-    it('should call onAction with "rename" and correct payload when Save is clicked', () => {
+    it('should call onAction with "rename" and correct payload when Save is clicked', async () => {
       // Arrange
       render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
-      fireEvent.click(screen.getByTestId('operator-rename'))
+      await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'New Name' } })
 
@@ -97,10 +92,10 @@ describe('Item Component', () => {
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
     })
 
-    it('should exit rename mode without calling onAction when Cancel is clicked', () => {
+    it('should exit rename mode without calling onAction when Cancel is clicked', async () => {
       // Arrange
       render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
-      fireEvent.click(screen.getByTestId('operator-rename'))
+      await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'Cancelled Name' } })
 
@@ -116,7 +111,7 @@ describe('Item Component', () => {
   })
 
   describe('Event Bubbling', () => {
-    it('should stop event propagation when interacting with rename mode elements', () => {
+    it('should stop event propagation when interacting with rename mode elements', async () => {
       // Arrange
       const parentClick = vi.fn()
       render(
@@ -124,17 +119,19 @@ describe('Item Component', () => {
           <Item credentialItem={mockCredentialItem} onAction={mockOnAction} />
         </div>,
       )
-      fireEvent.click(screen.getByTestId('operator-rename'))
+      // Act & Assert
+      // We need to enter rename mode first
+      await triggerRename()
       parentClick.mockClear()
 
-      // Act & Assert
       fireEvent.click(screen.getByPlaceholderText('common.placeholder.input'))
       expect(parentClick).not.toHaveBeenCalled()
 
       fireEvent.click(screen.getByText('common.operation.save'))
       expect(parentClick).not.toHaveBeenCalled()
 
-      fireEvent.click(screen.getByTestId('operator-rename'))
+      // Re-enter rename mode for cancel test
+      await triggerRename()
       parentClick.mockClear()
 
       fireEvent.click(screen.getByText('common.operation.cancel'))
@@ -143,11 +140,11 @@ describe('Item Component', () => {
   })
 
   describe('Error Handling', () => {
-    it('should not throw if onAction is missing', () => {
+    it('should not throw if onAction is missing', async () => {
       // Arrange & Act
       // @ts-expect-error - Testing runtime tolerance for missing prop
       render(<Item credentialItem={mockCredentialItem} onAction={undefined} />)
-      fireEvent.click(screen.getByTestId('operator-rename'))
+      await triggerRename()
 
       // Assert
       expect(() => fireEvent.click(screen.getByText('common.operation.save'))).not.toThrow()

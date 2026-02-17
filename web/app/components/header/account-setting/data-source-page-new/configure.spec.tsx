@@ -1,8 +1,7 @@
 import type { DataSourceAuth } from './types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { AddApiKeyButtonProps, AddOAuthButtonProps, PluginPayload } from '@/app/components/plugins/plugin-auth/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import Configure from './configure'
@@ -12,40 +11,13 @@ import Configure from './configure'
  * Using Unit approach to ensure 100% coverage and stable tests.
  */
 
-// Mock internal components to isolate the unit test for Configure.
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: vi.fn(({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange: (val: boolean) => void }) => (
-    <div data-testid="portal-wrapper" data-open={open}>
-      {children}
-      <button data-testid="force-close-portal" onClick={() => onOpenChange(false)}>Close Portal</button>
-    </div>
-  )),
-  PortalToFollowElemTrigger: vi.fn(({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  )),
-  PortalToFollowElemContent: vi.fn(({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
-  )),
-}))
-
+// Mock plugin auth components to isolate the unit test for Configure.
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AddApiKeyButton: vi.fn(({ onUpdate, disabled, buttonText }: AddApiKeyButtonProps & { onUpdate: () => void }) => (
     <button data-testid="add-api-key" onClick={onUpdate} disabled={disabled}>{buttonText}</button>
   )),
   AddOAuthButton: vi.fn(({ onUpdate, disabled, buttonText }: AddOAuthButtonProps & { onUpdate: () => void }) => (
     <button data-testid="add-oauth" onClick={onUpdate} disabled={disabled}>{buttonText}</button>
-  )),
-}))
-
-// Mock RiAddLine since it's an icon component
-vi.mock('@remixicon/react', () => ({
-  RiAddLine: () => <div data-testid="ri-add-line" />,
-}))
-
-// Mock Button component to simplify testing
-vi.mock('@/app/components/base/button', () => ({
-  default: vi.fn(({ children, onClick, variant }: { children: React.ReactNode, onClick?: () => void, variant?: string }) => (
-    <button data-testid="base-button" onClick={onClick} data-variant={variant}>{children}</button>
   )),
 }))
 
@@ -81,30 +53,27 @@ describe('Configure Component', () => {
 
   describe('Open State Management', () => {
     it('should toggle and manage the open state correctly', () => {
-      // Act
-      render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
-      const trigger = screen.getByTestId('portal-trigger')
-      const wrapper = screen.getByTestId('portal-wrapper')
-      const closeBtn = screen.getByTestId('force-close-portal')
+      // Arrange
+      // Add a schema so we can detect if it's open by checking for button presence
+      const itemWithApiKey: DataSourceAuth = {
+        ...mockItemBase,
+        credential_schema: [mockFormSchema],
+      }
+      render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
+      const trigger = screen.getByRole('button', { name: /dataSource.configure/i })
 
-      // Assert
-      expect(wrapper).toHaveAttribute('data-open', 'false')
+      // Assert: Initially closed (button from content should not be present)
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
 
-      // Act
+      // Act: Click to open
       fireEvent.click(trigger)
-      // Assert
-      expect(wrapper).toHaveAttribute('data-open', 'true')
+      // Assert: Now open
+      expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
 
-      // Act
+      // Act: Click again to close
       fireEvent.click(trigger)
-      // Assert
-      expect(wrapper).toHaveAttribute('data-open', 'false')
-
-      // Act
-      fireEvent.click(trigger)
-      fireEvent.click(closeBtn)
-      // Assert
-      expect(wrapper).toHaveAttribute('data-open', 'false')
+      // Assert: Now closed
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
     })
   })
 
@@ -118,6 +87,7 @@ describe('Configure Component', () => {
 
       // Act
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       // Assert
       expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
@@ -135,6 +105,7 @@ describe('Configure Component', () => {
 
       // Act
       render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       // Assert
       expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
@@ -153,6 +124,7 @@ describe('Configure Component', () => {
 
       // Act
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       // Assert
       expect(screen.getByTestId('add-api-key')).toBeInTheDocument()
@@ -170,13 +142,13 @@ describe('Configure Component', () => {
       }
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} onUpdate={mockOnUpdate} />)
 
-      // Act
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      // Act: Open and click update
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       fireEvent.click(screen.getByTestId('add-api-key'))
 
       // Assert
       expect(mockOnUpdate).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
     })
 
     it('should handle missing onUpdate callback gracefully', () => {
@@ -191,13 +163,13 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
 
       // Act & Assert
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       fireEvent.click(screen.getByTestId('add-api-key'))
-      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       fireEvent.click(screen.getByTestId('add-oauth'))
-      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
     })
   })
 
@@ -212,8 +184,9 @@ describe('Configure Component', () => {
         },
       }
 
-      // Act
+      // Act: Open the configuration menu
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} disabled={true} />)
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
       // Assert
       expect(screen.getByTestId('add-api-key')).toBeDisabled()
@@ -223,6 +196,7 @@ describe('Configure Component', () => {
     it('should handle edge cases for missing, empty, or partial item data', () => {
       // Act & Assert (Missing schemas)
       const { rerender } = render(<Configure item={mockItemBase} pluginPayload={mockPluginPayload} />)
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
 
@@ -234,7 +208,8 @@ describe('Configure Component', () => {
       }
       // Act
       rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
-      // Assert
+      // Already open from previous click if rerender doesn't reset state
+      // But it's better to be sure
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
 
@@ -251,7 +226,7 @@ describe('Configure Component', () => {
       expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
     })
 
-    it('should reach the unreachable branch on line 95 for 100% coverage', () => {
+    it('should reach the unreachable branch on line 95 for 100% coverage', async () => {
       // Specialized test to reach the '|| []' part: canOAuth must be truthy but client_schema falsy on second call
       let count = 0
       const itemWithGlitchedSchema = {
@@ -259,7 +234,7 @@ describe('Configure Component', () => {
         oauth_schema: {
           get client_schema() {
             count++
-            if (count === 1)
+            if (count % 2 !== 0)
               return [mockFormSchema]
             return undefined
           },
@@ -271,8 +246,11 @@ describe('Configure Component', () => {
       } as unknown as DataSourceAuth
 
       render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)
+      fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
-      expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId('add-oauth')).toBeInTheDocument()
+      })
     })
   })
 })

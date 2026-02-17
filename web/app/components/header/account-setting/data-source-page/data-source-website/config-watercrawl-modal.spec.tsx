@@ -1,9 +1,7 @@
-import type { ReactNode } from 'react'
 import type { CommonResponse } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+
 import { createDataSourceApiKeyBinding } from '@/service/datasets'
 import ConfigWatercrawlModal from './config-watercrawl-modal'
 
@@ -14,33 +12,6 @@ import ConfigWatercrawlModal from './config-watercrawl-modal'
 
 vi.mock('@/service/datasets', () => ({
   createDataSourceApiKeyBinding: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: ReactNode }) => <div data-testid="portal">{children}</div>,
-  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => <div data-testid="portal-content">{children}</div>,
-}))
-
-// Mock Field component to provide a simpler interface for testing interaction
-vi.mock('@/app/components/datasets/create/website/base/field', () => ({
-  default: ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (v: string | number) => void, placeholder?: string }) => (
-    <div>
-      <label htmlFor={label}>{label}</label>
-      <input
-        id={label}
-        aria-label={label}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
-  ),
 }))
 
 describe('ConfigWatercrawlModal Component', () => {
@@ -59,8 +30,8 @@ describe('ConfigWatercrawlModal Component', () => {
 
       // Assert
       expect(screen.getByText('datasetCreation.watercrawl.configWatercrawl')).toBeInTheDocument()
-      expect(screen.getByLabelText('API Key')).toBeInTheDocument()
-      expect(screen.getByLabelText('Base URL')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('https://app.watercrawl.dev')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.save/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.cancel/i })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /datasetCreation\.watercrawl\.getApiKeyLinkText/i })).toHaveAttribute('href', 'https://app.watercrawl.dev/')
@@ -71,8 +42,8 @@ describe('ConfigWatercrawlModal Component', () => {
     it('should update state when input fields change', async () => {
       // Arrange
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-      const apiKeyInput = screen.getByLabelText('API Key')
-      const baseUrlInput = screen.getByLabelText('Base URL')
+      const apiKeyInput = screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder')
+      const baseUrlInput = screen.getByPlaceholderText('https://app.watercrawl.dev')
 
       // Act
       await user.type(apiKeyInput, 'water-key')
@@ -105,10 +76,7 @@ describe('ConfigWatercrawlModal Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-          message: 'common.errorMsg.fieldRequired:{"field":"API Key"}',
-        }))
+        expect(screen.getByText('common.errorMsg.fieldRequired:{"field":"API Key"}')).toBeInTheDocument()
       })
       expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
     })
@@ -116,7 +84,7 @@ describe('ConfigWatercrawlModal Component', () => {
     it('should show error for invalid Base URL format', async () => {
       // Arrange
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-      const baseUrlInput = screen.getByLabelText('Base URL')
+      const baseUrlInput = screen.getByPlaceholderText('https://app.watercrawl.dev')
 
       // Act
       await user.type(baseUrlInput, 'ftp://invalid-url.com')
@@ -124,10 +92,7 @@ describe('ConfigWatercrawlModal Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'error',
-          message: 'common.errorMsg.urlError',
-        }))
+        expect(screen.getByText('common.errorMsg.urlError')).toBeInTheDocument()
       })
       expect(createDataSourceApiKeyBinding).not.toHaveBeenCalled()
     })
@@ -140,8 +105,8 @@ describe('ConfigWatercrawlModal Component', () => {
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
       // Act
-      await user.type(screen.getByLabelText('API Key'), 'valid-key')
-      await user.type(screen.getByLabelText('Base URL'), 'http://my-watercrawl.com')
+      await user.type(screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder'), 'valid-key')
+      await user.type(screen.getByPlaceholderText('https://app.watercrawl.dev'), 'http://my-watercrawl.com')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       // Assert
@@ -159,7 +124,7 @@ describe('ConfigWatercrawlModal Component', () => {
         })
       })
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success', message: 'common.api.success' }))
+        expect(screen.getByText('common.api.success')).toBeInTheDocument()
         expect(mockOnSaved).toHaveBeenCalled()
       })
     })
@@ -170,7 +135,7 @@ describe('ConfigWatercrawlModal Component', () => {
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
       // Act
-      await user.type(screen.getByLabelText('API Key'), 'test-api-key')
+      await user.type(screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder'), 'test-api-key')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       // Assert
@@ -193,7 +158,7 @@ describe('ConfigWatercrawlModal Component', () => {
       })
       vi.mocked(createDataSourceApiKeyBinding).mockReturnValue(savePromise)
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
-      await user.type(screen.getByLabelText('API Key'), 'test-api-key')
+      await user.type(screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder'), 'test-api-key')
       const saveBtn = screen.getByRole('button', { name: /common\.operation\.save/i })
 
       // Act
@@ -214,8 +179,8 @@ describe('ConfigWatercrawlModal Component', () => {
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
       // Act
-      await user.type(screen.getByLabelText('API Key'), 'test-api-key')
-      await user.type(screen.getByLabelText('Base URL'), 'https://secure-watercrawl.com')
+      await user.type(screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder'), 'test-api-key')
+      await user.type(screen.getByPlaceholderText('https://app.watercrawl.dev'), 'https://secure-watercrawl.com')
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       // Assert

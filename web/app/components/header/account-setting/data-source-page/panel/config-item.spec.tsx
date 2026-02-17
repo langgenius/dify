@@ -1,6 +1,5 @@
 import type { ConfigItemType } from './config-item'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
 import ConfigItem from './config-item'
 import { DataSourceType } from './types'
 

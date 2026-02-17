@@ -1,10 +1,13 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { DataSourceAuth } from './types'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useTheme } from 'next-themes'
+import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useGetDataSourceListAuth } from '@/service/use-datasource'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { useGetDataSourceListAuth, useGetDataSourceOAuthUrl } from '@/service/use-datasource'
 import { defaultSystemFeatures } from '@/types/feature'
+import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from './hooks'
 import DataSourcePage from './index'
 
 /**
@@ -12,36 +15,33 @@ import DataSourcePage from './index'
  * Using Unit approach to focus on page-level layout and conditional rendering.
  */
 
-// Mock sub-components
-vi.mock('./card', () => ({
-  default: vi.fn(({ item }: { item: DataSourceAuth }) => (
-    <div data-testid={`mock-card-${item.plugin_unique_identifier}`}>
-      {item.name}
-    </div>
-  )),
+// Mock external dependencies
+vi.mock('next-themes', () => ({
+  useTheme: vi.fn(),
 }))
 
-vi.mock('./install-from-marketplace', () => ({
-  default: vi.fn(({ providers, searchText }: { providers: DataSourceAuth[], searchText: string }) => (
-    <div data-testid="mock-marketplace">
-      Marketplace -
-      {' '}
-      {providers.length}
-      {' '}
-      providers, Search:
-      {' '}
-      {searchText}
-    </div>
-  )),
+vi.mock('@/hooks/use-i18n', () => ({
+  useRenderI18nObject: vi.fn(),
 }))
 
-// Mock external hooks
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceListAuth: vi.fn(),
+  useGetDataSourceOAuthUrl: vi.fn(),
+}))
+
+vi.mock('./hooks', () => ({
+  useDataSourceAuthUpdate: vi.fn(),
+  useMarketplaceAllPlugins: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/plugin-auth', () => ({
+  usePluginAuthAction: vi.fn(),
+  ApiKeyModal: () => <div data-testid="mock-api-key-modal" />,
+  AuthCategory: { datasource: 'datasource' },
 }))
 
 describe('DataSourcePage Component', () => {
@@ -72,6 +72,25 @@ describe('DataSourcePage Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<typeof useTheme>)
+    vi.mocked(useRenderI18nObject).mockReturnValue((obj: Record<string, string>) => obj?.en_US || '')
+    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: vi.fn() } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
+    vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
+    vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
+    vi.mocked(usePluginAuthAction).mockReturnValue({
+      deleteCredentialId: null,
+      doingAction: false,
+      handleConfirm: vi.fn(),
+      handleEdit: vi.fn(),
+      handleRemove: vi.fn(),
+      handleRename: vi.fn(),
+      handleSetDefault: vi.fn(),
+      editValues: null,
+      setEditValues: vi.fn(),
+      openConfirm: vi.fn(),
+      closeConfirm: vi.fn(),
+      pendingOperationCredentialId: { current: null },
+    } as unknown as ReturnType<typeof usePluginAuthAction>)
   })
 
   describe('Initial View Rendering', () => {
@@ -91,8 +110,8 @@ describe('DataSourcePage Component', () => {
       render(<DataSourcePage />)
 
       // Assert
-      expect(screen.queryByTestId(/mock-card-/)).not.toBeInTheDocument()
-      expect(screen.queryByTestId('mock-marketplace')).not.toBeInTheDocument()
+      expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
     })
   })
 
@@ -113,8 +132,6 @@ describe('DataSourcePage Component', () => {
       render(<DataSourcePage />)
 
       // Assert
-      expect(screen.getByTestId('mock-card-unique-1')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-card-unique-2')).toBeInTheDocument()
       expect(screen.getByText('Dify Source')).toBeInTheDocument()
       expect(screen.getByText('Partner Source')).toBeInTheDocument()
     })
@@ -137,9 +154,8 @@ describe('DataSourcePage Component', () => {
       render(<DataSourcePage />)
 
       // Assert
-      const marketplace = screen.getByTestId('mock-marketplace')
-      expect(marketplace).toBeInTheDocument()
-      expect(marketplace).toHaveTextContent('Marketplace - 2 providers')
+      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
     })
 
     it('should pass an empty array to InstallFromMarketplace if data result is missing but marketplace is enabled', () => {
@@ -158,9 +174,7 @@ describe('DataSourcePage Component', () => {
       render(<DataSourcePage />)
 
       // Assert
-      const marketplace = screen.getByTestId('mock-marketplace')
-      expect(marketplace).toBeInTheDocument()
-      expect(marketplace).toHaveTextContent('Marketplace - 0 providers')
+      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
     })
 
     it('should handle the case where data exists but result is an empty array', () => {
@@ -179,10 +193,8 @@ describe('DataSourcePage Component', () => {
       render(<DataSourcePage />)
 
       // Assert
-      expect(screen.queryByTestId(/mock-card-/)).not.toBeInTheDocument()
-      const marketplace = screen.getByTestId('mock-marketplace')
-      expect(marketplace).toBeInTheDocument()
-      expect(marketplace).toHaveTextContent('Marketplace - 0 providers')
+      expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
     })
 
     it('should handle the case where systemFeatures is missing (edge case for coverage)', () => {
@@ -201,7 +213,7 @@ describe('DataSourcePage Component', () => {
       render(<DataSourcePage />)
 
       // Assert
-      expect(screen.queryByTestId('mock-marketplace')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
     })
   })
 })

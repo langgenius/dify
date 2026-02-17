@@ -1,6 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import { useInvalidDataSourceIntegrates } from '@/service/use-common'
 import Operate from './index'
@@ -11,12 +9,6 @@ import Operate from './index'
  */
 
 // Mock services and toast
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
 vi.mock('@/service/common', () => ({
   syncDataSourceNotion: vi.fn(),
   updateDataSourceNotionAction: vi.fn(),
@@ -44,18 +36,18 @@ describe('Operate Component (Notion)', () => {
   describe('Rendering', () => {
     it('should render the menu button initially', () => {
       // Act
-      render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
+      const { container } = render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
 
       // Assert
-      const menuButton = screen.getByRole('button')
+      const menuButton = within(container).getByRole('button')
       expect(menuButton).toBeInTheDocument()
       expect(menuButton).not.toHaveClass('bg-state-base-hover')
     })
 
     it('should open the menu and show all options when clicked', async () => {
       // Arrange
-      render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
-      const menuButton = screen.getByRole('button')
+      const { container } = render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
+      const menuButton = within(container).getByRole('button')
 
       // Act
       fireEvent.click(menuButton)
@@ -73,8 +65,8 @@ describe('Operate Component (Notion)', () => {
   describe('Menu Actions', () => {
     it('should call onAuthAgain when Change Authorized Pages is clicked', async () => {
       // Arrange
-      render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
-      fireEvent.click(screen.getByRole('button'))
+      const { container } = render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
+      fireEvent.click(within(container).getByRole('button'))
       const option = await screen.findByText('common.dataSource.notion.changeAuthorizedPages')
 
       // Act
@@ -86,8 +78,8 @@ describe('Operate Component (Notion)', () => {
 
     it('should call handleSync, show success toast, and invalidate cache when Sync is clicked', async () => {
       // Arrange
-      render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
-      fireEvent.click(screen.getByRole('button'))
+      const { container } = render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
+      fireEvent.click(within(container).getByRole('button'))
       const syncBtn = await screen.findByText('common.dataSource.notion.sync')
 
       // Act
@@ -99,17 +91,14 @@ describe('Operate Component (Notion)', () => {
           url: `/oauth/data-source/notion/${mockPayload.id}/sync`,
         })
       })
-      expect(Toast.notify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.api.success',
-      })
+      expect((await screen.findAllByText('common.api.success')).length).toBeGreaterThan(0)
       expect(mockInvalidate).toHaveBeenCalledTimes(1)
     })
 
     it('should call handleRemove, show success toast, and invalidate cache when Remove is clicked', async () => {
       // Arrange
-      render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
-      fireEvent.click(screen.getByRole('button'))
+      const { container } = render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
+      fireEvent.click(within(container).getByRole('button'))
       const removeBtn = await screen.findByText('common.dataSource.notion.remove')
 
       // Act
@@ -121,10 +110,7 @@ describe('Operate Component (Notion)', () => {
           url: `/data-source/integrates/${mockPayload.id}/disable`,
         })
       })
-      expect(Toast.notify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.api.success',
-      })
+      expect((await screen.findAllByText('common.api.success')).length).toBeGreaterThan(0)
       expect(mockInvalidate).toHaveBeenCalledTimes(1)
     })
   })
@@ -132,8 +118,8 @@ describe('Operate Component (Notion)', () => {
   describe('State Transitions', () => {
     it('should toggle the open class on the button based on menu visibility', async () => {
       // Arrange
-      render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
-      const menuButton = screen.getByRole('button')
+      const { container } = render(<Operate payload={mockPayload} onAuthAgain={mockOnAuthAgain} />)
+      const menuButton = within(container).getByRole('button')
 
       // Act (Open)
       fireEvent.click(menuButton)

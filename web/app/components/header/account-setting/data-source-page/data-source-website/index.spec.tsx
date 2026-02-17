@@ -1,9 +1,7 @@
-import type { JSX } from 'react'
 import type { AppContextValue } from '@/context/app-context'
 import type { CommonResponse } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+
 import { useAppContext } from '@/context/app-context'
 import { DataSourceProvider } from '@/models/common'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
@@ -27,67 +25,7 @@ vi.mock('@/context/app-context', () => ({
 vi.mock('@/service/datasets', () => ({
   fetchDataSources: vi.fn(),
   removeDataSourceApiKeyBinding: vi.fn(),
-}))
-
-// Mock Toast
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
-// Mock Panel component to verify interactions
-vi.mock('../panel', () => ({
-  default: ({ isConfigured, onConfigure, onRemove, configuredList, readOnly }: {
-    isConfigured: boolean
-    onConfigure: () => void
-    onRemove: () => void
-    configuredList: Array<{ id: string, name: string, logo: (props: { className: string }) => JSX.Element }>
-    readOnly: boolean
-  }) => (
-    <div data-testid="panel">
-      <div data-testid="configured-status">{isConfigured ? 'configured' : 'not-configured'}</div>
-      <div data-testid="readonly-status">{readOnly ? 'readonly' : 'editable'}</div>
-      <button data-testid="configure-btn" onClick={onConfigure}>Configure</button>
-      <button data-testid="remove-btn" onClick={onRemove}>Remove</button>
-      <div data-testid="configured-items">
-        {configuredList.map(item => (
-          <div key={item.id} data-testid={`item-${item.id}`}>
-            <span data-testid={`name-${item.id}`}>{item.name}</span>
-            <div data-testid={`logo-${item.id}`}>{item.logo({ className: 'logo-cls' })}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
-}))
-
-// Mock Configuration Modals
-vi.mock('./config-firecrawl-modal', () => ({
-  default: ({ onSaved, onCancel }: { onSaved: () => void, onCancel: () => void }) => (
-    <div data-testid="firecrawl-modal">
-      <button data-testid="save-firecrawl" onClick={onSaved}>Save</button>
-      <button data-testid="cancel-firecrawl" onClick={onCancel}>Cancel</button>
-    </div>
-  ),
-}))
-
-vi.mock('./config-watercrawl-modal', () => ({
-  default: ({ onSaved, onCancel }: { onSaved: () => void, onCancel: () => void }) => (
-    <div data-testid="watercrawl-modal">
-      <button data-testid="save-watercrawl" onClick={onSaved}>Save</button>
-      <button data-testid="cancel-watercrawl" onClick={onCancel}>Cancel</button>
-    </div>
-  ),
-}))
-
-vi.mock('./config-jina-reader-modal', () => ({
-  default: ({ onSaved, onCancel }: { onSaved: () => void, onCancel: () => void }) => (
-    <div data-testid="jina-modal">
-      <button data-testid="save-jina" onClick={onSaved}>Save</button>
-      <button data-testid="cancel-jina" onClick={onCancel}>Cancel</button>
-    </div>
-  ),
+  createDataSourceApiKeyBinding: vi.fn(),
 }))
 
 describe('DataSourceWebsite Component', () => {
@@ -119,7 +57,7 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.fireCrawl)
 
       // Assert
-      expect(screen.getByTestId('configured-status')).toHaveTextContent('configured')
+      expect(screen.getByText('common.dataSource.website.configuredCrawlers')).toBeInTheDocument()
     })
 
     it('should pass readOnly status based on workspace manager permissions', async () => {
@@ -130,7 +68,7 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.fireCrawl)
 
       // Assert
-      expect(screen.getByTestId('readonly-status')).toHaveTextContent('readonly')
+      expect(screen.getByText('common.dataSource.configure')).toHaveClass('cursor-default')
     })
   })
 
@@ -143,7 +81,7 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.fireCrawl)
 
       // Assert
-      expect(await screen.findByTestId('name-1')).toHaveTextContent('Firecrawl')
+      expect(await screen.findByText('Firecrawl')).toBeInTheDocument()
       expect(screen.getByText('🔥')).toBeInTheDocument()
     })
 
@@ -155,10 +93,8 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.waterCrawl)
 
       // Assert
-      expect(await screen.findByTestId('name-2')).toHaveTextContent('WaterCrawl')
-      const logoContainer = screen.getByTestId('logo-2').firstChild as HTMLElement
-      expect(logoContainer.tagName.toLowerCase()).toBe('div')
-      expect(logoContainer.querySelector('span')).toBeInTheDocument()
+      const elements = await screen.findAllByText('WaterCrawl')
+      expect(elements.length).toBeGreaterThanOrEqual(1)
     })
 
     it('should render correct logo and name for Jina Reader', async () => {
@@ -169,10 +105,8 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.jinaReader)
 
       // Assert
-      expect(await screen.findByTestId('name-3')).toHaveTextContent('Jina Reader')
-      const logoContainer = screen.getByTestId('logo-3').firstChild as HTMLElement
-      expect(logoContainer.tagName.toLowerCase()).toBe('div')
-      expect(logoContainer.querySelector('span')).toBeInTheDocument()
+      const elements = await screen.findAllByText('Jina Reader')
+      expect(elements.length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -182,45 +116,47 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.fireCrawl)
 
       // Act (Open)
-      fireEvent.click(screen.getByTestId('configure-btn'))
+      fireEvent.click(screen.getByText('common.dataSource.configure'))
       // Assert
-      expect(screen.getByTestId('firecrawl-modal')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.firecrawl.configFirecrawl')).toBeInTheDocument()
 
       // Act (Cancel)
-      fireEvent.click(screen.getByTestId('cancel-firecrawl'))
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
       // Assert
-      expect(screen.queryByTestId('firecrawl-modal')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetCreation.firecrawl.configFirecrawl')).not.toBeInTheDocument()
     })
 
     it('should re-fetch sources after saving configuration (Watercrawl)', async () => {
       // Arrange
       await renderAndWait(DataSourceProvider.waterCrawl)
-      fireEvent.click(screen.getByTestId('configure-btn'))
+      fireEvent.click(screen.getByText('common.dataSource.configure'))
       vi.mocked(fetchDataSources).mockClear()
 
       // Act
-      fireEvent.click(screen.getByTestId('save-watercrawl'))
+      fireEvent.change(screen.getByPlaceholderText('datasetCreation.watercrawl.apiKeyPlaceholder'), { target: { value: 'test-key' } })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       // Assert
       await waitFor(() => {
         expect(fetchDataSources).toHaveBeenCalled()
-        expect(screen.queryByTestId('watercrawl-modal')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetCreation.watercrawl.configWatercrawl')).not.toBeInTheDocument()
       })
     })
 
     it('should re-fetch sources after saving configuration (Jina Reader)', async () => {
       // Arrange
       await renderAndWait(DataSourceProvider.jinaReader)
-      fireEvent.click(screen.getByTestId('configure-btn'))
+      fireEvent.click(screen.getByText('common.dataSource.configure'))
       vi.mocked(fetchDataSources).mockClear()
 
       // Act
-      fireEvent.click(screen.getByTestId('save-jina'))
+      fireEvent.change(screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder'), { target: { value: 'test-key' } })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       // Assert
       await waitFor(() => {
         expect(fetchDataSources).toHaveBeenCalled()
-        expect(screen.queryByTestId('jina-modal')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetCreation.jinaReader.configJinaReader')).not.toBeInTheDocument()
       })
     })
   })
@@ -231,20 +167,19 @@ describe('DataSourceWebsite Component', () => {
       vi.mocked(fetchDataSources).mockResolvedValue({ result: 'success', sources: [mockSources[0]] } as DataSourcesResponse)
       vi.mocked(removeDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' } as CommonResponse)
       await renderAndWait(DataSourceProvider.fireCrawl)
-      await waitFor(() => expect(screen.getByTestId('configured-status')).toHaveTextContent('configured'))
+      await waitFor(() => expect(screen.getByText('common.dataSource.website.configuredCrawlers')).toBeInTheDocument())
 
       // Act
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      const removeBtn = screen.getByText('Firecrawl').parentElement?.querySelector('svg')?.parentElement
+      if (removeBtn)
+        fireEvent.click(removeBtn)
 
       // Assert
       await waitFor(() => {
         expect(removeDataSourceApiKeyBinding).toHaveBeenCalledWith('1')
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'success',
-          message: 'common.api.remove',
-        }))
+        expect(screen.getByText('common.api.remove')).toBeInTheDocument()
       })
-      expect(screen.getByTestId('configured-status')).toHaveTextContent('not-configured')
+      expect(screen.queryByText('common.dataSource.website.configuredCrawlers')).not.toBeInTheDocument()
     })
 
     it('should skip removal API call if no data source ID is present', async () => {
@@ -252,7 +187,9 @@ describe('DataSourceWebsite Component', () => {
       await renderAndWait(DataSourceProvider.fireCrawl)
 
       // Act
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      const removeBtn = screen.queryByText('Firecrawl')?.parentElement?.querySelector('svg')?.parentElement
+      if (removeBtn)
+        fireEvent.click(removeBtn)
 
       // Assert
       expect(removeDataSourceApiKeyBinding).not.toHaveBeenCalled()

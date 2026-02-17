@@ -1,18 +1,14 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { ConfigItemType } from '../panel/config-item'
 import type { AppContextValue } from '@/context/app-context'
 import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useAppContext } from '@/context/app-context'
-import { useDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
-import Panel from '../panel'
+import { useDataSourceIntegrates, useInvalidDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
 import DataSourceNotion from './index'
 
 /**
  * DataSourceNotion Component Tests
- * Using Unit approach with mocked Panel to isolate Notion integration logic.
+ * Using Unit approach with real Panel and sibling components to test Notion integration logic.
  */
 
 type MockQueryResult<T> = UseQueryResult<T, Error>
@@ -22,49 +18,15 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
 
+vi.mock('@/service/common', () => ({
+  syncDataSourceNotion: vi.fn(),
+  updateDataSourceNotionAction: vi.fn(),
+}))
+
 vi.mock('@/service/use-common', () => ({
   useDataSourceIntegrates: vi.fn(),
   useNotionConnection: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
-vi.mock('../panel', () => ({
-  default: vi.fn(({ onConfigure, notionActions, configuredList, isConfigured, readOnly }: {
-    onConfigure: () => void
-    notionActions: { onChangeAuthorizedPage: () => void }
-    configuredList: ConfigItemType[]
-    isConfigured: boolean
-    readOnly: boolean
-  }) => (
-    <div data-testid="panel-mock">
-      <div data-testid="is-configured">{isConfigured.toString()}</div>
-      <div data-testid="read-only">{readOnly.toString()}</div>
-      <button data-testid="configure-btn" onClick={onConfigure}>Configure</button>
-      <button data-testid="auth-again-btn" onClick={notionActions.onChangeAuthorizedPage}>Auth Again</button>
-      <div data-testid="configured-list-count">{configuredList.length}</div>
-      {configuredList.map(item => (
-        <div key={item.id} data-testid={`item-${item.id}`}>
-          <span data-testid={`item-name-${item.id}`}>{item.name}</span>
-          <span data-testid={`item-active-${item.id}`}>{item.isActive.toString()}</span>
-          <div data-testid={`item-logo-${item.id}`}>
-            {item.logo({ className: 'test-class' })}
-          </div>
-        </div>
-      ))}
-    </div>
-  )),
-}))
-
-vi.mock('@/app/components/base/notion-icon', () => ({
-  default: vi.fn(({ src, name, className }: { src: string, name: string, className: string }) => (
-    /* eslint-disable-next-line next/no-img-element */
-    <img data-testid="notion-icon" src={src} alt={name} className={className} />
-  )),
+  useInvalidDataSourceIntegrates: vi.fn(),
 }))
 
 describe('DataSourceNotion Component', () => {
@@ -75,7 +37,7 @@ describe('DataSourceNotion Component', () => {
       is_bound: true,
       source_info: {
         workspace_name: 'Workspace 1',
-        workspace_icon: 'icon-1',
+        workspace_icon: 'https://example.com/icon-1.png',
         workspace_id: 'notion-ws-1',
         total: 10,
         pages: [],
@@ -110,14 +72,23 @@ describe('DataSourceNotion Component', () => {
     vi.mocked(useAppContext).mockReturnValue(baseAppContext)
     vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess({ data: [] }))
     vi.mocked(useNotionConnection).mockReturnValue(mockQueryPending())
+    vi.mocked(useInvalidDataSourceIntegrates).mockReturnValue(vi.fn())
 
     const locationMock = { href: '', assign: vi.fn() }
     Object.defineProperty(window, 'location', { value: locationMock, writable: true, configurable: true })
+
+    // Clear document body to avoid toast leaks between tests
+    document.body.innerHTML = ''
   })
 
   afterEach(() => {
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true, configurable: true })
   })
+
+  const getWorkspaceItem = (name: string) => {
+    const nameEl = screen.getByText(name)
+    return (nameEl.closest('div[class*="workspace-item"]') || nameEl.parentElement) as HTMLElement
+  }
 
   describe('Rendering', () => {
     it('should render with no workspaces initially and call integration hook', () => {
@@ -125,8 +96,8 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
-      expect(screen.getByTestId('configured-list-count')).toHaveTextContent('0')
+      expect(screen.getByText('common.dataSource.notion.title')).toBeInTheDocument()
+      expect(screen.queryByText('common.dataSource.notion.connectedWorkspace')).not.toBeInTheDocument()
       expect(useDataSourceIntegrates).toHaveBeenCalledWith({ initialData: undefined })
     })
 
@@ -138,11 +109,10 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion workspaces={mockWorkspaces} />)
 
       // Assert
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('true')
-      expect(screen.getByTestId('configured-list-count')).toHaveTextContent('1')
-      expect(screen.getByTestId('item-name-ws-1')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('item-active-ws-1')).toHaveTextContent('true')
-      expect(screen.getByTestId('notion-icon')).toHaveAttribute('src', 'icon-1')
+      expect(screen.getByText('common.dataSource.notion.connectedWorkspace')).toBeInTheDocument()
+      expect(screen.getByText('Workspace 1')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.connected')).toBeInTheDocument()
+      expect(screen.getByAltText('workspace icon')).toHaveAttribute('src', 'https://example.com/icon-1.png')
       expect(useDataSourceIntegrates).toHaveBeenCalledWith({ initialData: { data: mockWorkspaces } })
     })
 
@@ -151,7 +121,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion workspaces={[]} />)
 
       // Assert
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
+      expect(screen.queryByText('common.dataSource.notion.connectedWorkspace')).not.toBeInTheDocument()
       expect(useDataSourceIntegrates).toHaveBeenCalledWith({ initialData: { data: [] } })
     })
 
@@ -176,35 +146,35 @@ describe('DataSourceNotion Component', () => {
       vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQueryPending())
       rerender(<DataSourceNotion />)
       // Assert
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
+      expect(screen.queryByText('common.dataSource.notion.connectedWorkspace')).not.toBeInTheDocument()
 
       // Act (Broken)
       const brokenData = {} as { data: TDataSourceNotion[] }
       vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess(brokenData))
       rerender(<DataSourceNotion />)
       // Assert
-      expect(screen.getByTestId('configured-list-count')).toHaveTextContent('0')
+      expect(screen.queryByText('common.dataSource.notion.connectedWorkspace')).not.toBeInTheDocument()
     })
 
     it('should handle integrates being nullish', () => {
       /* eslint-disable-next-line ts/no-explicit-any */
       vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: undefined, isSuccess: true } as any)
       render(<DataSourceNotion />)
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
+      expect(screen.queryByText('common.dataSource.notion.connectedWorkspace')).not.toBeInTheDocument()
     })
 
     it('should handle integrates data being nullish', () => {
       /* eslint-disable-next-line ts/no-explicit-any */
       vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: { data: null }, isSuccess: true } as any)
       render(<DataSourceNotion />)
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('false')
+      expect(screen.queryByText('common.dataSource.notion.connectedWorkspace')).not.toBeInTheDocument()
     })
 
     it('should handle integrates data being valid', () => {
       /* eslint-disable-next-line ts/no-explicit-any */
-      vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: { data: [{ id: '1', is_bound: true, source_info: { workspace_name: 'W', workspace_icon: 'i', total: 1, pages: [] } }] }, isSuccess: true } as any)
+      vi.mocked(useDataSourceIntegrates).mockReturnValue({ data: { data: [{ id: '1', is_bound: true, source_info: { workspace_name: 'W', workspace_icon: 'https://example.com/i.png', total: 1, pages: [] } }] }, isSuccess: true } as any)
       render(<DataSourceNotion />)
-      expect(screen.getByTestId('is-configured')).toHaveTextContent('true')
+      expect(screen.getByText('common.dataSource.notion.connectedWorkspace')).toBeInTheDocument()
     })
 
     it('should cover all possible falsy/nullish branches for integrates and workspaces', () => {
@@ -247,7 +217,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      expect(screen.getByTestId('read-only')).toHaveTextContent('false')
+      expect(screen.getByText('common.dataSource.notion.title').closest('div')).not.toHaveClass('grayscale')
     })
 
     it('should pass readOnly as true when user is NOT a manager', () => {
@@ -258,7 +228,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      expect(screen.getByTestId('read-only')).toHaveTextContent('true')
+      expect(screen.getByText('common.dataSource.connect')).toHaveClass('opacity-50', 'grayscale')
     })
   })
 
@@ -268,7 +238,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Act
-      fireEvent.click(screen.getByTestId('configure-btn'))
+      fireEvent.click(screen.getByText('common.dataSource.connect'))
 
       // Assert
       expect(useNotionConnection).toHaveBeenCalledWith(true)
@@ -280,7 +250,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Act
-      fireEvent.click(screen.getByTestId('configure-btn'))
+      fireEvent.click(screen.getByText('common.dataSource.connect'))
 
       // Assert
       expect(useNotionConnection).toHaveBeenCalledWith(false)
@@ -288,22 +258,32 @@ describe('DataSourceNotion Component', () => {
 
     it('should redirect if auth URL is available when "Auth Again" is clicked', async () => {
       // Arrange
+      vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess({ data: mockWorkspaces }))
       vi.mocked(useNotionConnection).mockReturnValue(mockQuerySuccess({ data: 'http://auth-url' }))
       render(<DataSourceNotion />)
 
       // Act
-      fireEvent.click(screen.getByTestId('auth-again-btn'))
+      const workspaceItem = getWorkspaceItem('Workspace 1')
+      const actionBtn = within(workspaceItem).getByRole('button')
+      fireEvent.click(actionBtn)
+      const authAgainBtn = await screen.findByText('common.dataSource.notion.changeAuthorizedPages')
+      fireEvent.click(authAgainBtn)
 
       // Assert
       expect(window.location.href).toBe('http://auth-url')
     })
 
-    it('should trigger connection flow if URL is missing when "Auth Again" is clicked', () => {
+    it('should trigger connection flow if URL is missing when "Auth Again" is clicked', async () => {
       // Arrange
+      vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess({ data: mockWorkspaces }))
       render(<DataSourceNotion />)
 
       // Act
-      fireEvent.click(screen.getByTestId('auth-again-btn'))
+      const workspaceItem = getWorkspaceItem('Workspace 1')
+      const actionBtn = within(workspaceItem).getByRole('button')
+      fireEvent.click(actionBtn)
+      const authAgainBtn = await screen.findByText('common.dataSource.notion.changeAuthorizedPages')
+      fireEvent.click(authAgainBtn)
 
       // Assert
       expect(useNotionConnection).toHaveBeenCalledWith(true)
@@ -332,12 +312,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'info',
-          message: 'common.dataSource.notion.integratedAlert',
-        }))
-      })
+      expect(await screen.findByText('common.dataSource.notion.integratedAlert')).toBeInTheDocument()
     })
 
     it('should handle various data types and missing properties in connection data correctly', async () => {
@@ -348,7 +323,7 @@ describe('DataSourceNotion Component', () => {
       // Assert
       await waitFor(() => {
         expect(window.location.href).toBe('')
-        expect(Toast.notify).not.toHaveBeenCalled()
+        expect(screen.queryByText('common.dataSource.notion.integratedAlert')).not.toBeInTheDocument()
       })
 
       // Act (Broken object)
@@ -414,7 +389,8 @@ describe('DataSourceNotion Component', () => {
 
   describe('Additional Action Edge Cases', () => {
     it('should cover all possible falsy/nullish branches for connection data in handleAuthAgain and useEffect', async () => {
-      const { rerender } = render(<DataSourceNotion />)
+      vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess({ data: mockWorkspaces }))
+      render(<DataSourceNotion />)
 
       const connectionCases = [
         undefined,
@@ -433,10 +409,13 @@ describe('DataSourceNotion Component', () => {
       for (const val of connectionCases) {
         /* eslint-disable-next-line ts/no-explicit-any */
         vi.mocked(useNotionConnection).mockReturnValue({ data: val, isSuccess: true } as any)
-        rerender(<DataSourceNotion />)
 
         // Trigger handleAuthAgain with these values
-        fireEvent.click(screen.getByTestId('auth-again-btn'))
+        const workspaceItem = getWorkspaceItem('Workspace 1')
+        const actionBtn = within(workspaceItem).getByRole('button')
+        fireEvent.click(actionBtn)
+        const authAgainBtn = await screen.findByText('common.dataSource.notion.changeAuthorizedPages')
+        fireEvent.click(authAgainBtn)
       }
 
       await waitFor(() => expect(useNotionConnection).toHaveBeenCalled())
@@ -444,7 +423,7 @@ describe('DataSourceNotion Component', () => {
   })
 
   describe('Edge Cases in Workspace Data', () => {
-    it('should render correctly with missing source_info optional fields', () => {
+    it('should render correctly with missing source_info optional fields', async () => {
       // Arrange
       const workspaceWithMissingInfo: TDataSourceNotion = {
         id: 'ws-2',
@@ -458,9 +437,13 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      expect(screen.getByTestId('item-name-ws-2')).toHaveTextContent('Workspace 2')
-      const panelCall = vi.mocked(Panel).mock.calls.find(call => call[0].configuredList.some(item => item.id === 'ws-2'))
-      expect(panelCall?.[0].configuredList[0].notionConfig?.total).toBe(0)
+      expect(screen.getByText('Workspace 2')).toBeInTheDocument()
+
+      const workspaceItem = getWorkspaceItem('Workspace 2')
+      const actionBtn = within(workspaceItem).getByRole('button')
+      fireEvent.click(actionBtn)
+
+      expect(await screen.findByText('0 common.dataSource.notion.pagesAuthorized')).toBeInTheDocument()
     })
 
     it('should display inactive status correctly for unbound workspaces', () => {
@@ -469,7 +452,7 @@ describe('DataSourceNotion Component', () => {
         id: 'ws-3',
         provider: 'notion',
         is_bound: false,
-        source_info: { workspace_name: 'Workspace 3', workspace_icon: 'icon-3', workspace_id: 'notion-ws-3', total: 5, pages: [] },
+        source_info: { workspace_name: 'Workspace 3', workspace_icon: 'https://example.com/icon-3.png', workspace_id: 'notion-ws-3', total: 5, pages: [] },
       }
       vi.mocked(useDataSourceIntegrates).mockReturnValue(mockQuerySuccess({ data: [inactiveWS] }))
 
@@ -477,7 +460,7 @@ describe('DataSourceNotion Component', () => {
       render(<DataSourceNotion />)
 
       // Assert
-      expect(screen.getByTestId('item-active-ws-3')).toHaveTextContent('false')
+      expect(screen.getByText('common.dataSource.notion.disconnected')).toBeInTheDocument()
     })
   })
 })
