@@ -519,7 +519,7 @@ class PluginService:
         if not plugin:
             return manager.uninstall(tenant_id, plugin_installation_id)
 
-        with Session(db.engine).begin() as session:
+        with Session(db.engine) as session, session.begin():
             plugin_id = plugin.plugin_id
             logger.info("Deleting credentials for plugin: %s", plugin_id)
 
