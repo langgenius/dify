@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import AudioPreview from './audio-preview'
 
 vi.mock('react-hotkeys-hook', () => ({
@@ -27,18 +27,18 @@ describe('AudioPreview', () => {
   })
 
   it('should render close button with icon', () => {
-    const { baseElement } = render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
-    const closeIcon = baseElement.querySelector('svg')
+    const closeIcon = screen.getByTestId('close-btn')
     expect(closeIcon).toBeInTheDocument()
   })
 
   it('should call onCancel when close button is clicked', () => {
     const onCancel = vi.fn()
-    const { baseElement } = render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
+    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
 
-    const closeIcon = baseElement.querySelector('svg')
-    fireEvent.click(closeIcon!.parentElement!)
+    const closeIcon = screen.getByTestId('close-btn')
+    fireEvent.click(closeIcon.parentElement!)
 
     expect(onCancel).toHaveBeenCalled()
   })
