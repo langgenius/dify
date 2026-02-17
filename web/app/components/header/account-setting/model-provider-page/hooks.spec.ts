@@ -1,8 +1,22 @@
 import type { Mock } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import type {
+  DefaultModelResponse,
+  Model,
+} from './declarations'
+import { act, renderHook } from '@testing-library/react'
 import { useLocale } from '@/context/i18n'
-import { useLanguage } from './hooks'
+import {
+  ConfigurationMethodEnum,
+  ModelTypeEnum,
+} from './declarations'
+import {
+  useLanguage,
+  useModelList,
+  useProviderCredentialsAndLoadBalancing,
+  useSystemDefaultModelAndModelList,
+} from './hooks'
 
+// Mock dependencies
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
   useQueryClient: vi.fn(() => ({
@@ -10,17 +24,6 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-// mock use-context-selector
-vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(),
-  createContext: () => ({
-    Provider: ({ children }: any) => children,
-    Consumer: ({ children }: any) => children(null),
-  }),
-  useContextSelector: vi.fn(),
-}))
-
-// mock service/common functions
 vi.mock('@/service/common', () => ({
   fetchDefaultModal: vi.fn(),
   fetchModelList: vi.fn(),
@@ -30,63 +33,129 @@ vi.mock('@/service/common', () => ({
 
 vi.mock('@/service/use-common', () => ({
   commonQueryKeys: {
-    modelProviders: ['common', 'model-providers'],
+    modelList: (type: string) => ['model-list', type],
+    modelProviders: ['model-providers'],
+    defaultModel: (type: string) => ['default-model', type],
   },
 }))
 
-// mock context hooks
 vi.mock('@/context/i18n', () => ({
   useLocale: vi.fn(() => 'en-US'),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
+const { useQuery } = await import('@tanstack/react-query')
+const { fetchModelList, fetchModelProviderCredentials } = await import('@/service/common')
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: vi.fn(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: vi.fn(),
-}))
-
-// mock plugins
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplacePlugins: vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/utils', () => ({
-  getMarketplacePluginsByCollectionId: vi.fn(),
-}))
-
-vi.mock('./provider-added-card', () => ({
-  default: vi.fn(),
-}))
-
-afterAll(() => {
-  vi.resetModules()
-  vi.clearAllMocks()
-})
-
-describe('useLanguage', () => {
-  it('should replace hyphen with underscore in locale', () => {
-    ;(useLocale as Mock).mockReturnValue('en-US')
-    const { result } = renderHook(() => useLanguage())
-    expect(result.current).toBe('en_US')
+describe('hooks', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('should return locale as is if no hyphen exists', () => {
-    ;(useLocale as Mock).mockReturnValue('enUS')
+  describe('useLanguage', () => {
+    it('should replace hyphen with underscore in locale', () => {
+      ;(useLocale as Mock).mockReturnValue('en-US')
+      const { result } = renderHook(() => useLanguage())
+      expect(result.current).toBe('en_US')
+    })
 
-    const { result } = renderHook(() => useLanguage())
-    expect(result.current).toBe('enUS')
+    it('should return locale as is if no hyphen exists', () => {
+      ;(useLocale as Mock).mockReturnValue('enUS')
+      const { result } = renderHook(() => useLanguage())
+      expect(result.current).toBe('enUS')
+    })
   })
 
-  it('should handle multiple hyphens', () => {
-    ;(useLocale as Mock).mockReturnValue('zh-Hans-CN')
+  describe('useSystemDefaultModelAndModelList', () => {
+    it('should return default model state', () => {
+      const defaultModel = {
+        provider: {
+          provider: 'openai',
+          icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+        },
+        model: 'gpt-3.5',
+        model_type: ModelTypeEnum.textGeneration,
+      } as unknown as DefaultModelResponse
+      const modelList = [{ provider: 'openai', models: [{ model: 'gpt-3.5' }] }] as unknown as Model[]
+      const { result } = renderHook(() => useSystemDefaultModelAndModelList(defaultModel, modelList))
 
-    const { result } = renderHook(() => useLanguage())
-    expect(result.current).toBe('zh_Hans-CN')
+      expect(result.current[0]).toEqual({ model: 'gpt-3.5', provider: 'openai' })
+    })
+
+    it('should update default model state', () => {
+      const defaultModel = {
+        provider: {
+          provider: 'openai',
+          icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+        },
+        model: 'gpt-3.5',
+        model_type: ModelTypeEnum.textGeneration,
+      } as any
+      const modelList = [{ provider: 'openai', models: [{ model: 'gpt-3.5' }] }] as any
+      const { result } = renderHook(() => useSystemDefaultModelAndModelList(defaultModel, modelList))
+
+      const newModel = { model: 'gpt-4', provider: 'openai' }
+      act(() => {
+        result.current[1](newModel)
+      })
+
+      expect(result.current[0]).toEqual(newModel)
+    })
+  })
+
+  describe('useProviderCredentialsAndLoadBalancing', () => {
+    it('should fetch predefined credentials', async () => {
+      (useQuery as Mock).mockReturnValue({
+        data: { credentials: { key: 'value' }, load_balancing: { enabled: true } },
+        isPending: false,
+      })
+
+      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
+        'openai',
+        ConfigurationMethodEnum.predefinedModel,
+        true,
+        undefined,
+        'cred-id',
+      ))
+
+      expect(result.current.credentials).toEqual({ key: 'value' })
+      expect(result.current.loadBalancing).toEqual({ enabled: true })
+      expect(fetchModelProviderCredentials).not.toHaveBeenCalled() // useQuery calls it, but we blocked it with mockReturnValue
+    })
+
+    it('should fetch custom credentials', () => {
+      (useQuery as Mock).mockReturnValue({
+        data: { credentials: { key: 'value' }, load_balancing: { enabled: true } },
+        isPending: false,
+      })
+
+      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
+        'openai',
+        ConfigurationMethodEnum.customizableModel,
+        true,
+        { __model_name: 'gpt-4', __model_type: ModelTypeEnum.textGeneration },
+        'cred-id',
+      ))
+
+      expect(result.current.credentials).toEqual({
+        key: 'value',
+        __model_name: 'gpt-4',
+        __model_type: ModelTypeEnum.textGeneration,
+      })
+    })
+  })
+
+  describe('useModelList', () => {
+    it('should fetch model list', () => {
+      (useQuery as Mock).mockReturnValue({
+        data: { data: [{ model: 'gpt-4' }] },
+        isPending: false,
+        refetch: vi.fn(),
+      })
+
+      const { result } = renderHook(() => useModelList(ModelTypeEnum.textGeneration))
+
+      expect(result.current.data).toEqual([{ model: 'gpt-4' }])
+      expect(fetchModelList).not.toHaveBeenCalled()
+    })
   })
 })
