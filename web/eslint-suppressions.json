@@ -1528,11 +1528,6 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/answer/suggested-questions.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/chat/answer/tool-detail.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
