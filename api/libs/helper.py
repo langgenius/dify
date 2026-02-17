@@ -21,8 +21,8 @@ from pydantic.functional_validators import AfterValidator
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from core.file import helpers as file_helpers
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
