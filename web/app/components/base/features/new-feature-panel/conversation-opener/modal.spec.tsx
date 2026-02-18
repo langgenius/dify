@@ -1,6 +1,6 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import OpeningSettingModal from './modal'
@@ -132,6 +132,40 @@ describe('OpeningSettingModal', () => {
     await userEvent.click(closeButton)
 
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('should call onCancel when close icon receives Enter key', async () => {
+    const onCancel = vi.fn()
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={onCancel}
+      />,
+    )
+
+    const closeButton = screen.getByTestId('close-modal')
+    closeButton.focus()
+    await userEvent.keyboard('{Enter}')
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call onCancel when close icon receives Space key', async () => {
+    const onCancel = vi.fn()
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={onCancel}
+      />,
+    )
+
+    const closeButton = screen.getByTestId('close-modal')
+    closeButton.focus()
+    fireEvent.keyDown(closeButton, { key: ' ' })
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call onSave with updated data when save is clicked', async () => {

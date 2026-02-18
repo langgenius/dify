@@ -192,7 +192,21 @@ const OpeningSettingModal = ({
     >
       <div className="mb-6 flex items-center justify-between">
         <div className="text-text-primary title-2xl-semi-bold">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onCancel} data-testid="close-modal"><span className="i-ri-close-line h-4 w-4 text-text-tertiary" /></div>
+        <div
+          className="cursor-pointer p-1"
+          onClick={onCancel}
+          data-testid="close-modal"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onCancel()
+            }
+          }}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="mb-8 flex gap-2">
         <div className="mt-1.5 h-8 w-8 shrink-0 rounded-lg border-components-panel-border bg-util-colors-orange-dark-orange-dark-500 p-1.5">

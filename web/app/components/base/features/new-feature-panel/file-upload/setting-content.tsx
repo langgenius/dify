@@ -58,7 +58,21 @@ const SettingContent = ({
     <>
       <div className="mb-4 flex items-center justify-between">
         <div className="text-text-primary system-xl-semibold">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onClose} data-testid="close-setting-modal"><span className="i-ri-close-line h-4 w-4 text-text-tertiary" /></div>
+        <div
+          className="cursor-pointer p-1"
+          onClick={onClose}
+          data-testid="close-setting-modal"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClose()
+            }
+          }}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <FileUploadSetting
         isMultiple

@@ -1,6 +1,7 @@
 import type { Features } from '../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import { FeaturesProvider } from '../../context'
 import SettingContent from './setting-content'
@@ -127,6 +128,26 @@ describe('SettingContent', () => {
     fireEvent.click(closeIconButton)
 
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should call onClose when close icon receives Enter key', async () => {
+    const onClose = vi.fn()
+    renderWithProvider({ onClose })
+
+    const closeIconButton = screen.getByTestId('close-setting-modal')
+    closeIconButton.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call onClose when close icon receives Space key', async () => {
+    const onClose = vi.fn()
+    renderWithProvider({ onClose })
+
+    const closeIconButton = screen.getByTestId('close-setting-modal')
+    closeIconButton.focus()
+    fireEvent.keyDown(closeIconButton, { key: ' ' })
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('should call onClose when cancel button is clicked to close', () => {

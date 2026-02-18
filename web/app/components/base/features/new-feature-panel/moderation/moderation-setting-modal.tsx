@@ -241,7 +241,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
           tabIndex={0}
           className="cursor-pointer p-1"
           onClick={onCancel}
-          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onCancel()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onCancel()
+            }
+          }}
         >
           <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
         </div>
