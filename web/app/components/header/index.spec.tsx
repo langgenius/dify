@@ -2,44 +2,48 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import Header from './index'
 
+function createMockComponent(testId: string) {
+  return () => <div data-testid={testId} />
+}
+
 vi.mock('@/app/components/base/logo/dify-logo', () => ({
-  default: () => <div data-testid="dify-logo" />,
+  default: createMockComponent('dify-logo'),
 }))
 
 vi.mock('@/app/components/header/account-dropdown/workplace-selector', () => ({
-  default: () => <div data-testid="workplace-selector" />,
+  default: createMockComponent('workplace-selector'),
 }))
 
 vi.mock('@/app/components/header/account-dropdown', () => ({
-  default: () => <div data-testid="account-dropdown" />,
+  default: createMockComponent('account-dropdown'),
 }))
 
 vi.mock('@/app/components/header/app-nav', () => ({
-  default: () => <div data-testid="app-nav" />,
+  default: createMockComponent('app-nav'),
 }))
 
 vi.mock('@/app/components/header/dataset-nav', () => ({
-  default: () => <div data-testid="dataset-nav" />,
+  default: createMockComponent('dataset-nav'),
 }))
 
 vi.mock('@/app/components/header/env-nav', () => ({
-  default: () => <div data-testid="env-nav" />,
+  default: createMockComponent('env-nav'),
 }))
 
 vi.mock('@/app/components/header/explore-nav', () => ({
-  default: ({ className }: { className?: string }) => <div data-testid="explore-nav" className={className} />,
+  default: createMockComponent('explore-nav'),
 }))
 
 vi.mock('@/app/components/header/license-env', () => ({
-  default: () => <div data-testid="license-nav" />,
+  default: createMockComponent('license-nav'),
 }))
 
 vi.mock('@/app/components/header/plugins-nav', () => ({
-  default: () => <div data-testid="plugins-nav" />,
+  default: createMockComponent('plugins-nav'),
 }))
 
 vi.mock('@/app/components/header/tools-nav', () => ({
-  default: ({ className }: { className?: string }) => <div data-testid="tools-nav" className={className} />,
+  default: createMockComponent('tools-nav'),
 }))
 
 vi.mock('@/app/components/header/plan-badge', () => ({

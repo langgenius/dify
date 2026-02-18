@@ -37,13 +37,15 @@ describe('MaintenanceNotice', () => {
   const windowOpenSpy = vi
     .spyOn(window, 'open')
     .mockImplementation(() => null)
+  const setNoticeHref = (href: string) => {
+    NOTICE_I18N.href = href
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
     vi.mocked(useLanguage).mockReturnValue('en_US')
-    // Reset href for each test
-    NOTICE_I18N.href = '#'
+    setNoticeHref('#')
   })
 
   afterAll(() => {
@@ -52,7 +54,6 @@ describe('MaintenanceNotice', () => {
 
   describe('Rendering', () => {
     it('should render localized content correctly (English)', () => {
-      vi.mocked(useLanguage).mockReturnValue('en_US')
       render(<MaintenanceNotice />)
       expect(screen.getByText('Notice Title')).toBeInTheDocument()
       expect(screen.getByText('Notice Description')).toBeInTheDocument()
@@ -84,7 +85,7 @@ describe('MaintenanceNotice', () => {
     })
 
     it('should jump to notice when description is clicked and href is valid', () => {
-      NOTICE_I18N.href = 'https://dify.ai/notice'
+      setNoticeHref('https://dify.ai/notice')
       render(<MaintenanceNotice />)
 
       const desc = screen.getByText('Notice Description')
@@ -97,7 +98,7 @@ describe('MaintenanceNotice', () => {
     })
 
     it('should not jump when href is #', () => {
-      NOTICE_I18N.href = '#'
+      setNoticeHref('#')
       render(<MaintenanceNotice />)
 
       const desc = screen.getByText('Notice Description')
@@ -107,7 +108,7 @@ describe('MaintenanceNotice', () => {
     })
 
     it('should not jump when href is empty', () => {
-      ;(NOTICE_I18N as { href: string }).href = ''
+      setNoticeHref('')
       render(<MaintenanceNotice />)
 
       const desc = screen.getByText('Notice Description')

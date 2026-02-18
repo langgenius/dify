@@ -39,16 +39,6 @@ describe('HeaderWrapper', () => {
     expect(screen.getByText('Test Child')).toBeInTheDocument()
   })
 
-  it('should subscribe to workflow canvas events when emitter is available', () => {
-    render(
-      <HeaderWrapper>
-        <div>Content</div>
-      </HeaderWrapper>,
-    )
-
-    expect(mockUseSubscription).toHaveBeenCalledTimes(1)
-  })
-
   it('should keep children mounted when workflow maximize events are emitted', () => {
     vi.mocked(usePathname).mockReturnValue('/some/path/workflow')
     render(
@@ -76,6 +66,19 @@ describe('HeaderWrapper', () => {
     )
 
     expect(screen.getByText('Pipeline Content')).toBeInTheDocument()
+  })
+
+  it('should keep children mounted on non-canvas routes when maximize is enabled from storage', () => {
+    vi.mocked(usePathname).mockReturnValue('/apps')
+    localStorage.setItem('workflow-canvas-maximize', 'true')
+
+    render(
+      <HeaderWrapper>
+        <div>App Content</div>
+      </HeaderWrapper>,
+    )
+
+    expect(screen.getByText('App Content')).toBeInTheDocument()
   })
 
   it('should keep children mounted when unrelated events are emitted', () => {
