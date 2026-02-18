@@ -2745,11 +2745,6 @@
       "count": 1
     }
   },
-  "app/components/base/tab-header/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/tab-slider-plain/index.tsx": {
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
