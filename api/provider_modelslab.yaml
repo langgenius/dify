@@ -1,0 +1,83 @@
+provider: modelslab
+label:
+  en_US: ModelsLab
+  zh_Hans: ModelsLab
+description:
+  en_US: ModelsLab's comprehensive AI APIs for text, image, and video generation. Access the latest AI models including Flux, SDXL, CogVideoX, Llama 3, and more through a single provider.
+  zh_Hans: ModelsLab 的综合 AI API，支持文本、图像和视频生成。通过单一提供商访问最新的 AI 模型，包括 Flux、SDXL、CogVideoX、Llama 3 等。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#4F46E5"
+
+help:
+  title:
+    en_US: Get your API Key from ModelsLab
+    zh_Hans: 从 ModelsLab 获取 API 密钥
+  url:
+    en_US: https://modelslab.com/api-keys
+
+supported_model_types:
+  - llm                    # Large Language Models
+  - text-embedding        # Text Embeddings  
+  - text2img              # Image Generation
+  - text2video            # Video Generation (Innovation - First in Dify)
+
+configurate_methods:
+  - predefined-model      # Pre-configured models with unified credentials
+
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: modelslab_api_key
+      label:
+        en_US: API Key
+        zh_Hans: API 密钥
+      type: secret-input
+      required: true
+      placeholder:
+        en_US: Enter your ModelsLab API Key (get it from https://modelslab.com/api-keys)
+        zh_Hans: 输入您的 ModelsLab API 密钥（从 https://modelslab.com/api-keys 获取）
+      tooltip:
+        en_US: Your ModelsLab API key for accessing all AI models. You can find this in your ModelsLab dashboard.
+        zh_Hans: 您的 ModelsLab API 密钥用于访问所有 AI 模型。您可以在 ModelsLab 仪表板中找到它。
+    - variable: modelslab_base_url
+      label:
+        en_US: Base URL (Optional)
+        zh_Hans: 基础 URL（可选）
+      type: text-input
+      required: false
+      default: https://modelslab.com/api/v6
+      placeholder:
+        en_US: https://modelslab.com/api/v6
+        zh_Hans: https://modelslab.com/api/v6
+      tooltip:
+        en_US: ModelsLab API base URL. Leave default unless using a custom endpoint.
+        zh_Hans: ModelsLab API 基础 URL。除非使用自定义端点，否则保留默认值。
+
+models:
+  llm:
+    predefined:
+      - "models/llm/*.yaml"
+    position: "models/llm/_position.yaml"
+  text_embedding:
+    predefined:
+      - "models/text_embedding/*.yaml"
+    position: "models/text_embedding/_position.yaml"
+  text2img:
+    predefined:
+      - "models/text2img/*.yaml" 
+    position: "models/text2img/_position.yaml"
+  text2video:
+    predefined:
+      - "models/text2video/*.yaml"
+    position: "models/text2video/_position.yaml"
+
+extra:
+  python:
+    provider_source: provider/modelslab.py
+    model_sources:
+      - "models/llm/llm.py"
+      - "models/text_embedding/text_embedding.py"
+      - "models/text2img/text2img.py"
+      - "models/text2video/text2video.py"
