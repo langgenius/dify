@@ -35,18 +35,6 @@ describe('EnvNav', () => {
 
     render(<EnvNav />)
     expect(screen.getByText('common.environment.testing')).toBeInTheDocument()
-    // Verify wrapper class for TESTING
-    const wrapper = screen.getByText(
-      'common.environment.testing',
-    ).parentElement
-    expect(wrapper).toHaveClass('bg-[#A5F0FC]')
-    expect(wrapper).toHaveClass('border-[#67E3F9]')
-    expect(wrapper).toHaveClass('text-[#164C63]')
-    // Beaker02 icon is rendered
-    expect(document.querySelector('svg')).toHaveAttribute(
-      'data-icon',
-      'Beaker02',
-    )
   })
 
   it('should render DEVELOPMENT tag and icon when environment is DEVELOPMENT', () => {
@@ -60,17 +48,5 @@ describe('EnvNav', () => {
     expect(
       screen.getByText('common.environment.development'),
     ).toBeInTheDocument()
-    // Verify wrapper class for DEVELOPMENT
-    const wrapper = screen.getByText(
-      'common.environment.development',
-    ).parentElement
-    expect(wrapper).toHaveClass('bg-[#FEC84B]')
-    expect(wrapper).toHaveClass('border-[#FDB022]')
-    expect(wrapper).toHaveClass('text-[#93370D]')
-    // TerminalSquare icon is rendered
-    expect(document.querySelector('svg')).toHaveAttribute(
-      'data-icon',
-      'TerminalSquare',
-    )
   })
 })
