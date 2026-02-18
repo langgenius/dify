@@ -1,0 +1,52 @@
+model: meta-llama/llama-3.1-70b-instruct
+label:
+  en_US: Llama 3.1 70B Instruct
+  zh_Hans: Llama 3.1 70B 指令模型
+model_type: llm
+features:
+  - tool-call
+  - stream-tool-call
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 128000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: max_tokens
+    use_template: max_tokens
+    required: true
+    default: 4096
+    min: 1
+    max: 16384
+  - name: frequency_penalty
+    type: float
+    help:
+      en_US: Penalize new tokens based on their frequency in the text so far
+      zh_Hans: 根据新标记在文本中出现的频率对其进行惩罚
+    default: 0.0
+    min: -2.0
+    max: 2.0
+  - name: presence_penalty
+    type: float
+    help:
+      en_US: Penalize new tokens based on whether they appear in the text so far
+      zh_Hans: 根据新标记是否已在文本中出现对其进行惩罚
+    default: 0.0
+    min: -2.0
+    max: 2.0
+  - name: seed
+    type: int
+    help:
+      en_US: Random seed for reproducible outputs
+      zh_Hans: 用于可重现输出的随机种子
+    required: false
+    min: -2147483648
+    max: 2147483647
+pricing:
+  input: '0.90'
+  output: '0.90'
+  unit: '0.000001'
+  currency: USD
