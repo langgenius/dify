@@ -60,8 +60,8 @@ describe('dayjs extended utilities', () => {
       const nextMonthDays = days.filter(d => !d.isCurrentMonth && d.date.month() > date.month())
 
       // June 2024 starts on Saturday (6), so there are 6 days from previous month
-      expect(prevMonthDays.length).toBeGreaterThanOrEqual(0)
-      expect(nextMonthDays.length).toBeGreaterThanOrEqual(0)
+      expect(prevMonthDays.length).toBeGreaterThan(0)
+      expect(nextMonthDays.length).toBeGreaterThan(0)
     })
 
     it('should mark current month days correctly', () => {

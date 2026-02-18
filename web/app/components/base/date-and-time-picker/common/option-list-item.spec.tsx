@@ -2,9 +2,15 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import OptionListItem from './option-list-item'
 
 describe('OptionListItem', () => {
+  let originalScrollIntoView: Element['scrollIntoView']
   beforeEach(() => {
     vi.clearAllMocks()
+    originalScrollIntoView = Element.prototype.scrollIntoView
     Element.prototype.scrollIntoView = vi.fn()
+  })
+
+  afterEach(() => {
+    Element.prototype.scrollIntoView = originalScrollIntoView
   })
 
   describe('Rendering', () => {
@@ -81,7 +87,7 @@ describe('OptionListItem', () => {
         </OptionListItem>,
       )
 
-      expect(Element.prototype.scrollIntoView).not.toHaveBeenCalledWith({ behavior: 'instant' })
+      expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
     })
   })
 

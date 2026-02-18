@@ -144,14 +144,6 @@ describe('CalendarItem', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle null selectedDate', () => {
-      const props = createItemProps({ selectedDate: undefined })
-
-      render(<Item {...props} />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
     it('should handle undefined selectedDate', () => {
       const props = createItemProps({ selectedDate: undefined })
 

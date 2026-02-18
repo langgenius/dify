@@ -604,6 +604,8 @@ describe('TimePicker', () => {
 
       // Display should reflect the new value in the new timezone
       expect(screen.getByRole('textbox')).toBeInTheDocument()
+      // 15:00 UTC in America/New_York (UTC-5) = 10:00 AM
+      expect(screen.getByDisplayValue('10:00 AM')).toBeInTheDocument()
     })
   })
 
