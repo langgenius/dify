@@ -131,33 +131,54 @@ class AppGenerateService:
             elif app_model.mode == AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
-                with rate_limit_context(rate_limit, request_id):
-                    payload = AppExecutionParams.new(
-                        app_model=app_model,
-                        workflow=workflow,
-                        user=user,
-                        args=args,
-                        invoke_from=invoke_from,
-                        streaming=streaming,
-                        call_depth=0,
-                    )
-                    payload_json = payload.model_dump_json()
 
-                def on_subscribe():
-                    workflow_based_app_execution_task.delay(payload_json)
+                if streaming:
+                    # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
+                    with rate_limit_context(rate_limit, request_id):
+                        payload = AppExecutionParams.new(
+                            app_model=app_model,
+                            workflow=workflow,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=True,
+                            call_depth=0,
+                        )
+                        payload_json = payload.model_dump_json()
 
-                on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                generator = AdvancedChatAppGenerator()
-                return rate_limit.generate(
-                    generator.convert_to_event_stream(
-                        generator.retrieve_events(
-                            AppMode.ADVANCED_CHAT,
-                            payload.workflow_run_id,
-                            on_subscribe=on_subscribe,
+                    def on_subscribe():
+                        workflow_based_app_execution_task.delay(payload_json)
+
+                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                    generator = AdvancedChatAppGenerator()
+                    return rate_limit.generate(
+                        generator.convert_to_event_stream(
+                            generator.retrieve_events(
+                                AppMode.ADVANCED_CHAT,
+                                payload.workflow_run_id,
+                                on_subscribe=on_subscribe,
+                            ),
                         ),
-                    ),
-                    request_id=request_id,
-                )
+                        request_id=request_id,
+                    )
+                else:
+                    # Blocking mode: run synchronously and return JSON instead of SSE
+                    # Keep behaviour consistent with WORKFLOW blocking branch.
+                    advanced_generator = AdvancedChatAppGenerator()
+                    return rate_limit.generate(
+                        advanced_generator.convert_to_event_stream(
+                            advanced_generator.generate(
+                                app_model=app_model,
+                                workflow=workflow,
+                                user=user,
+                                args=args,
+                                invoke_from=invoke_from,
+                                workflow_run_id=str(uuid.uuid4()),
+                                streaming=False,
+                            )
+                        ),
+                        request_id=request_id,
+                    )
             elif app_model.mode == AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
