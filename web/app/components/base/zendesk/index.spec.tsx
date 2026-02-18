@@ -27,7 +27,7 @@ vi.mock('@/config', () => ({
 
 // Mock next/headers
 vi.mock('next/headers', () => ({
-  headers: vi.fn(async () => ({
+  headers: vi.fn(() => ({
     get: vi.fn((name: string) => {
       if (name === 'x-nonce')
         return mockNonce
