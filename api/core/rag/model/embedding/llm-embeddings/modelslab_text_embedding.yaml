@@ -1,0 +1,6 @@
+# Model display order for ModelsLab Text Embedding models
+# Models will appear in the UI in this order
+
+- text-embedding-3-small    # Most popular general-purpose embedding
+- text-embedding-3-large    # Highest quality embedding
+- text-embedding-ada-002    # OpenAI compatible embedding
