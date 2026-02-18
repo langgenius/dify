@@ -1,0 +1,26 @@
+model: text-embedding-3-small
+label:
+  en_US: Text Embedding 3 Small
+  zh_Hans: 文本嵌入 3 小型
+model_type: text-embedding
+model_properties:
+  mode: embedding
+  max_chunks: 1000
+  max_chunk_length: 8000
+  default_dimensions: 1536
+  max_dimensions: 1536
+parameter_rules:
+  - name: dimensions
+    type: int
+    help:
+      en_US: The number of dimensions the resulting output embeddings should have
+      zh_Hans: 输出嵌入应具有的维度数
+    required: false
+    default: 1536
+    min: 256
+    max: 1536
+    options: [256, 512, 1024, 1536]
+pricing:
+  input: '0.02'
+  unit: '0.000001'
+  currency: USD
