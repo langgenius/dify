@@ -2806,11 +2806,6 @@
       "count": 1
     }
   },
-  "app/components/base/timezone-label/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/toast/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
