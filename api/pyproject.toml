@@ -211,7 +211,7 @@ vdb = [
     "clickzetta-connector-python>=0.8.102",
     "couchbase~=4.3.0",
     "elasticsearch==8.14.0",
-    "opensearch-py==2.4.0",
+    "opensearch-py==3.1.0",
     "oracledb==3.3.0",
     "pgvecto-rs[sqlalchemy]~=0.2.1",
     "pgvector==0.2.5",
