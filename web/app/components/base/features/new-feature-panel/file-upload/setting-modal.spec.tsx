@@ -1,24 +1,38 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Features } from '../../types'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { TransferMethod } from '@/types/app'
+import { FeaturesProvider } from '../../context'
 import FileUploadSettings from './setting-modal'
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => <div data-testid="portal-elem" data-open={open}>{children}</div>,
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <div data-testid="trigger" className={className} onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
-  ),
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({ data: undefined }),
 }))
 
-vi.mock('@/app/components/base/features/new-feature-panel/file-upload/setting-content', () => ({
-  default: ({ onClose, onChange, imageUpload }: { onClose: () => void, onChange?: () => void, imageUpload?: boolean }) => (
-    <div data-testid="setting-content" data-image-upload={imageUpload}>
-      <button data-testid="close-btn" onClick={onClose}>Close</button>
-      <button data-testid="save-btn" onClick={onChange}>Save</button>
-    </div>
-  ),
-}))
+const defaultFeatures: Features = {
+  moreLikeThis: { enabled: false },
+  opening: { enabled: false },
+  suggested: { enabled: false },
+  text2speech: { enabled: false },
+  speech2text: { enabled: false },
+  citation: { enabled: false },
+  moderation: { enabled: false },
+  file: {
+    enabled: true,
+    allowed_file_upload_methods: [TransferMethod.local_file],
+    allowed_file_types: ['image'],
+    allowed_file_extensions: ['.jpg'],
+    number_limits: 5,
+  },
+  annotationReply: { enabled: false },
+}
+
+const renderWithProvider = (ui: React.ReactNode) => {
+  return render(
+    <FeaturesProvider features={defaultFeatures}>
+      {ui}
+    </FeaturesProvider>,
+  )
+}
 
 describe('FileUploadSettings (setting-modal)', () => {
   beforeEach(() => {
@@ -26,7 +40,7 @@ describe('FileUploadSettings (setting-modal)', () => {
   })
 
   it('should render children in trigger', () => {
-    render(
+    renderWithProvider(
       <FileUploadSettings open={false} onOpen={vi.fn()}>
         <button>Upload Settings</button>
       </FileUploadSettings>,
@@ -35,25 +49,27 @@ describe('FileUploadSettings (setting-modal)', () => {
     expect(screen.getByText('Upload Settings')).toBeInTheDocument()
   })
 
-  it('should render SettingContent in portal', () => {
-    render(
+  it('should render SettingContent in portal', async () => {
+    renderWithProvider(
       <FileUploadSettings open={true} onOpen={vi.fn()}>
         <button>Upload Settings</button>
       </FileUploadSettings>,
     )
 
-    expect(screen.getByTestId('setting-content')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/feature\.fileUpload\.modalTitle/)).toBeInTheDocument()
+    })
   })
 
   it('should call onOpen with toggle function when trigger is clicked', () => {
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <FileUploadSettings open={false} onOpen={onOpen}>
         <button>Upload Settings</button>
       </FileUploadSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('Upload Settings'))
 
     expect(onOpen).toHaveBeenCalled()
     // The toggle function should flip the open state
@@ -65,52 +81,60 @@ describe('FileUploadSettings (setting-modal)', () => {
 
   it('should not call onOpen when disabled', () => {
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <FileUploadSettings open={false} onOpen={onOpen} disabled>
         <button>Upload Settings</button>
       </FileUploadSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('Upload Settings'))
 
     expect(onOpen).not.toHaveBeenCalled()
   })
 
-  it('should call onOpen with false when close is clicked', () => {
+  it('should call onOpen with false when cancel is clicked', async () => {
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <FileUploadSettings open={true} onOpen={onOpen}>
         <button>Upload Settings</button>
       </FileUploadSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('close-btn'))
+    await waitFor(() => {
+      expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
 
     expect(onOpen).toHaveBeenCalledWith(false)
   })
 
-  it('should call onChange and close when save is clicked', () => {
+  it('should call onChange and close when save is clicked', async () => {
     const onChange = vi.fn()
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <FileUploadSettings open={true} onOpen={onOpen} onChange={onChange}>
         <button>Upload Settings</button>
       </FileUploadSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('save-btn'))
+    await waitFor(() => {
+      expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /operation\.save/ }))
 
     expect(onChange).toHaveBeenCalled()
     expect(onOpen).toHaveBeenCalledWith(false)
   })
 
-  it('should pass imageUpload prop to SettingContent', () => {
-    render(
+  it('should pass imageUpload prop to SettingContent', async () => {
+    renderWithProvider(
       <FileUploadSettings open={true} onOpen={vi.fn()} imageUpload>
         <button>Upload Settings</button>
       </FileUploadSettings>,
     )
 
-    expect(screen.getByTestId('setting-content')).toHaveAttribute('data-image-upload', 'true')
+    await waitFor(() => {
+      expect(screen.getByText(/feature\.imageUpload\.modalTitle/)).toBeInTheDocument()
+    })
   })
 })

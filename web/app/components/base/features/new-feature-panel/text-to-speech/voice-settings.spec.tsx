@@ -1,24 +1,38 @@
+import type { Features } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { FeaturesProvider } from '../../context'
 import VoiceSettings from './voice-settings'
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => <div data-testid="portal-elem" data-open={open}>{children}</div>,
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <div data-testid="trigger" className={className} onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
-  ),
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/app/test-app-id/configuration',
+  useParams: () => ({ appId: 'test-app-id' }),
 }))
 
-vi.mock('@/app/components/base/features/new-feature-panel/text-to-speech/param-config-content', () => ({
-  default: ({ onClose, onChange }: { onClose: () => void, onChange?: () => void }) => (
-    <div data-testid="param-config">
-      <button data-testid="close-btn" onClick={onClose}>Close</button>
-      <button data-testid="change-btn" onClick={onChange}>Change</button>
-    </div>
-  ),
+vi.mock('@/service/use-apps', () => ({
+  useAppVoices: () => ({
+    data: [{ name: 'alloy', value: 'alloy' }],
+  }),
 }))
+
+const defaultFeatures: Features = {
+  moreLikeThis: { enabled: false },
+  opening: { enabled: false },
+  suggested: { enabled: false },
+  text2speech: { enabled: true, language: 'en-US', voice: 'alloy' },
+  speech2text: { enabled: false },
+  citation: { enabled: false },
+  moderation: { enabled: false },
+  file: { enabled: false },
+  annotationReply: { enabled: false },
+}
+
+const renderWithProvider = (ui: React.ReactNode) => {
+  return render(
+    <FeaturesProvider features={defaultFeatures}>
+      {ui}
+    </FeaturesProvider>,
+  )
+}
 
 describe('VoiceSettings', () => {
   beforeEach(() => {
@@ -26,7 +40,7 @@ describe('VoiceSettings', () => {
   })
 
   it('should render children in trigger', () => {
-    render(
+    renderWithProvider(
       <VoiceSettings open={false} onOpen={vi.fn()}>
         <button>Settings</button>
       </VoiceSettings>,
@@ -36,24 +50,24 @@ describe('VoiceSettings', () => {
   })
 
   it('should render ParamConfigContent in portal', () => {
-    render(
+    renderWithProvider(
       <VoiceSettings open={true} onOpen={vi.fn()}>
         <button>Settings</button>
       </VoiceSettings>,
     )
 
-    expect(screen.getByTestId('param-config')).toBeInTheDocument()
+    expect(screen.getByText(/voice\.voiceSettings\.title/)).toBeInTheDocument()
   })
 
   it('should call onOpen with toggle function when trigger is clicked', () => {
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <VoiceSettings open={false} onOpen={onOpen}>
         <button>Settings</button>
       </VoiceSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('Settings'))
 
     expect(onOpen).toHaveBeenCalled()
     // The toggle function should flip the open state
@@ -65,26 +79,26 @@ describe('VoiceSettings', () => {
 
   it('should not call onOpen when disabled and trigger is clicked', () => {
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <VoiceSettings open={false} onOpen={onOpen} disabled>
         <button>Settings</button>
       </VoiceSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('Settings'))
 
     expect(onOpen).not.toHaveBeenCalled()
   })
 
   it('should call onOpen with false when close is clicked', () => {
     const onOpen = vi.fn()
-    render(
+    renderWithProvider(
       <VoiceSettings open={true} onOpen={onOpen}>
         <button>Settings</button>
       </VoiceSettings>,
     )
 
-    fireEvent.click(screen.getByTestId('close-btn'))
+    fireEvent.click(screen.getByRole('button', { name: /voice\.voiceSettings\.close/ }))
 
     expect(onOpen).toHaveBeenCalledWith(false)
   })

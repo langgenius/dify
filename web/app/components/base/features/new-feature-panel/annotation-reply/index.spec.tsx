@@ -37,29 +37,6 @@ vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/use-a
   },
 }))
 
-vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({
-  default: ({ isShow, onHide, onSave, isInit }: {
-    isShow: boolean
-    onHide: () => void
-    onSave: (model: { embedding_provider_name: string, embedding_model_name: string }, score: number) => Promise<void>
-    isInit?: boolean
-  }) => (
-    isShow
-      ? (
-          <div data-testid="config-param-modal" data-is-init={isInit}>
-            <button data-testid="config-hide" onClick={onHide}>Hide</button>
-            <button
-              data-testid="config-save"
-              onClick={() => onSave({ embedding_provider_name: 'openai', embedding_model_name: 'model' }, 0.95)}
-            >
-              Save
-            </button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 vi.mock('@/app/components/billing/annotation-full/modal', () => ({
   default: ({ show, onHide }: { show: boolean, onHide: () => void }) => (
     show
@@ -74,6 +51,26 @@ vi.mock('@/app/components/billing/annotation-full/modal', () => ({
 
 vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
+    modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
+    defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
+    currentModel: true,
+  }),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
+  ModelTypeEnum: {
+    textEmbedding: 'text-embedding',
+  },
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  default: () => (
+    <div data-testid="model-selector">Model Selector</div>
+  ),
 }))
 
 const defaultFeatures: Features = {
@@ -242,23 +239,32 @@ describe('AnnotationReply', () => {
     mockIsShowAnnotationConfigInit = true
     renderWithProvider()
 
-    expect(screen.getByTestId('config-param-modal')).toBeInTheDocument()
+    expect(screen.getByText(/initSetup\.title/)).toBeInTheDocument()
   })
 
   it('should hide config modal when hide is clicked', () => {
     mockIsShowAnnotationConfigInit = true
     renderWithProvider()
 
-    fireEvent.click(screen.getByTestId('config-hide'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
 
     expect(mockSetIsShowAnnotationConfigInit).toHaveBeenCalledWith(false)
   })
 
   it('should call handleEnableAnnotation when config save is clicked', async () => {
     mockIsShowAnnotationConfigInit = true
-    renderWithProvider()
+    renderWithProvider({}, {
+      annotationReply: {
+        enabled: true,
+        score_threshold: 0.9,
+        embedding_model: {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-ada-002',
+        },
+      },
+    })
 
-    fireEvent.click(screen.getByTestId('config-save'))
+    fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
 
     expect(mockHandleEnableAnnotation).toHaveBeenCalled()
   })
@@ -281,14 +287,23 @@ describe('AnnotationReply', () => {
 
   it('should call handleEnableAnnotation and hide config modal on save', async () => {
     mockIsShowAnnotationConfigInit = true
-    renderWithProvider()
+    renderWithProvider({}, {
+      annotationReply: {
+        enabled: true,
+        score_threshold: 0.9,
+        embedding_model: {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-ada-002',
+        },
+      },
+    })
 
-    fireEvent.click(screen.getByTestId('config-save'))
+    fireEvent.click(screen.getByText(/initSetup\.confirmBtn/))
 
     // handleEnableAnnotation should be called with embedding model and score
     expect(mockHandleEnableAnnotation).toHaveBeenCalledWith(
-      { embedding_provider_name: 'openai', embedding_model_name: 'model' },
-      0.95,
+      { embedding_provider_name: 'openai', embedding_model_name: 'text-embedding-ada-002' },
+      0.9,
     )
 
     // After save resolves, config init should be hidden
@@ -392,7 +407,8 @@ describe('AnnotationReply', () => {
     mockIsShowAnnotationConfigInit = true
     renderWithProvider()
 
-    expect(screen.getByTestId('config-param-modal')).toHaveAttribute('data-is-init', 'true')
+    expect(screen.getByText(/initSetup\.confirmBtn/)).toBeInTheDocument()
+    expect(screen.queryByText(/initSetup\.configConfirmBtn/)).not.toBeInTheDocument()
   })
 
   it('should not show annotation full modal when isShowAnnotationFullModal is false', () => {

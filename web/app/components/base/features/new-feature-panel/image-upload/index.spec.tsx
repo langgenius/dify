@@ -1,16 +1,11 @@
 import type { Features } from '../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FeaturesProvider } from '../../context'
 import ImageUpload from './index'
 
-vi.mock('@/app/components/base/features/new-feature-panel/file-upload/setting-modal', () => ({
-  default: ({ children, open, onOpen, imageUpload }: { children: React.ReactNode, open: boolean, onOpen: (v: boolean) => void, imageUpload?: boolean }) => (
-    <div data-testid="setting-modal" data-open={open} data-image-upload={imageUpload}>
-      {children}
-      <button data-testid="close-modal" onClick={() => onOpen(false)}>Close</button>
-    </div>
-  ),
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({ data: undefined }),
 }))
 
 const defaultFeatures: Features = {
@@ -110,15 +105,18 @@ describe('ImageUpload', () => {
     expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
   })
 
-  it('should show setting modal with imageUpload prop on hover', () => {
+  it('should open image upload setting modal when settings is clicked', async () => {
     renderWithProvider({}, {
       file: { enabled: true },
     })
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/operation\.settings/))
 
-    expect(screen.getByTestId('setting-modal')).toHaveAttribute('data-image-upload', 'true')
+    await waitFor(() => {
+      expect(screen.getByText(/feature\.imageUpload\.modalTitle/)).toBeInTheDocument()
+    })
   })
 
   it('should show supported types and number limit labels when enabled', () => {
@@ -174,16 +172,23 @@ describe('ImageUpload', () => {
     expect(screen.getByText('-')).toBeInTheDocument()
   })
 
-  it('should call onOpen callback with false when close-modal is clicked', () => {
+  it('should close setting modal when cancel is clicked', async () => {
     renderWithProvider({}, {
       file: { enabled: true },
     })
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/operation\.settings/))
 
-    fireEvent.click(screen.getByTestId('close-modal'))
+    await waitFor(() => {
+      expect(screen.getByText(/feature\.imageUpload\.modalTitle/)).toBeInTheDocument()
+    })
 
-    expect(screen.queryByTestId('setting-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+
+    await waitFor(() => {
+      expect(screen.queryByText(/feature\.imageUpload\.modalTitle/)).not.toBeInTheDocument()
+    })
   })
 })

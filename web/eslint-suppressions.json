@@ -1895,11 +1895,6 @@
       "count": 5
     }
   },
-  "app/components/base/features/new-feature-panel/file-upload/setting-content.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx": {
     "ts/no-explicit-any": {
       "count": 1

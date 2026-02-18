@@ -39,15 +39,6 @@ vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
 }))
 
-vi.mock('./score-slider', () => ({
-  default: ({ value, onChange }: { value: number, onChange: (v: number) => void }) => (
-    <div data-testid="score-slider">
-      <span data-testid="slider-value">{value}</span>
-      <button data-testid="change-slider" onClick={() => onChange(95)}>Change</button>
-    </div>
-  ),
-}))
-
 const defaultAnnotationConfig = {
   id: 'test-id',
   enabled: false,
@@ -123,7 +114,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    expect(screen.getByTestId('score-slider')).toBeInTheDocument()
+    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 
   it('should render model selector', () => {
@@ -167,8 +158,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    // score_threshold (0.9) * 100 = 90
-    expect(screen.getByTestId('slider-value')).toHaveTextContent('90')
+    expect(screen.getByText('0.90')).toBeInTheDocument()
   })
 
   it('should render configConfirmBtn when isInit is false', () => {
@@ -260,23 +250,21 @@ describe('ConfigParamModal', () => {
     expect(onHide).toHaveBeenCalled()
   })
 
-  it('should update score when slider is changed', () => {
-    const onSave = vi.fn().mockResolvedValue(undefined)
+  it('should render slider with expected bounds and current value', () => {
     render(
       <ConfigParamModal
         appId="test-app"
         isShow={true}
         onHide={vi.fn()}
-        onSave={onSave}
+        onSave={vi.fn()}
         annotationConfig={defaultAnnotationConfig}
       />,
     )
 
-    // Change slider value to 95 (which = 0.95 threshold)
-    fireEvent.click(screen.getByTestId('change-slider'))
-
-    // Verify slider shows updated value
-    expect(screen.getByTestId('slider-value')).toHaveTextContent('95')
+    const slider = screen.getByRole('slider')
+    expect(slider).toHaveAttribute('aria-valuemin', '80')
+    expect(slider).toHaveAttribute('aria-valuemax', '100')
+    expect(slider).toHaveAttribute('aria-valuenow', '90')
   })
 
   it('should update embedding model when model selector is used', () => {
@@ -298,7 +286,7 @@ describe('ConfigParamModal', () => {
     expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model', 'embed-english')
   })
 
-  it('should call onSave with updated score after slider change', async () => {
+  it('should call onSave with updated score from annotation config', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(
       <ConfigParamModal
@@ -306,12 +294,12 @@ describe('ConfigParamModal', () => {
         isShow={true}
         onHide={vi.fn()}
         onSave={onSave}
-        annotationConfig={defaultAnnotationConfig}
+        annotationConfig={{
+          ...defaultAnnotationConfig,
+          score_threshold: 0.95,
+        }}
       />,
     )
-
-    // Change slider to 95 (= 0.95)
-    fireEvent.click(screen.getByTestId('change-slider'))
 
     // Save
     const buttons = screen.getAllByRole('button')
@@ -389,8 +377,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    // fallback: (0 || 0.9) * 100 = 90
-    expect(screen.getByTestId('slider-value')).toHaveTextContent('90')
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '90')
   })
 
   it('should set loading state while saving', async () => {

@@ -117,9 +117,9 @@ describe('SettingContent', () => {
 
   it('should call onClose when close icon is clicked', () => {
     const onClose = vi.fn()
-    const { container } = renderWithProvider({ onClose })
+    renderWithProvider({ onClose })
 
-    const closeIconButton = container.querySelector('div.cursor-pointer.p-1')
+    const closeIconButton = screen.getByTestId('close-setting-modal')
     expect(closeIconButton).toBeInTheDocument()
     if (!closeIconButton)
       throw new Error('Close icon button should exist')

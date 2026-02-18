@@ -1,16 +1,11 @@
 import type { Features } from '../../types'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FeaturesProvider } from '../../context'
 import FileUpload from './index'
 
-vi.mock('@/app/components/base/features/new-feature-panel/file-upload/setting-modal', () => ({
-  default: ({ children, open, onOpen }: { children: React.ReactNode, open: boolean, onOpen: (v: boolean) => void }) => (
-    <div data-testid="setting-modal" data-open={open}>
-      {children}
-      <button data-testid="close-modal" onClick={() => onOpen(false)}>Close</button>
-    </div>
-  ),
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({ data: undefined }),
 }))
 
 const defaultFeatures: Features = {
@@ -114,15 +109,18 @@ describe('FileUpload', () => {
     expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
   })
 
-  it('should show setting modal on hover', () => {
+  it('should open setting modal when settings is clicked', async () => {
     renderWithProvider({}, {
       file: { enabled: true },
     })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/operation\.settings/))
 
-    expect(screen.getByTestId('setting-modal')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/feature\.fileUpload\.modalTitle/)).toBeInTheDocument()
+    })
   })
 
   it('should show supported types label when enabled', () => {
@@ -171,19 +169,23 @@ describe('FileUpload', () => {
     expect(screen.getByText(/feature\.fileUpload\.supportedTypes/)).toBeInTheDocument()
   })
 
-  it('should call onOpen callback with false when close-modal is clicked', () => {
+  it('should close setting modal when cancel is clicked', async () => {
     renderWithProvider({}, {
       file: { enabled: true },
     })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
+    fireEvent.click(screen.getByText(/operation\.settings/))
 
-    // Click close button triggers onOpen(false) which calls setModalOpen(false) and setIsHovering(false)
-    fireEvent.click(screen.getByTestId('close-modal'))
+    await waitFor(() => {
+      expect(screen.getByText(/feature\.fileUpload\.modalTitle/)).toBeInTheDocument()
+    })
 
-    // After close, info display should be shown since isHovering was set to false
-    // The SettingModal should unmount since both isHovering and modalOpen are false
-    expect(screen.queryByTestId('setting-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
+
+    await waitFor(() => {
+      expect(screen.queryByText(/feature\.fileUpload\.modalTitle/)).not.toBeInTheDocument()
+    })
   })
 })

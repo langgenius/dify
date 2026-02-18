@@ -5,12 +5,6 @@ import { TtsAutoPlay } from '@/types/app'
 import { FeaturesProvider } from '../../context'
 import TextToSpeech from './index'
 
-vi.mock('@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings', () => ({
-  default: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="voice-settings" data-open={open}>{children}</div>
-  ),
-}))
-
 vi.mock('@/i18n-config/language', () => ({
   languages: [
     { value: 'en-US', name: 'English', example: 'Hello world' },

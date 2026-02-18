@@ -10,19 +10,6 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@/app/components/base/select', () => ({
-  PortalSelect: ({ value, items, onSelect }: { value: string, items: { name: string, value: string }[], onSelect: (item: { value: string }) => void }) => (
-    <div data-testid="portal-select">
-      <span data-testid="select-value">{value}</span>
-      {items.map(item => (
-        <button key={item.value} data-testid={`select-option-${item.value}`} onClick={() => onSelect({ value: item.value })}>
-          {item.name}
-        </button>
-      ))}
-    </div>
-  ),
-}))
-
 const createForm = (overrides: Partial<CodeBasedExtensionForm> = {}): CodeBasedExtensionForm => ({
   type: 'text-input',
   variable: 'api_key',
@@ -142,7 +129,8 @@ describe('FormGeneration', () => {
     })
     render(<FormGeneration forms={[form]} value={{}} onChange={onChange} />)
 
-    fireEvent.click(screen.getByTestId('select-option-gpt-4'))
+    fireEvent.click(screen.getByText(/placeholder\.select/))
+    fireEvent.click(screen.getByText('GPT-4'))
 
     expect(onChange).toHaveBeenCalledWith({ model: 'gpt-4' })
   })
