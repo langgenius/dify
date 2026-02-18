@@ -158,8 +158,15 @@ describe('TimePicker', () => {
       // Open - this triggers handleClickTrigger which syncs selectedTime from value
       fireEvent.click(input)
 
-      // The picker is now open with the time synced
-      expect(input).toHaveValue('')
+      // Confirm to verify selectedTime was synced from value prop ("10:00 AM")
+      const confirmButton = screen.getByRole('button', { name: /operation\.ok/i })
+      fireEvent.click(confirmButton)
+      expect(onChange).toHaveBeenCalledTimes(1)
+
+      const emitted = onChange.mock.calls[0][0]
+      expect(isDayjsObject(emitted)).toBe(true)
+      expect(emitted.hour()).toBe(10)
+      expect(emitted.minute()).toBe(0)
     })
 
     it('should resync selectedTime when opening after internal clear', () => {
@@ -194,6 +201,9 @@ describe('TimePicker', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
       const emitted = onChange.mock.calls[0][0]
       expect(isDayjsObject(emitted)).toBe(true)
+      // Resynced from value prop: dayjs('2024-01-01T10:30:00Z') in UTC = 10:30 AM
+      expect(emitted.hour()).toBe(10)
+      expect(emitted.minute()).toBe(30)
     })
   })
 

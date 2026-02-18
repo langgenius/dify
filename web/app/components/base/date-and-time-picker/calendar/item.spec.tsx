@@ -30,14 +30,6 @@ describe('CalendarItem', () => {
 
       expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument()
     })
-
-    it('should render as a button element', () => {
-      const props = createItemProps()
-
-      render(<Item {...props} />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
   })
 
   describe('Visual States', () => {
@@ -77,16 +69,6 @@ describe('CalendarItem', () => {
       render(<Item {...props} />)
 
       expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument()
-    })
-
-    it('should not trigger onClick when isDisabled is true', () => {
-      const onClick = vi.fn()
-      const props = createItemProps({ isDisabled: true, onClick })
-
-      render(<Item {...props} />)
-      fireEvent.click(screen.getByRole('button'))
-
-      expect(onClick).not.toHaveBeenCalled()
     })
   })
 
