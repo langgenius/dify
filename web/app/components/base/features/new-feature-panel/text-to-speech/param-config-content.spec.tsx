@@ -110,6 +110,8 @@ describe('ParamConfigContent', () => {
 
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
       expect(languageLabel).toBeInTheDocument()
+      const tooltip = languageLabel.parentElement as HTMLElement
+      expect(tooltip.querySelector('svg')).toBeInTheDocument()
     })
 
     it('should display language listbox button', () => {
@@ -130,7 +132,7 @@ describe('ParamConfigContent', () => {
     it('should render audition button when language has example', () => {
       renderWithProvider()
 
-      const auditionButton = screen.getAllByRole('button').find(button => button.className.includes('p-0.5'))
+      const auditionButton = screen.queryByTestId('audition-button')
       expect(auditionButton).toBeInTheDocument()
     })
 
@@ -142,8 +144,8 @@ describe('ParamConfigContent', () => {
 
       renderWithProvider()
 
-      const auditionButton = screen.getAllByRole('button').find(button => button.className.includes('p-0.5'))
-      expect(auditionButton).toBeUndefined()
+      const auditionButton = screen.queryByTestId('audition-button')
+      expect(auditionButton).toBeNull()
     })
 
     it('should render with no language set and use first as default', () => {
@@ -172,7 +174,7 @@ describe('ParamConfigContent', () => {
       const onClose = vi.fn()
       renderWithProvider({ onClose })
 
-      const closeButton = screen.getByRole('button', { name: /close voice settings/i })
+      const closeButton = screen.getByRole('button', { name: /close/i })
       await userEvent.click(closeButton)
 
       expect(onClose).toHaveBeenCalled()
@@ -182,7 +184,9 @@ describe('ParamConfigContent', () => {
       const onClose = vi.fn()
       renderWithProvider({ onClose })
 
-      const closeButton = screen.getByRole('button', { name: /close voice settings/i })
+      const closeButton = screen.getByRole('button', { name: /close/i })
+      await userEvent.click(closeButton)
+      onClose.mockClear()
       closeButton.focus()
       await userEvent.keyboard('{Enter}')
 
@@ -193,7 +197,7 @@ describe('ParamConfigContent', () => {
       const onClose = vi.fn()
       renderWithProvider({ onClose })
 
-      const closeButton = screen.getByRole('button', { name: /close voice settings/i })
+      const closeButton = screen.getByRole('button', { name: /close/i })
       closeButton.focus()
       await userEvent.keyboard('{Escape}')
 
@@ -333,9 +337,7 @@ describe('ParamConfigContent', () => {
     })
 
     it('should render language text when selected language value is undefined', () => {
-      mockLanguages = [
-        { value: undefined as unknown as string, name: 'Unknown Language', example: '' },
-      ]
+      mockLanguages = [{ value: '' as string, name: 'Unknown Language', example: '' }]
 
       renderWithProvider({}, {
         text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },

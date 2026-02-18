@@ -3,15 +3,15 @@ import type { ModerationConfig } from '@/models/debug'
 import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import ModerationSettingModal from './moderation-setting-modal'
 
-const render = (ui: ReactElement) => {
+const render = async (ui: ReactElement) => {
   let view: ReturnType<typeof rtlRender> | null = null
-  act(() => {
+  await act(async () => {
     view = rtlRender(ui)
+    await Promise.resolve()
+    await new Promise(resolve => setTimeout(resolve, 0))
   })
   return view!
 }
-
-const originalConsoleError = console.error
 
 const mockNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
@@ -81,12 +81,6 @@ describe('ModerationSettingModal', () => {
   const onSave = vi.fn()
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
-      const [firstArg] = args
-      if (typeof firstArg === 'string' && firstArg.includes('not wrapped in act'))
-        return
-      originalConsoleError(...args as Parameters<typeof console.error>)
-    })
     mockCodeBasedExtensions = { data: { data: [] } }
     mockModelProvidersData = {
       data: {
@@ -109,8 +103,8 @@ describe('ModerationSettingModal', () => {
     vi.restoreAllMocks()
   })
 
-  it('should render the modal title', () => {
-    render(
+  it('should render the modal title', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -121,8 +115,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByText(/feature\.moderation\.modal\.title/)).toBeInTheDocument()
   })
 
-  it('should render provider options', () => {
-    render(
+  it('should render provider options', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -136,8 +130,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByText(/apiBasedExtension\.selector\.title/)).toBeInTheDocument()
   })
 
-  it('should show keywords textarea when keywords type is selected', () => {
-    render(
+  it('should show keywords textarea when keywords type is selected', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -150,8 +144,8 @@ describe('ModerationSettingModal', () => {
     expect(textarea).toHaveValue('bad\nword')
   })
 
-  it('should render cancel and save buttons', () => {
-    render(
+  it('should render cancel and save buttons', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -163,9 +157,9 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
   })
 
-  it('should call onCancel when cancel is clicked', () => {
+  it('should call onCancel when cancel is clicked', async () => {
     const onCancel = vi.fn()
-    render(
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={onCancel}
@@ -178,7 +172,7 @@ describe('ModerationSettingModal', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should show error when saving without inputs or outputs enabled', () => {
+  it('should show error when saving without inputs or outputs enabled', async () => {
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -187,7 +181,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -202,7 +196,7 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should show error when keywords type has no keywords', () => {
+  it('should show error when keywords type has no keywords', async () => {
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -211,7 +205,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -226,8 +220,7 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should call onSave with formatted data when valid', () => {
-    const onSave = vi.fn()
+  it('should call onSave with formatted data when valid', async () => {
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -236,7 +229,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -256,8 +249,8 @@ describe('ModerationSettingModal', () => {
     }))
   })
 
-  it('should show api selector when api type is selected', () => {
-    render(
+  it('should show api selector when api type is selected', async () => {
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'api', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -268,8 +261,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByTestId('api-selector')).toBeInTheDocument()
   })
 
-  it('should switch provider type when clicked', () => {
-    render(
+  it('should switch provider type when clicked', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -284,8 +277,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
-  it('should update keywords on textarea change', () => {
-    render(
+  it('should update keywords on textarea change', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -299,8 +292,8 @@ describe('ModerationSettingModal', () => {
     expect(textarea).toHaveValue('new\nkeywords')
   })
 
-  it('should render moderation content sections', () => {
-    render(
+  it('should render moderation content sections', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -312,7 +305,7 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByText(/feature\.moderation\.modal\.content\.output/)).toBeInTheDocument()
   })
 
-  it('should show error when inputs enabled but no preset_response for keywords type', () => {
+  it('should show error when inputs enabled but no preset_response for keywords type', async () => {
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -321,7 +314,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -336,7 +329,7 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should show error when api type has no api_based_extension_id', () => {
+  it('should show error when api type has no api_based_extension_id', async () => {
     const data: ModerationConfig = {
       enabled: true,
       type: 'api',
@@ -345,7 +338,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -360,8 +353,7 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should save with api_based_extension_id in formatted data for api type', () => {
-    const onSave = vi.fn()
+  it('should save with api_based_extension_id in formatted data for api type', async () => {
     const data: ModerationConfig = {
       enabled: true,
       type: 'api',
@@ -371,7 +363,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -390,7 +382,7 @@ describe('ModerationSettingModal', () => {
     }))
   })
 
-  it('should show error when outputs enabled but no preset_response for keywords type', () => {
+  it('should show error when outputs enabled but no preset_response for keywords type', async () => {
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -399,7 +391,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: true, preset_response: '' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -414,8 +406,8 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should toggle input moderation content', () => {
-    render(
+  it('should toggle input moderation content', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -431,8 +423,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.queryAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(0)
   })
 
-  it('should toggle output moderation content', () => {
-    render(
+  it('should toggle output moderation content', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -448,8 +440,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(2)
   })
 
-  it('should select api extension via api selector', () => {
-    render(
+  it('should select api extension via api selector', async () => {
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'api', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -463,9 +455,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByTestId('api-selector')).toBeInTheDocument()
   })
 
-  it('should save with openai_moderation type when configured', () => {
-    const onSave = vi.fn()
-    render(
+  it('should save with openai_moderation type when configured', async () => {
+    await render(
       <ModerationSettingModal
         data={{
           enabled: true,
@@ -487,8 +478,8 @@ describe('ModerationSettingModal', () => {
     }))
   })
 
-  it('should handle keyword truncation to 100 chars per line and 100 lines', () => {
-    render(
+  it('should handle keyword truncation to 100 chars per line and 100 lines', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -505,8 +496,7 @@ describe('ModerationSettingModal', () => {
     expect((textarea as HTMLTextAreaElement).value.length).toBeLessThanOrEqual(100)
   })
 
-  it('should save with formatted outputs_config when both enabled', () => {
-    const onSave = vi.fn()
+  it('should save with formatted outputs_config when both enabled', async () => {
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -515,7 +505,7 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: true, preset_response: 'output blocked' },
       },
     }
-    render(
+    await render(
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
@@ -533,8 +523,8 @@ describe('ModerationSettingModal', () => {
     }))
   })
 
-  it('should switch from keywords to api type', () => {
-    render(
+  it('should switch from keywords to api type', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -550,8 +540,8 @@ describe('ModerationSettingModal', () => {
     expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
-  it('should handle empty lines in keywords', () => {
-    render(
+  it('should handle empty lines in keywords', async () => {
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -562,12 +552,10 @@ describe('ModerationSettingModal', () => {
     const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'word1\n\nword2\n\n' } })
 
-    // Empty lines between non-empty lines are preserved, trailing empties after non-empty are kept
-    expect(textarea.value).toContain('word1')
-    expect(textarea.value).toContain('word2')
+    expect(textarea.value).toBe('word1\n\nword2\n')
   })
 
-  it('should show OpenAI not configured warning when OpenAI provider is not set up', () => {
+  it('should show OpenAI not configured warning when OpenAI provider is not set up', async () => {
     mockModelProvidersData = {
       data: {
         data: [{
@@ -584,7 +572,7 @@ describe('ModerationSettingModal', () => {
       refetch: vi.fn(),
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'openai_moderation', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -595,7 +583,7 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByText(/feature\.moderation\.modal\.openaiNotConfig\.before/)).toBeInTheDocument()
   })
 
-  it('should open settings modal when provider link is clicked in OpenAI warning', () => {
+  it('should open settings modal when provider link is clicked in OpenAI warning', async () => {
     mockModelProvidersData = {
       data: {
         data: [{
@@ -612,7 +600,7 @@ describe('ModerationSettingModal', () => {
       refetch: vi.fn(),
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'openai_moderation', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -625,8 +613,7 @@ describe('ModerationSettingModal', () => {
     expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
   })
 
-  it('should not save when OpenAI type is selected but not configured', () => {
-    const onSave = vi.fn()
+  it('should not save when OpenAI type is selected but not configured', async () => {
     mockModelProvidersData = {
       data: {
         data: [{
@@ -643,7 +630,7 @@ describe('ModerationSettingModal', () => {
       refetch: vi.fn(),
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'openai_moderation', config: { inputs_config: { enabled: true, preset_response: 'blocked' }, outputs_config: { enabled: false, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -656,7 +643,7 @@ describe('ModerationSettingModal', () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 
-  it('should render code-based extension providers', () => {
+  it('should render code-based extension providers', async () => {
     mockCodeBasedExtensions = {
       data: {
         data: [{
@@ -669,7 +656,7 @@ describe('ModerationSettingModal', () => {
       },
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -680,7 +667,7 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByText('Custom Extension')).toBeInTheDocument()
   })
 
-  it('should show form generation when code-based extension is selected', () => {
+  it('should show form generation when code-based extension is selected', async () => {
     mockCodeBasedExtensions = {
       data: {
         data: [{
@@ -693,7 +680,7 @@ describe('ModerationSettingModal', () => {
       },
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'custom-ext', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -705,7 +692,7 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByPlaceholderText('Enter URL')).toBeInTheDocument()
   })
 
-  it('should initialize config from form schema when switching to code-based extension', () => {
+  it('should initialize config from form schema when switching to code-based extension', async () => {
     mockCodeBasedExtensions = {
       data: {
         data: [{
@@ -718,7 +705,7 @@ describe('ModerationSettingModal', () => {
       },
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
@@ -733,7 +720,7 @@ describe('ModerationSettingModal', () => {
     expect(screen.getByDisplayValue('https://default.com')).toBeInTheDocument()
   })
 
-  it('should show error when required form schema field is empty on save', () => {
+  it('should show error when required form schema field is empty on save', async () => {
     mockCodeBasedExtensions = {
       data: {
         data: [{
@@ -746,7 +733,7 @@ describe('ModerationSettingModal', () => {
       },
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'custom-ext', config: { inputs_config: { enabled: true, preset_response: 'blocked' } } }}
         onCancel={vi.fn()}
@@ -761,8 +748,7 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should save with code-based extension config when valid', () => {
-    const onSave = vi.fn()
+  it('should save with code-based extension config when valid', async () => {
     mockCodeBasedExtensions = {
       data: {
         data: [{
@@ -775,7 +761,7 @@ describe('ModerationSettingModal', () => {
       },
     }
 
-    render(
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'custom-ext', config: { api_url: 'https://example.com', inputs_config: { enabled: true, preset_response: 'blocked' }, outputs_config: { enabled: false, preset_response: '' } } }}
         onCancel={vi.fn()}
@@ -793,8 +779,8 @@ describe('ModerationSettingModal', () => {
     }))
   })
 
-  it('should show doc link for api type', () => {
-    render(
+  it('should show doc link for api type', async () => {
+    await render(
       <ModerationSettingModal
         data={{ ...defaultData, type: 'api', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}

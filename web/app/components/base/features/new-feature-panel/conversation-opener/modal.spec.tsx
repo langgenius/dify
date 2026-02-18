@@ -1,26 +1,26 @@
+import type { ReactElement } from 'react'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import OpeningSettingModal from './modal'
 
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({ value, onChange, placeholder }: { value: string, onChange: (v: string) => void, placeholder: string }) => (
-    <textarea
-      data-testid="prompt-editor"
-      value={value}
-      placeholder={placeholder}
-      onChange={e => onChange(e.target.value)}
-    />
-  ),
-}))
+const render = async (ui: ReactElement) => {
+  let view: ReturnType<typeof rtlRender> | null = null
+  await act(async () => {
+    view = rtlRender(ui)
+    await Promise.resolve()
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+  return view!
+}
 
-vi.mock('@/app/components/base/block-input', () => ({
-  getInputKeys: (text: string) => {
-    const matches = text.match(/\{\{(\w+)\}\}/g) || []
-    return matches.map(m => m.replace(/\{\{|\}\}/g, ''))
-  },
-}))
+const getPromptEditor = () => {
+  const editor = document.querySelector('[data-lexical-editor="true"]')
+  expect(editor).toBeInTheDocument()
+  return editor as HTMLElement
+}
 
 vi.mock('@/utils/var', () => ({
   checkKeys: (_keys: string[]) => ({ isValid: true }),
@@ -64,8 +64,8 @@ describe('OpeningSettingModal', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the modal title', () => {
-    render(
+  it('should render the modal title', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -76,8 +76,8 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByText(/feature\.conversationOpener\.title/)).toBeInTheDocument()
   })
 
-  it('should render the opening statement in the editor', () => {
-    render(
+  it('should render the opening statement in the editor', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -85,11 +85,11 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    expect(screen.getByTestId('prompt-editor')).toHaveValue('Hello, how can I help?')
+    expect(getPromptEditor()).toHaveTextContent('Hello, how can I help?')
   })
 
-  it('should render suggested questions', () => {
-    render(
+  it('should render suggested questions', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -101,8 +101,8 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByDisplayValue('Question 2')).toBeInTheDocument()
   })
 
-  it('should render cancel and save buttons', () => {
-    render(
+  it('should render cancel and save buttons', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -114,9 +114,9 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
   })
 
-  it('should call onCancel when cancel is clicked', () => {
+  it('should call onCancel when cancel is clicked', async () => {
     const onCancel = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -129,9 +129,9 @@ describe('OpeningSettingModal', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should call onCancel when close icon is clicked', () => {
+  it('should call onCancel when close icon is clicked', async () => {
     const onCancel = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -142,15 +142,15 @@ describe('OpeningSettingModal', () => {
     // The modal has two ways to cancel: the cancel button and the close icon
     // Both call onCancel. We test the cancel button here since the close icon
     // is not easily queryable with RTL
-    const cancelButtons = screen.getAllByText(/operation\.cancel/)
-    fireEvent.click(cancelButtons[0])
+    const closeButton = screen.getByTestId('close-modal')
+    await userEvent.click(closeButton)
 
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should call onSave with updated data when save is clicked', () => {
+  it('should call onSave with updated data when save is clicked', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={onSave}
@@ -166,8 +166,8 @@ describe('OpeningSettingModal', () => {
     }))
   })
 
-  it('should disable save when opening statement is empty', () => {
-    render(
+  it('should disable save when opening statement is empty', async () => {
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: '' }}
         onSave={vi.fn()}
@@ -179,8 +179,8 @@ describe('OpeningSettingModal', () => {
     expect(saveButton).toBeDisabled()
   })
 
-  it('should add a new suggested question', () => {
-    render(
+  it('should add a new suggested question', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -202,9 +202,9 @@ describe('OpeningSettingModal', () => {
     expect(allInputs.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('should delete a suggested question via save verification', () => {
+  it('should delete a suggested question via save verification', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, suggested_questions: ['Question 1'] }}
         onSave={onSave}
@@ -215,22 +215,16 @@ describe('OpeningSettingModal', () => {
     // Question should be present initially
     expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
 
-    // The delete icon is inside the question row. We find it by traversing from the input.
-    const question1Input = screen.getByDisplayValue('Question 1') as HTMLInputElement
-    // The input's parentElement is the row div that also contains the delete icon wrapper
-    const questionRow = question1Input.parentElement!
-    // Get all SVGs in the row - the last one is the delete bin icon's parent
-    const svgs = questionRow.querySelectorAll('svg')
-    const deleteIconWrapper = svgs[svgs.length - 1]?.parentElement
+    const deleteIconWrapper = screen.getByTestId('delete-question-Question 1').parentElement
     expect(deleteIconWrapper).toBeTruthy()
-    fireEvent.click(deleteIconWrapper!)
+    await userEvent.click(deleteIconWrapper!)
 
     // After deletion, Question 1 should be gone
     expect(screen.queryByDisplayValue('Question 1')).not.toBeInTheDocument()
   })
 
-  it('should update a suggested question value', () => {
-    render(
+  it('should update a suggested question value', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -245,8 +239,8 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByDisplayValue('Updated Question')).toBeInTheDocument()
   })
 
-  it('should show confirm dialog when variables are not in prompt', () => {
-    render(
+  it('should show confirm dialog when variables are not in prompt', async () => {
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={vi.fn()}
@@ -259,9 +253,9 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByTestId('confirm-add-var')).toBeInTheDocument()
   })
 
-  it('should save without variable check when confirm cancel is clicked', () => {
+  it('should save without variable check when confirm cancel is clicked', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
@@ -275,8 +269,8 @@ describe('OpeningSettingModal', () => {
     expect(onSave).toHaveBeenCalled()
   })
 
-  it('should show question count', () => {
-    render(
+  it('should show question count', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -288,9 +282,9 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByText(/openingStatement\.openingQuestion/)).toBeInTheDocument()
   })
 
-  it('should call onAutoAddPromptVariable when confirm add is clicked', () => {
+  it('should call onAutoAddPromptVariable when confirm add is clicked', async () => {
     const onAutoAddPromptVariable = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={vi.fn()}
@@ -306,13 +300,13 @@ describe('OpeningSettingModal', () => {
     expect(onAutoAddPromptVariable).toHaveBeenCalled()
   })
 
-  it('should not show add button when max questions reached', () => {
+  it('should not show add button when max questions reached', async () => {
     const questionsAtMax: OpeningStatement = {
       enabled: true,
       opening_statement: 'Hello',
       suggested_questions: Array.from({ length: 10 }, (_, i) => `Q${i + 1}`),
     }
-    render(
+    await render(
       <OpeningSettingModal
         data={questionsAtMax}
         onSave={vi.fn()}
@@ -323,8 +317,8 @@ describe('OpeningSettingModal', () => {
     expect(screen.queryByText(/variableConfig\.addOption/)).not.toBeInTheDocument()
   })
 
-  it('should handle focus and blur on question input', () => {
-    render(
+  it('should apply and remove focused styling on question input focus/blur', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -332,16 +326,21 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const input = screen.getByDisplayValue('Question 1')
-    fireEvent.focus(input)
-    // The input's parent should have focus styling class
-    fireEvent.blur(input)
-    // After blur, focus styling removed - input still works
+    const input = screen.getByDisplayValue('Question 1') as HTMLInputElement
+    const questionRow = input.parentElement
+
     expect(input).toBeInTheDocument()
+    expect(questionRow).not.toHaveClass('border-components-input-border-active')
+
+    fireEvent.focus(input)
+    expect(questionRow).toHaveClass('border-components-input-border-active')
+
+    fireEvent.blur(input)
+    expect(questionRow).not.toHaveClass('border-components-input-border-active')
   })
 
-  it('should handle mouse enter and leave on delete icon', () => {
-    render(
+  it('should apply and remove deleting styling on delete icon hover', async () => {
+    await render(
       <OpeningSettingModal
         data={defaultData}
         onSave={vi.fn()}
@@ -349,21 +348,23 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const question1Input = screen.getByDisplayValue('Question 1') as HTMLInputElement
-    const questionRow = question1Input.parentElement!
-    const svgs = questionRow.querySelectorAll('svg')
-    const deleteIconWrapper = svgs[svgs.length - 1]?.parentElement
-    if (deleteIconWrapper) {
-      fireEvent.mouseEnter(deleteIconWrapper)
-      fireEvent.mouseLeave(deleteIconWrapper)
-    }
-    // Verifying no errors thrown during hover states and question still present
-    expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
+    const questionInput = screen.getByDisplayValue('Question 1') as HTMLInputElement
+    const questionRow = questionInput.parentElement
+    const deleteIconWrapper = screen.getByTestId('delete-question-Question 1').parentElement
+
+    expect(questionRow).not.toHaveClass('border-components-input-border-destructive')
+    expect(deleteIconWrapper).toBeTruthy()
+
+    await userEvent.hover(deleteIconWrapper!)
+    expect(questionRow).toHaveClass('border-components-input-border-destructive')
+
+    await userEvent.unhover(deleteIconWrapper!)
+    expect(questionRow).not.toHaveClass('border-components-input-border-destructive')
   })
 
-  it('should handle save with empty suggested questions', () => {
+  it('should handle save with empty suggested questions', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, suggested_questions: [] }}
         onSave={onSave}
@@ -378,9 +379,9 @@ describe('OpeningSettingModal', () => {
     }))
   })
 
-  it('should not save when opening statement is only whitespace', () => {
+  it('should not save when opening statement is only whitespace', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: '   ' }}
         onSave={onSave}
@@ -393,9 +394,9 @@ describe('OpeningSettingModal', () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 
-  it('should skip variable check when variables match prompt variables', () => {
+  it('should skip variable check when variables match prompt variables', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
@@ -411,9 +412,9 @@ describe('OpeningSettingModal', () => {
     expect(onSave).toHaveBeenCalled()
   })
 
-  it('should skip variable check when variables match workflow variables', () => {
+  it('should skip variable check when variables match workflow variables', async () => {
     const onSave = vi.fn()
-    render(
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
         onSave={onSave}
@@ -429,8 +430,8 @@ describe('OpeningSettingModal', () => {
     expect(onSave).toHaveBeenCalled()
   })
 
-  it('should show confirm dialog when variables not in workflow variables', () => {
-    render(
+  it('should show confirm dialog when variables not in workflow variables', async () => {
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: 'Hello {{unknown}}' }}
         onSave={vi.fn()}
@@ -444,23 +445,36 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByTestId('confirm-add-var')).toBeInTheDocument()
   })
 
-  it('should update the prompt editor value', () => {
-    render(
+  it('should use updated opening statement after prop changes', async () => {
+    const onSave = vi.fn()
+    const view = await render(
       <OpeningSettingModal
         data={defaultData}
-        onSave={vi.fn()}
+        onSave={onSave}
         onCancel={vi.fn()}
       />,
     )
 
-    const editor = screen.getByTestId('prompt-editor')
-    fireEvent.change(editor, { target: { value: 'New greeting!' } })
+    await act(async () => {
+      view.rerender(
+        <OpeningSettingModal
+          data={{ ...defaultData, opening_statement: 'New greeting!' }}
+          onSave={onSave}
+          onCancel={vi.fn()}
+        />,
+      )
+      await Promise.resolve()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
 
-    expect(editor).toHaveValue('New greeting!')
+    await userEvent.click(screen.getByText(/operation\.save/))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      opening_statement: 'New greeting!',
+    }))
   })
 
-  it('should render with empty opening_statement', () => {
-    render(
+  it('should render empty opening statement with placeholder in editor', async () => {
+    await render(
       <OpeningSettingModal
         data={{ ...defaultData, opening_statement: '' }}
         onSave={vi.fn()}
@@ -468,7 +482,8 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const saveButton = screen.getByText(/operation\.save/).closest('button')
-    expect(saveButton).toBeDisabled()
+    const editor = getPromptEditor()
+    expect(editor.textContent?.trim()).toBe('')
+    expect(screen.getByText('appDebug.openingStatement.placeholder')).toBeInTheDocument()
   })
 })

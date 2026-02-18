@@ -70,11 +70,13 @@ const VoiceParamConfig = ({
           className="cursor-pointer p-1"
           role="button"
           tabIndex={0}
-          aria-label="Close voice settings"
+          aria-label={t('voice.voiceSettings.close', { ns: 'appDebug' })}
           onClick={onClose}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ')
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
               onClose()
+            }
           }}
         >
           <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
@@ -219,7 +221,7 @@ const VoiceParamConfig = ({
             </div>
           </Listbox>
           {languageItem?.example && (
-            <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1">
+            <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1" data-testid="audition-button">
               <AudioBtn
                 value={languageItem?.example}
                 isAudition
