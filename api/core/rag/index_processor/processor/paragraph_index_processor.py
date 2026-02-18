@@ -9,7 +9,6 @@ from typing import Any, cast
 logger = logging.getLogger(__name__)
 
 from core.entities.knowledge_entities import PreviewDetail
-from core.file import File, FileTransferMethod, FileType, file_manager
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -35,6 +34,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.workflow.file import File, FileTransferMethod, FileType, file_manager
 from core.workflow.nodes.llm import llm_utils
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
