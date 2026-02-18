@@ -16,9 +16,6 @@ class ModelCredentialSchemaValidator(CommonValidator):
         :return: filtered credentials
         """
 
-        if self.model_credential_schema is None:
-            raise ValueError("Model credential schema is None")
-
         # get the credential_form_schemas in provider_credential_schema
         credential_form_schemas = self.model_credential_schema.credential_form_schemas
 

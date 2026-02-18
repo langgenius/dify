@@ -76,8 +76,8 @@ class PluginParameterService:
                                 .first()
                             )
 
-                    if db_record is None:
-                        raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
+            if db_record is None:
+                raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
 
                     credentials = encrypter.decrypt(db_record.credentials)
                     credential_type = db_record.credential_type

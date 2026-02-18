@@ -43,10 +43,7 @@ def register_external_error_handlers(api: Api):
             headers.update(exc_headers)
 
         # Payload per status
-        if status_code == 406 and api.default_mediatype is None:
-            data = {"code": "not_acceptable", "message": default_data["message"], "status": status_code}
-            return data, status_code, headers
-        elif status_code == 400:
+        if status_code == 400:
             msg = default_data["message"]
             if isinstance(msg, Mapping) and msg:
                 # Convert param errors like {"field": "reason"} into a friendly shape
