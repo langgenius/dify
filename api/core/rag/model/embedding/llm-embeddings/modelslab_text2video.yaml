@@ -1,0 +1,8 @@
+# Model display order for ModelsLab Video Generation models
+# Models will appear in the UI in this order
+# NOTE: This is the FIRST video provider in Dify ecosystem
+
+- cogvideox                 # State-of-the-art video generation
+- mochi-1                   # High-quality video model
+- animatediff               # Animation-focused model
+- stable-video-diffusion    # Video variant of Stable Diffusion
