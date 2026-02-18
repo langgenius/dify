@@ -36,7 +36,7 @@ describe('OptionListItem', () => {
   })
 
   describe('Selection State', () => {
-    it('should render when isSelected is true', () => {
+    it('should have selected styles when isSelected is true', () => {
       render(
         <OptionListItem isSelected={true} onClick={vi.fn()}>
           Selected
@@ -44,10 +44,10 @@ describe('OptionListItem', () => {
       )
 
       const item = screen.getByRole('listitem')
-      expect(item).toBeInTheDocument()
+      expect(item).toHaveClass('bg-components-button-ghost-bg-hover')
     })
 
-    it('should render when isSelected is false', () => {
+    it('should not have selected styles when isSelected is false', () => {
       render(
         <OptionListItem isSelected={false} onClick={vi.fn()}>
           Not Selected
@@ -55,7 +55,7 @@ describe('OptionListItem', () => {
       )
 
       const item = screen.getByRole('listitem')
-      expect(item).toBeInTheDocument()
+      expect(item).not.toHaveClass('bg-components-button-ghost-bg-hover')
     })
   })
 

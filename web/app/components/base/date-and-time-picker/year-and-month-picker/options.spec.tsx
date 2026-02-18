@@ -43,11 +43,9 @@ describe('YearAndMonthPicker Options', () => {
     it('should call handleMonthSelect when a month is clicked', () => {
       const handleMonthSelect = vi.fn()
       const props = createOptionsProps({ handleMonthSelect })
-
       render(<Options {...props} />)
-      const monthItems = screen.getAllByText(/months\./)
-      fireEvent.click(monthItems[0])
-
+      // The mock returns 'time.months.January' for the first month
+      fireEvent.click(screen.getByText(/months\.January/))
       expect(handleMonthSelect).toHaveBeenCalledWith(0)
     })
 

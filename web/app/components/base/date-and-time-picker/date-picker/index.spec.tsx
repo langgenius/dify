@@ -314,27 +314,52 @@ describe('DatePicker', () => {
 
   // Clear behavior
   describe('Clear Behavior', () => {
-    it('should accept onClear callback prop', () => {
+    it('should call onClear when clear is clicked while picker is closed', () => {
       const onClear = vi.fn()
-      const value = dayjs('2024-06-15')
-      const props = createDatePickerProps({ value, onClear })
+      const renderTrigger = vi.fn(({ handleClear }) => (
+        <button data-testid="clear-trigger" onClick={handleClear}>
+          Clear
+        </button>
+      ))
+      const props = createDatePickerProps({
+        value: dayjs('2024-06-15'),
+        onClear,
+        renderTrigger,
+      })
       render(<DatePicker {...props} />)
 
-      // Verify the picker renders with a value
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
+      fireEvent.click(screen.getByTestId('clear-trigger'))
+
+      expect(onClear).toHaveBeenCalledTimes(1)
     })
 
-    it('should render picker with value that can be cleared', () => {
+    it('should clear selected date without calling onClear when picker is open', () => {
       const onClear = vi.fn()
       const onChange = vi.fn()
-      const value = dayjs('2024-06-15')
-      const props = createDatePickerProps({ value, onClear, onChange })
+      const renderTrigger = vi.fn(({ handleClickTrigger, handleClear }) => (
+        <div>
+          <button data-testid="open-trigger" onClick={handleClickTrigger}>
+            Open
+          </button>
+          <button data-testid="clear-trigger" onClick={handleClear}>
+            Clear
+          </button>
+        </div>
+      ))
+      const props = createDatePickerProps({
+        value: dayjs('2024-06-15'),
+        onClear,
+        onChange,
+        renderTrigger,
+      })
       render(<DatePicker {...props} />)
 
-      // Verify the component renders with the provided value
-      const input = screen.getByRole('textbox')
-      expect(input.getAttribute('value')).not.toBe('')
+      fireEvent.click(screen.getByTestId('open-trigger'))
+      fireEvent.click(screen.getByTestId('clear-trigger'))
+      fireEvent.click(screen.getByText(/operation\.ok/))
+
+      expect(onClear).not.toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledWith(undefined)
     })
   })
 

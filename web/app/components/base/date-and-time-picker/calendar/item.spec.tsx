@@ -33,42 +33,42 @@ describe('CalendarItem', () => {
   })
 
   describe('Visual States', () => {
-    it('should render when date matches selectedDate', () => {
+    it('should have selected styles when date matches selectedDate', () => {
       const selectedDate = dayjs('2024-06-15')
       const props = createItemProps({ selectedDate })
 
       render(<Item {...props} />)
-
-      expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: '15' })
+      expect(button).toHaveClass('bg-components-button-primary-bg', 'text-components-button-primary-text')
     })
 
-    it('should render when date does not match selectedDate', () => {
+    it('should not have selected styles when date does not match selectedDate', () => {
       const selectedDate = dayjs('2024-06-16')
       const props = createItemProps({ selectedDate })
 
       render(<Item {...props} />)
-
-      expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: '15' })
+      expect(button).not.toHaveClass('bg-components-button-primary-bg', 'text-components-button-primary-text')
     })
 
-    it('should render when day is not in current month', () => {
+    it('should have different styles when day is not in current month', () => {
       const props = createItemProps({
         day: createMockDay({ isCurrentMonth: false }),
       })
 
       render(<Item {...props} />)
-
-      expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: '15' })
+      expect(button).toHaveClass('text-text-quaternary')
     })
 
-    it('should render when day is in current month', () => {
+    it('should have different styles when day is in current month', () => {
       const props = createItemProps({
         day: createMockDay({ isCurrentMonth: true }),
       })
 
       render(<Item {...props} />)
-
-      expect(screen.getByRole('button', { name: '15' })).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: '15' })
+      expect(button).toHaveClass('text-text-secondary')
     })
   })
 

@@ -1,5 +1,6 @@
 import type { TimeOptionsProps } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import dayjs from '../utils/dayjs'
 import Options from './options'
 
 beforeAll(() => {
@@ -29,12 +30,11 @@ describe('TimePickerOptions', () => {
       expect(allItems.length).toBeGreaterThan(12)
     })
 
-    it('should render 60 minute options by default', () => {
+    it('should render all hour, minute, and period options by default', () => {
       const props = createOptionsProps()
-
       render(<Options {...props} />)
-
       const allItems = screen.getAllByRole('listitem')
+      // 12 hours + 60 minutes + 2 periods
       expect(allItems).toHaveLength(74)
     })
 
@@ -61,26 +61,17 @@ describe('TimePickerOptions', () => {
   })
 
   describe('Interactions', () => {
-    it('should call handleSelectHour when an hour is clicked', () => {
-      const handleSelectHour = vi.fn()
-      const props = createOptionsProps({ handleSelectHour })
-
+    it('should render selected hour in the list', () => {
+      const props = createOptionsProps({ selectedTime: dayjs('2024-01-01 05:30:00') })
       render(<Options {...props} />)
-      const hourItems = screen.getAllByRole('listitem')
-      fireEvent.click(hourItems[0])
-
-      expect(handleSelectHour).toHaveBeenCalled()
+      const selectedHour = screen.getAllByRole('listitem').find(item => item.textContent === '05')
+      expect(selectedHour).toHaveClass('bg-components-button-ghost-bg-hover')
     })
-
-    it('should call handleSelectMinute when a minute is clicked', () => {
-      const handleSelectMinute = vi.fn()
-      const props = createOptionsProps({ handleSelectMinute })
-
+    it('should render selected minute in the list', () => {
+      const props = createOptionsProps({ selectedTime: dayjs('2024-01-01 05:30:00') })
       render(<Options {...props} />)
-      const allItems = screen.getAllByRole('listitem')
-      fireEvent.click(allItems[13])
-
-      expect(handleSelectMinute).toHaveBeenCalled()
+      const selectedMinute = screen.getAllByRole('listitem').find(item => item.textContent === '30')
+      expect(selectedMinute).toHaveClass('bg-components-button-ghost-bg-hover')
     })
 
     it('should call handleSelectPeriod when AM is clicked', () => {

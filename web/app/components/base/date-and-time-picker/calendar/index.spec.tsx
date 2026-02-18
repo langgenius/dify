@@ -51,11 +51,12 @@ describe('Calendar', () => {
 
     it('should accept wrapperClassName prop without errors', () => {
       const props = createCalendarProps({ wrapperClassName: 'custom-class' })
-      render(<Calendar {...props} />)
+      const { container } = render(<Calendar {...props} />)
 
       // Verify the component renders successfully with wrapperClassName
       const dayLabels = screen.getAllByText(/daysInWeek/)
       expect(dayLabels).toHaveLength(7)
+      expect(container.firstChild).toHaveClass('custom-class')
     })
   })
 
