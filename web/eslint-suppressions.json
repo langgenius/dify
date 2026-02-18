@@ -2766,11 +2766,6 @@
       "count": 1
     }
   },
-  "app/components/base/tab-slider-plain/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
-    }
-  },
   "app/components/base/tab-slider/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
