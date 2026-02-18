@@ -336,7 +336,7 @@ describe('ParamConfigContent', () => {
       expect(mockUseAppVoices).toHaveBeenCalledWith('', 'en-US')
     })
 
-    it('should render language text when selected language value is undefined', () => {
+    it('should render language text when selected language value is empty string', () => {
       mockLanguages = [{ value: '' as string, name: 'Unknown Language', example: '' }]
 
       renderWithProvider({}, {

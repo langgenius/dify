@@ -236,7 +236,15 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     >
       <div className="flex items-center justify-between">
         <div className="text-text-primary title-2xl-semi-bold">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onCancel}><span className="i-ri-close-line h-4 w-4 text-text-tertiary" /></div>
+        <div
+          role="button"
+          tabIndex={0}
+          className="cursor-pointer p-1"
+          onClick={onCancel}
+          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onCancel()}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">

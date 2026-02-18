@@ -1,17 +1,6 @@
-import type { ReactElement } from 'react'
 import type { ModerationConfig } from '@/models/debug'
-import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import ModerationSettingModal from './moderation-setting-modal'
-
-const render = async (ui: ReactElement) => {
-  let view: ReturnType<typeof rtlRender> | null = null
-  await act(async () => {
-    view = rtlRender(ui)
-    await Promise.resolve()
-    await new Promise(resolve => setTimeout(resolve, 0))
-  })
-  return view!
-}
 
 const mockNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
@@ -451,8 +440,13 @@ describe('ModerationSettingModal', () => {
 
     fireEvent.click(screen.getByTestId('select-api'))
 
-    // After selecting, the data should be updated internally
-    expect(screen.getByTestId('api-selector')).toBeInTheDocument()
+    // Trigger save and confirm the chosen extension id is passed through
+    fireEvent.click(screen.getByText(/operation\.save/))
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({ api_based_extension_id: 'api-ext-1' }),
+      }),
+    )
   })
 
   it('should save with openai_moderation type when configured', async () => {

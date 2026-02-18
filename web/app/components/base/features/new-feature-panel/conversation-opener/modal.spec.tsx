@@ -1,20 +1,9 @@
-import type { ReactElement } from 'react'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import OpeningSettingModal from './modal'
-
-const render = async (ui: ReactElement) => {
-  let view: ReturnType<typeof rtlRender> | null = null
-  await act(async () => {
-    view = rtlRender(ui)
-    await Promise.resolve()
-    await new Promise(resolve => setTimeout(resolve, 0))
-  })
-  return view!
-}
 
 const getPromptEditor = () => {
   const editor = document.querySelector('[data-lexical-editor="true"]')
@@ -124,7 +113,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.cancel/))
+    await userEvent.click(screen.getByText(/operation\.cancel/))
 
     expect(onCancel).toHaveBeenCalled()
   })
@@ -139,9 +128,6 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    // The modal has two ways to cancel: the cancel button and the close icon
-    // Both call onCancel. We test the cancel button here since the close icon
-    // is not easily queryable with RTL
     const closeButton = screen.getByTestId('close-modal')
     await userEvent.click(closeButton)
 
@@ -158,7 +144,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       opening_statement: 'Hello, how can I help?',
@@ -192,7 +178,7 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Question 2')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/variableConfig\.addOption/))
+    await userEvent.click(screen.getByText(/variableConfig\.addOption/))
 
     // After adding: the 2 existing questions still present plus 1 new empty one
     expect(screen.getByDisplayValue('Question 1')).toBeInTheDocument()
@@ -232,11 +218,11 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByDisplayValue('Question 1'), {
-      target: { value: 'Updated Question' },
-    })
+    const input = screen.getByDisplayValue('Question 1')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Updated Question')
 
-    expect(screen.getByDisplayValue('Updated Question')).toBeInTheDocument()
+    expect(input).toHaveValue('Updated Question')
   })
 
   it('should show confirm dialog when variables are not in prompt', async () => {
@@ -248,7 +234,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     expect(screen.getByTestId('confirm-add-var')).toBeInTheDocument()
   })
@@ -263,8 +249,8 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
-    fireEvent.click(screen.getByTestId('cancel-add'))
+    await userEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByTestId('cancel-add'))
 
     expect(onSave).toHaveBeenCalled()
   })
@@ -293,9 +279,9 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
     // Confirm add var dialog should appear
-    fireEvent.click(screen.getByTestId('confirm-add'))
+    await userEvent.click(screen.getByTestId('confirm-add'))
 
     expect(onAutoAddPromptVariable).toHaveBeenCalled()
   })
@@ -332,10 +318,11 @@ describe('OpeningSettingModal', () => {
     expect(input).toBeInTheDocument()
     expect(questionRow).not.toHaveClass('border-components-input-border-active')
 
-    fireEvent.focus(input)
+    await userEvent.click(input)
     expect(questionRow).toHaveClass('border-components-input-border-active')
 
-    fireEvent.blur(input)
+    // Tab press to blur
+    await userEvent.tab()
     expect(questionRow).not.toHaveClass('border-components-input-border-active')
   })
 
@@ -372,7 +359,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       suggested_questions: [],
@@ -389,7 +376,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     expect(onSave).not.toHaveBeenCalled()
   })
@@ -405,7 +392,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     // Variable is in promptVariables, so no confirm dialog
     expect(screen.queryByTestId('confirm-add-var')).not.toBeInTheDocument()
@@ -423,7 +410,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     // Variable matches workflow variables, so no confirm dialog
     expect(screen.queryByTestId('confirm-add-var')).not.toBeInTheDocument()
@@ -440,7 +427,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await userEvent.click(screen.getByText(/operation\.save/))
 
     expect(screen.getByTestId('confirm-add-var')).toBeInTheDocument()
   })
