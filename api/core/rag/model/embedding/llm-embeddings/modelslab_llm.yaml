@@ -1,0 +1,18 @@
+# Model display order for ModelsLab LLM models
+# Models will appear in the UI in this order
+
+- meta-llama/llama-3.1-405b-instruct      # Most capable model first
+- meta-llama/llama-3.1-70b-instruct       # High performance
+- meta-llama/llama-3.1-8b-instruct        # Balanced performance/cost
+- mistralai/mixtral-8x7b-instruct-v0.1    # Popular mixture of experts
+- mistralai/mistral-7b-instruct-v0.1      # Fast and efficient
+- google/gemini-1.5-pro                   # Google's flagship
+- google/gemini-1.5-flash                 # Optimized for speed
+- openai/gpt-4-turbo                      # OpenAI's advanced model
+- openai/gpt-4                            # OpenAI GPT-4
+- openai/gpt-3.5-turbo                    # Popular baseline
+- anthropic/claude-3-opus                 # Anthropic's most capable
+- anthropic/claude-3-sonnet               # Balanced Claude model
+- anthropic/claude-3-haiku                # Fast Claude model
+- cohere/command-r-plus                   # Cohere's advanced model
+- cohere/command-r                        # Cohere Command R
