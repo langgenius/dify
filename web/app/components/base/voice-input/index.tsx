@@ -124,9 +124,8 @@ const VoiceInput = ({
     catch {
       onCancel()
     }
-  }, [drawRecord, onCancel])
-
-  const initCanvas = () => {
+  }, [drawRecord, onCancel, setStartRecord, setStartConvert])
+  const initCanvas = useCallback(() => {
     const dpr = window.devicePixelRatio || 1
     const canvas = document.getElementById('voice-input-record') as HTMLCanvasElement
 
@@ -144,7 +143,7 @@ const VoiceInput = ({
         ctxRef.current = ctx
       }
     }
-  }
+  }, [])
   if (originDuration >= 600 && startRecord)
     handleStopRecorder()
 
@@ -155,7 +154,7 @@ const VoiceInput = ({
     return () => {
       recorderRef?.stop()
     }
-  }, [handleStartRecord])
+  }, [handleStartRecord, initCanvas])
 
   const minutes = Number.parseInt(`${Number.parseInt(`${originDuration}`) / 60}`)
   const seconds = Number.parseInt(`${originDuration}`) % 60
