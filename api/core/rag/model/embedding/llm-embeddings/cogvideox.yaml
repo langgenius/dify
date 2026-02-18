@@ -1,0 +1,97 @@
+model: cogvideox
+label:
+  en_US: CogVideoX
+  zh_Hans: CogVideoX
+model_type: text2video
+model_properties:
+  mode: text2video
+  max_frames: 81
+  max_resolution: "1360x768"
+  default_resolution: "1360x768"
+  supported_formats: ["mp4"]
+parameter_rules:
+  - name: width
+    type: int
+    help:
+      en_US: Width of the generated video
+      zh_Hans: 生成视频的宽度
+    default: 1360
+    options: [768, 1024, 1360]
+  - name: height
+    type: int
+    help:
+      en_US: Height of the generated video
+      zh_Hans: 生成视频的高度
+    default: 768
+    options: [768, 1024]
+  - name: num_frames
+    type: int
+    help:
+      en_US: Number of frames to generate
+      zh_Hans: 要生成的帧数
+    default: 49
+    min: 16
+    max: 81
+    options: [16, 25, 33, 49, 65, 81]
+  - name: fps
+    type: int
+    help:
+      en_US: Frames per second for the generated video
+      zh_Hans: 生成视频的每秒帧数
+    default: 16
+    options: [8, 16, 24]
+  - name: steps
+    type: int
+    help:
+      en_US: Number of denoising steps
+      zh_Hans: 去噪步数
+    default: 50
+    min: 20
+    max: 100
+  - name: guidance_scale
+    type: float
+    help:
+      en_US: How strictly the model follows the prompt (higher = more strict)
+      zh_Hans: 模型遵循提示的严格程度（更高 = 更严格）
+    default: 6.0
+    min: 1.0
+    max: 15.0
+  - name: negative_prompt
+    type: string
+    help:
+      en_US: What you don't want to see in the video
+      zh_Hans: 您不想在视频中看到的内容
+    required: false
+    placeholder:
+      en_US: Enter negative prompt (optional)
+      zh_Hans: 输入负面提示（可选）
+  - name: seed
+    type: int
+    help:
+      en_US: Random seed for reproducible results
+      zh_Hans: 用于可重现结果的随机种子
+    required: false
+    min: -2147483648
+    max: 2147483647
+  - name: init_image
+    type: string
+    help:
+      en_US: Initial image for image-to-video generation (URL or base64)
+      zh_Hans: 图像到视频生成的初始图像（URL 或 base64）
+    required: false
+    placeholder:
+      en_US: Enter image URL or base64 (optional)
+      zh_Hans: 输入图像 URL 或 base64（可选）
+  - name: strength
+    type: float
+    help:
+      en_US: How much to transform the init image (0.0 = no change, 1.0 = complete change)
+      zh_Hans: 转换初始图像的程度（0.0 = 无变化，1.0 = 完全变化）
+    default: 0.8
+    min: 0.1
+    max: 1.0
+    required: false
+pricing:
+  input: '0.025'
+  unit: '1'
+  currency: USD
