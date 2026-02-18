@@ -1750,7 +1750,7 @@ vdb = [
     { name = "intersystems-irispython", specifier = ">=5.1.0" },
     { name = "mo-vector", specifier = "~=0.1.13" },
     { name = "mysql-connector-python", specifier = ">=9.3.0" },
-    { name = "opensearch-py", specifier = "==2.4.0" },
+    { name = "opensearch-py", specifier = "==3.1.0" },
     { name = "oracledb", specifier = "==3.3.0" },
     { name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=0.2.1" },
     { name = "pgvector", specifier = "==0.2.5" },
@@ -1894,6 +1894,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/51/23/079e39571d6dd8d90d7a369ecb55ad766efb6bae4e77389629e14458c280/eval_type_backport-0.3.0.tar.gz", hash = "sha256:1638210401e184ff17f877e9a2fa076b60b5838790f4532a21761cc2be67aea1", size = 9272, upload-time = "2025-11-13T20:56:50.845Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/19/d8/2a1c638d9e0aa7e269269a1a1bf423ddd94267f1a01bbe3ad03432b67dd4/eval_type_backport-0.3.0-py3-none-any.whl", hash = "sha256:975a10a0fe333c8b6260d7fdb637698c9a16c3a9e3b6eb943fee6a6f67a37fe8", size = 6061, upload-time = "2025-11-13T20:56:49.499Z" },
+]
+
+[[package]]
+name = "events"
+version = "0.5"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/25/ed/e47dec0626edd468c84c04d97769e7ab4ea6457b7f54dcb3f72b17fcd876/Events-0.5-py3-none-any.whl", hash = "sha256:a7286af378ba3e46640ac9825156c93bdba7502174dd696090fdfcd4d80a1abd", size = 6758, upload-time = "2023-07-31T08:23:13.645Z" },
 ]
 
 [[package]]
@@ -3922,19 +3930,32 @@ wheels = [
 ]
 
 [[package]]
+name = "opensearch-protobufs"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "grpcio" },
+    { name = "protobuf" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/16/e2/8a09dbdbfe51e30dfecb625a0f5c524a53bfa4b1fba168f73ac85621dba2/opensearch_protobufs-0.19.0-py3-none-any.whl", hash = "sha256:5137c9c2323cc7debb694754b820ca4cfb5fc8eb180c41ff125698c3ee11bfc2", size = 39778, upload-time = "2025-09-29T20:05:52.379Z" },
+]
+
+[[package]]
 name = "opensearch-py"
-version = "2.4.0"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
+    { name = "events" },
+    { name = "opensearch-protobufs" },
     { name = "python-dateutil" },
     { name = "requests" },
-    { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/dc/acb182db6bb0c71f1e6e41c49260e01d68e52a03efb64e44aed3cc7f483f/opensearch-py-2.4.0.tar.gz", hash = "sha256:7eba2b6ed2ddcf33225bfebfba2aee026877838cc39f760ec80f27827308cc4b", size = 182924, upload-time = "2023-11-15T21:41:37.329Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/9f/d4969f7e8fa221bfebf254cc3056e7c743ce36ac9874e06110474f7c947d/opensearch_py-3.1.0.tar.gz", hash = "sha256:883573af13175ff102b61c80b77934a9e937bdcc40cda2b92051ad53336bc055", size = 258616, upload-time = "2025-11-20T16:37:36.777Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/98/178aacf07ece7f95d1948352778702898d57c286053813deb20ebb409923/opensearch_py-2.4.0-py2.py3-none-any.whl", hash = "sha256:316077235437c8ceac970232261f3393c65fb92a80f33c5b106f50f1dab24fd9", size = 258405, upload-time = "2023-11-15T21:41:35.59Z" },
+    { url = "https://files.pythonhosted.org/packages/08/a1/293c8ad81768ad625283d960685bde07c6302abf20a685e693b48ab6eb91/opensearch_py-3.1.0-py3-none-any.whl", hash = "sha256:e5af83d0454323e6ea9ddee8c0dcc185c0181054592d23cb701da46271a3b65b", size = 385729, upload-time = "2025-11-20T16:37:34.941Z" },
 ]
 
 [[package]]
