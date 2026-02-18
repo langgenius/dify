@@ -261,8 +261,8 @@ describe('TimePicker', () => {
         />,
       )
 
-      // Verify the component renders successfully with notClearable
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      // In test env the icon stays in DOM, but must remain hidden when notClearable is set
+      expect(screen.getByRole('button', { name: /clear/i })).toHaveClass('hidden')
     })
   })
 
@@ -299,6 +299,25 @@ describe('TimePicker', () => {
       fireEvent.click(screen.getByRole('textbox'))
     }
 
+    const getHourAndMinuteLists = () => {
+      const allLists = screen.getAllByRole('list')
+      const hourList = allLists.find(list =>
+        within(list).queryByText('01')
+        && within(list).queryByText('12')
+        && !within(list).queryByText('59'))
+      const minuteList = allLists.find(list =>
+        within(list).queryByText('00')
+        && within(list).queryByText('59'))
+
+      expect(hourList).toBeTruthy()
+      expect(minuteList).toBeTruthy()
+
+      return {
+        hourList: hourList!,
+        minuteList: minuteList!,
+      }
+    }
+
     it('should update selectedTime when hour is selected', () => {
       const onChange = vi.fn()
       render(
@@ -313,9 +332,8 @@ describe('TimePicker', () => {
       openPicker()
 
       // Click hour "05" from the time options
-      const allLists = screen.getAllByRole('list')
-      const hourItems = within(allLists[0]).getAllByRole('listitem')
-      fireEvent.click(hourItems[4])
+      const { hourList } = getHourAndMinuteLists()
+      fireEvent.click(within(hourList).getByText('05'))
 
       // Now confirm to verify the selectedTime was updated
       const confirmButton = screen.getByRole('button', { name: /operation\.ok/i })
@@ -342,9 +360,8 @@ describe('TimePicker', () => {
       openPicker()
 
       // Click minute "45" from the time options
-      const allLists = screen.getAllByRole('list')
-      const minuteItems = within(allLists[1]).getAllByRole('listitem')
-      fireEvent.click(minuteItems[45])
+      const { minuteList } = getHourAndMinuteLists()
+      fireEvent.click(within(minuteList).getByText('45'))
 
       // Confirm
       const confirmButton = screen.getByRole('button', { name: /operation\.ok/i })
@@ -394,9 +411,8 @@ describe('TimePicker', () => {
       openPicker()
 
       // Click hour "03" with no existing selectedTime
-      const allLists = screen.getAllByRole('list')
-      const hourItems = within(allLists[0]).getAllByRole('listitem')
-      fireEvent.click(hourItems[2])
+      const { hourList } = getHourAndMinuteLists()
+      fireEvent.click(within(hourList).getByText('03'))
 
       // Confirm
       const confirmButton = screen.getByRole('button', { name: /operation\.ok/i })
@@ -421,9 +437,8 @@ describe('TimePicker', () => {
       openPicker()
 
       // Click minute "15" with no existing selectedTime
-      const allLists = screen.getAllByRole('list')
-      const minuteItems = within(allLists[1]).getAllByRole('listitem')
-      fireEvent.click(minuteItems[15])
+      const { minuteList } = getHourAndMinuteLists()
+      fireEvent.click(within(minuteList).getByText('15'))
 
       // Confirm
       const confirmButton = screen.getByRole('button', { name: /operation\.ok/i })
