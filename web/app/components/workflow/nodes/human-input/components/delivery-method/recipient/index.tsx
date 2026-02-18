@@ -91,7 +91,7 @@ const Recipient = ({
         </div>
         <div className={cn('system-sm-medium grow text-text-secondary')}>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`, { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
         <Switch
-          defaultValue={data.whole_workspace}
+          value={data.whole_workspace}
           onChange={checked => onChange({ ...data, whole_workspace: checked })}
         />
       </div>

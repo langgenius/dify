@@ -216,7 +216,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         <Switch
                           size="md"
                           disabled={archived || detail?.status !== 'completed'}
-                          defaultValue={enabled}
+                          value={enabled}
                           onChange={async (val) => {
                             await onChangeSwitch?.(val, id)
                           }}
