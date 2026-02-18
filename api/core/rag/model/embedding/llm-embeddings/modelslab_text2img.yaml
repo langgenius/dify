@@ -1,0 +1,10 @@
+# Model display order for ModelsLab Image Generation models
+# Models will appear in the UI in this order
+
+- flux                      # Latest state-of-the-art model
+- flux-pro                  # Professional Flux variant
+- sdxl                      # Popular SDXL model
+- playground-v2             # High-quality Playground model
+- stable-diffusion-1.5      # Classic Stable Diffusion
+- midjourney                # Midjourney-style generation
+- dall-e                    # DALL-E style generation
