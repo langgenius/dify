@@ -70,7 +70,7 @@ const VoiceParamConfig = ({
           className="cursor-pointer p-1"
           role="button"
           tabIndex={0}
-          aria-label={t('voice.voiceSettings.close', { ns: 'appDebug' })}
+          aria-label={t('appDebug:voice.voiceSettings.close')}
           onClick={onClose}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
