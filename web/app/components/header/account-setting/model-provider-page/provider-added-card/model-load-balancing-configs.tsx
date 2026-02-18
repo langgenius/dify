@@ -167,7 +167,7 @@ const ModelLoadBalancingConfigs = ({
           {
             withSwitch && (
               <Switch
-                defaultValue={Boolean(draftConfig.enabled)}
+                value={Boolean(draftConfig.enabled)}
                 size="l"
                 className="ml-3 justify-self-end"
                 disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
@@ -227,7 +227,7 @@ const ModelLoadBalancingConfigs = ({
                         <>
                           <span className="mr-2 h-3 border-r border-r-divider-subtle" />
                           <Switch
-                            defaultValue={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
+                            value={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                             size="md"
                             className="justify-self-end"
                             onChange={value => toggleConfigEntryEnabled(index, value)}

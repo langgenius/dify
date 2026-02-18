@@ -181,7 +181,7 @@ const EndpointCard = ({
         )}
         <Switch
           className="ml-3"
-          defaultValue={active}
+          value={active}
           onChange={handleSwitch}
           size="sm"
         />
