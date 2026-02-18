@@ -2840,11 +2840,6 @@
       "count": 1
     }
   },
-  "app/components/base/voice-input/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
-    }
-  },
   "app/components/base/voice-input/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
