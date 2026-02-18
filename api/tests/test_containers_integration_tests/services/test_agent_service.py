@@ -841,7 +841,7 @@ class TestAgentService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
-        from core.file import FileTransferMethod, FileType
+        from core.workflow.file import FileTransferMethod, FileType
         from extensions.ext_database import db
         from models.enums import CreatorUserRole
 
