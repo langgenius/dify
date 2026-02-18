@@ -288,6 +288,8 @@ describe('TimePicker', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
       const emitted = onChange.mock.calls[0][0]
       expect(isDayjsObject(emitted)).toBe(true)
+      expect(emitted.hour()).toBe(10)
+      expect(emitted.minute()).toBe(30)
     })
   })
 
@@ -485,6 +487,10 @@ describe('TimePicker', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
       const emitted = onChange.mock.calls[0][0]
       expect(isDayjsObject(emitted)).toBe(true)
+      // 10:30 UTC converted to America/New_York (UTC-5 in Jan) = 05:30
+      expect(emitted.utcOffset()).toBe(dayjs().tz('America/New_York').utcOffset())
+      expect(emitted.hour()).toBe(5)
+      expect(emitted.minute()).toBe(30)
     })
 
     it('should update selectedTime when value changes', () => {
@@ -548,7 +554,6 @@ describe('TimePicker', () => {
           timezone="UTC"
         />,
       )
-
       // Remove value and change timezone
       rerender(
         <TimePicker
@@ -558,9 +563,10 @@ describe('TimePicker', () => {
           timezone="America/New_York"
         />,
       )
-
       // Input should be empty now
       expect(screen.getByRole('textbox')).toHaveValue('')
+      // onChange should not fire when value is undefined, even if selectedTime was set
+      expect(onChange).not.toHaveBeenCalled()
     })
 
     it('should not update when neither timezone nor value changes', () => {
@@ -612,8 +618,6 @@ describe('TimePicker', () => {
       // onChange should not be called since both changed (timezoneChanged && !valueChanged is false)
       expect(onChange).not.toHaveBeenCalled()
 
-      // Display should reflect the new value in the new timezone
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
       // 15:00 UTC in America/New_York (UTC-5) = 10:00 AM
       expect(screen.getByDisplayValue('10:00 AM')).toBeInTheDocument()
     })
