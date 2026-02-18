@@ -1,13 +1,13 @@
+import type { IterationStartedResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { IterationStartedResponse } from '@/types/workflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { DEFAULT_ITER_TIMES } from '@/app/components/workflow/constants'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeIterationStarted = () => {
   const store = useStoreApi()
@@ -17,8 +17,8 @@ export const useWorkflowNodeIterationStarted = () => {
   const handleWorkflowNodeIterationStarted = useCallback((
     params: IterationStartedResponse,
     containerParams: {
-      clientWidth: number,
-      clientHeight: number,
+      clientWidth: number
+      clientHeight: number
     },
   ) => {
     const { data } = params

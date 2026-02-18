@@ -1,5 +1,4 @@
 import re
-import sys
 from collections.abc import Mapping
 from typing import Any
 
@@ -109,11 +108,8 @@ def register_external_error_handlers(api: Api):
         data.setdefault("code", "unknown")
         data.setdefault("status", status_code)
 
-        # Log stack
-        exc_info: Any = sys.exc_info()
-        if exc_info[1] is None:
-            exc_info = (None, None, None)
-        current_app.log_exception(exc_info)
+        # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
+        # Explicit log_exception call removed to avoid duplicate log entries
 
         return data, status_code
 

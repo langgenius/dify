@@ -1,8 +1,8 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
 import type { ModelAndParameter } from '../types'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
 
 export type DebugWithMultipleModelContextType = {
   multipleModelConfigs: ModelAndParameter[]
@@ -34,7 +34,8 @@ export const DebugWithMultipleModelContextProvider = ({
       multipleModelConfigs,
       onDebugWithMultipleModelChange,
       checkCanSend,
-    }}>
+    }}
+    >
       {children}
     </DebugWithMultipleModelContext.Provider>
   )

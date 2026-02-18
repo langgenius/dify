@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import AudioPlayer from './AudioPlayer'
 
 type Props = {
@@ -7,7 +7,8 @@ type Props = {
 
 const AudioGallery: React.FC<Props> = ({ srcs }) => {
   const validSrcs = srcs.filter(src => src)
-  if (validSrcs.length === 0) return null
+  if (validSrcs.length === 0)
+    return null
 
   return (
     <div className="my-3">

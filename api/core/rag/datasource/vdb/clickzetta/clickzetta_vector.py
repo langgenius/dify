@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import json
 import logging
@@ -6,7 +8,7 @@ import re
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -76,7 +78,7 @@ class ClickzettaConnectionPool:
     Manages connection reuse across ClickzettaVector instances.
     """
 
-    _instance: Optional["ClickzettaConnectionPool"] = None
+    _instance: ClickzettaConnectionPool | None = None
     _lock = threading.Lock()
 
     def __init__(self):
@@ -89,7 +91,7 @@ class ClickzettaConnectionPool:
         self._start_cleanup_thread()
 
     @classmethod
-    def get_instance(cls) -> "ClickzettaConnectionPool":
+    def get_instance(cls) -> ClickzettaConnectionPool:
         """Get singleton instance of connection pool."""
         if cls._instance is None:
             with cls._lock:
@@ -104,7 +106,7 @@ class ClickzettaConnectionPool:
             f"{config.workspace}:{config.vcluster}:{config.schema_name}"
         )
 
-    def _create_connection(self, config: ClickzettaConfig) -> "Connection":
+    def _create_connection(self, config: ClickzettaConfig) -> Connection:
         """Create a new ClickZetta connection."""
         max_retries = 3
         retry_delay = 1.0
@@ -134,7 +136,7 @@ class ClickzettaConnectionPool:
 
         raise RuntimeError(f"Failed to create ClickZetta connection after {max_retries} attempts")
 
-    def _configure_connection(self, connection: "Connection"):
+    def _configure_connection(self, connection: Connection):
         """Configure connection session settings."""
         try:
             with connection.cursor() as cursor:
@@ -181,7 +183,7 @@ class ClickzettaConnectionPool:
         except Exception:
             logger.exception("Failed to configure connection, continuing with defaults")
 
-    def _is_connection_valid(self, connection: "Connection") -> bool:
+    def _is_connection_valid(self, connection: Connection) -> bool:
         """Check if connection is still valid."""
         try:
             with connection.cursor() as cursor:
@@ -190,7 +192,7 @@ class ClickzettaConnectionPool:
         except Exception:
             return False
 
-    def get_connection(self, config: ClickzettaConfig) -> "Connection":
+    def get_connection(self, config: ClickzettaConfig) -> Connection:
         """Get a connection from the pool or create a new one."""
         config_key = self._get_config_key(config)
 
@@ -221,7 +223,7 @@ class ClickzettaConnectionPool:
             # No valid connection found, create new one
             return self._create_connection(config)
 
-    def return_connection(self, config: ClickzettaConfig, connection: "Connection"):
+    def return_connection(self, config: ClickzettaConfig, connection: Connection):
         """Return a connection to the pool."""
         config_key = self._get_config_key(config)
 
@@ -315,22 +317,22 @@ class ClickzettaVector(BaseVector):
         self._connection_pool = ClickzettaConnectionPool.get_instance()
         self._init_write_queue()
 
-    def _get_connection(self) -> "Connection":
+    def _get_connection(self) -> Connection:
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
 
-    def _return_connection(self, connection: "Connection"):
+    def _return_connection(self, connection: Connection):
         """Return a connection to the pool."""
         self._connection_pool.return_connection(self._config, connection)
 
     class ConnectionContext:
         """Context manager for borrowing and returning connections."""
 
-        def __init__(self, vector_instance: "ClickzettaVector"):
+        def __init__(self, vector_instance: ClickzettaVector):
             self.vector = vector_instance
             self.connection: Connection | None = None
 
-        def __enter__(self) -> "Connection":
+        def __enter__(self) -> Connection:
             self.connection = self.vector._get_connection()
             return self.connection
 
@@ -338,7 +340,7 @@ class ClickzettaVector(BaseVector):
             if self.connection:
                 self.vector._return_connection(self.connection)
 
-    def get_connection_context(self) -> "ClickzettaVector.ConnectionContext":
+    def get_connection_context(self) -> ClickzettaVector.ConnectionContext:
         """Get a connection context manager."""
         return self.ConnectionContext(self)
 
@@ -437,7 +439,7 @@ class ClickzettaVector(BaseVector):
         """Return the vector database type."""
         return "clickzetta"
 
-    def _ensure_connection(self) -> "Connection":
+    def _ensure_connection(self) -> Connection:
         """Get a connection from the pool."""
         return self._get_connection()
 
@@ -984,9 +986,11 @@ class ClickzettaVector(BaseVector):
 
         # No need for dataset_id filter since each dataset has its own table
 
-        # Use simple quote escaping for LIKE clause
-        escaped_query = query.replace("'", "''")
-        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%'")
+        # Escape special characters for LIKE clause to prevent SQL injection
+        from libs.helper import escape_like_pattern
+
+        escaped_query = escape_like_pattern(query).replace("'", "''")
+        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%' ESCAPE '\\\\'")
         where_clause = " AND ".join(filter_clauses)
 
         search_sql = f"""

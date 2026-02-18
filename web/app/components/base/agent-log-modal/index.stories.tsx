@@ -1,10 +1,10 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useEffect, useRef } from 'react'
-import AgentLogModal from '.'
-import { ToastProvider } from '@/app/components/base/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
+import { useEffect, useRef } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { ToastProvider } from '@/app/components/base/toast'
+import AgentLogModal from '.'
 
 const MOCK_RESPONSE: AgentLogDetailResponse = {
   meta: {

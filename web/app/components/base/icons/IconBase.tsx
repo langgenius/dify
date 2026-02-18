@@ -1,5 +1,5 @@
-import { generate } from './utils'
 import type { AbstractNode } from './utils'
+import { generate } from './utils'
 
 export type IconData = {
   name: string
@@ -18,7 +18,7 @@ const IconBase = (
     ref,
     ...props
   }: IconBaseProps & {
-    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>;
+    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
   },
 ) => {
   const { data, className, onClick, style, ...restProps } = props

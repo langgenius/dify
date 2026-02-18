@@ -1,7 +1,7 @@
 from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.fields import build_site_model
+from controllers.common.fields import Site as SiteResponse
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_database import db
@@ -23,7 +23,6 @@ class AppSiteApi(Resource):
         }
     )
     @validate_app_token
-    @service_api_ns.marshal_with(build_site_model(service_api_ns))
     def get(self, app_model: App):
         """Retrieve app site info.
 
@@ -38,4 +37,4 @@ class AppSiteApi(Resource):
         if app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
-        return site
+        return SiteResponse.model_validate(site).model_dump(mode="json")

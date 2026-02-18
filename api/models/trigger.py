@@ -415,7 +415,7 @@ class AppTrigger(TypeBase):
     node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_name: Mapped[str] = mapped_column(String(255), server_default="", default="")  # why it is nullable?
+    provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True, server_default="", default="")
     status: Mapped[str] = mapped_column(
         EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.ENABLED
     )

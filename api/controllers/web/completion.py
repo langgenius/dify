@@ -1,9 +1,11 @@
 import logging
+from typing import Any, Literal
 
-from flask_restx import reqparse
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -34,25 +36,44 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
+class CompletionMessagePayload(BaseModel):
+    inputs: dict[str, Any] = Field(description="Input variables for the completion")
+    query: str = Field(default="", description="Query text for completion")
+    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed")
+    response_mode: Literal["blocking", "streaming"] | None = Field(
+        default=None, description="Response mode: blocking or streaming"
+    )
+    retriever_from: str = Field(default="web_app", description="Source of retriever")
+
+
+class ChatMessagePayload(BaseModel):
+    inputs: dict[str, Any] = Field(description="Input variables for the chat")
+    query: str = Field(description="User query/message")
+    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed")
+    response_mode: Literal["blocking", "streaming"] | None = Field(
+        default=None, description="Response mode: blocking or streaming"
+    )
+    conversation_id: str | None = Field(default=None, description="Conversation ID")
+    parent_message_id: str | None = Field(default=None, description="Parent message ID")
+    retriever_from: str = Field(default="web_app", description="Source of retriever")
+
+    @field_validator("conversation_id", "parent_message_id")
+    @classmethod
+    def validate_uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload)
+
+
 # define completion api for user
 @web_ns.route("/completion-messages")
 class CompletionApi(WebApiResource):
     @web_ns.doc("Create Completion Message")
     @web_ns.doc(description="Create a completion message for text generation applications.")
-    @web_ns.doc(
-        params={
-            "inputs": {"description": "Input variables for the completion", "type": "object", "required": True},
-            "query": {"description": "Query text for completion", "type": "string", "required": False},
-            "files": {"description": "Files to be processed", "type": "array", "required": False},
-            "response_mode": {
-                "description": "Response mode: blocking or streaming",
-                "type": "string",
-                "enum": ["blocking", "streaming"],
-                "required": False,
-            },
-            "retriever_from": {"description": "Source of retriever", "type": "string", "required": False},
-        }
-    )
+    @web_ns.expect(web_ns.models[CompletionMessagePayload.__name__])
     @web_ns.doc(
         responses={
             200: "Success",
@@ -67,18 +88,10 @@ class CompletionApi(WebApiResource):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("query", type=str, location="json", default="")
-            .add_argument("files", type=list, required=False, location="json")
-            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-            .add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
-        )
+        payload = CompletionMessagePayload.model_validate(web_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
-        args = parser.parse_args()
-
-        streaming = args["response_mode"] == "streaming"
+        streaming = payload.response_mode == "streaming"
         args["auto_generate_name"] = False
 
         try:
@@ -142,22 +155,7 @@ class CompletionStopApi(WebApiResource):
 class ChatApi(WebApiResource):
     @web_ns.doc("Create Chat Message")
     @web_ns.doc(description="Create a chat message for conversational applications.")
-    @web_ns.doc(
-        params={
-            "inputs": {"description": "Input variables for the chat", "type": "object", "required": True},
-            "query": {"description": "User query/message", "type": "string", "required": True},
-            "files": {"description": "Files to be processed", "type": "array", "required": False},
-            "response_mode": {
-                "description": "Response mode: blocking or streaming",
-                "type": "string",
-                "enum": ["blocking", "streaming"],
-                "required": False,
-            },
-            "conversation_id": {"description": "Conversation UUID", "type": "string", "required": False},
-            "parent_message_id": {"description": "Parent message UUID", "type": "string", "required": False},
-            "retriever_from": {"description": "Source of retriever", "type": "string", "required": False},
-        }
-    )
+    @web_ns.expect(web_ns.models[ChatMessagePayload.__name__])
     @web_ns.doc(
         responses={
             200: "Success",
@@ -173,20 +171,10 @@ class ChatApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("query", type=str, required=True, location="json")
-            .add_argument("files", type=list, required=False, location="json")
-            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-            .add_argument("conversation_id", type=uuid_value, location="json")
-            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-            .add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
-        )
+        payload = ChatMessagePayload.model_validate(web_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
-        args = parser.parse_args()
-
-        streaming = args["response_mode"] == "streaming"
+        streaming = payload.response_mode == "streaming"
         args["auto_generate_name"] = False
 
         try:

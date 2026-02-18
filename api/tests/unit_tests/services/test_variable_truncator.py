@@ -17,8 +17,6 @@ from uuid import uuid4
 
 import pytest
 
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
 from core.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -30,6 +28,8 @@ from core.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
+from core.workflow.file.enums import FileTransferMethod, FileType
+from core.workflow.file.models import File
 from services.variable_truncator import (
     DummyVariableTruncator,
     MaxDepthExceededError,
@@ -516,6 +516,55 @@ class TestEdgeCases:
         special_chars = '{"key": "value with \\"quotes\\" and \\n newlines"}'
         result = truncator.truncate(StringSegment(value=special_chars))
         assert isinstance(result.result, StringSegment)
+
+
+class TestTruncateJsonPrimitives:
+    """Test _truncate_json_primitives method with different data types."""
+
+    @pytest.fixture
+    def truncator(self):
+        return VariableTruncator()
+
+    def test_truncate_json_primitives_file_type(self, truncator, file):
+        """Test that File objects are handled correctly in _truncate_json_primitives."""
+        # Test File object is returned as-is without truncation
+        result = truncator._truncate_json_primitives(file, 1000)
+
+        assert result.value == file
+        assert result.truncated is False
+        # Size should be calculated correctly
+        expected_size = VariableTruncator.calculate_json_size(file)
+        assert result.value_size == expected_size
+
+    def test_truncate_json_primitives_file_type_small_budget(self, truncator, file):
+        """Test that File objects are returned as-is even with small budget."""
+        # Even with a small size budget, File objects should not be truncated
+        result = truncator._truncate_json_primitives(file, 10)
+
+        assert result.value == file
+        assert result.truncated is False
+
+    def test_truncate_json_primitives_file_type_in_array(self, truncator, file):
+        """Test File objects in arrays are handled correctly."""
+        array_with_files = [file, file]
+        result = truncator._truncate_json_primitives(array_with_files, 1000)
+
+        assert isinstance(result.value, list)
+        assert len(result.value) == 2
+        assert result.value[0] == file
+        assert result.value[1] == file
+        assert result.truncated is False
+
+    def test_truncate_json_primitives_file_type_in_object(self, truncator, file):
+        """Test File objects in objects are handled correctly."""
+        obj_with_files = {"file1": file, "file2": file}
+        result = truncator._truncate_json_primitives(obj_with_files, 1000)
+
+        assert isinstance(result.value, dict)
+        assert len(result.value) == 2
+        assert result.value["file1"] == file
+        assert result.value["file2"] == file
+        assert result.truncated is False
 
 
 class TestIntegrationScenarios:

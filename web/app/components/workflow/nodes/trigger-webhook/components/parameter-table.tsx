@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import GenericTable from './generic-table'
-import type { ColumnConfig, GenericTableRow } from './generic-table'
 import type { WebhookParameter } from '../types'
-import { createParameterTypeOptions, normalizeParameterType } from '../utils/parameter-type-utils'
+import type { ColumnConfig, GenericTableRow } from './generic-table'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { VarType } from '@/app/components/workflow/types'
+import { createParameterTypeOptions, normalizeParameterType } from '../utils/parameter-type-utils'
+import GenericTable from './generic-table'
 
 type ParameterTableProps = {
   title: string
@@ -29,30 +30,28 @@ const ParameterTable: FC<ParameterTableProps> = ({
 
   // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
   const typeOptions = useMemo(() =>
-    createParameterTypeOptions(contentType),
-  [contentType],
-  )
+    createParameterTypeOptions(contentType), [contentType])
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [
     {
       key: 'key',
-      title: t('workflow.nodes.triggerWebhook.varName'),
+      title: t('nodes.triggerWebhook.varName', { ns: 'workflow' }),
       type: 'input',
       width: 'flex-1',
-      placeholder: t('workflow.nodes.triggerWebhook.varNamePlaceholder'),
+      placeholder: t('nodes.triggerWebhook.varNamePlaceholder', { ns: 'workflow' }),
     },
     {
       key: 'type',
-      title: t('workflow.nodes.triggerWebhook.varType'),
+      title: t('nodes.triggerWebhook.varType', { ns: 'workflow' }),
       type: 'select',
       width: 'w-[120px]',
-      placeholder: t('workflow.nodes.triggerWebhook.varType'),
+      placeholder: t('nodes.triggerWebhook.varType', { ns: 'workflow' }),
       options: typeOptions,
     },
     {
       key: 'required',
-      title: t('workflow.nodes.triggerWebhook.required'),
+      title: t('nodes.triggerWebhook.required', { ns: 'workflow' }),
       type: 'switch',
       width: 'w-[88px]',
     },
@@ -102,7 +101,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
       data={tableData}
       onChange={handleDataChange}
       readonly={readonly}
-      placeholder={placeholder || t('workflow.nodes.triggerWebhook.noParameters')}
+      placeholder={placeholder || t('nodes.triggerWebhook.noParameters', { ns: 'workflow' })}
       emptyRowData={emptyRowData}
       showHeader={true}
     />

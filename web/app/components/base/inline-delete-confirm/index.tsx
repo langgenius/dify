@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type InlineDeleteConfirmProps = {
   title?: string
@@ -25,9 +25,9 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const titleText = title || t('common.operation.deleteConfirmTitle', 'Delete?')
-  const confirmTxt = confirmText || t('common.operation.yes', 'Yes')
-  const cancelTxt = cancelText || t('common.operation.no', 'No')
+  const titleText = title || t('operation.deleteConfirmTitle', { ns: 'common', defaultValue: 'Delete?' })
+  const confirmTxt = confirmText || t('operation.yes', { ns: 'common', defaultValue: 'Yes' })
+  const cancelTxt = cancelText || t('operation.no', { ns: 'common', defaultValue: 'No' })
 
   return (
     <div
@@ -72,7 +72,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       </div>
 
       <span id="inline-delete-confirm-description" className="sr-only">
-        {t('common.operation.confirmAction', 'Please confirm your action.')}
+        {t('operation.confirmAction', { ns: 'common', defaultValue: 'Please confirm your action.' })}
       </span>
     </div>
   )

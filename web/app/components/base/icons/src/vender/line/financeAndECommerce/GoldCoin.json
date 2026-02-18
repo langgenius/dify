@@ -1,120 +1,120 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"clip-path": "url(#clip0_7056_1808)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M8.00003 4.82855L8.93639 6.72613L11.0303 7.03037L9.51518 8.50734L9.87276 10.5928L8.00003 9.60795L6.1273 10.5928L6.48488 8.50734L4.96973 7.03037L7.06367 6.72613L8.00003 4.82855Z",
-							"stroke": "currentColor",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M8.00016 14.6666C11.6821 14.6666 14.6668 11.6819 14.6668 7.99998C14.6668 4.31808 11.6821 1.33331 8.00016 1.33331C4.31826 1.33331 1.3335 4.31808 1.3335 7.99998C1.3335 11.6819 4.31826 14.6666 8.00016 14.6666Z",
-							"stroke": "currentColor",
-							"stroke-width": "1.25",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M8.0001 12.8485C8.33482 12.8485 8.60616 12.5771 8.60616 12.2424C8.60616 11.9077 8.33482 11.6364 8.0001 11.6364C7.66539 11.6364 7.39404 11.9077 7.39404 12.2424C7.39404 12.5771 7.66539 12.8485 8.0001 12.8485Z",
-							"fill": "currentColor"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M12.0348 9.91702C12.3695 9.91702 12.6408 9.64567 12.6408 9.31096C12.6408 8.97624 12.3695 8.7049 12.0348 8.7049C11.7001 8.7049 11.4287 8.97624 11.4287 9.31096C11.4287 9.64567 11.7001 9.91702 12.0348 9.91702Z",
-							"fill": "currentColor"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M10.4933 5.17391C10.828 5.17391 11.0993 4.90257 11.0993 4.56785C11.0993 4.23313 10.828 3.96179 10.4933 3.96179C10.1585 3.96179 9.88721 4.23313 9.88721 4.56785C9.88721 4.90257 10.1585 5.17391 10.4933 5.17391Z",
-							"fill": "currentColor"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M5.50645 5.17391C5.84117 5.17391 6.11251 4.90257 6.11251 4.56785C6.11251 4.23313 5.84117 3.96179 5.50645 3.96179C5.17173 3.96179 4.90039 4.23313 4.90039 4.56785C4.90039 4.90257 5.17173 5.17391 5.50645 5.17391Z",
-							"fill": "currentColor"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M3.96544 9.91702C4.30015 9.91702 4.5715 9.64567 4.5715 9.31096C4.5715 8.97624 4.30015 8.7049 3.96544 8.7049C3.63072 8.7049 3.35938 8.97624 3.35938 9.31096C3.35938 9.64567 3.63072 9.91702 3.96544 9.91702Z",
-							"fill": "currentColor"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_7056_1808"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "16",
-									"height": "16",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "GoldCoin"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_7056_1808)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M8.00003 4.82855L8.93639 6.72613L11.0303 7.03037L9.51518 8.50734L9.87276 10.5928L8.00003 9.60795L6.1273 10.5928L6.48488 8.50734L4.96973 7.03037L7.06367 6.72613L8.00003 4.82855Z",
+              "stroke": "currentColor",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M8.00016 14.6666C11.6821 14.6666 14.6668 11.6819 14.6668 7.99998C14.6668 4.31808 11.6821 1.33331 8.00016 1.33331C4.31826 1.33331 1.3335 4.31808 1.3335 7.99998C1.3335 11.6819 4.31826 14.6666 8.00016 14.6666Z",
+              "stroke": "currentColor",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M8.0001 12.8485C8.33482 12.8485 8.60616 12.5771 8.60616 12.2424C8.60616 11.9077 8.33482 11.6364 8.0001 11.6364C7.66539 11.6364 7.39404 11.9077 7.39404 12.2424C7.39404 12.5771 7.66539 12.8485 8.0001 12.8485Z",
+              "fill": "currentColor"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M12.0348 9.91702C12.3695 9.91702 12.6408 9.64567 12.6408 9.31096C12.6408 8.97624 12.3695 8.7049 12.0348 8.7049C11.7001 8.7049 11.4287 8.97624 11.4287 9.31096C11.4287 9.64567 11.7001 9.91702 12.0348 9.91702Z",
+              "fill": "currentColor"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M10.4933 5.17391C10.828 5.17391 11.0993 4.90257 11.0993 4.56785C11.0993 4.23313 10.828 3.96179 10.4933 3.96179C10.1585 3.96179 9.88721 4.23313 9.88721 4.56785C9.88721 4.90257 10.1585 5.17391 10.4933 5.17391Z",
+              "fill": "currentColor"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M5.50645 5.17391C5.84117 5.17391 6.11251 4.90257 6.11251 4.56785C6.11251 4.23313 5.84117 3.96179 5.50645 3.96179C5.17173 3.96179 4.90039 4.23313 4.90039 4.56785C4.90039 4.90257 5.17173 5.17391 5.50645 5.17391Z",
+              "fill": "currentColor"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M3.96544 9.91702C4.30015 9.91702 4.5715 9.64567 4.5715 9.31096C4.5715 8.97624 4.30015 8.7049 3.96544 8.7049C3.63072 8.7049 3.35938 8.97624 3.35938 9.31096C3.35938 9.64567 3.63072 9.91702 3.96544 9.91702Z",
+              "fill": "currentColor"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_7056_1808"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "16",
+                  "height": "16",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "GoldCoin"
 }

@@ -1,13 +1,15 @@
-import React, { useMemo } from 'react'
-import { useDocumentContext } from '../context'
-import SegmentCard from './segment-card'
-import Empty from './common/empty'
-import GeneralListSkeleton from './skeleton/general-list-skeleton'
-import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
-import { useSegmentListContext } from './index'
-import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
+import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import * as React from 'react'
+import { useMemo } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
+import { ChunkingMode } from '@/models/datasets'
+import { useDocumentContext } from '../context'
+import Empty from './common/empty'
+import { useSegmentListContext } from './index'
+import SegmentCard from './segment-card'
+import GeneralListSkeleton from './skeleton/general-list-skeleton'
+import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 
 type ISegmentListProps = {
   isLoading: boolean
@@ -60,30 +62,30 @@ const SegmentList = (
   // Search result is empty
   if (items.length === 0) {
     return (
-      <div className='h-full pl-6'>
+      <div className="h-full pl-6">
         <Empty onClearFilter={onClearFilter} />
       </div>
     )
   }
   return (
-    <div ref={ref} className={'flex grow flex-col overflow-y-auto'}>
+    <div ref={ref} className="flex grow flex-col overflow-y-auto">
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
           const segmentIndexFocused
             = currSegment?.segInfo?.id === segItem.id
-            || (!currSegment && currChildChunk?.childChunkInfo?.segment_id === segItem.id)
+              || (!currSegment && currChildChunk?.childChunkInfo?.segment_id === segItem.id)
           const segmentContentFocused = currSegment?.segInfo?.id === segItem.id
             || currChildChunk?.childChunkInfo?.segment_id === segItem.id
           return (
-            <div key={segItem.id} className='flex items-start gap-x-2'>
+            <div key={segItem.id} className="flex items-start gap-x-2">
               <Checkbox
                 key={`${segItem.id}-checkbox`}
-                className='mt-3.5 shrink-0'
+                className="mt-3.5 shrink-0"
                 checked={selectedSegmentIds.includes(segItem.id)}
                 onCheck={() => onSelected(segItem.id)}
               />
-              <div className='min-w-0 grow'>
+              <div className="min-w-0 grow">
                 <SegmentCard
                   key={`${segItem.id}-card`}
                   detail={segItem}
@@ -102,9 +104,11 @@ const SegmentList = (
                     segmentContent: segmentContentFocused,
                   }}
                 />
-                {!isLast && <div className='w-full px-3'>
-                  <Divider type='horizontal' className='my-1 bg-divider-subtle' />
-                </div>}
+                {!isLast && (
+                  <div className="w-full px-3">
+                    <Divider type="horizontal" className="my-1 bg-divider-subtle" />
+                  </div>
+                )}
               </div>
             </div>
           )

@@ -1,31 +1,45 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { PromptConfig } from '@/models/debug'
+import type { SiteInfo } from '@/models/share'
+import type {
+  IOtherOptions,
+} from '@/service/base'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { RiLoader2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
-import NoData from '@/app/components/share/text-generation/no-data'
-import Toast from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { RiLoader2Line } from '@remixicon/react'
-import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import Loading from '@/app/components/base/loading'
-import type { PromptConfig } from '@/models/debug'
-import type { InstalledApp } from '@/models/explore'
-import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { sleep } from '@/utils'
-import type { SiteInfo } from '@/models/share'
-import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   getFilesInLogs,
   getProcessedFiles,
 } from '@/app/components/base/file-uploader/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import NoData from '@/app/components/share/text-generation/no-data'
+import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import {
+  sseGet,
+} from '@/service/base'
+import {
+  AppSourceType,
+  sendCompletionMessage,
+  sendWorkflowMessage,
+  stopChatMessageResponding,
+  stopWorkflowMessage,
+  updateFeedback,
+} from '@/service/share'
+import { TransferMethod } from '@/types/app'
+import { sleep } from '@/utils'
 import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
@@ -33,9 +47,8 @@ export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
   isMobile: boolean
-  isInstalledApp: boolean
-  appId: string
-  installedAppInfo?: InstalledApp
+  appSourceType: AppSourceType
+  appId?: string
   isError: boolean
   isShowTextToSpeech: boolean
   promptConfig: PromptConfig | null
@@ -52,7 +65,7 @@ export type IResultProps = {
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
   onRunStart: () => void
-  onRunControlChange?: (control: { onStop: () => Promise<void> | void; isStopping: boolean } | null) => void
+  onRunControlChange?: (control: { onStop: () => Promise<void> | void, isStopping: boolean } | null) => void
   hideInlineStopButton?: boolean
 }
 
@@ -61,9 +74,8 @@ const Result: FC<IResultProps> = ({
   isCallBatchAPI,
   isPC,
   isMobile,
-  isInstalledApp,
+  appSourceType,
   appId,
-  installedAppInfo,
   isError,
   isShowTextToSpeech,
   promptConfig,
@@ -93,10 +105,10 @@ const Result: FC<IResultProps> = ({
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
   const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
-  const setWorkflowProcessData = (data: WorkflowProcess) => {
+  const setWorkflowProcessData = useCallback((data: WorkflowProcess | undefined) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
-  }
+  }, [])
   const getWorkflowProcessData = () => workflowProcessDataRef.current
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
   const [isStopping, setIsStopping] = useState(false)
@@ -131,7 +143,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     setFeedback(feedback)
   }
 
@@ -145,9 +157,9 @@ const Result: FC<IResultProps> = ({
     setIsStopping(true)
     try {
       if (isWorkflow)
-        await stopWorkflowMessage(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
       else
-        await stopChatMessageResponding(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
       abortControllerRef.current?.abort()
     }
     catch (error) {
@@ -157,7 +169,7 @@ const Result: FC<IResultProps> = ({
     finally {
       setIsStopping(false)
     }
-  }, [appId, currentTaskId, installedAppInfo?.id, isInstalledApp, isStopping, isWorkflow, notify])
+  }, [appId, currentTaskId, appSourceType, isStopping, isWorkflow, notify])
 
   useEffect(() => {
     if (!onRunControlChange)
@@ -181,7 +193,7 @@ const Result: FC<IResultProps> = ({
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0) {
       if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return false
       }
       return true
@@ -189,7 +201,7 @@ const Result: FC<IResultProps> = ({
 
     let hasEmptyInput = ''
     const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
-      if(type === 'boolean' || type === 'checkbox')
+      if (type === 'boolean' || type === 'checkbox')
         return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
@@ -203,12 +215,12 @@ const Result: FC<IResultProps> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -216,7 +228,7 @@ const Result: FC<IResultProps> = ({
 
   const handleSend = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -257,6 +269,7 @@ const Result: FC<IResultProps> = ({
       rating: null,
     })
     setCompletionRes('')
+    setWorkflowProcessData(undefined)
     resetRunState()
 
     let res: string[] = []
@@ -281,10 +294,17 @@ const Result: FC<IResultProps> = ({
     })()
 
     if (isWorkflow) {
-      sendWorkflowMessage(
-        data,
-        {
-          onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+      const otherOptions: IOtherOptions = {
+        isPublicAPI: appSourceType === AppSourceType.webApp,
+        onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+          const workflowProcessData = getWorkflowProcessData()
+          if (workflowProcessData && workflowProcessData.tracing.length > 0) {
+            setWorkflowProcessData(produce(workflowProcessData, (draft) => {
+              draft.expand = true
+              draft.status = WorkflowRunningStatus.Running
+            }))
+          }
+          else {
             tempMessageId = workflow_run_id
             setCurrentTaskId(task_id || null)
             setIsStopping(false)
@@ -294,180 +314,260 @@ const Result: FC<IResultProps> = ({
               expand: false,
               resultText: '',
             })
-          },
-          onIterationStart: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              draft.tracing!.push({
-                ...data,
-                status: NodeRunningStatus.Running,
-                expand: true,
-              })
-            }))
-          },
-          onIterationNext: () => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const iterations = draft.tracing.find(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              iterations?.details!.push([])
-            }))
-          },
-          onIterationFinish: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const iterationsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              draft.tracing[iterationsIndex] = {
-                ...data,
-                expand: !!data.error,
-              }
-            }))
-          },
-          onLoopStart: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              draft.tracing!.push({
-                ...data,
-                status: NodeRunningStatus.Running,
-                expand: true,
-              })
-            }))
-          },
-          onLoopNext: () => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const loops = draft.tracing.find(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              loops?.details!.push([])
-            }))
-          },
-          onLoopFinish: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              draft.tracing[loopsIndex] = {
-                ...data,
-                expand: !!data.error,
-              }
-            }))
-          },
-          onNodeStarted: ({ data }) => {
-            if (data.iteration_id)
-              return
+          }
+        },
+        onIterationStart: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            draft.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+              expand: true,
+            })
+          }))
+        },
+        onIterationNext: () => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const iterations = draft.tracing.find(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            iterations?.details!.push([])
+          }))
+        },
+        onIterationFinish: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const iterationsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            draft.tracing[iterationsIndex] = {
+              ...data,
+              expand: !!data.error,
+            }
+          }))
+        },
+        onLoopStart: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            draft.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+              expand: true,
+            })
+          }))
+        },
+        onLoopNext: () => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const loops = draft.tracing.find(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            loops?.details!.push([])
+          }))
+        },
+        onLoopFinish: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            draft.tracing[loopsIndex] = {
+              ...data,
+              expand: !!data.error,
+            }
+          }))
+        },
+        onNodeStarted: ({ data }) => {
+          if (data.iteration_id)
+            return
 
-            if (data.loop_id)
-              return
-
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              draft.tracing!.push({
-                ...data,
-                status: NodeRunningStatus.Running,
-                expand: true,
-              })
-            }))
-          },
-          onNodeFinished: ({ data }) => {
-            if (data.iteration_id)
-              return
-
-            if (data.loop_id)
-              return
-
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id
-                && (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || trace.parallel_id === data.execution_metadata?.parallel_id))
-              if (currentIndex > -1 && draft.tracing) {
-                draft.tracing[currentIndex] = {
-                  ...(draft.tracing[currentIndex].extras
-                    ? { extras: draft.tracing[currentIndex].extras }
-                    : {}),
+          if (data.loop_id)
+            return
+          const workflowProcessData = getWorkflowProcessData()
+          setWorkflowProcessData(produce(workflowProcessData!, (draft) => {
+            if (draft.tracing.length > 0) {
+              const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
+              if (currentIndex > -1) {
+                draft.expand = true
+                draft.tracing![currentIndex] = {
                   ...data,
-                  expand: !!data.error,
+                  status: NodeRunningStatus.Running,
+                  expand: true,
                 }
               }
-            }))
-          },
-          onWorkflowFinished: ({ data }) => {
-            if (isTimeout) {
-              notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
-              return
-            }
-            const workflowStatus = data.status as WorkflowRunningStatus | undefined
-            const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
-              if (!traces)
-                return
-              const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
-                if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
-                  trace.status = NodeRunningStatus.Stopped
-                trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
-                trace.retryDetail?.forEach(markTrace)
-                trace.parallelDetail?.children?.forEach(markTrace)
+              else {
+                draft.expand = true
+                draft.tracing.push({
+                  ...data,
+                  status: NodeRunningStatus.Running,
+                  expand: true,
+                })
               }
-              traces.forEach(markTrace)
-            }
-            if (workflowStatus === WorkflowRunningStatus.Stopped) {
-              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-                draft.status = WorkflowRunningStatus.Stopped
-                markNodesStopped(draft.tracing)
-              }))
-              setRespondingFalse()
-              resetRunState()
-              onCompleted(getCompletionRes(), taskId, false)
-              isEnd = true
-              return
-            }
-            if (data.error) {
-              notify({ type: 'error', message: data.error })
-              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-                draft.status = WorkflowRunningStatus.Failed
-                markNodesStopped(draft.tracing)
-              }))
-              setRespondingFalse()
-              resetRunState()
-              onCompleted(getCompletionRes(), taskId, false)
-              isEnd = true
-              return
-            }
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.status = WorkflowRunningStatus.Succeeded
-              draft.files = getFilesInLogs(data.outputs || []) as any[]
-            }))
-            if (!data.outputs) {
-              setCompletionRes('')
             }
             else {
-              setCompletionRes(data.outputs)
-              const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
-              if (isStringOutput) {
-                setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-                  draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
-                }))
+              draft.expand = true
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+                expand: true,
+              })
+            }
+          }))
+        },
+        onNodeFinished: ({ data }) => {
+          if (data.iteration_id)
+            return
+
+          if (data.loop_id)
+            return
+
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id
+              && (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || trace.parallel_id === data.execution_metadata?.parallel_id))
+            if (currentIndex > -1 && draft.tracing) {
+              draft.tracing[currentIndex] = {
+                ...(draft.tracing[currentIndex].extras
+                  ? { extras: draft.tracing[currentIndex].extras }
+                  : {}),
+                ...data,
+                expand: !!data.error,
               }
             }
+          }))
+        },
+        onWorkflowFinished: ({ data }) => {
+          if (isTimeout) {
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+            return
+          }
+          const workflowStatus = data.status as WorkflowRunningStatus | undefined
+          const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
+            if (!traces)
+              return
+            const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
+              if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
+                trace.status = NodeRunningStatus.Stopped
+              trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
+              trace.retryDetail?.forEach(markTrace)
+              trace.parallelDetail?.children?.forEach(markTrace)
+            }
+            traces.forEach(markTrace)
+          }
+          if (workflowStatus === WorkflowRunningStatus.Stopped) {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.status = WorkflowRunningStatus.Stopped
+              markNodesStopped(draft.tracing)
+            }))
             setRespondingFalse()
             resetRunState()
-            setMessageId(tempMessageId)
-            onCompleted(getCompletionRes(), taskId, true)
+            onCompleted(getCompletionRes(), taskId, false)
             isEnd = true
-          },
-          onTextChunk: (params) => {
-            const { data: { text } } = params
+            return
+          }
+          if (data.error) {
+            notify({ type: 'error', message: data.error })
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.resultText += text
+              draft.status = WorkflowRunningStatus.Failed
+              markNodesStopped(draft.tracing)
             }))
-          },
-          onTextReplace: (params) => {
-            const { data: { text } } = params
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.resultText = text
-            }))
-          },
+            setRespondingFalse()
+            resetRunState()
+            onCompleted(getCompletionRes(), taskId, false)
+            isEnd = true
+            return
+          }
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.status = WorkflowRunningStatus.Succeeded
+            draft.files = getFilesInLogs(data.outputs || []) as any[]
+          }))
+          if (!data.outputs) {
+            setCompletionRes('')
+          }
+          else {
+            setCompletionRes(data.outputs)
+            const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+            if (isStringOutput) {
+              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+                draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+              }))
+            }
+          }
+          setRespondingFalse()
+          resetRunState()
+          setMessageId(tempMessageId)
+          onCompleted(getCompletionRes(), taskId, true)
+          isEnd = true
         },
-        isInstalledApp,
-        installedAppInfo?.id,
+        onTextChunk: (params) => {
+          const { data: { text } } = params
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.resultText += text
+          }))
+        },
+        onTextReplace: (params) => {
+          const { data: { text } } = params
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.resultText = text
+          }))
+        },
+        onHumanInputRequired: ({ data: humanInputRequiredData }) => {
+          const workflowProcessData = getWorkflowProcessData()
+          setWorkflowProcessData(produce(workflowProcessData!, (draft) => {
+            if (!draft.humanInputFormDataList) {
+              draft.humanInputFormDataList = [humanInputRequiredData]
+            }
+            else {
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === humanInputRequiredData.node_id)
+              if (currentFormIndex > -1) {
+                draft.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
+              }
+              else {
+                draft.humanInputFormDataList.push(humanInputRequiredData)
+              }
+            }
+            const currentIndex = draft.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
+            if (currentIndex > -1) {
+              draft.tracing![currentIndex].status = NodeRunningStatus.Paused
+            }
+          }))
+        },
+        onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            if (draft.humanInputFormDataList?.length) {
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
+              draft.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
+            if (!draft.humanInputFilledFormDataList) {
+              draft.humanInputFilledFormDataList = [humanInputFilledFormData]
+            }
+            else {
+              draft.humanInputFilledFormDataList.push(humanInputFilledFormData)
+            }
+          }))
+        },
+        onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            if (draft.humanInputFormDataList?.length) {
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
+              draft.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            }
+          }))
+        },
+        onWorkflowPaused: ({ data: workflowPausedData }) => {
+          const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
+          sseGet(
+            url,
+            {},
+            otherOptions,
+          )
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = false
+            draft.status = WorkflowRunningStatus.Paused
+          }))
+        },
+      }
+      sendWorkflowMessage(
+        data,
+        otherOptions,
+        appSourceType,
+        appId,
       ).catch((error) => {
         setRespondingFalse()
         resetRunState()
@@ -486,7 +586,7 @@ const Result: FC<IResultProps> = ({
         },
         onCompleted: () => {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
@@ -501,7 +601,7 @@ const Result: FC<IResultProps> = ({
         },
         onError() {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
@@ -512,7 +612,7 @@ const Result: FC<IResultProps> = ({
         getAbortController: (abortController) => {
           abortControllerRef.current = abortController
         },
-      }, isInstalledApp, installedAppInfo?.id)
+      }, appSourceType, appId)
     }
   }
 
@@ -534,16 +634,16 @@ const Result: FC<IResultProps> = ({
       {!hideInlineStopButton && isResponding && currentTaskId && (
         <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
           <Button
-            variant='secondary'
+            variant="secondary"
             disabled={isStopping}
             onClick={handleStop}
           >
             {
               isStopping
-                ? <RiLoader2Line className='mr-[5px] h-3.5 w-3.5 animate-spin' />
-                : <StopCircle className='mr-[5px] h-3.5 w-3.5' />
+                ? <RiLoader2Line className="mr-[5px] h-3.5 w-3.5 animate-spin" />
+                : <StopCircle className="mr-[5px] h-3.5 w-3.5" />
             }
-            <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
+            <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
           </Button>
         </div>
       )}
@@ -560,9 +660,10 @@ const Result: FC<IResultProps> = ({
         feedback={feedback}
         onSave={handleSaveMessage}
         isMobile={isMobile}
-        isInstalledApp={isInstalledApp}
-        installedAppId={installedAppInfo?.id}
-        isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
+        appSourceType={appSourceType}
+        installedAppId={appId}
+        // isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
+        isLoading={false}
         taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
         controlClearMoreLikeThis={controlClearMoreLikeThis}
         isShowTextToSpeech={isShowTextToSpeech}
@@ -577,28 +678,28 @@ const Result: FC<IResultProps> = ({
       {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>)
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : (
-            <>
-              {(isNoData)
-                ? <NoData />
-                : renderTextGenerationRes()
-              }
-            </>
-          )
+              <>
+                {(isNoData)
+                  ? <NoData />
+                  : renderTextGenerationRes()}
+              </>
+            )
       )}
       {!isCallBatchAPI && isWorkflow && (
         (isResponding && !workflowProcessData)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>
-          )
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : !workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes()
+              ? <NoData />
+              : renderTextGenerationRes()
       )}
       {isCallBatchAPI && renderTextGenerationRes()}
     </>

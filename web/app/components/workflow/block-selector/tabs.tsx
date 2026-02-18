@@ -1,24 +1,24 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { memo, useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
   NodeDefault,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import { TabsEnum } from './types'
-import Blocks from './blocks'
+import { memo, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
+import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
+import Blocks from './blocks'
 import DataSources from './data-sources'
-import cn from '@/utils/classnames'
-import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useWorkflowStore } from '../store'
-import { basePath } from '@/utils/var'
-import Tooltip from '@/app/components/base/tooltip'
+import { TabsEnum } from './types'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -129,7 +129,7 @@ const Tabs: FC<TabsProps> = ({
     <div onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className='relative flex bg-background-section-burn pl-1 pt-1'>
+          <div className="relative flex bg-background-section-burn pl-1 pt-1">
             {
               tabs.map((tab) => {
                 const commonProps = {
@@ -152,9 +152,9 @@ const Tabs: FC<TabsProps> = ({
                   return (
                     <Tooltip
                       key={tab.key}
-                      position='top'
-                      popupClassName='max-w-[200px]'
-                      popupContent={t('workflow.tabs.startDisabledTip')}
+                      position="top"
+                      popupClassName="max-w-[200px]"
+                      popupContent={t('tabs.startDisabledTip', { ns: 'workflow' })}
                     >
                       <div {...commonProps}>
                         {tab.name}
@@ -178,7 +178,7 @@ const Tabs: FC<TabsProps> = ({
       {filterElem}
       {
         activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
-          <div className='border-t border-divider-subtle'>
+          <div className="border-t border-divider-subtle">
             <AllStartBlocks
               allowUserInputSelection={allowStartNodeSelection}
               searchText={searchText}
@@ -191,7 +191,7 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
-          <div className='border-t border-divider-subtle'>
+          <div className="border-t border-divider-subtle">
             <Blocks
               searchText={searchText}
               onSelect={onSelect}
@@ -203,7 +203,7 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Sources && !!dataSources.length && (
-          <div className='border-t border-divider-subtle'>
+          <div className="border-t border-divider-subtle">
             <DataSources
               searchText={searchText}
               onSelect={onSelect}
@@ -223,7 +223,6 @@ const Tabs: FC<TabsProps> = ({
             customTools={customTools || []}
             workflowTools={workflowTools || []}
             mcpTools={mcpTools || []}
-            canChooseMCPTool
             onTagsChange={onTagsChange}
             isInRAGPipeline={inRAGPipeline}
             featuredPlugins={featuredPlugins}

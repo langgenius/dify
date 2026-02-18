@@ -138,6 +138,7 @@ class TestDatasetServiceUpdateDataset:
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
+            patch("services.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
             patch(
                 "services.dataset_service.current_user", create_autospec(Account, instance=True)
             ) as mock_current_user,
@@ -147,6 +148,7 @@ class TestDatasetServiceUpdateDataset:
                 "model_manager": mock_model_manager,
                 "get_binding": mock_get_binding,
                 "task": mock_task,
+                "regenerate_task": mock_regenerate_task,
                 "current_user": mock_current_user,
             }
 
@@ -548,6 +550,13 @@ class TestDatasetServiceUpdateDataset:
 
         # Verify vector index task was triggered
         mock_internal_provider_dependencies["task"].delay.assert_called_once_with("dataset-123", "update")
+
+        # Verify regenerate summary index task was triggered (when embedding_model changes)
+        mock_internal_provider_dependencies["regenerate_task"].delay.assert_called_once_with(
+            "dataset-123",
+            regenerate_reason="embedding_model_changed",
+            regenerate_vectors_only=True,
+        )
 
         # Verify return value
         assert result == dataset

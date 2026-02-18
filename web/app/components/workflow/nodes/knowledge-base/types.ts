@@ -1,13 +1,13 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import type { WeightedScoreEnum } from '@/models/datasets'
-import type { RerankingModeEnum } from '@/models/datasets'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export { WeightedScoreEnum } from '@/models/datasets'
+import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import type { RETRIEVE_METHOD } from '@/types/app'
+
 export { IndexingType as IndexMethodEnum } from '@/app/components/datasets/create/step-two'
-export { RETRIEVE_METHOD as RetrievalSearchMethodEnum } from '@/types/app'
+export { WeightedScoreEnum } from '@/models/datasets'
 export { RerankingModeEnum as HybridSearchModeEnum } from '@/models/datasets'
+export { RETRIEVE_METHOD as RetrievalSearchMethodEnum } from '@/types/app'
 
 export enum ChunkStructureEnum {
   general = 'text_model',
@@ -42,6 +42,12 @@ export type RetrievalSetting = {
   score_threshold: number
   reranking_mode?: RerankingModeEnum
 }
+export type SummaryIndexSetting = {
+  enable?: boolean
+  model_name?: string
+  model_provider_name?: string
+  summary_prompt?: string
+}
 export type KnowledgeBaseNodeType = CommonNodeType & {
   index_chunk_variable_selector: string[]
   chunk_structure?: ChunkStructureEnum
@@ -52,4 +58,5 @@ export type KnowledgeBaseNodeType = CommonNodeType & {
   retrieval_model: RetrievalSetting
   _embeddingModelList?: Model[]
   _rerankModelList?: Model[]
+  summary_index_setting?: SummaryIndexSetting
 }

@@ -1,16 +1,16 @@
 import type { Viewport } from 'reactflow'
-import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { generateNewNode } from '@/app/components/workflow/utils'
-import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from '@/app/components/workflow/nodes/data-source-empty/constants'
-import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
-import { NoteTheme } from '@/app/components/workflow/note-node/types'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
+import type { Node } from '@/app/components/workflow/types'
 import {
   CUSTOM_NODE,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '@/app/components/workflow/constants'
+import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from '@/app/components/workflow/nodes/data-source-empty/constants'
+import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
+import { NoteTheme } from '@/app/components/workflow/note-node/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const processNodesWithoutDataSource = (nodes: Node[], viewport?: Viewport) => {
   let leftNode

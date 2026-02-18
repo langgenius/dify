@@ -1,7 +1,7 @@
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import type { SystemFeatures } from '@/types/feature'
-import { InstallationScope } from '@/types/feature'
 import type { Plugin, PluginManifestInMarket } from '../../types'
+import type { SystemFeatures } from '@/types/feature'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { InstallationScope } from '@/types/feature'
 
 type PluginProps = (Plugin | PluginManifestInMarket) & { from: 'github' | 'marketplace' | 'package' }
 

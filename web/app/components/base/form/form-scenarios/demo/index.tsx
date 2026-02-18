@@ -28,7 +28,7 @@ const DemoForm = () => {
 
   return (
     <form
-      className='flex w-[400px] flex-col gap-4'
+      className="flex w-[400px] flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -36,21 +36,21 @@ const DemoForm = () => {
       }}
     >
       <form.AppField
-        name='name'
+        name="name"
         children={field => (
-          <field.TextField label='Name' />
+          <field.TextField label="Name" />
         )}
       />
       <form.AppField
-        name='surname'
+        name="surname"
         children={field => (
-          <field.TextField label='Surname' />
+          <field.TextField label="Surname" />
         )}
       />
       <form.AppField
-        name='isAcceptingTerms'
+        name="isAcceptingTerms"
         children={field => (
-          <field.CheckboxField label='I accept the terms and conditions.' />
+          <field.CheckboxField label="I accept the terms and conditions." />
         )}
       />
       {

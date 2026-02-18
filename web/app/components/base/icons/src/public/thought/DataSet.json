@@ -1,64 +1,64 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "12",
-			"height": "12",
-			"viewBox": "0 0 12 12",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"clip-path": "url(#clip0_7847_32895)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M10.5 2.5C10.5 3.32843 8.48528 4 6 4C3.51472 4 1.5 3.32843 1.5 2.5M10.5 2.5C10.5 1.67157 8.48528 1 6 1C3.51472 1 1.5 1.67157 1.5 2.5M10.5 2.5V9.5C10.5 10.33 8.5 11 6 11C3.5 11 1.5 10.33 1.5 9.5V2.5M10.5 6C10.5 6.83 8.5 7.5 6 7.5C3.5 7.5 1.5 6.83 1.5 6",
-							"stroke": "#667085",
-							"stroke-width": "1.25",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_7847_32895"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "12",
-									"height": "12",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "DataSet"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "12",
+      "height": "12",
+      "viewBox": "0 0 12 12",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_7847_32895)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M10.5 2.5C10.5 3.32843 8.48528 4 6 4C3.51472 4 1.5 3.32843 1.5 2.5M10.5 2.5C10.5 1.67157 8.48528 1 6 1C3.51472 1 1.5 1.67157 1.5 2.5M10.5 2.5V9.5C10.5 10.33 8.5 11 6 11C3.5 11 1.5 10.33 1.5 9.5V2.5M10.5 6C10.5 6.83 8.5 7.5 6 7.5C3.5 7.5 1.5 6.83 1.5 6",
+              "stroke": "#667085",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_7847_32895"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "12",
+                  "height": "12",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "DataSet"
 }

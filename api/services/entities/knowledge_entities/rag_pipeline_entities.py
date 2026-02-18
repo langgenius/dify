@@ -23,7 +23,7 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     description: str
     icon_info: IconInfo
     permission: str
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     yaml_content: str | None = None
 
 
@@ -116,6 +116,8 @@ class KnowledgeConfiguration(BaseModel):
     embedding_model: str = ""
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
+    # add summary index setting
+    summary_index_setting: dict | None = None
 
     @field_validator("embedding_model_provider", mode="before")
     @classmethod

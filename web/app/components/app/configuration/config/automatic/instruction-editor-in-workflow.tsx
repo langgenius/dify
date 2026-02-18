@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import type { GeneratorType } from './types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import InstructionEditor from './instruction-editor'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { VarType } from '@/app/components/workflow/types'
+import InstructionEditor from './instruction-editor'
 
 type Props = {
   nodeId: string

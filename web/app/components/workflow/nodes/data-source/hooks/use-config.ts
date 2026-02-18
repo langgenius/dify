@@ -1,3 +1,7 @@
+import type {
+  DataSourceNodeType,
+  ToolVarInputs,
+} from '../types'
 import {
   useCallback,
   useEffect,
@@ -5,10 +9,6 @@ import {
 } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import type {
-  DataSourceNodeType,
-  ToolVarInputs,
-} from '../types'
 
 export const useConfig = (id: string, dataSourceList?: any[]) => {
   const store = useStoreApi()
@@ -61,7 +61,8 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
 
   const outputSchema = useMemo(() => {
     const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList) return []
+    if (!nodeData?.data || !dataSourceList)
+      return []
 
     const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
     const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)
@@ -95,7 +96,8 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
 
   const hasObjectOutput = useMemo(() => {
     const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList) return false
+    if (!nodeData?.data || !dataSourceList)
+      return false
 
     const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
     const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)

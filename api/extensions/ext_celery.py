@@ -12,9 +12,8 @@ from dify_app import DifyApp
 
 def _get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
-    # Use REDIS_USE_SSL for consistency with the main Redis client
     # Only apply SSL if we're using Redis as broker/backend
-    if not dify_config.REDIS_USE_SSL:
+    if not dify_config.BROKER_USE_SSL:
         return None
 
     # Check if Celery is actually using Redis
@@ -47,7 +46,11 @@ def _get_celery_ssl_options() -> dict[str, Any] | None:
 def init_app(app: DifyApp) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
+            from core.logging.context import init_request_context
+
             with app.app_context():
+                # Initialize logging context for this task (similar to before_request in Flask)
+                init_request_context()
                 return self.run(*args, **kwargs)
 
     broker_transport_options = {}
@@ -77,7 +80,13 @@ def init_app(app: DifyApp) -> Celery:
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
+        task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
     )
+
+    if dify_config.CELERY_BACKEND == "redis":
+        celery_app.conf.update(
+            result_backend_transport_options=broker_transport_options,
+        )
 
     # Apply SSL configuration if enabled
     ssl_options = _get_celery_ssl_options()
@@ -99,6 +108,8 @@ def init_app(app: DifyApp) -> Celery:
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
+        "tasks.generate_summary_index_task",  # summary index generation
+        "tasks.regenerate_summary_index_task",  # summary index regeneration
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -146,6 +157,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.queue_monitor_task.queue_monitor_task",
             "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
         }
+    if dify_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK:
+        imports.append("tasks.human_input_timeout_tasks")
+        beat_schedule["human_input_form_timeout"] = {
+            "task": "human_input_form_timeout.check_and_resume",
+            "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
+        }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
@@ -160,6 +177,13 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
         }
+    if dify_config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK:
+        # for saas only
+        imports.append("schedule.clean_workflow_runs_task")
+        beat_schedule["clean_workflow_runs_task"] = {
+            "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
+            "schedule": crontab(minute="0", hour="0"),
+        }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {
@@ -172,6 +196,14 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
             "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
         }
+
+    if dify_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK:
+        imports.append("schedule.update_api_token_last_used_task")
+        beat_schedule["batch_update_api_token_last_used"] = {
+            "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
+            "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
+        }
+
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

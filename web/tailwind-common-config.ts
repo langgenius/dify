@@ -1,8 +1,21 @@
-import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
+import tailwindTypography from '@tailwindcss/typography'
+import { importSvgCollections } from 'iconify-import-svg'
+// @ts-expect-error workaround for turbopack issue
+import { cssAsPlugin } from './tailwind-css-plugin.ts'
+// @ts-expect-error workaround for turbopack issue
+import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
+import typography from './typography.js'
+
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url))
 
 const config = {
   theme: {
-    typography: require('./typography'),
+    typography,
     extend: {
       colors: {
         gray: {
@@ -101,6 +114,7 @@ const config = {
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'workflow-process-paused-bg': 'var(--color-workflow-process-paused-bg)',
         'workflow-run-failed-bg': 'var(--color-workflow-run-failed-bg)',
         'workflow-batch-failed-bg': 'var(--color-workflow-batch-failed-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
@@ -136,6 +150,8 @@ const config = {
         'billing-plan-card-premium-bg': 'var(--color-billing-plan-card-premium-bg)',
         'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
         'knowledge-pipeline-creation-footer-bg': 'var(--color-knowledge-pipeline-creation-footer-bg)',
+        'progress-bar-indeterminate-stripe': 'var(--color-progress-bar-indeterminate-stripe)',
+        'chat-answer-human-input-form-divider-bg': 'var(--color-chat-answer-human-input-form-divider-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
@@ -143,7 +159,35 @@ const config = {
     },
   },
   plugins: [
-    require('@tailwindcss/typography'),
+    tailwindTypography,
+    iconsPlugin({
+      collections: {
+        ...getIconCollections(['heroicons', 'ri']),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
+          prefix: 'custom-public',
+          ignoreImportErrors: true,
+        }),
+        ...importSvgCollections({
+          source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
+          prefix: 'custom-vender',
+          ignoreImportErrors: true,
+        }),
+      },
+      extraProperties: {
+        width: '1rem',
+        height: '1rem',
+        display: 'block',
+      },
+    }),
+    cssAsPlugin([
+      path.resolve(_dirname, './app/styles/globals.css'),
+      path.resolve(_dirname, './app/components/base/action-button/index.css'),
+      path.resolve(_dirname, './app/components/base/badge/index.css'),
+      path.resolve(_dirname, './app/components/base/button/index.css'),
+      path.resolve(_dirname, './app/components/base/modal/index.css'),
+      path.resolve(_dirname, './app/components/base/premium-badge/index.css'),
+    ]),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {

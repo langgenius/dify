@@ -1,26 +1,26 @@
+import type {
+  DataSourceAuth,
+  DataSourceCredential,
+} from './types'
 import {
   memo,
   useCallback,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Item from './item'
-import Configure from './configure'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from './types'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
+import Confirm from '@/app/components/base/confirm'
 import {
   ApiKeyModal,
   usePluginAuthAction,
 } from '@/app/components/plugins/plugin-auth'
-import { useDataSourceAuthUpdate } from './hooks'
-import Confirm from '@/app/components/base/confirm'
-import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
-import { openOAuthPopup } from '@/hooks/use-oauth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { openOAuthPopup } from '@/hooks/use-oauth'
+import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import Configure from './configure'
+import { useDataSourceAuthUpdate } from './hooks'
+import Item from './item'
 
 type CardProps = {
   item: DataSourceAuth
@@ -113,19 +113,19 @@ const Card = ({
   ])
 
   return (
-    <div className='rounded-xl bg-background-section-burn'>
-      <div className='flex items-center p-3 pb-2'>
+    <div className="rounded-xl bg-background-section-burn">
+      <div className="flex items-center p-3 pb-2">
         <img
           src={icon}
-          className='mr-3 flex h-10 w-10 shrink-0 items-center justify-center'
+          className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center"
         />
-        <div className='grow'>
-          <div className='system-md-semibold text-text-primary'>
+        <div className="grow">
+          <div className="system-md-semibold text-text-primary">
             {renderI18nObject(label)}
           </div>
-          <div className='system-xs-regular flex h-4 items-center text-text-tertiary'>
+          <div className="system-xs-regular flex h-4 items-center text-text-tertiary">
             {author}
-            <div className='mx-0.5 text-text-quaternary'>/</div>
+            <div className="mx-0.5 text-text-quaternary">/</div>
             {name}
           </div>
         </div>
@@ -135,13 +135,13 @@ const Card = ({
           onUpdate={handleAuthUpdate}
         />
       </div>
-      <div className='system-xs-medium flex h-4 items-center pl-3 text-text-tertiary'>
-        {t('plugin.auth.connectedWorkspace')}
-        <div className='ml-3 h-[1px] grow bg-divider-subtle'></div>
+      <div className="system-xs-medium flex h-4 items-center pl-3 text-text-tertiary">
+        {t('auth.connectedWorkspace', { ns: 'plugin' })}
+        <div className="ml-3 h-[1px] grow bg-divider-subtle"></div>
       </div>
       {
         !!credentials_list.length && (
-          <div className='space-y-1 p-3 pt-2'>
+          <div className="space-y-1 p-3 pt-2">
             {
               credentials_list.map(credentialItem => (
                 <Item
@@ -156,9 +156,9 @@ const Card = ({
       }
       {
         !credentials_list.length && (
-          <div className='p-3 pt-1'>
-            <div className='system-xs-regular flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary'>
-              {t('plugin.auth.emptyAuth')}
+          <div className="p-3 pt-1">
+            <div className="system-xs-regular flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary">
+              {t('auth.emptyAuth', { ns: 'plugin' })}
             </div>
           </div>
         )
@@ -167,7 +167,7 @@ const Card = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('datasetDocuments.list.delete.title')}
+            title={t('list.delete.title', { ns: 'datasetDocuments' })}
             isDisabled={doingAction}
             onCancel={closeConfirm}
             onConfirm={handleConfirm}

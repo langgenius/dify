@@ -38,7 +38,7 @@ const Input: FC<InputProps> = ({
   }
 
   return (
-    <div className='relative'>
+    <div className="relative">
       <input
         tabIndex={0}
         // Do not set autoComplete for security - prevents browser from storing sensitive API keys
@@ -62,8 +62,8 @@ const Input: FC<InputProps> = ({
         max={max}
       />
       {validated && (
-        <div className='absolute right-2.5 top-2.5'>
-          <CheckCircle className='h-4 w-4 text-[#039855]' />
+        <div className="absolute right-2.5 top-2.5">
+          <CheckCircle className="h-4 w-4 text-[#039855]" />
         </div>
       )}
     </div>

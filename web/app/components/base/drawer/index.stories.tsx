@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
+import { fn } from 'storybook/test'
 import Drawer from '.'
 
 const meta = {
@@ -86,12 +86,12 @@ export const CustomFooter: Story = {
   render: args => (
     <DrawerDemo
       {...args}
-      footer={
+      footer={(
         <div className="mt-6 flex justify-end gap-2">
           <button className="rounded-md border border-divider-subtle px-3 py-1.5 text-sm text-text-secondary" onClick={() => args.onCancel?.()}>Discard</button>
           <button className="rounded-md bg-primary-600 px-3 py-1.5 text-sm text-white">Save changes</button>
         </div>
-      }
+      )}
     />
   ),
   args: {

@@ -5,13 +5,13 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
   DataSet,
   MetadataInDoc,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import type { RETRIEVE_TYPE } from '@/types/app'
 
 export type MultipleRetrievalConfig = {
   top_k: number
@@ -86,6 +86,7 @@ export enum MetadataFilteringVariableType {
 export type MetadataFilteringCondition = {
   id: string
   name: string
+  metadata_id?: string
   comparison_operator: ComparisonOperator
   value?: string | number
 }
@@ -122,13 +123,13 @@ export type MetadataShape = {
   handleToggleConditionLogicalOperator: HandleToggleConditionLogicalOperator
   handleUpdateCondition: HandleUpdateCondition
   metadataModelConfig?: ModelConfig
-  handleMetadataModelChange?: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
+  handleMetadataModelChange?: (model: { modelId: string, provider: string, mode?: string, features?: string[] }) => void
   handleMetadataCompletionParamsChange?: (params: Record<string, any>) => void
   availableStringVars?: NodeOutPutVar[]
   availableStringNodesWithParent?: Node[]
   availableNumberVars?: NodeOutPutVar[]
   availableNumberNodesWithParent?: Node[]
   isCommonVariable?: boolean
-  availableCommonStringVars?: { name: string; type: string; value: string }[]
-  availableCommonNumberVars?: { name: string; type: string; value: string }[]
+  availableCommonStringVars?: { name: string, type: string, value: string }[]
+  availableCommonNumberVars?: { name: string, type: string, value: string }[]
 }

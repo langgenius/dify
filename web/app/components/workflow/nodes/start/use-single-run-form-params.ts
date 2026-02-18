@@ -1,14 +1,14 @@
 import type { RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import type { ValueSelector } from '@/app/components/workflow/types'
-import { type InputVar, InputVarType, type Variable } from '@/app/components/workflow/types'
 import type { StartNodeType } from './types'
+import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import { useTranslation } from 'react-i18next'
+import { InputVarType } from '@/app/components/workflow/types'
 import { useIsChatMode } from '../../hooks'
 
 type Params = {
-  id: string,
-  payload: StartNodeType,
+  id: string
+  payload: StartNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -51,7 +51,7 @@ const useSingleRunFormParams = ({
 
     forms.push(
       {
-        label: t('workflow.nodes.llm.singleRun.variable')!,
+        label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
         inputs,
         values: runInputData,
         onChange: setRunInputData,

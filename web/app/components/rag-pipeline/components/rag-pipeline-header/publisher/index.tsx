@@ -1,10 +1,10 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -29,7 +29,7 @@ const Publisher = () => {
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
         crossAxis: 40,
@@ -37,14 +37,14 @@ const Publisher = () => {
     >
       <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
         <Button
-          className='px-2'
-          variant='primary'
+          className="px-2"
+          variant="primary"
         >
-          <span className='pl-1'>{t('workflow.common.publish')}</span>
-          <RiArrowDownSLine className='h-4 w-4' />
+          <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
+          <RiArrowDownSLine className="h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <Popup />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

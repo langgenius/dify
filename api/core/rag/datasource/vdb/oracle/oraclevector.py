@@ -289,7 +289,8 @@ class OracleVector(BaseVector):
                 words = pseg.cut(query)
                 current_entity = ""
                 for word, pos in words:
-                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:  # nr: 人名，ns: 地名，nt: 机构名
+                    # `nr`: Person, `ns`: Location, `nt`: Organization
+                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:
                         current_entity += word
                     else:
                         if current_entity:

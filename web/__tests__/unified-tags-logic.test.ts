@@ -14,8 +14,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       // This is the valueNotChanged logic from TagSelector component
       const valueNotChanged
         = currentValue.length === newSelectedTagIDs.length
-        && currentValue.every(v => newSelectedTagIDs.includes(v))
-        && newSelectedTagIDs.every(v => currentValue.includes(v))
+          && currentValue.every(v => newSelectedTagIDs.includes(v))
+          && newSelectedTagIDs.every(v => currentValue.includes(v))
 
       expect(valueNotChanged).toBe(false)
     })
@@ -26,8 +26,8 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
 
       const valueNotChanged
         = currentValue.length === newSelectedTagIDs.length
-        && currentValue.every(v => newSelectedTagIDs.includes(v))
-        && newSelectedTagIDs.every(v => currentValue.includes(v))
+          && currentValue.every(v => newSelectedTagIDs.includes(v))
+          && newSelectedTagIDs.every(v => currentValue.includes(v))
 
       expect(valueNotChanged).toBe(true)
     })
@@ -70,7 +70,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
   })
 
   describe('Fallback Logic (from layout-main.tsx)', () => {
-    type Tag = { id: string; name: string }
+    type Tag = { id: string, name: string }
     type AppDetail = { tags: Tag[] }
     type FallbackResult = { tags?: Tag[] } | null
     // no-op
@@ -316,7 +316,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       ]
 
       // Filter out invalid entries
-      const validTags = mixedData.filter((tag): tag is { id: string; name: string; type: string; binding_count: number } =>
+      const validTags = mixedData.filter((tag): tag is { id: string, name: string, type: string, binding_count: number } =>
         tag != null
         && typeof tag === 'object'
         && 'id' in tag

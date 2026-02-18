@@ -6,8 +6,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.entities.provider_entities import QuotaUnit
-from core.file.models import File
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -16,6 +15,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
+from core.workflow.file.models import File
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
@@ -136,21 +136,37 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-        with Session(db.engine) as session:
-            stmt = (
-                update(Provider)
-                .where(
-                    Provider.tenant_id == tenant_id,
-                    # TODO: Use provider name with prefix after the data migration.
-                    Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                    Provider.provider_type == ProviderType.SYSTEM,
-                    Provider.quota_type == system_configuration.current_quota_type.value,
-                    Provider.quota_limit > Provider.quota_used,
-                )
-                .values(
-                    quota_used=Provider.quota_used + used_quota,
-                    last_used=naive_utc_now(),
-                )
+        if system_configuration.current_quota_type == ProviderQuotaType.TRIAL:
+            from services.credit_pool_service import CreditPoolService
+
+            CreditPoolService.check_and_deduct_credits(
+                tenant_id=tenant_id,
+                credits_required=used_quota,
             )
-            session.execute(stmt)
-            session.commit()
+        elif system_configuration.current_quota_type == ProviderQuotaType.PAID:
+            from services.credit_pool_service import CreditPoolService
+
+            CreditPoolService.check_and_deduct_credits(
+                tenant_id=tenant_id,
+                credits_required=used_quota,
+                pool_type="paid",
+            )
+        else:
+            with Session(db.engine) as session:
+                stmt = (
+                    update(Provider)
+                    .where(
+                        Provider.tenant_id == tenant_id,
+                        # TODO: Use provider name with prefix after the data migration.
+                        Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
+                        Provider.provider_type == ProviderType.SYSTEM.value,
+                        Provider.quota_type == system_configuration.current_quota_type.value,
+                        Provider.quota_limit > Provider.quota_used,
+                    )
+                    .values(
+                        quota_used=Provider.quota_used + used_quota,
+                        last_used=naive_utc_now(),
+                    )
+                )
+                session.execute(stmt)
+                session.commit()

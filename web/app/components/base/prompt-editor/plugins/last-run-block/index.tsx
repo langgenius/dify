@@ -1,15 +1,15 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { LastRunBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { LastRunBlockType } from '../../types'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createLastRunBlockNode,
   LastRunBlockNode,
@@ -61,5 +61,5 @@ const LastRunBlock = memo(({
 LastRunBlock.displayName = 'LastRunBlock'
 
 export { LastRunBlock }
-export { LastRunBlockNode } from './node'
 export { default as LastRunReplacementBlock } from './last-run-block-replacement-block'
+export { LastRunBlockNode } from './node'

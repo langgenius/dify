@@ -1,14 +1,14 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useDeleteAccountFeedback } from '../state'
-import { useAppContext } from '@/context/app-context'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 import { useLogout } from '@/service/use-common'
+import { useDeleteAccountFeedback } from '../state'
 
 type DeleteAccountProps = {
   onCancel: () => void
@@ -28,7 +28,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       await logout()
       // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
-      Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
+      Toast.notify({ type: 'info', message: t('account.deleteSuccessTip', { ns: 'common' }) })
     }
     catch (error) { console.error(error) }
   }, [router, t])
@@ -46,20 +46,27 @@ export default function FeedBack(props: DeleteAccountProps) {
     props.onCancel()
     handleSuccess()
   }, [handleSuccess, props])
-  return <CustomDialog
-    show={true}
-    onClose={props.onCancel}
-    title={t('common.account.feedbackTitle')}
-    className="max-w-[480px]"
-    footer={false}
-  >
-    <label className='system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary'>{t('common.account.feedbackLabel')}</label>
-    <Textarea rows={6} value={userFeedback} placeholder={t('common.account.feedbackPlaceholder') as string} onChange={(e) => {
-      setUserFeedback(e.target.value)
-    }} />
-    <div className='mt-3 flex w-full flex-col gap-2'>
-      <Button className='w-full' loading={isPending} variant='primary' onClick={handleSubmit}>{t('common.operation.submit')}</Button>
-      <Button className='w-full' onClick={handleSkip}>{t('common.operation.skip')}</Button>
-    </div>
-  </CustomDialog>
+  return (
+    <CustomDialog
+      show={true}
+      onClose={props.onCancel}
+      title={t('account.feedbackTitle', { ns: 'common' })}
+      className="max-w-[480px]"
+      footer={false}
+    >
+      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
+      <Textarea
+        rows={6}
+        value={userFeedback}
+        placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
+        onChange={(e) => {
+          setUserFeedback(e.target.value)
+        }}
+      />
+      <div className="mt-3 flex w-full flex-col gap-2">
+        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
+        <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
+      </div>
+    </CustomDialog>
+  )
 }

@@ -1,23 +1,23 @@
 import type { FC } from 'react'
+import type { ImageFile, VisionSettings } from '@/types/app'
 import {
   Fragment,
   useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from './uploader'
-import ImageLinkInput from './image-link-input'
-import ImageList from './image-list'
-import { useImageFiles } from './hooks'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
+import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { ImageFile, VisionSettings } from '@/types/app'
 import { TransferMethod } from '@/types/app'
+import { useImageFiles } from './hooks'
+import ImageLinkInput from './image-link-input'
+import ImageList from './image-list'
+import Uploader from './uploader'
 
 type PasteImageLinkButtonProps = {
   onUpload: (imageFile: ImageFile) => void
@@ -46,19 +46,20 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='top-start'
+      placement="top-start"
     >
       <PortalToFollowElemTrigger onClick={handleToggle}>
         <div className={`
           relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover
           ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
-        `}>
-          <Link03 className='mr-2 h-4 w-4' />
-          {t('common.imageUploader.pasteImageLink')}
+        `}
+        >
+          <Link03 className="mr-2 h-4 w-4" />
+          {t('imageUploader.pasteImageLink', { ns: 'common' })}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg'>
+      <PortalToFollowElemContent className="z-10">
+        <div className="w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} />
         </div>
       </PortalToFollowElemContent>
@@ -69,10 +70,12 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 type TextGenerationImageUploaderProps = {
   settings: VisionSettings
   onFilesChange: (files: ImageFile[]) => void
+  disabled?: boolean
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   settings,
   onFilesChange,
+  disabled,
 }) => {
   const { t } = useTranslation()
 
@@ -92,7 +95,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const localUpload = (
     <Uploader
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
       limit={+settings.image_file_size_limit!}
     >
       {
@@ -101,9 +104,10 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
             flex h-8 cursor-pointer items-center justify-center rounded-lg
             bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary
             ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
-          `}>
-            <ImagePlus className='mr-2 h-4 w-4' />
-            {t('common.imageUploader.uploadFromComputer')}
+          `}
+          >
+            <ImagePlus className="mr-2 h-4 w-4" />
+            {t('imageUploader.uploadFromComputer', { ns: 'common' })}
           </div>
         )
       }
@@ -113,13 +117,13 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const urlUpload = (
     <PasteImageLinkButton
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
     />
   )
 
   return (
     <div>
-      <div className='mb-1'>
+      <div className="mb-1">
         <ImageList
           list={files}
           onRemove={onRemove}

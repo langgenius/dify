@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 
 import { RocketLaunchIcon } from '@heroicons/react/20/solid'
 import { Button } from '.'

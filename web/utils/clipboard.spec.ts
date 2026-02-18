@@ -13,7 +13,7 @@ import { writeTextToClipboard } from './clipboard'
 describe('Clipboard Utilities', () => {
   describe('writeTextToClipboard', () => {
     afterEach(() => {
-      jest.restoreAllMocks()
+      vi.restoreAllMocks()
     })
 
     /**
@@ -21,7 +21,7 @@ describe('Clipboard Utilities', () => {
      * When navigator.clipboard is available, should use the modern API
      */
     it('should use navigator.clipboard.writeText when available', async () => {
-      const mockWriteText = jest.fn().mockResolvedValue(undefined)
+      const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: mockWriteText },
         writable: true,
@@ -44,11 +44,11 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      const mockExecCommand = jest.fn().mockReturnValue(true)
+      const mockExecCommand = vi.fn().mockReturnValue(true)
       document.execCommand = mockExecCommand
 
-      const appendChildSpy = jest.spyOn(document.body, 'appendChild')
-      const removeChildSpy = jest.spyOn(document.body, 'removeChild')
+      const appendChildSpy = vi.spyOn(document.body, 'appendChild')
+      const removeChildSpy = vi.spyOn(document.body, 'removeChild')
 
       await writeTextToClipboard('fallback text')
 
@@ -68,7 +68,7 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      const mockExecCommand = jest.fn().mockReturnValue(false)
+      const mockExecCommand = vi.fn().mockReturnValue(false)
       document.execCommand = mockExecCommand
 
       await expect(writeTextToClipboard('fail text')).rejects.toThrow()
@@ -85,7 +85,7 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      const mockExecCommand = jest.fn().mockImplementation(() => {
+      const mockExecCommand = vi.fn().mockImplementation(() => {
         throw new Error('execCommand error')
       })
       document.execCommand = mockExecCommand
@@ -104,8 +104,8 @@ describe('Clipboard Utilities', () => {
         configurable: true,
       })
 
-      document.execCommand = jest.fn().mockReturnValue(true)
-      const removeChildSpy = jest.spyOn(document.body, 'removeChild')
+      document.execCommand = vi.fn().mockReturnValue(true)
+      const removeChildSpy = vi.spyOn(document.body, 'removeChild')
 
       await writeTextToClipboard('cleanup test')
 
@@ -117,7 +117,7 @@ describe('Clipboard Utilities', () => {
      * Should handle edge case of empty clipboard content
      */
     it('should handle empty string', async () => {
-      const mockWriteText = jest.fn().mockResolvedValue(undefined)
+      const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: mockWriteText },
         writable: true,
@@ -133,7 +133,7 @@ describe('Clipboard Utilities', () => {
      * Should preserve newlines, tabs, quotes, unicode, and emojis
      */
     it('should handle special characters', async () => {
-      const mockWriteText = jest.fn().mockResolvedValue(undefined)
+      const mockWriteText = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: mockWriteText },
         writable: true,

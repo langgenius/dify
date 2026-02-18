@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string
@@ -47,7 +48,7 @@ const RadioGroup: FC<Props> = ({
     return () => onChange(value)
   }, [onChange])
   return (
-    <div className='flex space-x-2'>
+    <div className="flex space-x-2">
       {options.map(option => (
         <Item
           key={option.value}

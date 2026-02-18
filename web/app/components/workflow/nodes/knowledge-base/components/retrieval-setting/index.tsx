@@ -1,19 +1,18 @@
+import type {
+  HybridSearchModeEnum,
+  IndexMethodEnum,
+  RetrievalSearchMethodEnum,
+  WeightedScore,
+} from '../../types'
+import type { RerankingModelSelectorProps } from './reranking-model-selector'
+import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import type {
-  HybridSearchModeEnum,
-  RetrievalSearchMethodEnum,
-} from '../../types'
-import type {
-  IndexMethodEnum,
-  WeightedScore,
-} from '../../types'
+import { useDocLink } from '@/context/i18n'
 import { useRetrievalSetting } from './hooks'
-import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
-import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import SearchMethodOption from './search-method-option'
 
 type RetrievalSettingProps = {
@@ -52,6 +51,7 @@ const RetrievalSetting = ({
   showMultiModalTip,
 }: RetrievalSettingProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const {
     options,
     hybridSearchModeOptions,
@@ -60,16 +60,17 @@ const RetrievalSetting = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('datasetSettings.form.retrievalSetting.title'),
+        title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
         subTitle: (
-          <div className='body-xs-regular flex items-center text-text-tertiary'>
-            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-            &nbsp;{t('workflow.nodes.knowledgeBase.aboutRetrieval')}
+          <div className="body-xs-regular flex items-center text-text-tertiary">
+            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+            &nbsp;
+            {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
           </div>
         ),
       }}
     >
-      <div className='space-y-1'>
+      <div className="space-y-1">
         {
           options.map(option => (
             <SearchMethodOption

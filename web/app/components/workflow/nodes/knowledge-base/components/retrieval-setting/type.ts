@@ -10,7 +10,7 @@ export type Option = {
   title: any
   description: string
   effectColor?: string
-  showEffectColor?: boolean,
+  showEffectColor?: boolean
 }
 
 export type HybridSearchModeOption = {

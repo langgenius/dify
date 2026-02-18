@@ -1,23 +1,23 @@
 'use client'
 
+import type { LLMNodeType } from '../nodes/llm/types'
+import type { CommonNodeType } from '../types'
+import type { Emoji } from '@/app/components/tools/types'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { useNodesInteractions } from './use-nodes-interactions'
-import type { CommonNodeType } from '../types'
 import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { setupNodeSelectionListener } from '../utils/node-navigation'
-import { BlockEnum } from '../types'
-import type { Emoji } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { canFindTool } from '@/utils'
-import type { LLMNodeType } from '../nodes/llm/types'
+import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { canFindTool } from '@/utils'
+import { BlockEnum } from '../types'
+import { setupNodeSelectionListener } from '../utils/node-navigation'
+import { useNodesInteractions } from './use-nodes-interactions'
 
 /**
  * Hook to register workflow nodes search functionality
@@ -34,7 +34,8 @@ export const useWorkflowSearch = () => {
 
   // Extract tool icon logic - clean separation of concerns
   const getToolIcon = useCallback((nodeData: CommonNodeType): string | Emoji | undefined => {
-    if (nodeData?.type !== BlockEnum.Tool) return undefined
+    if (nodeData?.type !== BlockEnum.Tool)
+      return undefined
 
     const toolCollections: Record<string, any[]> = {
       [CollectionType.builtIn]: buildInTools || [],
@@ -48,19 +49,23 @@ export const useWorkflowSearch = () => {
 
   // Extract model info logic - clean extraction
   const getModelInfo = useCallback((nodeData: CommonNodeType) => {
-    if (nodeData?.type !== BlockEnum.LLM) return {}
+    if (nodeData?.type !== BlockEnum.LLM)
+      return {}
 
     const llmNodeData = nodeData as LLMNodeType
-    return llmNodeData.model ? {
-      provider: llmNodeData.model.provider,
-      name: llmNodeData.model.name,
-      mode: llmNodeData.model.mode,
-    } : {}
+    return llmNodeData.model
+      ? {
+          provider: llmNodeData.model.provider,
+          name: llmNodeData.model.name,
+          mode: llmNodeData.model.mode,
+        }
+      : {}
   }, [])
 
   const searchableNodes = useMemo(() => {
     const filteredNodes = nodes.filter((node) => {
-      if (!node.id || !node.data || node.type === 'sticky') return false
+      if (!node.id || !node.data || node.type === 'sticky')
+        return false
 
       const nodeData = node.data as CommonNodeType
       const nodeType = nodeData?.type
@@ -87,12 +92,13 @@ export const useWorkflowSearch = () => {
 
   // Calculate search score - clean scoring logic
   const calculateScore = useCallback((node: {
-    title: string;
-    type: string;
-    desc: string;
-    modelInfo: { provider?: string; name?: string; mode?: string }
+    title: string
+    type: string
+    desc: string
+    modelInfo: { provider?: string, name?: string, mode?: string }
   }, searchTerm: string): number => {
-    if (!searchTerm) return 1
+    if (!searchTerm)
+      return 1
 
     const titleMatch = node.title.toLowerCase()
     const typeMatch = node.type.toLowerCase()
@@ -104,27 +110,36 @@ export const useWorkflowSearch = () => {
     let score = 0
 
     // Title matching (exact prefix > partial match)
-    if (titleMatch.startsWith(searchTerm)) score += 100
-    else if (titleMatch.includes(searchTerm)) score += 50
+    if (titleMatch.startsWith(searchTerm))
+      score += 100
+    else if (titleMatch.includes(searchTerm))
+      score += 50
 
     // Type matching (exact > partial)
-    if (typeMatch === searchTerm) score += 80
-    else if (typeMatch.includes(searchTerm)) score += 30
+    if (typeMatch === searchTerm)
+      score += 80
+    else if (typeMatch.includes(searchTerm))
+      score += 30
 
     // Description matching (additive)
-    if (descMatch.includes(searchTerm)) score += 20
+    if (descMatch.includes(searchTerm))
+      score += 20
 
     // LLM model matching (additive - can combine multiple matches)
-    if (modelNameMatch && modelNameMatch.includes(searchTerm)) score += 60
-    if (modelProviderMatch && modelProviderMatch.includes(searchTerm)) score += 40
-    if (modelModeMatch && modelModeMatch.includes(searchTerm)) score += 30
+    if (modelNameMatch && modelNameMatch.includes(searchTerm))
+      score += 60
+    if (modelProviderMatch && modelProviderMatch.includes(searchTerm))
+      score += 40
+    if (modelModeMatch && modelModeMatch.includes(searchTerm))
+      score += 30
 
     return score
   }, [])
 
   // Create search function for workflow nodes
   const searchWorkflowNodes = useCallback((query: string) => {
-    if (!searchableNodes.length) return []
+    if (!searchableNodes.length)
+      return []
 
     const searchTerm = query.toLowerCase().trim()
 
@@ -132,32 +147,35 @@ export const useWorkflowSearch = () => {
       .map((node) => {
         const score = calculateScore(node, searchTerm)
 
-        return score > 0 ? {
-          id: node.id,
-          title: node.title,
-          description: node.desc || node.type,
-          type: 'workflow-node' as const,
-          path: `#${node.id}`,
-          icon: (
-            <BlockIcon
-              type={node.blockType}
-              className="shrink-0"
-              size="sm"
-              toolIcon={node.toolIcon}
-            />
-          ),
-          metadata: {
-            nodeId: node.id,
-            nodeData: node.nodeData,
-          },
-          data: node.nodeData,
-          score,
-        } : null
+        return score > 0
+          ? {
+              id: node.id,
+              title: node.title,
+              description: node.desc || node.type,
+              type: 'workflow-node' as const,
+              path: `#${node.id}`,
+              icon: (
+                <BlockIcon
+                  type={node.blockType}
+                  className="shrink-0"
+                  size="sm"
+                  toolIcon={node.toolIcon}
+                />
+              ),
+              metadata: {
+                nodeId: node.id,
+                nodeData: node.nodeData,
+              },
+              data: node.nodeData,
+              score,
+            }
+          : null
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {
         // If no search term, sort alphabetically
-        if (!searchTerm) return a.title.localeCompare(b.title)
+        if (!searchTerm)
+          return a.title.localeCompare(b.title)
         // Sort by relevance score (higher score first)
         return (b.score || 0) - (a.score || 0)
       })

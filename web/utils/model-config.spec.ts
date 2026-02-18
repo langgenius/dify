@@ -1,3 +1,5 @@
+import type { PromptVariable } from '@/models/debug'
+import type { UserInputFormItem } from '@/types/app'
 /**
  * Test suite for model configuration transformation utilities
  *
@@ -15,8 +17,6 @@ import {
   promptVariablesToUserInputsForm,
   userInputsFormToPromptVariables,
 } from './model-config'
-import type { UserInputFormItem } from '@/types/app'
-import type { PromptVariable } from '@/models/debug'
 
 describe('Model Config Utilities', () => {
   describe('userInputsFormToPromptVariables', () => {

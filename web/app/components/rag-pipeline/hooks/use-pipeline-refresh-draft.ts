@@ -1,8 +1,8 @@
+import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import { processNodesWithoutDataSource } from '../utils'
 
 export const usePipelineRefreshDraft = () => {

@@ -17,6 +17,25 @@ class EndUserService:
     """
 
     @classmethod
+    def get_end_user_by_id(cls, *, tenant_id: str, app_id: str, end_user_id: str) -> EndUser | None:
+        """Get an end user by primary key.
+
+        This is scoped to the provided tenant and app to prevent cross-tenant/app access
+        when an end-user ID is known.
+        """
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            return (
+                session.query(EndUser)
+                .where(
+                    EndUser.id == end_user_id,
+                    EndUser.tenant_id == tenant_id,
+                    EndUser.app_id == app_id,
+                )
+                .first()
+            )
+
+    @classmethod
     def get_or_create_end_user(cls, app_model: App, user_id: str | None = None) -> EndUser:
         """
         Get or create an end user for a given app.

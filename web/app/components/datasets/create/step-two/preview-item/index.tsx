@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type IPreviewItemProps = {
@@ -44,29 +44,33 @@ const PreviewItem: FC<IPreviewItemProps> = ({
   const formattedIndex = (() => String(index).padStart(3, '0'))()
 
   return (
-    <div className='rounded-xl bg-gray-50 p-4'>
-      <div className='flex h-5 items-center justify-between text-xs text-gray-500'>
-        <div className='box-border flex h-[18px] items-center space-x-1 rounded-md border border-gray-200 pl-1 pr-1.5 font-medium italic'>
+    <div className="rounded-xl bg-gray-50 p-4">
+      <div className="flex h-5 items-center justify-between text-xs text-gray-500">
+        <div className="box-border flex h-[18px] items-center space-x-1 rounded-md border border-gray-200 pl-1 pr-1.5 font-medium italic">
           {sharpIcon}
           <span>{formattedIndex}</span>
         </div>
-        <div className='flex items-center space-x-1'>
+        <div className="flex items-center space-x-1">
           {textIcon}
-          <span>{charNums} {t('datasetCreation.stepTwo.characters')}</span>
+          <span>
+            {charNums}
+            {' '}
+            {t('stepTwo.characters', { ns: 'datasetCreation' })}
+          </span>
         </div>
       </div>
-      <div className='mt-2 line-clamp-6 max-h-[120px] overflow-hidden text-sm text-gray-800'>
+      <div className="mt-2 line-clamp-6 max-h-[120px] overflow-hidden text-sm text-gray-800">
         {type === PreviewType.TEXT && (
           <div style={{ whiteSpace: 'pre-line' }}>{content}</div>
         )}
         {type === PreviewType.QA && (
           <div style={{ whiteSpace: 'pre-line' }}>
-            <div className='flex'>
-              <div className='text-medium mr-2 shrink-0 text-gray-400'>Q</div>
+            <div className="flex">
+              <div className="text-medium mr-2 shrink-0 text-gray-400">Q</div>
               <div style={{ whiteSpace: 'pre-line' }}>{qa?.question}</div>
             </div>
-            <div className='flex'>
-              <div className='text-medium mr-2 shrink-0 text-gray-400'>A</div>
+            <div className="flex">
+              <div className="text-medium mr-2 shrink-0 text-gray-400">A</div>
               <div style={{ whiteSpace: 'pre-line' }}>{qa?.answer}</div>
             </div>
           </div>

@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "تنسيق SVG أو PNG بحجم أدنى 80x80px",
+  "app.title": "تخصيص العلامة التجارية لرأس التطبيق",
+  "apply": "تطبيق",
+  "change": "تغيير",
+  "custom": "تخصيص",
+  "customize.contactUs": " اتصل بنا ",
+  "customize.prefix": "لتخصيص شعار العلامة التجارية داخل التطبيق، يرجى",
+  "customize.suffix": "للترقية إلى إصدار Enterprise.",
+  "restore": "استعادة الافتراضيات",
+  "upgradeTip.des": "قم بترقية خطتك لتخصيص علامتك التجارية",
+  "upgradeTip.prefix": "قم بترقية خطتك لـ",
+  "upgradeTip.suffix": "تخصيص علامتك التجارية.",
+  "upgradeTip.title": "تحديث خطتك",
+  "upload": "تحميل",
+  "uploadedFail": "فشل تحميل الصورة، يرجى إعادة التحميل.",
+  "uploading": "جاري التحميل",
+  "webapp.changeLogo": "تغيير صورة Powered by Brand",
+  "webapp.changeLogoTip": "تنسيق SVG أو PNG بحجم أدنى 40x40px",
+  "webapp.removeBrand": "إزالة Powered by Dify",
+  "webapp.title": "تخصيص العلامة التجارية لتطبيق الويب"
+}

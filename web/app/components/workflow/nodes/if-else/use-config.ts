@@ -1,12 +1,6 @@
-import { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { v4 as uuid4 } from 'uuid'
-import { useUpdateNodeInternals } from 'reactflow'
 import type {
   Var,
 } from '../../types'
-import { VarType } from '../../types'
-import { LogicalOperator } from './types'
 import type {
   CaseItem,
   HandleAddCondition,
@@ -18,17 +12,23 @@ import type {
   HandleUpdateSubVariableCondition,
   IfElseNodeType,
 } from './types'
-import {
-  branchNameCorrect,
-  getOperators,
-} from './utils'
-import useIsVarFileAttribute from './use-is-var-file-attribute'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
+import { useCallback, useMemo } from 'react'
+import { useUpdateNodeInternals } from 'reactflow'
+import { v4 as uuid4 } from 'uuid'
 import {
   useEdgesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
+import { LogicalOperator } from './types'
+import useIsVarFileAttribute from './use-is-var-file-attribute'
+import {
+  branchNameCorrect,
+  getOperators,
+} from './utils'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()

@@ -1,15 +1,15 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   Credential,
   CustomModelCredential,
   ModelProvider,
 } from '../../declarations'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import {
   genModelNameFormSchema,
   genModelTypeFormSchema,
 } from '../../utils'
-import { FormTypeEnum } from '@/app/components/base/form/types'
 
 export const useModelFormSchemas = (
   provider: ModelProvider,
@@ -25,9 +25,10 @@ export const useModelFormSchemas = (
     model_credential_schema,
   } = provider
   const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider_credential_schema.credential_form_schemas
-      : model_credential_schema.credential_form_schemas
+    const schemas = providerFormSchemaPredefined
+      ? provider_credential_schema?.credential_form_schemas
+      : model_credential_schema?.credential_form_schemas
+    return Array.isArray(schemas) ? schemas : []
   }, [
     providerFormSchemaPredefined,
     provider_credential_schema?.credential_form_schemas,
@@ -41,7 +42,7 @@ export const useModelFormSchemas = (
     const authorizationNameSchema = {
       type: FormTypeEnum.textInput,
       variable: '__authorization_name__',
-      label: t('plugin.auth.authorizationName'),
+      label: t('auth.authorizationName', { ns: 'plugin' }),
       required: false,
     }
 

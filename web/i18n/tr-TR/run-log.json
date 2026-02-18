@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Eylem Günlükleri",
+  "circularInvocationTip": "Geçerli iş akışında araçların/düğümlerin döngüsel olarak çağrılması vardır.",
+  "detail": "DETAY",
+  "input": "GİRİŞ",
+  "meta.executor": "Yürütücü",
+  "meta.startTime": "Başlama Zamanı",
+  "meta.status": "Durum",
+  "meta.steps": "Çalıştırma Adımları",
+  "meta.time": "Geçen Zaman",
+  "meta.title": "METADATA",
+  "meta.tokens": "Toplam Token",
+  "meta.version": "Sürüm",
+  "result": "SONUÇ",
+  "resultEmpty.link": "detay paneli",
+  "resultEmpty.tipLeft": "lütfen ",
+  "resultEmpty.tipRight": "ne gidin ve görüntüleyin.",
+  "resultEmpty.title": "Bu çalıştırma sadece JSON formatında çıktı verdi,",
+  "resultPanel.status": "DURUM",
+  "resultPanel.time": "GEÇEN ZAMAN",
+  "resultPanel.tokens": "TOPLAM TOKEN",
+  "tracing": "İZLEME"
+}

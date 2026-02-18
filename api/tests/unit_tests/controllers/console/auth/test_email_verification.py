@@ -8,6 +8,7 @@ This module tests the email code login mechanism including:
 - Workspace creation for new users
 """
 
+import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,6 +24,11 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from services.errors.account import AccountRegisterError
+
+
+def encode_code(code: str) -> str:
+    """Helper to encode verification code as Base64 for testing."""
+    return base64.b64encode(code.encode("utf-8")).decode()
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -290,7 +296,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "valid_token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "valid_token"},
         ):
             api = EmailCodeLoginApi()
             response = api.post()
@@ -339,7 +345,12 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "newuser@example.com", "code": "123456", "token": "valid_token", "language": "en-US"},
+            json={
+                "email": "newuser@example.com",
+                "code": encode_code("123456"),
+                "token": "valid_token",
+                "language": "en-US",
+            },
         ):
             api = EmailCodeLoginApi()
             response = api.post()
@@ -365,7 +376,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "invalid_token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "invalid_token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(InvalidTokenError):
@@ -388,7 +399,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "different@example.com", "code": "123456", "token": "token"},
+            json={"email": "different@example.com", "code": encode_code("123456"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(InvalidEmailError):
@@ -411,7 +422,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "wrong_code", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("wrong_code"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(EmailCodeError):
@@ -497,7 +508,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(WorkspacesLimitExceeded):
@@ -539,7 +550,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(NotAllowedCreateWorkspace):

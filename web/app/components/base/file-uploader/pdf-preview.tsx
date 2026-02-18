@@ -1,15 +1,16 @@
 import type { FC } from 'react'
-import { createPortal } from 'react-dom'
-import 'react-pdf-highlighter/dist/style.css'
-import { PdfHighlighter, PdfLoader } from 'react-pdf-highlighter'
-import { t } from 'i18next'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
-import React, { useState } from 'react'
+import { noop } from 'es-toolkit/function'
+import { t } from 'i18next'
+import * as React from 'react'
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { PdfHighlighter, PdfLoader } from 'react-pdf-highlighter'
 import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
-import { noop } from 'lodash-es'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import 'react-pdf-highlighter/dist/style.css'
 
 type PdfPreviewProps = {
   url: string
@@ -53,13 +54,13 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       tabIndex={-1}
     >
       <div
-        className='h-[95vh] max-h-full w-[100vw] max-w-full overflow-hidden'
+        className="h-[95vh] max-h-full w-[100vw] max-w-full overflow-hidden"
         style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <PdfLoader
-          workerSrc='/pdf.worker.min.mjs'
+          workerSrc="/pdf.worker.min.mjs"
           url={url}
-          beforeLoad={<div className='flex h-64 items-center justify-center'><Loading type='app' /></div>}
+          beforeLoad={<div className="flex h-64 items-center justify-center"><Loading type="app" /></div>}
         >
           {(pdfDocument) => {
             return (
@@ -69,30 +70,35 @@ const PdfPreview: FC<PdfPreviewProps> = ({
                 scrollRef={noop}
                 onScrollChange={noop}
                 onSelectionFinished={() => null}
-                highlightTransform={() => { return <div/> }}
+                highlightTransform={() => { return <div /> }}
                 highlights={[]}
               />
             )
           }}
         </PdfLoader>
       </div>
-      <Tooltip popupContent={t('common.operation.zoomOut')}>
-        <div className='absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
-          onClick={zoomOut}>
-          <RiZoomOutLine className='h-4 w-4 text-gray-500'/>
-        </div>
-      </Tooltip>
-      <Tooltip popupContent={t('common.operation.zoomIn')}>
-        <div className='absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg'
-          onClick={zoomIn}>
-          <RiZoomInLine className='h-4 w-4 text-gray-500'/>
-        </div>
-      </Tooltip>
-      <Tooltip popupContent={t('common.operation.cancel')}>
+      <Tooltip popupContent={t('operation.zoomOut', { ns: 'common' })}>
         <div
-          className='absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]'
-          onClick={onCancel}>
-          <RiCloseLine className='h-4 w-4 text-gray-500'/>
+          className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          onClick={zoomOut}
+        >
+          <RiZoomOutLine className="h-4 w-4 text-gray-500" />
+        </div>
+      </Tooltip>
+      <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
+        <div
+          className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          onClick={zoomIn}
+        >
+          <RiZoomInLine className="h-4 w-4 text-gray-500" />
+        </div>
+      </Tooltip>
+      <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
+        <div
+          className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
+          onClick={onCancel}
+        >
+          <RiCloseLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
     </div>,

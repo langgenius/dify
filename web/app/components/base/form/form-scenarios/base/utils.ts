@@ -1,6 +1,7 @@
 import type { ZodNumber, ZodSchema, ZodString } from 'zod'
-import { z } from 'zod'
-import { type BaseConfiguration, BaseFieldType } from './types'
+import type { BaseConfiguration } from './types'
+import * as z from 'zod'
+import { BaseFieldType } from './types'
 
 export const generateZodSchema = (fields: BaseConfiguration[]) => {
   const shape: Record<string, ZodSchema> = {}

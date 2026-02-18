@@ -1,29 +1,22 @@
-import {
-  getLocaleOnServer,
-  useTranslation as translate,
-} from '@/i18n-config/server'
+import { useLocale, useTranslation } from '#i18n'
 
-type DescriptionProps = {
-  locale?: string
-}
-const Description = async ({
-  locale: localeFromProps,
-}: DescriptionProps) => {
-  const localeDefault = await getLocaleOnServer()
-  const { t } = await translate(localeFromProps || localeDefault, 'plugin')
-  const { t: tCommon } = await translate(localeFromProps || localeDefault, 'common')
-  const isZhHans = localeFromProps === 'zh-Hans'
+const Description = () => {
+  const { t } = useTranslation('plugin')
+  const { t: tCommon } = useTranslation('common')
+  const locale = useLocale()
+
+  const isZhHans = locale === 'zh-Hans'
 
   return (
     <>
-      <h1 className='title-4xl-semi-bold mb-2 shrink-0 text-center text-text-primary'>
+      <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-center text-text-primary">
         {t('marketplace.empower')}
       </h1>
-      <h2 className='body-md-regular flex shrink-0 items-center justify-center text-center text-text-tertiary'>
+      <h2 className="body-md-regular flex shrink-0 items-center justify-center text-center text-text-tertiary">
         {
           isZhHans && (
             <>
-              <span className='mr-1'>{tCommon('operation.in')}</span>
+              <span className="mr-1">{tCommon('operation.in')}</span>
               {t('marketplace.difyMarketplace')}
               {t('marketplace.discover')}
             </>
@@ -66,7 +59,7 @@ const Description = async ({
         {
           !isZhHans && (
             <>
-              <span className='mr-1'>{tCommon('operation.in')}</span>
+              <span className="mr-1">{tCommon('operation.in')}</span>
               {t('marketplace.difyMarketplace')}
             </>
           )

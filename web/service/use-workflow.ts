@@ -1,5 +1,5 @@
-import { del, get, patch, post, put } from './base'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { CommonResponse } from '@/models/common'
+import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -9,10 +9,11 @@ import type {
   UpdateWorkflowParams,
   VarInInspect,
   WorkflowConfigResponse,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import type { CommonResponse } from '@/models/common'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { del, get, patch, post, put } from './base'
 import { useInvalid, useReset } from './use-base'
-import type { FlowType } from '@/types/common'
 import { getFlowPrefix } from './utils'
 
 const NAME_SPACE = 'workflow'
@@ -25,13 +26,34 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
+const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
+
+export const useWorkflowRunHistory = (url?: string, enabled = true) => {
+  return useQuery<WorkflowRunHistoryResponse>({
+    queryKey: [...WorkflowRunHistoryKey, url],
+    queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
+    enabled: !!url && enabled,
+    staleTime: 0,
+  })
+}
+
+export const useInvalidateWorkflowRunHistory = () => {
+  const queryClient = useQueryClient()
+  return (url: string) => {
+    queryClient.invalidateQueries({
+      queryKey: [...WorkflowRunHistoryKey, url],
+    })
+  }
+}
+
 export const useInvalidateAppWorkflow = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'publish', appID],
-      })
+      },
+    )
   }
 }
 
@@ -213,6 +235,21 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
     }) => {
       return patch(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`, {
         body: rest,
+      })
+    },
+  })
+}
+
+export const useTestEmailSender = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'test email sender'],
+    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string, inputs: Record<string, any> }) => {
+      const { appID, nodeID, deliveryID, inputs } = data
+      return post<CommonResponse>(`/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`, {
+        body: {
+          delivery_method_id: deliveryID,
+          inputs,
+        },
       })
     },
   })

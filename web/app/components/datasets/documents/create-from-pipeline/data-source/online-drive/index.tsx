@@ -1,21 +1,21 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import Header from '../base/header'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import FileList from './file-list'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { ssePost } from '@/service/base'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import Toast from '@/app/components/base/toast'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
-import { convertOnlineDriveData } from './utils'
 import { produce } from 'immer'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
-import { useDocLink } from '@/context/i18n'
+import Toast from '@/app/components/base/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDocLink } from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
+import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import { ssePost } from '@/service/base'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
+import Header from '../base/header'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import FileList from './file-list'
+import { convertOnlineDriveData } from './utils'
 
 type OnlineDriveProps = {
   nodeId: string
@@ -69,7 +69,8 @@ const OnlineDrive = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDriveFiles = useCallback(async () => {
-    if (isLoadingRef.current) return
+    if (isLoadingRef.current)
+      return
     const { nextPageParameters, prefix, bucket, onlineDriveFileList, currentCredentialId } = dataSourceStore.getState()
     setIsLoading(true)
     isLoadingRef.current = true
@@ -116,7 +117,8 @@ const OnlineDrive = ({
   }, [dataSourceStore, datasourceNodeRunURL, breadcrumbs])
 
   useEffect(() => {
-    if (!currentCredentialId) return
+    if (!currentCredentialId)
+      return
     if (isInitialMount) {
       // Only fetch files on initial mount if fileList is empty
       if (onlineDriveFileList.length === 0)
@@ -147,14 +149,16 @@ const OnlineDrive = ({
 
   const handleSelectFile = useCallback((file: OnlineDriveFile) => {
     const { selectedFileIds, setSelectedFileIds } = dataSourceStore.getState()
-    if (file.type === OnlineDriveFileType.bucket) return
+    if (file.type === OnlineDriveFileType.bucket)
+      return
     const newSelectedFileList = produce(selectedFileIds, (draft) => {
       if (draft.includes(file.id)) {
         const index = draft.indexOf(file.id)
         draft.splice(index, 1)
       }
       else {
-        if (!supportBatchUpload && draft.length >= 1) return
+        if (!supportBatchUpload && draft.length >= 1)
+          return
         draft.push(file.id)
       }
     })
@@ -163,7 +167,8 @@ const OnlineDrive = ({
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
     const { breadcrumbs, prefix, setBreadcrumbs, setPrefix, setBucket, setOnlineDriveFileList, setSelectedFileIds } = dataSourceStore.getState()
-    if (file.type === OnlineDriveFileType.file) return
+    if (file.type === OnlineDriveFileType.file)
+      return
     setOnlineDriveFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
       setBucket(file.name)
@@ -188,10 +193,10 @@ const OnlineDrive = ({
   }, [setShowAccountSettingModal])
 
   return (
-    <div className='flex flex-col gap-y-2'>
+    <div className="flex flex-col gap-y-2">
       <Header
-        docTitle='Docs'
-        docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
+        docTitle="Docs"
+        docLink={docLink('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}

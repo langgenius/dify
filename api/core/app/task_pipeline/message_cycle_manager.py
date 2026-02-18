@@ -30,6 +30,7 @@ from core.app.entities.task_entities import (
     StreamEvent,
     WorkflowTaskState,
 )
+from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
@@ -54,6 +55,28 @@ class MessageCycleManager:
     ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
+        self._message_has_file: set[str] = set()
+
+    def get_message_event_type(self, message_id: str) -> StreamEvent:
+        # Fast path: cached determination from prior QueueMessageFileEvent
+        if message_id in self._message_has_file:
+            return StreamEvent.MESSAGE_FILE
+
+        # Use SQLAlchemy 2.x style session.scalar(select(...))
+        with session_factory.create_session() as session:
+            message_file = session.scalar(
+                select(MessageFile)
+                .where(
+                    MessageFile.message_id == message_id,
+                )
+                .where(MessageFile.belongs_to == "assistant")
+            )
+
+        if message_file:
+            self._message_has_file.add(message_id)
+            return StreamEvent.MESSAGE_FILE
+
+        return StreamEvent.MESSAGE
 
     def generate_conversation_name(self, *, conversation_id: str, query: str) -> Thread | None:
         """
@@ -65,10 +88,11 @@ class MessageCycleManager:
         if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
             return None
 
-        is_first_message = self._application_generate_entity.conversation_id is None
+        is_first_message = self._application_generate_entity.is_new_conversation
         extras = self._application_generate_entity.extras
         auto_generate_conversation_name = extras.get("auto_generate_conversation_name", True)
 
+        thread: Thread | None = None
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
             # time.sleep not block other logic
@@ -84,9 +108,10 @@ class MessageCycleManager:
             thread.daemon = True
             thread.start()
 
-            return thread
+        if is_first_message:
+            self._application_generate_entity.is_new_conversation = False
 
-        return None
+        return thread
 
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
@@ -185,6 +210,8 @@ class MessageCycleManager:
             message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
 
         if message_file and message_file.url is not None:
+            self._message_has_file.add(message_file.message_id)
+
             # get tool file id
             tool_file_id = message_file.url.split("/")[-1]
             # trim extension
@@ -214,7 +241,11 @@ class MessageCycleManager:
         return None
 
     def message_to_stream_response(
-        self, answer: str, message_id: str, from_variable_selector: list[str] | None = None
+        self,
+        answer: str,
+        message_id: str,
+        from_variable_selector: list[str] | None = None,
+        event_type: StreamEvent | None = None,
     ) -> MessageStreamResponse:
         """
         Message to stream response.
@@ -222,16 +253,12 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
-            message_file = session.scalar(select(MessageFile).where(MessageFile.id == message_id))
-        event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
-
         return MessageStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
-            event=event_type,
+            event=event_type or StreamEvent.MESSAGE,
         )
 
     def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:

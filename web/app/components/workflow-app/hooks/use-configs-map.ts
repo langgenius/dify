@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { FlowType } from '@/types/common'
-import { useFeatures } from '@/app/components/base/features/hooks'
 
 export const useConfigsMap = () => {
   const appId = useStore(s => s.appId)

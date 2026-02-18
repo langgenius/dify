@@ -16,7 +16,8 @@ export default function ContentSwitch({
   return (
     count && count > 1 && currentIndex !== undefined && (
       <div className="flex items-center justify-center pt-3.5 text-sm">
-        <button type="button"
+        <button
+          type="button"
           className={`${prevDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={prevDisabled}
           onClick={() => !prevDisabled && switchSibling('prev')}
@@ -24,9 +25,13 @@ export default function ContentSwitch({
           <ChevronRight className="h-[14px] w-[14px] rotate-180 text-text-primary" />
         </button>
         <span className="px-2 text-xs text-text-primary">
-          {currentIndex + 1} / {count}
+          {currentIndex + 1}
+          {' '}
+          /
+          {count}
         </span>
-        <button type="button"
+        <button
+          type="button"
           className={`${nextDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={nextDisabled}
           onClick={() => !nextDisabled && switchSibling('next')}

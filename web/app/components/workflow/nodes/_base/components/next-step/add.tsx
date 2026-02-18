@@ -1,3 +1,10 @@
+import type {
+  CommonNodeType,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -5,19 +12,12 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import BlockSelector from '@/app/components/workflow/block-selector'
-import type {
-  CommonNodeType,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
 
 type AddProps = {
   nodeId: string
@@ -58,12 +58,12 @@ const Add = ({
 
   const tip = useMemo(() => {
     if (isFailBranch)
-      return t('workflow.common.addFailureBranch')
+      return t('common.addFailureBranch', { ns: 'workflow' })
 
     if (isParallel)
-      return t('workflow.common.addParallelNode')
+      return t('common.addParallelNode', { ns: 'workflow' })
 
-    return t('workflow.panel.selectNextStep')
+    return t('panel.selectNextStep', { ns: 'workflow' })
   }, [isFailBranch, isParallel, t])
   const renderTrigger = useCallback((open: boolean) => {
     return (
@@ -75,10 +75,10 @@ const Add = ({
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
-        <div className='mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed'>
-          <RiAddLine className='h-3 w-3' />
+        <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
+          <RiAddLine className="h-3 w-3" />
         </div>
-        <div className='flex items-center uppercase'>
+        <div className="flex items-center uppercase">
           {tip}
         </div>
       </div>
@@ -91,10 +91,10 @@ const Add = ({
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
-      placement='top'
+      placement="top"
       offset={0}
       trigger={renderTrigger}
-      popupClassName='!w-[328px]'
+      popupClassName="!w-[328px]"
       availableBlocksTypes={availableNextBlocks}
     />
   )

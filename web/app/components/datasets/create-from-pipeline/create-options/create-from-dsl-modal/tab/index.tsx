@@ -1,6 +1,6 @@
-import React from 'react'
-import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import Item from './item'
 
 type TabProps = {
@@ -17,16 +17,16 @@ const Tab = ({
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('app.importFromDSLFile'),
+      label: t('importFromDSLFile', { ns: 'app' }),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t('app.importFromDSLUrl'),
+      label: t('importFromDSLUrl', { ns: 'app' }),
     },
   ]
 
   return (
-    <div className='system-md-semibold flex h-9 items-center gap-x-6 border-b border-divider-subtle px-6 text-text-tertiary'>
+    <div className="system-md-semibold flex h-9 items-center gap-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
       {
         tabs.map(tab => (
           <Item

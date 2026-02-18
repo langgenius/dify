@@ -1,13 +1,14 @@
-import React, { useCallback, useEffect, useMemo } from 'react'
+import type { DataSourceCredential } from '@/types/pipeline'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { DataSourceCredential } from '@/types/pipeline'
-import { useBoolean } from 'ahooks'
-import Trigger from './trigger'
 import List from './list'
+import Trigger from './trigger'
 
 export type CredentialSelectorProps = {
   currentCredentialId: string
@@ -40,18 +41,18 @@ const CredentialSelector = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={toggle}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{
         mainAxis: 4,
       }}
     >
-      <PortalToFollowElemTrigger onClick={toggle} className='grow overflow-hidden'>
+      <PortalToFollowElemTrigger onClick={toggle} className="grow overflow-hidden">
         <Trigger
           currentCredential={currentCredential}
           isOpen={open}
         />
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
+      <PortalToFollowElemContent className="z-10">
         <List
           currentCredentialId={currentCredentialId}
           credentials={credentials}

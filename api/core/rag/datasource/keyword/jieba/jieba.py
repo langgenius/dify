@@ -90,13 +90,17 @@ class Jieba(BaseKeyword):
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
 
         documents = []
+
+        segment_query_stmt = db.session.query(DocumentSegment).where(
+            DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
+        )
+        if document_ids_filter:
+            segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
+
+        segments = db.session.execute(segment_query_stmt).scalars().all()
+        segment_map = {segment.index_node_id: segment for segment in segments}
         for chunk_index in sorted_chunk_indices:
-            segment_query = db.session.query(DocumentSegment).where(
-                DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index
-            )
-            if document_ids_filter:
-                segment_query = segment_query.where(DocumentSegment.document_id.in_(document_ids_filter))
-            segment = segment_query.first()
+            segment = segment_map.get(chunk_index)
 
             if segment:
                 documents.append(

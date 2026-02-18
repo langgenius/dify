@@ -1,0 +1,128 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "25",
+      "height": "25",
+      "viewBox": "0 0 25 25",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg",
+      "xmlns:xlink": "http://www.w3.org/1999/xlink"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_6305_73327)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M0.5 12.5C0.5 8.77247 0.5 6.9087 1.10896 5.43853C1.92092 3.47831 3.47831 1.92092 5.43853 1.10896C6.9087 0.5 8.77247 0.5 12.5 0.5C16.2275 0.5 18.0913 0.5 19.5615 1.10896C21.5217 1.92092 23.0791 3.47831 23.891 5.43853C24.5 6.9087 24.5 8.77247 24.5 12.5C24.5 16.2275 24.5 18.0913 23.891 19.5615C23.0791 21.5217 21.5217 23.0791 19.5615 23.891C18.0913 24.5 16.2275 24.5 12.5 24.5C8.77247 24.5 6.9087 24.5 5.43853 23.891C3.47831 23.0791 1.92092 21.5217 1.10896 19.5615C0.5 18.0913 0.5 16.2275 0.5 12.5Z",
+              "fill": "white"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "rect",
+            "attributes": {
+              "width": "24",
+              "height": "24",
+              "transform": "translate(0.5 0.5)",
+              "fill": "url(#pattern0_6305_73327)"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "rect",
+            "attributes": {
+              "width": "24",
+              "height": "24",
+              "transform": "translate(0.5 0.5)",
+              "fill": "white",
+              "fill-opacity": "0.01"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M12.5 0.25C14.3603 0.25 15.7684 0.250313 16.8945 0.327148C18.0228 0.404144 18.8867 0.558755 19.6572 0.87793C21.6787 1.71525 23.2847 3.32133 24.1221 5.34277C24.4412 6.11333 24.5959 6.97723 24.6729 8.10547C24.7497 9.23161 24.75 10.6397 24.75 12.5C24.75 14.3603 24.7497 15.7684 24.6729 16.8945C24.5959 18.0228 24.4412 18.8867 24.1221 19.6572C23.2847 21.6787 21.6787 23.2847 19.6572 24.1221C18.8867 24.4412 18.0228 24.5959 16.8945 24.6729C15.7684 24.7497 14.3603 24.75 12.5 24.75C10.6397 24.75 9.23161 24.7497 8.10547 24.6729C6.97723 24.5959 6.11333 24.4412 5.34277 24.1221C3.32133 23.2847 1.71525 21.6787 0.87793 19.6572C0.558755 18.8867 0.404144 18.0228 0.327148 16.8945C0.250313 15.7684 0.25 14.3603 0.25 12.5C0.25 10.6397 0.250313 9.23161 0.327148 8.10547C0.404144 6.97723 0.558755 6.11333 0.87793 5.34277C1.71525 3.32133 3.32133 1.71525 5.34277 0.87793C6.11333 0.558755 6.97723 0.404144 8.10547 0.327148C9.23161 0.250313 10.6397 0.25 12.5 0.25Z",
+          "stroke": "#101828",
+          "stroke-opacity": "0.08",
+          "stroke-width": "0.5"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "pattern",
+            "attributes": {
+              "id": "pattern0_6305_73327",
+              "patternContentUnits": "objectBoundingBox",
+              "width": "1",
+              "height": "1"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "use",
+                "attributes": {
+                  "xlink:href": "#image0_6305_73327",
+                  "transform": "scale(0.00625)"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_6305_73327"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M0.5 12.5C0.5 8.77247 0.5 6.9087 1.10896 5.43853C1.92092 3.47831 3.47831 1.92092 5.43853 1.10896C6.9087 0.5 8.77247 0.5 12.5 0.5C16.2275 0.5 18.0913 0.5 19.5615 1.10896C21.5217 1.92092 23.0791 3.47831 23.891 5.43853C24.5 6.9087 24.5 8.77247 24.5 12.5C24.5 16.2275 24.5 18.0913 23.891 19.5615C23.0791 21.5217 21.5217 23.0791 19.5615 23.891C18.0913 24.5 16.2275 24.5 12.5 24.5C8.77247 24.5 6.9087 24.5 5.43853 23.891C3.47831 23.0791 1.92092 21.5217 1.10896 19.5615C0.5 18.0913 0.5 16.2275 0.5 12.5Z",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "image",
+            "attributes": {
+              "id": "image0_6305_73327",
+              "width": "160",
+              "height": "160",
+              "preserveAspectRatio": "none",
+              "xlink:href": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACgCAYAAACLz2ctAAAACXBIWXMAACxLAAAsSwGlPZapAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAm6SURBVHgB7Z09jFVFGIZn/Wf9I5FSKIVSKYndErolVJJQQUKliRWFNhY2UGxFItUmUJFARZaOQGekA0poF8slUcFFRVnPu9cDw/HuPWdmvpnvu3PeJ9m4MQH23H3P/DzzzczCVoMjRInXHCGKMIBEFQaQqMIAElUYQKIKA0hUYQCJKgwgUYUBJKowgEQVBpCowgASVRhAogoDSFRhAIkqDCBRhQEkqjCARBUGkKjCABJVGECiCgNIVGEAiSpvuJGyubnlLq0+cQ/u/739fSyLiwvu8JF33PKxXY6EM9oW8Mrl393dO8+Swgfw59euPXU//finI+GMMoCPNp43gflr+3u0YBJcubzZhPG5I2GMMoA/nH/84vvjJxbd/gPpIxG0hDdvsBUMZXQBRFf5cP2f7e8Pff729tfysUUnwa0bf7iNDbaCIYwugNeb8VpLO3FAC4ggpoJW8GoztiTDGVUAEb62hULg9ux5+fjoiiXGg5jYYGZNhjGaAGLicbPpIsFHTfC62gThW2p0igTXr206MozRBHDt2uYL5XK0CZ/f+rXA5037/6GgBaSWGcYoAuhrF7R+O4330Ap+cUJmQkItM4xRBNDXLkd7Viw+O/gWtUxBqg/gNO3SB7VMOaoP4DTt0gdaQIkJCbVMP1UXI8zSLn2gq77dtJ6pa8XQMheaIcCuxfLvOiZVe/e97ixTbQD7tEsfrZbxW9BYEEINMPw4880HImPaXFTbBQ/RLn1IaRlNLq4+cZapMoBDtUsfUpUymuCzWBNoxXNRZQBDtMss/DHkPIPZuFUnWV0AY7TLNCataB0eD0OR60ZbweoCGKNdpoExZE0OD1L84bq9IomqAuh3mUsJEwh/DFkTWB60RjUB7GqXwwki2R9D1gSKJKyVilUTQAntAvwxZI1Y0zJVBFBKuwCrg3UprGmZKgLY3WQUSy3apQ9LWmbuA9jVLiinisEfQ9aOJS1jYpEQA+NHG3HjLkntklp4ME9Ay+CF3btPNwLqAYQakGh5qF3CwWePYgVNVLtgdJ9S3d6Ci2+9atUufVjQMqotoN99Yuz26cE3XQzrzRgQQV46Eq5f0O0eFtoNNy/cu/PM3b0zafG1JyNqAeyWqz+4/8ydPI29ueGN8qHm6+dmmQmnXYV2Kah4kdiUPk/4L772GFClC54240zdxIN9HBZNvzWkliulUPnXd1roT9nEg6pffFkvwNREcrlSiuIBnDXjTN3Ec+r0e+5p83fcGonPC0VquVKS4j9BX0VGytkqeKvRrWCpiZvCX0VyuVKSogGEdmlnX7NIOVul7VZqX9MNRWq5UpqiARwaipSzVTCrxYoIJjTcFD5BarkyB8UCGDrBSDlbBa0gJiSXOCHZRmq5MgdFAhiz0E8tI4M17dKlyE8Tu7+CWiYNi9qlS/YApiz0U8ukYVG7dMn+E6W2QNQycVjVLl2yLwRKjMGgZfZHlg2h20ELiEnN/gNxxQ7ziD/mtqRdumQPIE5nSt3k02qZmLe41TII4Bhr/sC9xr1aUi8+C1sNLiMIzsXV9DPyEKSzKx9GVcuAlXO/zc2MGF3muZXdLhX/ma2ekpV9DIhWy8KRt1KnnpZAqsv0n9nqyf1FpkUWjrxttYx1JFcq/Ge2enJ/kQBauYkIWsb6kWvSKxX+M1u0AcXEEDyU9k1ErZaxSo6VCv+ZJ2LaVitYLICSv/zUahmLrWDOlQr/ma2d3F9UjVu4iajVMtbIuVLhP/NkU7qdCUnRAEr+8iWqZaxQYqXCf2b4UCtKqvjiILXM/ym1UmFRy6isTlPLvKRkgahFLaMSQGqZl5Qej1rTMmr1OdQyOgWi1rSMWgDHrmVStUtKmZslLaNaoThmLZN6jDBmshLPrK1lVAM4Vi0jdYxwyhjOipZRr9Eeo5aROkY4dQxnQcuY2CQwJi2Teoxw94BxqWfW0jImAjgmLZN6jHCX1DGctpYxs01qDFpmOWHiMWt3YcoYTlvLmAlg7VomdeKB8vpZSD1zaS1jaqOoFS2TY202Vbv0hUJKRZXWMqYCaEXLSM3MW0rd3jSPWsbcVvkatQwG+rGE3N40j1rG3lkNzo6WkahSSXmhYu51mzctYzKAVrQMxoKpExJp7dKHpJYpcXWZ2X2KuDNE4g1stUxMK9TOzGNPW82lXfrAn3u6+djtitzEjwAiyCWurTUbwKuCt3tLnC0Teo9cbu3SB168VGIvDgrBZBc8RDuEoKFlcmuXEhw/8a7LjbkAouvJccB4SS1Tw6XZ+PlLFMuaC2Cut7+klimlXXKBF6hUjaSpAOa+Tr6ElimtXXIgtSI1BFMBXMssP0tomdLaRZrSZ0mbCeBkopD/AMmc1TJa2kWSo4W3J5gJYMk7PXJUy2hrFwmgXUqfJW0igKW1A1rA2JPzd9Iy1C5xqAcwl3bpI6VypDvRoHaJRz2AWm+/pJahdolHNYDa2iFVy6A7pnZJQ3UteH1dpugRV0Hs3Rf3KLjCIEY7oOVGK0rtkoZqAGOvXHj171hwX379ftE3uB23Uruko9oFS+zF1TjgBy0XamPmXbvgs9O+wku9HAtT/++/+9XFgO6j9BvctlynTr+rrl1Snh9DFgxdtFEPID6Epf9q7kLR6D7Q+qVol0nFsszEA89v9RLCoZgQ0TGb0j9uglv6w29PpUrRLlL7bjWePwcmAojwhW5K/6qZeJQGLZcV7aLx/DkwdTTH0DGVhrVvx20WtIvWqkUOTD3FyQFdm8aBkhLaBRt8JLSL1XtOYjEVwCFaZl61y4Xzj50ES4qrFjkw9ySzKjI0tYuFaheN58+NuQC2WmYa1C51hQ+YbMunaRkN7YDqaWqXvJgM4DQto6EdsH+E2iUvZk9GQCt42xs7fXvmF6fB3oQja6ld+jH9VCcTuj4pYjcxUbsMY2GrwRkGv8gSpzR1weQBtYIAXfCZwLNl0GJLjP0QvhonHy3mA6jJhfNPmhZwEkJUvwydBEC7XFyN33/cgtn3uZXdrmbqHFgI4W9EH3q2DLVLGAzgDPyN6EM3MVG7hMEA9hByhQG1SzgMYA/+RvS+s2WoXcJhAAfgy+idtAy1SxwM4ED6rjBgtUscDOBA/PMBu2fLsNolHgYwAF/LtGfLULukwQAGME3LULukwZWQQBA8LLPhv+19GhKcbVY8xjT2a2ELGEhXy0gwJu3ShQGMAIFZFrpg+5NmcpPjeth5gV0wUYUtIFGFASSqMIBEFQaQqMIAElUYQKIKA0hUYQCJKgwgUYUBJKowgEQVBpCowgASVRhAogoDSFRhAIkqDCBRhQEkqjCARBUGkKjCABJVGECiCgNIVPkXGPWKHZj1nMYAAAAASUVORK5CYII="
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Tongyi"
+}

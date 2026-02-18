@@ -1,0 +1,28 @@
+name: Deploy Agent Dev
+
+permissions:
+  contents: read
+
+on:
+  workflow_run:
+    workflows: ["Build and Push API & Web"]
+    branches:
+      - "deploy/agent-dev"
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'deploy/agent-dev'
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AGENT_DEV_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}

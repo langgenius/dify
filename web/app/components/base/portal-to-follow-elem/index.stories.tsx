@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import {
   PortalToFollowElem,
@@ -6,7 +6,7 @@ import {
   PortalToFollowElemTrigger,
 } from '.'
 
-const TooltipCard = ({ title, description }: { title: string; description: string }) => (
+const TooltipCard = ({ title, description }: { title: string, description: string }) => (
   <div className="w-[220px] rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-sm text-text-secondary shadow-lg">
     <div className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary">
       {title}

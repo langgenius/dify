@@ -7,7 +7,6 @@ from typing import Any, Union
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.file import file_manager
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -25,6 +24,8 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
+from core.workflow.file import file_manager
+from core.workflow.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     ),
                 )
 
-            assistant_message = AssistantPromptMessage(content="", tool_calls=[])
+            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
@@ -199,8 +200,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
                     for tool_call in tool_calls
                 ]
-            else:
-                assistant_message.content = response
 
             self._current_thoughts.append(assistant_message)
 
@@ -221,6 +220,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
             final_answer += response + "\n"
+
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and tool_calls:
+                raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # call tools
             tool_responses = []

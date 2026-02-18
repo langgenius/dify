@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from flask_restx import marshal, reqparse
+from flask_restx import marshal
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -56,15 +56,10 @@ class DatasetsHitTestingBase:
         HitTestingService.hit_testing_args_check(args)
 
     @staticmethod
-    def parse_args():
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("query", type=str, required=False, location="json")
-            .add_argument("attachment_ids", type=list, required=False, location="json")
-            .add_argument("retrieval_model", type=dict, required=False, location="json")
-            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
-        )
-        return parser.parse_args()
+    def parse_args(payload: dict[str, Any]) -> dict[str, Any]:
+        """Validate and return hit-testing arguments from an incoming payload."""
+        hit_testing_payload = HitTestingPayload.model_validate(payload or {})
+        return hit_testing_payload.model_dump(exclude_none=True)
 
     @staticmethod
     def perform_hit_testing(dataset, args):

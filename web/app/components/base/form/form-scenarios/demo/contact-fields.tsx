@@ -6,22 +6,22 @@ const ContactFields = withForm({
   ...demoFormOpts,
   render: ({ form }) => {
     return (
-      <div className='my-2'>
-        <h3 className='title-lg-bold text-text-primary'>Contacts</h3>
-        <div className='flex flex-col gap-4'>
+      <div className="my-2">
+        <h3 className="title-lg-bold text-text-primary">Contacts</h3>
+        <div className="flex flex-col gap-4">
           <form.AppField
-            name='contact.email'
-            children={field => <field.TextField label='Email' />}
+            name="contact.email"
+            children={field => <field.TextField label="Email" />}
           />
           <form.AppField
-            name='contact.phone'
-            children={field => <field.TextField label='Phone' />}
+            name="contact.phone"
+            children={field => <field.TextField label="Phone" />}
           />
           <form.AppField
-            name='contact.preferredContactMethod'
+            name="contact.preferredContactMethod"
             children={field => (
               <field.SelectField
-                label='Preferred Contact Method'
+                label="Preferred Contact Method"
                 options={ContactMethods}
               />
             )}

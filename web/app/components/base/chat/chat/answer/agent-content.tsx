@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { memo } from 'react'
 import type {
   ChatItem,
 } from '../../types'
-import { Markdown } from '@/app/components/base/markdown'
+import { memo } from 'react'
 import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { Markdown } from '@/app/components/base/markdown'
 
 type AgentContentProps = {
   item: ChatItem
@@ -29,7 +29,7 @@ const AgentContent: FC<AgentContentProps> = ({
   return (
     <div>
       {content ? <Markdown content={content} /> : agent_thoughts?.map((thought, index) => (
-        <div key={index} className='px-2 py-1'>
+        <div key={index} className="px-2 py-1">
           {thought.thought && (
             <Markdown content={thought.thought} />
           )}

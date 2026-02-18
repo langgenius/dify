@@ -1,0 +1,66 @@
+name: Trigger i18n Sync on Push
+
+# This workflow bridges the push event to repository_dispatch
+# because claude-code-action doesn't support push events directly.
+# See: https://github.com/langgenius/dify/issues/30743
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/i18n/en-US/*.json'
+
+permissions:
+  contents: write
+
+jobs:
+  trigger:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files and generate diff
+        id: detect
+        run: |
+          BEFORE_SHA="${{ github.event.before }}"
+          # Handle edge case: force push may have null/zero SHA
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE_SHA="HEAD~1"
+          fi
+
+          # Detect changed i18n files
+          changed=$(git diff --name-only "$BEFORE_SHA" "${{ github.sha }}" -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
+          echo "changed_files=$changed" >> $GITHUB_OUTPUT
+
+          # Generate diff for context
+          git diff "$BEFORE_SHA" "${{ github.sha }}" -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
+
+          # Truncate if too large (keep first 50KB to match receiving workflow)
+          head -c 50000 /tmp/i18n-diff.txt > /tmp/i18n-diff-truncated.txt
+          mv /tmp/i18n-diff-truncated.txt /tmp/i18n-diff.txt
+
+          # Base64 encode the diff for safe JSON transport (portable, single-line)
+          diff_base64=$(base64 < /tmp/i18n-diff.txt | tr -d '\n')
+          echo "diff_base64=$diff_base64" >> $GITHUB_OUTPUT
+
+          if [ -n "$changed" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Detected changed files: $changed"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No i18n changes detected"
+          fi
+
+      - name: Trigger i18n sync workflow
+        if: steps.detect.outputs.has_changes == 'true'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: i18n-sync
+          client-payload: '{"changed_files": "${{ steps.detect.outputs.changed_files }}", "diff_base64": "${{ steps.detect.outputs.diff_base64 }}", "sync_mode": "incremental", "trigger_sha": "${{ github.sha }}"}'

@@ -10,10 +10,12 @@ const itemConfig = Array.from({ length: 8 }).map((_, index) => {
 })
 
 const Loading = () => {
-  return <div className='relative w-full overflow-y-hidden'>
-    <div className='absolute left-0 top-0 z-10 h-full w-full bg-dataset-chunk-list-mask-bg' />
-    {itemConfig.map((config, index) => <Item key={index} {...config} />)}
-  </div>
+  return (
+    <div className="relative w-full overflow-y-hidden">
+      <div className="absolute left-0 top-0 z-10 h-full w-full bg-dataset-chunk-list-mask-bg" />
+      {itemConfig.map((config, index) => <Item key={index} {...config} />)}
+    </div>
+  )
 }
 
 export default Loading

@@ -1,8 +1,8 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Features } from './types'
 import { useState } from 'react'
 import { FeaturesProvider } from '.'
 import NewFeaturePanel from './new-feature-panel'
-import type { Features } from './types'
 
 const DEFAULT_FEATURES: Features = {
   moreLikeThis: { enabled: false },

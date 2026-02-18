@@ -1,5 +1,6 @@
 import io
-from typing import Literal
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from flask import request, send_file
 from flask_restx import Resource
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
@@ -19,55 +21,10 @@ from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-@console_ns.route("/workspaces/current/plugin/debugging-key")
-class PluginDebuggingKeyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @plugin_permission_required(debug_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
-        try:
-            return {
-                "key": PluginService.get_debugging_key(tenant_id),
-                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
-                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
-            }
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)
-
 
 class ParserList(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
-
-
-reg(ParserList)
-
-
-@console_ns.route("/workspaces/current/plugin/list")
-class PluginListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserList.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)
-
-        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 class ParserLatest(BaseModel):
@@ -141,6 +98,15 @@ class ParserDynamicOptions(BaseModel):
     provider_type: Literal["tool", "trigger"]
 
 
+class ParserDynamicOptionsWithCredentials(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str
+    credentials: Mapping[str, Any]
+
+
 class PluginPermissionSettingsPayload(BaseModel):
     install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
     debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
@@ -170,22 +136,73 @@ class ParserReadme(BaseModel):
     language: str = Field(default="en-US")
 
 
-reg(ParserLatest)
-reg(ParserIcon)
-reg(ParserAsset)
-reg(ParserGithubUpload)
-reg(ParserPluginIdentifiers)
-reg(ParserGithubInstall)
-reg(ParserPluginIdentifierQuery)
-reg(ParserTasks)
-reg(ParserMarketplaceUpgrade)
-reg(ParserGithubUpgrade)
-reg(ParserUninstall)
-reg(ParserPermissionChange)
-reg(ParserDynamicOptions)
-reg(ParserPreferencesChange)
-reg(ParserExcludePlugin)
-reg(ParserReadme)
+register_schema_models(
+    console_ns,
+    ParserList,
+    PluginAutoUpgradeSettingsPayload,
+    PluginPermissionSettingsPayload,
+    ParserLatest,
+    ParserIcon,
+    ParserAsset,
+    ParserGithubUpload,
+    ParserPluginIdentifiers,
+    ParserGithubInstall,
+    ParserPluginIdentifierQuery,
+    ParserTasks,
+    ParserMarketplaceUpgrade,
+    ParserGithubUpgrade,
+    ParserUninstall,
+    ParserPermissionChange,
+    ParserDynamicOptions,
+    ParserDynamicOptionsWithCredentials,
+    ParserPreferencesChange,
+    ParserExcludePlugin,
+    ParserReadme,
+)
+
+register_enum_models(
+    console_ns,
+    TenantPluginPermission.DebugPermission,
+    TenantPluginAutoUpgradeStrategy.UpgradeMode,
+    TenantPluginAutoUpgradeStrategy.StrategySetting,
+    TenantPluginPermission.InstallPermission,
+)
+
+
+@console_ns.route("/workspaces/current/plugin/debugging-key")
+class PluginDebuggingKeyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(debug_required=True)
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+
+        try:
+            return {
+                "key": PluginService.get_debugging_key(tenant_id),
+                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
+                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
+            }
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+
+@console_ns.route("/workspaces/current/plugin/list")
+class PluginListApi(Resource):
+    @console_ns.expect(console_ns.models[ParserList.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        try:
+            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
@@ -650,6 +667,37 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 provider_type=args.provider_type,
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-options-with-credentials")
+class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDynamicOptionsWithCredentials.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    def post(self):
+        """Fetch dynamic options using credentials directly (for edit mode)."""
+        current_user, tenant_id = current_account_with_tenant()
+        user_id = current_user.id
+
+        args = ParserDynamicOptionsWithCredentials.model_validate(console_ns.payload)
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options_with_credentials(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                credentials=args.credentials,
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)

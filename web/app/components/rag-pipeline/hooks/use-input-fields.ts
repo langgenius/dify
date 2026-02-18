@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { type RAGPipelineVariables, VAR_TYPE_MAP } from '@/models/pipeline'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import { useMemo } from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import { VAR_TYPE_MAP } from '@/models/pipeline'
 
 export const useInitialData = (variables: RAGPipelineVariables, lastRunInputData?: Record<string, any>) => {
   const initialData = useMemo(() => {

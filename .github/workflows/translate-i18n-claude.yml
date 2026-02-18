@@ -1,0 +1,440 @@
+name: Translate i18n Files with Claude Code
+
+# Note: claude-code-action doesn't support push events directly.
+# Push events are handled by trigger-i18n-sync.yml which sends repository_dispatch.
+# See: https://github.com/langgenius/dify/issues/30743
+
+on:
+  repository_dispatch:
+    types: [i18n-sync]
+  workflow_dispatch:
+    inputs:
+      files:
+        description: 'Specific files to translate (space-separated, e.g., "app common"). Leave empty for all files.'
+        required: false
+        type: string
+      languages:
+        description: 'Specific languages to translate (space-separated, e.g., "zh-Hans ja-JP"). Leave empty for all supported languages.'
+        required: false
+        type: string
+      mode:
+        description: 'Sync mode: incremental (only changes) or full (re-check all keys)'
+        required: false
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  translate:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ./web/pnpm-lock.yaml
+
+      - name: Detect changed files and generate diff
+        id: detect_changes
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger
+            if [ -n "${{ github.event.inputs.files }}" ]; then
+              echo "CHANGED_FILES=${{ github.event.inputs.files }}" >> $GITHUB_OUTPUT
+            else
+              # Get all JSON files in en-US directory
+              files=$(ls web/i18n/en-US/*.json 2>/dev/null | xargs -n1 basename | sed 's/.json$//' | tr '\n' ' ')
+              echo "CHANGED_FILES=$files" >> $GITHUB_OUTPUT
+            fi
+            echo "TARGET_LANGS=${{ github.event.inputs.languages }}" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=${{ github.event.inputs.mode || 'incremental' }}" >> $GITHUB_OUTPUT
+
+            # For manual trigger with incremental mode, get diff from last commit
+            # For full mode, we'll do a complete check anyway
+            if [ "${{ github.event.inputs.mode }}" == "full" ]; then
+              echo "Full mode: will check all keys" > /tmp/i18n-diff.txt
+              echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+            else
+              git diff HEAD~1..HEAD -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
+              if [ -s /tmp/i18n-diff.txt ]; then
+                echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+              else
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              fi
+            fi
+          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            # Triggered by push via trigger-i18n-sync.yml workflow
+            # Validate required payload fields
+            if [ -z "${{ github.event.client_payload.changed_files }}" ]; then
+              echo "Error: repository_dispatch payload missing required 'changed_files' field" >&2
+              exit 1
+            fi
+            echo "CHANGED_FILES=${{ github.event.client_payload.changed_files }}" >> $GITHUB_OUTPUT
+            echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=${{ github.event.client_payload.sync_mode || 'incremental' }}" >> $GITHUB_OUTPUT
+
+            # Decode the base64-encoded diff from the trigger workflow
+            if [ -n "${{ github.event.client_payload.diff_base64 }}" ]; then
+              if ! echo "${{ github.event.client_payload.diff_base64 }}" | base64 -d > /tmp/i18n-diff.txt 2>&1; then
+                echo "Warning: Failed to decode base64 diff payload" >&2
+                echo "" > /tmp/i18n-diff.txt
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              elif [ -s /tmp/i18n-diff.txt ]; then
+                echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+              else
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "" > /tmp/i18n-diff.txt
+              echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Unsupported event type: ${{ github.event_name }}"
+            exit 1
+          fi
+
+          # Truncate diff if too large (keep first 50KB)
+          if [ -f /tmp/i18n-diff.txt ]; then
+            head -c 50000 /tmp/i18n-diff.txt > /tmp/i18n-diff-truncated.txt
+            mv /tmp/i18n-diff-truncated.txt /tmp/i18n-diff.txt
+          fi
+
+          echo "Detected files: $(cat $GITHUB_OUTPUT | grep CHANGED_FILES || echo 'none')"
+
+      - name: Run Claude Code for Translation Sync
+        if: steps.detect_changes.outputs.CHANGED_FILES != ''
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Allow github-actions bot to trigger this workflow via repository_dispatch
+          # See: https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          allowed_bots: 'github-actions[bot]'
+          prompt: |
+            You are a professional i18n synchronization engineer for the Dify project.
+            Your task is to keep all language translations in sync with the English source (en-US).
+
+            ## CRITICAL TOOL RESTRICTIONS
+            - Use **Read** tool to read files (NOT cat or bash)
+            - Use **Edit** tool to modify JSON files (NOT node, jq, or bash scripts)
+            - Use **Bash** ONLY for: git commands, gh commands, pnpm commands
+            - Run bash commands ONE BY ONE, never combine with && or ||
+            - NEVER use `$()` command substitution - it's not supported. Split into separate commands instead.
+
+            ## WORKING DIRECTORY & ABSOLUTE PATHS
+            Claude Code sandbox working directory may vary. Always use absolute paths:
+            - For pnpm: `pnpm --dir ${{ github.workspace }}/web <command>`
+            - For git: `git -C ${{ github.workspace }} <command>`
+            - For gh: `gh --repo ${{ github.repository }} <command>`
+            - For file paths: `${{ github.workspace }}/web/i18n/`
+
+            ## EFFICIENCY RULES
+            - **ONE Edit per language file** - batch all key additions into a single Edit
+            - Insert new keys at the beginning of JSON (after `{`), lint:fix will sort them
+            - Translate ALL keys for a language mentally first, then do ONE Edit
+
+            ## Context
+            - Changed/target files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
+            - Target languages (empty means all supported): ${{ steps.detect_changes.outputs.TARGET_LANGS }}
+            - Sync mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
+            - Translation files are located in: ${{ github.workspace }}/web/i18n/{locale}/{filename}.json
+            - Language configuration is in: ${{ github.workspace }}/web/i18n-config/languages.ts
+            - Git diff is available: ${{ steps.detect_changes.outputs.DIFF_AVAILABLE }}
+
+            ## CRITICAL DESIGN: Verify First, Then Sync
+
+            You MUST follow this three-phase approach:
+
+            ═══════════════════════════════════════════════════════════════
+            ║  PHASE 1: VERIFY - Analyze and Generate Change Report       ║
+            ═══════════════════════════════════════════════════════════════
+
+            ### Step 1.1: Analyze Git Diff (for incremental mode)
+            Use the Read tool to read `/tmp/i18n-diff.txt` to see the git diff.
+
+            Parse the diff to categorize changes:
+            - Lines with `+` (not `+++`): Added or modified values
+            - Lines with `-` (not `---`): Removed or old values
+            - Identify specific keys for each category:
+              * ADD: Keys that appear only in `+` lines (new keys)
+              * UPDATE: Keys that appear in both `-` and `+` lines (value changed)
+              * DELETE: Keys that appear only in `-` lines (removed keys)
+
+            ### Step 1.2: Read Language Configuration
+            Use the Read tool to read `${{ github.workspace }}/web/i18n-config/languages.ts`.
+            Extract all languages with `supported: true`.
+
+            ### Step 1.3: Run i18n:check for Each Language
+            ```bash
+            pnpm --dir ${{ github.workspace }}/web install --frozen-lockfile
+            ```
+            ```bash
+            pnpm --dir ${{ github.workspace }}/web run i18n:check
+            ```
+
+            This will report:
+            - Missing keys (need to ADD)
+            - Extra keys (need to DELETE)
+
+            ### Step 1.4: Generate Change Report
+
+            Create a structured report identifying:
+            ```
+            ╔══════════════════════════════════════════════════════════════╗
+            ║                    I18N SYNC CHANGE REPORT                   ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ Files to process: [list]                                     ║
+            ║ Languages to sync: [list]                                    ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ ADD (New Keys):                                              ║
+            ║   - [filename].[key]: "English value"                        ║
+            ║   ...                                                        ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ UPDATE (Modified Keys - MUST re-translate):                  ║
+            ║   - [filename].[key]: "Old value" → "New value"              ║
+            ║   ...                                                        ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ DELETE (Extra Keys):                                         ║
+            ║   - [language]/[filename].[key]                              ║
+            ║   ...                                                        ║
+            ╚══════════════════════════════════════════════════════════════╝
+            ```
+
+            **IMPORTANT**: For UPDATE detection, compare git diff to find keys where
+            the English value changed. These MUST be re-translated even if target
+            language already has a translation (it's now stale!).
+
+            ═══════════════════════════════════════════════════════════════
+            ║  PHASE 2: SYNC - Execute Changes Based on Report            ║
+            ═══════════════════════════════════════════════════════════════
+
+            ### Step 2.1: Process ADD Operations (BATCH per language file)
+
+            **CRITICAL WORKFLOW for efficiency:**
+            1. First, translate ALL new keys for ALL languages mentally
+            2. Then, for EACH language file, do ONE Edit operation:
+               - Read the file once
+               - Insert ALL new keys at the beginning (right after the opening `{`)
+               - Don't worry about alphabetical order - lint:fix will sort them later
+
+            Example Edit (adding 3 keys to zh-Hans/app.json):
+            ```
+            old_string: '{\n  "accessControl"'
+            new_string: '{\n  "newKey1": "translation1",\n  "newKey2": "translation2",\n  "newKey3": "translation3",\n  "accessControl"'
+            ```
+
+            **IMPORTANT**:
+            - ONE Edit per language file (not one Edit per key!)
+            - Always use the Edit tool. NEVER use bash scripts, node, or jq.
+
+            ### Step 2.2: Process UPDATE Operations
+
+            **IMPORTANT: Special handling for zh-Hans and ja-JP**
+            If zh-Hans or ja-JP files were ALSO modified in the same push:
+            - Run: `git -C ${{ github.workspace }} diff HEAD~1 --name-only` and check for zh-Hans or ja-JP files
+            - If found, it means someone manually translated them. Apply these rules:
+
+            1. **Missing keys**: Still ADD them (completeness required)
+            2. **Existing translations**: Compare with the NEW English value:
+               - If translation is **completely wrong** or **unrelated** → Update it
+               - If translation is **roughly correct** (captures the meaning) → Keep it, respect manual work
+               - When in doubt, **keep the manual translation**
+
+            Example:
+            - English changed: "Save" → "Save Changes"
+            - Manual translation: "保存更改" → Keep it (correct meaning)
+            - Manual translation: "删除" → Update it (completely wrong)
+
+            For other languages:
+            Use Edit tool to replace the old value with the new translation.
+            You can batch multiple updates in one Edit if they are adjacent.
+
+            ### Step 2.3: Process DELETE Operations
+            For extra keys reported by i18n:check:
+            - Run: `pnpm --dir ${{ github.workspace }}/web run i18n:check --auto-remove`
+            - Or manually remove from target language JSON files
+
+            ## Translation Guidelines
+
+            - PRESERVE all placeholders exactly as-is:
+              - `{{variable}}` - Mustache interpolation
+              - `${variable}` - Template literal
+              - `<tag>content</tag>` - HTML tags
+              - `_one`, `_other` - Pluralization suffixes (these are KEY suffixes, not values)
+
+              **CRITICAL: Variable names and tag names MUST stay in English - NEVER translate them**
+
+              ✅ CORRECT examples:
+              - English: "{{count}} items" → Japanese: "{{count}} 個のアイテム"
+              - English: "{{name}} updated" → Korean: "{{name}} 업데이트됨"
+              - English: "<email>{{email}}</email>" → Chinese: "<email>{{email}}</email>"
+              - English: "<CustomLink>Marketplace</CustomLink>" → Japanese: "<CustomLink>マーケットプレイス</CustomLink>"
+
+              ❌ WRONG examples (NEVER do this - will break the application):
+              - "{{count}}" → "{{カウント}}" ❌ (variable name translated to Japanese)
+              - "{{name}}" → "{{이름}}" ❌ (variable name translated to Korean)
+              - "{{email}}" → "{{邮箱}}" ❌ (variable name translated to Chinese)
+              - "<email>" → "<メール>" ❌ (tag name translated)
+              - "<CustomLink>" → "<自定义链接>" ❌ (component name translated)
+
+            - Use appropriate language register (formal/informal) based on existing translations
+            - Match existing translation style in each language
+            - Technical terms: check existing conventions per language
+            - For CJK languages: no spaces between characters unless necessary
+            - For RTL languages (ar-TN, fa-IR): ensure proper text handling
+
+            ## Output Format Requirements
+            - Alphabetical key ordering (if original file uses it)
+            - 2-space indentation
+            - Trailing newline at end of file
+            - Valid JSON (use proper escaping for special characters)
+
+            ═══════════════════════════════════════════════════════════════
+            ║  PHASE 3: RE-VERIFY - Confirm All Issues Resolved           ║
+            ═══════════════════════════════════════════════════════════════
+
+            ### Step 3.1: Run Lint Fix (IMPORTANT!)
+            ```bash
+            pnpm --dir ${{ github.workspace }}/web lint:fix --quiet -- 'i18n/**/*.json'
+            ```
+            This ensures:
+            - JSON keys are sorted alphabetically (jsonc/sort-keys rule)
+            - Valid i18n keys (dify-i18n/valid-i18n-keys rule)
+            - No extra keys (dify-i18n/no-extra-keys rule)
+
+            ### Step 3.2: Run Final i18n Check
+            ```bash
+            pnpm --dir ${{ github.workspace }}/web run i18n:check
+            ```
+
+            ### Step 3.3: Fix Any Remaining Issues
+            If check reports issues:
+            - Go back to PHASE 2 for unresolved items
+            - Repeat until check passes
+
+            ### Step 3.4: Generate Final Summary
+            ```
+            ╔══════════════════════════════════════════════════════════════╗
+            ║                    SYNC COMPLETED SUMMARY                    ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ Language      │ Added │ Updated │ Deleted │ Status          ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ zh-Hans       │  5    │   2     │    1    │ ✓ Complete      ║
+            ║ ja-JP         │  5    │   2     │    1    │ ✓ Complete      ║
+            ║ ...           │ ...   │  ...    │   ...   │ ...             ║
+            ╠══════════════════════════════════════════════════════════════╣
+            ║ i18n:check    │ PASSED - All keys in sync                   ║
+            ╚══════════════════════════════════════════════════════════════╝
+            ```
+
+            ## Mode-Specific Behavior
+
+            **SYNC_MODE = "incremental"** (default):
+            - Focus on keys identified from git diff
+            - Also check i18n:check output for any missing/extra keys
+            - Efficient for small changes
+
+            **SYNC_MODE = "full"**:
+            - Compare ALL keys between en-US and each language
+            - Run i18n:check to identify all discrepancies
+            - Use for first-time sync or fixing historical issues
+
+            ## Important Notes
+
+            1. Always run i18n:check BEFORE and AFTER making changes
+            2. The check script is the source of truth for missing/extra keys
+            3. For UPDATE scenario: git diff is the source of truth for changed values
+            4. Create a single commit with all translation changes
+            5. If any translation fails, continue with others and report failures
+
+            ═══════════════════════════════════════════════════════════════
+            ║  PHASE 4: COMMIT AND CREATE PR                              ║
+            ═══════════════════════════════════════════════════════════════
+
+            After all translations are complete and verified:
+
+            ### Step 4.1: Check for changes
+            ```bash
+            git -C ${{ github.workspace }} status --porcelain
+            ```
+
+            If there are changes:
+
+            ### Step 4.2: Create a new branch and commit
+            Run these git commands ONE BY ONE (not combined with &&).
+            **IMPORTANT**: Do NOT use `$()` command substitution. Use two separate commands:
+
+            1. First, get the timestamp:
+            ```bash
+            date +%Y%m%d-%H%M%S
+            ```
+            (Note the output, e.g., "20260115-143052")
+
+            2. Then create branch using the timestamp value:
+            ```bash
+            git -C ${{ github.workspace }} checkout -b chore/i18n-sync-20260115-143052
+            ```
+            (Replace "20260115-143052" with the actual timestamp from step 1)
+
+            3. Stage changes:
+            ```bash
+            git -C ${{ github.workspace }} add web/i18n/
+            ```
+
+            4. Commit:
+            ```bash
+            git -C ${{ github.workspace }} commit -m "chore(i18n): sync translations with en-US - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}"
+            ```
+
+            5. Push:
+            ```bash
+            git -C ${{ github.workspace }} push origin HEAD
+            ```
+
+            ### Step 4.3: Create Pull Request
+            ```bash
+            gh pr create --repo ${{ github.repository }} --title "chore(i18n): sync translations with en-US" --body "## Summary
+
+            This PR was automatically generated to sync i18n translation files.
+
+            ### Changes
+            - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
+            - Files processed: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
+
+            ### Verification
+            - [x] \`i18n:check\` passed
+            - [x] \`lint:fix\` applied
+
+            🤖 Generated with Claude Code GitHub Action" --base main
+            ```
+
+          claude_args: |
+            --max-turns 150
+            --allowedTools "Read,Write,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Bash(date *),Bash(date:*),Glob,Grep"

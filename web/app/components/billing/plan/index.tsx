@@ -1,32 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter } from 'next/navigation'
 import {
   RiBook2Line,
   RiFileEditLine,
   RiGraduationCapLine,
   RiGroupLine,
 } from '@remixicon/react'
-import { Plan, SelfHostedPlan } from '../type'
-import { NUM_INFINITE } from '../config'
-import { getDaysUntilEndOfMonth } from '@/utils/time'
-import VectorSpaceInfo from '../usage-info/vector-space-info'
-import AppsInfo from '../usage-info/apps-info'
-import UpgradeBtn from '../upgrade-btn'
-import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import { useProviderContext } from '@/context/provider-context'
-import { useAppContext } from '@/context/app-context'
-import Button from '@/app/components/base/button'
-import UsageInfo from '@/app/components/billing/usage-info'
-import VerifyStateModal from '@/app/education-apply/verify-state-modal'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
-import { useEducationVerify } from '@/service/use-education'
-import { useModalContextSelector } from '@/context/modal-context'
-import { Enterprise, Professional, Sandbox, Team } from './assets'
-import { Loading } from '../../base/icons/src/public/thought'
 import { useUnmountedRef } from 'ahooks'
+import { usePathname, useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
+import UsageInfo from '@/app/components/billing/usage-info'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import VerifyStateModal from '@/app/education-apply/verify-state-modal'
+import { useAppContext } from '@/context/app-context'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { useEducationVerify } from '@/service/use-education'
+import { getDaysUntilEndOfMonth } from '@/utils/time'
+import { Loading } from '../../base/icons/src/public/thought'
+import { NUM_INFINITE } from '../config'
+import { Plan, SelfHostedPlan } from '../type'
+import UpgradeBtn from '../upgrade-btn'
+import AppsInfo from '../usage-info/apps-info'
+import VectorSpaceInfo from '../usage-info/vector-space-info'
+import { Enterprise, Professional, Sandbox, Team } from './assets'
 
 type Props = {
   loc: string
@@ -68,10 +69,12 @@ const PlanComp: FC<Props> = ({
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
-    if (isPending) return
+    if (isPending)
+      return
     mutateAsync().then((res) => {
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-      if (unmountedRef.current) return
+      if (unmountedRef.current)
+        return
       router.push(`/education-apply?token=${res.token}`)
     }).catch(() => {
       setShowModal(true)
@@ -83,8 +86,8 @@ const PlanComp: FC<Props> = ({
       setShowAccountSettingModal(null)
   }, [path, setShowAccountSettingModal])
   return (
-    <div className='relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
-      <div className='p-6 pb-2'>
+    <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
+      <div className="p-6 pb-2">
         {plan.type === Plan.sandbox && (
           <Sandbox />
         )}
@@ -97,24 +100,24 @@ const PlanComp: FC<Props> = ({
         {(plan.type as any) === SelfHostedPlan.enterprise && (
           <Enterprise />
         )}
-        <div className='mt-1 flex items-center'>
-          <div className='grow'>
-            <div className='mb-1 flex items-center gap-1'>
-              <div className='system-md-semibold-uppercase text-text-primary'>{t(`billing.plans.${type}.name`)}</div>
+        <div className="mt-1 flex items-center">
+          <div className="grow">
+            <div className="mb-1 flex items-center gap-1">
+              <div className="system-md-semibold-uppercase text-text-primary">{t(`plans.${type}.name`, { ns: 'billing' })}</div>
             </div>
-            <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
+            <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
           </div>
-          <div className='flex shrink-0 items-center gap-1'>
+          <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
-              <Button variant='ghost' onClick={handleVerify} disabled={isPending} >
-                <RiGraduationCapLine className='mr-1 h-4 w-4' />
-                {t('education.toVerified')}
-                {isPending && <Loading className='ml-1 animate-spin-slow' />}
+              <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
+                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                {t('toVerified', { ns: 'education' })}
+                {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {(plan.type as any) !== SelfHostedPlan.enterprise && (
               <UpgradeBtn
-                className='shrink-0'
+                className="shrink-0"
                 isPlain={type === Plan.team}
                 isShort
                 loc={loc}
@@ -124,41 +127,41 @@ const PlanComp: FC<Props> = ({
         </div>
       </div>
       {/* Plan detail */}
-      <div className='grid grid-cols-3 content-start gap-1 p-2'>
+      <div className="grid grid-cols-3 content-start gap-1 p-2">
         <AppsInfo />
         <UsageInfo
           Icon={RiGroupLine}
-          name={t('billing.usagePage.teamMembers')}
+          name={t('usagePage.teamMembers', { ns: 'billing' })}
           usage={usage.teamMembers}
           total={total.teamMembers}
         />
         <UsageInfo
           Icon={RiBook2Line}
-          name={t('billing.usagePage.documentsUploadQuota')}
+          name={t('usagePage.documentsUploadQuota', { ns: 'billing' })}
           usage={usage.documentsUploadQuota}
           total={total.documentsUploadQuota}
         />
         <VectorSpaceInfo />
         <UsageInfo
           Icon={RiFileEditLine}
-          name={t('billing.usagePage.annotationQuota')}
+          name={t('usagePage.annotationQuota', { ns: 'billing' })}
           usage={usage.annotatedResponse}
           total={total.annotatedResponse}
         />
         <UsageInfo
           Icon={TriggerAll}
-          name={t('billing.usagePage.triggerEvents')}
+          name={t('usagePage.triggerEvents', { ns: 'billing' })}
           usage={usage.triggerEvents}
           total={total.triggerEvents}
-          tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
+          tooltip={t('plansCommon.triggerEvents.tooltip', { ns: 'billing' }) as string}
           resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
           Icon={ApiAggregate}
-          name={t('billing.plansCommon.apiRateLimit')}
+          name={t('plansCommon.apiRateLimit', { ns: 'billing' })}
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
-          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
+          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('plansCommon.apiRateLimitTooltip', { ns: 'billing' }) as string}
           resetInDays={apiRateLimitResetInDays}
         />
 
@@ -167,8 +170,8 @@ const PlanComp: FC<Props> = ({
         showLink
         email={userProfile.email}
         isShow={showModal}
-        title={t('education.rejectTitle')}
-        content={t('education.rejectContent')}
+        title={t('rejectTitle', { ns: 'education' })}
+        content={t('rejectContent', { ns: 'education' })}
         onConfirm={() => setShowModal(false)}
         onCancel={() => setShowModal(false)}
       />

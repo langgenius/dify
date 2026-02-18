@@ -1,29 +1,28 @@
-import { fetchNodeInspectVars } from '@/service/workflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { Node, ValueSelector } from '@/app/components/workflow/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
-import { VarInInspectType } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import {
   isConversationVar,
   isENV,
   isSystemVar,
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { produce } from 'immer'
-import type { Node } from '@/app/components/workflow/types'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import type { FlowType } from '@/types/common'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import useFLow from '@/service/use-flow'
-import { useStoreApi } from 'reactflow'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { fetchNodeInspectVars } from '@/service/workflow'
+import { VarInInspectType } from '@/types/workflow'
 
 type Params = {
   flowId: string

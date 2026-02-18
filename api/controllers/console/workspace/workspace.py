@@ -20,6 +20,7 @@ from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    only_edition_enterprise,
     setup_required,
 )
 from enums.cloud_plan import CloudPlan
@@ -28,6 +29,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
@@ -80,6 +82,9 @@ tenant_fields = {
     "in_trial": fields.Boolean,
     "trial_end_reason": fields.String,
     "custom_config": fields.Raw(attribute="custom_config"),
+    "trial_credits": fields.Integer,
+    "trial_credits_used": fields.Integer,
+    "next_credit_reset_date": fields.Integer,
 }
 
 tenants_fields = {
@@ -285,3 +290,31 @@ class WorkspaceInfoApi(Resource):
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+
+
+@console_ns.route("/workspaces/current/permission")
+class WorkspacePermissionApi(Resource):
+    """Get workspace permissions for the current workspace."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_enterprise
+    def get(self):
+        """
+        Get workspace permission settings.
+        Returns permission flags that control workspace features like member invitations and owner transfer.
+        """
+        _, current_tenant_id = current_account_with_tenant()
+
+        if not current_tenant_id:
+            raise ValueError("No current tenant")
+
+        # Get workspace permissions from enterprise service
+        permission = EnterpriseService.WorkspacePermissionService.get_permission(current_tenant_id)
+
+        return {
+            "workspace_id": permission.workspace_id,
+            "allow_member_invite": permission.allow_member_invite,
+            "allow_owner_transfer": permission.allow_owner_transfer,
+        }, 200

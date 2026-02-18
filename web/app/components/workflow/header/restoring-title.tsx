@@ -1,9 +1,9 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import useTimestamp from '@/hooks/use-timestamp'
 import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
-import useTimestamp from '@/hooks/use-timestamp'
 
 const RestoringTitle = () => {
   const { t } = useTranslation()
@@ -11,25 +11,25 @@ const RestoringTitle = () => {
   const { formatTime } = useTimestamp()
   const currentVersion = useStore(state => state.currentVersion)
   const isDraft = currentVersion?.version === WorkflowVersion.Draft
-  const publishStatus = isDraft ? t('workflow.common.unpublished') : t('workflow.common.published')
+  const publishStatus = isDraft ? t('common.unpublished', { ns: 'workflow' }) : t('common.published', { ns: 'workflow' })
 
   const versionName = useMemo(() => {
     if (isDraft)
-      return t('workflow.versionHistory.currentDraft')
-    return currentVersion?.marked_name || t('workflow.versionHistory.defaultName')
+      return t('versionHistory.currentDraft', { ns: 'workflow' })
+    return currentVersion?.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })
   }, [currentVersion, t, isDraft])
 
   return (
-    <div className='flex flex-col gap-y-0.5'>
-      <div className='flex items-center gap-x-1'>
-        <span className='system-sm-semibold text-text-primary'>
+    <div className="flex flex-col gap-y-0.5">
+      <div className="flex items-center gap-x-1">
+        <span className="system-sm-semibold text-text-primary">
           {versionName}
         </span>
-        <span className='system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary'>
-          {t('workflow.common.viewOnly')}
+        <span className="system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary">
+          {t('common.viewOnly', { ns: 'workflow' })}
         </span>
       </div>
-      <div className='system-xs-regular flex h-4 items-center gap-x-1 text-text-tertiary'>
+      <div className="system-xs-regular flex h-4 items-center gap-x-1 text-text-tertiary">
         {
           currentVersion && (
             <>

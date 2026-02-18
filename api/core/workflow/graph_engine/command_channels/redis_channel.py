@@ -9,7 +9,7 @@ Each instance uses a unique key for its command queue.
 import json
 from typing import TYPE_CHECKING, Any, final
 
-from ..entities.commands import AbortCommand, CommandType, GraphEngineCommand, PauseCommand
+from ..entities.commands import AbortCommand, CommandType, GraphEngineCommand, PauseCommand, UpdateVariablesCommand
 
 if TYPE_CHECKING:
     from extensions.ext_redis import RedisClientWrapper
@@ -113,6 +113,8 @@ class RedisChannel:
                 return AbortCommand.model_validate(data)
             if command_type == CommandType.PAUSE:
                 return PauseCommand.model_validate(data)
+            if command_type == CommandType.UPDATE_VARIABLES:
+                return UpdateVariablesCommand.model_validate(data)
 
             # For other command types, use base class
             return GraphEngineCommand.model_validate(data)

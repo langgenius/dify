@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Textarea from '.'
 
@@ -62,7 +62,9 @@ const TextareaDemo = (args: any) => {
       />
       {value && (
         <div className="mt-3 text-sm text-gray-600">
-          Character count: <span className="font-semibold">{value.length}</span>
+          Character count:
+          {' '}
+          <span className="font-semibold">{value.length}</span>
         </div>
       )}
     </div>
@@ -240,7 +242,12 @@ const CommentFormDemo = () => {
       />
       <div className="mt-2 flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          {comment.length} / {maxLength} characters
+          {comment.length}
+          {' '}
+          /
+          {maxLength}
+          {' '}
+          characters
         </span>
         <button
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -399,11 +406,18 @@ const BioEditorDemo = () => {
       />
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className={bio.length > maxLength * 0.9 ? 'text-orange-600' : 'text-gray-500'}>
-          {bio.length} / {maxLength} characters
+          {bio.length}
+          {' '}
+          /
+          {maxLength}
+          {' '}
+          characters
         </span>
         {bio.length > maxLength * 0.9 && (
           <span className="text-orange-600">
-            {maxLength - bio.length} characters remaining
+            {maxLength - bio.length}
+            {' '}
+            characters remaining
           </span>
         )}
       </div>

@@ -1,8 +1,8 @@
-import { useCallback } from 'react'
 import type { PluginTriggerNodeType } from './types'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { useGetLanguage } from '@/context/i18n'
+import { useCallback } from 'react'
 import { getTriggerCheckParams } from '@/app/components/workflow/utils/trigger'
+import { useGetLanguage } from '@/context/i18n'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 
 type Params = {
   id: string

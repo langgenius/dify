@@ -99,29 +99,20 @@ def test_external_api_json_message_and_bad_request_rewrite():
     assert res.get_json()["message"] == "Invalid JSON payload received or JSON payload is empty."
 
 
-def test_external_api_param_mapping_and_quota_and_exc_info_none():
-    # Force exc_info() to return (None,None,None) only during request
-    import libs.external_api as ext
+def test_external_api_param_mapping_and_quota():
+    app = _create_api_app()
+    client = app.test_client()
 
-    orig_exc_info = ext.sys.exc_info
-    try:
-        ext.sys.exc_info = lambda: (None, None, None)
+    # Param errors mapping payload path
+    res = client.get("/api/param-errors")
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data["code"] == "invalid_param"
+    assert data["params"] == "field"
 
-        app = _create_api_app()
-        client = app.test_client()
-
-        # Param errors mapping payload path
-        res = client.get("/api/param-errors")
-        assert res.status_code == 400
-        data = res.get_json()
-        assert data["code"] == "invalid_param"
-        assert data["params"] == "field"
-
-        # Quota path — depending on Flask-RESTX internals it may be handled
-        res = client.get("/api/quota")
-        assert res.status_code in (400, 429)
-    finally:
-        ext.sys.exc_info = orig_exc_info  # type: ignore[assignment]
+    # Quota path — depending on Flask-RESTX internals it may be handled
+    res = client.get("/api/quota")
+    assert res.status_code in (400, 429)
 
 
 def test_unauthorized_and_force_logout_clears_cookies():

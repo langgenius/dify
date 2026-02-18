@@ -1,8 +1,8 @@
 import { renderHook } from '@testing-library/react'
 import useTimestamp from './use-timestamp'
 
-jest.mock('@/context/app-context', () => ({
-  useAppContext: jest.fn(() => ({
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(() => ({
     userProfile: {
       id: '8b18e24b-1ac8-4262-aa5c-e9aa95c76846',
       name: 'test',

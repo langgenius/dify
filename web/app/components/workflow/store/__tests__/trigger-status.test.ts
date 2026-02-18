@@ -1,6 +1,6 @@
+import type { EntryNodeStatus } from '../trigger-status'
 import { act, renderHook } from '@testing-library/react'
 import { useTriggerStatusStore } from '../trigger-status'
-import type { EntryNodeStatus } from '../trigger-status'
 
 describe('useTriggerStatusStore', () => {
   beforeEach(() => {

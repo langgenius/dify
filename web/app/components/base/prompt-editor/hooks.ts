@@ -1,16 +1,17 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { EntityMatch } from '@lexical/text'
 import type {
   Klass,
   LexicalCommand,
   LexicalEditor,
   TextNode,
 } from 'lexical'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { CustomTextNode } from './plugins/custom-text/node'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
+import {
+  mergeRegister,
+} from '@lexical/utils'
 import {
   $getNodeByKey,
   $getSelection,
@@ -20,19 +21,18 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
 } from 'lexical'
-import type { EntityMatch } from '@lexical/text'
 import {
-  mergeRegister,
-} from '@lexical/utils'
-import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { $isContextBlockNode } from './plugins/context-block/node'
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { DELETE_CONTEXT_BLOCK_COMMAND } from './plugins/context-block'
-import { $isHistoryBlockNode } from './plugins/history-block/node'
+import { $isContextBlockNode } from './plugins/context-block/node'
 import { DELETE_HISTORY_BLOCK_COMMAND } from './plugins/history-block'
-import { $isQueryBlockNode } from './plugins/query-block/node'
+import { $isHistoryBlockNode } from './plugins/history-block/node'
 import { DELETE_QUERY_BLOCK_COMMAND } from './plugins/query-block'
-import type { CustomTextNode } from './plugins/custom-text/node'
+import { $isQueryBlockNode } from './plugins/query-block/node'
 import { registerLexicalTextEntity } from './utils'
 
 export type UseSelectOrDeleteHandler = (nodeKey: string, command?: LexicalCommand<undefined>) => [RefObject<HTMLDivElement | null>, boolean]
@@ -53,8 +53,9 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
           || ($isHistoryBlockNode(nodes[0]) && command === DELETE_HISTORY_BLOCK_COMMAND)
           || ($isQueryBlockNode(nodes[0]) && command === DELETE_QUERY_BLOCK_COMMAND)
         )
-      )
+      ) {
         editor.dispatchCommand(command, undefined)
+      }
 
       if (isSelected && $isNodeSelection(selection)) {
         event.preventDefault()
@@ -157,16 +158,16 @@ export type TriggerFn = (
 export const PUNCTUATION = '\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%\'"~=<>_:;'
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
-  { minLength = 1, maxLength = 75 }: { minLength?: number; maxLength?: number },
+  { minLength = 1, maxLength = 75 }: { minLength?: number, maxLength?: number },
 ): TriggerFn {
   return useCallback(
     (text: string) => {
       const validChars = `[${PUNCTUATION}\\s]`
       const TypeaheadTriggerRegex = new RegExp(
         '(.*)('
-          + `[${trigger}]`
-          + `((?:${validChars}){0,${maxLength}})`
-          + ')$',
+        + `[${trigger}]`
+        + `((?:${validChars}){0,${maxLength}})`
+        + ')$',
       )
       const match = TypeaheadTriggerRegex.exec(text)
       if (match !== null) {

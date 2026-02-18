@@ -1,7 +1,7 @@
-import React from 'react'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import Drawer from './drawer'
-import cn from '@/utils/classnames'
-import { noop } from 'lodash-es'
 
 type IFullScreenDrawerProps = {
   isOpen: boolean
@@ -39,7 +39,8 @@ const FullScreenDrawer = ({
       modal={modal}
     >
       {children}
-    </Drawer>)
+    </Drawer>
+  )
 }
 
 export default FullScreenDrawer

@@ -5,7 +5,7 @@ describe('useAsyncWindowOpen', () => {
   const originalOpen = window.open
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   afterAll(() => {
@@ -14,9 +14,9 @@ describe('useAsyncWindowOpen', () => {
 
   it('opens immediate url synchronously, clears opener, without calling async getter', async () => {
     const mockWindow: any = { opener: 'should-clear' }
-    const openSpy = jest.fn(() => mockWindow)
+    const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
-    const getUrl = jest.fn()
+    const getUrl = vi.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
 
     await act(async () => {
@@ -34,9 +34,9 @@ describe('useAsyncWindowOpen', () => {
 
   it('appends noopener,noreferrer when immediate open passes custom features', async () => {
     const mockWindow: any = { opener: 'should-clear' }
-    const openSpy = jest.fn(() => mockWindow)
+    const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
-    const getUrl = jest.fn()
+    const getUrl = vi.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
 
     await act(async () => {
@@ -53,10 +53,10 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('reports error when immediate window fails to open', async () => {
-    const openSpy = jest.fn(() => null)
+    const openSpy = vi.fn(() => null)
     window.open = openSpy
-    const getUrl = jest.fn()
-    const onError = jest.fn()
+    const getUrl = vi.fn()
+    const onError = vi.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
 
     await act(async () => {
@@ -74,13 +74,13 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('sets opener to null and redirects when async url resolves', async () => {
-    const close = jest.fn()
+    const close = vi.fn()
     const mockWindow: any = {
       location: { href: '' },
       close,
       opener: 'should-be-cleared',
     }
-    const openSpy = jest.fn(() => mockWindow)
+    const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
 
@@ -95,15 +95,15 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('closes placeholder and forwards error when async getter throws', async () => {
-    const close = jest.fn()
+    const close = vi.fn()
     const mockWindow: any = {
       location: { href: '' },
       close,
       opener: null,
     }
-    const openSpy = jest.fn(() => mockWindow)
+    const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
-    const onError = jest.fn()
+    const onError = vi.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
 
     const error = new Error('fetch failed')
@@ -119,13 +119,13 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('preserves custom features as-is for async open', async () => {
-    const close = jest.fn()
+    const close = vi.fn()
     const mockWindow: any = {
       location: { href: '' },
       close,
       opener: 'should-be-cleared',
     }
-    const openSpy = jest.fn(() => mockWindow)
+    const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
 
@@ -143,15 +143,15 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('closes placeholder and reports when no url is returned', async () => {
-    const close = jest.fn()
+    const close = vi.fn()
     const mockWindow: any = {
       location: { href: '' },
       close,
       opener: null,
     }
-    const openSpy = jest.fn(() => mockWindow)
+    const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
-    const onError = jest.fn()
+    const onError = vi.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
 
     await act(async () => {
@@ -165,10 +165,10 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('reports failure when window.open returns null', async () => {
-    const openSpy = jest.fn(() => null)
+    const openSpy = vi.fn(() => null)
     window.open = openSpy
-    const getUrl = jest.fn()
-    const onError = jest.fn()
+    const getUrl = vi.fn()
+    const onError = vi.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
 
     await act(async () => {

@@ -8,15 +8,23 @@ export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
 }
 
 const notTranslateKey = [
-  ComparisonOperator.equal, ComparisonOperator.notEqual,
-  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
-  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
-]
+  ComparisonOperator.equal,
+  ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan,
+  ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan,
+  ComparisonOperator.lessThanOrEqual,
+] as const
 
-export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {
+type NotTranslateOperator = typeof notTranslateKey[number]
+export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+
+export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator {
   if (!operator)
     return false
-  return !notTranslateKey.includes(operator)
+  return !(notTranslateKey as readonly ComparisonOperator[]).includes(operator)
 }
 
 export const getOperators = (type?: MetadataFilteringVariableType) => {
@@ -64,5 +72,5 @@ export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator)
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
-export const VARIABLE_REGEX = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.[a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
-export const COMMON_VARIABLE_REGEX = /\{\{([a-zA-Z0-9_-]{1,50})\}\}/gi
+export const VARIABLE_REGEX = /\{\{(#[\w-]{1,50}(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
+export const COMMON_VARIABLE_REGEX = /\{\{([\w-]{1,50})\}\}/g

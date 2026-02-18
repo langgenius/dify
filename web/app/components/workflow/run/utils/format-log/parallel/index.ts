@@ -1,5 +1,5 @@
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 function printNodeStructure(node: NodeTracing, depth: number) {
   const indent = '  '.repeat(depth)
@@ -12,11 +12,13 @@ function printNodeStructure(node: NodeTracing, depth: number) {
 }
 
 function addTitle({
-  list, depth, belongParallelIndexInfo,
+  list,
+  depth,
+  belongParallelIndexInfo,
 }: {
-  list: NodeTracing[],
-  depth: number,
-  belongParallelIndexInfo?: string,
+  list: NodeTracing[]
+  depth: number
+  belongParallelIndexInfo?: string
 }, t: any) {
   let branchIndex = 0
   const hasMoreThanOneParallel = list.filter(node => node.parallelDetail?.isParallelStartNode).length > 1
@@ -42,7 +44,7 @@ function addTitle({
 
     if (isParallelStartNode) {
       node.parallelDetail!.isParallelStartNode = true
-      node.parallelDetail!.parallelTitle = `${t('workflow.common.parallel')}-${parallelIndexInfo}`
+      node.parallelDetail!.parallelTitle = `${t('common.parallel', { ns: 'workflow' })}-${parallelIndexInfo}`
     }
 
     const isBrachStartNode = parallel_start_node_id === node.node_id
@@ -55,7 +57,7 @@ function addTitle({
         }
       }
 
-      node.parallelDetail!.branchTitle = `${t('workflow.common.branch')}-${belongParallelIndexInfo}-${branchLetter}`
+      node.parallelDetail!.branchTitle = `${t('common.branch', { ns: 'workflow' })}-${belongParallelIndexInfo}-${branchLetter}`
     }
 
     if (node.parallelDetail?.children && node.parallelDetail.children.length > 0) {

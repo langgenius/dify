@@ -5,9 +5,9 @@ from typing import Any, Literal
 from jsonschema import Draft7Validator, SchemaError
 from pydantic import BaseModel, Field, field_validator
 
-from core.file import FileTransferMethod, FileType, FileUploadConfig
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.workflow.file import FileTransferMethod, FileType, FileUploadConfig
 from models.model import AppMode
 
 
@@ -120,7 +120,7 @@ class VariableEntity(BaseModel):
     allowed_file_types: Sequence[FileType] | None = Field(default_factory=list)
     allowed_file_extensions: Sequence[str] | None = Field(default_factory=list)
     allowed_file_upload_methods: Sequence[FileTransferMethod] | None = Field(default_factory=list)
-    json_schema: dict[str, Any] | None = Field(default=None)
+    json_schema: dict | None = Field(default=None)
 
     @field_validator("description", mode="before")
     @classmethod
@@ -134,7 +134,7 @@ class VariableEntity(BaseModel):
 
     @field_validator("json_schema")
     @classmethod
-    def validate_json_schema(cls, schema: dict[str, Any] | None) -> dict[str, Any] | None:
+    def validate_json_schema(cls, schema: dict | None) -> dict | None:
         if schema is None:
             return None
         try:

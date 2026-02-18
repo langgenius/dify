@@ -19,13 +19,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             api/**
@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: false
           python-version: "3.12"
@@ -47,13 +47,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --directory api --dev lint-imports
 
-      - name: Run Basedpyright Checks
+      - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: dev/basedpyright-check
-
-      - name: Run Mypy Type Checks
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+        run: make type-check
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -65,18 +61,23 @@ jobs:
     defaults:
       run:
         working-directory: ./web
+    permissions:
+      checks: write
+      pull-requests: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v47
         with:
-          files: web/**
+          files: |
+            web/**
+            .github/workflows/style.yml
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -85,12 +86,12 @@ jobs:
           run_install: false
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
-          cache-dependency-path: ./web/package.json
+          cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -101,42 +102,31 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint
+          pnpm run lint:ci
+        # pnpm run lint:report
+        # continue-on-error: true
+
+      # - name: Annotate Code
+      #   if: steps.changed-files.outputs.any_changed == 'true' && github.event_name == 'pull_request'
+      #   uses: DerLev/eslint-annotations@51347b3a0abfb503fc8734d5ae31c4b151297fae
+      #   with:
+      #     eslint-report: web/eslint_report.json
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Web tsslint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run lint:tss
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check:tsgo
+        run: pnpm run type-check
 
-  docker-compose-template:
-    name: Docker Compose Template
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          files: |
-            docker/generate_docker_compose
-            docker/.env.example
-            docker/docker-compose-template.yaml
-            docker/docker-compose.yaml
-
-      - name: Generate Docker Compose
+      - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          cd docker
-          ./generate_docker_compose
-
-      - name: Check for changes
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git diff --exit-code
+        working-directory: ./web
+        run: pnpm run knip
 
   superlinter:
     name: SuperLinter
@@ -144,14 +134,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             **.sh

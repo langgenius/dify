@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useBoolean } from 'ahooks'
+import type { DataSet } from '@/models/datasets'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { DataSet } from '@/models/datasets'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
-import Drawer from '@/app/components/base/drawer'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import Badge from '@/app/components/base/badge'
-import { useKnowledge } from '@/hooks/use-knowledge'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
+import Badge from '@/app/components/base/badge'
+import Drawer from '@/app/components/base/drawer'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useKnowledge } from '@/hooks/use-knowledge'
 
 type Props = {
   payload: DataSet
@@ -67,28 +68,31 @@ const DatasetItem: FC<Props> = ({
       ${isDeleteHovered
       ? 'border-state-destructive-border bg-state-destructive-hover'
       : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
-    }`}>
-      <div className='flex w-0 grow items-center space-x-1.5'>
+    }`}
+    >
+      <div className="flex w-0 grow items-center space-x-1.5">
         <AppIcon
-          size='tiny'
+          size="tiny"
           iconType={iconInfo.icon_type}
           icon={iconInfo.icon}
           background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
-        <div className='system-sm-medium w-0 grow truncate text-text-secondary'>{payload.name}</div>
+        <div className="system-sm-medium w-0 grow truncate text-text-secondary">{payload.name}</div>
       </div>
       {!readonly && (
-        <div className='ml-2 hidden shrink-0 items-center  space-x-1 group-hover/dataset-item:flex'>
+        <div className="ml-2 hidden shrink-0 items-center  space-x-1 group-hover/dataset-item:flex">
           {
-            editable && <ActionButton
-              onClick={(e) => {
-                e.stopPropagation()
-                showSettingsModal()
-              }}
-            >
-              <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
-            </ActionButton>
+            editable && (
+              <ActionButton
+                onClick={(e) => {
+                  e.stopPropagation()
+                  showSettingsModal()
+                }}
+              >
+                <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+              </ActionButton>
+            )
           }
           <ActionButton
             onClick={handleRemove}
@@ -101,25 +105,29 @@ const DatasetItem: FC<Props> = ({
         </div>
       )}
       {payload.is_multimodal && (
-        <div className='mr-1 shrink-0 group-hover/dataset-item:hidden'>
+        <div className="mr-1 shrink-0 group-hover/dataset-item:hidden">
           <FeatureIcon feature={ModelFeatureEnum.vision} />
         </div>
       )}
       {
-        payload.indexing_technique && <Badge
-          className='shrink-0 group-hover/dataset-item:hidden'
-          text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}
-        />
+        !!payload.indexing_technique && (
+          <Badge
+            className="shrink-0 group-hover/dataset-item:hidden"
+            text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}
+          />
+        )
       }
       {
-        payload.provider === 'external' && <Badge
-          className='shrink-0 group-hover/dataset-item:hidden'
-          text={t('dataset.externalTag') as string}
-        />
+        payload.provider === 'external' && (
+          <Badge
+            className="shrink-0 group-hover/dataset-item:hidden"
+            text={t('externalTag', { ns: 'dataset' })}
+          />
+        )
       }
 
       {isShowSettingsModal && (
-        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl">
           <SettingsModal
             currentDataset={payload}
             onCancel={hideSettingsModal}

@@ -5,10 +5,23 @@ This module tests the functionality of MockTemplateTransformNode and MockCodeNod
 to ensure they work correctly with the TableTestRunner.
 """
 
+from configs import dify_config
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockCodeNode, MockTemplateTransformNode
+
+DEFAULT_CODE_LIMITS = CodeNodeLimits(
+    max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+    max_number=dify_config.CODE_MAX_NUMBER,
+    min_number=dify_config.CODE_MIN_NUMBER,
+    max_precision=dify_config.CODE_MAX_PRECISION,
+    max_depth=dify_config.CODE_MAX_DEPTH,
+    max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+    max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+    max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+)
 
 
 class TestMockTemplateTransformNode:
@@ -306,6 +319,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_limits=DEFAULT_CODE_LIMITS,
         )
 
         # Run the node
@@ -370,6 +384,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_limits=DEFAULT_CODE_LIMITS,
         )
 
         # Run the node
@@ -438,6 +453,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_limits=DEFAULT_CODE_LIMITS,
         )
 
         # Run the node

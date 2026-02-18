@@ -1,6 +1,5 @@
-import React from 'react'
 import { render } from '@testing-library/react'
-import '@testing-library/jest-dom'
+import * as React from 'react'
 import Loading from './index'
 
 describe('Loading Component', () => {
@@ -16,7 +15,7 @@ describe('Loading Component', () => {
   })
 
   it('renders correctly with app type', () => {
-    const { container } = render(<Loading type='app' />)
+    const { container } = render(<Loading type="app" />)
     expect(container.firstChild).toHaveClass('h-full')
   })
 

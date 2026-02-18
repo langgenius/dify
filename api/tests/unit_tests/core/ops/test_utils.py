@@ -1,6 +1,9 @@
+import re
+from datetime import datetime
+
 import pytest
 
-from core.ops.utils import validate_project_name, validate_url, validate_url_with_path
+from core.ops.utils import generate_dotted_order, validate_project_name, validate_url, validate_url_with_path
 
 
 class TestValidateUrl:
@@ -136,3 +139,51 @@ class TestValidateProjectName:
         """Test custom default name"""
         result = validate_project_name("", "Custom Default")
         assert result == "Custom Default"
+
+
+class TestGenerateDottedOrder:
+    """Test cases for generate_dotted_order function"""
+
+    def test_dotted_order_has_6_digit_microseconds(self):
+        """Test that timestamp includes full 6-digit microseconds for LangSmith API compatibility.
+
+        LangSmith API expects timestamps in format: YYYYMMDDTHHMMSSffffffZ (6-digit microseconds).
+        Previously, the code truncated to 3 digits which caused API errors:
+        'cannot parse .111 as .000000'
+        """
+        start_time = datetime(2025, 12, 23, 4, 19, 55, 111000)
+        run_id = "test-run-id"
+        result = generate_dotted_order(run_id, start_time)
+
+        # Extract timestamp portion (before the run_id)
+        timestamp_match = re.match(r"^(\d{8}T\d{6})(\d+)Z", result)
+        assert timestamp_match is not None, "Timestamp format should match YYYYMMDDTHHMMSSffffffZ"
+
+        microseconds = timestamp_match.group(2)
+        assert len(microseconds) == 6, f"Microseconds should be 6 digits, got {len(microseconds)}: {microseconds}"
+
+    def test_dotted_order_format_matches_langsmith_expected(self):
+        """Test that dotted_order format matches LangSmith API expected format."""
+        start_time = datetime(2025, 1, 15, 10, 30, 45, 123456)
+        run_id = "abc123"
+        result = generate_dotted_order(run_id, start_time)
+
+        # LangSmith expects: YYYYMMDDTHHMMSSffffffZ followed by run_id
+        assert result == "20250115T103045123456Zabc123"
+
+    def test_dotted_order_with_parent(self):
+        """Test dotted_order generation with parent order uses dot separator."""
+        start_time = datetime(2025, 12, 23, 4, 19, 55, 111000)
+        run_id = "child-run-id"
+        parent_order = "20251223T041955000000Zparent-run-id"
+        result = generate_dotted_order(run_id, start_time, parent_order)
+
+        assert result == "20251223T041955000000Zparent-run-id.20251223T041955111000Zchild-run-id"
+
+    def test_dotted_order_without_parent_has_no_dot(self):
+        """Test dotted_order generation without parent has no dot separator."""
+        start_time = datetime(2025, 12, 23, 4, 19, 55, 111000)
+        run_id = "test-run-id"
+        result = generate_dotted_order(run_id, start_time, None)
+
+        assert "." not in result

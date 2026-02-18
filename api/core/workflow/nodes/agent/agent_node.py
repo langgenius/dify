@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
@@ -9,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
-from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
@@ -31,6 +32,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import (
     AgentLogEvent,
     NodeEventBase,
@@ -167,7 +169,7 @@ class AgentNode(Node[AgentNodeData]):
         variable_pool: VariablePool,
         node_data: AgentNodeData,
         for_log: bool = False,
-        strategy: "PluginAgentStrategy",
+        strategy: PluginAgentStrategy,
     ) -> dict[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
@@ -190,32 +192,33 @@ class AgentNode(Node[AgentNodeData]):
                 result[parameter_name] = None
                 continue
             agent_input = node_data.agent_parameters[parameter_name]
-            if agent_input.type == "variable":
-                variable = variable_pool.get(agent_input.value)  # type: ignore
-                if variable is None:
-                    raise AgentVariableNotFoundError(str(agent_input.value))
-                parameter_value = variable.value
-            elif agent_input.type in {"mixed", "constant"}:
-                # variable_pool.convert_template expects a string template,
-                # but if passing a dict, convert to JSON string first before rendering
-                try:
-                    if not isinstance(agent_input.value, str):
-                        parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
-                    else:
+            match agent_input.type:
+                case "variable":
+                    variable = variable_pool.get(agent_input.value)  # type: ignore
+                    if variable is None:
+                        raise AgentVariableNotFoundError(str(agent_input.value))
+                    parameter_value = variable.value
+                case "mixed" | "constant":
+                    # variable_pool.convert_template expects a string template,
+                    # but if passing a dict, convert to JSON string first before rendering
+                    try:
+                        if not isinstance(agent_input.value, str):
+                            parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                        else:
+                            parameter_value = str(agent_input.value)
+                    except TypeError:
                         parameter_value = str(agent_input.value)
-                except TypeError:
-                    parameter_value = str(agent_input.value)
-                segment_group = variable_pool.convert_template(parameter_value)
-                parameter_value = segment_group.log if for_log else segment_group.text
-                # variable_pool.convert_template returns a string,
-                # so we need to convert it back to a dictionary
-                try:
-                    if not isinstance(agent_input.value, str):
-                        parameter_value = json.loads(parameter_value)
-                except json.JSONDecodeError:
-                    parameter_value = parameter_value
-            else:
-                raise AgentInputTypeError(agent_input.type)
+                    segment_group = variable_pool.convert_template(parameter_value)
+                    parameter_value = segment_group.log if for_log else segment_group.text
+                    # variable_pool.convert_template returns a string,
+                    # so we need to convert it back to a dictionary
+                    try:
+                        if not isinstance(agent_input.value, str):
+                            parameter_value = json.loads(parameter_value)
+                    except json.JSONDecodeError:
+                        parameter_value = parameter_value
+                case _:
+                    raise AgentInputTypeError(agent_input.type)
             value = parameter_value
             if parameter.type == "array[tools]":
                 value = cast(list[dict[str, Any]], value)
@@ -233,7 +236,18 @@ class AgentNode(Node[AgentNodeData]):
                                 0,
                             ):
                                 value_param = param.get("value", {})
-                                params[key] = value_param.get("value", "") if value_param is not None else None
+                                if value_param and value_param.get("type", "") == "variable":
+                                    variable_selector = value_param.get("value")
+                                    if not variable_selector:
+                                        raise ValueError("Variable selector is missing for a variable-type parameter.")
+
+                                    variable = variable_pool.get(variable_selector)
+                                    if variable is None:
+                                        raise AgentVariableNotFoundError(str(variable_selector))
+
+                                    params[key] = variable.value
+                                else:
+                                    params[key] = value_param.get("value", "") if value_param is not None else None
                             else:
                                 params[key] = None
                         parameters = params
@@ -328,7 +342,7 @@ class AgentNode(Node[AgentNodeData]):
     def _generate_credentials(
         self,
         parameters: dict[str, Any],
-    ) -> "InvokeCredentials":
+    ) -> InvokeCredentials:
         """
         Generate credentials based on the given agent parameters.
         """
@@ -361,12 +375,13 @@ class AgentNode(Node[AgentNodeData]):
         result: dict[str, Any] = {}
         for parameter_name in typed_node_data.agent_parameters:
             input = typed_node_data.agent_parameters[parameter_name]
-            if input.type in ["mixed", "constant"]:
-                selectors = VariableTemplateParser(str(input.value)).extract_variable_selectors()
-                for selector in selectors:
-                    result[selector.variable] = selector.value_selector
-            elif input.type == "variable":
-                result[parameter_name] = input.value
+            match input.type:
+                case "mixed" | "constant":
+                    selectors = VariableTemplateParser(str(input.value)).extract_variable_selectors()
+                    for selector in selectors:
+                        result[selector.variable] = selector.value_selector
+                case "variable":
+                    result[parameter_name] = input.value
 
         result = {node_id + "." + key: value for key, value in result.items()}
 
@@ -442,9 +457,7 @@ class AgentNode(Node[AgentNodeData]):
                     model_schema.features.remove(feature)
         return model_schema
 
-    def _filter_mcp_type_tool(
-        self, strategy: "PluginAgentStrategy", tools: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _filter_mcp_type_tool(self, strategy: PluginAgentStrategy, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Filter MCP type tool
         :param strategy: plugin agent strategy
@@ -483,7 +496,7 @@ class AgentNode(Node[AgentNodeData]):
 
         text = ""
         files: list[File] = []
-        json_list: list[dict] = []
+        json_list: list[dict | list] = []
 
         agent_logs: list[AgentLogEvent] = []
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
@@ -557,13 +570,18 @@ class AgentNode(Node[AgentNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == NodeType.AGENT:
-                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                    llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
-                    agent_execution_metadata = {
-                        WorkflowNodeExecutionMetadataKey(key): value
-                        for key, value in msg_metadata.items()
-                        if key in WorkflowNodeExecutionMetadataKey.__members__.values()
-                    }
+                    if isinstance(message.message.json_object, dict):
+                        msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                        llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
+                        agent_execution_metadata = {
+                            WorkflowNodeExecutionMetadataKey(key): value
+                            for key, value in msg_metadata.items()
+                            if key in WorkflowNodeExecutionMetadataKey.__members__.values()
+                        }
+                    else:
+                        msg_metadata = {}
+                        llm_usage = LLMUsage.empty_usage()
+                        agent_execution_metadata = {}
                 if message.message.json_object:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
@@ -672,7 +690,7 @@ class AgentNode(Node[AgentNodeData]):
                 yield agent_log
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output: list[dict[str, Any]] = []
+        json_output: list[dict[str, Any] | list[Any]] = []
 
         # Step 1: append each agent log as its own dict.
         if agent_logs:

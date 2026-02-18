@@ -1,7 +1,8 @@
-import React from 'react'
-import { type BaseConfiguration, BaseFieldType } from './types'
-import { withForm } from '../..'
+import type { BaseConfiguration } from './types'
 import { useStore } from '@tanstack/react-form'
+import * as React from 'react'
+import { withForm } from '../..'
+import { BaseFieldType } from './types'
 
 type BaseFieldProps = {
   initialData?: Record<string, any>
@@ -38,7 +39,8 @@ const BaseField = ({
 
     const isAllConditionsMet = useStore(form.store, (state) => {
       const fieldValues = state.values
-      if (!showConditions.length) return true
+      if (!showConditions.length)
+        return true
       return showConditions.every((condition) => {
         const { variable, value } = condition
         const fieldValue = fieldValues[variable as keyof typeof fieldValues]

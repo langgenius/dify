@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type FieldTitleProps = {
   title?: string
@@ -33,7 +33,7 @@ export const FieldTitle = memo(({
   return (
     <div className={cn('mb-0.5', !!subTitle && 'mb-1')}>
       <div
-        className='group/collapse flex items-center justify-between py-1'
+        className="group/collapse flex items-center justify-between py-1"
         onClick={() => {
           if (!disabled) {
             setCollapsedLocal(!collapsedMerged)
@@ -41,7 +41,7 @@ export const FieldTitle = memo(({
           }
         }}
       >
-        <div className='system-sm-semibold-uppercase flex items-center text-text-secondary'>
+        <div className="system-sm-semibold-uppercase flex items-center text-text-secondary">
           {title}
           {
             showArrow && (
@@ -57,7 +57,7 @@ export const FieldTitle = memo(({
             tooltip && (
               <Tooltip
                 popupContent={tooltip}
-                triggerClassName='w-4 h-4 ml-1'
+                triggerClassName="w-4 h-4 ml-1"
               />
             )
           }

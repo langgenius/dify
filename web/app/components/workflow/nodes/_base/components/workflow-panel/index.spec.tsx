@@ -3,27 +3,9 @@
  * Tests for GitHub issue #22745: Panel width persistence bug fix
  */
 
-import '@testing-library/jest-dom'
+export {}
 
 type PanelWidthSource = 'user' | 'system'
-
-// Mock localStorage for testing
-const createMockLocalStorage = () => {
-  const storage: Record<string, string> = {}
-  return {
-    getItem: jest.fn((key: string) => storage[key] || null),
-    setItem: jest.fn((key: string, value: string) => {
-      storage[key] = value
-    }),
-    removeItem: jest.fn((key: string) => {
-      delete storage[key]
-    }),
-    clear: jest.fn(() => {
-      Object.keys(storage).forEach(key => delete storage[key])
-    }),
-    get storage() { return { ...storage } },
-  }
-}
 
 // Core panel width logic extracted from the component
 const createPanelWidthManager = (storageKey: string) => {
@@ -43,20 +25,6 @@ const createPanelWidthManager = (storageKey: string) => {
 }
 
 describe('Workflow Panel Width Persistence', () => {
-  let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
-
-  beforeEach(() => {
-    mockLocalStorage = createMockLocalStorage()
-    Object.defineProperty(globalThis, 'localStorage', {
-      value: mockLocalStorage,
-      writable: true,
-    })
-  })
-
-  afterEach(() => {
-    jest.clearAllMocks()
-  })
-
   describe('Node Panel Width Management', () => {
     const storageKey = 'workflow-node-panel-width'
 

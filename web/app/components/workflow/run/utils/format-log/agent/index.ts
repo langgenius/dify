@@ -1,6 +1,6 @@
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { AgentLogItem, AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
-import { cloneDeep } from 'lodash-es'
+import { cloneDeep } from 'es-toolkit/object'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
 

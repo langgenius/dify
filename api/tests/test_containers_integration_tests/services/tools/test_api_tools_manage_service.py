@@ -2,7 +2,9 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from pydantic import TypeAdapter, ValidationError
 
+from core.tools.entities.tool_entities import ApiProviderSchemaType
 from models import Account, Tenant
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -298,7 +300,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔧"}
         credentials = {"auth_type": "none", "api_key_header": "X-API-Key", "api_key_value": ""}
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -364,7 +366,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔧"}
         credentials = {"auth_type": "none"}
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -428,21 +430,10 @@ class TestApiToolManageService:
         labels = ["test"]
 
         # Act & Assert: Try to create provider with invalid schema type
-        with pytest.raises(ValueError) as exc_info:
-            ApiToolManageService.create_api_tool_provider(
-                user_id=account.id,
-                tenant_id=tenant.id,
-                provider_name=provider_name,
-                icon=icon,
-                credentials=credentials,
-                schema_type=schema_type,
-                schema=schema,
-                privacy_policy=privacy_policy,
-                custom_disclaimer=custom_disclaimer,
-                labels=labels,
-            )
+        with pytest.raises(ValidationError) as exc_info:
+            TypeAdapter(ApiProviderSchemaType).validate_python(schema_type)
 
-        assert "invalid schema type" in str(exc_info.value)
+        assert "validation error" in str(exc_info.value)
 
     def test_create_api_tool_provider_missing_auth_type(
         self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
@@ -464,7 +455,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔧"}
         credentials = {}  # Missing auth_type
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -507,7 +498,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔑"}
         credentials = {"auth_type": "api_key", "api_key_header": "X-API-Key", "api_key_value": fake.uuid4()}
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"

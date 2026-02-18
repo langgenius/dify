@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_QUERY_BLOCK_COMMAND } from './index'
-import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 
 type QueryBlockComponentProps = {
   nodeKey: string
@@ -22,10 +22,10 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
       `}
       ref={ref}
     >
-      <UserEdit02 className='mr-1 h-[14px] w-[14px] text-[#FD853A]' />
-      <div className='text-xs font-medium text-[#EC4A0A] opacity-60'>{'{{'}</div>
-      <div className='text-xs font-medium text-[#EC4A0A]'>{t('common.promptEditor.query.item.title')}</div>
-      <div className='text-xs font-medium text-[#EC4A0A] opacity-60'>{'}}'}</div>
+      <UserEdit02 className="mr-1 h-[14px] w-[14px] text-[#FD853A]" />
+      <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'{{'}</div>
+      <div className="text-xs font-medium text-[#EC4A0A]">{t('promptEditor.query.item.title', { ns: 'common' })}</div>
+      <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'}}'}</div>
     </div>
   )
 }

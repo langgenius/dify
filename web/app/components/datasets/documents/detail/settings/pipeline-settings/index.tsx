@@ -1,19 +1,19 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
+import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import { noop } from 'es-toolkit/function'
+import { useRouter } from 'next/navigation'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
 import Loading from '@/app/components/base/loading'
-import ProcessDocuments from './process-documents'
-import LeftHeader from './left-header'
-import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
-import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
-import { DatasourceType } from '@/models/pipeline'
-import { noop } from 'lodash-es'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useRouter } from 'next/navigation'
+import { DatasourceType } from '@/models/pipeline'
 import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
+import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
+import LeftHeader from './left-header'
+import ProcessDocuments from './process-documents'
 
 type PipelineSettingsProps = {
   datasetId: string
@@ -156,21 +156,21 @@ const PipelineSettings = ({
 
   if (isFetchingLastRunData) {
     return (
-      <Loading type='app' />
+      <Loading type="app" />
     )
   }
 
   if (isError)
-    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
+    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className="relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
     >
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col px-14'>
-          <LeftHeader title={t('datasetPipeline.documentSettings.title')} />
-          <div className='grow overflow-y-auto'>
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col px-14">
+          <LeftHeader title={t('documentSettings.title', { ns: 'datasetPipeline' })} />
+          <div className="grow overflow-y-auto">
             <ProcessDocuments
               ref={formRef}
               lastRunInputData={lastRunData!.input_data}
@@ -184,8 +184,8 @@ const PipelineSettings = ({
         </div>
       </div>
       {/* Preview */}
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col pl-2 pt-2'>
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col pl-2 pt-2">
           <ChunkPreview
             dataSourceType={lastRunData!.datasource_type}
             localFiles={files}

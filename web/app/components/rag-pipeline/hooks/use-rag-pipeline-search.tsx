@@ -1,17 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo } from 'react'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { setupNodeSelectionListener } from '@/app/components/workflow/utils/node-navigation'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { CommonNodeType } from '@/app/components/workflow/types'
+import { useCallback, useEffect, useMemo } from 'react'
+import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { setupNodeSelectionListener } from '@/app/components/workflow/utils/node-navigation'
 
 /**
  * Hook to register RAG pipeline nodes search functionality
@@ -55,27 +55,30 @@ export const useRagPipelineSearch = () => {
         blockType: nodeData.type,
         nodeData,
         toolIcon: getToolIcon(nodeData),
-        modelInfo: nodeData.type === BlockEnum.LLM ? {
-          provider: (nodeData as LLMNodeType).model?.provider,
-          name: (nodeData as LLMNodeType).model?.name,
-          mode: (nodeData as LLMNodeType).model?.mode,
-        } : {
-          provider: undefined,
-          name: undefined,
-          mode: undefined,
-        },
+        modelInfo: nodeData.type === BlockEnum.LLM
+          ? {
+              provider: (nodeData as LLMNodeType).model?.provider,
+              name: (nodeData as LLMNodeType).model?.name,
+              mode: (nodeData as LLMNodeType).model?.mode,
+            }
+          : {
+              provider: undefined,
+              name: undefined,
+              mode: undefined,
+            },
       }
     })
   }, [nodes, getToolIcon])
 
   // Calculate relevance score for search results
   const calculateScore = useCallback((node: {
-    title: string;
-    type: string;
-    desc: string;
-    modelInfo: { provider?: string; name?: string; mode?: string }
+    title: string
+    type: string
+    desc: string
+    modelInfo: { provider?: string, name?: string, mode?: string }
   }, searchTerm: string): number => {
-    if (!searchTerm) return 1
+    if (!searchTerm)
+      return 1
 
     let score = 0
     const term = searchTerm.toLowerCase()
@@ -105,7 +108,8 @@ export const useRagPipelineSearch = () => {
 
   // Create search function for RAG pipeline nodes
   const searchRagPipelineNodes = useCallback((query: string) => {
-    if (!searchableNodes.length) return []
+    if (!searchableNodes.length)
+      return []
 
     const searchTerm = query.toLowerCase().trim()
 
@@ -113,32 +117,35 @@ export const useRagPipelineSearch = () => {
       .map((node) => {
         const score = calculateScore(node, searchTerm)
 
-        return score > 0 ? {
-          id: node.id,
-          title: node.title,
-          description: node.desc || node.type,
-          type: 'workflow-node' as const,
-          path: `#${node.id}`,
-          icon: (
-            <BlockIcon
-              type={node.blockType}
-              className="shrink-0"
-              size="sm"
-              toolIcon={node.toolIcon}
-            />
-          ),
-          metadata: {
-            nodeId: node.id,
-            nodeData: node.nodeData,
-          },
-          data: node.nodeData,
-          score,
-        } : null
+        return score > 0
+          ? {
+              id: node.id,
+              title: node.title,
+              description: node.desc || node.type,
+              type: 'workflow-node' as const,
+              path: `#${node.id}`,
+              icon: (
+                <BlockIcon
+                  type={node.blockType}
+                  className="shrink-0"
+                  size="sm"
+                  toolIcon={node.toolIcon}
+                />
+              ),
+              metadata: {
+                nodeId: node.id,
+                nodeData: node.nodeData,
+              },
+              data: node.nodeData,
+              score,
+            }
+          : null
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {
         // If no search term, sort alphabetically
-        if (!searchTerm) return a.title.localeCompare(b.title)
+        if (!searchTerm)
+          return a.title.localeCompare(b.title)
         // Sort by relevance score (higher score first)
         return (b.score || 0) - (a.score || 0)
       })

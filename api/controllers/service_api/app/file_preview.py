@@ -5,6 +5,7 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -182,6 +183,13 @@ class FilePreviewApi(Resource):
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             # Override content-type for downloads to force download
             response.headers["Content-Type"] = "application/octet-stream"
+
+        enforce_download_for_html(
+            response,
+            mime_type=upload_file.mime_type,
+            filename=upload_file.name,
+            extension=upload_file.extension,
+        )
 
         # Add caching headers for performance
         response.headers["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour

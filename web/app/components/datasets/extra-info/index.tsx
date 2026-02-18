@@ -1,9 +1,8 @@
-import React from 'react'
 import type { RelatedAppResponse } from '@/models/datasets'
-import Statistics from './statistics'
-import ServiceApi from './service-api'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import * as React from 'react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import ApiAccess from './api-access'
+import Statistics from './statistics'
 
 type IExtraInfoProps = {
   relatedApps?: RelatedAppResponse
@@ -17,7 +16,6 @@ const ExtraInfo = ({
   expand,
 }: IExtraInfoProps) => {
   const apiEnabled = useDatasetDetailContextWithSelector(state => state.dataset?.enable_api)
-  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
     <>
@@ -28,9 +26,8 @@ const ExtraInfo = ({
           relatedApps={relatedApps}
         />
       )}
-      <ServiceApi
+      <ApiAccess
         expand={expand}
-        apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
         apiEnabled={apiEnabled ?? false}
       />
     </>

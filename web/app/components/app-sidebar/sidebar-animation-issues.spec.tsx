@@ -1,9 +1,8 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
+import * as React from 'react'
 
 // Simple Mock Components that reproduce the exact UI issues
-const MockNavLink = ({ name, mode }: { name: string; mode: string }) => {
+const MockNavLink = ({ name, mode }: { name: string, mode: string }) => {
   return (
     <a
       className={`
@@ -24,7 +23,7 @@ const MockNavLink = ({ name, mode }: { name: string; mode: string }) => {
   )
 }
 
-const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean; onToggle: () => void }) => {
+const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => {
   return (
     <div
       className={`
@@ -51,8 +50,9 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean; onTogg
         className="shrink-0 px-4 py-3"
         data-testid="toggle-section"
       >
-        <button type="button"
-          className='flex h-6 w-6 cursor-pointer items-center justify-center'
+        <button
+          type="button"
+          className="flex h-6 w-6 cursor-pointer items-center justify-center"
           onClick={onToggle}
           data-testid="toggle-button"
         >
@@ -66,7 +66,7 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean; onTogg
 const MockAppInfo = ({ expand }: { expand: boolean }) => {
   return (
     <div data-testid="app-info" data-expand={expand}>
-      <button type="button" className='block w-full'>
+      <button type="button" className="block w-full">
         {/* Container with layout mode switching - reproduces issue #3 */}
         <div className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}>
           {/* Icon container with justify-between to flex-col switch - reproduces issue #3 */}
@@ -84,19 +84,19 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
             >
               Icon
             </div>
-            <div className='flex items-center justify-center rounded-md p-0.5'>
-              <div className='flex h-5 w-5 items-center justify-center'>
+            <div className="flex items-center justify-center rounded-md p-0.5">
+              <div className="flex h-5 w-5 items-center justify-center">
                 ⚙️
               </div>
             </div>
           </div>
           {/* Text that appears/disappears conditionally */}
           {expand && (
-            <div className='flex flex-col items-start gap-1'>
-              <div className='flex w-full'>
-                <div className='system-md-semibold truncate text-text-secondary'>Test App</div>
+            <div className="flex flex-col items-start gap-1">
+              <div className="flex w-full">
+                <div className="system-md-semibold truncate text-text-secondary">Test App</div>
               </div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>chatflow</div>
+              <div className="system-2xs-medium-uppercase text-text-tertiary">chatflow</div>
             </div>
           )}
         </div>
@@ -108,7 +108,7 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
 describe('Sidebar Animation Issues Reproduction', () => {
   beforeEach(() => {
     // Mock getBoundingClientRect for position testing
-    Element.prototype.getBoundingClientRect = jest.fn(() => ({
+    Element.prototype.getBoundingClientRect = vi.fn(() => ({
       width: 200,
       height: 40,
       x: 10,
@@ -117,7 +117,7 @@ describe('Sidebar Animation Issues Reproduction', () => {
       right: 210,
       top: 10,
       bottom: 50,
-      toJSON: jest.fn(),
+      toJSON: vi.fn(),
     }))
   })
 
@@ -152,7 +152,7 @@ describe('Sidebar Animation Issues Reproduction', () => {
     })
 
     it('should verify sidebar width animation is working correctly', () => {
-      const handleToggle = jest.fn()
+      const handleToggle = vi.fn()
       const { rerender } = render(<MockSidebarToggleButton expand={false} onToggle={handleToggle} />)
 
       const container = screen.getByTestId('sidebar-container')

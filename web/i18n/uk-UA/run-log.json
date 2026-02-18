@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Журнали дій",
+  "circularInvocationTip": "У поточному робочому процесі існує круговий виклик інструментів/вузлів.",
+  "detail": "ДЕТАЛІ",
+  "input": "ВВЕДЕННЯ",
+  "meta.executor": "Виконавець",
+  "meta.startTime": "Час початку",
+  "meta.status": "Статус",
+  "meta.steps": "Кроки виконання",
+  "meta.time": "Час виконання",
+  "meta.title": "МЕТАДАНІ",
+  "meta.tokens": "Загальна кількість токенів",
+  "meta.version": "Версія",
+  "result": "РЕЗУЛЬТАТ",
+  "resultEmpty.link": "панель деталей",
+  "resultEmpty.tipLeft": "будь ласка, перейдіть до ",
+  "resultEmpty.tipRight": " переглянути.",
+  "resultEmpty.title": "Цей запуск лише вихідного формату JSON,",
+  "resultPanel.status": "СТАТУС",
+  "resultPanel.time": "ЧАС ВИКОНАННЯ",
+  "resultPanel.tokens": "ЗАГАЛЬНА КІЛЬКІСТЬ ТОКЕНІВ",
+  "tracing": "ВІДСЛІДКУВАННЯ"
+}

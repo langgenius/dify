@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Item } from '.'
 import { useState } from 'react'
 import Select, { PortalSelect, SimpleSelect } from '.'
-import type { Item } from '.'
 
 const meta = {
   title: 'Base/Data Entry/Select',
@@ -79,7 +79,9 @@ const SimpleSelectDemo = (args: any) => {
       />
       {selected && (
         <div className="mt-3 text-sm text-gray-600">
-          Selected: <span className="font-semibold">{selected}</span>
+          Selected:
+          {' '}
+          <span className="font-semibold">{selected}</span>
         </div>
       )}
     </div>
@@ -155,7 +157,9 @@ const WithSearchDemo = () => {
         allowSearch={true}
       />
       <div className="mt-3 text-sm text-gray-600">
-        Selected: <span className="font-semibold">{selected}</span>
+        Selected:
+        {' '}
+        <span className="font-semibold">{selected}</span>
       </div>
     </div>
   )
@@ -182,7 +186,9 @@ const PortalSelectVariantDemo = () => {
         placeholder="Select a fruit..."
       />
       <div className="mt-3 text-sm text-gray-600">
-        Selected: <span className="font-semibold">{selected}</span>
+        Selected:
+        {' '}
+        <span className="font-semibold">{selected}</span>
       </div>
     </div>
   )
@@ -301,9 +307,21 @@ const FormFieldDemo = () => {
         </div>
       </div>
       <div className="mt-6 rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
-        <div><strong>Country:</strong> {formData.country}</div>
-        <div><strong>Language:</strong> {formData.language}</div>
-        <div><strong>Timezone:</strong> {formData.timezone}</div>
+        <div>
+          <strong>Country:</strong>
+          {' '}
+          {formData.country}
+        </div>
+        <div>
+          <strong>Language:</strong>
+          {' '}
+          {formData.language}
+        </div>
+        <div>
+          <strong>Timezone:</strong>
+          {' '}
+          {formData.timezone}
+        </div>
       </div>
     </div>
   )
@@ -361,10 +379,14 @@ const FilterSelectorDemo = () => {
         <div className="mb-2 font-medium text-gray-700">Active Filters:</div>
         <div className="flex gap-2">
           <span className="rounded bg-blue-200 px-2 py-1 text-xs text-blue-800">
-            Status: {status}
+            Status:
+            {' '}
+            {status}
           </span>
           <span className="rounded bg-blue-200 px-2 py-1 text-xs text-blue-800">
-            Priority: {priority}
+            Priority:
+            {' '}
+            {priority}
           </span>
         </div>
       </div>
@@ -405,7 +427,10 @@ const VersionSelectorDemo = () => {
             ⚠️ Version change detected
           </div>
         )}
-        <div>Current: <strong>{selectedVersion}</strong></div>
+        <div>
+          Current:
+          <strong>{selectedVersion}</strong>
+        </div>
         <div className="mt-1 text-xs text-gray-500">Installed: 2.0.5</div>
       </div>
     </div>

@@ -1,13 +1,11 @@
+import type { Node } from '@/app/components/workflow/types'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import ChangeBlock from './change-block'
-import {
-  canRunBySingle,
-} from '@/app/components/workflow/utils'
+import { CollectionType } from '@/app/components/tools/types'
 import {
   useNodeDataUpdate,
   useNodeMetaData,
@@ -16,11 +14,13 @@ import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { CollectionType } from '@/app/components/tools/types'
+import {
+  canRunBySingle,
+} from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
+import ChangeBlock from './change-block'
 
 type PanelOperatorPopupProps = {
   id: string
@@ -53,17 +53,18 @@ const PanelOperatorPopup = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const isWorkflowTool = data.type === BlockEnum.Tool && data.provider_type === CollectionType.workflow
   const workflowAppId = useMemo(() => {
-    if (!isWorkflowTool || !workflowTools || !data.provider_id) return undefined
+    if (!isWorkflowTool || !workflowTools || !data.provider_id)
+      return undefined
     const workflowTool = workflowTools.find(item => canFindTool(item.id, data.provider_id))
     return workflowTool?.workflow_app_id
   }, [isWorkflowTool, workflowTools, data.provider_id])
 
   return (
-    <div className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
+    <div className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
       {
         (showChangeBlock || canRunBySingle(data.type, isChildNode)) && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               {
                 canRunBySingle(data.type, isChildNode) && (
                   <div
@@ -78,7 +79,7 @@ const PanelOperatorPopup = ({
                       onClosePopup()
                     }}
                   >
-                    {t('workflow.panel.runThisStep')}
+                    {t('panel.runThisStep', { ns: 'workflow' })}
                   </div>
                 )
               }
@@ -92,7 +93,7 @@ const PanelOperatorPopup = ({
                 )
               }
             </div>
-            <div className='h-px bg-divider-regular'></div>
+            <div className="h-px bg-divider-regular"></div>
           </>
         )
       }
@@ -102,36 +103,36 @@ const PanelOperatorPopup = ({
             {
               !nodeMetaData.isSingleton && (
                 <>
-                  <div className='p-1'>
+                  <div className="p-1">
                     <div
-                      className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                      className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                       onClick={() => {
                         onClosePopup()
                         handleNodesCopy(id)
                       }}
                     >
-                      {t('workflow.common.copy')}
+                      {t('common.copy', { ns: 'workflow' })}
                       <ShortcutsName keys={['ctrl', 'c']} />
                     </div>
                     <div
-                      className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                      className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                       onClick={() => {
                         onClosePopup()
                         handleNodesDuplicate(id)
                       }}
                     >
-                      {t('workflow.common.duplicate')}
+                      {t('common.duplicate', { ns: 'workflow' })}
                       <ShortcutsName keys={['ctrl', 'd']} />
                     </div>
                   </div>
-                  <div className='h-px bg-divider-regular'></div>
+                  <div className="h-px bg-divider-regular"></div>
                 </>
               )
             }
             {
               !nodeMetaData.isUndeletable && (
                 <>
-                  <div className='p-1'>
+                  <div className="p-1">
                     <div
                       className={`
                       flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary
@@ -139,11 +140,11 @@ const PanelOperatorPopup = ({
                       `}
                       onClick={() => handleNodeDelete(id)}
                     >
-                      {t('common.operation.delete')}
+                      {t('operation.delete', { ns: 'common' })}
                       <ShortcutsName keys={['del']} />
                     </div>
                   </div>
-                  <div className='h-px bg-divider-regular'></div>
+                  <div className="h-px bg-divider-regular"></div>
                 </>
               )
             }
@@ -153,43 +154,45 @@ const PanelOperatorPopup = ({
       {
         isWorkflowTool && workflowAppId && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               <a
                 href={`/app/${workflowAppId}/workflow`}
-                target='_blank'
-                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                target="_blank"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
-                {t('workflow.panel.openWorkflow')}
+                {t('panel.openWorkflow', { ns: 'workflow' })}
               </a>
             </div>
-            <div className='h-px bg-divider-regular'></div>
+            <div className="h-px bg-divider-regular"></div>
           </>
         )
       }
       {
         showHelpLink && nodeMetaData.helpLinkUri && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               <a
                 href={nodeMetaData.helpLinkUri}
-                target='_blank'
-                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                target="_blank"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
-                {t('workflow.panel.helpLink')}
+                {t('panel.helpLink', { ns: 'workflow' })}
               </a>
             </div>
-            <div className='h-px bg-divider-regular'></div>
+            <div className="h-px bg-divider-regular"></div>
           </>
         )
       }
-      <div className='p-1'>
-        <div className='px-3 py-2 text-xs text-text-tertiary'>
-          <div className='mb-1 flex h-[22px] items-center font-medium'>
-            {t('workflow.panel.about').toLocaleUpperCase()}
+      <div className="p-1">
+        <div className="px-3 py-2 text-xs text-text-tertiary">
+          <div className="mb-1 flex h-[22px] items-center font-medium">
+            {t('panel.about', { ns: 'workflow' }).toLocaleUpperCase()}
           </div>
-          <div className='mb-1 leading-[18px] text-text-secondary'>{nodeMetaData.description}</div>
-          <div className='leading-[18px]'>
-            {t('workflow.panel.createdBy')} {nodeMetaData.author}
+          <div className="mb-1 leading-[18px] text-text-secondary">{nodeMetaData.description}</div>
+          <div className="leading-[18px]">
+            {t('panel.createdBy', { ns: 'workflow' })}
+            {' '}
+            {nodeMetaData.author}
           </div>
         </div>
       </div>

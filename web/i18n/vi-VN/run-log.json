@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Nhật ký hành động",
+  "circularInvocationTip": "Có lệnh gọi vòng tròn các công cụ/nút trong quy trình làm việc hiện tại.",
+  "detail": "CHI TIẾT",
+  "input": "NHẬP",
+  "meta.executor": "Người thực thi",
+  "meta.startTime": "Thời gian bắt đầu",
+  "meta.status": "Trạng thái",
+  "meta.steps": "Các bước chạy",
+  "meta.time": "Thời gian đã trôi qua",
+  "meta.title": "DỮ LIỆU META",
+  "meta.tokens": "Tổng số token",
+  "meta.version": "Phiên bản",
+  "result": "KẾT QUẢ",
+  "resultEmpty.link": "bảng chi tiết",
+  "resultEmpty.tipLeft": "vui lòng truy cập ",
+  "resultEmpty.tipRight": " xem nó.",
+  "resultEmpty.title": "Chạy này chỉ xuất ra định dạng JSON,",
+  "resultPanel.status": "TRẠNG THÁI",
+  "resultPanel.time": "THỜI GIAN",
+  "resultPanel.tokens": "TỔNG SỐ TOKEN",
+  "tracing": "THEO DÕI"
+}

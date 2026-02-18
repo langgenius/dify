@@ -453,11 +453,12 @@ class TriggerSubscriptionBuilderService:
         if not subscription_builder:
             return None
 
-        # response to validation endpoint
-        controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-            tenant_id=subscription_builder.tenant_id, provider_id=TriggerProviderID(subscription_builder.provider_id)
-        )
         try:
+            # response to validation endpoint
+            controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+                tenant_id=subscription_builder.tenant_id,
+                provider_id=TriggerProviderID(subscription_builder.provider_id),
+            )
             dispatch_response: TriggerDispatchResponse = controller.dispatch(
                 request=request,
                 subscription=subscription_builder.to_subscription(),

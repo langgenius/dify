@@ -1,50 +1,48 @@
-import { useCallback, useEffect, useState } from 'react'
+import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchModelProviderModelList } from '@/service/common'
-import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import type {
+  PluginsSearchParams,
+} from '@/app/components/plugins/marketplace/types'
 import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
-  InstallPackageResponse,
-  InstallStatusResponse,
   InstalledLatestVersionResponse,
   InstalledPluginListWithTotalResponse,
+  InstallPackageResponse,
+  InstallStatusResponse,
   PackageDependency,
   Plugin,
   PluginDeclaration,
   PluginDetail,
   PluginInfoFromMarketPlace,
-  PluginTask,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
+  PluginTask,
   ReferenceSetting,
+  uploadGitHubResponse,
   VersionInfo,
   VersionListResponse,
-  uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import { TaskStatus } from '@/app/components/plugins/types'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import type {
-  PluginsSearchParams,
-} from '@/app/components/plugins/marketplace/types'
-import { get, getMarketplace, post, postMarketplace } from './base'
-import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useInvalidateAllBuiltInTools } from './use-tools'
-import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { uninstallPlugin } from '@/service/plugins'
+import { cloneDeep } from 'es-toolkit/object'
+import { useCallback, useEffect, useState } from 'react'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { cloneDeep } from 'lodash-es'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { fetchModelProviderModelList } from '@/service/common'
+import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+import { get, getMarketplace, post, postMarketplace } from './base'
+import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
 
@@ -53,7 +51,7 @@ export const useCheckInstalled = ({
   pluginIds,
   enabled,
 }: {
-  pluginIds: string[],
+  pluginIds: string[]
   enabled: boolean
 }) => {
   return useQuery<{ plugins: PluginDetail[] }>({
@@ -165,10 +163,12 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
   const total = data?.pages[0].total ?? 0
 
   return {
-    data: disable ? undefined : {
-      plugins,
-      total,
-    },
+    data: disable
+      ? undefined
+      : {
+          plugins,
+          total,
+        },
     isLastPage: !hasNextPage,
     loadNextPage: () => {
       fetchNextPage()
@@ -200,7 +200,8 @@ export const useInvalidateInstalledPluginList = () => {
     queryClient.invalidateQueries(
       {
         queryKey: useInstalledPluginListKey,
-      })
+      },
+    )
     invalidateAllBuiltInTools()
   }
 }
@@ -300,8 +301,8 @@ export const useInstallOrUpdate = ({
 
   return useMutation({
     mutationFn: (data: {
-      payload: Dependency[],
-      plugin: Plugin[],
+      payload: Dependency[]
+      plugin: Plugin[]
       installedInfo: Record<string, VersionInfo>
     }) => {
       const { payload, plugin, installedInfo } = data
@@ -456,7 +457,8 @@ export const useInvalidateReferenceSettings = () => {
     queryClient.invalidateQueries(
       {
         queryKey: useReferenceSettingKey,
-      })
+      },
+    )
   }
 }
 
@@ -486,23 +488,23 @@ export const useMutationPluginsFromMarketplace = () => {
     mutationFn: (pluginsSearchParams: PluginsSearchParams) => {
       const {
         query,
-        sortBy,
-        sortOrder,
+        sort_by,
+        sort_order,
         category,
         tags,
         exclude,
         type,
         page = 1,
-        pageSize = 40,
+        page_size = 40,
       } = pluginsSearchParams
       const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
         body: {
           page,
-          page_size: pageSize,
+          page_size,
           query,
-          sort_by: sortBy,
-          sort_order: sortOrder,
+          sort_by,
+          sort_order,
           category: category !== 'all' ? category : '',
           tags,
           exclude,
@@ -533,23 +535,23 @@ export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearc
     queryFn: () => {
       const {
         query,
-        sortBy,
-        sortOrder,
+        sort_by,
+        sort_order,
         category,
         tags,
         exclude,
         type,
         page = 1,
-        pageSize = 40,
+        page_size = 40,
       } = pluginsSearchParams
       const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
         body: {
           page,
-          page_size: pageSize,
+          page_size,
           query,
-          sort_by: sortBy,
-          sort_order: sortOrder,
+          sort_by,
+          sort_order,
           category: category !== 'all' ? category : '',
           tags,
           exclude,
@@ -633,7 +635,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
-    mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
+    mutationFn: ({ taskId, pluginId }: { taskId: string, pluginId: string }) => {
       const encodedPluginId = encodeURIComponent(pluginId)
       return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
     },
@@ -657,7 +659,7 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useDownloadPlugin = (info: { organization: string; pluginName: string; version: string }, needDownload: boolean) => {
+export const useDownloadPlugin = (info: { organization: string, pluginName: string, version: string }, needDownload: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'downloadPlugin', info],
     queryFn: () => getMarketplace<Blob>(`/plugins/${info.organization}/${info.pluginName}/${info.version}/download`),
@@ -675,19 +677,21 @@ export const useMutationCheckDependencies = () => {
 }
 
 export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
+  const provider = currentProvider?.provider
   return useQuery({
-    queryKey: ['modelInList', currentProvider?.provider, modelId],
+    queryKey: ['modelInList', provider, modelId],
     queryFn: async () => {
-      if (!modelId || !currentProvider) return false
+      if (!modelId || !provider)
+        return false
       try {
-        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
         return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
       catch {
         return false
       }
     },
-    enabled: !!modelId && !!currentProvider,
+    enabled: !!modelId && !!provider,
   })
 }
 
@@ -695,7 +699,8 @@ export const usePluginInfo = (providerName?: string) => {
   return useQuery({
     queryKey: ['pluginInfo', providerName],
     queryFn: async () => {
-      if (!providerName) return null
+      if (!providerName)
+        return null
       const parts = providerName.split('/')
       const org = parts[0]
       const name = parts[1]
@@ -738,7 +743,7 @@ export const usePluginReadme = ({ plugin_unique_identifier, language }: { plugin
 export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { file_name?: string, plugin_unique_identifier?: string }) => {
   const normalizedFileName = file_name?.replace(/(^\.\/_assets\/|^_assets\/)/, '')
   return useQuery({
-    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, file_name],
+    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
     queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name: normalizedFileName } }, { silent: true }),
     enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
   })

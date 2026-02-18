@@ -1,10 +1,10 @@
+import type { PluginPayload } from '../types'
 import { useAppContext } from '@/context/app-context'
+import { CredentialTypeEnum } from '../types'
 import {
   useGetPluginCredentialInfoHook,
   useInvalidPluginCredentialInfoHook,
 } from './use-credential'
-import { CredentialTypeEnum } from '../types'
-import type { PluginPayload } from '../types'
 
 export const usePluginAuth = (pluginPayload: PluginPayload, enable?: boolean) => {
   const { data } = useGetPluginCredentialInfoHook(pluginPayload, enable)

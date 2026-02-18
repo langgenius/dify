@@ -1,89 +1,89 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "512",
-			"height": "512",
-			"viewBox": "0 0 512 512",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"clip-path": "url(#clip0_5968_39205)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "rect",
-						"attributes": {
-							"width": "512",
-							"height": "512",
-							"rx": "256",
-							"fill": "#B2DDFF"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "circle",
-						"attributes": {
-							"opacity": "0.68",
-							"cx": "256",
-							"cy": "196",
-							"r": "84",
-							"fill": "white"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "ellipse",
-						"attributes": {
-							"opacity": "0.68",
-							"cx": "256",
-							"cy": "583.5",
-							"rx": "266",
-							"ry": "274.5",
-							"fill": "white"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_5968_39205"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "512",
-									"height": "512",
-									"rx": "256",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "User"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "512",
+      "height": "512",
+      "viewBox": "0 0 512 512",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_5968_39205)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "rect",
+            "attributes": {
+              "width": "512",
+              "height": "512",
+              "rx": "256",
+              "fill": "#B2DDFF"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "circle",
+            "attributes": {
+              "opacity": "0.68",
+              "cx": "256",
+              "cy": "196",
+              "r": "84",
+              "fill": "white"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "ellipse",
+            "attributes": {
+              "opacity": "0.68",
+              "cx": "256",
+              "cy": "583.5",
+              "rx": "266",
+              "ry": "274.5",
+              "fill": "white"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_5968_39205"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "512",
+                  "height": "512",
+                  "rx": "256",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "User"
 }

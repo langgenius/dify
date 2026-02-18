@@ -1,7 +1,7 @@
+import type { FeatureStoreState } from './store'
 import { useContext } from 'react'
 import { useStore } from 'zustand'
 import { FeaturesContext } from './context'
-import type { FeatureStoreState } from './store'
 
 export function useFeatures<T>(selector: (state: FeatureStoreState) => T): T {
   const store = useContext(FeaturesContext)

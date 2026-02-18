@@ -1,5 +1,5 @@
-import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { parseAsArrayOf, parseAsBoolean, parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useMemo } from 'react'
 
 type AppsQuery = {
   tagIDs?: string[]
@@ -7,54 +7,51 @@ type AppsQuery = {
   isCreatedByMe?: boolean
 }
 
-// Parse the query parameters from the URL search string.
-function parseParams(params: ReadonlyURLSearchParams): AppsQuery {
-  const tagIDs = params.get('tagIDs')?.split(';')
-  const keywords = params.get('keywords') || undefined
-  const isCreatedByMe = params.get('isCreatedByMe') === 'true'
-  return { tagIDs, keywords, isCreatedByMe }
-}
-
-// Update the URL search string with the given query parameters.
-function updateSearchParams(query: AppsQuery, current: URLSearchParams) {
-  const { tagIDs, keywords, isCreatedByMe } = query || {}
-
-  if (tagIDs && tagIDs.length > 0)
-    current.set('tagIDs', tagIDs.join(';'))
-  else
-    current.delete('tagIDs')
-
-  if (keywords)
-    current.set('keywords', keywords)
-  else
-    current.delete('keywords')
-
-  if (isCreatedByMe)
-    current.set('isCreatedByMe', 'true')
-  else
-    current.delete('isCreatedByMe')
-}
+const normalizeKeywords = (value: string | null) => value || undefined
 
 function useAppsQueryState() {
-  const searchParams = useSearchParams()
-  const [query, setQuery] = useState<AppsQuery>(() => parseParams(searchParams))
+  const [urlQuery, setUrlQuery] = useQueryStates(
+    {
+      tagIDs: parseAsArrayOf(parseAsString, ';'),
+      keywords: parseAsString,
+      isCreatedByMe: parseAsBoolean,
+    },
+    {
+      history: 'push',
+    },
+  )
 
-  const router = useRouter()
-  const pathname = usePathname()
-  const syncSearchParams = useCallback((params: URLSearchParams) => {
-    const search = params.toString()
-    const query = search ? `?${search}` : ''
-    router.push(`${pathname}${query}`, { scroll: false })
-  }, [router, pathname])
+  const query = useMemo<AppsQuery>(() => ({
+    tagIDs: urlQuery.tagIDs ?? undefined,
+    keywords: normalizeKeywords(urlQuery.keywords),
+    isCreatedByMe: urlQuery.isCreatedByMe ?? false,
+  }), [urlQuery.isCreatedByMe, urlQuery.keywords, urlQuery.tagIDs])
 
-  // Update the URL search string whenever the query changes.
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    updateSearchParams(query, params)
-    syncSearchParams(params)
-  }, [query, searchParams, syncSearchParams])
+  const setQuery = useCallback((next: AppsQuery | ((prev: AppsQuery) => AppsQuery)) => {
+    const buildPatch = (patch: AppsQuery) => {
+      const result: Partial<typeof urlQuery> = {}
+      if ('tagIDs' in patch)
+        result.tagIDs = patch.tagIDs && patch.tagIDs.length > 0 ? patch.tagIDs : null
+      if ('keywords' in patch)
+        result.keywords = patch.keywords ? patch.keywords : null
+      if ('isCreatedByMe' in patch)
+        result.isCreatedByMe = patch.isCreatedByMe ? true : null
+      return result
+    }
 
-  return useMemo(() => ({ query, setQuery }), [query])
+    if (typeof next === 'function') {
+      setUrlQuery(prev => buildPatch(next({
+        tagIDs: prev.tagIDs ?? undefined,
+        keywords: normalizeKeywords(prev.keywords),
+        isCreatedByMe: prev.isCreatedByMe ?? false,
+      })))
+      return
+    }
+
+    setUrlQuery(buildPatch(next))
+  }, [setUrlQuery])
+
+  return useMemo(() => ({ query, setQuery }), [query, setQuery])
 }
 
 export default useAppsQueryState

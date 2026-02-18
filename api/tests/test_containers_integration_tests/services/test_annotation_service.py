@@ -220,6 +220,23 @@ class TestAnnotationService:
         # Note: In this test, no annotation setting exists, so task should not be called
         mock_external_service_dependencies["add_task"].delay.assert_not_called()
 
+    def test_insert_app_annotation_directly_requires_question(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Question must be provided when inserting annotations directly.
+        """
+        fake = Faker()
+        app, _ = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        annotation_args = {
+            "question": None,
+            "answer": fake.text(max_nb_chars=200),
+        }
+
+        with pytest.raises(ValueError):
+            AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
+
     def test_insert_app_annotation_directly_app_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -443,6 +460,78 @@ class TestAnnotationService:
         assert len(annotation_list) == 1
         assert total == 1
         assert unique_keyword in annotation_list[0].question or unique_keyword in annotation_list[0].content
+
+    def test_get_annotation_list_by_app_id_with_special_characters_in_keyword(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        r"""
+        Test retrieval of annotation list with special characters in keyword to verify SQL injection prevention.
+
+        This test verifies:
+        - Special characters (%, _, \) in keyword are properly escaped
+        - Search treats special characters as literal characters, not wildcards
+        - SQL injection via LIKE wildcards is prevented
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Create annotations with special characters in content
+        annotation_with_percent = {
+            "question": "Question with 50% discount",
+            "answer": "Answer about 50% discount offer",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_percent, app.id)
+
+        annotation_with_underscore = {
+            "question": "Question with test_data",
+            "answer": "Answer about test_data value",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_underscore, app.id)
+
+        annotation_with_backslash = {
+            "question": "Question with path\\to\\file",
+            "answer": "Answer about path\\to\\file location",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_backslash, app.id)
+
+        # Create annotation that should NOT match (contains % but as part of different text)
+        annotation_no_match = {
+            "question": "Question with 100% different",
+            "answer": "Answer about 100% different content",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_no_match, app.id)
+
+        # Test 1: Search with % character - should find exact match only
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="50%"
+        )
+        assert total == 1
+        assert len(annotation_list) == 1
+        assert "50%" in annotation_list[0].question or "50%" in annotation_list[0].content
+
+        # Test 2: Search with _ character - should find exact match only
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="test_data"
+        )
+        assert total == 1
+        assert len(annotation_list) == 1
+        assert "test_data" in annotation_list[0].question or "test_data" in annotation_list[0].content
+
+        # Test 3: Search with \ character - should find exact match only
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="path\\to\\file"
+        )
+        assert total == 1
+        assert len(annotation_list) == 1
+        assert "path\\to\\file" in annotation_list[0].question or "path\\to\\file" in annotation_list[0].content
+
+        # Test 4: Search with % should NOT match 100% (verifies escaping works)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="50%"
+        )
+        # Should only find the 50% annotation, not the 100% one
+        assert total == 1
+        assert all("50%" in (item.question or "") or "50%" in (item.content or "") for item in annotation_list)
 
     def test_get_annotation_list_by_app_id_app_not_found(
         self, db_session_with_containers, mock_external_service_dependencies

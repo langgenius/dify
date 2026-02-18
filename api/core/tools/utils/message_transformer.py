@@ -8,9 +8,9 @@ from uuid import UUID
 import numpy as np
 import pytz
 
-from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.file import File, FileTransferMethod, FileType
 from libs.login import current_user
 from models import Account
 
@@ -101,6 +101,8 @@ class ToolFileMessageTransformer:
                 meta = message.meta or {}
 
                 mimetype = meta.get("mime_type", "application/octet-stream")
+                if not mimetype:
+                    mimetype = "application/octet-stream"
                 # get filename from meta
                 filename = meta.get("filename", None)
                 # if message is str, encode it to bytes

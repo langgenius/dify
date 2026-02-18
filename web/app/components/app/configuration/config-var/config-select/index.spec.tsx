@@ -1,24 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import ConfigSelect from './index'
 
-jest.mock('react-sortablejs', () => ({
+vi.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
 }))
 
 describe('ConfigSelect Component', () => {
   const defaultProps = {
     options: ['Option 1', 'Option 2'],
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
 
-  afterEach(() => {
-    jest.clearAllMocks()
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('renders all options', () => {
@@ -40,7 +34,8 @@ describe('ConfigSelect Component', () => {
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
     const deleteButton = optionContainer?.querySelector('div[role="button"]')
 
-    if (!deleteButton) return
+    if (!deleteButton)
+      return
     fireEvent.click(deleteButton)
     expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2'])
   })
@@ -68,7 +63,8 @@ describe('ConfigSelect Component', () => {
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
     const deleteButton = optionContainer?.querySelector('div[role="button"]')
 
-    if (!deleteButton) return
+    if (!deleteButton)
+      return
     fireEvent.mouseEnter(deleteButton)
     expect(optionContainer).toHaveClass('border-components-input-border-destructive')
   })

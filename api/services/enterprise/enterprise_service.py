@@ -13,6 +13,23 @@ class WebAppSettings(BaseModel):
     )
 
 
+class WorkspacePermission(BaseModel):
+    workspace_id: str = Field(
+        description="The ID of the workspace.",
+        alias="workspaceId",
+    )
+    allow_member_invite: bool = Field(
+        description="Whether to allow members to invite new members to the workspace.",
+        default=False,
+        alias="allowMemberInvite",
+    )
+    allow_owner_transfer: bool = Field(
+        description="Whether to allow owners to transfer ownership of the workspace.",
+        default=False,
+        alias="allowOwnerTransfer",
+    )
+
+
 class EnterpriseService:
     @classmethod
     def get_info(cls):
@@ -43,6 +60,16 @@ class EnterpriseService:
             return datetime.fromisoformat(data)
         except ValueError as e:
             raise ValueError(f"Invalid date format: {data}") from e
+
+    class WorkspacePermissionService:
+        @classmethod
+        def get_permission(cls, workspace_id: str):
+            if not workspace_id:
+                raise ValueError("workspace_id must be provided.")
+            data = EnterpriseRequest.send_request("GET", f"/workspaces/{workspace_id}/permission")
+            if not data or "permission" not in data:
+                raise ValueError("No data found.")
+            return WorkspacePermission.model_validate(data["permission"])
 
     class WebAppAuth:
         @classmethod
@@ -110,5 +137,5 @@ class EnterpriseService:
             if not app_id:
                 raise ValueError("app_id must be provided.")
 
-            body = {"appId": app_id}
-            EnterpriseRequest.send_request("DELETE", "/webapp/clean", json=body)
+            params = {"appId": app_id}
+            EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)

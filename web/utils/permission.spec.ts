@@ -1,9 +1,9 @@
+import { DatasetPermission } from '@/models/datasets'
 /**
  * Test suite for permission utility functions
  * Tests dataset edit permission logic based on user roles and dataset settings
  */
 import { hasEditPermissionForDataset } from './permission'
-import { DatasetPermission } from '@/models/datasets'
 
 describe('permission', () => {
   /**
@@ -18,7 +18,7 @@ describe('permission', () => {
     const creatorId = 'creator-456'
     const otherUserId = 'user-789'
 
-    test('returns true when permission is onlyMe and user is creator', () => {
+    it('returns true when permission is onlyMe and user is creator', () => {
       const config = {
         createdBy: userId,
         partialMemberList: [],
@@ -27,7 +27,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(userId, config)).toBe(true)
     })
 
-    test('returns false when permission is onlyMe and user is not creator', () => {
+    it('returns false when permission is onlyMe and user is not creator', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [],
@@ -36,7 +36,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(userId, config)).toBe(false)
     })
 
-    test('returns true when permission is allTeamMembers for any user', () => {
+    it('returns true when permission is allTeamMembers for any user', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [],
@@ -47,7 +47,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(creatorId, config)).toBe(true)
     })
 
-    test('returns true when permission is partialMembers and user is in list', () => {
+    it('returns true when permission is partialMembers and user is in list', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [userId, otherUserId],
@@ -56,7 +56,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(userId, config)).toBe(true)
     })
 
-    test('returns false when permission is partialMembers and user is not in list', () => {
+    it('returns false when permission is partialMembers and user is not in list', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [otherUserId],
@@ -65,7 +65,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(userId, config)).toBe(false)
     })
 
-    test('returns false when permission is partialMembers with empty list', () => {
+    it('returns false when permission is partialMembers with empty list', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [],
@@ -74,7 +74,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(userId, config)).toBe(false)
     })
 
-    test('creator is not automatically granted access with partialMembers permission', () => {
+    it('creator is not automatically granted access with partialMembers permission', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [userId],
@@ -83,7 +83,7 @@ describe('permission', () => {
       expect(hasEditPermissionForDataset(creatorId, config)).toBe(false)
     })
 
-    test('creator has access when included in partialMemberList', () => {
+    it('creator has access when included in partialMemberList', () => {
       const config = {
         createdBy: creatorId,
         partialMemberList: [creatorId, userId],

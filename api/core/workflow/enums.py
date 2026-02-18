@@ -211,6 +211,10 @@ class WorkflowExecutionStatus(StrEnum):
     def is_ended(self) -> bool:
         return self in _END_STATE
 
+    @classmethod
+    def ended_values(cls) -> list[str]:
+        return [status.value for status in _END_STATE]
+
 
 _END_STATE = frozenset(
     [
@@ -247,6 +251,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
+    COMPLETED_REASON = "completed_reason"  # completed reason for loop node
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

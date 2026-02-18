@@ -1,16 +1,16 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
 describe('PromptEditorHeightResizeWrap', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.useFakeTimers()
+    vi.clearAllMocks()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.runOnlyPendingTimers()
-    jest.useRealTimers()
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
   })
 
   it('should render children, footer, and hide resize handler when requested', () => {
@@ -19,7 +19,7 @@ describe('PromptEditorHeightResizeWrap', () => {
         className="wrapper"
         height={150}
         minHeight={100}
-        onHeightChange={jest.fn()}
+        onHeightChange={vi.fn()}
         footer={<div>footer</div>}
         hideResize
       >
@@ -33,7 +33,7 @@ describe('PromptEditorHeightResizeWrap', () => {
   })
 
   it('should resize height with mouse events and clamp to minHeight', () => {
-    const onHeightChange = jest.fn()
+    const onHeightChange = vi.fn()
 
     const { container } = render(
       <PromptEditorHeightResizeWrap
@@ -52,12 +52,12 @@ describe('PromptEditorHeightResizeWrap', () => {
     expect(document.body.style.userSelect).toBe('none')
 
     fireEvent.mouseMove(document, { clientY: 130 })
-    jest.runAllTimers()
+    vi.runAllTimers()
     expect(onHeightChange).toHaveBeenLastCalledWith(180)
 
     onHeightChange.mockClear()
     fireEvent.mouseMove(document, { clientY: -100 })
-    jest.runAllTimers()
+    vi.runAllTimers()
     expect(onHeightChange).toHaveBeenLastCalledWith(100)
 
     fireEvent.mouseUp(document)

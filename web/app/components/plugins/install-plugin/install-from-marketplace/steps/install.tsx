@@ -1,23 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
-// import { RiInformation2Line } from '@remixicon/react'
-import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../types'
-import Card from '../../../card'
-import { pluginManifestInMarketToPluginProps } from '../../utils'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
+import type { Plugin, PluginManifestInMarket } from '../../../types'
 import { RiLoader2Line } from '@remixicon/react'
-import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
-import checkTaskStatus from '../../base/check-task-status'
-import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import Version from '../../base/version'
-import { usePluginTaskList } from '@/service/use-plugins'
+import * as React from 'react'
+import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { gte } from 'semver'
+import Button from '@/app/components/base/button'
+import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useAppContext } from '@/context/app-context'
+import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
+import Card from '../../../card'
+// import { RiInformation2Line } from '@remixicon/react'
+import { TaskStatus } from '../../../types'
+import checkTaskStatus from '../../base/check-task-status'
+import Version from '../../base/version'
 import useInstallPluginLimit from '../../hooks/use-install-plugin-limit'
+import { pluginManifestInMarketToPluginProps } from '../../utils'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'installModal'
 
 type Props = {
   uniqueIdentifier: string
@@ -67,7 +68,8 @@ const Installed: FC<Props> = ({
   }
 
   const handleInstall = async () => {
-    if (isInstalling) return
+    if (isInstalling)
+      return
     onStartToInstall?.()
     setIsInstalling(true)
     try {
@@ -122,50 +124,53 @@ const Installed: FC<Props> = ({
   const { langGeniusVersionInfo } = useAppContext()
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langGeniusVersionInfo.current_version) return true
+    if (!pluginDeclaration || !langGeniusVersionInfo.current_version)
+      return true
     return gte(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
   }, [langGeniusVersionInfo.current_version, pluginDeclaration])
 
   const { canInstall } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <div className='system-md-regular text-text-secondary'>
-          <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
+      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+        <div className="system-md-regular text-text-secondary">
+          <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           {!isDifyVersionCompatible && (
-            <p className='system-md-regular text-text-warning'>
-              {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
+            <p className="system-md-regular text-text-warning">
+              {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}
         </div>
-        <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+        <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
-            className='w-full'
+            className="w-full"
             payload={pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket)}
-            titleLeft={!isLoading && <Version
-              hasInstalled={hasInstalled}
-              installedVersion={installedVersion}
-              toInstallVersion={toInstallVersion}
-            />}
+            titleLeft={!isLoading && (
+              <Version
+                hasInstalled={hasInstalled}
+                installedVersion={installedVersion}
+                toInstallVersion={toInstallVersion}
+              />
+            )}
             limitedInstall={!canInstall}
           />
         </div>
       </div>
       {/* Action Buttons */}
-      <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
+      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant='secondary' className='min-w-[72px]' onClick={handleCancel}>
-            {t('common.operation.cancel')}
+          <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
         )}
         <Button
-          variant='primary'
-          className='flex min-w-[72px] space-x-0.5'
+          variant="primary"
+          className="flex min-w-[72px] space-x-0.5"
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>
     </>

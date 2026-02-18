@@ -1,22 +1,23 @@
 import type { FC } from 'react'
+import type { ModelAndParameter } from '../types'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import type { ModelAndParameter } from '../types'
-import { useDebugWithMultipleModelContext } from './context'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import Tooltip from '@/app/components/base/tooltip'
 import {
-  type FormValue,
+
   MODEL_STATUS_TEXT,
   ModelStatusEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import Tooltip from '@/app/components/base/tooltip'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useDebugWithMultipleModelContext } from './context'
 
 type ModelParameterTriggerProps = {
   modelAndParameter: ModelAndParameter
@@ -36,7 +37,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   const language = useLanguage()
   const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
 
-  const handleSelectModel = ({ modelId, provider }: { modelId: string; provider: string }) => {
+  const handleSelectModel = ({ modelId, provider }: { modelId: string, provider: string }) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
       ...newModelConfigs[index],
@@ -79,7 +80,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           {
             currentProvider && (
               <ModelIcon
-                className='mr-1 !h-4 !w-4'
+                className="mr-1 !h-4 !w-4"
                 provider={currentProvider}
                 modelName={currentModel?.model}
               />
@@ -87,23 +88,23 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           }
           {
             !currentProvider && (
-              <div className='mr-1 flex h-4 w-4 items-center justify-center rounded'>
-                <CubeOutline className='h-4 w-4 text-text-accent' />
+              <div className="mr-1 flex h-4 w-4 items-center justify-center rounded">
+                <CubeOutline className="h-4 w-4 text-text-accent" />
               </div>
             )
           }
           {
             currentModel && (
               <ModelName
-                className='mr-0.5 text-text-secondary'
+                className="mr-0.5 text-text-secondary"
                 modelItem={currentModel}
               />
             )
           }
           {
             !currentModel && (
-              <div className='mr-0.5 truncate text-[13px] font-medium text-text-accent'>
-                {t('common.modelProvider.selectModel')}
+              <div className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
+                {t('modelProvider.selectModel', { ns: 'common' })}
               </div>
             )
           }
@@ -111,7 +112,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           {
             currentModel && currentModel.status !== ModelStatusEnum.active && (
               <Tooltip popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
-                <AlertTriangle className='h-4 w-4 text-[#F79009]' />
+                <AlertTriangle className="h-4 w-4 text-[#F79009]" />
               </Tooltip>
             )
           }

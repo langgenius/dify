@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from '@/app/components/base/textarea'
 
@@ -17,19 +17,20 @@ const MCPServerParamItem = ({
   const { t } = useTranslation()
 
   return (
-    <div className='space-y-0.5'>
-      <div className='flex h-6 items-center gap-2'>
-        <div className='system-xs-medium text-text-secondary'>{data.label}</div>
-        <div className='system-xs-medium text-text-quaternary'>·</div>
-        <div className='system-xs-medium text-text-secondary'>{data.variable}</div>
-        <div className='system-xs-medium text-text-tertiary'>{data.type}</div>
+    <div className="space-y-0.5">
+      <div className="flex h-6 items-center gap-2">
+        <div className="system-xs-medium text-text-secondary">{data.label}</div>
+        <div className="system-xs-medium text-text-quaternary">·</div>
+        <div className="system-xs-medium text-text-secondary">{data.variable}</div>
+        <div className="system-xs-medium text-text-tertiary">{data.type}</div>
       </div>
       <Textarea
-        className='h-8 resize-none'
+        className="h-8 resize-none"
         value={value}
-        placeholder={t('tools.mcp.server.modal.parametersPlaceholder')}
+        placeholder={t('mcp.server.modal.parametersPlaceholder', { ns: 'tools' })}
         onChange={e => onChange(e.target.value)}
-      ></Textarea>
+      >
+      </Textarea>
     </div>
   )
 }

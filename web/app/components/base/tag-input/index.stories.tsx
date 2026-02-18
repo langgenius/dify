@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import TagInput from '.'
 
@@ -71,7 +71,11 @@ const TagInputDemo = (args: any) => {
       />
       {items.length > 0 && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
-          <div className="mb-2 text-xs font-medium text-gray-600">Current Tags ({items.length}):</div>
+          <div className="mb-2 text-xs font-medium text-gray-600">
+            Current Tags (
+            {items.length}
+            ):
+          </div>
           <div className="font-mono text-sm text-gray-800">
             {JSON.stringify(items, null, 2)}
           </div>
@@ -193,7 +197,13 @@ const EmailTagsDemo = () => {
           />
         </div>
         <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-gray-700">
-          <strong>Recipients ({recipients.length}):</strong> {recipients.join(', ')}
+          <strong>
+            Recipients (
+            {recipients.length}
+            ):
+          </strong>
+          {' '}
+          {recipients.join(', ')}
         </div>
       </div>
     </div>
@@ -234,7 +244,13 @@ const SearchFiltersDemo = () => {
       </div>
       <div className="mt-6">
         <div className="mb-3 text-sm font-medium text-gray-700">
-          Results ({filteredResults.length} of {mockResults.length})
+          Results (
+          {filteredResults.length}
+          {' '}
+          of
+          {' '}
+          {mockResults.length}
+          )
         </div>
         <div className="space-y-2">
           {filteredResults.map(item => (
@@ -332,7 +348,9 @@ const KeywordExtractionDemo = () => {
       <div className="mt-6 rounded-lg bg-gray-50 p-4">
         <div className="mb-2 text-xs font-medium text-gray-600">Meta Tag Preview:</div>
         <code className="text-xs text-gray-700">
-          &lt;meta name="keywords" content="{keywords.join(', ')}" /&gt;
+          &lt;meta name="keywords" content="
+          {keywords.join(', ')}
+          " /&gt;
         </code>
       </div>
     </div>
@@ -374,7 +392,9 @@ const TagsWithSuggestionsDemo = () => {
                 className="cursor-pointer rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
                 onClick={() => setTags([...tags, suggestion])}
               >
-                + {suggestion}
+                +
+                {' '}
+                {suggestion}
               </button>
             ))}
         </div>

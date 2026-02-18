@@ -1,7 +1,7 @@
 import type { NodeDefault } from '../../types'
 import type { EndNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 
 const metaData = genNodeMetaData({
   sort: 2.1,
@@ -18,7 +18,7 @@ const nodeDefault: NodeDefault<EndNodeType> = {
 
     let errorMessage = ''
     if (!outputs.length) {
-      errorMessage = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.end.output.variable') })
+      errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.end.output.variable', { ns: 'workflow' }) })
     }
     else {
       const invalidOutput = outputs.find((output) => {
@@ -28,7 +28,7 @@ const nodeDefault: NodeDefault<EndNodeType> = {
       })
 
       if (invalidOutput)
-        errorMessage = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.end.output.variable') })
+        errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.end.output.variable', { ns: 'workflow' }) })
     }
 
     return {

@@ -1,13 +1,13 @@
-import type { NodeTracing } from '@/types/workflow'
-import { useCallback, useMemo } from 'react'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
-import { useTranslation } from 'react-i18next'
-import { useIsNodeInLoop, useWorkflow } from '../../hooks'
-import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
 import type { InputVar, ValueSelector, Variable } from '../../types'
 import type { CaseItem, Condition, LoopNodeType } from './types'
+import type { NodeTracing } from '@/types/workflow'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { ValueType } from '@/app/components/workflow/types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
+import { useIsNodeInLoop, useWorkflow } from '../../hooks'
+import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
 
 type Params = {
   id: string

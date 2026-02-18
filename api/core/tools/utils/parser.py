@@ -378,7 +378,7 @@ class ApiBasedToolSchemaParser:
     @staticmethod
     def auto_parse_to_tool_bundle(
         content: str, extra_info: dict | None = None, warning: dict | None = None
-    ) -> tuple[list[ApiToolBundle], str]:
+    ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         auto parse to tool bundle
 
@@ -425,7 +425,7 @@ class ApiBasedToolSchemaParser:
         except ToolApiSchemaError as e:
             openapi_error = e
 
-        # openai parse error, fallback to swagger
+        # openapi parse error, fallback to swagger
         try:
             converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
                 loaded_content, extra_info=extra_info, warning=warning
@@ -436,7 +436,6 @@ class ApiBasedToolSchemaParser:
             ), schema_type
         except ToolApiSchemaError as e:
             swagger_error = e
-
         # swagger parse error, fallback to openai plugin
         try:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(

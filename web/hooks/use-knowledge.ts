@@ -1,21 +1,25 @@
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+
+type IndexingTechnique = I18nKeysByPrefix<'dataset', 'indexingTechnique.'>
+type IndexingMethod = I18nKeysByPrefix<'dataset', 'indexingMethod.'>
 
 export const useKnowledge = () => {
   const { t } = useTranslation()
 
-  const formatIndexingTechnique = useCallback((indexingTechnique: string) => {
-    return t(`dataset.indexingTechnique.${indexingTechnique}`)
+  const formatIndexingTechnique = useCallback((indexingTechnique: IndexingTechnique) => {
+    return t(`indexingTechnique.${indexingTechnique}`, { ns: 'dataset' }) as string
   }, [t])
 
-  const formatIndexingMethod = useCallback((indexingMethod: string, isEco?: boolean) => {
+  const formatIndexingMethod = useCallback((indexingMethod: IndexingMethod, isEco?: boolean) => {
     if (isEco)
-      return t('dataset.indexingMethod.invertedIndex')
+      return t('indexingMethod.invertedIndex', { ns: 'dataset' })
 
-    return t(`dataset.indexingMethod.${indexingMethod}`)
+    return t(`indexingMethod.${indexingMethod}`, { ns: 'dataset' }) as string
   }, [t])
 
-  const formatIndexingTechniqueAndMethod = useCallback((indexingTechnique: string, indexingMethod: string) => {
+  const formatIndexingTechniqueAndMethod = useCallback((indexingTechnique: IndexingTechnique, indexingMethod: IndexingMethod) => {
     let result = formatIndexingTechnique(indexingTechnique)
 
     if (indexingMethod)

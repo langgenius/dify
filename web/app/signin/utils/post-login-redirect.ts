@@ -1,6 +1,6 @@
-import { OAUTH_AUTHORIZE_PENDING_KEY, REDIRECT_URL_KEY } from '@/app/account/oauth/authorize/constants'
-import dayjs from 'dayjs'
 import type { ReadonlyURLSearchParams } from 'next/navigation'
+import dayjs from 'dayjs'
+import { OAUTH_AUTHORIZE_PENDING_KEY, REDIRECT_URL_KEY } from '@/app/account/oauth/authorize/constants'
 
 function getItemWithExpiry(key: string): string | null {
   const itemStr = localStorage.getItem(key)
@@ -10,7 +10,8 @@ function getItemWithExpiry(key: string): string | null {
   try {
     const item = JSON.parse(itemStr)
     localStorage.removeItem(key)
-    if (!item?.value) return null
+    if (!item?.value)
+      return null
 
     return dayjs().unix() > item.expiry ? null : item.value
   }

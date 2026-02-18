@@ -7,27 +7,18 @@ Dify is an open-source platform for developing LLM applications with an intuitiv
 The codebase is split into:
 
 - **Backend API** (`/api`): Python Flask application organized with Domain-Driven Design
-- **Frontend Web** (`/web`): Next.js 15 application using TypeScript and React 19
+- **Frontend Web** (`/web`): Next.js application using TypeScript and React
 - **Docker deployment** (`/docker`): Containerized deployment configurations
 
 ## Backend Workflow
 
+- Read `api/AGENTS.md` for details
 - Run backend CLI commands through `uv run --project api <command>`.
-
-- Before submission, all backend modifications must pass local checks: `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh`.
-
-- Use Makefile targets for linting and formatting; `make lint` and `make type-check` cover the required checks.
-
 - Integration tests are CI-only and are not expected to run in the local environment.
 
 ## Frontend Workflow
 
-```bash
-cd web
-pnpm lint:fix
-pnpm type-check:tsgo
-pnpm test
-```
+- Read `web/AGENTS.md` for details
 
 ## Testing & Quality Practices
 

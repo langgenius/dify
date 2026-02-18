@@ -1,9 +1,9 @@
+import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { Node } from '@/app/components/workflow/types'
 import { useCallback, useEffect } from 'react'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
-import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import type { Node } from '@/app/components/workflow/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 type DataSourceOptionsProps = {
   pipelineNodes: Node<DataSourceNodeType>[]
@@ -35,7 +35,7 @@ const DataSourceOptions = ({
   }, [])
 
   return (
-    <div className='grid w-full grid-cols-4 gap-1'>
+    <div className="grid w-full grid-cols-4 gap-1">
       {options.map(option => (
         <OptionCard
           key={option.value}

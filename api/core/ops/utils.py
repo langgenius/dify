@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy import select
 
-from extensions.ext_database import db
+from models.engine import db
 from models.model import Message
 
 
@@ -54,7 +54,7 @@ def generate_dotted_order(run_id: str, start_time: Union[str, datetime], parent_
     generate dotted_order for langsmith
     """
     start_time = datetime.fromisoformat(start_time) if isinstance(start_time, str) else start_time
-    timestamp = start_time.strftime("%Y%m%dT%H%M%S%f")[:-3] + "Z"
+    timestamp = start_time.strftime("%Y%m%dT%H%M%S%f") + "Z"
     current_segment = f"{timestamp}{run_id}"
 
     if parent_dotted_order is None:

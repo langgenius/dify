@@ -1,14 +1,13 @@
-import { useBatchUpdateDocMetadata, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
-import type { BuiltInMetadataItem } from '../types'
-import { DataType, type MetadataItemWithValue } from '../types'
-import { useCallback, useState } from 'react'
-import Toast from '@/app/components/base/toast'
+import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import type { FullDocumentDetail } from '@/models/datasets'
+import { get } from 'es-toolkit/compat'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
-import { get } from 'lodash-es'
-import { useCreateMetaData } from '@/service/knowledge/use-metadata'
+import { useBatchUpdateDocMetadata, useCreateMetaData, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
+import { DataType } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
 
 type Props = {
@@ -62,7 +61,7 @@ const useMetadataDocument = ({
     await doAddMetaData(payload)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
   }, [checkName, doAddMetaData, t])
 
@@ -78,7 +77,7 @@ const useMetadataDocument = ({
     setIsEdit(false)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
   }
 

@@ -1,9 +1,9 @@
+import type { ZodSchema } from 'zod'
+import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { useCallback, useImperativeHandle } from 'react'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'
-import { useCallback, useImperativeHandle } from 'react'
-import type { ZodSchema } from 'zod'
 import Header from './header'
 
 type OptionsProps = {
@@ -62,7 +62,7 @@ const Form = ({
 
   return (
     <form
-      className='flex w-full flex-col rounded-lg border border-components-panel-border bg-components-panel-bg'
+      className="flex w-full flex-col rounded-lg border border-components-panel-border bg-components-panel-bg"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -80,7 +80,7 @@ const Form = ({
           />
         )}
       />
-      <div className='flex flex-col gap-3 border-t border-divider-subtle px-4 py-3'>
+      <div className="flex flex-col gap-3 border-t border-divider-subtle px-4 py-3">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

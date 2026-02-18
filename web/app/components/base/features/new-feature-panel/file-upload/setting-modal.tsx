@@ -1,12 +1,12 @@
 'use client'
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { memo } from 'react'
+import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
 
 type FileUploadSettingsProps = {
   open: boolean
@@ -28,23 +28,24 @@ const FileUploadSettings = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={onOpen}
-      placement='left'
+      placement="left"
       offset={{
         mainAxis: 32,
       }}
     >
-      <PortalToFollowElemTrigger className='flex' onClick={() => !disabled && onOpen((open: boolean) => !open)}>
+      <PortalToFollowElemTrigger className="flex" onClick={() => !disabled && onOpen((open: boolean) => !open)}>
         {children}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='max-h-[calc(100vh-20px)] w-[360px] overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl'>
+        <div className="max-h-[calc(100vh-20px)] w-[360px] overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
           <SettingContent
             imageUpload={imageUpload}
             onClose={() => onOpen(false)}
             onChange={(v) => {
               onChange?.(v)
               onOpen(false)
-            }} />
+            }}
+          />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

@@ -1,11 +1,11 @@
-import React from 'react'
-import Divider from '@/app/components/base/divider'
-import Button from '@/app/components/base/button'
-import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import type { CredentialSelectorProps } from './credential-selector'
-import CredentialSelector from './credential-selector'
-import Tooltip from '@/app/components/base/tooltip'
+import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import Tooltip from '@/app/components/base/tooltip'
+import CredentialSelector from './credential-selector'
 
 type HeaderProps = {
   docTitle: string
@@ -24,35 +24,35 @@ const Header = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-between gap-x-2'>
-      <div className='flex items-center gap-x-1 overflow-hidden'>
+    <div className="flex items-center justify-between gap-x-2">
+      <div className="flex items-center gap-x-1 overflow-hidden">
         <CredentialSelector
           {...rest}
         />
-        <Divider type='vertical' className='mx-1 h-3.5 shrink-0' />
+        <Divider type="vertical" className="mx-1 h-3.5 shrink-0" />
         <Tooltip
-          popupContent={t('datasetPipeline.configurationTip', { pluginName })}
-          position='top'
+          popupContent={t('configurationTip', { ns: 'datasetPipeline', pluginName })}
+          position="top"
         >
           <Button
-            variant='ghost'
-            size='small'
-            className='size-6 shrink-0 px-1'
+            variant="ghost"
+            size="small"
+            className="size-6 shrink-0 px-1"
           >
             <RiEqualizer2Line
-              className='h-4 w-4'
+              className="h-4 w-4"
               onClick={onClickConfiguration}
             />
           </Button>
         </Tooltip>
       </div>
       <a
-        className='system-xs-medium flex shrink-0 items-center gap-x-1 text-text-accent'
+        className="system-xs-medium flex shrink-0 items-center gap-x-1 text-text-accent"
         href={docLink}
-        target='_blank'
-        rel='noopener noreferrer'
+        target="_blank"
+        rel="noopener noreferrer"
       >
-        <RiBookOpenLine className='size-3.5 shrink-0' />
+        <RiBookOpenLine className="size-3.5 shrink-0" />
         <span title={docTitle}>{docTitle}</span>
       </a>
     </div>

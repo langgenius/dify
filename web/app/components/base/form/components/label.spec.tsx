@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import Label from './label'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('Label Component', () => {
   const defaultProps = {
     htmlFor: 'test-input',

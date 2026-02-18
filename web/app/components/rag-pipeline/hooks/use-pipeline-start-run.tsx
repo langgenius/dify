@@ -1,9 +1,9 @@
 import { useCallback } from 'react'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
-import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import {
   useInputFieldPanel,
   useNodesSyncDraft,

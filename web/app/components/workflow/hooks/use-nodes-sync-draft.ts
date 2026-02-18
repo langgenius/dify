@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '../store'
 import { useNodesReadOnly } from './use-workflow'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
 
 export type SyncCallback = {
   onSuccess?: () => void

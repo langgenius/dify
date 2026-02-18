@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Dnevniki dejanj",
+  "circularInvocationTip": "V trenutnem poteku dela obstaja krožno sklicevanje orodij / vozlišč.",
+  "detail": "PODROBNOSTI",
+  "input": "VNOS",
+  "meta.executor": "Izvajalec",
+  "meta.startTime": "Čas začetka",
+  "meta.status": "Status",
+  "meta.steps": "Koraki izvajanja",
+  "meta.time": "Pretečeni čas",
+  "meta.title": "METAPODATKI",
+  "meta.tokens": "Skupni žetoni",
+  "meta.version": "Različica",
+  "result": "REZULTAT",
+  "resultEmpty.link": "panel podrobnosti",
+  "resultEmpty.tipLeft": "prosimo, pojdite na ",
+  "resultEmpty.tipRight": " za ogled.",
+  "resultEmpty.title": "Ta zagon je izpisal samo format JSON,",
+  "resultPanel.status": "STATUS",
+  "resultPanel.time": "PRETEČENI ČAS",
+  "resultPanel.tokens": "SKUPNI ŽETONI",
+  "tracing": "SLEDENJE"
+}

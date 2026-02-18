@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FileImageRenderProps = {
   imageUrl: string

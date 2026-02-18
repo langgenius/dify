@@ -4,27 +4,27 @@ import type {
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import { useEventListener } from 'ahooks'
+import { produce } from 'immer'
 import {
   memo,
 } from 'react'
-import { produce } from 'immer'
 import {
   useReactFlow,
   useStoreApi,
   useViewport,
 } from 'reactflow'
-import { useEventListener } from 'ahooks'
+import { CUSTOM_NODE } from './constants'
+import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from './hooks'
+import CustomNode from './nodes'
+import CustomNoteNode from './note-node'
+import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import {
   useStore,
   useWorkflowStore,
 } from './store'
-import { WorkflowHistoryEvent, useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory } from './hooks'
-import { CUSTOM_NODE } from './constants'
-import { getIterationStartNode, getLoopStartNode } from './utils'
-import CustomNode from './nodes'
-import CustomNoteNode from './note-node'
-import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import { BlockEnum } from './types'
+import { getIterationStartNode, getLoopStartNode } from './utils'
 
 type Props = {
   candidateNode: Node
@@ -94,7 +94,7 @@ const CandidateNodeMain: FC<Props> = ({
 
   return (
     <div
-      className='absolute z-10'
+      className="absolute z-10"
       style={{
         left: mousePosition.elementX,
         top: mousePosition.elementY,

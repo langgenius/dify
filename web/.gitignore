@@ -54,3 +54,15 @@ package-lock.json
 # mise
 mise.toml
 
+
+# PWA generated files
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/fallback-*.js
+
+.vscode/settings.json
+.vscode/mcp.json
+
+.eslintcache

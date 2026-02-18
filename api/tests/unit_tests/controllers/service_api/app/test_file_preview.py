@@ -41,6 +41,7 @@ class TestFilePreviewApi:
         upload_file = Mock(spec=UploadFile)
         upload_file.id = str(uuid.uuid4())
         upload_file.name = "test_file.jpg"
+        upload_file.extension = "jpg"
         upload_file.mime_type = "image/jpeg"
         upload_file.size = 1024
         upload_file.key = "storage/key/test_file.jpg"
@@ -209,6 +210,19 @@ class TestFilePreviewApi:
         assert "attachment" in response.headers["Content-Disposition"]
         assert mock_upload_file.name in response.headers["Content-Disposition"]
         assert response.headers["Content-Type"] == "application/octet-stream"
+
+    def test_build_file_response_html_forces_attachment(self, file_preview_api, mock_upload_file):
+        """Test HTML files are forced to download"""
+        mock_generator = Mock()
+        mock_upload_file.mime_type = "text/html"
+        mock_upload_file.name = "unsafe.html"
+        mock_upload_file.extension = "html"
+
+        response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
+
+        assert "attachment" in response.headers["Content-Disposition"]
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     def test_build_file_response_audio_video(self, file_preview_api, mock_upload_file):
         """Test file response building for audio/video files"""

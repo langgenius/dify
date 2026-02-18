@@ -1,21 +1,21 @@
-import { useCallback } from 'react'
+import type { IOtherOptions } from '@/service/base'
+import type { VersionHistory } from '@/types/workflow'
+import { produce } from 'immer'
+import { useCallback, useRef } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
-import type { IOtherOptions } from '@/service/base'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
+import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
-import type { VersionHistory } from '@/types/workflow'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const usePipelineRun = () => {
   const store = useStoreApi()
@@ -41,6 +41,8 @@ export const usePipelineRun = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
   } = useWorkflowRunEvent()
+
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -91,6 +93,7 @@ export const usePipelineRun = () => {
 
   const pipelineId = useStore(s => s.pipelineId)
   const invalidAllLastRun = useInvalidAllLastRun(FlowType.ragPipeline, pipelineId)
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowType: FlowType.ragPipeline,
     flowId: pipelineId!,
@@ -130,6 +133,7 @@ export const usePipelineRun = () => {
       ...restCallback
     } = callback || {}
     const { pipelineId } = workflowStore.getState()
+    const runHistoryUrl = `/rag/pipelines/${pipelineId}/workflow-runs`
     workflowStore.setState({ historyWorkflowData: undefined })
     const workflowContainer = document.getElementById('workflow-container')
 
@@ -154,20 +158,28 @@ export const usePipelineRun = () => {
       resultText: '',
     })
 
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+
     ssePost(
       url,
       {
         body: params,
       },
       {
+        getAbortController: (controller: AbortController) => {
+          abortControllerRef.current = controller
+        },
         onWorkflowStarted: (params) => {
           handleWorkflowStarted(params)
+          invalidateRunHistory(runHistoryUrl)
 
           if (onWorkflowStarted)
             onWorkflowStarted(params)
         },
         onWorkflowFinished: (params) => {
           handleWorkflowFinished(params)
+          invalidateRunHistory(runHistoryUrl)
           fetchInspectVars({})
           invalidAllLastRun()
 
@@ -176,6 +188,7 @@ export const usePipelineRun = () => {
         },
         onError: (params) => {
           handleWorkflowFailed()
+          invalidateRunHistory(runHistoryUrl)
 
           if (onError)
             onError(params)
@@ -267,32 +280,17 @@ export const usePipelineRun = () => {
         ...restCallback,
       },
     )
-  }, [
-    store,
-    workflowStore,
-    doSyncWorkflowDraft,
-    handleWorkflowStarted,
-    handleWorkflowFinished,
-    handleWorkflowFailed,
-    handleWorkflowNodeStarted,
-    handleWorkflowNodeFinished,
-    handleWorkflowNodeIterationStarted,
-    handleWorkflowNodeIterationNext,
-    handleWorkflowNodeIterationFinished,
-    handleWorkflowNodeLoopStarted,
-    handleWorkflowNodeLoopNext,
-    handleWorkflowNodeLoopFinished,
-    handleWorkflowNodeRetry,
-    handleWorkflowTextChunk,
-    handleWorkflowTextReplace,
-    handleWorkflowAgentLog,
-  ],
-  )
+  }, [store, doSyncWorkflowDraft, workflowStore, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
 
   const handleStopRun = useCallback((taskId: string) => {
     const { pipelineId } = workflowStore.getState()
 
     stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
+
+    if (abortControllerRef.current)
+      abortControllerRef.current.abort()
+
+    abortControllerRef.current = null
   }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {

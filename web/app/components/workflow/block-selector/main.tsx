@@ -1,7 +1,17 @@
 import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
+import type {
   FC,
   MouseEventHandler,
 } from 'react'
+import type {
+  CommonNodeType,
+  NodeDefault,
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
 import {
   memo,
   useCallback,
@@ -9,31 +19,21 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import type {
-  CommonNodeType,
-  NodeDefault,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
-import { BlockEnum, isTriggerNode } from '../types'
-import Tabs from './tabs'
-import { TabsEnum } from './types'
-import { useTabs } from './hooks'
+import {
+  Plus02,
+} from '@/app/components/base/icons/src/vender/line/general'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Input from '@/app/components/base/input'
-import {
-  Plus02,
-} from '@/app/components/base/icons/src/vender/line/general'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { BlockEnum, isTriggerNode } from '../types'
+import { useTabs } from './hooks'
+import Tabs from './tabs'
+import { TabsEnum } from './types'
 
 export type NodeSelectorProps = {
   open?: boolean
@@ -161,16 +161,16 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Start)
-      return t('workflow.tabs.searchTrigger')
+      return t('tabs.searchTrigger', { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Blocks)
-      return t('workflow.tabs.searchBlock')
+      return t('tabs.searchBlock', { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Tools)
-      return t('workflow.tabs.searchTool')
+      return t('tabs.searchTool', { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Sources)
-      return t('workflow.tabs.searchDataSource')
+      return t('tabs.searchDataSource', { ns: 'workflow' })
     return ''
   }, [activeTab, t])
 
@@ -190,20 +190,20 @@ const NodeSelector: FC<NodeSelectorProps> = ({
           trigger
             ? trigger(open)
             : (
-              <div
-                className={`
+                <div
+                  className={`
                   z-10 flex h-4
                   w-4 cursor-pointer items-center justify-center rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover
                   ${triggerClassName?.(open)}
                 `}
-                style={triggerStyle}
-              >
-                <Plus02 className='h-2.5 w-2.5' />
-              </div>
-            )
+                  style={triggerStyle}
+                >
+                  <Plus02 className="h-2.5 w-2.5" />
+                </div>
+              )
         }
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
             tabs={tabs}
@@ -211,8 +211,8 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
             onActiveTabChange={handleActiveTabChange}
-            filterElem={
-              <div className='relative m-2' onClick={e => e.stopPropagation()}>
+            filterElem={(
+              <div className="relative m-2" onClick={e => e.stopPropagation()}>
                 {activeTab === TabsEnum.Start && (
                   <SearchBox
                     autoFocus
@@ -221,7 +221,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     tags={tags}
                     onTagsChange={setTags}
                     placeholder={searchPlaceholder}
-                    inputClassName='grow'
+                    inputClassName="grow"
                   />
                 )}
                 {activeTab === TabsEnum.Blocks && (
@@ -253,12 +253,12 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     onSearchChange={setSearchText}
                     tags={tags}
                     onTagsChange={setTags}
-                    placeholder={t('plugin.searchTools')!}
-                    inputClassName='grow'
+                    placeholder={t('searchTools', { ns: 'plugin' })!}
+                    inputClassName="grow"
                   />
                 )}
               </div>
-            }
+            )}
             onSelect={handleSelect}
             searchText={searchText}
             tags={tags}

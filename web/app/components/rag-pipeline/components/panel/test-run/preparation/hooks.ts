@@ -1,12 +1,12 @@
-import { useTranslation } from 'react-i18next'
 import type { DataSourceOption } from '../types'
-import { TestRunStep } from '../types'
-import { useNodes } from 'reactflow'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
 import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { CrawlStep } from '@/models/datasets'
+import { TestRunStep } from '../types'
 
 export const useTestRunSteps = () => {
   const { t } = useTranslation()
@@ -22,11 +22,11 @@ export const useTestRunSteps = () => {
 
   const steps = [
     {
-      label: t('datasetPipeline.testRun.steps.dataSource'),
+      label: t('testRun.steps.dataSource', { ns: 'datasetPipeline' }),
       value: TestRunStep.dataSource,
     },
     {
-      label: t('datasetPipeline.testRun.steps.documentProcessing'),
+      label: t('testRun.steps.documentProcessing', { ns: 'datasetPipeline' }),
       value: TestRunStep.documentProcessing,
     },
   ]

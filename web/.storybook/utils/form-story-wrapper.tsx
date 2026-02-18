@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useStore } from '@tanstack/react-form'
+import { useState } from 'react'
 import { useAppForm } from '@/app/components/base/form'
 
 type UseAppFormOptions = Parameters<typeof useAppForm>[0]
@@ -49,7 +49,12 @@ export const FormStoryWrapper = ({
       <aside className="w-full max-w-sm rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary shadow-sm">
         <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-text-tertiary">
           <span>Form State</span>
-          <span>{submitCount} submit{submitCount === 1 ? '' : 's'}</span>
+          <span>
+            {submitCount}
+            {' '}
+            submit
+            {submitCount === 1 ? '' : 's'}
+          </span>
         </div>
         <dl className="mt-2 space-y-1">
           <div className="flex items-center justify-between rounded-md bg-components-button-tertiary-bg px-2 py-1">

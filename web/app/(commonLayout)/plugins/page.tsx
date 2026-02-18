@@ -1,14 +1,12 @@
+import Marketplace from '@/app/components/plugins/marketplace'
 import PluginPage from '@/app/components/plugins/plugin-page'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
-import Marketplace from '@/app/components/plugins/marketplace'
-import { getLocaleOnServer } from '@/i18n-config/server'
 
-const PluginList = async () => {
-  const locale = await getLocaleOnServer()
+const PluginList = () => {
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace locale={locale} pluginTypeSwitchClassName='top-[60px]' showSearchParams={false} />}
+      marketplace={<Marketplace pluginTypeSwitchClassName="top-[60px]" />}
     />
   )
 }

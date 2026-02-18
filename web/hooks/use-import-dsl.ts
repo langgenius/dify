@@ -1,25 +1,25 @@
+import type {
+  DSLImportMode,
+  DSLImportResponse,
+} from '@/models/app'
+import type { AppIconType } from '@/types/app'
+import { useRouter } from 'next/navigation'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import type {
-  DSLImportMode,
-  DSLImportResponse,
-} from '@/models/app'
+import { useToastContext } from '@/app/components/base/toast'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSelector } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
 import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
-import type { AppIconType } from '@/types/app'
-import { useToastContext } from '@/app/components/base/toast'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { getRedirection } from '@/utils/app-redirection'
-import { useSelector } from '@/context/app-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
 type DSLPayload = {
   mode: DSLImportMode
@@ -43,7 +43,7 @@ export const useImportDSL = () => {
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCurrentWorkspaceEditor = useSelector(s => s.isCurrentWorkspaceEditor)
   const { push } = useRouter()
-  const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
+  const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
 
   const handleImportDSL = useCallback(async (
@@ -79,8 +79,8 @@ export const useImportDSL = () => {
 
         notify({
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
-          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
+          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
+          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
         })
         onSuccess?.()
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
@@ -96,12 +96,12 @@ export const useImportDSL = () => {
         onPending?.(response)
       }
       else {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
         onFailed?.()
       }
     }
     catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       onFailed?.()
     }
     finally {
@@ -134,19 +134,19 @@ export const useImportDSL = () => {
         onSuccess?.()
         notify({
           type: 'success',
-          message: t('app.newApp.appCreated'),
+          message: t('newApp.appCreated', { ns: 'app' }),
         })
         await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
         onFailed?.()
       }
     }
     catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       onFailed?.()
     }
     finally {

@@ -1,7 +1,7 @@
-import React from 'react'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
@@ -22,22 +22,22 @@ const Actions = ({
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
   return (
-    <div className='flex items-center justify-end gap-x-2 p-4 pt-2'>
+    <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
       <Button
-        variant='secondary'
+        variant="secondary"
         onClick={onBack}
       >
-        {t('datasetPipeline.operations.backToDataSource')}
+        {t('operations.backToDataSource', { ns: 'datasetPipeline' })}
       </Button>
       <Button
-        variant='primary'
+        variant="primary"
         onClick={() => {
           form.handleSubmit()
         }}
         disabled={runDisabled || isSubmitting || !canSubmit || isRunning}
         loading={isSubmitting || isRunning}
       >
-        {t('datasetPipeline.operations.process')}
+        {t('operations.process', { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )

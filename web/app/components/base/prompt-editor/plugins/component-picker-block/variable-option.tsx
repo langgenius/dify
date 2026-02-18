@@ -48,13 +48,14 @@ export const VariableMenuItem = memo(({
         e.preventDefault()
         e.stopPropagation()
       }}
-      onClick={onClick}>
-      <div className='mr-2'>
+      onClick={onClick}
+    >
+      <div className="mr-2">
         {icon}
       </div>
-      <div className='grow truncate text-[13px] text-text-secondary' title={title}>
+      <div className="grow truncate text-[13px] text-text-secondary" title={title}>
         {before}
-        <span className='text-text-accent'>{middle}</span>
+        <span className="text-text-accent">{middle}</span>
         {after}
       </div>
       {extraElement}

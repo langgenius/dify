@@ -1,34 +1,34 @@
-import dayjs from './utils/dayjs'
-import { Period } from './types'
 import { useTranslation } from 'react-i18next'
+import { Period } from './types'
+import dayjs from './utils/dayjs'
 
 const YEAR_RANGE = 100
 
+const daysInWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
 export const useDaysOfWeek = () => {
   const { t } = useTranslation()
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => t(`time.daysInWeek.${day}`))
-
-  return daysOfWeek
+  return daysInWeek.map(day => t(`daysInWeek.${day}`, { ns: 'time' }))
 }
+
+const monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const
 
 export const useMonths = () => {
   const { t } = useTranslation()
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ].map(month => t(`time.months.${month}`))
-
-  return months
+  return monthNames.map(month => t(`months.${month}`, { ns: 'time' }))
 }
 
 export const useYearOptions = () => {

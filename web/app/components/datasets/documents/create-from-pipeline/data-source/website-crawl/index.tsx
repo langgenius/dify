@@ -1,34 +1,35 @@
 'use client'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResultItem } from '@/models/datasets'
-import { CrawlStep } from '@/models/datasets'
-import Header from '../base/header'
-import Options from './base/options'
-import Crawling from './base/crawling'
-import ErrorMessage from './base/error-message'
-import CrawledResult from './base/crawled-result'
-import {
-  useDraftPipelinePreProcessingParams,
-  usePublishedPipelinePreProcessingParams,
-} from '@/service/use-pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { DatasourceType } from '@/models/pipeline'
-import { ssePost } from '@/service/base'
 import type {
   DataSourceNodeCompletedResponse,
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
-import { useDocLink } from '@/context/i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDocLink } from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
+import { CrawlStep } from '@/models/datasets'
+import { DatasourceType } from '@/models/pipeline'
+import { ssePost } from '@/service/base'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
+import {
+  useDraftPipelinePreProcessingParams,
+  usePublishedPipelinePreProcessingParams,
+} from '@/service/use-pipeline'
+import Header from '../base/header'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import CrawledResult from './base/crawled-result'
+import Crawling from './base/crawling'
+import ErrorMessage from './base/error-message'
+import Options from './base/options'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 export type WebsiteCrawlProps = {
   nodeId: string
@@ -129,7 +130,7 @@ const WebsiteCrawl = ({
           setStep(CrawlStep.finished)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`))
+          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
           setStep(CrawlStep.finished)
         },
       },
@@ -154,17 +155,17 @@ const WebsiteCrawl = ({
   }, [onCredentialChange])
 
   return (
-    <div className='flex flex-col'>
+    <div className="flex flex-col">
       <Header
-        docTitle='Docs'
-        docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
+        docTitle="Docs"
+        docLink={docLink('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}
         onCredentialChange={handleCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
-      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
+      <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle">
         <Options
           variables={paramsConfig?.variables || []}
           step={step}
@@ -173,7 +174,7 @@ const WebsiteCrawl = ({
         />
       </div>
       {!isInit && (
-        <div className='relative flex flex-col'>
+        <div className="relative flex flex-col">
           {isRunning && (
             <Crawling
               crawledNum={crawledNum}
@@ -182,14 +183,14 @@ const WebsiteCrawl = ({
           )}
           {showError && (
             <ErrorMessage
-              className='mt-2'
-              title={t(`${I18N_PREFIX}.exceptionErrorTitle`)}
+              className="mt-2"
+              title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })}
               errorMsg={crawlErrorMessage}
             />
           )}
           {isCrawlFinished && !showError && (
             <CrawledResult
-              className='mt-2'
+              className="mt-2"
               list={crawlResult?.data || []}
               checkedList={checkedCrawlResult}
               onSelectedChange={handleCheckedCrawlResultChange}

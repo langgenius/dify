@@ -1,7 +1,7 @@
+import type { Datasource } from '../../types'
 import { useCallback, useEffect } from 'react'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
-import type { Datasource } from '../../types'
 
 type DataSourceOptionsProps = {
   dataSourceNodeId: string
@@ -31,7 +31,7 @@ const DataSourceOptions = ({
   }, [])
 
   return (
-    <div className='grid w-full grid-cols-4 gap-1'>
+    <div className="grid w-full grid-cols-4 gap-1">
       {options.map(option => (
         <OptionCard
           key={option.value}

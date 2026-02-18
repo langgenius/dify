@@ -1,4 +1,5 @@
 import type { AppIconType, AppModeEnum } from '@/types/app'
+
 export type AppBasicInfo = {
   id: string
   mode: AppModeEnum
@@ -27,6 +28,7 @@ export type App = {
   installed: boolean
   editable: boolean
   is_agent: boolean
+  can_trial: boolean
 }
 
 export type InstalledApp = {

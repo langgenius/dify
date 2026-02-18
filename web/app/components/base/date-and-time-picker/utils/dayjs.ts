@@ -1,7 +1,9 @@
-import dayjs, { type Dayjs } from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import type { Day } from '../types'
-import utc from 'dayjs/plugin/utc'
+import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import { IS_PROD } from '@/config'
 import tz from '@/utils/timezone.json'
 
 dayjs.extend(utc)
@@ -109,7 +111,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
     return DEFAULT_OFFSET_STR
   // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
   // Name format is always "{offset}:{minutes} {timezone name}"
-  const offsetMatch = tzItem.name.match(/^([+-]?\d{1,2}):(\d{2})/)
+  const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
   if (!offsetMatch)
     return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
@@ -130,14 +132,17 @@ export type ToDayjsOptions = {
 }
 
 const warnParseFailure = (value: string) => {
-  if (process.env.NODE_ENV !== 'production')
+  if (!IS_PROD)
     console.warn('[TimePicker] Failed to parse time value', value)
 }
 
 const normalizeMillisecond = (value: string | undefined) => {
-  if (!value) return 0
-  if (value.length === 3) return Number(value)
-  if (value.length > 3) return Number(value.slice(0, 3))
+  if (!value)
+    return 0
+  if (value.length === 3)
+    return Number(value)
+  if (value.length > 3)
+    return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))
 }
 
@@ -218,7 +223,8 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
 
 // Parse date with multiple format support
 export const parseDateWithFormat = (dateString: string, format?: string): Dayjs | null => {
-  if (!dateString) return null
+  if (!dateString)
+    return null
 
   // If format is specified, use it directly
   if (format) {
@@ -242,7 +248,8 @@ export const parseDateWithFormat = (dateString: string, format?: string): Dayjs 
 
 // Format date output with localization support
 export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, _locale: string = 'en-US'): string => {
-  if (!date || !date.isValid()) return ''
+  if (!date || !date.isValid())
+    return ''
 
   if (includeTime) {
     // Output format with time

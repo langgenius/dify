@@ -1,6 +1,7 @@
-import React, { type FC } from 'react'
-import Modal from '../../../../../base/modal'
+import type { FC } from 'react'
 import type { SchemaRoot } from '../../types'
+import * as React from 'react'
+import Modal from '../../../../../base/modal'
 import JsonSchemaConfig from './json-schema-config'
 
 type JsonSchemaConfigModalProps = {
@@ -20,7 +21,7 @@ const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='h-[800px] max-w-[960px] p-0'
+      className="h-[800px] max-w-[960px] p-0"
     >
       <JsonSchemaConfig
         defaultSchema={defaultSchema}

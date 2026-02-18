@@ -27,7 +27,7 @@ const InputModeSelect = ({
       value={value}
       onChange={onChange}
       popupProps={{
-        title: t('workflow.nodes.loop.inputMode'),
+        title: t('nodes.loop.inputMode', { ns: 'workflow' }),
         className: 'w-[132px]',
       }}
     />

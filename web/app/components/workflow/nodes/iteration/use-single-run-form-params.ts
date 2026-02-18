@@ -1,20 +1,20 @@
 import type { RefObject } from 'react'
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
 import type { IterationNodeType } from './types'
+import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { NodeTracing } from '@/types/workflow'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useIsNodeInIteration, useWorkflow } from '../../hooks'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
-import type { NodeTracing } from '@/types/workflow'
-import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 
-const i18nPrefix = 'workflow.nodes.iteration'
+const i18nPrefix = 'nodes.iteration'
 
 type Params = {
-  id: string,
-  payload: IterationNodeType,
+  id: string
+  payload: IterationNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -117,7 +117,7 @@ const useSingleRunFormParams = ({
         onChange: setInputVarValues,
       },
       {
-        label: t(`${i18nPrefix}.input`)!,
+        label: t(`${i18nPrefix}.input`, { ns: 'workflow' })!,
         inputs: [{
           label: '',
           variable: iteratorInputKey,
@@ -138,7 +138,7 @@ const useSingleRunFormParams = ({
     return [payload.iterator_selector]
   }
   const getDependentVar = (variable: string) => {
-    if(variable === iteratorInputKey)
+    if (variable === iteratorInputKey)
       return payload.iterator_selector
   }
 

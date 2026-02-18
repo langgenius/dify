@@ -2,7 +2,7 @@ import logging
 from typing import Any, NoReturn
 
 from flask import Response, request
-from flask_restx import Resource, fields, marshal, marshal_with
+from flask_restx import Resource, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -14,7 +14,9 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,  # type: ignore[private-usage]
-    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,  # type: ignore[private-usage]
+    workflow_draft_variable_list_model,
+    workflow_draft_variable_list_without_value_model,
+    workflow_draft_variable_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -27,7 +29,6 @@ from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
-from models.workflow import WorkflowDraftVariable
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
@@ -50,20 +51,6 @@ class WorkflowDraftVariablePatchPayload(BaseModel):
 
 
 register_schema_models(console_ns, WorkflowDraftVariablePatchPayload)
-
-
-def _get_items(var_list: WorkflowDraftVariableList) -> list[WorkflowDraftVariable]:
-    return var_list.variables
-
-
-_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS = {
-    "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS), attribute=_get_items),
-    "total": fields.Raw(),
-}
-
-_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
-    "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_FIELDS), attribute=_get_items),
-}
 
 
 def _api_prerequisite(f):
@@ -92,7 +79,7 @@ def _api_prerequisite(f):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
 class RagPipelineVariableCollectionApi(Resource):
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
+    @marshal_with(workflow_draft_variable_list_without_value_model)
     def get(self, pipeline: Pipeline):
         """
         Get draft workflow
@@ -150,7 +137,7 @@ def validate_node_id(node_id: str) -> NoReturn | None:
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
 class RagPipelineNodeVariableCollectionApi(Resource):
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
         with Session(bind=db.engine, expire_on_commit=False) as session:
@@ -176,7 +163,7 @@ class RagPipelineVariableApi(Resource):
     _PATCH_VALUE_FIELD = "value"
 
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @marshal_with(workflow_draft_variable_model)
     def get(self, pipeline: Pipeline, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -189,7 +176,7 @@ class RagPipelineVariableApi(Resource):
         return variable
 
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @marshal_with(workflow_draft_variable_model)
     @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
     def patch(self, pipeline: Pipeline, variable_id: str):
         # Request payload for file types:
@@ -307,7 +294,7 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables")
 class RagPipelineSystemVariableCollectionApi(Resource):
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, pipeline: Pipeline):
         return _get_variable_list(pipeline, SYSTEM_VARIABLE_NODE_ID)
 

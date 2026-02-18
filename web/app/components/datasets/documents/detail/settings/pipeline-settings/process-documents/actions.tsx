@@ -1,6 +1,6 @@
-import React from 'react'
-import Button from '@/app/components/base/button'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 
 type ActionsProps = {
   runDisabled?: boolean
@@ -14,13 +14,13 @@ const Actions = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-end'>
+    <div className="flex items-center justify-end">
       <Button
-        variant='primary'
+        variant="primary"
         onClick={onProcess}
         disabled={runDisabled}
       >
-        {t('datasetPipeline.operations.saveAndProcess')}
+        {t('operations.saveAndProcess', { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )

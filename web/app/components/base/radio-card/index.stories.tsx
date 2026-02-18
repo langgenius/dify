@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useState } from 'react'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { RiCloudLine, RiCpuLine, RiDatabase2Line, RiLightbulbLine, RiRocketLine, RiShieldLine } from '@remixicon/react'
+import { useState } from 'react'
 import RadioCard from '.'
 
 const meta = {
@@ -111,7 +111,7 @@ const WithConfigurationDemo = () => {
         description="Store data in a managed database"
         isChosen={isChosen}
         onChosen={() => setIsChosen(!isChosen)}
-        chosenConfig={
+        chosenConfig={(
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-600">Region:</label>
@@ -130,7 +130,7 @@ const WithConfigurationDemo = () => {
               </select>
             </div>
           </div>
-        }
+        )}
       />
     </div>
   )
@@ -183,7 +183,9 @@ const MultipleCardsDemo = () => {
         />
       ))}
       <div className="mt-4 text-sm text-gray-600">
-        Selected: <span className="font-semibold">{selected}</span>
+        Selected:
+        {' '}
+        <span className="font-semibold">{selected}</span>
       </div>
     </div>
   )
@@ -210,7 +212,7 @@ const CloudProviderSelectionDemo = () => {
           description="Industry-leading cloud infrastructure"
           isChosen={provider === 'aws'}
           onChosen={() => setProvider('aws')}
-          chosenConfig={
+          chosenConfig={(
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-700">Region</label>
               <select
@@ -224,7 +226,7 @@ const CloudProviderSelectionDemo = () => {
                 <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
               </select>
             </div>
-          }
+          )}
         />
         <RadioCard
           icon={<RiCloudLine className="h-5 w-5 text-blue-600" />}
@@ -268,13 +270,15 @@ const DeploymentStrategyDemo = () => {
           description="Gradually replace instances with zero downtime"
           isChosen={strategy === 'rolling'}
           onChosen={() => setStrategy('rolling')}
-          chosenConfig={
+          chosenConfig={(
             <div className="rounded-lg bg-green-50 p-3 text-xs text-gray-700">
-              ✓ Recommended for production environments<br />
-              ✓ Minimal risk with automatic rollback<br />
+              ✓ Recommended for production environments
+              <br />
+              ✓ Minimal risk with automatic rollback
+              <br />
               ✓ Takes 5-10 minutes
             </div>
-          }
+          )}
         />
         <RadioCard
           icon={<RiCpuLine className="h-5 w-5 text-blue-600" />}
@@ -283,13 +287,15 @@ const DeploymentStrategyDemo = () => {
           description="Switch between two identical environments"
           isChosen={strategy === 'blue-green'}
           onChosen={() => setStrategy('blue-green')}
-          chosenConfig={
+          chosenConfig={(
             <div className="rounded-lg bg-blue-50 p-3 text-xs text-gray-700">
-              ✓ Instant rollback capability<br />
-              ✓ Requires double the resources<br />
+              ✓ Instant rollback capability
+              <br />
+              ✓ Requires double the resources
+              <br />
               ✓ Takes 2-5 minutes
             </div>
-          }
+          )}
         />
         <RadioCard
           icon={<RiLightbulbLine className="h-5 w-5 text-yellow-600" />}
@@ -298,17 +304,23 @@ const DeploymentStrategyDemo = () => {
           description="Test with a small subset of users first"
           isChosen={strategy === 'canary'}
           onChosen={() => setStrategy('canary')}
-          chosenConfig={
+          chosenConfig={(
             <div className="rounded-lg bg-yellow-50 p-3 text-xs text-gray-700">
-              ✓ Test changes with real traffic<br />
-              ✓ Gradual rollout reduces risk<br />
+              ✓ Test changes with real traffic
+              <br />
+              ✓ Gradual rollout reduces risk
+              <br />
               ✓ Takes 15-30 minutes
             </div>
-          }
+          )}
         />
       </div>
       <button className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        Deploy with {strategy} strategy
+        Deploy with
+        {' '}
+        {strategy}
+        {' '}
+        strategy
       </button>
     </div>
   )
@@ -364,12 +376,12 @@ const StorageOptionsDemo = () => {
             key={option.value}
             icon={option.icon}
             iconBgClassName={option.iconBg}
-            title={
+            title={(
               <div className="flex items-center justify-between">
                 <span>{option.title}</span>
                 <span className="text-xs font-normal text-gray-500">{option.price}</span>
               </div>
-            }
+            )}
             description={`${option.description} - ${option.speed}`}
             isChosen={storage === option.value}
             onChosen={() => setStorage(option.value)}
@@ -379,10 +391,15 @@ const StorageOptionsDemo = () => {
       {selectedOption && (
         <div className="mt-4 rounded-lg bg-gray-50 p-4">
           <div className="text-sm text-gray-700">
-            <strong>Selected:</strong> {selectedOption.title}
+            <strong>Selected:</strong>
+            {' '}
+            {selectedOption.title}
           </div>
           <div className="mt-1 text-xs text-gray-500">
-            {selectedOption.price} • {selectedOption.speed}
+            {selectedOption.price}
+            {' '}
+            •
+            {selectedOption.speed}
           </div>
         </div>
       )}
@@ -411,7 +428,7 @@ const APIAuthMethodDemo = () => {
           description="Simple authentication using a secret key"
           isChosen={authMethod === 'api_key'}
           onChosen={() => setAuthMethod('api_key')}
-          chosenConfig={
+          chosenConfig={(
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-700">Your API Key</label>
               <input
@@ -423,7 +440,7 @@ const APIAuthMethodDemo = () => {
               />
               <p className="text-xs text-gray-500">Keep your API key secure and never share it publicly</p>
             </div>
-          }
+          )}
         />
         <RadioCard
           icon={<RiShieldLine className="h-5 w-5 text-green-600" />}
@@ -432,7 +449,7 @@ const APIAuthMethodDemo = () => {
           description="Industry-standard authorization protocol"
           isChosen={authMethod === 'oauth'}
           onChosen={() => setAuthMethod('oauth')}
-          chosenConfig={
+          chosenConfig={(
             <div className="rounded-lg bg-green-50 p-3">
               <p className="mb-2 text-xs text-gray-700">
                 Configure OAuth 2.0 authentication for secure access
@@ -441,7 +458,7 @@ const APIAuthMethodDemo = () => {
                 Configure OAuth Settings →
               </button>
             </div>
-          }
+          )}
         />
         <RadioCard
           icon={<RiShieldLine className="h-5 w-5 text-purple-600" />}
@@ -450,11 +467,11 @@ const APIAuthMethodDemo = () => {
           description="JSON Web Token based authentication"
           isChosen={authMethod === 'jwt'}
           onChosen={() => setAuthMethod('jwt')}
-          chosenConfig={
+          chosenConfig={(
             <div className="rounded-lg bg-purple-50 p-3 text-xs text-gray-700">
               JWT tokens provide stateless authentication with expiration and refresh capabilities
             </div>
-          }
+          )}
         />
       </div>
     </div>
@@ -487,11 +504,11 @@ const PlaygroundDemo = () => {
         description="Second option with different styling"
         isChosen={selected === 'option2'}
         onChosen={() => setSelected('option2')}
-        chosenConfig={
+        chosenConfig={(
           <div className="rounded bg-blue-50 p-2 text-xs text-gray-600">
             Additional configuration appears when selected
           </div>
-        }
+        )}
       />
       <RadioCard
         icon={<RiCloudLine className="h-5 w-5 text-green-600" />}
