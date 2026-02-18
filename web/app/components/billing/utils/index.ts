@@ -7,7 +7,7 @@ import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
  * @example "50MB" -> 50, "5GB" -> 5120, "20GB" -> 20480
  */
 export const parseVectorSpaceToMB = (vectorSpace: string): number => {
-  const match = vectorSpace.match(/^(\d+)(MB|GB)$/i)
+  const match = /^(\d+)(MB|GB)$/i.exec(vectorSpace)
   if (!match)
     return 0
 
