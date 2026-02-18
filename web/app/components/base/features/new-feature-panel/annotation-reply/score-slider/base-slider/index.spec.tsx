@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import Slider from './index'
 
@@ -9,7 +10,7 @@ vi.mock('react-slider', () => ({
     step: number
     disabled?: boolean
     onChange: (v: number) => void
-    renderThumb: (props: Record<string, unknown>, state: { valueNow: number }) => React.ReactNode
+    renderThumb: (props: Record<string, unknown>, state: { valueNow: number }) => ReactNode
     className: string
   }) => (
     <div data-testid="react-slider" className={className} data-disabled={disabled}>

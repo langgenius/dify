@@ -1,6 +1,7 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
-import type { InputVar, InputVarType } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { InputVarType } from '@/app/components/workflow/types'
 import OpeningSettingModal from './modal'
 
 vi.mock('@/app/components/base/prompt-editor', () => ({
@@ -53,7 +54,7 @@ const defaultData: OpeningStatement = {
 const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   variable: 'name',
   label: 'Name',
-  type: 'string' as InputVarType,
+  type: InputVarType.textInput,
   required: true,
   ...overrides,
 })

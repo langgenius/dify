@@ -1883,11 +1883,6 @@
       "count": 1
     }
   },
-  "app/components/base/features/new-feature-panel/dialog-wrapper.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/base/features/new-feature-panel/feature-bar.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -1945,11 +1940,6 @@
   "app/components/base/features/new-feature-panel/text-to-speech/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
-    }
-  },
-  "app/components/base/features/new-feature-panel/text-to-speech/param-config-content.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx": {

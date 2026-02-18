@@ -1,19 +1,21 @@
+import type { ReactElement } from 'react'
 import type { ModerationConfig } from '@/models/debug'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import ModerationSettingModal from './moderation-setting-modal'
+
+const render = (ui: ReactElement) => {
+  let view: ReturnType<typeof rtlRender> | null = null
+  act(() => {
+    view = rtlRender(ui)
+  })
+  return view!
+}
+
+const originalConsoleError = console.error
 
 const mockNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   useToastContext: () => ({ notify: mockNotify }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
-vi.mock('@/i18n-config/language', () => ({
-  LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
 const mockSetShowAccountSettingModal = vi.fn()
@@ -65,28 +67,6 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page/select
   ),
 }))
 
-vi.mock('./form-generation', () => ({
-  default: () => <div data-testid="form-generation">Form Generation</div>,
-}))
-
-vi.mock('./moderation-content', () => ({
-  default: ({ title, config, onConfigChange }: {
-    title: string
-    config: { enabled: boolean, preset_response: string }
-    onConfigChange: (c: { enabled: boolean, preset_response: string }) => void
-  }) => (
-    <div data-testid={`moderation-content-${title.includes('input') ? 'input' : 'output'}`}>
-      <span>{title}</span>
-      <button
-        data-testid={`toggle-${title.includes('input') ? 'input' : 'output'}`}
-        onClick={() => onConfigChange({ ...config, enabled: !config.enabled })}
-      >
-        Toggle
-      </button>
-    </div>
-  ),
-}))
-
 const defaultData: ModerationConfig = {
   enabled: true,
   type: 'keywords',
@@ -98,8 +78,15 @@ const defaultData: ModerationConfig = {
 }
 
 describe('ModerationSettingModal', () => {
+  const onSave = vi.fn()
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      const [firstArg] = args
+      if (typeof firstArg === 'string' && firstArg.includes('not wrapped in act'))
+        return
+      originalConsoleError(...args as Parameters<typeof console.error>)
+    })
     mockCodeBasedExtensions = { data: { data: [] } }
     mockModelProvidersData = {
       data: {
@@ -118,12 +105,16 @@ describe('ModerationSettingModal', () => {
     }
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('should render the modal title', () => {
     render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -135,7 +126,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -150,11 +141,11 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    const textarea = screen.getByRole('textbox')
+    const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/) as HTMLTextAreaElement
     expect(textarea).toBeInTheDocument()
     expect(textarea).toHaveValue('bad\nword')
   })
@@ -164,7 +155,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -178,7 +169,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={onCancel}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -200,7 +191,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -224,7 +215,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -270,7 +261,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'api', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -282,7 +273,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -290,7 +281,7 @@ describe('ModerationSettingModal', () => {
     fireEvent.click(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))
 
     // The keywords textarea should no longer be visible since type changed
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
   it('should update keywords on textarea change', () => {
@@ -298,11 +289,11 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    const textarea = screen.getByRole('textbox')
+    const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'new\nkeywords' } })
 
     expect(textarea).toHaveValue('new\nkeywords')
@@ -313,12 +304,12 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    expect(screen.getByTestId('moderation-content-input')).toBeInTheDocument()
-    expect(screen.getByTestId('moderation-content-output')).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.content\.input/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.content\.output/)).toBeInTheDocument()
   })
 
   it('should show error when inputs enabled but no preset_response for keywords type', () => {
@@ -334,7 +325,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -358,7 +349,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -412,7 +403,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={data}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -423,34 +414,21 @@ describe('ModerationSettingModal', () => {
     )
   })
 
-  it('should call onCancel when cancel button is clicked', () => {
-    const onCancel = vi.fn()
-    render(
-      <ModerationSettingModal
-        data={defaultData}
-        onCancel={onCancel}
-        onSave={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/operation\.cancel/))
-
-    expect(onCancel).toHaveBeenCalled()
-  })
-
   it('should toggle input moderation content', () => {
     render(
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('toggle-input'))
+    const switches = screen.getAllByRole('switch')
+    expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(1)
 
-    // The toggle should have been clicked, changing the config
-    expect(screen.getByTestId('moderation-content-input')).toBeInTheDocument()
+    fireEvent.click(switches[0])
+
+    expect(screen.queryAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(0)
   })
 
   it('should toggle output moderation content', () => {
@@ -458,13 +436,16 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('toggle-output'))
+    const switches = screen.getAllByRole('switch')
+    expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(1)
 
-    expect(screen.getByTestId('moderation-content-output')).toBeInTheDocument()
+    fireEvent.click(switches[1])
+
+    expect(screen.getAllByPlaceholderText(/feature\.moderation\.modal\.content\.placeholder/)).toHaveLength(2)
   })
 
   it('should select api extension via api selector', () => {
@@ -472,7 +453,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'api', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -511,11 +492,11 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    const textarea = screen.getByRole('textbox')
+    const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)
     // Create a long keyword that exceeds 100 chars
     const longWord = 'a'.repeat(150)
     fireEvent.change(textarea, { target: { value: longWord } })
@@ -557,7 +538,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -566,7 +547,7 @@ describe('ModerationSettingModal', () => {
 
     // API selector should now be visible, keywords textarea should be hidden
     expect(screen.getByTestId('api-selector')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/)).not.toBeInTheDocument()
   })
 
   it('should handle empty lines in keywords', () => {
@@ -574,16 +555,16 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    const textarea = screen.getByRole('textbox')
+    const textarea = screen.getByPlaceholderText(/feature\.moderation\.modal\.keywords\.placeholder/) as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'word1\n\nword2\n\n' } })
 
     // Empty lines between non-empty lines are preserved, trailing empties after non-empty are kept
-    expect((textarea as HTMLTextAreaElement).value).toContain('word1')
-    expect((textarea as HTMLTextAreaElement).value).toContain('word2')
+    expect(textarea.value).toContain('word1')
+    expect(textarea.value).toContain('word2')
   })
 
   it('should show OpenAI not configured warning when OpenAI provider is not set up', () => {
@@ -607,7 +588,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'openai_moderation', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -635,7 +616,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'openai_moderation', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -692,7 +673,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -716,11 +697,12 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'custom-ext', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
-    expect(screen.getByTestId('form-generation')).toBeInTheDocument()
+    expect(screen.getByText('API URL')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter URL')).toBeInTheDocument()
   })
 
   it('should initialize config from form schema when switching to code-based extension', () => {
@@ -740,15 +722,15 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={defaultData}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
     // Click on the custom extension provider
     fireEvent.click(screen.getByText('Custom Extension'))
 
-    // FormGeneration should now be visible
-    expect(screen.getByTestId('form-generation')).toBeInTheDocument()
+    // The form input should use the default value from form schema
+    expect(screen.getByDisplayValue('https://default.com')).toBeInTheDocument()
   })
 
   it('should show error when required form schema field is empty on save', () => {
@@ -768,7 +750,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'custom-ext', config: { inputs_config: { enabled: true, preset_response: 'blocked' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 
@@ -816,7 +798,7 @@ describe('ModerationSettingModal', () => {
       <ModerationSettingModal
         data={{ ...defaultData, type: 'api', config: { inputs_config: { enabled: true, preset_response: '' } } }}
         onCancel={vi.fn()}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     )
 

@@ -18,14 +18,17 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
       >
         Change
       </button>
+      <button
+        data-testid="clear-file-types"
+        onClick={() => onChange({
+          ...payload,
+          allowed_file_types: [],
+        })}
+      >
+        Clear
+      </button>
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/prompt-editor/constants', () => ({
-  FILE_EXTS: {
-    image: ['.jpg', '.png'],
-  },
 }))
 
 vi.mock('@/app/components/workflow/types', () => ({
@@ -85,10 +88,24 @@ describe('SettingContent', () => {
     expect(screen.getByText(/feature\.imageUpload\.modalTitle/)).toBeInTheDocument()
   })
 
-  it('should render FileUploadSetting component', () => {
+  it('should render FileUploadSetting component with payload from file feature', () => {
     renderWithProvider()
 
     expect(screen.getByTestId('file-upload-setting')).toBeInTheDocument()
+    const payload = screen.getByTestId('payload')
+    expect(payload.textContent).toContain('"allowed_file_upload_methods":["local_file"]')
+    expect(payload.textContent).toContain('"allowed_file_types":["image"]')
+    expect(payload.textContent).toContain('"allowed_file_extensions":[".jpg"]')
+    expect(payload.textContent).toContain('"max_length":5')
+  })
+
+  it('should use fallback payload values when file feature is undefined', () => {
+    renderWithProvider({}, { file: undefined })
+
+    const payload = screen.getByTestId('payload')
+    expect(payload.textContent).toContain('"allowed_file_upload_methods":["local_file","remote_url"]')
+    expect(payload.textContent).toContain('"allowed_file_types":["image"]')
+    expect(payload.textContent).toContain('"max_length":3')
   })
 
   it('should render cancel and save buttons', () => {
@@ -98,11 +115,16 @@ describe('SettingContent', () => {
     expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
   })
 
-  it('should call onClose when cancel is clicked', () => {
+  it('should call onClose when close icon is clicked', () => {
     const onClose = vi.fn()
-    renderWithProvider({ onClose })
+    const { container } = renderWithProvider({ onClose })
 
-    fireEvent.click(screen.getByText(/operation\.cancel/))
+    const closeIconButton = container.querySelector('div.cursor-pointer.p-1')
+    expect(closeIconButton).toBeInTheDocument()
+    if (!closeIconButton)
+      throw new Error('Close icon button should exist')
+
+    fireEvent.click(closeIconButton)
 
     expect(onClose).toHaveBeenCalled()
   })
@@ -124,6 +146,28 @@ describe('SettingContent', () => {
     fireEvent.click(screen.getByText(/operation\.save/))
 
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('should not throw when save is clicked without onChange', () => {
+    renderWithProvider()
+
+    expect(() => {
+      fireEvent.click(screen.getByText(/operation\.save/))
+    }).not.toThrow()
+  })
+
+  it('should disable save button when allowed file types are empty', () => {
+    const onChange = vi.fn()
+    renderWithProvider({ onChange })
+
+    fireEvent.click(screen.getByTestId('clear-file-types'))
+
+    const saveButton = screen.getByRole('button', { name: /operation\.save/ })
+    expect(saveButton).toBeDisabled()
+
+    fireEvent.click(saveButton)
+
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('should update temp payload when FileUploadSetting onChange is called', () => {

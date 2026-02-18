@@ -35,10 +35,11 @@ describe('ScoreSlider', () => {
   })
 
   it('should render with custom className', () => {
-    render(<ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />)
+    const { container } = render(<ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />)
 
     // Verifying the component renders successfully with a custom className
     expect(screen.getByTestId('slider')).toBeInTheDocument()
+    expect(container.firstChild).toHaveClass('custom-class')
   })
 
   it('should pass value to the slider', () => {
