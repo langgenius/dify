@@ -1,0 +1,85 @@
+model: flux
+label:
+  en_US: Flux
+  zh_Hans: Flux
+model_type: text2img
+model_properties:
+  mode: text2img
+  max_resolution: "2048x2048"
+  default_resolution: "1024x1024"
+parameter_rules:
+  - name: width
+    type: int
+    help:
+      en_US: Width of the generated image
+      zh_Hans: 生成图像的宽度
+    default: 1024
+    min: 256
+    max: 2048
+    options: [256, 512, 768, 1024, 1280, 1536, 1792, 2048]
+  - name: height
+    type: int
+    help:
+      en_US: Height of the generated image
+      zh_Hans: 生成图像的高度
+    default: 1024
+    min: 256
+    max: 2048
+    options: [256, 512, 768, 1024, 1280, 1536, 1792, 2048]
+  - name: steps
+    type: int
+    help:
+      en_US: Number of denoising steps
+      zh_Hans: 去噪步数
+    default: 25
+    min: 1
+    max: 100
+  - name: guidance_scale
+    type: float
+    help:
+      en_US: How strictly the model follows the prompt (higher = more strict)
+      zh_Hans: 模型遵循提示的严格程度（更高 = 更严格）
+    default: 7.0
+    min: 1.0
+    max: 20.0
+  - name: samples
+    type: int
+    help:
+      en_US: Number of images to generate
+      zh_Hans: 要生成的图像数量
+    default: 1
+    min: 1
+    max: 4
+  - name: negative_prompt
+    type: string
+    help:
+      en_US: What you don't want to see in the image
+      zh_Hans: 您不想在图像中看到的内容
+    required: false
+    placeholder:
+      en_US: Enter negative prompt (optional)
+      zh_Hans: 输入负面提示（可选）
+  - name: seed
+    type: int
+    help:
+      en_US: Random seed for reproducible results
+      zh_Hans: 用于可重现结果的随机种子
+    required: false
+    min: -2147483648
+    max: 2147483647
+  - name: enhance_prompt
+    type: boolean
+    help:
+      en_US: Automatically enhance and improve the prompt
+      zh_Hans: 自动增强和改进提示
+    default: true
+  - name: safety_checker
+    type: boolean
+    help:
+      en_US: Enable content safety filtering
+      zh_Hans: 启用内容安全过滤
+    default: true
+pricing:
+  input: '0.025'
+  unit: '1'
+  currency: USD
