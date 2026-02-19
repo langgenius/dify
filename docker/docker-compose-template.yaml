@@ -526,6 +526,10 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT:-524288}
+        hard: ${QDRANT_NOFILE_HARD:-524288}
 
   # The Couchbase vector store.
   couchbase-server:
