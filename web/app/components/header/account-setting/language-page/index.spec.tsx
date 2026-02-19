@@ -159,5 +159,5 @@ describe('LanguagePage - Interactions', () => {
     await selectOption('common.language.timezone', midwayTimezone.name)
 
     expect(await screen.findByText('Timezone failed')).toBeInTheDocument()
-  })
+  }, 5000)
 })
