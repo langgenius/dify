@@ -192,7 +192,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 </div>
                 <div className="shrink-0">
                   <Switch
-                    defaultValue={trigger.status === 'enabled'}
+                    value={trigger.status === 'enabled'}
                     onChange={enabled => onToggleTrigger(trigger, enabled)}
                     disabled={!isCurrentWorkspaceEditor}
                   />

@@ -72,7 +72,7 @@ const SummaryIndexSetting = ({
             </Tooltip>
           </div>
           <Switch
-            defaultValue={summaryIndexSetting?.enable ?? false}
+            value={summaryIndexSetting?.enable ?? false}
             onChange={handleSummaryIndexEnableChange}
             size="md"
           />
@@ -119,7 +119,7 @@ const SummaryIndexSetting = ({
             <div className="system-sm-semibold flex items-center text-text-secondary">
               <Switch
                 className="mr-2"
-                defaultValue={summaryIndexSetting?.enable ?? false}
+                value={summaryIndexSetting?.enable ?? false}
                 onChange={handleSummaryIndexEnableChange}
                 size="md"
               />
@@ -184,7 +184,7 @@ const SummaryIndexSetting = ({
       <div className="flex h-6 items-center">
         <Switch
           className="mr-2"
-          defaultValue={summaryIndexSetting?.enable ?? false}
+          value={summaryIndexSetting?.enable ?? false}
           onChange={handleSummaryIndexEnableChange}
           size="md"
         />
