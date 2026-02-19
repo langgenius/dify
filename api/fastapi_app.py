@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field
 app = FastAPI(
     title="Dify Console API (FastAPI)",
     version="1.0",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
+    docs_url="/fastapi/docs",
+    redoc_url="/fastapi/redoc",
+    openapi_url="/fastapi/openapi.json",
 )
 
 
