@@ -69,7 +69,7 @@ const ConfigDocument: FC = () => {
         <div className="flex shrink-0 items-center">
           <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
           <Switch
-            defaultValue={isDocumentEnabled}
+            value={isDocumentEnabled}
             onChange={handleChange}
             size="md"
           />
