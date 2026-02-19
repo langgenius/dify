@@ -4,7 +4,6 @@ import pytest
 
 from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
-from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -15,6 +14,7 @@ from core.model_runtime.entities.message_entities import (
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.file import File, FileTransferMethod, FileType
 from models.model import Conversation
 
 
@@ -142,7 +142,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
 
     prompt_transform = AdvancedPromptTransform()
     prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
-    with patch("core.file.file_manager.to_prompt_message_content") as mock_get_encoded_string:
+    with patch("core.workflow.file.file_manager.to_prompt_message_content") as mock_get_encoded_string:
         mock_get_encoded_string.return_value = ImagePromptMessageContent(
             url=str(files[0].remote_url), format="jpg", mime_type="image/jpg"
         )
