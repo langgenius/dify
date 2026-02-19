@@ -2,7 +2,7 @@ from typing import cast
 
 import pytest
 
-from core.file.models import File, FileTransferMethod, FileType
+from core.workflow.file.models import File, FileTransferMethod, FileType
 from core.workflow.system_variable import SystemVariable, SystemVariableReadOnlyView
 
 
