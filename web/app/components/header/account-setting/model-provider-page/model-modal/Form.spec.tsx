@@ -223,6 +223,14 @@ describe('Form', () => {
           ],
         }),
         createRadioSchema({
+          variable: 'hidden_region',
+          label: createI18n('Hidden Region'),
+          show_on: [{ variable: 'toggle', value: 'hidden' }],
+          options: [
+            { label: createI18n('Hidden A'), value: 'a', show_on: [] },
+          ],
+        }),
+        createRadioSchema({
           variable: '__model_name',
           label: createI18n('Locked'),
           options: [
@@ -246,6 +254,7 @@ describe('Form', () => {
       )
 
       expect(screen.getByText('EU')).toBeInTheDocument()
+      expect(screen.queryByText('Hidden Region')).not.toBeInTheDocument()
       fireEvent.click(screen.getByText('EU'))
       fireEvent.click(screen.getByText('Locked A'))
 
@@ -259,18 +268,24 @@ describe('Form', () => {
           variable: 'model',
           label: createI18n('Model'),
           placeholder: createI18n('Pick model'),
+          show_on: [{ variable: 'toggle', value: 'on' }],
+          options: [
+            { label: createI18n('Select A'), value: 'a', show_on: [] },
+            { label: createI18n('Select B'), value: 'b', show_on: [{ variable: 'toggle', value: 'on' }] },
+          ],
         }),
         createRadioSchema({
           variable: 'agree',
           type: FormTypeEnum.checkbox,
           label: createI18n('Agree'),
           options: [],
+          show_on: [{ variable: 'toggle', value: 'on' }],
         }),
       ]
-      const value: FormValue = { model: '', agree: false }
+      const value: FormValue = { model: 'a', agree: false, toggle: 'off' }
       const onChange = vi.fn()
 
-      render(
+      const { rerender } = render(
         <Form
           value={value}
           onChange={onChange}
@@ -282,11 +297,29 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Pick model')).toBeInTheDocument()
+      expect(screen.queryByText('Pick model')).not.toBeInTheDocument()
+      expect(screen.queryByText('Agree')).not.toBeInTheDocument()
+
+      rerender(
+        <Form
+          value={{ model: 'a', agree: false, toggle: 'on' }}
+          onChange={onChange}
+          formSchemas={formSchemas}
+          validating={false}
+          validatedSuccess={false}
+          showOnVariableMap={{}}
+          isEditMode={false}
+        />,
+      )
+
+      expect(screen.getByText('Select A')).toBeInTheDocument()
+      fireEvent.click(screen.getByText('Select A'))
+      fireEvent.click(screen.getByText('Select B'))
 
       fireEvent.click(screen.getByText('True'))
 
-      expect(onChange).toHaveBeenCalledWith({ model: '', agree: true })
+      expect(onChange).toHaveBeenCalledWith({ model: 'b', agree: false, toggle: 'on' })
+      expect(onChange).toHaveBeenCalledWith({ model: 'a', agree: true, toggle: 'on' })
     })
 
     it('should pass selected items from model and tool selectors to the form value', () => {
@@ -364,6 +397,11 @@ describe('Form', () => {
           label: createI18n('Any Var'),
           scope: 'text&audio',
         }),
+        createTextSchema({
+          variable: 'any_without_scope',
+          type: FormTypeEnum.any,
+          label: createI18n('Any Without Scope'),
+        }),
         {
           ...createTextSchema({
             variable: 'custom_field',
@@ -372,7 +410,7 @@ describe('Form', () => {
           type: 'custom-type',
         },
       ]
-      const value: FormValue = { override: '', any_var: [], custom_field: '' }
+      const value: FormValue = { override: '', any_var: [], any_without_scope: [], custom_field: '' }
       const onChange = vi.fn()
 
       render(
@@ -397,13 +435,13 @@ describe('Form', () => {
 
       expect(screen.getByText('Override Field')).toBeInTheDocument()
       expect(screen.getByText(/Custom Render:.*custom_field/)).toBeInTheDocument()
-      expect(screen.getByText('allowed')).toBeInTheDocument()
+      expect(screen.getAllByText('allowed')).toHaveLength(3)
       expect(screen.getAllByText('blocked')).toHaveLength(1)
 
-      fireEvent.click(screen.getByText('Pick Variable'))
+      fireEvent.click(screen.getAllByText('Pick Variable')[0])
 
-      expect(onChange).toHaveBeenCalledWith({ override: '', any_var: [{ name: 'var-1' }], custom_field: '' })
-      expect(screen.getByText('Extra Info')).toBeInTheDocument()
+      expect(onChange).toHaveBeenCalledWith({ override: '', any_var: [{ name: 'var-1' }], any_without_scope: [], custom_field: '' })
+      expect(screen.getAllByText('Extra Info')).toHaveLength(2)
     })
   })
 })

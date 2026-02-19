@@ -193,12 +193,21 @@ describe('ModelModal', () => {
   it('should show title, description, and loading state for predefined models', () => {
     mockState.isLoading = true
 
-    renderModal()
+    const predefined = renderModal()
 
     expect(screen.getByText('common.modelProvider.auth.apiKeyModal.title')).toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.auth.apiKeyModal.desc')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+
+    predefined.unmount()
+    const customizable = renderModal({ configurateMethod: ConfigurationMethodEnum.customizableModel })
+    expect(screen.queryByText('common.modelProvider.auth.apiKeyModal.desc')).not.toBeInTheDocument()
+    customizable.unmount()
+
+    mockState.credentialData = { credentials: {}, available_credentials: [] }
+    renderModal({ mode: ModelModalModeEnum.configModelCredential, model: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration } })
+    expect(screen.getByText('common.modelProvider.auth.addModelCredential')).toBeInTheDocument()
   })
 
   it('should reveal the credential label when adding a new credential', () => {
@@ -243,6 +252,8 @@ describe('ModelModal', () => {
   })
 
   it('should handle save flows for different modal modes', async () => {
+    mockState.modelNameAndTypeFormSchemas = [{ variable: '__model_name', type: 'text-input' } as unknown as CredentialFormSchema]
+    mockState.formSchemas = [{ variable: 'api_key', type: 'secret-input' } as unknown as CredentialFormSchema]
     mockFormState.responses = [
       { isCheckValidated: true, values: { __model_name: 'custom-model', __model_type: ModelTypeEnum.textGeneration } },
       { isCheckValidated: true, values: { __authorization_name__: 'Auth Name', api_key: 'secret' } },
@@ -284,6 +295,18 @@ describe('ModelModal', () => {
     expect(configModelCredential.onSave).toHaveBeenCalledWith({ __authorization_name__: 'Model Auth', api_key: 'abc' })
     configModelCredential.unmount()
 
+    mockFormState.responses = [{ isCheckValidated: true, values: { __authorization_name__: 'Provider Auth', api_key: 'provider-key' } }]
+    const configProviderCredential = renderModal({ mode: ModelModalModeEnum.configProviderCredential })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => {
+      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
+        credential_id: undefined,
+        credentials: { api_key: 'provider-key' },
+        name: 'Provider Auth',
+      })
+    })
+    configProviderCredential.unmount()
+
     const addToModelList = renderModal({
       mode: ModelModalModeEnum.addCustomModelToModelList,
       model,
@@ -293,5 +316,38 @@ describe('ModelModal', () => {
     expect(mockHandlers.handleActiveCredential).toHaveBeenCalledWith({ credential_id: 'existing' }, model)
     expect(addToModelList.onCancel).toHaveBeenCalled()
     addToModelList.unmount()
+
+    mockFormState.responses = [{ isCheckValidated: true, values: { __authorization_name__: 'New Auth', api_key: 'new-key' } }]
+    const addToModelListWithNew = renderModal({
+      mode: ModelModalModeEnum.addCustomModelToModelList,
+      model,
+    })
+    fireEvent.click(screen.getByText('Add New'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => {
+      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
+        credential_id: undefined,
+        credentials: { api_key: 'new-key' },
+        name: 'New Auth',
+        model: 'gpt-4',
+        model_type: ModelTypeEnum.textGeneration,
+      })
+    })
+    addToModelListWithNew.unmount()
+
+    mockFormState.responses = [{ isCheckValidated: false, values: {} }]
+    const invalidSave = renderModal({ mode: ModelModalModeEnum.configProviderCredential })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => {
+      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledTimes(4)
+    })
+    invalidSave.unmount()
+
+    mockState.credentialData = { credentials: { api_key: 'value' }, available_credentials: [] }
+    mockState.formValues = { api_key: 'value' }
+    const removable = renderModal({ credential: { credential_id: 'remove-1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    expect(mockHandlers.openConfirmDelete).toHaveBeenCalledWith({ credential_id: 'remove-1' }, undefined)
+    removable.unmount()
   })
 })

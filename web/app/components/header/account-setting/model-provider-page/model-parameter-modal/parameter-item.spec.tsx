@@ -36,8 +36,8 @@ vi.mock('@/app/components/base/slider', () => ({
 }))
 
 vi.mock('@/app/components/base/switch', () => ({
-  default: ({ onChange, defaultValue }: { onChange: (val: boolean) => void, defaultValue: boolean }) => (
-    <button onClick={() => onChange(!defaultValue)}>Switch</button>
+  default: ({ onChange, value }: { onChange: (val: boolean) => void, value: boolean }) => (
+    <button onClick={() => onChange(!value)}>Switch</button>
   ),
 }))
 
