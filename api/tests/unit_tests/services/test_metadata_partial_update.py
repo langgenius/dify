@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from models.dataset import Dataset, Document
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -147,6 +149,38 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         # But we can check the count.
         # If it were added, there would be 2 calls. If skipped, 1 call.
         assert mock_db.session.add.call_count == 1
+
+    @patch("services.metadata_service.db")
+    @patch("services.metadata_service.DocumentService")
+    @patch("services.metadata_service.current_account_with_tenant")
+    @patch("services.metadata_service.redis_client")
+    def test_rollback_called_on_commit_failure(self, mock_redis, mock_current_account, mock_document_service, mock_db):
+        """When db.session.commit() raises, rollback must be called and the exception must propagate."""
+        # Setup mocks
+        mock_redis.get.return_value = None
+        mock_document_service.get_document.return_value = self.document
+        mock_current_account.return_value = (MagicMock(id="user_id"), "tenant_id")
+        mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+
+        # Make commit raise an exception
+        mock_db.session.commit.side_effect = RuntimeError("database connection lost")
+
+        operation = DocumentMetadataOperation(
+            document_id="doc_id",
+            metadata_list=[MetadataDetail(id="meta_id", name="key", value="value")],
+            partial_update=True,
+        )
+        metadata_args = MetadataOperationData(operation_data=[operation])
+
+        # Act & Assert: the exception must propagate
+        with pytest.raises(RuntimeError, match="database connection lost"):
+            MetadataService.update_documents_metadata(self.dataset, metadata_args)
+
+        # Verify rollback was called
+        mock_db.session.rollback.assert_called_once()
+
+        # Verify the lock key was cleaned up despite the failure
+        mock_redis.delete.assert_called_with("document_metadata_lock_doc_id")
 
 
 if __name__ == "__main__":

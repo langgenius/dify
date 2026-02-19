@@ -4,10 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import EndpointCard from '../endpoint-card'
 
-vi.mock('copy-to-clipboard', () => ({
-  default: vi.fn(),
-}))
-
 const mockHandleChange = vi.fn()
 const mockEnableEndpoint = vi.fn()
 const mockDisableEndpoint = vi.fn()
@@ -133,6 +129,10 @@ describe('EndpointCard', () => {
     failureFlags.update = false
     // Mock Toast.notify to prevent toast elements from accumulating in DOM
     vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    // Polyfill document.execCommand for copy-to-clipboard in jsdom
+    if (typeof document.execCommand !== 'function') {
+      document.execCommand = vi.fn().mockReturnValue(true)
+    }
   })
 
   afterEach(() => {
@@ -192,12 +192,8 @@ describe('EndpointCard', () => {
     it('should show delete confirm when delete clicked', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      // Find delete button by its destructive class
       const allButtons = screen.getAllByRole('button')
-      const deleteButton = allButtons.find(btn => btn.classList.contains('text-text-tertiary'))
-      expect(deleteButton).toBeDefined()
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      fireEvent.click(allButtons[1])
 
       expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
     })
@@ -206,10 +202,7 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      const deleteButton = allButtons.find(btn => btn.classList.contains('text-text-tertiary'))
-      expect(deleteButton).toBeDefined()
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      fireEvent.click(allButtons[1])
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(mockDeleteEndpoint).toHaveBeenCalledWith('ep-1')
@@ -218,10 +211,8 @@ describe('EndpointCard', () => {
     it('should show edit modal when edit clicked', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      const actionButtons = screen.getAllByRole('button', { name: '' })
-      const editButton = actionButtons[0]
-      if (editButton)
-        fireEvent.click(editButton)
+      const allButtons = screen.getAllByRole('button')
+      fireEvent.click(allButtons[0])
 
       expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
     })
@@ -229,10 +220,8 @@ describe('EndpointCard', () => {
     it('should call updateEndpoint when save in modal', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      const actionButtons = screen.getAllByRole('button', { name: '' })
-      const editButton = actionButtons[0]
-      if (editButton)
-        fireEvent.click(editButton)
+      const allButtons = screen.getAllByRole('button')
+      fireEvent.click(allButtons[0])
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockUpdateEndpoint).toHaveBeenCalled()
@@ -243,20 +232,14 @@ describe('EndpointCard', () => {
     it('should reset copy state after timeout', async () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      // Find copy button by its class
       const allButtons = screen.getAllByRole('button')
-      const copyButton = allButtons.find(btn => btn.classList.contains('ml-2'))
-      expect(copyButton).toBeDefined()
-      if (copyButton) {
-        fireEvent.click(copyButton)
+      fireEvent.click(allButtons[2])
 
-        act(() => {
-          vi.advanceTimersByTime(2000)
-        })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
 
-        // After timeout, the component should still be rendered correctly
-        expect(screen.getByText('Test Endpoint')).toBeInTheDocument()
-      }
+      expect(screen.getByText('Test Endpoint')).toBeInTheDocument()
     })
   })
 
@@ -296,10 +279,7 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      const deleteButton = allButtons.find(btn => btn.classList.contains('text-text-tertiary'))
-      expect(deleteButton).toBeDefined()
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      fireEvent.click(allButtons[1])
       expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -310,10 +290,8 @@ describe('EndpointCard', () => {
     it('should hide edit modal when cancel clicked', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      const actionButtons = screen.getAllByRole('button', { name: '' })
-      const editButton = actionButtons[0]
-      if (editButton)
-        fireEvent.click(editButton)
+      const allButtons = screen.getAllByRole('button')
+      fireEvent.click(allButtons[0])
       expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
@@ -348,9 +326,7 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       const allButtons = screen.getAllByRole('button')
-      const deleteButton = allButtons.find(btn => btn.classList.contains('text-text-tertiary'))
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      fireEvent.click(allButtons[1])
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(mockDeleteEndpoint).toHaveBeenCalled()
@@ -359,21 +335,15 @@ describe('EndpointCard', () => {
     it('should show error toast when update fails', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
-      const actionButtons = screen.getAllByRole('button', { name: '' })
-      const editButton = actionButtons[0]
-      expect(editButton).toBeDefined()
-      if (editButton)
-        fireEvent.click(editButton)
+      const allButtons = screen.getAllByRole('button')
+      fireEvent.click(allButtons[0])
 
-      // Verify modal is open
       expect(screen.getByTestId('endpoint-modal')).toBeInTheDocument()
 
-      // Set failure flag before save is clicked
       failureFlags.update = true
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockUpdateEndpoint).toHaveBeenCalled()
-      // On error, handleChange is not called
       expect(mockHandleChange).not.toHaveBeenCalled()
     })
   })

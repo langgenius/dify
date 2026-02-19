@@ -13,10 +13,6 @@ vi.mock('../../../app/type-selector', () => ({
   AppTypeIcon: () => null,
 }))
 
-vi.mock('../../../base/app-icon', () => ({
-  default: () => null,
-}))
-
 describe('appAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -62,10 +58,13 @@ describe('appAction', () => {
   })
 
   it('returns empty array on API failure', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { fetchAppList } = await import('@/service/apps')
     vi.mocked(fetchAppList).mockRejectedValue(new Error('network error'))
 
     const results = await appAction.search('@app fail', 'fail', 'en')
     expect(results).toEqual([])
+    expect(warnSpy).toHaveBeenCalledWith('App search failed:', expect.any(Error))
+    warnSpy.mockRestore()
   })
 })
