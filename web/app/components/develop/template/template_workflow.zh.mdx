@@ -728,6 +728,69 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
+  url='/end-users/:end_user_id'
+  method='GET'
+  title='获取终端用户'
+  name='#end-user'
+/>
+<Row>
+  <Col>
+    通过终端用户 ID 获取终端用户信息。
+
+    当其他 API 返回终端用户 ID（例如：上传文件接口返回的 `created_by`）时，可使用该接口查询对应的终端用户信息。
+
+    ### 路径参数
+    - `end_user_id` (uuid) 必需
+      终端用户 ID。
+
+    ### Response
+    返回 EndUser 对象。
+    - `id` (uuid) ID
+    - `tenant_id` (uuid) 工作空间（Tenant）ID
+    - `app_id` (uuid) 应用 ID
+    - `type` (string) 终端用户类型
+    - `external_user_id` (string) 外部用户 ID
+    - `name` (string) 名称
+    - `is_anonymous` (boolean) 是否匿名
+    - `session_id` (string) 会话 ID
+    - `created_at` (string) ISO 8601 时间
+    - `updated_at` (string) ISO 8601 时间
+
+    ### Errors
+    - 404，`end_user_not_found`，终端用户不存在
+    - 500，内部服务器错误
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/end-users/:end_user_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/end-users/6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "tenant_id": "8c0f3f3a-66b0-4b55-a0bf-8b8e0d6aee7d",
+      "app_id": "6c8c3f41-2c6f-4e1b-8f4f-7f11c8f2ad2a",
+      "type": "service_api",
+      "external_user_id": "abc-123",
+      "name": "Alice",
+      "is_anonymous": false,
+      "session_id": "abc-123",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/workflows/logs'
   method='GET'
   title='获取 Workflow 日志'

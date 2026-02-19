@@ -119,7 +119,7 @@ const StatusItem = ({
               disabled={!archived}
             >
               <Switch
-                defaultValue={archived ? false : enabled}
+                value={archived ? false : enabled}
                 onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
                 disabled={embedding || archived}
                 size="md"

@@ -22,6 +22,15 @@ export const useWorkflowStarted = () => {
       edges,
       setEdges,
     } = store.getState()
+    if (workflowRunningData?.result?.status === WorkflowRunningStatus.Paused) {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.result = {
+          ...draft.result,
+          status: WorkflowRunningStatus.Running,
+        }
+      }))
+      return
+    }
     setIterParallelLogMap(new Map())
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.task_id = task_id
@@ -30,6 +39,7 @@ export const useWorkflowStarted = () => {
         ...data,
         status: WorkflowRunningStatus.Running,
       }
+      draft.resultText = ''
     }))
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {

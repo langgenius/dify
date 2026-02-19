@@ -49,14 +49,14 @@ describe('Slash Command Dual-Mode System', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(slashCommandRegistry as any).findCommand = vi.fn((name: string) => {
+    vi.mocked(slashCommandRegistry.findCommand).mockImplementation((name: string) => {
       if (name === 'docs')
         return mockDirectCommand
       if (name === 'theme')
         return mockSubmenuCommand
-      return null
+      return undefined
     })
-    ;(slashCommandRegistry as any).getAllCommands = vi.fn(() => [
+    vi.mocked(slashCommandRegistry.getAllCommands).mockReturnValue([
       mockDirectCommand,
       mockSubmenuCommand,
     ])
@@ -147,7 +147,7 @@ describe('Slash Command Dual-Mode System', () => {
         unregister: vi.fn(),
       }
 
-      ;(slashCommandRegistry as any).findCommand = vi.fn(() => commandWithoutMode)
+      vi.mocked(slashCommandRegistry.findCommand).mockReturnValue(commandWithoutMode)
 
       const handler = slashCommandRegistry.findCommand('test')
       // Default behavior should be submenu when mode is not specified

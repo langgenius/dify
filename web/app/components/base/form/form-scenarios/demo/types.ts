@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 
 const ContactMethod = z.union([
   z.literal('email'),
@@ -22,10 +22,10 @@ export const UserSchema = z.object({
     .min(3, 'Surname must be at least 3 characters long')
     .regex(/^[A-Z]/, 'Surname must start with a capital letter'),
   isAcceptingTerms: z.boolean().refine(val => val, {
-    message: 'You must accept the terms and conditions',
+    error: 'You must accept the terms and conditions',
   }),
   contact: z.object({
-    email: z.string().email('Invalid email address'),
+    email: z.email('Invalid email address'),
     phone: z.string().optional(),
     preferredContactMethod: ContactMethod,
   }),

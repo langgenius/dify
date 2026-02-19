@@ -1,5 +1,6 @@
 import type { ParentMode, PreProcessingRule, ProcessRule, Rules, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { useCallback, useRef, useState } from 'react'
+import { env } from '@/env'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
 import escape from './escape'
 import unescape from './unescape'
@@ -8,10 +9,7 @@ import unescape from './unescape'
 export const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
 export const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
 export const DEFAULT_OVERLAP = 50
-export const MAXIMUM_CHUNK_TOKEN_LENGTH = Number.parseInt(
-  globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000',
-  10,
-)
+export const MAXIMUM_CHUNK_TOKEN_LENGTH = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
 export type ParentChildConfig = {
   chunkForContext: ParentMode

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import uuid
 from datetime import datetime
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
@@ -11,6 +12,8 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask.views import MethodView
+
+from core.entities.execution_extra_content import HumanInputContent
 
 # Ensure flask_restx.api finds MethodView during import.
 if not hasattr(builtins, "MethodView"):
@@ -137,6 +140,12 @@ def test_message_list_mapping(app: Flask) -> None:
         status="success",
         error=None,
         message_metadata_dict={"meta": "value"},
+        extra_contents=[
+            HumanInputContent(
+                workflow_run_id=str(uuid.uuid4()),
+                submitted=True,
+            )
+        ],
     )
 
     pagination = SimpleNamespace(limit=20, has_more=False, data=[message])
@@ -169,6 +178,8 @@ def test_message_list_mapping(app: Flask) -> None:
 
     assert item["agent_thoughts"][0]["chain_id"] == "chain-1"
     assert item["agent_thoughts"][0]["created_at"] == int(thought_created_at.timestamp())
+    assert item["extra_contents"][0]["workflow_run_id"] == message.extra_contents[0].workflow_run_id
+    assert item["extra_contents"][0]["submitted"] == message.extra_contents[0].submitted
 
     assert item["message_files"][0]["id"] == "file-dict"
     assert item["message_files"][1]["id"] == "file-obj"
