@@ -514,6 +514,46 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                         # get_metadata_filter_condition should NOT be called when mode is "disabled"
                         mock_get_metadata.assert_not_called()
 
+    def test_knowledge_retrieval_metadata_filtering_manual_does_not_require_model_config(self):
+        """
+        Test knowledge_retrieval with metadata filtering manual and no metadata_model_config.
+
+        Manual mode should not require metadata_model_config (only automatic mode does).
+        """
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+        app_id = str(uuid4())
+        dataset_id = str(uuid4())
+
+        request = KnowledgeRetrievalRequest(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=app_id,
+            user_from="web",
+            dataset_ids=[dataset_id],
+            query="What is Python?",
+            retrieval_mode="multiple",
+            metadata_filtering_mode="manual",
+            metadata_model_config=None,
+            top_k=5,
+        )
+
+        dataset_retrieval = DatasetRetrieval()
+
+        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
+            mock_dataset = create_mock_dataset(dataset_id=dataset_id, tenant_id=tenant_id)
+            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
+                with patch.object(
+                    dataset_retrieval,
+                    "get_metadata_filter_condition",
+                    return_value=(None, None),
+                ) as mock_get_metadata:
+                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
+                        result = dataset_retrieval.knowledge_retrieval(request)
+
+                        assert isinstance(result, list)
+                        mock_get_metadata.assert_called_once()
+
     def test_knowledge_retrieval_with_external_documents(self):
         """
         Test knowledge_retrieval with external documents.

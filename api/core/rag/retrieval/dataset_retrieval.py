@@ -128,10 +128,12 @@ class DatasetRetrieval:
 
         if request.metadata_filtering_mode != "disabled":
             # Convert workflow layer types to app_config layer types
-            if not request.metadata_model_config:
+            if request.metadata_filtering_mode == "automatic" and not request.metadata_model_config:
                 raise ValueError("metadata_model_config is required for this method")
 
-            app_metadata_model_config = ModelConfig.model_validate(request.metadata_model_config.model_dump())
+            app_metadata_model_config = None
+            if request.metadata_model_config is not None:
+                app_metadata_model_config = ModelConfig.model_validate(request.metadata_model_config.model_dump())
 
             app_metadata_filtering_conditions = None
             if request.metadata_filtering_conditions is not None:
