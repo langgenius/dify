@@ -81,9 +81,7 @@ def test_advanced_chat_blocking_returns_dict_and_does_not_use_event_retrieval(mo
     mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
 
     # Spy on the streaming retrieval path to ensure it's NOT called
-    retrieve_spy = mocker.patch(
-        "services.app_generate_service.AdvancedChatAppGenerator.retrieve_events"
-    )
+    retrieve_spy = mocker.patch("services.app_generate_service.AdvancedChatAppGenerator.retrieve_events")
 
     # Make AdvancedChatAppGenerator.generate return a plain dict when streaming=False
     generate_spy = mocker.patch(
