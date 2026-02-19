@@ -92,7 +92,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       </div>
       <div className="px-4 pb-2">
         <Field title={t(`${i18nPrefix}.parallelMode`, { ns: 'workflow' })} tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.parallelPanelDesc`, { ns: 'workflow' })}</div>} inline>
-          <Switch defaultValue={inputs.is_parallel} onChange={changeParallel} />
+          <Switch value={inputs.is_parallel} onChange={changeParallel} />
         </Field>
       </div>
       {
@@ -130,7 +130,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.flattenOutputDesc`, { ns: 'workflow' })}</div>}
           inline
         >
-          <Switch defaultValue={inputs.flatten_output} onChange={changeFlattenOutput} />
+          <Switch value={inputs.flatten_output} onChange={changeFlattenOutput} />
         </Field>
       </div>
     </div>
