@@ -6,6 +6,10 @@
 import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
+const hasImageChild = (children: any[]): boolean => {
+  return children?.some((child: any) => 'tagName' in child && child.tagName === 'img')
+}
+
 const Paragraph = (paragraph: any) => {
   const { node }: any = paragraph
   const children_node = node.children
@@ -21,6 +25,12 @@ const Paragraph = (paragraph: any) => {
       </div>
     )
   }
+  // When an image appears anywhere in the paragraph (not just as the first child),
+  // render as <div> instead of <p> to avoid invalid DOM nesting.
+  // Block-level elements like <div> (from Img/ImageGallery) cannot be nested inside <p>.
+  if (hasImageChild(children_node))
+    return <div className="mb-4">{paragraph.children}</div>
+
   return <p>{paragraph.children}</p>
 }
 
