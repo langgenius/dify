@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImageGallery, { ImageGalleryTest } from '.'
 
@@ -126,7 +126,7 @@ describe('ImageGallery', () => {
       const { container } = render(<ImageGallery srcs={['https://example.com/broken.png']} />)
 
       const img = getImages(container)[0]
-      img.dispatchEvent(new Event('error'))
+      fireEvent.error(img)
 
       expect(getImages(container)).toHaveLength(0)
     })

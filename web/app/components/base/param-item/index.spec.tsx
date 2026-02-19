@@ -113,7 +113,7 @@ describe('ParamItem', () => {
     })
 
     it('should pass scaled value to slider when max < 5', () => {
-      render(<ParamItem {...defaultProps} value={0.5} max={1} />)
+      render(<ParamItem {...defaultProps} value={0.5} />)
       const slider = screen.getByRole('slider')
 
       // When max < 5, slider value = value * 100 = 50
@@ -145,13 +145,14 @@ describe('ParamItem', () => {
 
       await user.click(incrementBtn)
 
-      expect(defaultProps.onChange).toHaveBeenCalledWith('test_param', expect.any(Number))
+      // step=0.1, so 0.5 + 0.1 = 0.6, clamped to [0,1] → 0.6
+      expect(defaultProps.onChange).toHaveBeenCalledWith('test_param', 0.6)
     })
   })
 
   describe('Edge Cases', () => {
     it('should correctly scale slider value when max < 5', () => {
-      render(<ParamItem {...defaultProps} value={0.5} min={0} max={1} />)
+      render(<ParamItem {...defaultProps} value={0.5} min={0} />)
 
       // Slider should get value * 100 = 50, min * 100 = 0, max * 100 = 100
       const slider = screen.getByRole('slider')
@@ -167,9 +168,12 @@ describe('ParamItem', () => {
 
     it('should use default step of 0.1 and min of 0 when not provided', () => {
       render(<ParamItem {...defaultProps} />)
+      const input = screen.getByRole('spinbutton')
 
       // Component renders without error with default step/min
       expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(input).toHaveAttribute('step', '0.1')
+      expect(input).toHaveAttribute('min', '0')
     })
   })
 })

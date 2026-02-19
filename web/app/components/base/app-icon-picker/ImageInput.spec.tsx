@@ -1,12 +1,6 @@
+import type { Area } from 'react-easy-crop'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ImageInput from './ImageInput'
-
-type Area = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
 
 vi.mock('react-easy-crop', () => ({
   default: ({ onCropComplete }: { onCropComplete: (crop: Area, pixelCrop: Area) => void }) => {
@@ -29,12 +23,19 @@ vi.mock('react-easy-crop', () => ({
 
 const createObjectURLMock = vi.fn(() => 'blob:mock-url')
 const revokeObjectURLMock = vi.fn()
-globalThis.URL.createObjectURL = createObjectURLMock
-globalThis.URL.revokeObjectURL = revokeObjectURLMock
+const originalCreateObjectURL = globalThis.URL.createObjectURL
+const originalRevokeObjectURL = globalThis.URL.revokeObjectURL
 
 describe('ImageInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.URL.createObjectURL = createObjectURLMock
+    globalThis.URL.revokeObjectURL = revokeObjectURLMock
+  })
+
+  afterEach(() => {
+    globalThis.URL.createObjectURL = originalCreateObjectURL
+    globalThis.URL.revokeObjectURL = originalRevokeObjectURL
   })
 
   describe('Rendering', () => {

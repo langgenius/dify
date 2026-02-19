@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TopKItem from './top-k-item'
 
@@ -91,7 +91,9 @@ describe('TopKItem', () => {
 
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
+  })
 
+  describe('User Interactions', () => {
     it('should call onChange with clamped integer value via increment button', async () => {
       const user = userEvent.setup()
       render(<TopKItem {...defaultProps} value={5} />)
@@ -119,10 +121,8 @@ describe('TopKItem', () => {
       render(<TopKItem {...defaultProps} value={2} />)
       const slider = screen.getByRole('slider')
 
-      await act(async () => {
-        slider.focus()
-        await user.keyboard('{ArrowRight}')
-      })
+      await user.click(slider)
+      await user.keyboard('{ArrowRight}')
 
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('top_k', 3)
     })

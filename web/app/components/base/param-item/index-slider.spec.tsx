@@ -19,10 +19,8 @@ describe('ParamItem Slider onChange', () => {
     render(<ParamItem {...defaultProps} value={0.5} min={0} max={1} />)
     const slider = screen.getByRole('slider')
 
-    await act(async () => {
-      slider.focus()
-      await user.keyboard('{ArrowRight}')
-    })
+    await user.click(slider)
+    await user.keyboard('{ArrowRight}')
 
     // max=1 < 5, so slider value change (50->51) becomes 0.51
     expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0.51)

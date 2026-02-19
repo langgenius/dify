@@ -57,8 +57,7 @@ describe('TagInput', () => {
     it('should hide remove controls when remove is disabled', () => {
       renderTagInput({ items: ['alpha'], disableRemove: true })
 
-      const alphaTag = screen.getByText('alpha').parentElement
-      expect(alphaTag?.querySelector('.cursor-pointer')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('remove-tag')).not.toBeInTheDocument()
     })
 
     it('should apply focused style in special mode when input is focused', async () => {
@@ -78,13 +77,7 @@ describe('TagInput', () => {
     it('should remove item when remove control is clicked', async () => {
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })
 
-      const alphaTag = screen.getByText('alpha').parentElement
-      if (!alphaTag)
-        throw new Error('Expected alpha tag container to exist')
-
-      const removeControl = alphaTag.querySelector('.cursor-pointer')
-      if (!removeControl)
-        throw new Error('Expected remove control to exist')
+      const removeControl = screen.getAllByTestId('remove-tag')[0]
 
       await userEvent.click(removeControl)
 

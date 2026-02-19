@@ -219,6 +219,7 @@ describe('utils', () => {
       expect(sourceContext.translate).toHaveBeenCalled()
       expect(sourceContext.rotate).toHaveBeenCalled()
       expect(sourceContext.scale).toHaveBeenCalledWith(-1, 1)
+      expect(croppedContext.drawImage).toHaveBeenCalled()
     })
 
     it('should apply vertical flip when vertical option is true', async () => {
@@ -278,6 +279,14 @@ describe('utils', () => {
   })
 
   describe('checkIsAnimatedImage', () => {
+    let originalFileReader: typeof FileReader
+    beforeEach(() => {
+      originalFileReader = globalThis.FileReader
+    })
+
+    afterEach(() => {
+      globalThis.FileReader = originalFileReader
+    })
     it('should return true for .gif files', async () => {
       const gifFile = new File([new Uint8Array([0x47, 0x49, 0x46])], 'animation.gif', { type: 'image/gif' })
       const result = await checkIsAnimatedImage(gifFile)
@@ -336,7 +345,6 @@ describe('utils', () => {
 
     it('should reject when FileReader encounters an error', async () => {
       const file = new File([], 'test.png', { type: 'image/png' })
-      const originalFileReader = globalThis.FileReader
 
       globalThis.FileReader = class {
         onerror: ((error: ProgressEvent<FileReader>) => void) | null = null
@@ -350,12 +358,7 @@ describe('utils', () => {
         }
       } as unknown as typeof FileReader
 
-      try {
-        await expect(checkIsAnimatedImage(file)).rejects.toBeInstanceOf(ProgressEvent)
-      }
-      finally {
-        globalThis.FileReader = originalFileReader
-      }
+      await expect(checkIsAnimatedImage(file)).rejects.toBeInstanceOf(ProgressEvent)
     })
   })
 })

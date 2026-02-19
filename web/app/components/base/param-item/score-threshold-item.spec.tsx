@@ -49,12 +49,14 @@ describe('ScoreThresholdItem', () => {
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
-    it('should forward onSwitchChange to ParamItem', () => {
+    it('should forward onSwitchChange to ParamItem', async () => {
       const onSwitchChange = vi.fn()
       render(<ScoreThresholdItem {...defaultProps} hasSwitch onSwitchChange={onSwitchChange} />)
 
       // Verify the switch rendered (onSwitchChange forwarded internally)
       expect(screen.getByRole('switch')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('switch'))
+      expect(onSwitchChange).toHaveBeenCalledTimes(1)
     })
 
     it('should disable controls when enable is false', () => {
@@ -135,11 +137,9 @@ describe('ScoreThresholdItem', () => {
     })
 
     it('should clamp to max=1 when value exceeds maximum', () => {
-      render(<ScoreThresholdItem {...defaultProps} value={1} />)
+      render(<ScoreThresholdItem {...defaultProps} value={1.5} />)
       const input = screen.getByRole('spinbutton')
-
-      // InputNumber won't let values above max through, so we test via the attribute
-      expect(input).toHaveAttribute('max', '1')
+      expect(input).toHaveValue(1)
     })
   })
 })

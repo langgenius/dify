@@ -35,6 +35,11 @@ const ScoreThresholdItem: FC<Props> = ({
     notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
     onChange(key, notOutRangeValue)
   }
+  const safeValue = Math.min(
+    VALUE_LIMIT.max,
+    Math.max(VALUE_LIMIT.min, Number.parseFloat(value.toFixed(2))),
+  )
+
   return (
     <ParamItem
       className={className}
@@ -42,7 +47,7 @@ const ScoreThresholdItem: FC<Props> = ({
       name={t('datasetConfig.score_threshold', { ns: 'appDebug' })}
       tip={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
-      value={value}
+      value={safeValue}
       enable={enable}
       onChange={handleParamChange}
       hasSwitch={hasSwitch}
