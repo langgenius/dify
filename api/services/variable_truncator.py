@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
-from core.file.models import File
 from core.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
@@ -20,6 +19,7 @@ from core.variables.segments import (
     StringSegment,
 )
 from core.variables.utils import dumps_with_segments
+from core.workflow.file.models import File
 from core.workflow.nodes.variable_assigner.common.helpers import UpdatedVariable
 
 _MAX_DEPTH = 100

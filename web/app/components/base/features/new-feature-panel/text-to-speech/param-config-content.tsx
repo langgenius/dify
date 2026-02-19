@@ -29,7 +29,7 @@ const VoiceParamConfig = ({
 }: VoiceParamConfigProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
@@ -232,7 +232,7 @@ const VoiceParamConfig = ({
         </div>
         <Switch
           className="shrink-0"
-          defaultValue={text2speech?.autoPlay === TtsAutoPlay.enabled}
+          value={text2speech?.autoPlay === TtsAutoPlay.enabled}
           onChange={(value: boolean) => {
             handleChange({
               autoPlay: value ? TtsAutoPlay.enabled : TtsAutoPlay.disabled,

@@ -7,7 +7,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
-from core.file import File
+from core.workflow.file import File
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 
 JSONValueType: TypeAlias = JSONValue

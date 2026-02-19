@@ -95,8 +95,8 @@ const ToolItem = ({
         </div>
       )}
       <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
-        <div className="system-2xs-medium-uppercase text-text-tertiary">{providerNameText}</div>
-        <div className="system-xs-medium text-text-secondary">{toolLabel}</div>
+        <div className="text-text-tertiary system-2xs-medium-uppercase">{providerNameText}</div>
+        <div className="text-text-secondary system-xs-medium">{toolLabel}</div>
       </div>
       <div className="hidden items-center gap-1 group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
@@ -120,7 +120,7 @@ const ToolItem = ({
         <div className="mr-1" onClick={e => e.stopPropagation()}>
           <Switch
             size="md"
-            defaultValue={switchValue}
+            value={switchValue ?? false}
             onChange={onSwitchChange}
           />
         </div>
