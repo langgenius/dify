@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ParamItem from '.'
 
@@ -31,10 +31,8 @@ describe('ParamItem Slider onChange', () => {
     render(<ParamItem {...defaultProps} value={5} min={1} max={10} />)
     const slider = screen.getByRole('slider')
 
-    await act(async () => {
-      slider.focus()
-      await user.keyboard('{ArrowRight}')
-    })
+    await user.click(slider)
+    await user.keyboard('{ArrowRight}')
 
     // max=10 >= 5, so value remains raw (5->6)
     expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 6)
