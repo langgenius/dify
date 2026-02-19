@@ -298,7 +298,7 @@ const AgentTools: FC = () => {
                 <div className={cn(item.isDeleted && 'opacity-50')}>
                   {!item.notAuthor && (
                     <Switch
-                      defaultValue={item.isDeleted ? false : item.enabled}
+                      value={item.isDeleted ? false : item.enabled}
                       disabled={item.isDeleted || readonly}
                       size="md"
                       onChange={(enabled) => {

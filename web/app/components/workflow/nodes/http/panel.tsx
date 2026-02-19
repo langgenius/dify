@@ -131,7 +131,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`, { ns: 'workflow' })}
           operations={(
             <Switch
-              defaultValue={!!inputs.ssl_verify}
+              value={!!inputs.ssl_verify}
               onChange={handleSSLVerifyChange}
               size="md"
               disabled={readOnly}
