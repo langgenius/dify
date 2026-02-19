@@ -1,6 +1,17 @@
 from __future__ import annotations
 
+from unittest.mock import Mock
+
+import pytest
+from pydantic import ValidationError
+
 from controllers.console.app import annotation as annotation_module
+
+
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 def test_annotation_reply_payload_valid():
@@ -90,3 +101,71 @@ def test_annotation_file_payload_valid():
     """Test AnnotationFilePayload with valid message ID."""
     payload = annotation_module.AnnotationFilePayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.message_id == "550e8400-e29b-41d4-a716-446655440000"
+
+
+def test_annotation_reply_action_enable(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    enable_mock = Mock()
+    monkeypatch.setattr(annotation_module.AppAnnotationService, "enable_app_annotation", enable_mock)
+
+    api = annotation_module.AnnotationReplyActionApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/annotation-reply/enable",
+        method="POST",
+        json={"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"},
+    ):
+        response, status = handler(api, app_id="app", action="enable")
+
+    assert status == 200
+    enable_mock.assert_called_once()
+
+
+def test_annotation_reply_status_missing_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(annotation_module.redis_client, "get", lambda *_args, **_kwargs: None)
+
+    api = annotation_module.AnnotationReplyActionStatusApi()
+    handler = _unwrap(api.get)
+
+    with pytest.raises(ValueError):
+        handler(api, app_id="app", job_id="job", action="enable")
+
+
+def test_annotation_reply_status_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _get(key):
+        if "error" in key:
+            return b"oops"
+        return b"error"
+
+    monkeypatch.setattr(annotation_module.redis_client, "get", _get)
+
+    api = annotation_module.AnnotationReplyActionStatusApi()
+    handler = _unwrap(api.get)
+
+    response, status = handler(api, app_id="app", job_id="job", action="enable")
+
+    assert status == 200
+    assert response["error_msg"] == "oops"
+
+
+def test_annotation_setting_update(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    update_mock = Mock(return_value={"result": "ok"})
+    monkeypatch.setattr(annotation_module.AppAnnotationService, "update_app_annotation_setting", update_mock)
+
+    api = annotation_module.AppAnnotationSettingUpdateApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/annotation-settings/1",
+        method="POST",
+        json={"score_threshold": 0.5},
+    ):
+        response, status = handler(api, app_id="app", annotation_setting_id="1")
+
+    assert status == 200
+    assert response == {"result": "ok"}
+
+
+def test_annotation_message_id_invalid() -> None:
+    with pytest.raises(ValidationError):
+        annotation_module.AnnotationFilePayload.model_validate({"message_id": "bad"})

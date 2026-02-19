@@ -10,7 +10,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from werkzeug.exceptions import BadRequest, NotFound
+from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest, HTTPException, NotFound
 
 from controllers.console.app import (
     annotation as annotation_module,
@@ -54,6 +55,10 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from core.variables.segments import ArrayFileSegment, FileSegment
+from core.variables.types import SegmentType
+from core.workflow.file.enums import FileTransferMethod, FileType
+from core.workflow.file.models import File
 
 
 def _unwrap(func):
@@ -201,6 +206,60 @@ class TestCompletionEndpoints:
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
                 method(app_model=MagicMock(id="app-1"))
+
+    def test_chat_message_payload_invalid_uuid(self) -> None:
+        with pytest.raises(ValidationError):
+            completion_module.ChatMessagePayload.model_validate(
+                {"inputs": {}, "query": "hi", "conversation_id": "bad-id"}
+            )
+
+    def test_completion_message_requires_account(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(completion_module, "current_user", object())
+
+        api = completion_module.CompletionMessageApi()
+        handler = _unwrap(api.post)
+
+        with app.test_request_context(
+            "/apps/app/completion-messages",
+            method="POST",
+            json={"inputs": {}, "model_config": {}, "response_mode": "blocking"},
+        ):
+            with pytest.raises(ValueError):
+                handler(app_model=SimpleNamespace(mode=completion_module.AppMode.COMPLETION))
+
+    def test_completion_stop_requires_account(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(completion_module, "current_user", object())
+
+        api = completion_module.CompletionMessageStopApi()
+        handler = _unwrap(api.post)
+
+        with app.test_request_context("/apps/app/completion-messages/1/stop", method="POST"):
+            with pytest.raises(ValueError):
+                handler(app_model=SimpleNamespace(mode=completion_module.AppMode.COMPLETION), task_id="t1")
+
+    def test_chat_message_requires_account(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(completion_module, "current_user", object())
+
+        api = completion_module.ChatMessageApi()
+        handler = _unwrap(api.post)
+
+        with app.test_request_context(
+            "/apps/app/chat-messages",
+            method="POST",
+            json={"inputs": {}, "query": "hi", "model_config": {}, "response_mode": "blocking"},
+        ):
+            with pytest.raises(ValueError):
+                handler(app_model=SimpleNamespace(mode=completion_module.AppMode.CHAT.value))
+
+    def test_chat_stop_requires_account(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(completion_module, "current_user", object())
+
+        api = completion_module.ChatMessageStopApi()
+        handler = _unwrap(api.post)
+
+        with app.test_request_context("/apps/app/chat-messages/1/stop", method="POST"):
+            with pytest.raises(ValueError):
+                handler(app_model=SimpleNamespace(mode=completion_module.AppMode.CHAT.value), task_id="t1")
 
 
 # ========== OpsTrace Tests ==========
@@ -427,6 +486,36 @@ class TestWorkflowDraftVariableEndpoints:
 
         assert result == {"items": [], "total": 0}
 
+    def test_serialize_var_value_file_segment(self) -> None:
+        file = File(
+            tenant_id="t1",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="http://file",
+        )
+        variable = SimpleNamespace(get_value=lambda: FileSegment(value=file))
+
+        result = workflow_draft_variable_module._serialize_var_value(variable)
+
+        assert result["remote_url"] == "http://file"
+
+    def test_serialize_var_value_array_file_segment(self) -> None:
+        file = File(
+            tenant_id="t1",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="http://file",
+        )
+        variable = SimpleNamespace(get_value=lambda: ArrayFileSegment(value=[file]))
+
+        result = workflow_draft_variable_module._serialize_var_value(variable)
+
+        assert result[0]["remote_url"] == "http://file"
+
+    def test_serialize_variable_type(self) -> None:
+        variable = SimpleNamespace(value_type=SegmentType.STRING)
+        assert workflow_draft_variable_module._serialize_variable_type(variable) == "string"
+
 
 # ========== Workflow Statistic Tests ==========
 class TestWorkflowStatisticEndpoints:
@@ -568,7 +657,6 @@ class TestErrorHandling:
             annotation_module.AnnotationListQuery(page=0)
 
 
-# ========== Integration-like Tests ==========
 class TestPayloadIntegration:
     """Integration tests for payload handling."""
 
@@ -583,3 +671,47 @@ class TestPayloadIntegration:
         ]
         assert len(payloads) == 3
         assert all(p is not None for p in payloads)
+
+    def test_daily_message_statistic_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        account = SimpleNamespace(timezone="UTC")
+        monkeypatch.setattr(statistic_module, "current_account_with_tenant", lambda: (account, "t1"))
+        monkeypatch.setattr(statistic_module, "parse_time_range", lambda *_args, **_kwargs: (None, None))
+
+        class _Conn:
+            def execute(self, *_args, **_kwargs):
+                return [SimpleNamespace(date="2024-01-01", message_count=2)]
+
+        class _Begin:
+            def __enter__(self):
+                return _Conn()
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        monkeypatch.setattr(statistic_module, "db", SimpleNamespace(engine=SimpleNamespace(begin=lambda: _Begin())))
+
+        api = statistic_module.DailyMessageStatistic()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context("/apps/app/statistics/daily-messages", method="GET"):
+            response = handler(app_model=app_model)
+
+        assert response.get_json() == {"data": [{"date": "2024-01-01", "message_count": 2}]}
+
+    def test_daily_conversation_statistic_invalid_time(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        account = SimpleNamespace(timezone="UTC")
+        monkeypatch.setattr(statistic_module, "current_account_with_tenant", lambda: (account, "t1"))
+        monkeypatch.setattr(
+            statistic_module, "parse_time_range", lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad"))
+        )
+
+        api = statistic_module.DailyConversationStatistic()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context("/apps/app/statistics/daily-conversations", method="GET"):
+            with pytest.raises(HTTPException) as exc:
+                handler(app_model=app_model)
+
+        assert exc.value.code == 400

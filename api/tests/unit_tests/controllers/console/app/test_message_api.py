@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from controllers.console.app import message as message_module
 
@@ -120,3 +121,31 @@ def test_suggested_questions_response(app, monkeypatch: pytest.MonkeyPatch) -> N
     response = message_module.SuggestedQuestionsResponse(data=["What is AI?", "How does ML work?"])
     assert len(response.data) == 2
     assert response.data[0] == "What is AI?"
+
+
+def test_chat_messages_query_empty_first_id() -> None:
+    payload = message_module.ChatMessagesQuery.model_validate(
+        {"conversation_id": "00000000-0000-0000-0000-000000000001", "first_id": ""}
+    )
+    assert payload.first_id is None
+
+
+def test_chat_messages_query_invalid_uuid() -> None:
+    with pytest.raises(ValidationError):
+        message_module.ChatMessagesQuery.model_validate({"conversation_id": "bad"})
+
+
+def test_feedback_export_query_parse_bool() -> None:
+    payload = message_module.FeedbackExportQuery.model_validate({"has_comment": "yes"})
+    assert payload.has_comment is True
+
+    payload = message_module.FeedbackExportQuery.model_validate({"has_comment": "0"})
+    assert payload.has_comment is False
+
+    with pytest.raises(ValidationError):
+        message_module.FeedbackExportQuery.model_validate({"has_comment": "maybe"})
+
+
+def test_message_feedback_payload_invalid_uuid() -> None:
+    with pytest.raises(ValidationError):
+        message_module.MessageFeedbackPayload.model_validate({"message_id": "bad"})
