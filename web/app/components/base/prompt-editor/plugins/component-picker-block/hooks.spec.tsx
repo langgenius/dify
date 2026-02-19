@@ -1149,7 +1149,7 @@ describe('useOptions', () => {
 
       // allFlattenOptions: 4 prompt + variable options (v1 matches, + addOption) + tool options (tool1 does NOT match 'v1' → 0 + addOption)
       // = 4 + 2 + 1 = 7
-      expect(result.current.allFlattenOptions.length).toBeGreaterThan(0)
+      expect(result.current.allFlattenOptions).toHaveLength(7)
 
       // workflowVariableOptions: current + last_run + error_message + node-x = 4
       expect(result.current.workflowVariableOptions).toHaveLength(4)
