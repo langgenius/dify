@@ -91,6 +91,7 @@ def _make_redis_lock(*, acquired=True):
 # Test: Lock acquired → credentials refreshed
 # ---------------------------------------------------------------------------
 
+
 class TestDatasourceProviderOAuthRefreshLockAcquired:
     """When the lock is successfully acquired, credentials should be refreshed."""
 
@@ -142,12 +143,16 @@ class TestDatasourceProviderOAuthRefreshLockAcquired:
         svc = DatasourceProviderService()
 
         with (
-            patch.object(svc, "decrypt_datasource_provider_credentials", return_value={
-                "access_token": "old_at", "refresh_token": "old_rt"
-            }),
-            patch.object(svc, "encrypt_datasource_provider_credentials", return_value={
-                "access_token": "encrypted_new_at", "refresh_token": "encrypted_new_rt"
-            }),
+            patch.object(
+                svc,
+                "decrypt_datasource_provider_credentials",
+                return_value={"access_token": "old_at", "refresh_token": "old_rt"},
+            ),
+            patch.object(
+                svc,
+                "encrypt_datasource_provider_credentials",
+                return_value={"access_token": "encrypted_new_at", "refresh_token": "encrypted_new_rt"},
+            ),
             patch.object(svc, "get_oauth_client", return_value={"client_id": "cid"}),
             patch.object(svc, "extract_secret_variables", return_value=[]),
             patch("services.datasource_provider_service.Session", return_value=mock_session_cls),
@@ -185,6 +190,7 @@ class TestDatasourceProviderOAuthRefreshLockAcquired:
 # ---------------------------------------------------------------------------
 # Test: Lock acquired but double-check shows already refreshed
 # ---------------------------------------------------------------------------
+
 
 class TestDatasourceProviderOAuthRefreshDoubleCheck:
     """When lock is acquired but double-check shows already refreshed, skip refresh."""
@@ -224,9 +230,11 @@ class TestDatasourceProviderOAuthRefreshDoubleCheck:
         svc = DatasourceProviderService()
 
         with (
-            patch.object(svc, "decrypt_datasource_provider_credentials", return_value={
-                "access_token": "refreshed_at", "refresh_token": "refreshed_rt"
-            }),
+            patch.object(
+                svc,
+                "decrypt_datasource_provider_credentials",
+                return_value={"access_token": "refreshed_at", "refresh_token": "refreshed_rt"},
+            ),
             patch.object(svc, "extract_secret_variables", return_value=[]),
             patch("services.datasource_provider_service.Session", return_value=mock_session_cls),
         ):
@@ -249,6 +257,7 @@ class TestDatasourceProviderOAuthRefreshDoubleCheck:
 # ---------------------------------------------------------------------------
 # Test: Lock NOT acquired → poll DB with exponential backoff
 # ---------------------------------------------------------------------------
+
 
 class TestDatasourceProviderOAuthRefreshLockNotAcquired:
     """When the lock is not acquired (LockError), poll Redis signal then read DB once."""
@@ -291,9 +300,11 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
         svc = DatasourceProviderService()
 
         with (
-            patch.object(svc, "decrypt_datasource_provider_credentials", return_value={
-                "access_token": "refreshed_by_other", "refresh_token": "refreshed_rt"
-            }),
+            patch.object(
+                svc,
+                "decrypt_datasource_provider_credentials",
+                return_value={"access_token": "refreshed_by_other", "refresh_token": "refreshed_rt"},
+            ),
             patch.object(svc, "extract_secret_variables", return_value=[]),
             patch("services.datasource_provider_service.Session", return_value=mock_session_cls),
         ):
@@ -316,6 +327,7 @@ class TestDatasourceProviderOAuthRefreshLockNotAcquired:
 # ---------------------------------------------------------------------------
 # Test: Lock release on exception
 # ---------------------------------------------------------------------------
+
 
 class TestDatasourceProviderOAuthRefreshLockRelease:
     """Lock should always be released (via context manager __exit__) on exception."""
@@ -360,9 +372,11 @@ class TestDatasourceProviderOAuthRefreshLockRelease:
         svc = DatasourceProviderService()
 
         with (
-            patch.object(svc, "decrypt_datasource_provider_credentials", return_value={
-                "access_token": "old_at", "refresh_token": "old_rt"
-            }),
+            patch.object(
+                svc,
+                "decrypt_datasource_provider_credentials",
+                return_value={"access_token": "old_at", "refresh_token": "old_rt"},
+            ),
             patch.object(svc, "get_oauth_client", return_value={"client_id": "cid"}),
             patch.object(svc, "extract_secret_variables", return_value=[]),
             patch("services.datasource_provider_service.Session", return_value=mock_session_cls),
@@ -393,6 +407,7 @@ class TestDatasourceProviderOAuthRefreshLockRelease:
 # Test: Non-expired token → no lock needed
 # ---------------------------------------------------------------------------
 
+
 class TestDatasourceProviderOAuthRefreshNotExpired:
     """When credentials are not expired, no lock or refresh should happen."""
 
@@ -419,9 +434,11 @@ class TestDatasourceProviderOAuthRefreshNotExpired:
         svc = DatasourceProviderService()
 
         with (
-            patch.object(svc, "decrypt_datasource_provider_credentials", return_value={
-                "access_token": "valid_at", "refresh_token": "valid_rt"
-            }),
+            patch.object(
+                svc,
+                "decrypt_datasource_provider_credentials",
+                return_value={"access_token": "valid_at", "refresh_token": "valid_rt"},
+            ),
             patch.object(svc, "extract_secret_variables", return_value=[]),
             patch("services.datasource_provider_service.Session", return_value=mock_session_cls),
         ):
@@ -440,6 +457,7 @@ class TestDatasourceProviderOAuthRefreshNotExpired:
 # ---------------------------------------------------------------------------
 # Test: expires_at == -1 → never expires, no lock
 # ---------------------------------------------------------------------------
+
 
 class TestDatasourceProviderOAuthRefreshNeverExpires:
     """When expires_at is -1, credentials never expire; no lock needed."""
@@ -466,9 +484,11 @@ class TestDatasourceProviderOAuthRefreshNeverExpires:
         svc = DatasourceProviderService()
 
         with (
-            patch.object(svc, "decrypt_datasource_provider_credentials", return_value={
-                "access_token": "valid_at", "refresh_token": "valid_rt"
-            }),
+            patch.object(
+                svc,
+                "decrypt_datasource_provider_credentials",
+                return_value={"access_token": "valid_at", "refresh_token": "valid_rt"},
+            ),
             patch.object(svc, "extract_secret_variables", return_value=[]),
             patch("services.datasource_provider_service.Session", return_value=mock_session_cls),
         ):

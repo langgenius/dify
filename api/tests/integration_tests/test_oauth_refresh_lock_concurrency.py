@@ -61,12 +61,14 @@ class TokenRotationSimulator:
 
             if incoming_rt != self._current_valid_refresh_token:
                 self.invalid_grant_count += 1
-                self.call_log.append({
-                    "thread": threading.current_thread().name,
-                    "incoming_rt": incoming_rt,
-                    "expected_rt": self._current_valid_refresh_token,
-                    "result": "invalid_grant",
-                })
+                self.call_log.append(
+                    {
+                        "thread": threading.current_thread().name,
+                        "incoming_rt": incoming_rt,
+                        "expected_rt": self._current_valid_refresh_token,
+                        "result": "invalid_grant",
+                    }
+                )
                 raise RuntimeError(
                     f"invalid_grant: refresh_token '{incoming_rt}' has been revoked. "
                     f"Current valid token is '{self._current_valid_refresh_token}'"
@@ -79,13 +81,15 @@ class TokenRotationSimulator:
             self._current_valid_refresh_token = new_rt
             self.success_count += 1
 
-            self.call_log.append({
-                "thread": threading.current_thread().name,
-                "incoming_rt": incoming_rt,
-                "new_rt": new_rt,
-                "new_at": new_at,
-                "result": "success",
-            })
+            self.call_log.append(
+                {
+                    "thread": threading.current_thread().name,
+                    "incoming_rt": incoming_rt,
+                    "new_rt": new_rt,
+                    "new_at": new_at,
+                    "result": "success",
+                }
+            )
 
             return {
                 "access_token": new_at,
@@ -98,6 +102,7 @@ class TokenRotationSimulator:
 # Test: Concurrent refresh with distributed lock
 # ---------------------------------------------------------------------------
 
+
 def test_concurrent_oauth_refresh_with_lock():
     """Test that distributed lock prevents concurrent token refresh race condition."""
 
@@ -107,7 +112,10 @@ def test_concurrent_oauth_refresh_with_lock():
 
     # Connect to Redis
     redis_client = redis.Redis(
-        host=redis_host, port=redis_port, password=redis_password, db=15,
+        host=redis_host,
+        port=redis_port,
+        password=redis_password,
+        db=15,
     )  # Use DB 15 for testing
     redis_client.ping()
 
@@ -159,9 +167,7 @@ def test_concurrent_oauth_refresh_with_lock():
                         with db_lock:
                             current_creds = dict(db_state)
 
-                        if current_creds["expires_at"] != -1 and (
-                            current_creds["expires_at"] - 60
-                        ) < int(time.time()):
+                        if current_creds["expires_at"] != -1 and (current_creds["expires_at"] - 60) < int(time.time()):
                             # Actually refresh
                             refreshed = simulator.refresh(current_creds)
 
@@ -188,9 +194,7 @@ def test_concurrent_oauth_refresh_with_lock():
                         retries += 1
                         with db_lock:
                             current_creds = dict(db_state)
-                        if current_creds["expires_at"] != -1 and (
-                            current_creds["expires_at"] - 60
-                        ) >= int(time.time()):
+                        if current_creds["expires_at"] != -1 and (current_creds["expires_at"] - 60) >= int(time.time()):
                             break
                         backoff = min(backoff * 2, 1.0)
                     result["action"] = "read_from_db"
@@ -258,9 +262,7 @@ def test_concurrent_oauth_refresh_with_lock():
         f"Expected exactly 1 refresh call, but got {simulator.call_count}. "
         f"The distributed lock failed to prevent concurrent refreshes."
     )
-    assert simulator.success_count == 1, (
-        f"Expected exactly 1 successful refresh, got {simulator.success_count}"
-    )
+    assert simulator.success_count == 1, f"Expected exactly 1 successful refresh, got {simulator.success_count}"
     assert simulator.invalid_grant_count == 0, (
         f"Got {simulator.invalid_grant_count} invalid_grant errors. "
         f"This means multiple threads attempted refresh simultaneously."
@@ -307,6 +309,7 @@ def test_concurrent_oauth_refresh_with_lock():
 # ---------------------------------------------------------------------------
 # Comparison test: WITHOUT lock (demonstrates the race condition)
 # ---------------------------------------------------------------------------
+
 
 def test_concurrent_oauth_refresh_without_lock_shows_race():
     """Demonstrates that WITHOUT the lock, race condition causes invalid_grant.
@@ -389,9 +392,7 @@ def test_concurrent_oauth_refresh_without_lock_shows_race():
         print(f"  {entry}")
 
     # Without lock, we expect MULTIPLE refresh calls
-    assert simulator.call_count > 1, (
-        f"Expected multiple refresh calls without lock, got {simulator.call_count}"
-    )
+    assert simulator.call_count > 1, f"Expected multiple refresh calls without lock, got {simulator.call_count}"
 
     # We expect invalid_grant errors due to token rotation
     assert simulator.invalid_grant_count > 0, (

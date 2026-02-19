@@ -278,9 +278,7 @@ class ToolManager:
                         with Session(db.engine) as session:
                             # double-check after acquiring lock: re-read from DB
                             bp = session.get(BuiltinToolProvider, builtin_provider.id)
-                            if bp is not None and bp.expires_at != -1 and (
-                                bp.expires_at - 60
-                            ) < int(time.time()):
+                            if bp is not None and bp.expires_at != -1 and (bp.expires_at - 60) < int(time.time()):
                                 # TODO: circular import
                                 from core.plugin.impl.oauth import OAuthHandler
                                 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -292,9 +290,7 @@ class ToolManager:
                                     f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
                                     f"{provider_id}/tool/callback"
                                 )
-                                system_credentials = BuiltinToolManageService.get_oauth_client(
-                                    tenant_id, provider_id
-                                )
+                                system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
 
                                 oauth_handler = OAuthHandler()
                                 refreshed_credentials = oauth_handler.refresh_credentials(

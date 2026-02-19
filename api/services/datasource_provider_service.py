@@ -130,9 +130,9 @@ class DatasourceProviderService:
                     with redis_client.lock(lock_key, timeout=30, blocking_timeout=0):
                         # double-check after acquiring lock: another request may have already refreshed
                         session.refresh(datasource_provider)
-                        if datasource_provider.expires_at != -1 and (
-                            datasource_provider.expires_at - 60
-                        ) < int(time.time()):
+                        if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(
+                            time.time()
+                        ):
                             current_user = get_current_user()
                             decrypted_credentials = self.decrypt_datasource_provider_credentials(
                                 tenant_id=tenant_id,
@@ -156,14 +156,12 @@ class DatasourceProviderService:
                                 system_credentials=system_credentials or {},
                                 credentials=decrypted_credentials,
                             )
-                            datasource_provider.encrypted_credentials = (
-                                self.encrypt_datasource_provider_credentials(
-                                    tenant_id=tenant_id,
-                                    raw_credentials=refreshed_credentials.credentials,
-                                    provider=provider,
-                                    plugin_id=plugin_id,
-                                    datasource_provider=datasource_provider,
-                                )
+                            datasource_provider.encrypted_credentials = self.encrypt_datasource_provider_credentials(
+                                tenant_id=tenant_id,
+                                raw_credentials=refreshed_credentials.credentials,
+                                provider=provider,
+                                plugin_id=plugin_id,
+                                datasource_provider=datasource_provider,
                             )
                             datasource_provider.expires_at = refreshed_credentials.expires_at
                             session.commit()

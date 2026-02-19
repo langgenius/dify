@@ -31,9 +31,7 @@ def _make_builtin_provider(*, expires_at: int = -1):
     provider.user_id = "user-1"
     provider.credential_type = "oauth2"
     provider.expires_at = expires_at
-    provider.encrypted_credentials = json.dumps(
-        {"access_token": "old_at", "refresh_token": "old_rt"}
-    )
+    provider.encrypted_credentials = json.dumps({"access_token": "old_at", "refresh_token": "old_rt"})
     provider.credentials = {"access_token": "old_at", "refresh_token": "old_rt"}
     return provider
 
@@ -98,8 +96,7 @@ def _make_redis_lock(*, acquired=True):
     return mock_lock
 
 
-def _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider,
-                  bp, enc, cache, lock_acquired=True):
+def _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache, lock_acquired=True):
     mock_db.session.scalar.return_value = bp
     mock_create_encrypter.return_value = (enc, cache)
     mock_lock = _make_redis_lock(acquired=lock_acquired)
@@ -111,6 +108,7 @@ def _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider,
 def _call_get_tool_runtime():
     from core.tools.entities.tool_entities import ToolProviderType
     from core.tools.tool_manager import ToolManager
+
     return ToolManager.get_tool_runtime(
         provider_type=ToolProviderType.BUILT_IN,
         provider_id="test-plugin/test-provider",
@@ -131,6 +129,7 @@ def _pid_mock():
 # Test: Lock acquired, credentials expired → refresh
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthRefreshLockAcquired:
     @patch("core.helper.credential_utils.check_credential_policy_compliance")
     @patch("core.tools.tool_manager.is_valid_uuid", return_value=True)
@@ -139,15 +138,19 @@ class TestOAuthRefreshLockAcquired:
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_lock_acquired_refreshes_credentials(
-        self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, mock_check_credential,
+        self,
+        mock_get_provider,
+        mock_db,
+        mock_redis,
+        mock_create_encrypter,
+        mock_is_uuid,
+        mock_check_credential,
     ):
         expired_at = int(time.time()) - 100
         new_expires_at = int(time.time()) + 3600
         bp = _make_builtin_provider(expires_at=expired_at)
         enc, cache = _make_encrypter_and_cache()
-        _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                      mock_get_provider, bp, enc, cache, lock_acquired=True)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache, lock_acquired=True)
 
         # session.get() returns bp still expired (double-check confirms refresh needed)
         bp_in_session = _make_builtin_provider(expires_at=expired_at)
@@ -183,6 +186,7 @@ class TestOAuthRefreshLockAcquired:
 # Test: Lock acquired, but another thread already refreshed (double-check)
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthRefreshDoubleCheck:
     @patch("core.helper.credential_utils.check_credential_policy_compliance")
     @patch("core.tools.tool_manager.is_valid_uuid", return_value=True)
@@ -191,15 +195,19 @@ class TestOAuthRefreshDoubleCheck:
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_double_check_skips_refresh(
-        self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, mock_check_credential,
+        self,
+        mock_get_provider,
+        mock_db,
+        mock_redis,
+        mock_create_encrypter,
+        mock_is_uuid,
+        mock_check_credential,
     ):
         expired_at = int(time.time()) - 100
         fresh_at = int(time.time()) + 3600
         bp = _make_builtin_provider(expires_at=expired_at)
         enc, cache = _make_encrypter_and_cache()
-        _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                      mock_get_provider, bp, enc, cache, lock_acquired=True)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache, lock_acquired=True)
 
         # session.get() returns bp already refreshed by another thread
         bp_fresh = _make_builtin_provider(expires_at=fresh_at)
@@ -219,6 +227,7 @@ class TestOAuthRefreshDoubleCheck:
 # Test: Lock NOT acquired → poll DB with exponential backoff
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthRefreshLockNotAcquired:
     @patch("core.tools.tool_manager.time")
     @patch("core.helper.credential_utils.check_credential_policy_compliance")
@@ -228,8 +237,14 @@ class TestOAuthRefreshLockNotAcquired:
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_lock_not_acquired_polls_redis_signal(
-        self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, mock_check_credential, mock_time,
+        self,
+        mock_get_provider,
+        mock_db,
+        mock_redis,
+        mock_create_encrypter,
+        mock_is_uuid,
+        mock_check_credential,
+        mock_time,
     ):
         """Poll Redis signal key with backoff; one final DB read after signal."""
         now = int(time.time())
@@ -238,8 +253,9 @@ class TestOAuthRefreshLockNotAcquired:
         mock_time.time.return_value = now
         mock_time.sleep = MagicMock()
 
-        _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                      mock_get_provider, bp, enc, cache, lock_acquired=False)
+        _setup_common(
+            mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache, lock_acquired=False
+        )
 
         # redis_client.exists returns False first, then True (signal set)
         mock_redis.exists.side_effect = [False, True]
@@ -269,6 +285,7 @@ class TestOAuthRefreshLockNotAcquired:
 # Test: Lock acquired, exception during refresh → lock auto-released
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthRefreshLockRelease:
     @patch("core.helper.credential_utils.check_credential_policy_compliance")
     @patch("core.tools.tool_manager.is_valid_uuid", return_value=True)
@@ -277,13 +294,19 @@ class TestOAuthRefreshLockRelease:
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_lock_released_on_exception(
-        self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, mock_check_credential,
+        self,
+        mock_get_provider,
+        mock_db,
+        mock_redis,
+        mock_create_encrypter,
+        mock_is_uuid,
+        mock_check_credential,
     ):
         bp = _make_builtin_provider(expires_at=int(time.time()) - 100)
         enc, cache = _make_encrypter_and_cache()
-        mock_lock = _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                                  mock_get_provider, bp, enc, cache, lock_acquired=True)
+        mock_lock = _setup_common(
+            mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache, lock_acquired=True
+        )
 
         # session.get() returns expired bp so refresh is attempted
         bp_in_session = _make_builtin_provider(expires_at=int(time.time()) - 100)
@@ -312,6 +335,7 @@ class TestOAuthRefreshLockRelease:
 # Test: Non-expired → no lock at all
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthRefreshNotExpired:
     @patch("core.helper.credential_utils.check_credential_policy_compliance")
     @patch("core.tools.tool_manager.is_valid_uuid", return_value=True)
@@ -320,13 +344,17 @@ class TestOAuthRefreshNotExpired:
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_non_expired_skips_lock(
-        self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, mock_check_credential,
+        self,
+        mock_get_provider,
+        mock_db,
+        mock_redis,
+        mock_create_encrypter,
+        mock_is_uuid,
+        mock_check_credential,
     ):
         bp = _make_builtin_provider(expires_at=int(time.time()) + 3600)
         enc, cache = _make_encrypter_and_cache()
-        _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                      mock_get_provider, bp, enc, cache)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache)
         with (
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
             patch("core.tools.tool_manager.dify_config", CONSOLE_API_URL="https://app.dify.ai"),
@@ -339,6 +367,7 @@ class TestOAuthRefreshNotExpired:
 # Test: expires_at == -1 → never expires, no lock
 # ---------------------------------------------------------------------------
 
+
 class TestOAuthRefreshNeverExpires:
     @patch("core.helper.credential_utils.check_credential_policy_compliance")
     @patch("core.tools.tool_manager.is_valid_uuid", return_value=True)
@@ -347,13 +376,17 @@ class TestOAuthRefreshNeverExpires:
     @patch("core.tools.tool_manager.db")
     @patch("core.tools.tool_manager.ToolManager.get_builtin_provider")
     def test_never_expires_skips_lock(
-        self, mock_get_provider, mock_db, mock_redis,
-        mock_create_encrypter, mock_is_uuid, mock_check_credential,
+        self,
+        mock_get_provider,
+        mock_db,
+        mock_redis,
+        mock_create_encrypter,
+        mock_is_uuid,
+        mock_check_credential,
     ):
         bp = _make_builtin_provider(expires_at=-1)
         enc, cache = _make_encrypter_and_cache()
-        _setup_common(mock_db, mock_redis, mock_create_encrypter,
-                      mock_get_provider, bp, enc, cache)
+        _setup_common(mock_db, mock_redis, mock_create_encrypter, mock_get_provider, bp, enc, cache)
         with (
             patch("core.tools.tool_manager.ToolProviderID", return_value=_pid_mock()),
             patch("core.tools.tool_manager.dify_config", CONSOLE_API_URL="https://app.dify.ai"),
