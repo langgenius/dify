@@ -15,7 +15,6 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 describe('ConfigJinaReaderModal Component', () => {
-  const user = userEvent.setup()
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
 
@@ -39,6 +38,7 @@ describe('ConfigJinaReaderModal Component', () => {
 
   describe('Form Interactions', () => {
     it('should update state when API Key field changes', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
       const apiKeyInput = screen.getByPlaceholderText('datasetCreation.jinaReader.apiKeyPlaceholder')
@@ -51,6 +51,7 @@ describe('ConfigJinaReaderModal Component', () => {
     })
 
     it('should call onCancel when cancel button is clicked', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
@@ -64,6 +65,7 @@ describe('ConfigJinaReaderModal Component', () => {
 
   describe('Validation', () => {
     it('should show error when saving without API Key', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
@@ -80,6 +82,7 @@ describe('ConfigJinaReaderModal Component', () => {
 
   describe('Saving Logic', () => {
     it('should save successfully with valid API Key', async () => {
+      const user = userEvent.setup()
       // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigJinaReaderModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
@@ -109,6 +112,7 @@ describe('ConfigJinaReaderModal Component', () => {
     })
 
     it('should ignore multiple save clicks while saving is in progress', async () => {
+      const user = userEvent.setup()
       // Arrange
       let resolveSave: (value: { result: 'success' }) => void
       const savePromise = new Promise<{ result: 'success' }>((resolve) => {

@@ -1,5 +1,5 @@
 import type { CommonResponse } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { createDataSourceApiKeyBinding } from '@/service/datasets'
@@ -15,7 +15,6 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 describe('ConfigWatercrawlModal Component', () => {
-  const user = userEvent.setup()
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
 
@@ -46,8 +45,8 @@ describe('ConfigWatercrawlModal Component', () => {
       const baseUrlInput = screen.getByPlaceholderText('https://app.watercrawl.dev')
 
       // Act
-      await user.type(apiKeyInput, 'water-key')
-      await user.type(baseUrlInput, 'https://custom.watercrawl.dev')
+      fireEvent.change(apiKeyInput, { target: { value: 'water-key' } })
+      fireEvent.change(baseUrlInput, { target: { value: 'https://custom.watercrawl.dev' } })
 
       // Assert
       expect(apiKeyInput).toHaveValue('water-key')
@@ -55,6 +54,7 @@ describe('ConfigWatercrawlModal Component', () => {
     })
 
     it('should call onCancel when cancel button is clicked', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
@@ -68,6 +68,7 @@ describe('ConfigWatercrawlModal Component', () => {
 
   describe('Validation', () => {
     it('should show error when saving without API Key', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
 
@@ -82,6 +83,7 @@ describe('ConfigWatercrawlModal Component', () => {
     })
 
     it('should show error for invalid Base URL format', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
       const baseUrlInput = screen.getByPlaceholderText('https://app.watercrawl.dev')
@@ -100,6 +102,7 @@ describe('ConfigWatercrawlModal Component', () => {
 
   describe('Saving Logic', () => {
     it('should save successfully with valid API Key and custom URL', async () => {
+      const user = userEvent.setup()
       // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
@@ -130,6 +133,7 @@ describe('ConfigWatercrawlModal Component', () => {
     })
 
     it('should use default Base URL if none is provided during save', async () => {
+      const user = userEvent.setup()
       // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
@@ -151,6 +155,7 @@ describe('ConfigWatercrawlModal Component', () => {
     })
 
     it('should ignore multiple save clicks while saving is in progress', async () => {
+      const user = userEvent.setup()
       // Arrange
       let resolveSave: (value: CommonResponse) => void
       const savePromise = new Promise<CommonResponse>((resolve) => {
@@ -174,6 +179,7 @@ describe('ConfigWatercrawlModal Component', () => {
     })
 
     it('should accept base_url starting with https://', async () => {
+      const user = userEvent.setup()
       // Arrange
       vi.mocked(createDataSourceApiKeyBinding).mockResolvedValue({ result: 'success' })
       render(<ConfigWatercrawlModal onCancel={mockOnCancel} onSaved={mockOnSaved} />)
