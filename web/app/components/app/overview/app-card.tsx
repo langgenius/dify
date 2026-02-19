@@ -260,7 +260,7 @@ function AppCard({
               offset={24}
             >
               <div>
-                <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+                <Switch value={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
               </div>
             </Tooltip>
           </div>
