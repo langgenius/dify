@@ -367,7 +367,7 @@ class TestBuiltinProviderApis:
             ),
         ):
             assert method(api, "provider") == {"schema": {}}
-            
+
 
 class TestApiProviderApis:
     def test_add(self, app):
@@ -733,4 +733,3 @@ class TestOAuthCustomClient:
             ),
         ):
             assert method(api, "provider")["ok"]
-

@@ -378,7 +378,7 @@ class TestModelProviderModelValidateApi:
 
         assert result["result"] == "error"
 
-        
+
 class TestParameterAndAvailableModels:
     def test_parameter_rules(self, app: Flask):
         api = ModelProviderModelParameterRuleApi()
