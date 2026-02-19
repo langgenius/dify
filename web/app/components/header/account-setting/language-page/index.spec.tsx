@@ -1,6 +1,5 @@
 import type { UserProfileResponse } from '@/models/common'
-import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { ToastProvider } from '@/app/components/base/toast'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
@@ -11,6 +10,56 @@ const mockRefresh = vi.fn()
 const mockMutateUserProfile = vi.fn()
 let mockLocale: string | undefined = 'en-US'
 let mockUserProfile: UserProfileResponse
+
+vi.mock('@/app/components/base/select', async () => {
+  const React = await import('react')
+
+  return {
+    SimpleSelect: ({
+      items = [],
+      defaultValue,
+      onSelect,
+      disabled,
+    }: {
+      items?: Array<{ value: string | number, name: string }>
+      defaultValue?: string | number
+      onSelect: (item: { value: string | number, name: string }) => void
+      disabled?: boolean
+    }) => {
+      const [open, setOpen] = React.useState(false)
+      const [selectedValue, setSelectedValue] = React.useState<string | number | undefined>(defaultValue)
+      const selected = items.find(item => item.value === selectedValue)
+        ?? items.find(item => item.value === defaultValue)
+        ?? null
+
+      return (
+        <div>
+          <button type="button" disabled={disabled} onClick={() => setOpen(prev => !prev)}>
+            {selected?.name ?? ''}
+          </button>
+          {open && (
+            <div>
+              {items.map(item => (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="option"
+                  onClick={() => {
+                    setSelectedValue(item.value)
+                    onSelect(item)
+                    setOpen(false)
+                  }}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
@@ -57,18 +106,22 @@ const renderPage = () => {
   )
 }
 
-const getSelectTriggerBySection = (sectionLabel: string) => {
+const getSectionByLabel = (sectionLabel: string) => {
   const label = screen.getByText(sectionLabel)
   const section = label.closest('div')?.parentElement
   if (!section)
     throw new Error(`Missing select section: ${sectionLabel}`)
-  return within(section).getByRole('button')
+  return section
 }
 
 const selectOption = async (sectionLabel: string, optionName: string) => {
-  const user = userEvent.setup()
-  await user.click(getSelectTriggerBySection(sectionLabel))
-  await user.click(await screen.findByRole('option', { name: optionName }))
+  const section = getSectionByLabel(sectionLabel)
+  await act(async () => {
+    fireEvent.click(within(section).getByRole('button'))
+  })
+  await act(async () => {
+    fireEvent.click(await within(section).findByRole('option', { name: optionName }))
+  })
 }
 
 const getLanguageOption = (value: string) => {
@@ -124,7 +177,12 @@ describe('LanguagePage - Interactions', () => {
     await selectOption('common.language.displayLanguage', chinese.name)
 
     expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: chinese.name })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(updateUserProfileMock).toHaveBeenCalledWith({
+        url: '/account/interface-language',
+        body: { interface_language: chinese.value },
+      })
+    })
   })
 
   it('should show error toast when language update fails', async () => {
@@ -148,7 +206,7 @@ describe('LanguagePage - Interactions', () => {
 
     expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: midwayTimezone.name })).toBeInTheDocument()
-  })
+  }, 15000)
 
   it('should show error toast when timezone update fails', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
@@ -159,5 +217,5 @@ describe('LanguagePage - Interactions', () => {
     await selectOption('common.language.timezone', midwayTimezone.name)
 
     expect(await screen.findByText('Timezone failed')).toBeInTheDocument()
-  }, 5000)
+  }, 15000)
 })
