@@ -56,6 +56,9 @@ describe('ImagePreview', () => {
       })
     }
     const clipboardTarget = navigator.clipboard as { write: (items: ClipboardItem[]) => Promise<void> }
+    // In some test environments `write` lives on the prototype rather than
+    // the clipboard instance itself; locate the actual owner so vi.spyOn
+    // patches the right object.
     const writeOwner = Object.prototype.hasOwnProperty.call(clipboardTarget, 'write')
       ? clipboardTarget
       : (Object.getPrototypeOf(clipboardTarget) as { write: (items: ClipboardItem[]) => Promise<void> })
@@ -228,6 +231,7 @@ describe('ImagePreview', () => {
       await waitFor(() => {
         expect(image.style.transition).toBe('none')
       })
+      expect(image.style.transform).toContain('translate(')
 
       act(() => {
         document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
@@ -250,8 +254,6 @@ describe('ImagePreview', () => {
       )
 
       const openInTabButton = getOpenInTabButton()
-      if (!openInTabButton)
-        throw new Error('Expected open-in-tab button to exist')
       await user.click(openInTabButton)
 
       expect(mocks.windowOpen).toHaveBeenCalledWith('https://example.com/image.png', '_blank')
@@ -348,9 +350,9 @@ describe('ImagePreview', () => {
       }))
     })
 
-    it('should call download action for valid url and show error toast for invalid url', async () => {
+    it('should call download action for valid url', async () => {
       const user = userEvent.setup()
-      const { rerender } = render(
+      render(
         <ImagePreview
           url="https://example.com/image.png"
           title="Preview Image"
@@ -365,16 +367,19 @@ describe('ImagePreview', () => {
         fileName: 'Preview Image',
         target: '_blank',
       })
+    })
 
-      rerender(
+    it('should show error toast for invalid download url', async () => {
+      const user = userEvent.setup()
+      render(
         <ImagePreview
           url="invalid://image.png"
           title="Preview Image"
           onCancel={vi.fn()}
         />,
       )
-      const invalidDownloadButton = getDownloadButton()
-      await user.click(invalidDownloadButton)
+      const downloadButton = getDownloadButton()
+      await user.click(downloadButton)
 
       expect(mocks.notify).toHaveBeenCalledWith({
         type: 'error',

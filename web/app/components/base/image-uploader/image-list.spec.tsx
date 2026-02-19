@@ -1,5 +1,5 @@
 import type { ImageFile } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import ImageList from './image-list'
@@ -89,14 +89,14 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: 45 })]
       render(<ImageList list={list} />)
 
-      expect(screen.getByText(/45/)).toBeInTheDocument()
+      expect(screen.getByText(/^45\s*%$/)).toBeInTheDocument()
     })
 
     it('should not show progress overlay when local file is complete', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: 100 })]
       render(<ImageList list={list} />)
 
-      expect(screen.queryByText('%')).not.toBeInTheDocument()
+      expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
     })
 
     it('should show retry icon when local file upload fails (progress -1)', () => {
@@ -104,8 +104,8 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
       render(<ImageList list={list} onReUpload={onReUpload} />)
 
-      // The overlay element should be present without the percentage
-      expect(screen.queryByText('%')).not.toBeInTheDocument()
+      expect(screen.getByTestId('retry-icon')).toBeInTheDocument()
+      expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
     })
   })
 
@@ -186,9 +186,7 @@ describe('ImageList', () => {
       expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
 
       // Close preview
-      const closeButton = screen.queryByTestId('image-preview-close-button')
-      if (!closeButton)
-        throw new Error('Expected close button to exist')
+      const closeButton = screen.getByTestId('image-preview-close-button')
       await user.click(closeButton)
       expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
     })
@@ -213,8 +211,7 @@ describe('ImageList', () => {
       render(<ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />)
 
       const img = screen.getByRole('img')
-      img.dispatchEvent(new Event('load'))
-
+      fireEvent.load(img)
       expect(onImageLinkLoadSuccess).toHaveBeenCalledWith('file-1')
     })
 
@@ -224,7 +221,7 @@ describe('ImageList', () => {
       render(<ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />)
 
       const img = screen.getByRole('img')
-      img.dispatchEvent(new Event('load'))
+      fireEvent.load(img)
 
       expect(onImageLinkLoadSuccess).not.toHaveBeenCalled()
     })
@@ -235,7 +232,7 @@ describe('ImageList', () => {
       render(<ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />)
 
       const img = screen.getByRole('img')
-      img.dispatchEvent(new Event('load'))
+      fireEvent.load(img)
 
       expect(onImageLinkLoadSuccess).not.toHaveBeenCalled()
     })
@@ -246,7 +243,7 @@ describe('ImageList', () => {
       render(<ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />)
 
       const img = screen.getByRole('img')
-      img.dispatchEvent(new Event('error'))
+      fireEvent.error(img)
 
       expect(onImageLinkLoadError).toHaveBeenCalledWith('file-1')
     })
@@ -257,7 +254,7 @@ describe('ImageList', () => {
       render(<ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />)
 
       const img = screen.getByRole('img')
-      img.dispatchEvent(new Event('error'))
+      fireEvent.error(img)
 
       expect(onImageLinkLoadError).not.toHaveBeenCalled()
     })

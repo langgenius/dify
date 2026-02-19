@@ -1,4 +1,4 @@
-import type { ClipboardEvent } from 'react'
+import type { ClipboardEvent, DragEvent } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
 import { act, renderHook } from '@testing-library/react'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -22,9 +22,11 @@ vi.mock('./utils', () => ({
   getImageUploadErrorMessage: mockGetImageUploadErrorMessage,
 }))
 
+let fileCounter = 0
+
 const createImageFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
   type: TransferMethod.local_file,
-  _id: `file-${Date.now()}`,
+  _id: `file-${fileCounter++}`,
   fileId: '',
   progress: 0,
   url: 'data:image/png;base64,abc',
@@ -43,6 +45,7 @@ const createVisionSettings = (overrides: Partial<VisionSettings> = {}): VisionSe
 describe('useImageFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    fileCounter = 0
   })
 
   it('should return empty files initially', () => {
@@ -605,7 +608,7 @@ describe('useDraggableUploader', () => {
     dataTransfer: {
       files,
     },
-  } as unknown as React.DragEvent<HTMLDivElement>)
+  } as unknown as DragEvent<HTMLDivElement>)
 
   it('should return drag event handlers and isDragActive state', () => {
     const onUpload = vi.fn()
