@@ -127,10 +127,8 @@ describe('ImageList', () => {
 
     it('should show error indicator when remote file fails (progress -1)', () => {
       const list = [createRemoteFile({ _id: 'file-1', progress: -1 })]
-      const { container } = render(<ImageList list={list} />)
-
-      // Error state has a warning-colored border
-      expect(container.querySelector('.border-\\[\\#DC6803\\]')).toBeInTheDocument()
+      render(<ImageList list={list} />)
+      expect(screen.getByTestId('image-error-container')).toBeInTheDocument()
     })
   })
 
@@ -152,13 +150,9 @@ describe('ImageList', () => {
       const onReUpload = vi.fn()
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
       render(<ImageList list={list} onReUpload={onReUpload} />)
-
-      // The RefreshCcw01 icon is inside the overlay for failed uploads
-      const retryIcon = screen.queryByTestId('retry-icon')
-      if (retryIcon) {
-        await user.click(retryIcon)
-        expect(onReUpload).toHaveBeenCalledWith('file-1')
-      }
+      const retryIcon = screen.getByTestId('retry-icon')
+      await user.click(retryIcon)
+      expect(onReUpload).toHaveBeenCalledWith('file-1')
     })
 
     it('should open image preview when clicking a completed image', async () => {

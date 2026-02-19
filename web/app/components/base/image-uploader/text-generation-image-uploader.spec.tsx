@@ -1,14 +1,11 @@
+import type { useLocalFileUploader } from './hooks'
 import type { ImageFile, VisionSettings } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationImageUploader from './text-generation-image-uploader'
 
-type LocalUploaderArgs = {
-  limit?: number
-  disabled?: boolean
-  onUpload: (imageFile: ImageFile) => void
-}
+type LocalUploaderArgs = Parameters<typeof useLocalFileUploader>[0]
 
 const mocks = vi.hoisted(() => ({
   files: [] as ImageFile[],
@@ -171,9 +168,6 @@ describe('TextGenerationImageUploader', () => {
       })
       render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
       const fileInput = screen.getByTestId('local-file-input')
-      if (!fileInput)
-        throw new Error('Expected file input to exist')
-
       const file = new File(['content'], 'sample.png', { type: 'image/png' })
       await user.upload(fileInput as HTMLInputElement, file)
 

@@ -77,6 +77,7 @@ const ImageList: FC<ImageListProps> = ({
               : 'border-transparent bg-black/[0.16]'
             }
                 `}
+              data-testid="image-error-container"
             >
               {item.progress > -1 && (
                 <span className="i-ri-loader-2-line h-5 w-5 animate-spin text-white" data-testid="image-loader" />
@@ -117,6 +118,7 @@ const ImageList: FC<ImageListProps> = ({
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove?.(item._id)}
+              data-testid="remove-button"
             >
               <span className="i-ri-close-line h-3 w-3 text-text-tertiary" />
             </button>

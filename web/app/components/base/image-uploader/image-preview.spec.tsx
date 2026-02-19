@@ -28,13 +28,13 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: (...args: Parameters<typeof mocks.downloadUrl>) => mocks.downloadUrl(...args),
 }))
 
-const getOverlay = () => screen.getByTestId('image-preview-container') as HTMLDivElement | null
-const getCloseButton = () => screen.getByTestId('image-preview-close-button') as HTMLDivElement | null
-const getCopyButton = () => screen.getByTestId('image-preview-copy-button') as HTMLDivElement | null
-const getZoomOutButton = () => screen.getByTestId('image-preview-zoom-out-button') as HTMLDivElement | null
-const getZoomInButton = () => screen.getByTestId('image-preview-zoom-in-button') as HTMLDivElement | null
-const getDownloadButton = () => screen.getByTestId('image-preview-download-button') as HTMLDivElement | null
-const getOpenInTabButton = () => screen.getByTestId('image-preview-open-in-tab-button') as HTMLDivElement | null
+const getOverlay = () => screen.getByTestId('image-preview-container') as HTMLDivElement
+const getCloseButton = () => screen.getByTestId('image-preview-close-button') as HTMLDivElement
+const getCopyButton = () => screen.getByTestId('image-preview-copy-button') as HTMLDivElement
+const getZoomOutButton = () => screen.getByTestId('image-preview-zoom-out-button') as HTMLDivElement
+const getZoomInButton = () => screen.getByTestId('image-preview-zoom-in-button') as HTMLDivElement
+const getDownloadButton = () => screen.getByTestId('image-preview-download-button') as HTMLDivElement
+const getOpenInTabButton = () => screen.getByTestId('image-preview-open-in-tab-button') as HTMLDivElement
 
 const base64Image = 'aGVsbG8='
 const dataImage = `data:image/png;base64,${base64Image}`
@@ -64,7 +64,7 @@ describe('ImagePreview', () => {
     })
 
     globalThis.ClipboardItem = class {
-      constructor(public readonly data: Record<string, Blob>) {}
+      constructor(public readonly data: Record<string, Blob>) { }
     } as unknown as typeof ClipboardItem
     vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
       return mocks.windowOpen(...args)
@@ -147,8 +147,6 @@ describe('ImagePreview', () => {
       )
 
       const closeButton = getCloseButton()
-      if (!closeButton)
-        throw new Error('Expected close button to exist')
       await user.click(closeButton)
 
       expect(onCancel).toHaveBeenCalledTimes(1)
@@ -163,8 +161,6 @@ describe('ImagePreview', () => {
         />,
       )
       const overlay = getOverlay()
-      if (!overlay)
-        throw new Error('Expected overlay to exist')
       const image = screen.getByRole('img', { name: 'Preview Image' })
 
       act(() => {
@@ -193,12 +189,10 @@ describe('ImagePreview', () => {
       )
 
       const overlay = getOverlay()
-      if (!overlay)
-        throw new Error('Expected overlay to exist')
       const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
       const imageParent = image.parentElement
       if (!imageParent)
-        throw new Error('Expected image parent to exist')
+        throw new Error('Image parent element not found')
 
       vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({
         width: 200,
@@ -224,8 +218,6 @@ describe('ImagePreview', () => {
       } as DOMRect)
 
       const zoomInButton = getZoomInButton()
-      if (!zoomInButton)
-        throw new Error('Expected zoom-in button to exist')
       await user.click(zoomInButton)
 
       act(() => {
@@ -283,8 +275,6 @@ describe('ImagePreview', () => {
       )
 
       const openInTabButton = getOpenInTabButton()
-      if (!openInTabButton)
-        throw new Error('Expected open-in-tab button to exist')
       await user.click(openInTabButton)
 
       expect(mocks.windowOpen).toHaveBeenCalledWith()
@@ -302,8 +292,6 @@ describe('ImagePreview', () => {
       )
 
       const openInTabButton = getOpenInTabButton()
-      if (!openInTabButton)
-        throw new Error('Expected open-in-tab button to exist')
       await user.click(openInTabButton)
 
       expect(mocks.notify).toHaveBeenCalledWith({
@@ -312,9 +300,9 @@ describe('ImagePreview', () => {
       })
     })
 
-    it('should download valid url and show fallback message when copy fails', async () => {
+    it('should fall back to download and show info toast when clipboard copy fails', async () => {
       const user = userEvent.setup()
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
       mocks.clipboardWrite.mockRejectedValue(new Error('copy failed'))
 
       render(
@@ -326,8 +314,6 @@ describe('ImagePreview', () => {
       )
 
       const copyButton = getCopyButton()
-      if (!copyButton)
-        throw new Error('Expected copy button to exist')
       await user.click(copyButton)
 
       await waitFor(() => {
@@ -352,8 +338,6 @@ describe('ImagePreview', () => {
       )
 
       const copyButton = getCopyButton()
-      if (!copyButton)
-        throw new Error('Expected copy button to exist')
       await user.click(copyButton)
 
       await waitFor(() => {
@@ -374,8 +358,6 @@ describe('ImagePreview', () => {
         />,
       )
       const downloadButton = getDownloadButton()
-      if (!downloadButton)
-        throw new Error('Expected download button to exist')
       await user.click(downloadButton)
 
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
@@ -392,8 +374,6 @@ describe('ImagePreview', () => {
         />,
       )
       const invalidDownloadButton = getDownloadButton()
-      if (!invalidDownloadButton)
-        throw new Error('Expected invalid download button to exist')
       await user.click(invalidDownloadButton)
 
       expect(mocks.notify).toHaveBeenCalledWith({
@@ -415,8 +395,6 @@ describe('ImagePreview', () => {
 
       const zoomInButton = getZoomInButton()
       const zoomOutButton = getZoomOutButton()
-      if (!zoomInButton || !zoomOutButton)
-        throw new Error('Expected zoom buttons to exist')
       await user.click(zoomInButton)
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })

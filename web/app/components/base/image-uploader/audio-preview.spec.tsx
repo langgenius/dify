@@ -16,19 +16,19 @@ describe('AudioPreview', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<AudioPreview {...defaultProps} />)
-      expect(screen.getByTitle('Test Audio')).toBeInTheDocument()
+      expect(screen.getByTestId('audio-element')).toBeInTheDocument()
     })
 
     it('should render audio element with controls', () => {
       render(<AudioPreview {...defaultProps} />)
-      const audio = screen.getByTitle('Test Audio')
+      const audio = screen.getByTestId('audio-element')
       expect(audio.tagName).toBe('AUDIO')
       expect(audio).toHaveAttribute('controls')
     })
 
     it('should render source element with correct src', () => {
       render(<AudioPreview {...defaultProps} />)
-      const source = screen.getByTitle('Test Audio').querySelector('source')
+      const source = screen.getByTestId('audio-element').querySelector('source')
       expect(source).toHaveAttribute('src', 'https://example.com/audio.mp3')
       expect(source).toHaveAttribute('type', 'audio/mpeg')
     })
@@ -43,7 +43,7 @@ describe('AudioPreview', () => {
       render(<AudioPreview {...defaultProps} />)
       const overlay = screen.getByTestId('audio-preview-overlay')
       expect(overlay).toBeInTheDocument()
-      expect(overlay?.parentElement).toBe(document.body)
+      expect(overlay.parentElement).toBe(document.body)
     })
   })
 
@@ -55,19 +55,19 @@ describe('AudioPreview', () => {
 
     it('should set audio source from url prop', () => {
       render(<AudioPreview {...defaultProps} url="https://example.com/song.mp3" />)
-      const source = screen.getByTitle('Test Audio').closest('audio')?.querySelector('source')
+      const source = screen.getByTestId('audio-element').querySelector('source')
       expect(source).toHaveAttribute('src', 'https://example.com/song.mp3')
     })
 
     it('should set autoPlay to false', () => {
       render(<AudioPreview {...defaultProps} />)
-      const audio = screen.getByTitle('Test Audio') as HTMLAudioElement
+      const audio = screen.getByTestId('audio-element') as HTMLAudioElement
       expect(audio.autoplay).toBe(false)
     })
 
     it('should set preload to metadata', () => {
       render(<AudioPreview {...defaultProps} />)
-      const audio = screen.getByTitle('Test Audio')
+      const audio = screen.getByTestId('audio-element')
       expect(audio).toHaveAttribute('preload', 'metadata')
     })
   })
@@ -89,10 +89,10 @@ describe('AudioPreview', () => {
       const onCancel = vi.fn()
       render(<AudioPreview {...defaultProps} onCancel={onCancel} />)
 
-      const audio = screen.getByTitle('Test Audio')
-      await user.click(audio)
+      const overlay = screen.getByTestId('audio-preview-overlay')
+      await user.click(overlay)
 
-      // Clicking the audio element itself should not trigger onCancel
+      // Clicking the overlay backdrop should not trigger onCancel
       expect(onCancel).not.toHaveBeenCalled()
     })
   })
@@ -100,7 +100,7 @@ describe('AudioPreview', () => {
   describe('Edge Cases', () => {
     it('should handle empty url', () => {
       render(<AudioPreview {...defaultProps} url="" />)
-      const source = screen.getByTitle('Test Audio').querySelector('source')
+      const source = screen.getByTestId('audio-element').querySelector('source')
       expect(source).toBeInTheDocument()
     })
 

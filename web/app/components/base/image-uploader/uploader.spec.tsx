@@ -23,8 +23,6 @@ vi.mock('./hooks', () => ({
 
 const getInput = () => {
   const input = screen.getByTestId('local-file-input')
-  if (!input)
-    throw new Error('Expected file input to exist')
   return input as HTMLInputElement
 }
 
@@ -79,12 +77,7 @@ describe('Uploader', () => {
     })
 
     it('should pass hook arguments to useLocalFileUploader', () => {
-      const onUpload = vi.fn()
-      render(
-        <Uploader onUpload={onUpload} limit={5} disabled>
-          {() => <div>content</div>}
-        </Uploader>,
-      )
+      const { onUpload } = renderUploader({ limit: 5, disabled: true })
 
       expect(mocks.hookArgs).toMatchObject({
         limit: 5,

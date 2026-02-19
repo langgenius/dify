@@ -507,11 +507,20 @@ describe('useClipboardUploader', () => {
   it('should be disabled when visionConfig.enabled is false', () => {
     const onUpload = vi.fn()
     const settings = createVisionSettings({ enabled: false })
-    renderHook(() =>
+    const { result } = renderHook(() =>
       useClipboardUploader({ files: [], visionConfig: settings, onUpload }),
     )
 
-    // No error thrown, hook works in disabled state
+    const file = new File(['test'], 'test.png', { type: 'image/png' })
+    const mockEvent = {
+      clipboardData: { files: [file] },
+      preventDefault: vi.fn(),
+    } as unknown as ClipboardEvent<HTMLTextAreaElement>
+    act(() => {
+      result.current.onPaste(mockEvent)
+    })
+
+    // Paste occurs but the file should NOT be uploaded because disabled
     expect(onUpload).not.toHaveBeenCalled()
   })
 
@@ -688,7 +697,7 @@ describe('useDraggableUploader', () => {
     expect(leaveEvent.stopPropagation).toHaveBeenCalled()
   })
 
-  it('should set isDragActive to false on drop and upload file', () => {
+  it('should set isDragActive to false on drop and upload file', async () => {
     const onUpload = vi.fn()
     const settings = createVisionSettings()
     const { result } = renderHook(() =>
@@ -711,6 +720,11 @@ describe('useDraggableUploader', () => {
     expect(result.current.isDragActive).toBe(false)
     expect(event.preventDefault).toHaveBeenCalled()
     expect(event.stopPropagation).toHaveBeenCalled()
+
+    // Verify the file was actually handed to the upload pipeline
+    await vi.waitFor(() => {
+      expect(mockImageUpload).toHaveBeenCalled()
+    })
   })
 
   it('should not upload when dropping with no files', () => {

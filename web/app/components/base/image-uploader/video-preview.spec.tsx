@@ -51,7 +51,7 @@ describe('VideoPreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
-      expect(overlay?.parentElement).toBe(document.body)
+      expect(overlay.parentElement).toBe(document.body)
     })
   })
 
@@ -78,8 +78,6 @@ describe('VideoPreview', () => {
       render(<VideoPreview {...defaultProps} onCancel={onCancel} />)
 
       const closeButton = getCloseButton()
-      if (!closeButton)
-        throw new Error('Expected close button to exist')
       await user.click(closeButton)
 
       expect(onCancel).toHaveBeenCalledTimes(1)
@@ -91,9 +89,6 @@ describe('VideoPreview', () => {
       render(<VideoPreview {...defaultProps} onCancel={onCancel} />)
 
       const overlay = getOverlay()
-      if (!overlay)
-        throw new Error('Expected overlay to exist')
-
       await user.click(overlay)
 
       expect(onCancel).not.toHaveBeenCalled()
@@ -102,11 +97,12 @@ describe('VideoPreview', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty url', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
       render(<VideoPreview {...defaultProps} url="" />)
 
-      const source = screen.getByTitle('Test Video').querySelector('source')
+      const source = screen.getByTestId('video-element').querySelector('source')
       expect(source).not.toHaveAttribute('src')
+
       consoleErrorSpy.mockRestore()
     })
 

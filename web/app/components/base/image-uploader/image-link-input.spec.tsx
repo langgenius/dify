@@ -149,18 +149,14 @@ describe('ImageLinkInput', () => {
     it('should include _id as a timestamp string in the uploaded file', async () => {
       const user = userEvent.setup()
       const onUpload = vi.fn()
-      vi.spyOn(Date, 'now').mockReturnValue(1234567890)
-
+      const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1234567890)
       render(<ImageLinkInput onUpload={onUpload} />)
-
       await user.type(screen.getByRole('textbox'), 'https://example.com/img.png')
       await user.click(screen.getByRole('button'))
-
       expect(onUpload).toHaveBeenCalledWith(
         expect.objectContaining({ _id: '1234567890' }),
       )
-
-      vi.restoreAllMocks()
+      dateNowSpy.mockRestore()
     })
   })
 

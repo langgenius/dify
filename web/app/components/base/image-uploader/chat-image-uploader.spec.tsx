@@ -202,7 +202,7 @@ describe('ChatImageUploader', () => {
 
       await user.click(screen.getByRole('button'))
 
-      expect(screen.getByText('OR')).toBeInTheDocument()
+      expect(screen.getByText(/OR/i)).toBeInTheDocument()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(queryFileInput()).toBeInTheDocument()
     })
@@ -217,7 +217,7 @@ describe('ChatImageUploader', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.queryByText('OR')).not.toBeInTheDocument()
+      expect(screen.queryByText(/OR/i)).not.toBeInTheDocument()
       expect(queryFileInput()).not.toBeInTheDocument()
     })
   })
