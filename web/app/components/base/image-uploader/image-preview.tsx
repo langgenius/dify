@@ -196,6 +196,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       onMouseUp={handleMouseUp}
       style={{ cursor: scale > 1 ? 'move' : 'default' }}
       tabIndex={-1}
+      data-testid="image-preview-container"
     >
       { }
       {/* eslint-disable-next-line next/no-img-element */}
