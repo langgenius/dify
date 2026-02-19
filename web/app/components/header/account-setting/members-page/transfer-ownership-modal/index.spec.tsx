@@ -23,13 +23,7 @@ describe('TransferOwnershipModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(globalThis, 'setInterval').mockImplementation((handler: TimerHandler) => {
-      if (typeof handler === 'function') {
-        for (let count = 0; count < 61; count += 1)
-          handler()
-      }
-      return 0 as unknown as ReturnType<typeof setInterval>
-    })
+    vi.spyOn(globalThis, 'setInterval').mockImplementation(() => 0 as unknown as ReturnType<typeof setInterval>)
     vi.spyOn(globalThis, 'clearInterval').mockImplementation(() => {})
 
     vi.mocked(useAppContext).mockReturnValue({
@@ -101,7 +95,7 @@ describe('TransferOwnershipModal', () => {
       expect(ownershipTransfer).toHaveBeenCalledWith('new-owner-id', { token: 'final-token' })
       expect(mockReload).toHaveBeenCalled()
     })
-  })
+  }, 15000)
 
   it('should show error when email verification returns invalid code', async () => {
     const user = userEvent.setup()

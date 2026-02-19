@@ -1,6 +1,6 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ICurrentWorkspace } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast'
@@ -24,6 +24,10 @@ describe('EditWorkspaceModal', () => {
     } as unknown as AppContextValue)
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   const renderModal = () => render(
     <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
       <EditWorkspaceModal onCancel={mockOnCancel} />
@@ -37,12 +41,10 @@ describe('EditWorkspaceModal', () => {
   })
 
   it('should let user edit workspace name', async () => {
-    const user = userEvent.setup()
     renderModal()
 
     const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
-    await user.clear(input)
-    await user.type(input, 'New Workspace Name')
+    fireEvent.change(input, { target: { value: 'New Workspace Name' } })
 
     expect(input).toHaveValue('New Workspace Name')
   })
@@ -56,8 +58,7 @@ describe('EditWorkspaceModal', () => {
     renderModal()
 
     const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
-    await user.clear(input)
-    await user.type(input, 'Renamed Workspace')
+    fireEvent.change(input, { target: { value: 'Renamed Workspace' } })
     await user.click(screen.getByRole('button', { name: /operation\.confirm/i }))
 
     await waitFor(() => {
@@ -67,8 +68,6 @@ describe('EditWorkspaceModal', () => {
       })
       expect(mockAssign).toHaveBeenCalled()
     })
-
-    vi.unstubAllGlobals()
   })
 
   it('should show error toast when update fails', async () => {
