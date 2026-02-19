@@ -4,6 +4,11 @@ server {
     listen ${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
 
+    location = /console/api/ping {
+      proxy_pass http://fastapi:5004;
+      include proxy.conf;
+    }
+
     location /console/api {
       proxy_pass http://api:5001;
       include proxy.conf;
