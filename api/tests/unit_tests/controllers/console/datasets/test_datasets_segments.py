@@ -1,3 +1,5 @@
+from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,6 +16,7 @@ from controllers.console.datasets.datasets_segments import (
     DatasetDocumentSegmentBatchImportApi,
     DatasetDocumentSegmentListApi,
     DatasetDocumentSegmentUpdateApi,
+    _get_segment_with_summary,
 )
 from controllers.console.datasets.error import (
     ChildChunkDeleteIndexError,
@@ -29,6 +32,52 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def _segment():
+    return SimpleNamespace(
+        id="s1",
+        position=1,
+        document_id="d1",
+        content="c",
+        sign_content="c",
+        answer="a",
+        word_count=1,
+        tokens=1,
+        keywords=[],
+        index_node_id="n1",
+        index_node_hash="h",
+        hit_count=0,
+        enabled=True,
+        disabled_at=None,
+        disabled_by=None,
+        status="normal",
+        created_by="u1",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        updated_by="u1",
+        indexing_at=None,
+        completed_at=None,
+        error=None,
+        stopped_at=None,
+        child_chunks=[],
+        attachments=[],
+        summary=None,
+    )
+
+
+def test_get_segment_with_summary(monkeypatch):
+    segment = _segment()
+    summary = SimpleNamespace(summary_content="summary")
+
+    monkeypatch.setattr(
+        "services.summary_index_service.SummaryIndexService.get_segment_summary",
+        lambda *_args, **_kwargs: summary,
+    )
+
+    result = _get_segment_with_summary(segment, dataset_id="d1")
+
+    assert result["summary"] == "summary"
 
 
 class TestDatasetDocumentSegmentListApi:
