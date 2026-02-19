@@ -34,7 +34,7 @@ def stream_topic_events(
             on_subscribe()
         while True:
             try:
-                msg = sub.receive(timeout=0.1)
+                msg = sub.receive(timeout=1)
             except SubscriptionClosedError:
                 return
             if msg is None:

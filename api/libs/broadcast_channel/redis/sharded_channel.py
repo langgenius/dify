@@ -70,8 +70,9 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
         # Since we have already filtered at the caller's site, we can safely set
         # `ignore_subscribe_messages=False`.
         if isinstance(self._client, RedisCluster):
-            # NOTE(QuantumGhost): due to an issue in upstream code, calling `get_sharded_message`
-            # would use busy-looping to wait for incoming message, consuming excessive CPU quota.
+            # NOTE(QuantumGhost): due to an issue in upstream code, calling `get_sharded_message` without
+            # specifying the `target_node` argument would use busy-looping to wait
+            # for incoming message, consuming excessive CPU quota.
             #
             # Here we specify the `target_node` to mitigate this problem.
             node = self._client.get_node_from_key(self._topic)
@@ -80,8 +81,10 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
                 timeout=1,
                 target_node=node,
             )
-        else:
+        elif isinstance(self._client, Redis):
             return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=1)  # type: ignore[attr-defined]
+        else:
+            raise AssertionError("client should be either Redis or RedisCluster.")
 
     def _get_message_type(self) -> str:
         return "smessage"

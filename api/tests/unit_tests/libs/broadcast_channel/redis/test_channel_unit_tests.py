@@ -198,6 +198,15 @@ class SubscriptionTestCase:
     description: str = ""
 
 
+class FakeRedisClient:
+    """Minimal fake Redis client for unit tests."""
+
+    def __init__(self) -> None:
+        self.publish = MagicMock()
+        self.spublish = MagicMock()
+        self.pubsub = MagicMock(return_value=MagicMock())
+
+
 class TestRedisSubscription:
     """Test cases for the _RedisSubscription class."""
 
@@ -619,10 +628,13 @@ class TestRedisSubscription:
 class TestRedisShardedSubscription:
     """Test cases for the _RedisShardedSubscription class."""
 
+    @pytest.fixture(autouse=True)
+    def patch_sharded_redis_type(self, monkeypatch):
+        monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", FakeRedisClient)
+
     @pytest.fixture
-    def mock_redis_client(self) -> MagicMock:
-        client = MagicMock()
-        return client
+    def mock_redis_client(self) -> FakeRedisClient:
+        return FakeRedisClient()
 
     @pytest.fixture
     def mock_pubsub(self) -> MagicMock:
@@ -636,7 +648,7 @@ class TestRedisShardedSubscription:
 
     @pytest.fixture
     def sharded_subscription(
-        self, mock_pubsub: MagicMock, mock_redis_client: MagicMock
+        self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient
     ) -> Generator[_RedisShardedSubscription, None, None]:
         """Create a _RedisShardedSubscription instance for testing."""
         subscription = _RedisShardedSubscription(
@@ -657,7 +669,7 @@ class TestRedisShardedSubscription:
 
     # ==================== Lifecycle Tests ====================
 
-    def test_sharded_subscription_initialization(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock):
+    def test_sharded_subscription_initialization(self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient):
         """Test that sharded subscription is properly initialized."""
         subscription = _RedisShardedSubscription(
             client=mock_redis_client,
@@ -970,7 +982,7 @@ class TestRedisShardedSubscription:
         ],
     )
     def test_sharded_subscription_scenarios(
-        self, test_case: SubscriptionTestCase, mock_pubsub: MagicMock, mock_redis_client: MagicMock
+        self, test_case: SubscriptionTestCase, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient
     ):
         """Test various sharded subscription scenarios using table-driven approach."""
         subscription = _RedisShardedSubscription(
@@ -1058,7 +1070,7 @@ class TestRedisShardedSubscription:
         # Close should still work
         sharded_subscription.close()  # Should not raise
 
-    def test_channel_name_variations(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock):
+    def test_channel_name_variations(self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient):
         """Test various sharded channel name formats."""
         channel_names = [
             "simple",
@@ -1120,10 +1132,13 @@ class TestRedisSubscriptionCommon:
         """Parameterized fixture providing subscription type and class."""
         return request.param
 
+    @pytest.fixture(autouse=True)
+    def patch_sharded_redis_type(self, monkeypatch):
+        monkeypatch.setattr("libs.broadcast_channel.redis.sharded_channel.Redis", FakeRedisClient)
+
     @pytest.fixture
-    def mock_redis_client(self) -> MagicMock:
-        client = MagicMock()
-        return client
+    def mock_redis_client(self) -> FakeRedisClient:
+        return FakeRedisClient()
 
     @pytest.fixture
     def mock_pubsub(self) -> MagicMock:
@@ -1140,7 +1155,7 @@ class TestRedisSubscriptionCommon:
         return pubsub
 
     @pytest.fixture
-    def subscription(self, subscription_params, mock_pubsub: MagicMock, mock_redis_client: MagicMock):
+    def subscription(self, subscription_params, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient):
         """Create a subscription instance based on parameterized type."""
         subscription_type, subscription_class = subscription_params
         topic_name = f"test-{subscription_type}-topic"

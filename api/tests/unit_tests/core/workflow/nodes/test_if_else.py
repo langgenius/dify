@@ -6,10 +6,10 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.graph import Graph
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
