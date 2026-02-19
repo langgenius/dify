@@ -13,20 +13,33 @@ Focus on:
 - Service method interfaces
 """
 
+import sys
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow import (
+    AppQueueManager,
+    DifyAPIRepositoryFactory,
+    GraphEngineManager,
+    WorkflowAppLogApi,
     WorkflowLogQuery,
+    WorkflowRunApi,
+    WorkflowRunByIdApi,
+    WorkflowRunDetailApi,
     WorkflowRunPayload,
+    WorkflowTaskStopApi,
 )
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.workflow.enums import WorkflowExecutionStatus
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 
@@ -333,6 +346,154 @@ class TestWorkflowRunRepository:
         result = repo.get_workflow_run_by_id(tenant_id="tenant_123", app_id="app_456", run_id="run_789")
 
         assert result.status == "succeeded"
+
+
+class TestWorkflowRunDetailApi:
+    def test_not_workflow_app(self, app) -> None:
+        api = WorkflowRunDetailApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+
+        with app.test_request_context("/workflows/run/1", method="GET"):
+            with pytest.raises(NotWorkflowAppError):
+                handler(api, app_model=app_model, workflow_run_id="run")
+
+    def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        run = SimpleNamespace(id="run")
+        repo = SimpleNamespace(get_workflow_run_by_id=lambda **_kwargs: run)
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        monkeypatch.setattr(
+            DifyAPIRepositoryFactory,
+            "create_api_workflow_run_repository",
+            lambda *_args, **_kwargs: repo,
+        )
+
+        api = WorkflowRunDetailApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value, tenant_id="t1", id="a1")
+
+        assert handler(api, app_model=app_model, workflow_run_id="run") == run
+
+
+class TestWorkflowRunApi:
+    def test_not_workflow_app(self, app) -> None:
+        api = WorkflowRunApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(NotWorkflowAppError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_rate_limit(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(InvokeRateLimitError("slow")),
+        )
+
+        api = WorkflowRunApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(InvokeRateLimitHttpError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestWorkflowRunByIdApi:
+    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(WorkflowNotFoundError("missing")),
+        )
+
+        api = WorkflowRunByIdApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
+
+    def test_draft_workflow(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(IsDraftWorkflowError("draft")),
+        )
+
+        api = WorkflowRunByIdApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(BadRequest):
+                handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
+
+
+class TestWorkflowTaskStopApi:
+    def test_wrong_mode(self, app) -> None:
+        api = WorkflowTaskStopApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
+            with pytest.raises(NotWorkflowAppError):
+                handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        stop_mock = Mock()
+        send_mock = Mock()
+        monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
+        monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
+
+        api = WorkflowTaskStopApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
+            response = handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+
+        assert response == {"result": "success"}
+        stop_mock.assert_called_once_with("t1")
+        send_mock.assert_called_once_with("t1")
+
+
+class TestWorkflowAppLogApi:
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        class _SessionStub:
+            def __enter__(self):
+                return SimpleNamespace()
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        monkeypatch.setattr(workflow_module, "Session", lambda *_args, **_kwargs: _SessionStub())
+        monkeypatch.setattr(
+            WorkflowAppService,
+            "get_paginate_workflow_app_logs",
+            lambda *_args, **_kwargs: {"items": [], "total": 0},
+        )
+
+        api = WorkflowAppLogApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="a1")
+
+        with app.test_request_context("/workflows/logs", method="GET"):
+            response = handler(api, app_model=app_model)
+
+        assert response == {"items": [], "total": 0}
 
 
 # =============================================================================

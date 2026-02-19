@@ -7,18 +7,48 @@ Tests coverage for:
 - AudioService method interfaces
 """
 
+import io
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import InternalServerError
 
-from controllers.service_api.app.audio import AudioService, TextToAudioPayload
+from controllers.service_api.app.audio import AudioApi, TextApi, TextToAudioPayload
+from controllers.service_api.app.error import (
+    AppUnavailableError,
+    AudioTooLargeError,
+    CompletionRequestError,
+    NoAudioUploadedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderNotSupportSpeechToTextError,
+    ProviderQuotaExceededError,
+    UnsupportedAudioTypeError,
+)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_runtime.errors.invoke import InvokeError
+from services.audio_service import AudioService
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
+
+
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
+
+
+def _file_data():
+    return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
+
 
 # ---------------------------------------------------------------------------
 # Pydantic Model Tests
@@ -181,3 +211,88 @@ class TestAudioServiceMockedBehavior:
         )
 
         assert result["audio"] == "base64_audio_data"
+
+
+class TestAudioApi:
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: {"text": "ok"})
+        api = AudioApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="a1")
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
+            response = handler(api, app_model=app_model, end_user=end_user)
+
+        assert response == {"text": "ok"}
+
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (AppModelConfigBrokenError(), AppUnavailableError),
+            (NoAudioUploadedServiceError(), NoAudioUploadedError),
+            (AudioTooLargeServiceError("too big"), AudioTooLargeError),
+            (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
+            (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
+            (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
+            (InvokeError("invoke"), CompletionRequestError),
+        ],
+    )
+    def test_error_mapping(self, app, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
+        monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
+        api = AudioApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="a1")
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
+            with pytest.raises(expected):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_unhandled_error(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        api = AudioApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="a1")
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
+            with pytest.raises(InternalServerError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestTextApi:
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
+
+        api = TextApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="a1")
+        end_user = SimpleNamespace(external_user_id="ext")
+
+        with app.test_request_context(
+            "/text-to-audio",
+            method="POST",
+            json={"text": "hello", "voice": "v"},
+        ):
+            response = handler(api, app_model=app_model, end_user=end_user)
+
+        assert response == {"audio": "ok"}
+
+    def test_error_mapping(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError())
+        )
+
+        api = TextApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="a1")
+        end_user = SimpleNamespace(external_user_id="ext")
+
+        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
+            with pytest.raises(ProviderQuotaExceededError):
+                handler(api, app_model=app_model, end_user=end_user)

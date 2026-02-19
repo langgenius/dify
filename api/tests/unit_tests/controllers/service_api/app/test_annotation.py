@@ -13,15 +13,30 @@ Note: API endpoint tests for annotation controllers are complex due to:
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask_restx.api import HTTPStatus
 
 from controllers.service_api.app.annotation import (
     AnnotationCreatePayload,
+    AnnotationListApi,
+    AnnotationReplyActionApi,
     AnnotationReplyActionPayload,
+    AnnotationReplyActionStatusApi,
+    AnnotationUpdateDeleteApi,
 )
+from extensions.ext_redis import redis_client
 from models.model import App
+from services.annotation_service import AppAnnotationService
+
+
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
+
 
 # ---------------------------------------------------------------------------
 # Pydantic Model Tests
@@ -145,3 +160,136 @@ class TestAnnotationErrorPatterns:
         """Test ValueError pattern for job not found."""
         with pytest.raises(ValueError, match="does not exist"):
             raise ValueError("The job does not exist.")
+
+
+class TestAnnotationReplyActionApi:
+    def test_enable(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        enable_mock = Mock()
+        monkeypatch.setattr(AppAnnotationService, "enable_app_annotation", enable_mock)
+
+        api = AnnotationReplyActionApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context(
+            "/apps/annotation-reply/enable",
+            method="POST",
+            json={"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"},
+        ):
+            response, status = handler(api, app_model=app_model, action="enable")
+
+        assert status == 200
+        enable_mock.assert_called_once()
+
+    def test_disable(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        disable_mock = Mock()
+        monkeypatch.setattr(AppAnnotationService, "disable_app_annotation", disable_mock)
+
+        api = AnnotationReplyActionApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context(
+            "/apps/annotation-reply/disable",
+            method="POST",
+            json={"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"},
+        ):
+            response, status = handler(api, app_model=app_model, action="disable")
+
+        assert status == 200
+        disable_mock.assert_called_once()
+
+
+class TestAnnotationReplyActionStatusApi:
+    def test_missing_job(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(redis_client, "get", lambda *_args, **_kwargs: None)
+
+        api = AnnotationReplyActionStatusApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        with pytest.raises(ValueError):
+            handler(api, app_model=app_model, job_id="j1", action="enable")
+
+    def test_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def _get(key):
+            if "error" in key:
+                return b"oops"
+            return b"error"
+
+        monkeypatch.setattr(redis_client, "get", _get)
+
+        api = AnnotationReplyActionStatusApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        response, status = handler(api, app_model=app_model, job_id="j1", action="enable")
+
+        assert status == 200
+        assert response["job_status"] == "error"
+        assert response["error_msg"] == "oops"
+
+
+class TestAnnotationListApi:
+    def test_get(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        monkeypatch.setattr(
+            AppAnnotationService,
+            "get_annotation_list_by_app_id",
+            lambda *_args, **_kwargs: ([annotation], 1),
+        )
+
+        api = AnnotationListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context("/apps/annotations?page=1&limit=1", method="GET"):
+            response = handler(api, app_model=app_model)
+
+        assert response["total"] == 1
+
+    def test_create(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        monkeypatch.setattr(
+            AppAnnotationService,
+            "insert_app_annotation_directly",
+            lambda *_args, **_kwargs: annotation,
+        )
+
+        api = AnnotationListApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context("/apps/annotations", method="POST", json={"question": "q", "answer": "a"}):
+            response, status = handler(api, app_model=app_model)
+
+        assert status == HTTPStatus.CREATED
+        assert response["question"] == "q"
+
+
+class TestAnnotationUpdateDeleteApi:
+    def test_update_delete(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
+        monkeypatch.setattr(
+            AppAnnotationService,
+            "update_app_annotation_directly",
+            lambda *_args, **_kwargs: annotation,
+        )
+        delete_mock = Mock()
+        monkeypatch.setattr(AppAnnotationService, "delete_app_annotation", delete_mock)
+
+        api = AnnotationUpdateDeleteApi()
+        put_handler = _unwrap(api.put)
+        delete_handler = _unwrap(api.delete)
+        app_model = SimpleNamespace(id="app")
+
+        with app.test_request_context("/apps/annotations/1", method="PUT", json={"question": "q", "answer": "a"}):
+            response = put_handler(api, app_model=app_model, annotation_id="1")
+
+        assert response["answer"] == "a"
+
+        with app.test_request_context("/apps/annotations/1", method="DELETE"):
+            response, status = delete_handler(api, app_model=app_model, annotation_id="1")
+
+        assert status == 204
+        delete_mock.assert_called_once()

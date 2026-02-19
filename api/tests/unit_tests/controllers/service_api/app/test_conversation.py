@@ -13,21 +13,41 @@ Focus on:
 - Error types and mappings
 """
 
+import sys
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.service_api.app.conversation import (
+    ConversationApi,
+    ConversationDetailApi,
     ConversationListQuery,
+    ConversationRenameApi,
     ConversationRenamePayload,
+    ConversationVariableDetailApi,
+    ConversationVariablesApi,
     ConversationVariablesQuery,
     ConversationVariableUpdatePayload,
 )
 from controllers.service_api.app.error import NotChatAppError
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
+from services.errors.conversation import (
+    ConversationNotExistsError,
+    ConversationVariableNotExistsError,
+    ConversationVariableTypeMismatchError,
+    LastConversationNotExistsError,
+)
+
+
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class TestConversationListQuery:
@@ -389,3 +409,189 @@ class TestConversationService:
         )
 
         assert result.name == "New Name"
+
+
+class TestConversationPayloadsController:
+    def test_rename_requires_name(self) -> None:
+        with pytest.raises(ValueError):
+            ConversationRenamePayload(auto_generate=False, name="")
+
+    def test_variables_query_invalid_name(self) -> None:
+        with pytest.raises(ValueError):
+            ConversationVariablesQuery(variable_name="bad;")
+
+
+class TestConversationApiController:
+    def test_list_not_chat(self, app) -> None:
+        api = ConversationApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/conversations", method="GET"):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_list_last_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        class _SessionStub:
+            def __enter__(self):
+                return SimpleNamespace()
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        monkeypatch.setattr(
+            ConversationService,
+            "pagination_by_last_id",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(LastConversationNotExistsError()),
+        )
+        conversation_module = sys.modules["controllers.service_api.app.conversation"]
+        monkeypatch.setattr(conversation_module, "db", SimpleNamespace(engine=object()))
+        monkeypatch.setattr(conversation_module, "Session", lambda *_args, **_kwargs: _SessionStub())
+
+        api = ConversationApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations?last_id=00000000-0000-0000-0000-000000000001&limit=20",
+            method="GET",
+        ):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestConversationDetailApiController:
+    def test_delete_not_chat(self, app) -> None:
+        api = ConversationDetailApi()
+        handler = _unwrap(api.delete)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/conversations/1", method="DELETE"):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
+
+    def test_delete_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            ConversationService,
+            "delete",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
+        )
+
+        api = ConversationDetailApi()
+        handler = _unwrap(api.delete)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/conversations/1", method="DELETE"):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
+
+
+class TestConversationRenameApiController:
+    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            ConversationService,
+            "rename",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
+        )
+
+        api = ConversationRenameApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations/1/name",
+            method="POST",
+            json={"auto_generate": True},
+        ):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
+
+
+class TestConversationVariablesApiController:
+    def test_not_chat(self, app) -> None:
+        api = ConversationVariablesApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/conversations/1/variables", method="GET"):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
+
+    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            ConversationService,
+            "get_conversational_variable",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
+        )
+
+        api = ConversationVariablesApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations/1/variables?limit=20",
+            method="GET",
+        ):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
+
+
+class TestConversationVariableDetailApiController:
+    def test_update_type_mismatch(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            ConversationService,
+            "update_conversation_variable",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationVariableTypeMismatchError("bad")),
+        )
+
+        api = ConversationVariableDetailApi()
+        handler = _unwrap(api.put)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations/1/variables/2",
+            method="PUT",
+            json={"value": "x"},
+        ):
+            with pytest.raises(BadRequest):
+                handler(
+                    api,
+                    app_model=app_model,
+                    end_user=end_user,
+                    c_id="00000000-0000-0000-0000-000000000001",
+                    variable_id="00000000-0000-0000-0000-000000000002",
+                )
+
+    def test_update_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            ConversationService,
+            "update_conversation_variable",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationVariableNotExistsError()),
+        )
+
+        api = ConversationVariableDetailApi()
+        handler = _unwrap(api.put)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/conversations/1/variables/2",
+            method="PUT",
+            json={"value": "x"},
+        ):
+            with pytest.raises(NotFound):
+                handler(
+                    api,
+                    app_model=app_model,
+                    end_user=end_user,
+                    c_id="00000000-0000-0000-0000-000000000001",
+                    variable_id="00000000-0000-0000-0000-000000000002",
+                )

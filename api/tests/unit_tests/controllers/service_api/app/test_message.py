@@ -15,19 +15,36 @@ Focus on:
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.app.message import FeedbackListQuery, MessageFeedbackPayload, MessageListQuery
+from controllers.service_api.app.message import (
+    AppGetFeedbacksApi,
+    FeedbackListQuery,
+    MessageFeedbackApi,
+    MessageFeedbackPayload,
+    MessageListApi,
+    MessageListQuery,
+    MessageSuggestedApi,
+)
 from models.model import App, AppMode, EndUser
+from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class TestMessageListQuery:
@@ -359,3 +376,166 @@ class TestMessageService:
             MessageService.get_suggested_questions_after_answer(
                 app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id="invalid_message_id", invoke_from=Mock()
             )
+
+
+class TestMessageListApi:
+    def test_not_chat_app(self, app) -> None:
+        api = MessageListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages?conversation_id=cid", method="GET"):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_conversation_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "pagination_by_first_id",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
+        )
+
+        api = MessageListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
+            method="GET",
+        ):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_first_message_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "pagination_by_first_id",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(FirstMessageNotExistsError()),
+        )
+
+        api = MessageListApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
+            method="GET",
+        ):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestMessageFeedbackApi:
+    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "create_feedback",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(MessageNotExistsError()),
+        )
+
+        api = MessageFeedbackApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace()
+        end_user = SimpleNamespace()
+
+        with app.test_request_context(
+            "/messages/m1/feedbacks",
+            method="POST",
+            json={"rating": "like", "content": "ok"},
+        ):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+
+class TestAppGetFeedbacksApi:
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(MessageService, "get_all_messages_feedbacks", lambda *_args, **_kwargs: ["f1"])
+
+        api = AppGetFeedbacksApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace()
+
+        with app.test_request_context("/app/feedbacks?page=1&limit=20", method="GET"):
+            response = handler(api, app_model=app_model)
+
+        assert response == {"data": ["f1"]}
+
+
+class TestMessageSuggestedApi:
+    def test_not_chat(self, app) -> None:
+        api = MessageSuggestedApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_suggested_questions_after_answer",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(MessageNotExistsError()),
+        )
+
+        api = MessageSuggestedApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+    def test_disabled(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_suggested_questions_after_answer",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(SuggestedQuestionsAfterAnswerDisabledError()),
+        )
+
+        api = MessageSuggestedApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            with pytest.raises(BadRequest):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+    def test_internal_error(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_suggested_questions_after_answer",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+        )
+
+        api = MessageSuggestedApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            with pytest.raises(InternalServerError):
+                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            MessageService,
+            "get_suggested_questions_after_answer",
+            lambda *_args, **_kwargs: ["q1"],
+        )
+
+        api = MessageSuggestedApi()
+        handler = _unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/messages/m1/suggested", method="GET"):
+            response = handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+
+        assert response == {"result": "success", "data": ["q1"]}

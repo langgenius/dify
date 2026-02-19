@@ -12,14 +12,21 @@ Focus on:
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.service_api.app.completion import (
+    ChatApi,
     ChatRequestPayload,
+    ChatStopApi,
+    CompletionApi,
     CompletionRequestPayload,
+    CompletionStopApi,
 )
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -30,8 +37,16 @@ from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+
+
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class TestCompletionRequestPayload:
@@ -385,3 +400,125 @@ class TestCompletionControllerLogic:
 
             assert response == ({"result": "success"}, 200)
             mock_task_service.stop_task.assert_called_once()
+
+
+class TestChatRequestPayloadController:
+    def test_normalizes_conversation_id(self) -> None:
+        payload = ChatRequestPayload.model_validate(
+            {"inputs": {}, "query": "hi", "conversation_id": "  ", "response_mode": "blocking"}
+        )
+        assert payload.conversation_id is None
+
+        with pytest.raises(ValidationError):
+            ChatRequestPayload.model_validate({"inputs": {}, "query": "hi", "conversation_id": "bad-id"})
+
+
+class TestCompletionApiController:
+    def test_wrong_mode(self, app) -> None:
+        api = CompletionApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
+            with pytest.raises(AppUnavailableError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_conversation_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
+        )
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
+        end_user = SimpleNamespace()
+
+        api = CompletionApi()
+        handler = _unwrap(api.post)
+
+        with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestCompletionStopApiController:
+    def test_wrong_mode(self, app) -> None:
+        api = CompletionStopApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/completion-messages/1/stop", method="POST"):
+            with pytest.raises(AppUnavailableError):
+                handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        stop_mock = Mock()
+        monkeypatch.setattr(AppTaskService, "stop_task", stop_mock)
+
+        api = CompletionStopApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/completion-messages/1/stop", method="POST"):
+            response, status = handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+
+        assert status == 200
+        assert response == {"result": "success"}
+
+
+class TestChatApiController:
+    def test_wrong_mode(self, app) -> None:
+        api = ChatApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_workflow_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(WorkflowNotFoundError("missing")),
+        )
+
+        api = ChatApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
+            with pytest.raises(NotFound):
+                handler(api, app_model=app_model, end_user=end_user)
+
+    def test_draft_workflow(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(IsDraftWorkflowError("draft")),
+        )
+
+        api = ChatApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
+            with pytest.raises(BadRequest):
+                handler(api, app_model=app_model, end_user=end_user)
+
+
+class TestChatStopApiController:
+    def test_wrong_mode(self, app) -> None:
+        api = ChatStopApi()
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace(id="u1")
+
+        with app.test_request_context("/chat-messages/1/stop", method="POST"):
+            with pytest.raises(NotChatAppError):
+                handler(api, app_model=app_model, end_user=end_user, task_id="t1")

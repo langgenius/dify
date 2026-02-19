@@ -19,6 +19,7 @@ Strategy:
 
 import io
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
@@ -595,7 +596,7 @@ class TestFileUploadApiPost:
         mock_upload.extension = "pdf"
         mock_upload.mime_type = "application/pdf"
         mock_upload.created_by = str(uuid.uuid4())
-        mock_upload.created_at = "2024-01-01T00:00:00Z"
+        mock_upload.created_at = datetime(2024, 1, 1, tzinfo=UTC)
 
         mock_file_svc_instance = Mock()
         mock_file_svc_instance.upload_file.return_value = mock_upload
