@@ -1,8 +1,7 @@
-from fastopenapi.routers import FlaskRouter
 from flask_cors import CORS
 
 from configs import dify_config
-from controllers.fastopenapi import console_router
+from controllers.fastopenapi import FlaskRouter, console_router, web_router
 from dify_app import DifyApp
 from extensions.ext_blueprints import AUTHENTICATED_HEADERS, EXPOSED_HEADERS
 
@@ -30,16 +29,24 @@ def init_app(app: DifyApp) -> None:
     import controllers.console.init_validate as init_validate_module
     import controllers.console.ping as ping_module
     from controllers.console import remote_files, setup
+    from controllers.console.app import annotation as annotation_module
+    from controllers.web import workflow as workflow_module
 
     _ = init_validate_module
     _ = ping_module
     _ = remote_files
     _ = setup
+    _ = annotation_module
+    _ = workflow_module
 
     router.include_router(console_router, prefix="/console/api")
+    router.include_router(web_router, prefix="/api")
     CORS(
         app,
-        resources={r"/console/api/.*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+        resources={
+            r"/console/api/.*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS},
+            r"/api/.*": {"origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS},
+        },
         supports_credentials=True,
         allow_headers=list(AUTHENTICATED_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
