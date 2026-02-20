@@ -177,6 +177,8 @@
   "feature.tools.tips": "Las herramientas proporcionan un método estándar de llamada API, tomando la entrada del usuario o variables como parámetros de solicitud para consultar datos externos como contexto.",
   "feature.tools.title": "Herramientas",
   "feature.tools.toolsInUse": "{{count}} herramientas en uso",
+  "feature.videoUpload.description": "Activar Video permitirá que el modelo procese archivos de video para transcripción y análisis.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Modificar el formato restablecerá el área de depuración, ¿estás seguro?",
   "formattingChangedTitle": "Formato cambiado",
   "generate.apply": "Aplicar",

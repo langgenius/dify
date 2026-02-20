@@ -177,6 +177,8 @@
   "feature.tools.tips": "Orodja nudijo standardiziran način klicanja API-jev, pri čemer se uporabniški vnos ali spremenljivke uporabijo kot parametri za poizvedovanje zunanjih podatkov.",
   "feature.tools.title": "Orodja",
   "feature.tools.toolsInUse": "{{count}} orodij v uporabi",
+  "feature.videoUpload.description": "Omogočanje videa bo modelu omogočilo obdelavo video datotek za transkripcijo in analizo.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Spreminjanje oblikovanja bo ponastavilo območje za odpravljanje napak, ste prepričani?",
   "formattingChangedTitle": "Spremenjeno oblikovanje",
   "generate.apply": "Uporabiti",
