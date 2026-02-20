@@ -8,89 +8,18 @@ WorkflowNodeExecutionModel operations using Aliyun SLS LogStore.
 import logging
 import time
 from collections.abc import Sequence
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy.orm import sessionmaker
 
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from extensions.logstore.repositories import safe_float, safe_int
+from extensions.logstore.repositories import dict_to_workflow_node_execution_model
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
-
-
-def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNodeExecutionModel:
-    """
-    Convert LogStore result dictionary to WorkflowNodeExecutionModel instance.
-
-    Args:
-        data: Dictionary from LogStore query result
-
-    Returns:
-        WorkflowNodeExecutionModel instance (detached from session)
-
-    Note:
-        The returned model is not attached to any SQLAlchemy session.
-        Relationship fields (like offload_data) are not loaded from LogStore.
-    """
-    logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
-    # Create model instance without session
-    model = WorkflowNodeExecutionModel()
-
-    # Map all required fields with validation
-    # Critical fields - must not be None
-    model.id = data.get("id") or ""
-    model.tenant_id = data.get("tenant_id") or ""
-    model.app_id = data.get("app_id") or ""
-    model.workflow_id = data.get("workflow_id") or ""
-    model.triggered_from = data.get("triggered_from") or ""
-    model.node_id = data.get("node_id") or ""
-    model.node_type = data.get("node_type") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
-    model.title = data.get("title") or ""
-    model.created_by_role = data.get("created_by_role") or ""
-    model.created_by = data.get("created_by") or ""
-
-    model.index = safe_int(data.get("index", 0))
-    model.elapsed_time = safe_float(data.get("elapsed_time", 0))
-
-    # Optional fields
-    model.workflow_run_id = data.get("workflow_run_id")
-    model.predecessor_node_id = data.get("predecessor_node_id")
-    model.node_execution_id = data.get("node_execution_id")
-    model.inputs = data.get("inputs")
-    model.process_data = data.get("process_data")
-    model.outputs = data.get("outputs")
-    model.error = data.get("error")
-    model.execution_metadata = data.get("execution_metadata")
-
-    # Handle datetime fields
-    created_at = data.get("created_at")
-    if created_at:
-        if isinstance(created_at, str):
-            model.created_at = datetime.fromisoformat(created_at)
-        elif isinstance(created_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(created_at)
-        else:
-            model.created_at = created_at
-    else:
-        # Provide default created_at if missing
-        model.created_at = datetime.now()
-
-    finished_at = data.get("finished_at")
-    if finished_at:
-        if isinstance(finished_at, str):
-            model.finished_at = datetime.fromisoformat(finished_at)
-        elif isinstance(finished_at, (int, float)):
-            model.finished_at = datetime.fromtimestamp(finished_at)
-        else:
-            model.finished_at = finished_at
-
-    return model
 
 
 class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):
@@ -209,7 +138,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             )
 
             for row in deduplicated_results:
-                model = _dict_to_workflow_node_execution_model(row)
+                model = dict_to_workflow_node_execution_model(row)
                 if model.status != WorkflowNodeExecutionStatus.PAUSED:
                     return model
 
@@ -302,13 +231,13 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                     else:
                         max_row = rows[0]
 
-                    model = _dict_to_workflow_node_execution_model(max_row)
+                    model = dict_to_workflow_node_execution_model(max_row)
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
             else:
                 # For PG mode, results are already deduplicated by the SQL query
                 for row in results:
-                    model = _dict_to_workflow_node_execution_model(row)
+                    model = dict_to_workflow_node_execution_model(row)
                     if model and model.id:  # Ensure model is valid
                         models.append(model)
 
@@ -330,9 +259,51 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
     ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.
-        Uses query syntax to get raw logs and selects the one with max log_version.
+
+        Strategy:
+        1. Try LogStore query first
+        2. If not found, check debug cache (for SINGLE_STEP executions)
+        3. Return None if not found anywhere
+
+        The debug cache helps handle LogStore indexing delays during node debugging.
         """
         logger.debug("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
+
+        from extensions.logstore.debug_execution_cache import DebugExecutionCache
+
+        try:
+            result = self._query_from_logstore(execution_id, tenant_id)
+            if result is not None:
+                return result
+
+            # Check debug cache as fallback
+            # This helps when LogStore indexing is delayed (typically for SINGLE_STEP executions)
+            cached_result = DebugExecutionCache.get(execution_id)
+            if cached_result is not None:
+                logger.info(
+                    "Found execution in debug cache (LogStore indexing delay): execution_id=%s, tenant_id=%s",
+                    execution_id,
+                    tenant_id,
+                )
+                return cached_result
+
+            logger.warning(
+                "Execution not found in LogStore or debug cache: execution_id=%s, tenant_id=%s", execution_id, tenant_id
+            )
+            return None
+
+        except Exception:
+            logger.exception("Failed to get execution by ID: execution_id=%s", execution_id)
+            # Try cache as last resort on any error
+            cached_result = DebugExecutionCache.get(execution_id)
+            if cached_result is not None:
+                logger.info("Returning cached result after LogStore error: %s", execution_id)
+                return cached_result
+            raise
+
+    def _query_from_logstore(
+        self, execution_id: str, tenant_id: str | None = None
+    ) -> WorkflowNodeExecutionModel | None:
         try:
             # Escape parameters to prevent SQL injection
             escaped_execution_id = escape_identifier(execution_id)
@@ -388,10 +359,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             # For PG mode, result is already the latest version
             # For SDK mode, if multiple results, select the one with max log_version
             if self.logstore_client.supports_pg_protocol or len(results) == 1:
-                return _dict_to_workflow_node_execution_model(results[0])
+                return dict_to_workflow_node_execution_model(results[0])
             else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
-                return _dict_to_workflow_node_execution_model(max_result)
+                return dict_to_workflow_node_execution_model(max_result)
 
         except Exception:
             logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)

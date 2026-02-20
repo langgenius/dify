@@ -67,8 +67,17 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     status = WorkflowNodeExecutionStatus(data.get("status", "running"))
 
     # Parse datetime fields
-    created_at = datetime.fromisoformat(data.get("created_at", "")) if data.get("created_at") else datetime.now()
-    finished_at = datetime.fromisoformat(data.get("finished_at", "")) if data.get("finished_at") else None
+    created_at_value = data.get("created_at")
+    if created_at_value and created_at_value not in {"null", ""}:
+        created_at = datetime.fromisoformat(created_at_value)
+    else:
+        created_at = datetime.now()
+
+    finished_at_value = data.get("finished_at")
+    if finished_at_value and finished_at_value not in {"null", ""}:
+        finished_at = datetime.fromisoformat(finished_at_value)
+    else:
+        finished_at = None
 
     return WorkflowNodeExecution(
         id=data.get("id", ""),
@@ -231,6 +240,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         2. Appends a new record with a log_version timestamp
         3. Maintains proper multi-tenancy by including tenant context during conversion
         4. Optionally writes to SQL database for dual-write support (controlled by LOGSTORE_DUAL_WRITE_ENABLED)
+        5. For SINGLE_STEP executions, caches the result for immediate retrieval
 
         Each save operation creates a new record. Updates are simulated by writing
         new records with higher log_version numbers.
@@ -239,10 +249,11 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             execution: The NodeExecution domain entity to persist
         """
         logger.debug(
-            "save: id=%s, node_execution_id=%s, status=%s",
+            "save: id=%s, node_execution_id=%s, status=%s, triggered_from=%s",
             execution.id,
             execution.node_execution_id,
             execution.status.value,
+            self._triggered_from.value if self._triggered_from else None,
         )
         try:
             logstore_model = self._to_logstore_model(execution)
@@ -254,6 +265,12 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 execution.node_execution_id,
                 execution.status.value,
             )
+
+            # Cache for immediate retrieval if this is a SINGLE_STEP execution (node debugging)
+            # This helps handle LogStore indexing delays during debugging
+            if self._triggered_from == WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP:
+                self._cache_for_debugging(execution)
+
         except Exception:
             logger.exception(
                 "Failed to save node execution to LogStore: id=%s, node_execution_id=%s",
@@ -270,6 +287,39 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             except Exception:
                 logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    def _cache_for_debugging(self, execution: WorkflowNodeExecution) -> None:
+        """
+        Cache the execution for immediate retrieval during node debugging.
+
+        This method is only called for SINGLE_STEP executions where the user is
+        debugging a single node and expects immediate results. The cache helps
+        bridge the gap during LogStore indexing delays (typically 1-2 seconds).
+
+        Args:
+            execution: The WorkflowNodeExecution domain entity to cache
+        """
+        try:
+            from extensions.logstore.debug_execution_cache import DebugExecutionCache
+            from extensions.logstore.repositories import dict_to_workflow_node_execution_model
+
+            # Convert domain model to database model for caching
+            # We serialize to LogStore format first, then convert to DB model
+            logstore_data = dict(self._to_logstore_model(execution))
+            db_model = dict_to_workflow_node_execution_model(logstore_data)
+
+            # Put into the debug cache
+            # Caller ensures this is only called for SINGLE_STEP executions
+            DebugExecutionCache.put(
+                execution_id=execution.id,
+                model=db_model,
+            )
+
+        except Exception:
+            # Don't fail the save operation if caching fails
+            # Caching is a performance optimization, not a requirement
+            logger.exception("Failed to cache execution for debugging: %s", execution.id)
+            # Continue without raising - the execution was still saved to LogStore
 
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """
