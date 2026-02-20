@@ -2768,11 +2768,6 @@
       "count": 1
     }
   },
-  "app/components/base/tag-input/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/tag-management/index.tsx": {
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
