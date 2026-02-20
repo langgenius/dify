@@ -46,6 +46,7 @@ export type ResultPanelProps = {
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  nodeId?: string
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -73,6 +74,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   handleShowLoopResultList,
   onShowRetryDetail,
   handleShowAgentOrToolLog,
+  nodeId,
 }) => {
   const { t } = useTranslation()
   const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && !!nodeInfo?.details?.length
@@ -154,6 +156,8 @@ const ResultPanel: FC<ResultPanelProps> = ({
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
+            showVariableInspectButton={!!nodeId}
+            nodeId={nodeId}
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
             footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
           />
