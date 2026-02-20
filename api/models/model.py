@@ -1997,7 +1997,27 @@ class MessageAgentThought(TypeBase):
     def tool_meta(self) -> dict[str, Any]:
         try:
             if self.tool_meta_str:
-                return cast(dict[str, Any], json.loads(self.tool_meta_str))
+                raw = json.loads(self.tool_meta_str)
+                tools = self.tools
+                # New array format: [{"name": "search", "meta": {...}}, ...]
+                if isinstance(raw, list):
+                    result: dict[str, Any] = {}
+                    name_count: dict[str, int] = {}
+                    for i, item in enumerate(raw):
+                        if isinstance(item, dict) and "name" in item:
+                            name = item["name"]
+                            meta = item.get("meta", {})
+                        else:
+                            name = tools[i] if i < len(tools) else f"tool_{i}"
+                            meta = item if isinstance(item, dict) else {}
+                        name_count[name] = name_count.get(name, 0) + 1
+                        key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
+                        result[key] = meta
+                    return result
+                # Old dict format
+                if isinstance(raw, dict):
+                    return cast(dict[str, Any], raw)
+                return {}
             else:
                 return {}
         except Exception:
@@ -2009,16 +2029,36 @@ class MessageAgentThought(TypeBase):
         try:
             if self.tool_input:
                 data = json.loads(self.tool_input)
-                result: dict[str, Any] = {}
-                for tool in tools:
-                    if tool in data:
-                        result[tool] = data[tool]
-                    else:
-                        if len(tools) == 1:
-                            result[tool] = data
+                # New array format: [{"name": "search", "arguments": {...}}, ...]
+                if isinstance(data, list):
+                    result: dict[str, Any] = {}
+                    name_count: dict[str, int] = {}
+                    for i, item in enumerate(data):
+                        if isinstance(item, dict) and "name" in item:
+                            name = item["name"]
+                            args = item.get("arguments", {})
                         else:
-                            result[tool] = {}
-                return result
+                            name = tools[i] if i < len(tools) else f"tool_{i}"
+                            args = item if isinstance(item, dict) else {}
+                        name_count[name] = name_count.get(name, 0) + 1
+                        key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
+                        result[key] = args
+                    return result
+                # Old dict format: {"tool_name": {...}, ...}
+                if isinstance(data, dict):
+                    result = {}
+                    for tool in tools:
+                        if tool in data:
+                            result[tool] = data[tool]
+                        else:
+                            if len(tools) == 1:
+                                result[tool] = data
+                            else:
+                                result[tool] = {}
+                    return result
+                if len(tools) == 1:
+                    return {tools[0]: data}
+                return {}
             else:
                 return {tool: {} for tool in tools}
         except Exception:
@@ -2030,16 +2070,36 @@ class MessageAgentThought(TypeBase):
         try:
             if self.observation:
                 data = json.loads(self.observation)
-                result: dict[str, Any] = {}
-                for tool in tools:
-                    if tool in data:
-                        result[tool] = data[tool]
-                    else:
-                        if len(tools) == 1:
-                            result[tool] = data
+                # New array format: [{"name": "search", "output": "result"}, ...]
+                if isinstance(data, list):
+                    result: dict[str, Any] = {}
+                    name_count: dict[str, int] = {}
+                    for i, item in enumerate(data):
+                        if isinstance(item, dict) and "name" in item:
+                            name = item["name"]
+                            output = item.get("output", "")
                         else:
-                            result[tool] = {}
-                return result
+                            name = tools[i] if i < len(tools) else f"tool_{i}"
+                            output = item
+                        name_count[name] = name_count.get(name, 0) + 1
+                        key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
+                        result[key] = output
+                    return result
+                # Old dict format
+                if isinstance(data, dict):
+                    result = {}
+                    for tool in tools:
+                        if tool in data:
+                            result[tool] = data[tool]
+                        else:
+                            if len(tools) == 1:
+                                result[tool] = data
+                            else:
+                                result[tool] = {}
+                    return result
+                if len(tools) == 1:
+                    return {tools[0]: data}
+                return {}
             else:
                 return {tool: {} for tool in tools}
         except Exception:

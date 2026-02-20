@@ -126,11 +126,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                         try:
                             tool_call_inputs = json.dumps(
-                                {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
+                                [{"name": tool_call[1], "arguments": tool_call[2]} for tool_call in tool_calls],
+                                ensure_ascii=False,
                             )
                         except TypeError:
-                            # fallback: force ASCII to handle non-serializable objects
-                            tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                            tool_call_inputs = json.dumps(
+                                [{"name": tool_call[1], "arguments": tool_call[2]} for tool_call in tool_calls]
+                            )
 
                     if chunk.delta.message and chunk.delta.message.content:
                         if isinstance(chunk.delta.message.content, list):
@@ -153,11 +155,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                     try:
                         tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
+                            [{"name": tool_call[1], "arguments": tool_call[2]} for tool_call in tool_calls],
+                            ensure_ascii=False,
                         )
                     except TypeError:
-                        # fallback: force ASCII to handle non-serializable objects
-                        tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                        tool_call_inputs = json.dumps(
+                            [{"name": tool_call[1], "arguments": tool_call[2]} for tool_call in tool_calls]
+                        )
 
                 if result.usage:
                     increase_usage(llm_usage, result.usage)
@@ -284,13 +288,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
-                    observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
+                    tool_invoke_meta=[
+                        {"name": tool_response["tool_call_name"], "meta": tool_response["meta"]}
                         for tool_response in tool_responses
-                    },
+                    ],
+                    observation=[
+                        {"name": tool_response["tool_call_name"], "output": tool_response["tool_response"]}
+                        for tool_response in tool_responses
+                    ],
                     answer="",
                     messages_ids=message_file_ids,
                 )

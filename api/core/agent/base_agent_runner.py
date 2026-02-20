@@ -328,10 +328,10 @@ class BaseAgentRunner(AppRunner):
         self,
         agent_thought_id: str,
         tool_name: str | None,
-        tool_input: Union[str, dict, None],
+        tool_input: Union[str, dict, list, None],
         thought: str | None,
-        observation: Union[str, dict, None],
-        tool_invoke_meta: Union[str, dict, None],
+        observation: Union[str, dict, list, None],
+        tool_invoke_meta: Union[str, dict, list, None],
         answer: str | None,
         messages_ids: list[str],
         llm_usage: LLMUsage | None = None,
@@ -352,7 +352,7 @@ class BaseAgentRunner(AppRunner):
             agent_thought.tool = tool_name
 
         if tool_input:
-            if isinstance(tool_input, dict):
+            if isinstance(tool_input, (dict, list)):
                 try:
                     tool_input = json.dumps(tool_input, ensure_ascii=False)
                 except Exception:
@@ -361,7 +361,7 @@ class BaseAgentRunner(AppRunner):
             agent_thought.tool_input = tool_input
 
         if observation:
-            if isinstance(observation, dict):
+            if isinstance(observation, (dict, list)):
                 try:
                     observation = json.dumps(observation, ensure_ascii=False)
                 except Exception:
@@ -401,7 +401,7 @@ class BaseAgentRunner(AppRunner):
         agent_thought.tool_labels_str = json.dumps(labels)
 
         if tool_invoke_meta is not None:
-            if isinstance(tool_invoke_meta, dict):
+            if isinstance(tool_invoke_meta, (dict, list)):
                 try:
                     tool_invoke_meta = json.dumps(tool_invoke_meta, ensure_ascii=False)
                 except Exception:
@@ -450,43 +450,98 @@ class BaseAgentRunner(AppRunner):
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
                         tool_input_payload = agent_thought.tool_input
+                        tool_inputs_parsed = None
                         if tool_input_payload:
                             try:
-                                tool_inputs = json.loads(tool_input_payload)
+                                tool_inputs_parsed = json.loads(tool_input_payload)
                             except Exception:
-                                tool_inputs = {tool: {} for tool in tool_names}
-                        else:
-                            tool_inputs = {tool: {} for tool in tool_names}
+                                pass
 
                         observation_payload = agent_thought.observation
+                        tool_responses_parsed = None
                         if observation_payload:
                             try:
-                                tool_responses = json.loads(observation_payload)
+                                tool_responses_parsed = json.loads(observation_payload)
                             except Exception:
-                                tool_responses = dict.fromkeys(tool_names, observation_payload)
-                        else:
-                            tool_responses = dict.fromkeys(tool_names, observation_payload)
+                                pass
 
-                        for tool in tool_names:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
-                            tool_calls.append(
-                                AssistantPromptMessage.ToolCall(
-                                    id=tool_call_id,
-                                    type="function",
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                        if isinstance(tool_inputs_parsed, list):
+                            # New array format - iterate by index
+                            for idx, item in enumerate(tool_inputs_parsed):
+                                tool_call_id = str(uuid.uuid4())
+                                if isinstance(item, dict) and "name" in item:
+                                    tool_name = item["name"]
+                                    tool_args = item.get("arguments", {})
+                                else:
+                                    tool_name = tool_names[idx] if idx < len(tool_names) else ""
+                                    tool_args = item if isinstance(item, dict) else {}
+
+                                tool_calls.append(
+                                    AssistantPromptMessage.ToolCall(
+                                        id=tool_call_id,
+                                        type="function",
+                                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                            name=tool_name,
+                                            arguments=json.dumps(tool_args),
+                                        ),
+                                    )
+                                )
+
+                                # Get corresponding response
+                                tool_resp_content = ""
+                                if isinstance(tool_responses_parsed, list) and idx < len(tool_responses_parsed):
+                                    resp_item = tool_responses_parsed[idx]
+                                    if isinstance(resp_item, dict) and "output" in resp_item:
+                                        resp_content = resp_item["output"]
+                                    else:
+                                        resp_content = resp_item
+                                    tool_resp_content = (
+                                        json.dumps(resp_content)
+                                        if isinstance(resp_content, (dict, list))
+                                        else str(resp_content)
+                                    )
+                                elif observation_payload:
+                                    tool_resp_content = observation_payload
+
+                                tool_call_response.append(
+                                    ToolPromptMessage(
+                                        content=tool_resp_content,
+                                        name=tool_name,
+                                        tool_call_id=tool_call_id,
+                                    )
+                                )
+                        else:
+                            # Old dict format - existing logic
+                            tool_inputs = (
+                                tool_inputs_parsed
+                                if isinstance(tool_inputs_parsed, dict)
+                                else {t: {} for t in tool_names}
+                            )
+                            tool_responses = (
+                                tool_responses_parsed
+                                if isinstance(tool_responses_parsed, dict)
+                                else dict.fromkeys(tool_names, observation_payload)
+                            )
+
+                            for tool in tool_names:
+                                tool_call_id = str(uuid.uuid4())
+                                tool_calls.append(
+                                    AssistantPromptMessage.ToolCall(
+                                        id=tool_call_id,
+                                        type="function",
+                                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                            name=tool,
+                                            arguments=json.dumps(tool_inputs.get(tool, {})),
+                                        ),
+                                    )
+                                )
+                                tool_call_response.append(
+                                    ToolPromptMessage(
+                                        content=tool_responses.get(tool, agent_thought.observation),
                                         name=tool,
-                                        arguments=json.dumps(tool_inputs.get(tool, {})),
-                                    ),
+                                        tool_call_id=tool_call_id,
+                                    )
                                 )
-                            )
-                            tool_call_response.append(
-                                ToolPromptMessage(
-                                    content=tool_responses.get(tool, agent_thought.observation),
-                                    name=tool,
-                                    tool_call_id=tool_call_id,
-                                )
-                            )
 
                         result.extend(
                             [

@@ -101,12 +101,15 @@ class AgentService:
             tool_inputs = agent_thought.tool_inputs_dict
             tool_outputs = agent_thought.tool_outputs_dict or {}
             tool_calls = []
+            name_count: dict[str, int] = {}
             for tool in tools:
                 tool_name = tool
+                name_count[tool_name] = name_count.get(tool_name, 0) + 1
+                ordinal_key = tool_name if name_count[tool_name] == 1 else f"{tool_name}__{name_count[tool_name]}"
                 tool_label = tool_labels.get(tool_name, tool_name)
-                tool_input = tool_inputs.get(tool_name, {})
-                tool_output = tool_outputs.get(tool_name, {})
-                tool_meta_data = tool_meta.get(tool_name, {})
+                tool_input = tool_inputs.get(ordinal_key, {})
+                tool_output = tool_outputs.get(ordinal_key, {})
+                tool_meta_data = tool_meta.get(ordinal_key, {})
                 tool_config = tool_meta_data.get("tool_config", {})
                 if tool_config.get("tool_provider_type", "") != "dataset-retrieval":
                     tool_icon = ToolManager.get_tool_icon(
