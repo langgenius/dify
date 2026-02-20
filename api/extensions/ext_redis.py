@@ -205,6 +205,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
 
     cluster: RedisCluster = RedisCluster(
         startup_nodes=nodes,
+        username=dify_config.REDIS_CLUSTERS_USERNAME,
         password=dify_config.REDIS_CLUSTERS_PASSWORD,
         protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
         cache_config=_get_cache_configuration(),
