@@ -35,7 +35,7 @@ def test_system_oauth_encrypter_raises_oauth_error_for_invalid_ciphertext():
 
 
 def test_system_oauth_helpers_use_global_cached_instance(monkeypatch):
-    oauth_encryption._oauth_encrypter = None
+    monkeypatch.setattr(oauth_encryption, "_oauth_encrypter", None)
     monkeypatch.setattr("core.tools.utils.system_oauth_encryption.dify_config.SECRET_KEY", "global-secret")
 
     first = oauth_encryption.get_system_oauth_encrypter()

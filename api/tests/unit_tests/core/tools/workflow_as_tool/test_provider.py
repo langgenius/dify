@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -93,7 +93,9 @@ def test_get_db_provider_tool_builds_entity():
         tool = controller._get_db_provider_tool(db_provider, app, session=session, user=user)
 
     assert tool.entity.identity.name == "workflow_tool"
+    # "json" output is reserved for ToolInvokeMessage.VariableMessage and filtered out.
     assert tool.entity.output_schema["properties"] == {"answer": {"type": "string", "description": ""}}
+    assert "json" not in tool.entity.output_schema["properties"]
     assert tool.entity.parameters[0].type == ToolParameter.ToolParameterType.SELECT
     assert tool.entity.parameters[1].type == ToolParameter.ToolParameterType.SYSTEM_FILES
     assert controller.provider_type == ToolProviderType.WORKFLOW
@@ -136,9 +138,9 @@ def test_from_db_builds_controller():
     session = _mock_session_with_begin()
     session.query.return_value.where.return_value.first.return_value = db_provider
     session.get.side_effect = [app, user]
-    fake_cm = Mock()
-    fake_cm.__enter__ = Mock(return_value=session)
-    fake_cm.__exit__ = Mock(return_value=False)
+    fake_cm = MagicMock()
+    fake_cm.__enter__.return_value = session
+    fake_cm.__exit__.return_value = False
     fake_session_factory = Mock()
     fake_session_factory.create_session.return_value = fake_cm
 

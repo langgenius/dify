@@ -103,7 +103,7 @@ def test_weekday_tool():
         list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "day": 1}))
 
 
-def test_simple_code_and_webscraper_tools(monkeypatch):
+def test_simple_code_valid_execution(monkeypatch):
     simple_code = _build_builtin_tool(SimpleCode)
 
     monkeypatch.setattr(
@@ -118,8 +118,16 @@ def test_simple_code_and_webscraper_tools(monkeypatch):
     )[0].message.text
     assert result == "ok"
 
+
+def test_simple_code_invalid_language():
+    simple_code = _build_builtin_tool(SimpleCode)
+
     with pytest.raises(ValueError, match="Only python3 and javascript"):
         list(simple_code.invoke(user_id="u", tool_parameters={"language": "go", "code": "fmt.Println(1)"}))
+
+
+def test_simple_code_execution_error(monkeypatch):
+    simple_code = _build_builtin_tool(SimpleCode)
 
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.code.tools.simple_code.CodeExecutor.execute_code",
@@ -128,14 +136,23 @@ def test_simple_code_and_webscraper_tools(monkeypatch):
     with pytest.raises(ToolInvokeError, match="boom"):
         list(simple_code.invoke(user_id="u", tool_parameters={"language": "python3", "code": "print(1)"}))
 
+
+def test_webscraper_empty_url():
     webscraper = _build_builtin_tool(WebscraperTool)
     empty = list(webscraper.invoke(user_id="u", tool_parameters={"url": ""}))[0].message.text
     assert empty == "Please input url"
 
+
+def test_webscraper_fetch(monkeypatch):
+    webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     full = list(webscraper.invoke(user_id="u", tool_parameters={"url": "https://example.com"}))[0].message.text
     assert full == "page"
 
+
+def test_webscraper_summary(monkeypatch):
+    webscraper = _build_builtin_tool(WebscraperTool)
+    monkeypatch.setattr("core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url", lambda *a, **k: "page")
     monkeypatch.setattr(webscraper, "summary", lambda user_id, content: "summary")
     summarized = list(
         webscraper.invoke(
@@ -145,6 +162,9 @@ def test_simple_code_and_webscraper_tools(monkeypatch):
     )[0].message.text
     assert summarized == "summary"
 
+
+def test_webscraper_fetch_error(monkeypatch):
+    webscraper = _build_builtin_tool(WebscraperTool)
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url",
         _raise_runtime_error,
@@ -153,12 +173,15 @@ def test_simple_code_and_webscraper_tools(monkeypatch):
         list(webscraper.invoke(user_id="u", tool_parameters={"url": "https://example.com"}))
 
 
-def test_audio_tools_runtime_parameters_and_invoke_paths(monkeypatch):
+def test_asr_invalid_file():
     asr = _build_builtin_tool(ASRTool)
     file_obj = type("F", (), {"type": "not-audio"})()
     invalid_file = list(asr.invoke(user_id="u", tool_parameters={"audio_file": file_obj}))[0].message.text
     assert "not a valid audio file" in invalid_file
 
+
+def test_asr_valid_file_invocation(monkeypatch):
+    asr = _build_builtin_tool(ASRTool)
     model_instance = type("M", (), {"invoke_speech2text": lambda self, file, user: "transcript"})()
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.download", lambda file: b"audio-bytes")
@@ -167,6 +190,9 @@ def test_audio_tools_runtime_parameters_and_invoke_paths(monkeypatch):
     ok = list(asr.invoke(user_id="u", tool_parameters={"audio_file": audio_file, "model": "p#m"}))[0].message.text
     assert ok == "transcript"
 
+
+def test_asr_available_models_and_runtime_parameters(monkeypatch):
+    asr = _build_builtin_tool(ASRTool)
     provider_model = type("PM", (), {"provider": "p", "models": [type("Model", (), {"model": "m"})()]})()
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.audio.tools.asr.ModelProviderService.get_models_by_model_type",
@@ -175,6 +201,8 @@ def test_audio_tools_runtime_parameters_and_invoke_paths(monkeypatch):
     assert asr.get_available_models() == [("p", "m")]
     assert asr.get_runtime_parameters()[0].name == "model"
 
+
+def test_tts_invoke_returns_messages(monkeypatch):
     tts = _build_builtin_tool(TTSTool)
     voices_model_instance = type(
         "TTSM",
@@ -191,7 +219,9 @@ def test_audio_tools_runtime_parameters_and_invoke_paths(monkeypatch):
     messages = list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.BLOB]
 
-    # runtime required branch
+
+def test_tts_get_available_models_requires_runtime():
+    tts = _build_builtin_tool(TTSTool)
     tts.runtime = None
     with pytest.raises(ValueError, match="Runtime is required"):
         tts.get_available_models()

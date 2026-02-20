@@ -93,12 +93,10 @@ def _build_manager() -> ToolParameterConfigurationManager:
 def test_merge_and_mask_parameters():
     manager = _build_manager()
 
-    merged = manager._merge_parameters()
-    assert [p.name for p in merged] == ["secret", "plain", "runtime_only"]
-
-    masked = manager.mask_tool_parameters({"secret": "abcdefghi", "plain": "x"})
+    masked = manager.mask_tool_parameters({"secret": "abcdefghi", "plain": "x", "runtime_only": "y"})
     assert masked["secret"] == "ab*****hi"
     assert masked["plain"] == "x"
+    assert masked["runtime_only"] == "y"
 
 
 def test_encrypt_tool_parameters():

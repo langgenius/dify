@@ -9,7 +9,7 @@ import pytest
 from core.tools.tool_file_manager import ToolFileManager
 
 
-def test_tool_file_manager_sign_and_verify(monkeypatch):
+def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     monkeypatch.setattr("core.tools.tool_file_manager.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.tool_file_manager.os.urandom", lambda _: b"\x01" * 16)
     monkeypatch.setattr("core.tools.tool_file_manager.dify_config.SECRET_KEY", "secret")
@@ -19,12 +19,26 @@ def test_tool_file_manager_sign_and_verify(monkeypatch):
 
     url = ToolFileManager.sign_file("tf-1", ".png")
     assert "/files/tools/tf-1.png" in url
+    return dict(part.split("=", 1) for part in url.split("?", 1)[1].split("&"))
 
-    query = dict(part.split("=", 1) for part in url.split("?", 1)[1].split("&"))
+
+def test_tool_file_manager_sign_verify_valid(monkeypatch: pytest.MonkeyPatch) -> None:
+    query = _setup_tool_file_signing(monkeypatch)
+
     assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], query["sign"]) is True
+
+
+def test_tool_file_manager_sign_verify_bad_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+    query = _setup_tool_file_signing(monkeypatch)
+
     assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], "bad") is False
+
+
+def test_tool_file_manager_sign_verify_expired_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
+    query = _setup_tool_file_signing(monkeypatch)
     monkeypatch.setattr("core.tools.tool_file_manager.dify_config.FILES_ACCESS_TIMEOUT", 0)
     monkeypatch.setattr("core.tools.tool_file_manager.time.time", lambda: 1700000100)
+
     assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], query["sign"]) is False
 
 
@@ -56,6 +70,7 @@ def test_create_file_by_raw_stores_file_and_persists_record() -> None:
     storage.save.assert_called_once()
     session.add.assert_called_once()
     session.commit.assert_called_once()
+    session.refresh.assert_called_once_with(file_model)
 
 
 def test_create_file_by_url_downloads_and_persists_record() -> None:
@@ -70,16 +85,20 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
         return SimpleNamespace(**kwargs)
 
     session.refresh.side_effect = lambda model: setattr(model, "id", "tf-2")
-    with patch("core.tools.tool_file_manager.storage") as storage:
-        with patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory):
-            with patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="def")):
-                with patch("core.tools.tool_file_manager.Session") as session_cls:
-                    session_cls.return_value.__enter__.return_value = session
-                    with patch("core.tools.tool_file_manager.ssrf_proxy.get", return_value=response):
-                        file_model = manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
+    with (
+        patch("core.tools.tool_file_manager.storage") as storage,
+        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
+        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="def")),
+        patch("core.tools.tool_file_manager.Session") as session_cls,
+        patch("core.tools.tool_file_manager.ssrf_proxy.get", return_value=response),
+    ):
+        session_cls.return_value.__enter__.return_value = session
+        file_model = manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
     assert file_model.file_key.startswith("tools/t1/")
     storage.save.assert_called_once()
+    session.add.assert_called_once_with(file_model)
+    session.commit.assert_called_once()
     session.refresh.assert_called_once_with(file_model)
 
 

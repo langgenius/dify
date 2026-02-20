@@ -113,14 +113,16 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.get_credentials_schema_by_type(CredentialType.API_KEY)
 
-    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+    def get_credentials_schema_by_type(self, credential_type: CredentialType | str) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
         :param credential_type: the type of the credential
         :return: the credentials schema of the provider
         """
-        if credential_type == CredentialType.OAUTH2.value:
+        if isinstance(credential_type, str):
+            credential_type = CredentialType(credential_type)
+        if credential_type == CredentialType.OAUTH2:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
         if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []

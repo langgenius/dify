@@ -103,7 +103,7 @@ def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch):
     assert provider.tool_labels == ["utilities"]
     assert provider.need_credentials is True
 
-    oauth_schema = provider.get_credentials_schema_by_type(CredentialType.OAUTH2.value)
+    oauth_schema = provider.get_credentials_schema_by_type(CredentialType.OAUTH2)
     assert len(oauth_schema) == 1
     api_schema = provider.get_credentials_schema_by_type(CredentialType.API_KEY)
     assert len(api_schema) == 1
@@ -123,7 +123,7 @@ def test_builtin_tool_provider_invalid_credential_type_and_validate_credentials(
             ):
                 provider = _ConcreteBuiltinProvider()
 
-    with pytest.raises(ValueError, match="Invalid credential type"):
+    with pytest.raises(ValueError, match="not a valid CredentialType"):
         provider.get_credentials_schema_by_type("invalid")
 
     provider.validate_credentials("user-1", {"api_key": "secret"})

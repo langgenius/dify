@@ -1,3 +1,5 @@
+"""Unit tests for DatasetRetrieverTool behavior and retrieval wiring."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -12,7 +14,7 @@ def _retrieve_config() -> DatasetRetrieveConfigEntity:
     return DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE)
 
 
-def test_get_dataset_tools_returns_empty_for_empty_dataset_ids():
+def test_get_dataset_tools_returns_empty_for_empty_dataset_ids() -> None:
     # Arrange
     retrieve_config = _retrieve_config()
 
@@ -32,7 +34,7 @@ def test_get_dataset_tools_returns_empty_for_empty_dataset_ids():
     assert tools == []
 
 
-def test_get_dataset_tools_returns_empty_for_missing_retrieve_config():
+def test_get_dataset_tools_returns_empty_for_missing_retrieve_config() -> None:
     # Arrange
     dataset_ids = ["d1"]
 
@@ -40,7 +42,7 @@ def test_get_dataset_tools_returns_empty_for_missing_retrieve_config():
     tools = DatasetRetrieverTool.get_dataset_tools(
         tenant_id="tenant",
         dataset_ids=dataset_ids,
-        retrieve_config=None,
+        retrieve_config=None,  # type: ignore[arg-type]
         return_resource=False,
         invoke_from=InvokeFrom.DEBUGGER,
         hit_callback=Mock(),
@@ -52,7 +54,7 @@ def test_get_dataset_tools_returns_empty_for_missing_retrieve_config():
     assert tools == []
 
 
-def test_get_dataset_tools_builds_tool_and_restores_strategy():
+def test_get_dataset_tools_builds_tool_and_restores_strategy() -> None:
     # Arrange
     retrieve_config = _retrieve_config()
     retrieval_tool = SimpleNamespace(name="dataset_tool", description="desc", run=lambda query: f"result:{query}")
@@ -122,13 +124,13 @@ def test_empty_query_behavior() -> None:
 
 def test_query_invocation_result() -> None:
     # Arrange
-    tool, retrieval_tool = _build_dataset_tool()
-    tool.retrieval_tool = retrieval_tool
+    tool, _ = _build_dataset_tool()
 
     # Act
     result = list(tool.invoke(user_id="u", tool_parameters={"query": "hello"}))
 
     # Assert
+    assert len(result) == 1
     assert result[0].message.text == "result:hello"
 
 

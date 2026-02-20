@@ -409,7 +409,7 @@ def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pyt
     assert resolved_user is None
 
 
-def test_tool_provider_type_fork_runtime_and_usage_helpers():
+def test_workflow_tool_provider_type_and_fork_runtime():
     tool = _build_tool()
     assert tool.tool_provider_type() == ToolProviderType.WORKFLOW
     assert tool.latest_usage.total_tokens == 0
@@ -419,21 +419,31 @@ def test_tool_provider_type_fork_runtime_and_usage_helpers():
     assert forked.workflow_app_id == tool.workflow_app_id
     assert forked.runtime.tenant_id == "tenant-2"
 
+
+def test_derive_usage_from_top_level_usage_key():
     usage = WorkflowTool._derive_usage_from_result({"usage": {"total_tokens": 12, "total_price": "0.2"}})
     assert usage.total_tokens == 12
 
+
+def test_derive_usage_from_metadata_usage():
     metadata_usage = WorkflowTool._derive_usage_from_result({"metadata": {"usage": {"total_tokens": 7}}})
     assert metadata_usage.total_tokens == 7
 
+
+def test_derive_usage_from_totals():
     totals_usage = WorkflowTool._derive_usage_from_result(
         {"total_tokens": "9", "total_price": "1.3", "currency": "USD"}
     )
     assert totals_usage.total_tokens == 9
     assert str(totals_usage.total_price) == "1.3"
 
+
+def test_derive_usage_from_empty():
     empty_usage = WorkflowTool._derive_usage_from_result({})
     assert empty_usage.total_tokens == 0
 
+
+def test_extract_usage_from_nested():
     nested = WorkflowTool._extract_usage_dict({"nested": [{"data": {"usage": {"total_tokens": 3}}}]})
     assert nested == {"total_tokens": 3}
 
