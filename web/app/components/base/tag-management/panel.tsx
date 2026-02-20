@@ -155,6 +155,7 @@ const Panel = (props: PanelProps) => {
                 className="shrink-0"
                 checked={selectedTagIDs.includes(tag.id)}
                 onCheck={noop}
+                id={tag.id}
               />
               <div
                 title={tag.name}
@@ -174,6 +175,7 @@ const Panel = (props: PanelProps) => {
                 className="shrink-0"
                 checked={selectedTagIDs.includes(tag.id)}
                 onCheck={noop}
+                id={tag.id}
               />
               <div
                 title={tag.name}

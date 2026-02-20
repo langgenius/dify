@@ -206,12 +206,12 @@ describe('Panel', () => {
       render(<Panel {...defaultProps} />)
 
       const backendRowBeforeSelect = getTagRow('Backend')
-      expect(within(backendRowBeforeSelect).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
+      expect(within(backendRowBeforeSelect).queryByTestId('check-icon-tag-2')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('Backend'))
 
       const backendRowAfterSelect = getTagRow('Backend')
-      expect(within(backendRowAfterSelect).getByTestId('check-icon-undefined')).toBeInTheDocument()
+      expect(within(backendRowAfterSelect).getByTestId('check-icon-tag-2')).toBeInTheDocument()
     })
 
     it('should deselect a selected tag when clicked', async () => {
@@ -219,12 +219,12 @@ describe('Panel', () => {
       render(<Panel {...defaultProps} />)
 
       const frontendRowBeforeDeselect = getTagRow('Frontend')
-      expect(within(frontendRowBeforeDeselect).getByTestId('check-icon-undefined')).toBeInTheDocument()
+      expect(within(frontendRowBeforeDeselect).getByTestId('check-icon-tag-1')).toBeInTheDocument()
 
       await user.click(screen.getByText('Frontend'))
 
       const frontendRowAfterDeselect = getTagRow('Frontend')
-      expect(within(frontendRowAfterDeselect).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
+      expect(within(frontendRowAfterDeselect).queryByTestId('check-icon-tag-1')).not.toBeInTheDocument()
     })
 
     it('should toggle tag selection on multiple clicks', async () => {
@@ -232,17 +232,17 @@ describe('Panel', () => {
       render(<Panel {...defaultProps} />)
 
       const backendRowBeforeToggle = getTagRow('Backend')
-      expect(within(backendRowBeforeToggle).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
+      expect(within(backendRowBeforeToggle).queryByTestId('check-icon-tag-2')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('Backend'))
 
       const backendRowAfterFirstClick = getTagRow('Backend')
-      expect(within(backendRowAfterFirstClick).getByTestId('check-icon-undefined')).toBeInTheDocument()
+      expect(within(backendRowAfterFirstClick).getByTestId('check-icon-tag-2')).toBeInTheDocument()
 
       await user.click(screen.getByText('Backend'))
 
       const backendRowAfterSecondClick = getTagRow('Backend')
-      expect(within(backendRowAfterSecondClick).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
+      expect(within(backendRowAfterSecondClick).queryByTestId('check-icon-tag-2')).not.toBeInTheDocument()
     })
   })
 
