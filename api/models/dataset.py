@@ -809,7 +809,7 @@ class DocumentSegment(Base):
         text = self.content
 
         # For data before v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+        pattern = r"(?:https?://[^\s\)\"\']+)?/files/([a-f0-9\-]+)/image-preview(?:\?[^\s\)\"\']*)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
@@ -826,7 +826,7 @@ class DocumentSegment(Base):
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For data after v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
+        pattern = r"(?:https?://[^\s\)\"\']+)?/files/([a-f0-9\-]+)/file-preview(?:\?[^\s\)\"\']*)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)

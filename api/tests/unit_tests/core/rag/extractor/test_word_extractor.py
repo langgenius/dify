@@ -123,6 +123,7 @@ def test_extract_images_from_docx(monkeypatch):
 
     # Patch config values used for URL composition and storage type
     monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(we.dify_config, "INTERNAL_FILES_URL", "http://internal.docker:5001", raising=False)
     monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
 
     # Patch UploadFile to avoid real DB models
@@ -164,7 +165,7 @@ def test_extract_images_from_docx(monkeypatch):
 
     # Returned map should contain entries for external (keyed by rId) and internal (keyed by target_part)
     assert set(image_map.keys()) == {"rId1", internal_part}
-    assert all(v.startswith("![image](") and v.endswith("/file-preview)") for v in image_map.values())
+    assert all(v.startswith("![image](/files/") and v.endswith("/file-preview)") for v in image_map.values())
 
     # Storage should receive both payloads
     payloads = {data for _, data in saves}
@@ -174,39 +175,6 @@ def test_extract_images_from_docx(monkeypatch):
     # DB interactions should be recorded
     assert len(db_stub.session.added) == 2
     assert db_stub.session.committed is True
-
-
-def test_extract_images_from_docx_uses_internal_files_url():
-    """Test that INTERNAL_FILES_URL takes precedence over FILES_URL for plugin access."""
-    # Test the URL generation logic directly
-    from configs import dify_config
-
-    # Mock the configuration values
-    original_files_url = getattr(dify_config, "FILES_URL", None)
-    original_internal_files_url = getattr(dify_config, "INTERNAL_FILES_URL", None)
-
-    try:
-        # Set both URLs - INTERNAL should take precedence
-        dify_config.FILES_URL = "http://external.example.com"
-        dify_config.INTERNAL_FILES_URL = "http://internal.docker:5001"
-
-        # Test the URL generation logic (same as in word_extractor.py)
-        upload_file_id = "test_file_id"
-
-        # This is the pattern we fixed in the word extractor
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-        generated_url = f"{base_url}/files/{upload_file_id}/file-preview"
-
-        # Verify that INTERNAL_FILES_URL is used instead of FILES_URL
-        assert "http://internal.docker:5001" in generated_url, f"Expected internal URL, got: {generated_url}"
-        assert "http://external.example.com" not in generated_url, f"Should not use external URL, got: {generated_url}"
-
-    finally:
-        # Restore original values
-        if original_files_url is not None:
-            dify_config.FILES_URL = original_files_url
-        if original_internal_files_url is not None:
-            dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 
 def test_extract_hyperlinks(monkeypatch):

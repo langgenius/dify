@@ -547,6 +547,37 @@ class TestDocumentSegmentIndexing:
         assert segment.index_node_hash == index_node_hash
         assert segment.keywords == keywords
 
+    def test_document_segment_sign_content_strips_absolute_files_host(self):
+        """Test that sign_content strips scheme/host from absolute /files URLs and returns a signed relative URL."""
+        # Arrange
+        upload_file_id = "1602650a-4fe4-423c-85a2-af76c083e3c4"
+        segment = DocumentSegment(
+            tenant_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+            document_id=str(uuid4()),
+            position=1,
+            content=f"![image](http://internal.docker:5001/files/{upload_file_id}/file-preview)",
+            word_count=1,
+            tokens=1,
+            created_by=str(uuid4()),
+        )
+
+        import models.dataset as dataset_module
+
+        # Act
+        with (
+            patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True),
+            patch("models.dataset.time.time", return_value=1700000000),
+            patch("models.dataset.os.urandom", return_value=b"\x00" * 16),
+        ):
+            signed = segment.get_sign_content()
+
+        # Assert
+        assert "internal.docker:5001" not in signed
+        assert f"/files/{upload_file_id}/file-preview?timestamp=" in signed
+        assert "&nonce=" in signed
+        assert "&sign=" in signed
+
     def test_document_segment_with_answer_field(self):
         """Test creating a document segment with answer field for QA model."""
         # Arrange
