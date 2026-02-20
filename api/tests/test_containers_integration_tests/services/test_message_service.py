@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
+from models import Account, App, Conversation
 from models.model import MessageFeedback
 from services.app_service import AppService
 from services.errors.message import (
@@ -127,7 +128,7 @@ class TestMessageService:
         # mock_external_service_dependencies["current_user"].id = account_id
         # mock_external_service_dependencies["current_user"].current_tenant_id = tenant_id
 
-    def _create_test_conversation(self, app, account, fake):
+    def _create_test_conversation(self, app: App, account: Account, fake: Faker):
         """
         Helper method to create a test conversation with all required fields.
         """
@@ -157,7 +158,7 @@ class TestMessageService:
         db.session.flush()
         return conversation
 
-    def _create_test_message(self, app, conversation, account, fake):
+    def _create_test_message(self, app: App, conversation: Conversation, account: Account, fake: Faker):
         """
         Helper method to create a test message with all required fields.
         """

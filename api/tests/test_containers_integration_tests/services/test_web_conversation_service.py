@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account
+from models import Account, App
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
@@ -90,7 +90,7 @@ class TestWebConversationService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers, app):
+    def _create_test_end_user(self, db_session_with_containers, app: App):
         """
         Helper method to create a test end user for testing.
 
@@ -118,7 +118,9 @@ class TestWebConversationService:
 
         return end_user
 
-    def _create_test_conversation(self, db_session_with_containers, app, user, fake):
+    def _create_test_conversation(
+        self, db_session_with_containers, app: App, user: Union[Account, EndUser], fake: Faker
+    ):
         """
         Helper method to create a test conversation for testing.
 

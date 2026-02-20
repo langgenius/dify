@@ -28,12 +28,12 @@ class TestRefreshTokenApi:
         return app
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return Api(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client."""
         api.add_resource(RefreshTokenApi, "/refresh-token")
         return app.test_client()
@@ -74,7 +74,7 @@ class TestRefreshTokenApi:
         assert response.json["result"] == "success"
 
     @patch("controllers.console.auth.login.extract_refresh_token")
-    def test_refresh_fails_without_token(self, mock_extract_token, app):
+    def test_refresh_fails_without_token(self, mock_extract_token, app: Flask):
         """
         Test token refresh failure when no refresh token provided.
 
@@ -98,7 +98,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app):
+    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh failure with invalid refresh token.
 
@@ -123,7 +123,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app):
+    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh failure with expired refresh token.
 
@@ -148,7 +148,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_with_empty_token(self, mock_refresh_token, mock_extract_token, app):
+    def test_refresh_with_empty_token(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh with empty string token.
 
@@ -170,7 +170,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
+    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app: Flask, mock_token_pair):
         """
         Test that token refresh updates all three tokens.
 
