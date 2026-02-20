@@ -17,8 +17,8 @@ describe('useGetValidators', () => {
       type: FormTypeEnum.textInput,
     })
 
-    const mountMessage = validators?.onMount?.({ value: '' } as never)
-    const blurMessage = validators?.onBlur?.({ value: '' } as never)
+    const mountMessage = validators?.onMount?.({ value: '' })
+    const blurMessage = validators?.onBlur?.({ value: '' })
 
     expect(mountMessage).toContain('common.errorMsg.fieldRequired')
     expect(mountMessage).toContain('"field":"Username"')
@@ -51,7 +51,7 @@ describe('useGetValidators', () => {
       type: FormTypeEnum.textInput,
     })
 
-    const mountMessage = validators?.onMount?.({ value: '' } as never)
+    const mountMessage = validators?.onMount?.({ value: '' })
     expect(mountMessage).toContain('"field":"apiKey"')
   })
 
@@ -71,7 +71,7 @@ describe('useGetValidators', () => {
       type: FormTypeEnum.textInput,
     })
 
-    const changeMessage = requiredValidators?.onChange?.({ value: '' } as never)
+    const changeMessage = requiredValidators?.onChange?.({ value: '' })
     expect(changeMessage).toContain('"field":"Workspace"')
     expect(nonRequiredValidators).toBeUndefined()
   })

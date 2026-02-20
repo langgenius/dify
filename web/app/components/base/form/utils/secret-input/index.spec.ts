@@ -1,3 +1,4 @@
+import type { AnyFormApi } from '@tanstack/react-form'
 import { FormTypeEnum } from '../../types'
 import { getTransformedValuesWhenSecretInputPristine, transformFormSchemasSecretInput } from './index'
 
@@ -31,7 +32,7 @@ describe('secret input utilities', () => {
       getFieldMeta: (name: string) => ({ isPristine: name === 'apiKey' }),
     }
 
-    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as never)).toEqual({
+    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi)).toEqual({
       apiKey: '[__HIDDEN__]',
       name: 'Alice',
     })
@@ -46,7 +47,7 @@ describe('secret input utilities', () => {
       getFieldMeta: () => ({ isPristine: false }),
     }
 
-    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as never)).toEqual({
+    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi)).toEqual({
       apiKey: 'secret',
     })
   })

@@ -1,3 +1,4 @@
+import type { AnyFormApi } from '@tanstack/react-form'
 import { renderHook } from '@testing-library/react'
 import { FormTypeEnum } from '../types'
 import { useCheckValidated } from './use-check-validated'
@@ -21,7 +22,7 @@ describe('useCheckValidated', () => {
       state: { values: {} },
     }
 
-    const { result } = renderHook(() => useCheckValidated(form as never, []))
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, []))
 
     expect(result.current.checkValidated()).toBe(true)
     expect(mockNotify).not.toHaveBeenCalled()
@@ -44,7 +45,7 @@ describe('useCheckValidated', () => {
       show_on: [],
     }]
 
-    const { result } = renderHook(() => useCheckValidated(form as never, schemas))
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
     expect(result.current.checkValidated()).toBe(false)
     expect(mockNotify).toHaveBeenCalledWith({
@@ -60,7 +61,7 @@ describe('useCheckValidated', () => {
           secret: { errors: ['Secret is required'] },
         },
       }),
-      state: { values: { enabled: false } },
+      state: { values: { enabled: 'false' } },
     }
     const schemas = [{
       name: 'secret',
@@ -70,9 +71,35 @@ describe('useCheckValidated', () => {
       show_on: [{ variable: 'enabled', value: 'true' }],
     }]
 
-    const { result } = renderHook(() => useCheckValidated(form as never, schemas))
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
     expect(result.current.checkValidated()).toBe(true)
     expect(mockNotify).not.toHaveBeenCalled()
+  })
+
+  it('should notify when field is shown and has errors', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          secret: { errors: ['Secret is required'] },
+        },
+      }),
+      state: { values: { enabled: 'true' } },
+    }
+    const schemas = [{
+      name: 'secret',
+      label: 'Secret',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [{ variable: 'enabled', value: 'true' }],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Secret is required',
+    })
   })
 })

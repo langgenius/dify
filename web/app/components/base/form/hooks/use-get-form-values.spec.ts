@@ -1,3 +1,4 @@
+import type { AnyFormApi } from '@tanstack/react-form'
 import { renderHook } from '@testing-library/react'
 import { FormTypeEnum } from '../types'
 import { useGetFormValues } from './use-get-form-values'
@@ -25,7 +26,7 @@ describe('useGetFormValues', () => {
       store: { state: { values: { name: 'Alice' } } },
     }
 
-    const { result } = renderHook(() => useGetFormValues(form as never, []))
+    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: false })).toEqual({
       values: { name: 'Alice' },
@@ -46,7 +47,7 @@ describe('useGetFormValues', () => {
     mockCheckValidated.mockReturnValue(true)
     mockTransform.mockReturnValue({ password: '[__HIDDEN__]' })
 
-    const { result } = renderHook(() => useGetFormValues(form as never, schemas))
+    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, schemas))
 
     expect(result.current.getFormValues({
       needCheckValidatedValues: true,
@@ -63,7 +64,7 @@ describe('useGetFormValues', () => {
     }
     mockCheckValidated.mockReturnValue(false)
 
-    const { result } = renderHook(() => useGetFormValues(form as never, []))
+    const { result } = renderHook(() => useGetFormValues(form as unknown as AnyFormApi, []))
 
     expect(result.current.getFormValues({ needCheckValidatedValues: true })).toEqual({
       values: {},
