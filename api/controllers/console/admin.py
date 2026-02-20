@@ -1,3 +1,5 @@
+import csv
+import io
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
@@ -6,7 +8,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -16,6 +18,7 @@ from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
+from services.billing_service import BillingService
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -277,3 +280,115 @@ class DeleteExploreBannerApi(Resource):
         db.session.commit()
 
         return {"result": "success"}, 204
+
+
+class SaveNotificationContentPayload(BaseModel):
+    content: str = Field(...)
+
+
+class SaveNotificationUserPayload(BaseModel):
+    user_email: list[str] = Field(...)
+
+
+console_ns.schema_model(
+    SaveNotificationContentPayload.__name__,
+    SaveNotificationContentPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    SaveNotificationUserPayload.__name__,
+    SaveNotificationUserPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+
+@console_ns.route("/admin/save_notification_content")
+class SaveNotificationContentApi(Resource):
+    @console_ns.doc("save_notification_content")
+    @console_ns.doc(description="Save a notification content")
+    @console_ns.expect(console_ns.models[SaveNotificationContentPayload.__name__])
+    @console_ns.response(200, "Notification content saved successfully")
+    @only_edition_cloud
+    @admin_required
+    def post(self):
+        payload = SaveNotificationContentPayload.model_validate(console_ns.payload)
+        BillingService.save_notification_content(payload.content)
+        return {"result": "success"}, 200
+
+
+@console_ns.route("/admin/save_notification_user")
+class SaveNotificationUserApi(Resource):
+    @console_ns.doc("save_notification_user")
+    @console_ns.doc(
+        description="Save notification users via JSON body or file upload. "
+        'JSON: {"user_email": ["a@example.com", ...]}. '
+        "File: multipart/form-data with a 'file' field (CSV or TXT, one email per line)."
+    )
+    @console_ns.response(200, "Notification users saved successfully")
+    @only_edition_cloud
+    @admin_required
+    def post(self):
+        # Determine input mode: file upload or JSON body
+        if "file" in request.files:
+            emails = self._parse_emails_from_file()
+        else:
+            payload = SaveNotificationUserPayload.model_validate(console_ns.payload)
+            emails = payload.user_email
+
+        if not emails:
+            raise BadRequest("No valid email addresses provided.")
+
+        # Use batch API for bulk insert (chunks of 1000 per request to billing service)
+        result = BillingService.save_notification_users_batch(emails)
+
+        return {
+            "result": "success",
+            "total": len(emails),
+            "succeeded": result["succeeded"],
+            "failed_chunks": result["failed_chunks"],
+        }, 200
+
+    @staticmethod
+    def _parse_emails_from_file() -> list[str]:
+        """Parse email addresses from an uploaded CSV or TXT file."""
+        file = request.files["file"]
+
+        if not file.filename:
+            raise BadRequest("Uploaded file has no filename.")
+
+        filename_lower = file.filename.lower()
+        if not filename_lower.endswith((".csv", ".txt")):
+            raise BadRequest("Invalid file type. Only CSV (.csv) and TXT (.txt) files are allowed.")
+
+        # Read file content
+        try:
+            content = file.read().decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                file.seek(0)
+                content = file.read().decode("gbk")
+            except UnicodeDecodeError:
+                raise BadRequest("Unable to decode the file. Please use UTF-8 or GBK encoding.")
+
+        emails: list[str] = []
+        if filename_lower.endswith(".csv"):
+            reader = csv.reader(io.StringIO(content))
+            for row in reader:
+                for cell in row:
+                    cell = cell.strip()
+                    emails.append(cell)
+        else:
+            # TXT file: one email per line
+            for line in content.splitlines():
+                line = line.strip()
+                emails.append(line)
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_emails: list[str] = []
+        for email in emails:
+            email_lower = email.lower()
+            if email_lower not in seen:
+                seen.add(email_lower)
+                unique_emails.append(email)
+
+        return unique_emails

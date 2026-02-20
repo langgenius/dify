@@ -393,3 +393,35 @@ class BillingService:
         for item in data:
             tenant_whitelist.append(item["tenant_id"])
         return tenant_whitelist
+
+    @classmethod
+    def read_notification(cls, user_email: str):
+        params = {"user_email": user_email}
+        return cls._send_request("GET", "/notification/read", params=params)
+
+    @classmethod
+    def save_notification_user(cls, user_email: str):
+        json = {"user_email": user_email}
+        return cls._send_request("POST", "/notification/new-notification-user", json=json)
+
+    @classmethod
+    def save_notification_users_batch(cls, user_emails: list[str]) -> dict:
+        """Batch save notification users in chunks of 1000."""
+        chunk_size = 1000
+        total_succeeded = 0
+        failed_chunks: list[dict] = []
+
+        for i in range(0, len(user_emails), chunk_size):
+            chunk = user_emails[i : i + chunk_size]
+            try:
+                resp = cls._send_request("POST", "/notification/batch-notification-users", json={"user_emails": chunk})
+                total_succeeded += resp.get("count", len(chunk))
+            except Exception as e:
+                failed_chunks.append({"offset": i, "count": len(chunk), "error": str(e)})
+
+        return {"succeeded": total_succeeded, "failed_chunks": failed_chunks}
+
+    @classmethod
+    def save_notification_content(cls, content: str):
+        json = {"content": content}
+        return cls._send_request("POST", "/notification/new-notification", json=json)
