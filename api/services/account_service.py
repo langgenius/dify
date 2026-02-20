@@ -9,7 +9,7 @@ from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -1437,7 +1437,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:

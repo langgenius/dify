@@ -2,7 +2,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -24,7 +24,7 @@ def plugin_permission_required(
             user = current_user
             tenant_id = current_tenant_id
 
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 permission = (
                     session.query(TenantPluginPermission)
                     .where(

@@ -3,7 +3,7 @@ import logging
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -83,7 +83,7 @@ class CustomizedPipelineTemplateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, template_id: str):
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             template = (
                 session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
             )

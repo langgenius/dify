@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -69,7 +69,7 @@ class ConversationVariablesApi(Resource):
         page_size = 100
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             rows = session.scalars(stmt).all()
 
         return {

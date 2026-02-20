@@ -4,7 +4,7 @@ from typing import Literal
 from flask import session
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
@@ -68,7 +68,7 @@ def get_init_validate_status() -> bool:
             if session.get("is_init_validated"):
                 return True
 
-            with Session(db.engine) as db_session:
+            with sessionmaker(db.engine).begin() as db_session:
                 return db_session.execute(select(DifySetup)).scalar_one_or_none() is not None
 
     return True

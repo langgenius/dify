@@ -116,7 +116,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
 
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 # Load required entities
                 account = session.query(Account).where(Account.id == user_id).first()
                 if not account:

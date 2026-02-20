@@ -12,7 +12,7 @@ from typing import Any, Literal, cast
 import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import exists, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -526,7 +526,7 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             external_knowledge_binding = (
                 session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
             )
@@ -1078,7 +1078,7 @@ class DatasetService:
             if knowledge_configuration.summary_index_setting is not None:
                 dataset.summary_index_setting = knowledge_configuration.summary_index_setting
             session.add(dataset)
-            session.commit()
+
             if action:
                 deal_dataset_index_update_task.delay(dataset.id, action)
 
@@ -1420,7 +1420,7 @@ class DocumentService:
                 )
                 .update({Document.need_summary: need_summary}, synchronize_session=False)
             )
-            session.commit()
+
             logger.info(
                 "Updated need_summary to %s for %d documents in dataset %s",
                 need_summary,

@@ -8,7 +8,7 @@ This service centralizes all AppTrigger-related business logic.
 import logging
 
 from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.enums import AppTriggerStatus
@@ -34,13 +34,13 @@ class AppTriggerService:
 
         """
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 session.execute(
                     update(AppTrigger)
                     .where(AppTrigger.tenant_id == tenant_id, AppTrigger.status == AppTriggerStatus.ENABLED)
                     .values(status=AppTriggerStatus.RATE_LIMITED)
                 )
-                session.commit()
+
                 logger.info("Marked all enabled triggers as rate limited for tenant %s", tenant_id)
         except Exception:
             logger.exception("Failed to mark all enabled triggers as rate limited for tenant %s", tenant_id)

@@ -5,7 +5,7 @@ from typing import ParamSpec, TypeVar
 from flask import current_app, request
 from flask_login import user_logged_in
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from libs.login import current_user
@@ -32,7 +32,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
         user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
     is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
     try:
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             user_model = None
 
             if is_anonymous:
@@ -62,7 +62,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     session_id=user_id,
                 )
                 session.add(user_model)
-                session.commit()
+
                 session.refresh(user_model)
 
     except Exception:

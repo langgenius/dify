@@ -4,7 +4,7 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -64,7 +64,7 @@ class WebhookTriggerApi(Resource):
 
         node_id = args.node_id
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # Get webhook trigger for this app and node
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger)
@@ -95,7 +95,7 @@ class AppTriggersApi(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # Get all triggers for this app using select API
             triggers = (
                 session.execute(
@@ -137,7 +137,7 @@ class AppTriggerEnableApi(Resource):
         assert current_user.current_tenant_id is not None
 
         trigger_id = args.trigger_id
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # Find the trigger using select
             trigger = session.execute(
                 select(AppTrigger).where(
@@ -153,7 +153,6 @@ class AppTriggerEnableApi(Resource):
             # Update status based on enable_trigger boolean
             trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED
 
-            session.commit()
             session.refresh(trigger)
 
         # Add computed icon field

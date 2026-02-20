@@ -3,7 +3,7 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -117,7 +117,7 @@ class ConversationApi(Resource):
         last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

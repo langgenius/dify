@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
@@ -7,7 +7,7 @@ from models.account import TenantPluginAutoUpgradeStrategy
 class PluginAutoUpgradeService:
     @staticmethod
     def get_strategy(tenant_id: str) -> TenantPluginAutoUpgradeStrategy | None:
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             return (
                 session.query(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
@@ -23,7 +23,7 @@ class PluginAutoUpgradeService:
         exclude_plugins: list[str],
         include_plugins: list[str],
     ) -> bool:
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
@@ -46,12 +46,11 @@ class PluginAutoUpgradeService:
                 exist_strategy.exclude_plugins = exclude_plugins
                 exist_strategy.include_plugins = include_plugins
 
-            session.commit()
             return True
 
     @staticmethod
     def exclude_plugin(tenant_id: str, plugin_id: str) -> bool:
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
@@ -83,5 +82,4 @@ class PluginAutoUpgradeService:
                     exist_strategy.upgrade_mode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
                     exist_strategy.exclude_plugins = [plugin_id]
 
-                session.commit()
                 return True

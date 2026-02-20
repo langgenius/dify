@@ -565,7 +565,7 @@ class TraceTask:
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             # get workflow_app_log_id
             workflow_app_log_data_stmt = select(WorkflowAppLog.id).where(
                 WorkflowAppLog.tenant_id == tenant_id,
