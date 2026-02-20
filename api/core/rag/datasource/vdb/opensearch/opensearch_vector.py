@@ -66,14 +66,15 @@ class OpenSearchConfig(BaseModel):
             "pool_maxsize": 20,
         }
 
-        if self.auth_method == "basic":
-            logger.info("Using basic authentication for OpenSearch Vector DB")
+        match self.auth_method:
+            case AuthMethod.BASIC:
+                logger.info("Using basic authentication for OpenSearch Vector DB")
 
-            params["http_auth"] = (self.user, self.password)
-        elif self.auth_method == "aws_managed_iam":
-            logger.info("Using AWS managed IAM role for OpenSearch Vector DB")
+                params["http_auth"] = (self.user, self.password)
+            case AuthMethod.AWS_MANAGED_IAM:
+                logger.info("Using AWS managed IAM role for OpenSearch Vector DB")
 
-            params["http_auth"] = self.create_aws_managed_iam_auth()
+                params["http_auth"] = self.create_aws_managed_iam_auth()
 
         return params
 

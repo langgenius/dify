@@ -578,63 +578,63 @@ class DatasetIndexingEstimateApi(Resource):
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
-        if args["info_list"]["data_source_type"] == "upload_file":
-            file_ids = args["info_list"]["file_info_list"]["file_ids"]
-            file_details = db.session.scalars(
-                select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
-            ).all()
+        match args["info_list"]["data_source_type"]:
+            case "upload_file":
+                file_ids = args["info_list"]["file_info_list"]["file_ids"]
+                file_details = db.session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
+                ).all()
+                if file_details is None:
+                    raise NotFound("File not found.")
 
-            if file_details is None:
-                raise NotFound("File not found.")
-
-            if file_details:
-                for file_detail in file_details:
+                if file_details:
+                    for file_detail in file_details:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.FILE,
+                            upload_file=file_detail,
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "notion_import":
+                notion_info_list = args["info_list"]["notion_info_list"]
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info["workspace_id"]
+                    credential_id = notion_info.get("credential_id")
+                    for page in notion_info["pages"]:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.NOTION,
+                            notion_info=NotionInfo.model_validate(
+                                {
+                                    "credential_id": credential_id,
+                                    "notion_workspace_id": workspace_id,
+                                    "notion_obj_id": page["page_id"],
+                                    "notion_page_type": page["type"],
+                                    "tenant_id": current_tenant_id,
+                                }
+                            ),
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "website_crawl":
+                website_info_list = args["info_list"]["website_info_list"]
+                for url in website_info_list["urls"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE,
-                        upload_file=file_detail,
-                        document_model=args["doc_form"],
-                    )
-                    extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "notion_import":
-            notion_info_list = args["info_list"]["notion_info_list"]
-            for notion_info in notion_info_list:
-                workspace_id = notion_info["workspace_id"]
-                credential_id = notion_info.get("credential_id")
-                for page in notion_info["pages"]:
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION,
-                        notion_info=NotionInfo.model_validate(
+                        datasource_type=DatasourceType.WEBSITE,
+                        website_info=WebsiteInfo.model_validate(
                             {
-                                "credential_id": credential_id,
-                                "notion_workspace_id": workspace_id,
-                                "notion_obj_id": page["page_id"],
-                                "notion_page_type": page["type"],
+                                "provider": website_info_list["provider"],
+                                "job_id": website_info_list["job_id"],
+                                "url": url,
                                 "tenant_id": current_tenant_id,
+                                "mode": "crawl",
+                                "only_main_content": website_info_list["only_main_content"],
                             }
                         ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "website_crawl":
-            website_info_list = args["info_list"]["website_info_list"]
-            for url in website_info_list["urls"]:
-                extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE,
-                    website_info=WebsiteInfo.model_validate(
-                        {
-                            "provider": website_info_list["provider"],
-                            "job_id": website_info_list["job_id"],
-                            "url": url,
-                            "tenant_id": current_tenant_id,
-                            "mode": "crawl",
-                            "only_main_content": website_info_list["only_main_content"],
-                        }
-                    ),
-                    document_model=args["doc_form"],
-                )
-                extract_settings.append(extract_setting)
-        else:
-            raise ValueError("Data source type not support")
+            case _:
+                raise ValueError("Data source type not support")
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(

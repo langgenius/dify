@@ -64,23 +64,26 @@ class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
             if len(v) > 0 and isinstance(v[0], dict):
                 # rename text to content
                 v = replace_text_with_content(data=v)
-                if field_name == "inputs":
-                    data = {
-                        "messages": [
-                            dict(msg, **{"usage_metadata": usage_metadata, "file_list": file_list}) for msg in v
-                        ]
-                        if isinstance(v, list)
-                        else v,
-                    }
-                elif field_name == "outputs":
-                    data = {
-                        "choices": {
-                            "role": "ai",
-                            "content": v,
-                            "usage_metadata": usage_metadata,
-                            "file_list": file_list,
-                        },
-                    }
+                match field_name:
+                    case "inputs":
+                        data = {
+                            "messages": [
+                                dict(msg, **{"usage_metadata": usage_metadata, "file_list": file_list}) for msg in v
+                            ]
+                            if isinstance(v, list)
+                            else v,
+                        }
+                    case "outputs":
+                        data = {
+                            "choices": {
+                                "role": "ai",
+                                "content": v,
+                                "usage_metadata": usage_metadata,
+                                "file_list": file_list,
+                            },
+                        }
+                    case _:
+                        pass
                 return data
             else:
                 return {
