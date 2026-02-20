@@ -18,6 +18,7 @@ from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated
 from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -527,6 +528,9 @@ class TraceTask:
             TraceTaskName.GENERATE_NAME_TRACE: lambda: self.generate_name_trace(
                 conversation_id=self.conversation_id, timer=self.timer, **self.kwargs
             ),
+            TraceTaskName.FEEDBACK_TRACE: lambda: self.feedback_trace(
+                message_id=self.message_id, **self.kwargs
+            ),
         }
 
         return preprocess_map.get(self.trace_type, lambda: None)()
@@ -903,6 +907,27 @@ class TraceTask:
         )
 
         return generate_name_trace_info
+
+    def feedback_trace(self, message_id: str | None, **kwargs) -> FeedbackTraceInfo | dict:
+        if not message_id:
+            return {}
+
+        rating = kwargs.get("rating")
+        if rating not in ("like", "dislike"):
+            return {}
+
+        content = kwargs.get("content")
+        from_source = kwargs.get("from_source", "user")
+
+        feedback_trace_info = FeedbackTraceInfo(
+            message_id=message_id,
+            rating=rating,
+            content=content,
+            from_source=from_source,
+            metadata={"message_id": message_id, "from_source": from_source},
+        )
+
+        return feedback_trace_info
 
     def _extract_streaming_metrics(self, message_data) -> dict:
         if not message_data.message_metadata:
