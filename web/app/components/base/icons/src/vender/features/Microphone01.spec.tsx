@@ -1,25 +1,27 @@
 import { fireEvent, render } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import Document from './Document'
+import Microphone01 from './Microphone01'
 
-describe('Document Icon Component', () => {
+describe('Microphone01 Icon Component', () => {
   it('renders correctly with default attributes from JSON', () => {
-    const { container } = render(<Document />)
+    const { container } = render(<Microphone01 />)
     const svg = container.querySelector('svg')
 
     expect(svg).toBeInTheDocument()
-    expect(svg).toHaveAttribute('data-icon', 'Document')
+    expect(svg).toHaveAttribute('data-icon', 'Microphone01')
     expect(svg).toHaveAttribute('viewBox', '0 0 24 24')
-    expect(svg).toHaveAttribute('fill', 'currentColor')
+    expect(svg).toHaveAttribute('width', '24')
+    expect(svg).toHaveAttribute('height', '24')
+    expect(svg).toHaveAttribute('fill', 'none')
   })
 
   it('renders the icon path correctly', () => {
-    const { container } = render(<Document />)
+    const { container } = render(<Microphone01 />)
     const path = container.querySelector('path')
 
     expect(path).toBeInTheDocument()
-    expect(path).not.toHaveAttribute('fill')
+    expect(path).toHaveAttribute('fill', 'currentColor')
 
     const d = path?.getAttribute('d')
     expect(d).toBeTruthy()
@@ -27,7 +29,7 @@ describe('Document Icon Component', () => {
 
   it('applies custom className and style props', () => {
     const { container } = render(
-      <Document className="custom-icon" style={{ opacity: '0.8' }} />,
+      <Microphone01 className="custom-icon" style={{ opacity: '0.8' }} />,
     )
     const svg = container.querySelector('svg') as SVGSVGElement
 
@@ -37,7 +39,7 @@ describe('Document Icon Component', () => {
 
   it('handles click events', () => {
     const onClick = vi.fn()
-    const { container } = render(<Document onClick={onClick} />)
+    const { container } = render(<Microphone01 onClick={onClick} />)
     const svg = container.querySelector('svg')
 
     if (svg)
