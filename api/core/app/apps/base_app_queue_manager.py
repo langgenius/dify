@@ -52,9 +52,16 @@ class AppQueueManager:
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
 
+        # Graceful shutdown mechanism to prevent race condition (fixes #31611)
+        self._should_stop = threading.Event()
+        self._stop_lock = threading.Lock()
+
     def listen(self):
         """
-        Listen to queue
+        Listen to queue with graceful shutdown support.
+
+        This method implements a graceful shutdown mechanism to prevent race conditions
+        where messages could be lost during queue shutdown (fixes #31611).
         :return:
         """
         # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
@@ -63,12 +70,22 @@ class AppQueueManager:
         last_ping_time: int | float = 0
         while True:
             try:
-                message = self._q.get(timeout=1)
+                # Use shorter timeout to be more responsive to stop signals
+                message = self._q.get(timeout=0.5)
                 if message is None:
+                    # Drain remaining messages before exiting to prevent message loss
+                    yield from self._drain_remaining_messages()
                     break
 
                 yield message
             except queue.Empty:
+                # Check graceful stop signal
+                if self._should_stop.is_set():
+                    # Give a small window for any pending messages
+                    time.sleep(0.05)
+                    # Drain any remaining messages
+                    yield from self._drain_remaining_messages()
+                    break
                 continue
             finally:
                 elapsed_time = time.time() - start_time
@@ -83,14 +100,51 @@ class AppQueueManager:
                     self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
                     last_ping_time = elapsed_time // 10
 
+    def _drain_remaining_messages(self):
+        """
+        Drain all remaining messages from the queue.
+
+        This ensures no messages are lost during shutdown (fixes #31611).
+        """
+        drained_count = 0
+        max_drain = 1000  # Safety limit to prevent infinite loop
+
+        while drained_count < max_drain:
+            try:
+                remaining = self._q.get_nowait()
+                if remaining is not None:
+                    drained_count += 1
+                    yield remaining
+                else:
+                    # Another None, we're done
+                    break
+            except queue.Empty:
+                break
+
+        if drained_count > 0:
+            logger.debug("Drained %d remaining messages from queue", drained_count)
+
     def stop_listen(self):
         """
-        Stop listen to queue
+        Stop listen to queue gracefully.
+
+        This method implements graceful shutdown to prevent race conditions
+        where messages could be lost (fixes #31611).
         :return:
         """
-        self._clear_task_belong_cache()
-        self._q.put(None)
-        self._graph_runtime_state = None  # Release reference to allow GC to reclaim memory
+        with self._stop_lock:
+            self._clear_task_belong_cache()
+
+            # Set stop signal first to allow pending publishes to complete
+            self._should_stop.set()
+
+            # Small delay to allow pending publishes to complete
+            # This helps prevent the race condition where messages are
+            # published after we've started stopping but before we put None
+            time.sleep(0.02)
+
+            self._q.put(None)
+            self._graph_runtime_state = None  # Release reference to allow GC to reclaim memory
 
     def _clear_task_belong_cache(self) -> None:
         """
