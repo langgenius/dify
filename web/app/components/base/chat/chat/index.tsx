@@ -76,6 +76,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
+  sendOnEnter?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
@@ -120,6 +121,7 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   sidebarCollapseState,
   hideAvatar,
+  sendOnEnter,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -365,6 +367,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendOnEnter={sendOnEnter}
                 />
               )
             }
