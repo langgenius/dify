@@ -28,6 +28,10 @@ from core.workflow.file import FILE_MODEL_IDENTITY
 
 
 class StubScalars:
+    """Minimal stub for SQLAlchemy scalar results."""
+
+    _value: Any
+
     def __init__(self, value: Any) -> None:
         self._value = value
 
@@ -36,6 +40,12 @@ class StubScalars:
 
 
 class StubSession:
+    """Minimal stub for session_factory-created sessions."""
+
+    scalar_results: list[Any]
+    scalars_results: list[Any]
+    expunge_calls: list[object]
+
     def __init__(self, *, scalar_results: list[Any] | None = None, scalars_results: list[Any] | None = None) -> None:
         self.scalar_results = list(scalar_results or [])
         self.scalars_results = list(scalars_results or [])
@@ -117,6 +127,7 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 
 
 def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.MonkeyPatch):
+    """Ensure pause_state_config is passed as None."""
     tool = _build_tool()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
@@ -223,30 +234,31 @@ def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPat
     assert json_messages[0].message.json_object == {}
 
 
-def test_create_variable_message():
-    """Test the functionality of creating variable messages"""
-    tool = _build_tool()
-
-    # Test different types of variable values
-    test_cases = [
+@pytest.mark.parametrize(
+    ("var_name", "var_value"),
+    [
         ("string_var", "test string"),
         ("int_var", 42),
         ("float_var", 3.14),
         ("bool_var", True),
         ("list_var", [1, 2, 3]),
         ("dict_var", {"key": "value"}),
-    ]
+    ],
+)
+def test_create_variable_message(var_name, var_value):
+    """Create variable messages for multiple value types."""
+    tool = _build_tool()
 
-    for var_name, var_value in test_cases:
-        message = tool.create_variable_message(var_name, var_value)
+    message = tool.create_variable_message(var_name, var_value)
 
-        assert message.type == ToolInvokeMessage.MessageType.VARIABLE
-        assert message.message.variable_name == var_name
-        assert message.message.variable_value == var_value
-        assert message.message.stream is False
+    assert message.type == ToolInvokeMessage.MessageType.VARIABLE
+    assert message.message.variable_name == var_name
+    assert message.message.variable_value == var_value
+    assert message.message.stream is False
 
 
 def test_create_file_message_should_include_file_marker():
+    """Ensure file message includes marker and meta payload."""
     tool = _build_tool()
 
     file_obj = object()
@@ -264,9 +276,10 @@ def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.M
     end_user = SimpleNamespace(id="end_user_id", tenant_id="tenant_id")
 
     # Monkeypatch session factory to return our stub session
+    stub_session = StubSession(scalar_results=[tenant, None, end_user])
     monkeypatch.setattr(
         "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: StubSession(scalar_results=[tenant, None, end_user]),
+        lambda: stub_session,
     )
 
     tool = _build_tool()
@@ -276,6 +289,7 @@ def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.M
     resolved_user = tool._resolve_user_from_database(user_id=end_user.id)
 
     assert resolved_user is end_user
+    assert stub_session.expunge_calls == [end_user]
 
 
 def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pytest.MonkeyPatch):
@@ -297,6 +311,7 @@ def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pyt
 
 
 def test_workflow_tool_provider_type_and_fork_runtime():
+    """Verify provider type and forked runtime behavior."""
     tool = _build_tool()
     assert tool.tool_provider_type() == ToolProviderType.WORKFLOW
     assert tool.latest_usage.total_tokens == 0
@@ -308,16 +323,19 @@ def test_workflow_tool_provider_type_and_fork_runtime():
 
 
 def test_derive_usage_from_top_level_usage_key():
+    """Derive usage from top-level usage dict."""
     usage = WorkflowTool._derive_usage_from_result({"usage": {"total_tokens": 12, "total_price": "0.2"}})
     assert usage.total_tokens == 12
 
 
 def test_derive_usage_from_metadata_usage():
+    """Derive usage from metadata usage dict."""
     metadata_usage = WorkflowTool._derive_usage_from_result({"metadata": {"usage": {"total_tokens": 7}}})
     assert metadata_usage.total_tokens == 7
 
 
 def test_derive_usage_from_totals():
+    """Derive usage from top-level totals fields."""
     totals_usage = WorkflowTool._derive_usage_from_result(
         {"total_tokens": "9", "total_price": "1.3", "currency": "USD"}
     )
@@ -326,16 +344,19 @@ def test_derive_usage_from_totals():
 
 
 def test_derive_usage_from_empty():
+    """Default usage values when result is empty."""
     empty_usage = WorkflowTool._derive_usage_from_result({})
     assert empty_usage.total_tokens == 0
 
 
 def test_extract_usage_from_nested():
+    """Extract nested usage dict from result payloads."""
     nested = WorkflowTool._extract_usage_dict({"nested": [{"data": {"usage": {"total_tokens": 3}}}]})
     assert nested == {"total_tokens": 3}
 
 
 def test_invoke_raises_when_user_not_found(monkeypatch: pytest.MonkeyPatch):
+    """Raise ToolInvokeError when user resolution fails."""
     tool = _build_tool()
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
@@ -346,6 +367,7 @@ def test_invoke_raises_when_user_not_found(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPatch):
+    """Resolve Account and set tenant in worker context."""
     tenant = SimpleNamespace(id="tenant_id")
     account = SimpleNamespace(id="account_id", current_tenant=None)
     session = StubSession(scalar_results=[tenant, account])
@@ -361,6 +383,7 @@ def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPa
 
 
 def test_get_workflow_and_get_app_db_branches(monkeypatch: pytest.MonkeyPatch):
+    """Cover workflow/app retrieval branches and error cases."""
     tool = _build_tool()
     latest_workflow = SimpleNamespace(id="wf-latest")
     specific_workflow = SimpleNamespace(id="wf-v1")
@@ -414,11 +437,8 @@ def _setup_transform_args_tool(monkeypatch: pytest.MonkeyPatch) -> WorkflowTool:
 
 
 def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
+    """Transform args into parameters and files payloads."""
     tool = _setup_transform_args_tool(monkeypatch)
-    monkeypatch.setattr(
-        "core.workflow.file.models.helpers.get_signed_tool_file_url",
-        lambda tool_file_id, extension, for_external=True: f"https://files/{tool_file_id}{extension}",
-    )
 
     params, files = tool._transform_args(
         {
@@ -453,6 +473,7 @@ def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
+    """Ignore invalid file entries while keeping params."""
     tool = _setup_transform_args_tool(monkeypatch)
     invalid_params, invalid_files = tool._transform_args({"query": "hello", "files": [{"invalid": True}]})
     assert invalid_params == {"query": "hello"}
@@ -460,6 +481,7 @@ def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_extract_files():
+    """Extract file outputs into result and file list."""
     tool = _build_tool()
     built_files = [
         SimpleNamespace(id="file-1"),
@@ -488,6 +510,7 @@ def test_extract_files():
 
 
 def test_update_file_mapping():
+    """Map tool/local file transfer methods into output shape."""
     tool = _build_tool()
     tool_file = tool._update_file_mapping({"transfer_method": "tool_file", "related_id": "tool-1"})
     assert tool_file["tool_file_id"] == "tool-1"

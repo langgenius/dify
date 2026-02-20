@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -8,7 +9,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
-from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.builtin_tool.providers.audio.audio import AudioToolProvider
 from core.tools.builtin_tool.providers.audio.tools.asr import ASRTool
 from core.tools.builtin_tool.providers.audio.tools.tts import TTSTool
@@ -22,6 +22,7 @@ from core.tools.builtin_tool.providers.time.tools.timezone_conversion import Tim
 from core.tools.builtin_tool.providers.time.tools.weekday import WeekdayTool
 from core.tools.builtin_tool.providers.webscraper.tools.webscraper import WebscraperTool
 from core.tools.builtin_tool.providers.webscraper.webscraper import WebscraperProvider
+from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
@@ -60,7 +61,9 @@ def test_localtime_to_timestamp_tool():
     ts_message = list(
         localtime_tool.invoke(user_id="u", tool_parameters={"localtime": "2024-01-01 10:00:00", "timezone": "UTC"})
     )[0].message.text
-    assert ts_message.isdigit()
+    ts_value = float(ts_message.strip())
+    assert math.isfinite(ts_value)
+    assert ts_value >= 0
     with pytest.raises(ToolInvokeError):
         LocaltimeToTimestampTool.localtime_to_timestamp("bad", "%Y-%m-%d %H:%M:%S", "UTC")
 
@@ -235,39 +238,24 @@ def test_tts_tool_raises_when_runtime_missing():
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
 
 
-def test_tts_tool_raises_when_voice_value_empty(monkeypatch):
+@pytest.mark.parametrize(
+    "voices",
+    [[{"value": None}], []],
+)
+def test_tts_tool_raises_when_voice_unavailable(monkeypatch, voices):
     tts = _build_builtin_tool(TTSTool)
     tts.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER)
-    model_with_empty_voice = type(
-        "TTSModelEmptyVoice",
+    model_without_voice = type(
+        "TTSModelNoVoice",
         (),
         {
-            "get_tts_voices": lambda self: [{"value": None}],
+            "get_tts_voices": lambda self: voices,
             "invoke_tts": lambda self, **kwargs: [b"x"],
         },
     )()
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager",
-        lambda: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_with_empty_voice})(),
-    )
-    with pytest.raises(ValueError, match="no voice available"):
-        list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
-
-
-def test_tts_tool_raises_when_no_voices(monkeypatch):
-    tts = _build_builtin_tool(TTSTool)
-    tts.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER)
-    model_without_voices = type(
-        "TTSModelNoVoices",
-        (),
-        {
-            "get_tts_voices": lambda self: [],
-            "invoke_tts": lambda self, **kwargs: [b"x"],
-        },
-    )()
-    monkeypatch.setattr(
-        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager",
-        lambda: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_without_voices})(),
+        lambda: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_without_voice})(),
     )
     with pytest.raises(ValueError, match="no voice available"):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
