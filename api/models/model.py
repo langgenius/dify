@@ -1491,7 +1491,7 @@ class MessageFile(TypeBase):
     )
 
 
-class MessageAnnotation(Base):
+class MessageAnnotation(TypeBase):
     __tablename__ = "message_annotations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1500,17 +1500,28 @@ class MessageAnnotation(Base):
         sa.Index("message_annotation_message_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
     question: Mapped[str] = mapped_column(LongText, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), init=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
