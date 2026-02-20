@@ -755,6 +755,40 @@ services:
       - ssrf_proxy_network
       - default
 
+  # FastAPI service (console migration)
+  fastapi:
+    image: langgenius/dify-api:1.13.0
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'fastapi' starts the FastAPI server.
+      MODE: fastapi
+      DIFY_PORT: 5004
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
@@ -1120,6 +1154,7 @@ services:
       CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
     depends_on:
       - api
+      - fastapi
       - web
     ports:
       - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
