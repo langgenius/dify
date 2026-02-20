@@ -120,14 +120,27 @@ class AnalyticdbVectorBySql:
                 conn.rollback()
                 if "already exists" not in str(e):
                     raise e
-            cur.execute(
-                "CREATE OR REPLACE FUNCTION "
-                "public.to_tsquery_from_text(txt text, lang regconfig DEFAULT 'english'::regconfig) "
-                "RETURNS tsquery LANGUAGE sql IMMUTABLE STRICT AS $function$ "
-                "SELECT to_tsquery(lang, COALESCE(string_agg(split_part(word, ':', 1), ' | '), '')) "
-                "FROM (SELECT unnest(string_to_array(to_tsvector(lang, txt)::text, ' ')) AS word) "
-                "AS words_only;$function$"
-            )
+            cur.execute("""
+            DO $$
+            BEGIN
+                CREATE OR REPLACE FUNCTION public.to_tsquery_from_text(
+                    txt text,
+                    lang regconfig DEFAULT 'english'::regconfig
+                )
+                RETURNS tsquery
+                LANGUAGE sql
+                IMMUTABLE STRICT
+                AS $func$
+                    SELECT to_tsquery(lang, COALESCE(string_agg(split_part(word, ':', 1), ' | '), ''))
+                    FROM (
+                        SELECT unnest(string_to_array(to_tsvector(lang, txt)::text, ' ')) AS word
+                    ) AS words_only;
+                $func$;
+            EXCEPTION
+                WHEN SQLSTATE '42501' THEN
+                    NULL;  /* insufficient_privilege: skip when function exists and current user is not owner; EXECUTE is sufficient to use it */
+            END $$;
+            """)
             cur.execute(f"CREATE SCHEMA IF NOT EXISTS {self.config.namespace}")
 
     def _create_collection_if_not_exists(self, embedding_dimension: int):
@@ -152,7 +165,7 @@ class AnalyticdbVectorBySql:
                         cur.execute(
                             f"CREATE INDEX {index_name} ON {self.table_name} USING ann(vector) "
                             f"WITH(dim='{embedding_dimension}', distancemeasure='{self.config.metrics}', "
-                            f"pq_enable=0, external_storage=0)"
+                            f"pq_enable=0)"
                         )
                         cur.execute(f"CREATE INDEX ON {self.table_name} USING gin(to_tsvector)")
                     except Exception as e:
