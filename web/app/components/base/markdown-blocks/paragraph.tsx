@@ -6,12 +6,23 @@
 import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
-const hasImageChild = (children: any[]): boolean => {
-  return children?.some((child: any) => 'tagName' in child && child.tagName === 'img')
+interface MdastNode {
+  tagName?: string
+  children?: MdastNode[]
+  properties?: Record<string, string>
 }
 
-const Paragraph = (paragraph: any) => {
-  const { node }: any = paragraph
+interface ParagraphProps {
+  node: MdastNode
+  children: React.ReactNode[]
+}
+
+const hasImageChild = (children: MdastNode[]): boolean => {
+  return children?.some((child: MdastNode) => 'tagName' in child && child.tagName === 'img')
+}
+
+const Paragraph = (paragraph: ParagraphProps) => {
+  const { node } = paragraph
   const children_node = node.children
   if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
     return (
