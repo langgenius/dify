@@ -1,8 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import VariableOrConstantInputField from './variable-or-constant-input'
 
-const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: ({ onChange }: { onChange?: () => void }) => (
     <button onClick={() => onChange?.()}>
@@ -14,10 +12,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 describe('VariableOrConstantInputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  afterAll(() => {
-    consoleSpy.mockRestore()
   })
 
   it('should render variable picker by default', () => {
@@ -32,16 +26,22 @@ describe('VariableOrConstantInputField', () => {
     expect(screen.getByRole('textbox')).toBeInTheDocument()
   })
 
-  it('should trigger constant change handler when users type value', () => {
+  it('should show typed constant value in the input', () => {
     render(<VariableOrConstantInputField label="Input source" />)
     fireEvent.click(screen.getAllByRole('button')[1])
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'constant-value' } })
-    expect(consoleSpy).toHaveBeenCalledWith('Constant value changed:', 'constant-value')
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'constant-value' } })
+    expect(textbox).toHaveValue('constant-value')
   })
 
-  it('should trigger variable handler when users select variable', () => {
+  it('should switch back to variable mode when users choose variable again', () => {
     render(<VariableOrConstantInputField label="Input source" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Variable picker' }))
-    expect(consoleSpy).toHaveBeenCalledWith('Variable value changed')
+    const modeButtons = screen.getAllByRole('button')
+
+    fireEvent.click(modeButtons[1])
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+
+    fireEvent.click(modeButtons[0])
+    expect(screen.getByRole('button', { name: 'Variable picker' })).toBeInTheDocument()
   })
 })

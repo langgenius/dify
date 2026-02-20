@@ -26,18 +26,24 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-type-item', () =>
   default: ({
     type,
     onToggle,
+    customFileTypes = [],
     onCustomFileTypesChange,
   }: {
     type: SupportUploadFileTypes
     onToggle: (type: SupportUploadFileTypes) => void
+    customFileTypes?: string[]
     onCustomFileTypesChange?: (types: string[]) => void
   }) => (
     <div>
       <button onClick={() => onToggle(type)}>{type}</button>
       {onCustomFileTypesChange && (
-        <button onClick={() => onCustomFileTypesChange(['csv'])}>
-          update-custom-types
-        </button>
+        <input
+          aria-label="custom file extensions"
+          value={customFileTypes.join(',')}
+          onChange={e => onCustomFileTypesChange(
+            e.target.value.split(',').map(v => v.trim()).filter(Boolean),
+          )}
+        />
       )}
     </div>
   ),
@@ -107,13 +113,15 @@ describe('FileTypesField', () => {
     })
   })
 
-  it('should update custom extensions when users change custom type list', () => {
+  it('should update custom extensions when users type custom extension values', () => {
     render(<FileTypesField label="Allowed file types" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'update-custom-types' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'custom file extensions' }), {
+      target: { value: 'csv,pdf' },
+    })
     expect(mockField.handleChange).toHaveBeenCalledWith({
       allowedFileTypes: [],
-      allowedFileExtensions: ['csv'],
+      allowedFileExtensions: ['csv', 'pdf'],
     })
   })
 })

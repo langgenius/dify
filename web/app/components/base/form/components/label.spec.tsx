@@ -13,6 +13,19 @@ describe('Label', () => {
     expect(screen.getByText('Test Label')).toBeInTheDocument()
   })
 
+  it('should focus related input when users click the label', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <Label {...defaultProps} />
+        <input id="test-input" />
+      </>,
+    )
+
+    await user.click(screen.getByText('Test Label'))
+    expect(screen.getByRole('textbox')).toHaveFocus()
+  })
+
   it('should show optional text when the field is not required', () => {
     render(<Label {...defaultProps} showOptional />)
     expect(screen.getByText('common.label.optional')).toBeInTheDocument()

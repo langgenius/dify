@@ -20,6 +20,7 @@ const renderBaseField = ({
   defaultValues,
   fieldState,
   onChange,
+  showCurrentValue = false,
 }: {
   formSchema: FormSchema
   defaultValues?: Record<string, unknown>
@@ -29,6 +30,7 @@ const renderBaseField = ({
     warnings?: string[]
   }
   onChange?: (field: string, value: unknown) => void
+  showCurrentValue?: boolean
 }) => {
   const TestComponent = () => {
     const form = useForm({
@@ -37,16 +39,23 @@ const renderBaseField = ({
     })
 
     return (
-      <form.Field name={formSchema.name}>
-        {field => (
-          <BaseField
-            field={field as unknown as AnyFieldApi}
-            formSchema={formSchema}
-            fieldState={fieldState}
-            onChange={onChange}
-          />
+      <>
+        <form.Field name={formSchema.name}>
+          {field => (
+            <BaseField
+              field={field as unknown as AnyFieldApi}
+              formSchema={formSchema}
+              fieldState={fieldState}
+              onChange={onChange}
+            />
+          )}
+        </form.Field>
+        {showCurrentValue && (
+          <form.Subscribe selector={state => state.values[formSchema.name]}>
+            {value => <div data-testid="field-value">{String(value)}</div>}
+          </form.Subscribe>
         )}
-      </form.Field>
+      </>
     )
   }
 
@@ -81,7 +90,8 @@ describe('BaseField', () => {
 
     fireEvent.change(input, { target: { value: 'Updated' } })
     expect(onChange).toHaveBeenCalledWith('title', 'Updated')
-    expect(screen.getByText('*')).toBeInTheDocument()
+    expect(screen.getByText('Title')).toBeInTheDocument()
+    expect(screen.getAllByText('*')).toHaveLength(1)
   })
 
   it('should render only options that satisfy show_on conditions', () => {
@@ -256,10 +266,12 @@ describe('BaseField', () => {
         required: false,
       },
       defaultValues: { enabled: true },
+      showCurrentValue: true,
     })
 
+    expect(screen.getByTestId('field-value')).toHaveTextContent('true')
     fireEvent.click(screen.getByText('False'))
-    expect(screen.getByText('False')).toBeInTheDocument()
+    expect(screen.getByTestId('field-value')).toHaveTextContent('false')
   })
 
   it('should render warning message when field state has a warning', () => {

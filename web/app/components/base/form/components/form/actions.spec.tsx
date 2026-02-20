@@ -49,21 +49,27 @@ describe('Actions', () => {
   it('should call form submit when users click submit button', () => {
     const { submitSpy } = renderWithForm({ canSubmit: true, isSubmitting: false })
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.submit' }))
-    expect(submitSpy).toHaveBeenCalled()
+    expect(submitSpy).toHaveBeenCalledTimes(1)
   })
 
   it('should render custom actions when provided', () => {
+    const customActionsSpy = vi.fn(({ isSubmitting, canSubmit }: CustomActionsProps) => (
+      <div>
+        {`custom-${String(isSubmitting)}-${String(canSubmit)}`}
+      </div>
+    ))
+
     renderWithForm({
       canSubmit: true,
       isSubmitting: true,
-      CustomActions: ({ isSubmitting, canSubmit }) => (
-        <div>
-          {`custom-${String(isSubmitting)}-${String(canSubmit)}`}
-        </div>
-      ),
+      CustomActions: customActionsSpy,
     })
 
     expect(screen.queryByRole('button', { name: 'common.operation.submit' })).not.toBeInTheDocument()
     expect(screen.getByText('custom-true-true')).toBeInTheDocument()
+    expect(customActionsSpy).toHaveBeenCalledWith(expect.objectContaining({
+      isSubmitting: true,
+      canSubmit: true,
+    }))
   })
 })
