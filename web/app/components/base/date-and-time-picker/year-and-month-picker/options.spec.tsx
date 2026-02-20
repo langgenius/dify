@@ -32,10 +32,10 @@ describe('YearAndMonthPicker Options', () => {
     it('should render year options', () => {
       const props = createOptionsProps()
 
-      render(<Options {...props} />)
+      const { container } = render(<Options {...props} />)
 
-      const allItems = screen.getAllByRole('listitem')
-      expect(allItems).toHaveLength(212)
+      const yearList = container.querySelectorAll('ul')[1]
+      expect(yearList?.children).toHaveLength(200)
     })
   })
 

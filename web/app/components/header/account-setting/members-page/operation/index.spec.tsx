@@ -1,5 +1,6 @@
 import type { Member } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast'
 import Operation from './index'
@@ -55,20 +56,45 @@ describe('Operation', () => {
   })
 
   it('shows dataset operator option when the feature flag is enabled', async () => {
+    const user = userEvent.setup()
+
     mockUseProviderContext.mockReturnValue({ datasetOperatorEnabled: true })
     renderOperation()
 
-    fireEvent.click(screen.getByText('common.members.editor'))
+    await user.click(screen.getByText('common.members.editor'))
 
     expect(await screen.findByText('common.members.datasetOperator')).toBeInTheDocument()
   })
 
+  it('shows owner-allowed role options for admin operators', async () => {
+    const user = userEvent.setup()
+
+    renderOperation({}, 'admin')
+
+    await user.click(screen.getByText('common.members.editor'))
+
+    expect(screen.queryByText('common.members.admin')).not.toBeInTheDocument()
+    expect(screen.getByText('common.members.normal')).toBeInTheDocument()
+  })
+
+  it('does not show role options for unsupported operators', async () => {
+    const user = userEvent.setup()
+
+    renderOperation({}, 'normal')
+
+    await user.click(screen.getByText('common.members.editor'))
+
+    expect(screen.queryByText('common.members.normal')).not.toBeInTheDocument()
+    expect(screen.getByText('common.members.removeFromTeam')).toBeInTheDocument()
+  })
+
   it('calls updateMemberRole and onOperate when selecting another role', async () => {
+    const user = userEvent.setup()
     const onOperate = vi.fn()
     renderOperation({}, 'owner', onOperate)
 
-    fireEvent.click(screen.getByText('common.members.editor'))
-    fireEvent.click(await screen.findByText('common.members.normal'))
+    await user.click(screen.getByText('common.members.editor'))
+    await user.click(await screen.findByText('common.members.normal'))
 
     await waitFor(() => {
       expect(mockUpdateMemberRole).toHaveBeenCalled()
@@ -77,11 +103,12 @@ describe('Operation', () => {
   })
 
   it('calls deleteMemberOrCancelInvitation when removing the member', async () => {
+    const user = userEvent.setup()
     const onOperate = vi.fn()
     renderOperation({}, 'owner', onOperate)
 
-    fireEvent.click(screen.getByText('common.members.editor'))
-    fireEvent.click(await screen.findByText('common.members.removeFromTeam'))
+    await user.click(screen.getByText('common.members.editor'))
+    await user.click(await screen.findByText('common.members.removeFromTeam'))
 
     await waitFor(() => {
       expect(mockDeleteMemberOrCancelInvitation).toHaveBeenCalled()
