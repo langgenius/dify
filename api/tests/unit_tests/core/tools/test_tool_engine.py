@@ -187,7 +187,7 @@ def test_generic_invoke_success_and_error_paths():
     error_callback.on_tool_error.assert_called_once()
 
 
-def test_agent_invoke_success_and_error_paths():
+def test_agent_invoke_success():
     tool = _build_tool(with_llm_parameter=True)
     callback = Mock()
     message = SimpleNamespace(id="m1", conversation_id="c1")
@@ -216,6 +216,12 @@ def test_agent_invoke_success_and_error_paths():
     callback.on_tool_start.assert_called_once()
     callback.on_tool_end.assert_called_once()
 
+
+def test_agent_invoke_param_validation_error():
+    tool = _build_tool(with_llm_parameter=True)
+    callback = Mock()
+    message = SimpleNamespace(id="m1", conversation_id="c1")
+
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
         error_text, files, error_meta = ToolEngine.agent_invoke(
             tool=tool,
@@ -226,11 +232,18 @@ def test_agent_invoke_success_and_error_paths():
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
         )
+
     assert "tool parameters validation error" in error_text
     assert files == []
     assert error_meta.error
 
+
+def test_agent_invoke_engine_meta_error():
+    tool = _build_tool(with_llm_parameter=True)
+    callback = Mock()
+    message = SimpleNamespace(id="m1", conversation_id="c1")
     engine_error = ToolEngineInvokeError(ToolInvokeMeta.error_instance("meta failure"))
+
     with patch.object(ToolEngine, "_invoke", side_effect=engine_error):
         error_text, files, error_meta = ToolEngine.agent_invoke(
             tool=tool,
@@ -241,9 +254,16 @@ def test_agent_invoke_success_and_error_paths():
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
         )
+
     assert "meta failure" in error_text
     assert files == []
     assert error_meta.error == "meta failure"
+
+
+def test_agent_invoke_tool_invoke_error():
+    tool = _build_tool(with_llm_parameter=True)
+    callback = Mock()
+    message = SimpleNamespace(id="m1", conversation_id="c1")
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
         error_text, files, _ = ToolEngine.agent_invoke(
@@ -255,5 +275,6 @@ def test_agent_invoke_success_and_error_paths():
             invoke_from=InvokeFrom.DEBUGGER,
             agent_tool_callback=callback,
         )
+
     assert "tool invoke error" in error_text
     assert files == []

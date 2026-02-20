@@ -24,22 +24,34 @@ def test_is_valid_uuid_handles_valid_invalid_and_empty_values():
     assert is_valid_uuid(None) is False
 
 
-def test_yaml_utils_load_and_cache_behaviors(tmp_path):
+def test_load_yaml_file_valid(tmp_path):
     valid_file = tmp_path / "valid.yaml"
     valid_file.write_text("a: 1\nb: two\n", encoding="utf-8")
-    invalid_file = tmp_path / "invalid.yaml"
-    invalid_file.write_text("a: [1, 2\n", encoding="utf-8")
 
     loaded = _load_yaml_file(file_path=str(valid_file))
+
     assert loaded == {"a": 1, "b": "two"}
 
-    # cached loader should return consistent content and use cache key.
-    load_yaml_file_cached.cache_clear()
-    assert load_yaml_file_cached(str(valid_file)) == {"a": 1, "b": "two"}
-    assert load_yaml_file_cached(str(valid_file)) == {"a": 1, "b": "two"}
 
+def test_load_yaml_file_missing(tmp_path):
     with pytest.raises(FileNotFoundError):
         _load_yaml_file(file_path=str(tmp_path / "missing.yaml"))
 
+
+def test_load_yaml_file_invalid(tmp_path):
+    invalid_file = tmp_path / "invalid.yaml"
+    invalid_file.write_text("a: [1, 2\n", encoding="utf-8")
+
     with pytest.raises(YAMLError):
         _load_yaml_file(file_path=str(invalid_file))
+
+
+def test_load_yaml_file_cached_hits(tmp_path):
+    valid_file = tmp_path / "valid.yaml"
+    valid_file.write_text("a: 1\nb: two\n", encoding="utf-8")
+
+    load_yaml_file_cached.cache_clear()
+    assert load_yaml_file_cached(str(valid_file)) == {"a": 1, "b": "two"}
+
+    assert load_yaml_file_cached(str(valid_file)) == {"a": 1, "b": "two"}
+    assert load_yaml_file_cached.cache_info().hits == 1

@@ -43,6 +43,60 @@ def _cm(session: Any):
     return context
 
 
+def _setup_list_providers_from_api_mocks(
+    monkeypatch,
+    *,
+    session: Mock,
+    hardcoded_controller: SimpleNamespace,
+    plugin_controller: PluginToolProviderController,
+    api_controller: SimpleNamespace,
+    workflow_controller: SimpleNamespace,
+):
+    mock_db = Mock()
+    mock_db.engine = object()
+    monkeypatch.setattr("core.tools.tool_manager.db", mock_db)
+    monkeypatch.setattr("core.tools.tool_manager.Session", lambda *args, **kwargs: _cm(session))
+    monkeypatch.setattr(
+        ToolManager,
+        "list_builtin_providers",
+        Mock(return_value=[hardcoded_controller, plugin_controller]),
+    )
+    monkeypatch.setattr(
+        ToolManager,
+        "list_default_builtin_providers",
+        Mock(return_value=[SimpleNamespace(provider="hardcoded")]),
+    )
+    monkeypatch.setattr("core.tools.tool_manager.is_filtered", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        "core.tools.tool_manager.ToolTransformService.builtin_provider_to_user_provider",
+        lambda **kwargs: SimpleNamespace(name=kwargs["provider_controller"].entity.identity.name),
+    )
+    monkeypatch.setattr(
+        "core.tools.tool_manager.ToolTransformService.api_provider_to_controller",
+        Mock(side_effect=[api_controller, RuntimeError("invalid")]),
+    )
+    monkeypatch.setattr(
+        "core.tools.tool_manager.ToolTransformService.api_provider_to_user_provider",
+        Mock(return_value=SimpleNamespace(name="api-provider")),
+    )
+    monkeypatch.setattr(
+        "core.tools.tool_manager.ToolTransformService.workflow_provider_to_controller",
+        Mock(side_effect=[workflow_controller, RuntimeError("deleted app")]),
+    )
+    monkeypatch.setattr(
+        "core.tools.tool_manager.ToolTransformService.workflow_provider_to_user_provider",
+        Mock(return_value=SimpleNamespace(name="workflow-provider")),
+    )
+    monkeypatch.setattr(
+        "core.tools.tool_manager.ToolLabelManager.get_tools_labels",
+        Mock(side_effect=[{"api-1": ["search"]}, {"wf-1": ["utility"]}]),
+    )
+    mock_mcp_service = Mock()
+    mock_mcp_service.list_providers.return_value = [SimpleNamespace(name="mcp-provider")]
+    monkeypatch.setattr("core.tools.tool_manager.MCPToolManageService", Mock(return_value=mock_mcp_service))
+    monkeypatch.setattr("core.tools.tool_manager.BuiltinToolProviderSort.sort", lambda providers: providers)
+
+
 @pytest.fixture(autouse=True)
 def _reset_tool_manager_state():
     old_hardcoded = ToolManager._hardcoded_providers.copy()
@@ -253,7 +307,7 @@ def test_get_tool_runtime_builtin_plugin_provider_deleted_raises():
                     )
 
 
-def test_get_tool_runtime_api_workflow_plugin_and_mcp_paths():
+def test_get_tool_runtime_api_path():
     api_tool = Mock()
     api_tool.fork_tool_runtime.return_value = "api-runtime"
     api_provider = Mock()
@@ -273,6 +327,8 @@ def test_get_tool_runtime_api_workflow_plugin_and_mcp_paths():
                 == "api-runtime"
             )
 
+
+def test_get_tool_runtime_workflow_path():
     workflow_provider = SimpleNamespace(tenant_id="tenant-1")
     workflow_tool = Mock()
     workflow_tool.fork_tool_runtime.return_value = "wf-runtime"
@@ -299,6 +355,8 @@ def test_get_tool_runtime_api_workflow_plugin_and_mcp_paths():
                     == "wf-runtime"
                 )
 
+
+def test_get_tool_runtime_plugin_path():
     with patch.object(
         ToolManager,
         "get_plugin_provider",
@@ -314,6 +372,8 @@ def test_get_tool_runtime_api_workflow_plugin_and_mcp_paths():
             == "plugin-tool"
         )
 
+
+def test_get_tool_runtime_mcp_path():
     with patch.object(
         ToolManager,
         "get_mcp_provider_controller",
@@ -329,6 +389,8 @@ def test_get_tool_runtime_api_workflow_plugin_and_mcp_paths():
             == "mcp-tool"
         )
 
+
+def test_get_tool_runtime_app_not_implemented():
     with pytest.raises(NotImplementedError, match="app provider not implemented"):
         ToolManager.get_tool_runtime(
             provider_type=ToolProviderType.APP,
@@ -524,7 +586,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
         assert providers == provider_records
 
 
-def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp():
+def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch):
     hardcoded_controller = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="hardcoded")))
     plugin_controller = object.__new__(PluginToolProviderController)
     plugin_controller.entity = SimpleNamespace(identity=SimpleNamespace(name="plugin-provider"))
@@ -543,59 +605,15 @@ def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp():
         SimpleNamespace(all=lambda: [workflow_db_provider_good, workflow_db_provider_bad]),
     ]
 
-    with patch("core.tools.tool_manager.db") as mock_db:
-        mock_db.engine = object()
-        with patch("core.tools.tool_manager.Session", return_value=_cm(session)):
-            with patch.object(
-                ToolManager, "list_builtin_providers", return_value=[hardcoded_controller, plugin_controller]
-            ):
-                with patch.object(
-                    ToolManager,
-                    "list_default_builtin_providers",
-                    return_value=[SimpleNamespace(provider="hardcoded")],
-                ):
-                    with patch("core.tools.tool_manager.is_filtered", return_value=False):
-                        with patch(
-                            "core.tools.tool_manager.ToolTransformService.builtin_provider_to_user_provider",
-                            side_effect=lambda **kwargs: SimpleNamespace(
-                                name=kwargs["provider_controller"].entity.identity.name
-                            ),
-                        ):
-                            with patch(
-                                "core.tools.tool_manager.ToolTransformService.api_provider_to_controller",
-                                side_effect=[api_controller, RuntimeError("invalid")],
-                            ):
-                                with patch(
-                                    "core.tools.tool_manager.ToolTransformService.api_provider_to_user_provider",
-                                    return_value=SimpleNamespace(name="api-provider"),
-                                ):
-                                    with patch(
-                                        "core.tools.tool_manager.ToolTransformService.workflow_provider_to_controller",
-                                        side_effect=[workflow_controller, RuntimeError("deleted app")],
-                                    ):
-                                        with patch(
-                                            "core.tools.tool_manager.ToolTransformService.workflow_provider_to_user_provider",
-                                            return_value=SimpleNamespace(name="workflow-provider"),
-                                        ):
-                                            with patch(
-                                                "core.tools.tool_manager.ToolLabelManager.get_tools_labels",
-                                                side_effect=[{"api-1": ["search"]}, {"wf-1": ["utility"]}],
-                                            ):
-                                                with patch(
-                                                    "core.tools.tool_manager.MCPToolManageService"
-                                                ) as mock_mcp_service_cls:
-                                                    mock_mcp_service_cls.return_value.list_providers.return_value = [
-                                                        SimpleNamespace(name="mcp-provider")
-                                                    ]
-                                                    with patch(
-                                                        "core.tools.tool_manager.BuiltinToolProviderSort.sort",
-                                                        side_effect=lambda providers: providers,
-                                                    ):
-                                                        providers = ToolManager.list_providers_from_api(
-                                                            user_id="user-1",
-                                                            tenant_id="tenant-1",
-                                                            typ="",
-                                                        )
+    _setup_list_providers_from_api_mocks(
+        monkeypatch,
+        session=session,
+        hardcoded_controller=hardcoded_controller,
+        plugin_controller=plugin_controller,
+        api_controller=api_controller,
+        workflow_controller=workflow_controller,
+    )
+    providers = ToolManager.list_providers_from_api(user_id="user-1", tenant_id="tenant-1", typ="")
 
     names = {provider.name for provider in providers}
     assert {"hardcoded", "plugin-provider", "api-provider", "workflow-provider", "mcp-provider"} <= names

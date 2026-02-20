@@ -12,39 +12,54 @@ def _retrieve_config() -> DatasetRetrieveConfigEntity:
     return DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE)
 
 
-def test_get_dataset_tools_handles_empty_inputs_and_builds_tools():
-    assert (
-        DatasetRetrieverTool.get_dataset_tools(
-            tenant_id="tenant",
-            dataset_ids=[],
-            retrieve_config=_retrieve_config(),
-            return_resource=False,
-            invoke_from=InvokeFrom.DEBUGGER,
-            hit_callback=Mock(),
-            user_id="u",
-            inputs={},
-        )
-        == []
-    )
-    assert (
-        DatasetRetrieverTool.get_dataset_tools(
-            tenant_id="tenant",
-            dataset_ids=["d1"],
-            retrieve_config=None,
-            return_resource=False,
-            invoke_from=InvokeFrom.DEBUGGER,
-            hit_callback=Mock(),
-            user_id="u",
-            inputs={},
-        )
-        == []
+def test_get_dataset_tools_returns_empty_for_empty_dataset_ids():
+    # Arrange
+    retrieve_config = _retrieve_config()
+
+    # Act
+    tools = DatasetRetrieverTool.get_dataset_tools(
+        tenant_id="tenant",
+        dataset_ids=[],
+        retrieve_config=retrieve_config,
+        return_resource=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        hit_callback=Mock(),
+        user_id="u",
+        inputs={},
     )
 
+    # Assert
+    assert tools == []
+
+
+def test_get_dataset_tools_returns_empty_for_missing_retrieve_config():
+    # Arrange
+    dataset_ids = ["d1"]
+
+    # Act
+    tools = DatasetRetrieverTool.get_dataset_tools(
+        tenant_id="tenant",
+        dataset_ids=dataset_ids,
+        retrieve_config=None,
+        return_resource=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        hit_callback=Mock(),
+        user_id="u",
+        inputs={},
+    )
+
+    # Assert
+    assert tools == []
+
+
+def test_get_dataset_tools_builds_tool_and_restores_strategy():
+    # Arrange
     retrieve_config = _retrieve_config()
     retrieval_tool = SimpleNamespace(name="dataset_tool", description="desc", run=lambda query: f"result:{query}")
     feature = Mock()
     feature.to_dataset_retriever_tool.return_value = [retrieval_tool]
 
+    # Act
     with patch("core.tools.utils.dataset_retriever_tool.DatasetRetrieval", return_value=feature):
         tools = DatasetRetrieverTool.get_dataset_tools(
             tenant_id="tenant",
@@ -57,18 +72,18 @@ def test_get_dataset_tools_handles_empty_inputs_and_builds_tools():
             inputs={"x": 1},
         )
 
+    # Assert
     assert len(tools) == 1
     assert tools[0].entity.identity.name == "dataset_tool"
-    # retrieve_strategy should be restored after invocation.
     assert retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE
 
 
-def test_dataset_retriever_tool_runtime_parameters_and_invoke():
+def _build_dataset_tool() -> tuple[DatasetRetrieverTool, SimpleNamespace]:
     retrieval_tool = SimpleNamespace(name="dataset_tool", description="desc", run=lambda query: f"result:{query}")
     feature = Mock()
     feature.to_dataset_retriever_tool.return_value = [retrieval_tool]
     with patch("core.tools.utils.dataset_retriever_tool.DatasetRetrieval", return_value=feature):
-        tool = DatasetRetrieverTool.get_dataset_tools(
+        tools = DatasetRetrieverTool.get_dataset_tools(
             tenant_id="tenant",
             dataset_ids=["d1"],
             retrieve_config=_retrieve_config(),
@@ -78,16 +93,51 @@ def test_dataset_retriever_tool_runtime_parameters_and_invoke():
             user_id="u",
             inputs={},
         )
+    return tools[0], retrieval_tool
 
-    t = tool[0]
-    params = t.get_runtime_parameters()
+
+def test_runtime_parameters_shape() -> None:
+    # Arrange
+    tool, _ = _build_dataset_tool()
+
+    # Act
+    params = tool.get_runtime_parameters()
+
+    # Assert
     assert len(params) == 1
     assert params[0].name == "query"
 
-    empty_query = list(t.invoke(user_id="u", tool_parameters={}))
+
+def test_empty_query_behavior() -> None:
+    # Arrange
+    tool, _ = _build_dataset_tool()
+
+    # Act
+    empty_query = list(tool.invoke(user_id="u", tool_parameters={}))
+
+    # Assert
+    assert len(empty_query) == 1
     assert empty_query[0].message.text == "please input query"
 
-    t.retrieval_tool = retrieval_tool
-    result = list(t.invoke(user_id="u", tool_parameters={"query": "hello"}))
+
+def test_query_invocation_result() -> None:
+    # Arrange
+    tool, retrieval_tool = _build_dataset_tool()
+    tool.retrieval_tool = retrieval_tool
+
+    # Act
+    result = list(tool.invoke(user_id="u", tool_parameters={"query": "hello"}))
+
+    # Assert
     assert result[0].message.text == "result:hello"
-    assert t.validate_credentials(credentials={}, parameters={}, format_only=False) is None
+
+
+def test_validate_credentials() -> None:
+    # Arrange
+    tool, _ = _build_dataset_tool()
+
+    # Act
+    result = tool.validate_credentials(credentials={}, parameters={}, format_only=False)
+
+    # Assert
+    assert result is None

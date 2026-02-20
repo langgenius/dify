@@ -63,7 +63,7 @@ def test_plugin_tool_provider_controller_basic_behaviors():
         controller.get_tool("missing")
 
 
-def test_plugin_tool_provider_validate_credentials_success_and_failure():
+def test_validate_credentials_success():
     controller = _build_controller()
     manager = Mock()
     manager.validate_provider_credentials.return_value = True
@@ -71,7 +71,19 @@ def test_plugin_tool_provider_validate_credentials_success_and_failure():
     with patch("core.tools.plugin_tool.provider.PluginToolManager", return_value=manager):
         controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})
 
+    manager.validate_provider_credentials.assert_called_once_with(
+        tenant_id="tenant-1",
+        user_id="u1",
+        provider="provider-a",
+        credentials={"api_key": "x"},
+    )
+
+
+def test_validate_credentials_failure():
+    controller = _build_controller()
+    manager = Mock()
     manager.validate_provider_credentials.return_value = False
+
     with patch("core.tools.plugin_tool.provider.PluginToolManager", return_value=manager):
         with pytest.raises(ToolProviderCredentialValidationError, match="Invalid credentials"):
             controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})

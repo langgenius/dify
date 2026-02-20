@@ -184,7 +184,8 @@ def test_decrypt_swallow_exception_and_keep_original(encrypter_obj):
 
 
 def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
-    credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: {"type": "text-input", "name": "key"})
+    basic_config = BasicProviderConfig(name="key", type=BasicProviderConfig.Type.TEXT_INPUT)
+    credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: basic_config)
     controller = SimpleNamespace(
         provider_type=SimpleNamespace(value="builtin"),
         entity=SimpleNamespace(identity=SimpleNamespace(name="provider-a")),
@@ -209,6 +210,6 @@ def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
     )
     enc_cls.assert_called_once_with(
         tenant_id="tenant-1",
-        config=[{"type": "text-input", "name": "key"}],
+        config=[basic_config],
         provider_config_cache=cache_instance,
     )

@@ -78,20 +78,22 @@ def _tool_yaml() -> dict[str, Any]:
     }
 
 
-def test_builtin_tool_provider_init_load_tools_and_basic_accessors():
-    with patch(
-        "core.tools.builtin_tool.provider.load_yaml_file_cached",
-        side_effect=[_provider_yaml(), _tool_yaml()],
-    ):
-        with patch(
-            "core.tools.builtin_tool.provider.listdir",
-            return_value=["tool_a.yaml", "__init__.py", "readme.md"],
-        ):
-            with patch(
-                "core.tools.builtin_tool.provider.load_single_subclass_from_source",
-                return_value=_FakeBuiltinTool,
-            ):
-                provider = _ConcreteBuiltinProvider()
+def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch):
+    yaml_payloads = [_provider_yaml(), _tool_yaml()]
+
+    def _load_yaml(*args, **kwargs):
+        return yaml_payloads.pop(0)
+
+    monkeypatch.setattr("core.tools.builtin_tool.provider.load_yaml_file_cached", _load_yaml)
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.provider.listdir",
+        lambda *args, **kwargs: ["tool_a.yaml", "__init__.py", "readme.md"],
+    )
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.provider.load_single_subclass_from_source",
+        lambda *args, **kwargs: _FakeBuiltinTool,
+    )
+    provider = _ConcreteBuiltinProvider()
 
     assert provider.get_credentials_schema()
     assert provider.get_tools()
@@ -175,3 +177,4 @@ def test_builtin_tool_provider_forked_tool_runtime_is_initialized():
     assert isinstance(tool.runtime, ToolRuntime)
     assert tool.runtime.tenant_id == ""
     tool.runtime.invoke_from = InvokeFrom.DEBUGGER
+    assert tool.runtime.invoke_from == InvokeFrom.DEBUGGER

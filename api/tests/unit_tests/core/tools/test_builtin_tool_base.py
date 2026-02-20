@@ -44,7 +44,7 @@ def test_builtin_tool_fork_and_provider_type():
     assert tool.tool_provider_type() == ToolProviderType.BUILT_IN
 
 
-def test_builtin_tool_invoke_model_and_token_helpers():
+def test_invoke_model_calls_model_invocation_utils_invoke():
     tool = _build_tool()
     with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.invoke", return_value="result") as mock_invoke:
         assert (
@@ -57,12 +57,21 @@ def test_builtin_tool_invoke_model_and_token_helpers():
         )
     mock_invoke.assert_called_once()
 
+
+def test_get_max_tokens_returns_value():
+    tool = _build_tool()
     with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.get_max_llm_context_tokens", return_value=4096):
         assert tool.get_max_tokens() == 4096
 
+
+def test_get_prompt_tokens_returns_value():
+    tool = _build_tool()
     with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.calculate_tokens", return_value=7):
         assert tool.get_prompt_tokens([UserPromptMessage(content="hello")]) == 7
 
+
+def test_runtime_none_raises():
+    tool = _build_tool()
     tool.runtime = None
     with pytest.raises(ValueError, match="runtime is required"):
         tool.get_max_tokens()

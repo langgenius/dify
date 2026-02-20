@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import httpx
 import pytest
 
@@ -66,8 +68,9 @@ def test_api_tool_fork_runtime_and_validate_credentials(monkeypatch):
     assert result == '{"ok": true}'
 
 
-def test_assembling_request_and_required_parameter_validation():
+def test_assembling_request_auth_header_assembly():
     tool = _build_tool()
+
     headers = tool.assembling_request(parameters={})
     assert headers["Authorization"] == "k"
 
@@ -86,6 +89,10 @@ def test_assembling_request_and_required_parameter_validation():
     tool.runtime.credentials = {"auth_type": "api_key_query", "api_key_value": "abc"}
     assert tool.assembling_request(parameters={}) == {}
 
+
+def test_assembling_request_runtime_auth_errors():
+    tool = _build_tool()
+
     tool.runtime = None
     with pytest.raises(ToolProviderCredentialValidationError, match="runtime not initialized"):
         tool.assembling_request(parameters={})
@@ -102,15 +109,19 @@ def test_assembling_request_and_required_parameter_validation():
     with pytest.raises(ToolProviderCredentialValidationError, match="must be a string"):
         tool.assembling_request(parameters={})
 
+
+def test_assembling_request_parameter_validation_and_defaults():
+    tool = _build_tool()
+
     tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": "x"}
     tool.api_bundle.parameters = [
-        type("P", (), {"required": True, "name": "required_param", "default": None})(),
+        SimpleNamespace(required=True, name="required_param", default=None),
     ]
     with pytest.raises(ToolParameterValidationError, match="Missing required parameter required_param"):
         tool.assembling_request(parameters={})
 
     tool.api_bundle.parameters = [
-        type("P", (), {"required": True, "name": "required_param", "default": "d"})(),
+        SimpleNamespace(required=True, name="required_param", default="d"),
     ]
     params = {}
     tool.assembling_request(parameters=params)
@@ -240,7 +251,7 @@ def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch):
     }
     tool = _build_tool(openapi=openapi)
     tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_value": "k"}
-    fake_file = type("F", (), {"filename": "a.txt", "mime_type": "text/plain"})()
+    fake_file = SimpleNamespace(filename="a.txt", mime_type="text/plain")
     captured = {}
 
     def _fake_post(url, **kwargs):

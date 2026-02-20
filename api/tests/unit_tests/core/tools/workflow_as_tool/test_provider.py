@@ -30,7 +30,16 @@ def _controller() -> WorkflowToolProviderController:
     return WorkflowToolProviderController(entity=entity, provider_id="provider-1")
 
 
-def test_workflow_provider_get_db_provider_tool_and_get_tool():
+def _mock_session_with_begin() -> Mock:
+    session = Mock()
+    begin_cm = Mock()
+    begin_cm.__enter__ = Mock(return_value=None)
+    begin_cm.__exit__ = Mock(return_value=False)
+    session.begin.return_value = begin_cm
+    return session
+
+
+def test_get_db_provider_tool_builds_entity():
     controller = _controller()
     session = Mock()
     workflow = SimpleNamespace(graph_dict={"nodes": []}, features_dict={})
@@ -67,17 +76,21 @@ def test_workflow_provider_get_db_provider_tool_and_get_tool():
         SimpleNamespace(variable="answer", value_type="string"),
     ]
 
-    with patch("core.tools.workflow_as_tool.provider.WorkflowAppConfigManager.convert_features") as mock_features:
-        mock_features.return_value = SimpleNamespace(file_upload=True)
-        with patch(
+    with (
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowAppConfigManager.convert_features",
+            return_value=SimpleNamespace(file_upload=True),
+        ),
+        patch(
             "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
             return_value=variables,
-        ):
-            with patch(
-                "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
-                return_value=outputs,
-            ):
-                tool = controller._get_db_provider_tool(db_provider, app, session=session, user=user)
+        ),
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
+            return_value=outputs,
+        ),
+    ):
+        tool = controller._get_db_provider_tool(db_provider, app, session=session, user=user)
 
     assert tool.entity.identity.name == "workflow_tool"
     assert tool.entity.output_schema["properties"] == {"answer": {"type": "string", "description": ""}}
@@ -85,16 +98,26 @@ def test_workflow_provider_get_db_provider_tool_and_get_tool():
     assert tool.entity.parameters[1].type == ToolParameter.ToolParameterType.SYSTEM_FILES
     assert controller.provider_type == ToolProviderType.WORKFLOW
 
+
+def test_get_tool_returns_hit_or_none():
+    controller = _controller()
+    tool = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="workflow_tool")))
     controller.tools = [tool]
+
     assert controller.get_tool("workflow_tool") is tool
     assert controller.get_tool("missing") is None
 
 
-def test_workflow_provider_from_db_and_get_tools_branches():
+def test_get_tools_returns_cached():
     controller = _controller()
     cached_tools = [SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="wf-cached")))]
     controller.tools = cached_tools  # type: ignore[assignment]
+
     assert controller.get_tools("tenant-1") == cached_tools
+
+
+def test_from_db_builds_controller():
+    controller = _controller()
 
     app = SimpleNamespace(id="app-1")
     user = SimpleNamespace(name="Alice")
@@ -110,13 +133,9 @@ def test_workflow_provider_from_db_and_get_tools_branches():
         tenant_id="tenant-1",
         parameter_configurations=[],
     )
-    session = Mock()
+    session = _mock_session_with_begin()
     session.query.return_value.where.return_value.first.return_value = db_provider
     session.get.side_effect = [app, user]
-    begin_cm = Mock()
-    begin_cm.__enter__ = Mock(return_value=None)
-    begin_cm.__exit__ = Mock(return_value=False)
-    session.begin.return_value = begin_cm
     fake_cm = Mock()
     fake_cm.__enter__ = Mock(return_value=session)
     fake_cm.__exit__ = Mock(return_value=False)
@@ -133,32 +152,43 @@ def test_workflow_provider_from_db_and_get_tools_branches():
     assert isinstance(built, WorkflowToolProviderController)
     assert built.tools
 
-    # get_tools with db provider not found branch
+
+def test_get_tools_returns_empty_when_provider_missing():
+    controller = _controller()
     controller.tools = None  # type: ignore[assignment]
+
     with patch("core.tools.workflow_as_tool.provider.db") as mock_db:
         mock_db.engine = object()
         with patch("core.tools.workflow_as_tool.provider.Session") as session_cls:
-            s = Mock()
-            begin_cm = Mock()
-            begin_cm.__enter__ = Mock(return_value=None)
-            begin_cm.__exit__ = Mock(return_value=False)
-            s.begin.return_value = begin_cm
-            s.query.return_value.where.return_value.first.return_value = None
-            session_cls.return_value.__enter__.return_value = s
+            session = _mock_session_with_begin()
+            session.query.return_value.where.return_value.first.return_value = None
+            session_cls.return_value.__enter__.return_value = session
+
             assert controller.get_tools("tenant-1") == []
 
-    # app not found branch
+
+def test_get_tools_raises_when_app_missing():
+    controller = _controller()
     controller.tools = None  # type: ignore[assignment]
+    db_provider = SimpleNamespace(
+        id="provider-1",
+        app_id="app-1",
+        version="1",
+        user_id="user-1",
+        label="WF Provider",
+        description="desc",
+        icon="icon.svg",
+        name="workflow_tool",
+        tenant_id="tenant-1",
+        parameter_configurations=[],
+    )
+
     with patch("core.tools.workflow_as_tool.provider.db") as mock_db:
         mock_db.engine = object()
         with patch("core.tools.workflow_as_tool.provider.Session") as session_cls:
-            s = Mock()
-            begin_cm = Mock()
-            begin_cm.__enter__ = Mock(return_value=None)
-            begin_cm.__exit__ = Mock(return_value=False)
-            s.begin.return_value = begin_cm
-            s.query.return_value.where.return_value.first.return_value = db_provider
-            s.get.return_value = None
-            session_cls.return_value.__enter__.return_value = s
+            session = _mock_session_with_begin()
+            session.query.return_value.where.return_value.first.return_value = db_provider
+            session.get.return_value = None
+            session_cls.return_value.__enter__.return_value = session
             with pytest.raises(ValueError, match="app not found"):
                 controller.get_tools("tenant-1")

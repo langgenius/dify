@@ -90,7 +90,7 @@ def _build_manager() -> ToolParameterConfigurationManager:
     )
 
 
-def test_configuration_manager_merge_mask_encrypt_decrypt_and_cache_ops():
+def test_merge_and_mask_parameters():
     manager = _build_manager()
 
     merged = manager._merge_parameters()
@@ -100,10 +100,19 @@ def test_configuration_manager_merge_mask_encrypt_decrypt_and_cache_ops():
     assert masked["secret"] == "ab*****hi"
     assert masked["plain"] == "x"
 
+
+def test_encrypt_tool_parameters():
+    manager = _build_manager()
+
     with patch("core.tools.utils.configuration.encrypter.encrypt_token", return_value="enc"):
         encrypted = manager.encrypt_tool_parameters({"secret": "raw", "plain": "x"})
+
     assert encrypted["secret"] == "enc"
     assert encrypted["plain"] == "x"
+
+
+def test_decrypt_tool_parameters_cache_hit_and_miss():
+    manager = _build_manager()
 
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
         cache = cache_cls.return_value
@@ -116,11 +125,17 @@ def test_configuration_manager_merge_mask_encrypt_decrypt_and_cache_ops():
         cache.get.return_value = None
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
+
     assert decrypted["secret"] == "dec"
     cache.set.assert_called_once()
 
+
+def test_delete_tool_parameters_cache():
+    manager = _build_manager()
+
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
         manager.delete_tool_parameters_cache()
+
     cache_cls.return_value.delete.assert_called_once()
 
 

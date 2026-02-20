@@ -41,7 +41,11 @@ def _build_builtin_tool(tool_cls):
     return tool_cls(provider="provider-a", entity=entity, runtime=runtime)
 
 
-def test_time_tools_current_localtime_timestamp_timezone_weekday():
+def _raise_runtime_error(*args, **kwargs):
+    raise RuntimeError("boom")
+
+
+def test_current_time_tool():
     current_tool = _build_builtin_tool(CurrentTimeTool)
     utc_text = list(current_tool.invoke(user_id="u", tool_parameters={"timezone": "UTC"}))[0].message.text
     assert utc_text
@@ -49,6 +53,8 @@ def test_time_tools_current_localtime_timestamp_timezone_weekday():
     invalid_tz = list(current_tool.invoke(user_id="u", tool_parameters={"timezone": "Invalid/TZ"}))[0].message.text
     assert "Invalid timezone" in invalid_tz
 
+
+def test_localtime_to_timestamp_tool():
     localtime_tool = _build_builtin_tool(LocaltimeToTimestampTool)
     ts_message = list(
         localtime_tool.invoke(user_id="u", tool_parameters={"localtime": "2024-01-01 10:00:00", "timezone": "UTC"})
@@ -57,6 +63,8 @@ def test_time_tools_current_localtime_timestamp_timezone_weekday():
     with pytest.raises(ToolInvokeError):
         LocaltimeToTimestampTool.localtime_to_timestamp("bad", "%Y-%m-%d %H:%M:%S", "UTC")
 
+
+def test_timestamp_to_localtime_tool():
     to_local_tool = _build_builtin_tool(TimestampToLocaltimeTool)
     local_text = list(to_local_tool.invoke(user_id="u", tool_parameters={"timestamp": 1704067200, "timezone": "UTC"}))[
         0
@@ -65,6 +73,8 @@ def test_time_tools_current_localtime_timestamp_timezone_weekday():
     with pytest.raises(ToolInvokeError):
         TimestampToLocaltimeTool.timestamp_to_localtime("bad", "UTC")  # type: ignore[arg-type]
 
+
+def test_timezone_conversion_tool():
     timezone_tool = _build_builtin_tool(TimezoneConversionTool)
     converted = list(
         timezone_tool.invoke(
@@ -80,6 +90,8 @@ def test_time_tools_current_localtime_timestamp_timezone_weekday():
     with pytest.raises(ToolInvokeError):
         TimezoneConversionTool.timezone_convert("bad", "UTC", "Asia/Tokyo")
 
+
+def test_weekday_tool():
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(weekday_tool.invoke(user_id="u", tool_parameters={"year": 2024, "month": 1, "day": 1}))[0].message.text
     assert "January 1, 2024" in valid
@@ -111,7 +123,7 @@ def test_simple_code_and_webscraper_tools(monkeypatch):
 
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.code.tools.simple_code.CodeExecutor.execute_code",
-        lambda *a: (_ for _ in ()).throw(RuntimeError("boom")),
+        _raise_runtime_error,
     )
     with pytest.raises(ToolInvokeError, match="boom"):
         list(simple_code.invoke(user_id="u", tool_parameters={"language": "python3", "code": "print(1)"}))
@@ -135,7 +147,7 @@ def test_simple_code_and_webscraper_tools(monkeypatch):
 
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers.webscraper.tools.webscraper.get_url",
-        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")),
+        _raise_runtime_error,
     )
     with pytest.raises(ToolInvokeError, match="boom"):
         list(webscraper.invoke(user_id="u", tool_parameters={"url": "https://example.com"}))

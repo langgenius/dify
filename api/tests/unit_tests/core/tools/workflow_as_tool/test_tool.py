@@ -18,6 +18,42 @@ from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.file import FILE_MODEL_IDENTITY
 
 
+class StubScalars:
+    def __init__(self, value):
+        self._value = value
+
+    def first(self):
+        return self._value
+
+
+class StubSession:
+    def __init__(self, *, scalar_results: list | None = None, scalars_results: list | None = None):
+        self.scalar_results = list(scalar_results or [])
+        self.scalars_results = list(scalars_results or [])
+        self.expunge_calls: list[object] = []
+
+    def scalar(self, _stmt):
+        return self.scalar_results.pop(0)
+
+    def scalars(self, _stmt):
+        return StubScalars(self.scalars_results.pop(0))
+
+    def expunge(self, value):
+        self.expunge_calls.append(value)
+
+    def begin(self):
+        return self
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
 def _build_tool() -> WorkflowTool:
     entity = ToolEntity(
         identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
@@ -311,34 +347,13 @@ def test_create_file_message_should_include_file_marker():
 def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.MonkeyPatch):
     """Ensure worker context can resolve EndUser when Account is missing."""
 
-    class StubSession:
-        def __init__(self, results: list):
-            self.results = results
-
-        def scalar(self, _stmt):
-            return self.results.pop(0)
-
-        # SQLAlchemy Session APIs used by code under test
-        def expunge(self, *_args, **_kwargs):
-            pass
-
-        def close(self):
-            pass
-
-        # support `with session_factory.create_session() as session:`
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            self.close()
-
     tenant = SimpleNamespace(id="tenant_id")
     end_user = SimpleNamespace(id="end_user_id", tenant_id="tenant_id")
 
     # Monkeypatch session factory to return our stub session
     monkeypatch.setattr(
         "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: StubSession([tenant, None, end_user]),
+        lambda: StubSession(scalar_results=[tenant, None, end_user]),
     )
 
     entity = ToolEntity(
@@ -366,29 +381,10 @@ def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.M
 def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pytest.MonkeyPatch):
     """Return None if tenant cannot be found in worker context."""
 
-    class StubSession:
-        def __init__(self, results: list):
-            self.results = results
-
-        def scalar(self, _stmt):
-            return self.results.pop(0)
-
-        def expunge(self, *_args, **_kwargs):
-            pass
-
-        def close(self):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            self.close()
-
     # Monkeypatch session factory to return our stub session with no tenant
     monkeypatch.setattr(
         "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: StubSession([None]),
+        lambda: StubSession(scalar_results=[None]),
     )
 
     entity = ToolEntity(
@@ -453,29 +449,9 @@ def test_invoke_raises_when_user_not_found(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPatch):
-    class StubSession:
-        def __init__(self, results: list):
-            self.results = results
-            self.expunge_calls = []
-
-        def scalar(self, _stmt):
-            return self.results.pop(0)
-
-        def expunge(self, value):
-            self.expunge_calls.append(value)
-
-        def close(self):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            self.close()
-
     tenant = SimpleNamespace(id="tenant_id")
     account = SimpleNamespace(id="account_id", current_tenant=None)
-    session = StubSession([tenant, account])
+    session = StubSession(scalar_results=[tenant, account])
 
     monkeypatch.setattr("core.tools.workflow_as_tool.tool.session_factory.create_session", lambda: session)
     tool = _build_tool()
@@ -488,57 +464,37 @@ def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPa
 
 
 def test_get_workflow_and_get_app_db_branches(monkeypatch: pytest.MonkeyPatch):
-    class StubScalars:
-        def __init__(self, value):
-            self._value = value
-
-        def first(self):
-            return self._value
-
-    class StubSession:
-        def __init__(self, scalar_values: list, scalars_values: list):
-            self.scalar_values = scalar_values
-            self.scalars_values = scalars_values
-            self.expunge_calls = []
-
-        def scalar(self, _stmt):
-            return self.scalar_values.pop(0)
-
-        def scalars(self, _stmt):
-            return StubScalars(self.scalars_values.pop(0))
-
-        def expunge(self, value):
-            self.expunge_calls.append(value)
-
-        def begin(self):
-            return self
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
     tool = _build_tool()
     latest_workflow = SimpleNamespace(id="wf-latest")
     specific_workflow = SimpleNamespace(id="wf-v1")
     app = SimpleNamespace(id="app-1")
-    session = StubSession(scalar_values=[specific_workflow, app], scalars_values=[latest_workflow])
-    monkeypatch.setattr("core.tools.workflow_as_tool.tool.session_factory.create_session", lambda: session)
+    sessions = iter(
+        [
+            StubSession(scalar_results=[], scalars_results=[latest_workflow]),
+            StubSession(scalar_results=[specific_workflow], scalars_results=[]),
+            StubSession(scalar_results=[app], scalars_results=[]),
+        ]
+    )
+    monkeypatch.setattr(
+        "core.tools.workflow_as_tool.tool.session_factory.create_session",
+        lambda: next(sessions),
+    )
 
     assert tool._get_workflow("app-1", "") is latest_workflow
     assert tool._get_workflow("app-1", "1") is specific_workflow
     assert tool._get_app("app-1") is app
 
-    session_not_found = StubSession(scalar_values=[None, None], scalars_values=[None])
-    monkeypatch.setattr("core.tools.workflow_as_tool.tool.session_factory.create_session", lambda: session_not_found)
+    monkeypatch.setattr(
+        "core.tools.workflow_as_tool.tool.session_factory.create_session",
+        lambda: StubSession(scalar_results=[None, None], scalars_results=[None]),
+    )
     with pytest.raises(ValueError, match="workflow not found"):
         tool._get_workflow("app-1", "1")
     with pytest.raises(ValueError, match="app not found"):
         tool._get_app("app-1")
 
 
-def test_transform_args_extract_files_and_update_file_mapping(monkeypatch: pytest.MonkeyPatch):
+def _setup_transform_args_tool(monkeypatch: pytest.MonkeyPatch) -> WorkflowTool:
     tool = _build_tool()
     files_param = ToolParameter.get_simple_instance(
         name="files",
@@ -556,6 +512,11 @@ def test_transform_args_extract_files_and_update_file_mapping(monkeypatch: pytes
     text_param.form = ToolParameter.ToolParameterForm.FORM
 
     monkeypatch.setattr(tool, "get_merged_runtime_parameters", lambda: [files_param, text_param])
+    return tool
+
+
+def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
+    tool = _setup_transform_args_tool(monkeypatch)
     monkeypatch.setattr(
         "core.workflow.file.models.helpers.get_signed_tool_file_url",
         lambda tool_file_id, extension, for_external=True: f"https://files/{tool_file_id}{extension}",
@@ -592,10 +553,16 @@ def test_transform_args_extract_files_and_update_file_mapping(monkeypatch: pytes
     assert any(file_item.get("upload_file_id") == "upload-1" for file_item in files)
     assert any(file_item.get("url") == "https://example.com/a.pdf" for file_item in files)
 
+
+def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
+    tool = _setup_transform_args_tool(monkeypatch)
     invalid_params, invalid_files = tool._transform_args({"query": "hello", "files": [{"invalid": True}]})
     assert invalid_params == {"query": "hello"}
     assert invalid_files == []
 
+
+def test_extract_files():
+    tool = _build_tool()
     built_files = [
         SimpleNamespace(id="file-1"),
         SimpleNamespace(id="file-2"),
@@ -621,6 +588,9 @@ def test_transform_args_extract_files_and_update_file_mapping(monkeypatch: pytes
     assert result["text"] == "ok"
     assert len(extracted_files) == 2
 
+
+def test_update_file_mapping():
+    tool = _build_tool()
     tool_file = tool._update_file_mapping({"transfer_method": "tool_file", "related_id": "tool-1"})
     assert tool_file["tool_file_id"] == "tool-1"
     local_file = tool._update_file_mapping({"transfer_method": "local_file", "related_id": "upload-1"})
