@@ -63,7 +63,7 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
 
         user_id, token = parts
         if " " in user_id:
-            user_id = user_id.split(" ")[1]
+            user_id = user_id.split(" ")[-1]
 
         inner_api_key = request.headers.get("X-Inner-Api-Key", "")
 
