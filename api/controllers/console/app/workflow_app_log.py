@@ -41,7 +41,7 @@ class WorkflowAppLogQuery(BaseModel):
     def parse_datetime(cls, value: str | None) -> datetime | None:
         if value in (None, ""):
             return None
-        return isoparse(value)  # type: ignore
+        return isoparse(value)
 
     @field_validator("detail", mode="before")
     @classmethod
@@ -83,7 +83,7 @@ class WorkflowAppLogApi(Resource):
         """
         Get workflow app logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
