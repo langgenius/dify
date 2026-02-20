@@ -70,7 +70,7 @@ lint:
 type-check:
 	@echo "📝 Running type checks (basedpyright + mypy + ty)..."
 	@./dev/basedpyright-check $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@uv --directory api run mypy --config-file mypy.ini --exclude-gitignore --check-untyped-defs --disable-error-code=import-untyped .
 	@cd api && uv run ty check
 	@echo "✅ Type checks complete"
 

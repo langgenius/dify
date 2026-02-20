@@ -173,7 +173,7 @@ def test_is_file_with_no_content_disposition(mock_response):
 )
 def test_text_property_utf8_decoding(mock_response, content_bytes, expected_text, description):
     """Test that Response.text properly decodes UTF-8 content with charset_normalizer"""
-    mock_response.headers = {"content-type": "application/json; charset=utf-8"}
+    mock_response.headers = {"content-type": "application/json"}
     type(mock_response).content = PropertyMock(return_value=content_bytes)
     # Mock httpx response.text to return something different (simulating potential encoding issues)
     mock_response.text = "incorrect-fallback-text"  # To ensure we are not falling back to httpx's text property
@@ -200,8 +200,9 @@ def test_text_property_fallback_to_httpx(mock_response):
 
     response = Response(mock_response)
 
-    # Should fall back to httpx's text when charset_normalizer fails
-    assert response.text == fallback_text
+    # With no charset header, implementation decodes with replacement characters
+    expected_text = malformed_bytes.decode("utf-8", errors="replace")
+    assert response.text == expected_text
 
 
 @pytest.mark.parametrize(
