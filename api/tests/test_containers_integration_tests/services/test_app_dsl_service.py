@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 from faker import Faker
+from sqlalchemy.orm import Session
 
+from extensions.ext_database import db
 from models.model import App, AppModelConfig
 from services.account_service import AccountService, TenantService
 from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
@@ -431,3 +433,173 @@ class TestAppDslService:
 
         # Verify dependencies service was called
         mock_external_service_dependencies["dependencies_service"].get_leaked_dependencies.assert_called_once()
+
+    def test_import_app_workflow_sync_failure_rollback(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test that app is not created when workflow sync fails during import.
+        This verifies transaction rollback behavior.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Create workflow YAML content
+        yaml_content = self._create_simple_yaml_content(app_name="Workflow Test", app_mode="workflow")
+        yaml_data = yaml.safe_load(yaml_content)
+        yaml_data["workflow"] = {
+            "environment_variables": [],
+            "conversation_variables": [],
+            "graph": {"nodes": [], "edges": []},
+        }
+        yaml_content = yaml.dump(yaml_data, allow_unicode=True)
+
+        # Mock workflow sync to raise exception (simulating failure)
+        mock_external_service_dependencies["workflow_service"].return_value.sync_draft_workflow.side_effect = Exception(
+            "Workflow sync failed"
+        )
+
+        # Run import in a transaction to test rollback behavior
+        def _import_with_transaction() -> None:
+            with Session(bind=db.engine, expire_on_commit=False) as transaction_session, transaction_session.begin():
+                dsl_service = AppDslService(transaction_session)
+                dsl_service.import_app(
+                    account=account,
+                    import_mode=ImportMode.YAML_CONTENT,
+                    yaml_content=yaml_content,
+                )
+
+        with pytest.raises(Exception, match="Workflow sync failed"):
+            _import_with_transaction()
+
+        # After rollback, verify no app was created in database using a fresh session
+        with Session(bind=db.engine) as verify_session:
+            apps_count = (
+                verify_session.query(App)
+                .where(App.tenant_id == account.current_tenant_id)
+                .where(App.name == "Workflow Test")
+                .count()
+            )
+            assert apps_count == 0  # No new app should be in database
+
+        # Verify workflow sync was called
+        mock_external_service_dependencies["workflow_service"].return_value.sync_draft_workflow.assert_called_once()
+
+    def test_import_app_variable_deletion_failure_rollback(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test that app is not created when variable deletion fails during import.
+        This verifies transaction rollback behavior.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Create workflow YAML content
+        yaml_content = self._create_simple_yaml_content(app_name="Variable Test", app_mode="workflow")
+        yaml_data = yaml.safe_load(yaml_content)
+        yaml_data["workflow"] = {
+            "environment_variables": [],
+            "conversation_variables": [],
+            "graph": {"nodes": [], "edges": []},
+        }
+        yaml_content = yaml.dump(yaml_data, allow_unicode=True)
+
+        # Mock variable deletion to raise exception (simulating failure)
+        draft_variable_service = mock_external_service_dependencies["draft_variable_service"]
+        draft_variable_service.return_value.delete_workflow_variables.side_effect = Exception(
+            "Variable deletion failed"
+        )
+
+        # Run import in a transaction to test rollback behavior
+        def _import_with_transaction() -> None:
+            with Session(bind=db.engine, expire_on_commit=False) as transaction_session, transaction_session.begin():
+                dsl_service = AppDslService(transaction_session)
+                dsl_service.import_app(
+                    account=account,
+                    import_mode=ImportMode.YAML_CONTENT,
+                    yaml_content=yaml_content,
+                )
+
+        with pytest.raises(Exception, match="Variable deletion failed"):
+            _import_with_transaction()
+
+        # After rollback, verify no app was created in database using a fresh session
+        with Session(bind=db.engine) as verify_session:
+            apps_count = (
+                verify_session.query(App)
+                .where(App.tenant_id == account.current_tenant_id)
+                .where(App.name == "Variable Test")
+                .count()
+            )
+            assert apps_count == 0  # No new app should be in database
+
+        # Verify variable deletion was called
+        mock_external_service_dependencies[
+            "draft_variable_service"
+        ].return_value.delete_workflow_variables.assert_called_once()
+
+    def test_confirm_import_workflow_sync_failure_rollback(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test that app is not modified when workflow sync fails during confirm_import.
+        This verifies transaction rollback behavior for confirm_import.
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Create pending import data in Redis
+        yaml_content = self._create_simple_yaml_content(app_name="Confirm Test", app_mode="workflow")
+        yaml_data = yaml.safe_load(yaml_content)
+        yaml_data["workflow"] = {
+            "environment_variables": [],
+            "conversation_variables": [],
+            "graph": {"nodes": [], "edges": []},
+        }
+        yaml_content = yaml.dump(yaml_data, allow_unicode=True)
+
+        import_id = "test-import-id"
+        pending_data_json = json.dumps(
+            {
+                "import_mode": "yaml-content",
+                "yaml_content": yaml_content,
+                "name": "Confirm Test",
+                "description": None,
+                "icon_type": None,
+                "icon": None,
+                "icon_background": None,
+                "app_id": app.id,  # Overwrite existing app
+            }
+        )
+
+        mock_external_service_dependencies["redis_client"].get.return_value = pending_data_json
+
+        # Store original app name for verification
+        original_app_name = app.name
+        original_app_description = app.description
+
+        # Mock workflow sync to raise exception (simulating failure)
+        mock_external_service_dependencies["workflow_service"].return_value.sync_draft_workflow.side_effect = Exception(
+            "Workflow sync failed during confirm"
+        )
+
+        # Run confirm_import in a transaction to test rollback behavior
+        def _confirm_with_transaction() -> None:
+            with Session(bind=db.engine, expire_on_commit=False) as transaction_session, transaction_session.begin():
+                dsl_service = AppDslService(transaction_session)
+                dsl_service.confirm_import(import_id=import_id, account=account)
+
+        with pytest.raises(Exception, match="Workflow sync failed during confirm"):
+            _confirm_with_transaction()
+
+        # Verify app was not modified (transaction was rolled back)
+        db_session_with_containers.refresh(app)
+        assert app.name == original_app_name
+        assert app.description == original_app_description
+
+        # Verify workflow sync was called
+        mock_external_service_dependencies["workflow_service"].return_value.sync_draft_workflow.assert_called_once()
+
+        # Verify Redis delete was NOT called (transaction rolled back)
+        mock_external_service_dependencies["redis_client"].delete.assert_not_called()
