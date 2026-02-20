@@ -80,6 +80,9 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 - [ ] Router mocks match actual Next.js API
 - [ ] Mocks reflect actual component conditional behavior
 - [ ] Only mock: API services, complex context providers, third-party libs
+- [ ] For `nuqs` URL-state tests, wrap with `NuqsTestingAdapter` (prefer `web/test/nuqs-testing.tsx`)
+- [ ] For `nuqs` URL-state tests, assert `onUrlUpdate` payload (`searchParams`, `options.history`)
+- [ ] If custom `nuqs` parser exists, add round-trip tests for encoded edge cases (`%2F`, `%25`, spaces, legacy encoded values)
 
 ### Queries
 

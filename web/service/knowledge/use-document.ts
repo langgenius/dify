@@ -1,7 +1,9 @@
+import type { UseQueryOptions } from '@tanstack/react-query'
 import type { DocumentDownloadResponse, DocumentDownloadZipRequest, MetadataType, SortType } from '../datasets'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
@@ -14,6 +16,8 @@ import { useInvalid } from '../use-base'
 const NAME_SPACE = 'knowledge/document'
 
 export const useDocumentListKey = [NAME_SPACE, 'documentList']
+type DocumentListRefetchInterval = UseQueryOptions<DocumentListResponse>['refetchInterval']
+
 export const useDocumentList = (payload: {
   datasetId: string
   query: {
@@ -23,7 +27,7 @@ export const useDocumentList = (payload: {
     sort?: SortType
     status?: string
   }
-  refetchInterval?: number | false
+  refetchInterval?: DocumentListRefetchInterval
 }) => {
   const { query, datasetId, refetchInterval } = payload
   const { keyword, page, limit, sort, status } = query
@@ -42,6 +46,7 @@ export const useDocumentList = (payload: {
     queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
       params,
     }),
+    placeholderData: keepPreviousData,
     refetchInterval,
   })
 }

@@ -1,18 +1,9 @@
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
-import type { ReactNode } from 'react'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import useAppsQueryState from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-      {children}
-    </NuqsTestingAdapter>
-  )
-  const { result } = renderHook(() => useAppsQueryState(), { wrapper })
-  return { result, onUrlUpdate }
+  return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 
 describe('useAppsQueryState', () => {

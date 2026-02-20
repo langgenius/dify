@@ -4,8 +4,8 @@ import SortHeader from '../sort-header'
 
 describe('SortHeader', () => {
   const defaultProps = {
-    field: 'name' as const,
-    label: 'File Name',
+    field: 'created_at' as const,
+    label: 'Upload Time',
     currentSortField: null,
     sortOrder: 'desc' as const,
     onSort: vi.fn(),
@@ -14,12 +14,12 @@ describe('SortHeader', () => {
   describe('rendering', () => {
     it('should render the label', () => {
       render(<SortHeader {...defaultProps} />)
-      expect(screen.getByText('File Name')).toBeInTheDocument()
+      expect(screen.getByText('Upload Time')).toBeInTheDocument()
     })
 
     it('should render the sort icon', () => {
       const { container } = render(<SortHeader {...defaultProps} />)
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('button span')
       expect(icon).toBeInTheDocument()
     })
   })
@@ -27,13 +27,13 @@ describe('SortHeader', () => {
   describe('inactive state', () => {
     it('should have disabled text color when not active', () => {
       const { container } = render(<SortHeader {...defaultProps} />)
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('button span')
       expect(icon).toHaveClass('text-text-disabled')
     })
 
     it('should not be rotated when not active', () => {
       const { container } = render(<SortHeader {...defaultProps} />)
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('button span')
       expect(icon).not.toHaveClass('rotate-180')
     })
   })
@@ -41,25 +41,25 @@ describe('SortHeader', () => {
   describe('active state', () => {
     it('should have tertiary text color when active', () => {
       const { container } = render(
-        <SortHeader {...defaultProps} currentSortField="name" />,
+        <SortHeader {...defaultProps} currentSortField="created_at" />,
       )
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('button span')
       expect(icon).toHaveClass('text-text-tertiary')
     })
 
     it('should not be rotated when active and desc', () => {
       const { container } = render(
-        <SortHeader {...defaultProps} currentSortField="name" sortOrder="desc" />,
+        <SortHeader {...defaultProps} currentSortField="created_at" sortOrder="desc" />,
       )
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('button span')
       expect(icon).not.toHaveClass('rotate-180')
     })
 
     it('should be rotated when active and asc', () => {
       const { container } = render(
-        <SortHeader {...defaultProps} currentSortField="name" sortOrder="asc" />,
+        <SortHeader {...defaultProps} currentSortField="created_at" sortOrder="asc" />,
       )
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('button span')
       expect(icon).toHaveClass('rotate-180')
     })
   })
@@ -69,34 +69,22 @@ describe('SortHeader', () => {
       const onSort = vi.fn()
       render(<SortHeader {...defaultProps} onSort={onSort} />)
 
-      fireEvent.click(screen.getByText('File Name'))
+      fireEvent.click(screen.getByText('Upload Time'))
 
-      expect(onSort).toHaveBeenCalledWith('name')
+      expect(onSort).toHaveBeenCalledWith('created_at')
     })
 
     it('should call onSort with correct field', () => {
       const onSort = vi.fn()
-      render(<SortHeader {...defaultProps} field="word_count" onSort={onSort} />)
+      render(<SortHeader {...defaultProps} field="hit_count" onSort={onSort} />)
 
-      fireEvent.click(screen.getByText('File Name'))
+      fireEvent.click(screen.getByText('Upload Time'))
 
-      expect(onSort).toHaveBeenCalledWith('word_count')
+      expect(onSort).toHaveBeenCalledWith('hit_count')
     })
   })
 
   describe('different fields', () => {
-    it('should work with word_count field', () => {
-      render(
-        <SortHeader
-          {...defaultProps}
-          field="word_count"
-          label="Words"
-          currentSortField="word_count"
-        />,
-      )
-      expect(screen.getByText('Words')).toBeInTheDocument()
-    })
-
     it('should work with hit_count field', () => {
       render(
         <SortHeader

@@ -3,7 +3,7 @@
 import type { ReactNode, RefObject } from 'react'
 import type { FilterState } from './filter-management'
 import { noop } from 'es-toolkit/function'
-import { useQueryState } from 'nuqs'
+import { parseAsStringEnum, useQueryState } from 'nuqs'
 import {
   useMemo,
   useRef,
@@ -15,6 +15,19 @@ import {
 } from 'use-context-selector'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
+
+export type PluginPageTab = typeof PLUGIN_PAGE_TABS_MAP[keyof typeof PLUGIN_PAGE_TABS_MAP]
+  | (typeof PLUGIN_TYPE_SEARCH_MAP)[keyof typeof PLUGIN_TYPE_SEARCH_MAP]
+
+const PLUGIN_PAGE_TAB_VALUES: PluginPageTab[] = [
+  PLUGIN_PAGE_TABS_MAP.plugins,
+  PLUGIN_PAGE_TABS_MAP.marketplace,
+  ...Object.values(PLUGIN_TYPE_SEARCH_MAP),
+]
+
+const parseAsPluginPageTab = parseAsStringEnum<PluginPageTab>(PLUGIN_PAGE_TAB_VALUES)
+  .withDefault(PLUGIN_PAGE_TABS_MAP.plugins)
 
 export type PluginPageContextValue = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -22,8 +35,8 @@ export type PluginPageContextValue = {
   setCurrentPluginID: (pluginID?: string) => void
   filters: FilterState
   setFilters: (filter: FilterState) => void
-  activeTab: string
-  setActiveTab: (tab: string) => void
+  activeTab: PluginPageTab
+  setActiveTab: (tab: PluginPageTab) => void
   options: Array<{ value: string, text: string }>
 }
 
@@ -39,7 +52,7 @@ export const PluginPageContext = createContext<PluginPageContextValue>({
     searchQuery: '',
   },
   setFilters: noop,
-  activeTab: '',
+  activeTab: PLUGIN_PAGE_TABS_MAP.plugins,
   setActiveTab: noop,
   options: [],
 })
@@ -68,9 +81,7 @@ export const PluginPageContextProvider = ({
   const options = useMemo(() => {
     return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)
   }, [tabs, enable_marketplace])
-  const [activeTab, setActiveTab] = useQueryState('tab', {
-    defaultValue: options[0].value,
-  })
+  const [activeTab, setActiveTab] = useQueryState('tab', parseAsPluginPageTab)
 
   return (
     <PluginPageContext.Provider

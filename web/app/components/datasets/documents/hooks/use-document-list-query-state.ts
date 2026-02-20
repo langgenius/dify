@@ -1,6 +1,6 @@
-import type { ReadonlyURLSearchParams } from 'next/navigation'
+import type { inferParserType } from 'nuqs'
 import type { SortType } from '@/service/datasets'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { createParser, parseAsString, throttle, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { sanitizeStatusValue } from '../status-filter'
 
@@ -13,99 +13,87 @@ const sanitizeSortValue = (value?: string | null): SortType => {
   return (ALLOWED_SORT_VALUES.includes(value as SortType) ? value : '-created_at') as SortType
 }
 
-export type DocumentListQuery = {
-  page: number
-  limit: number
-  keyword: string
-  status: string
-  sort: SortType
+const sanitizePageValue = (value: number): number => {
+  return Number.isInteger(value) && value > 0 ? value : 1
 }
 
-const DEFAULT_QUERY: DocumentListQuery = {
-  page: 1,
-  limit: 10,
-  keyword: '',
-  status: 'all',
-  sort: '-created_at',
+const sanitizeLimitValue = (value: number): number => {
+  return Number.isInteger(value) && value > 0 && value <= 100 ? value : 10
 }
 
-// Parse the query parameters from the URL search string.
-function parseParams(params: ReadonlyURLSearchParams): DocumentListQuery {
-  const page = Number.parseInt(params.get('page') || '1', 10)
-  const limit = Number.parseInt(params.get('limit') || '10', 10)
-  const keyword = params.get('keyword') || ''
-  const status = sanitizeStatusValue(params.get('status'))
-  const sort = sanitizeSortValue(params.get('sort'))
+const parseAsPage = createParser<number>({
+  parse: (value) => {
+    const n = Number.parseInt(value, 10)
+    return Number.isNaN(n) || n <= 0 ? null : n
+  },
+  serialize: value => value.toString(),
+}).withDefault(1)
 
-  return {
-    page: page > 0 ? page : 1,
-    limit: (limit > 0 && limit <= 100) ? limit : 10,
-    keyword: keyword ? decodeURIComponent(keyword) : '',
-    status,
-    sort,
-  }
+const parseAsLimit = createParser<number>({
+  parse: (value) => {
+    const n = Number.parseInt(value, 10)
+    return Number.isNaN(n) || n <= 0 || n > 100 ? null : n
+  },
+  serialize: value => value.toString(),
+}).withDefault(10)
+
+const parseAsDocStatus = createParser<string>({
+  parse: value => sanitizeStatusValue(value),
+  serialize: value => value,
+}).withDefault('all')
+
+const parseAsDocSort = createParser<SortType>({
+  parse: value => sanitizeSortValue(value),
+  serialize: value => value,
+}).withDefault('-created_at' as SortType)
+
+const parseAsKeyword = parseAsString.withDefault('')
+
+export const documentListParsers = {
+  page: parseAsPage,
+  limit: parseAsLimit,
+  keyword: parseAsKeyword,
+  status: parseAsDocStatus,
+  sort: parseAsDocSort,
 }
 
-// Update the URL search string with the given query parameters.
-function updateSearchParams(query: DocumentListQuery, searchParams: URLSearchParams) {
-  const { page, limit, keyword, status, sort } = query || {}
+export type DocumentListQuery = inferParserType<typeof documentListParsers>
 
-  const hasNonDefaultParams = (page && page > 1) || (limit && limit !== 10) || (keyword && keyword.trim())
+// Search input updates can be frequent; throttle URL writes to reduce history/api churn.
+const KEYWORD_URL_UPDATE_THROTTLE = throttle(300)
 
-  if (hasNonDefaultParams) {
-    searchParams.set('page', (page || 1).toString())
-    searchParams.set('limit', (limit || 10).toString())
-  }
-  else {
-    searchParams.delete('page')
-    searchParams.delete('limit')
-  }
+export function useDocumentListQueryState() {
+  const [query, setQuery] = useQueryStates(documentListParsers)
 
-  if (keyword && keyword.trim())
-    searchParams.set('keyword', encodeURIComponent(keyword))
-  else
-    searchParams.delete('keyword')
-
-  const sanitizedStatus = sanitizeStatusValue(status)
-  if (sanitizedStatus && sanitizedStatus !== 'all')
-    searchParams.set('status', sanitizedStatus)
-  else
-    searchParams.delete('status')
-
-  const sanitizedSort = sanitizeSortValue(sort)
-  if (sanitizedSort !== '-created_at')
-    searchParams.set('sort', sanitizedSort)
-  else
-    searchParams.delete('sort')
-}
-
-function useDocumentListQueryState() {
-  const searchParams = useSearchParams()
-  const query = useMemo(() => parseParams(searchParams), [searchParams])
-
-  const router = useRouter()
-  const pathname = usePathname()
-
-  // Helper function to update specific query parameters
   const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
-    const newQuery = { ...query, ...updates }
-    newQuery.status = sanitizeStatusValue(newQuery.status)
-    newQuery.sort = sanitizeSortValue(newQuery.sort)
-    const params = new URLSearchParams()
-    updateSearchParams(newQuery, params)
-    const search = params.toString()
-    const queryString = search ? `?${search}` : ''
-    router.push(`${pathname}${queryString}`, { scroll: false })
-  }, [query, router, pathname])
+    const patch = { ...updates }
+    if ('page' in patch && patch.page !== undefined)
+      patch.page = sanitizePageValue(patch.page)
+    if ('limit' in patch && patch.limit !== undefined)
+      patch.limit = sanitizeLimitValue(patch.limit)
+    if ('status' in patch)
+      patch.status = sanitizeStatusValue(patch.status)
+    if ('sort' in patch)
+      patch.sort = sanitizeSortValue(patch.sort)
+    if ('keyword' in patch && typeof patch.keyword === 'string' && patch.keyword.trim() === '')
+      patch.keyword = ''
 
-  // Helper function to reset query to defaults
+    // If keyword is part of this patch (even with page reset), treat it as a search update:
+    // use replace to avoid creating a history entry per input-driven change.
+    if ('keyword' in patch) {
+      setQuery(patch, {
+        history: 'replace',
+        limitUrlUpdates: patch.keyword === '' ? undefined : KEYWORD_URL_UPDATE_THROTTLE,
+      })
+      return
+    }
+
+    setQuery(patch, { history: 'push' })
+  }, [setQuery])
+
   const resetQuery = useCallback(() => {
-    const params = new URLSearchParams()
-    updateSearchParams(DEFAULT_QUERY, params)
-    const search = params.toString()
-    const queryString = search ? `?${search}` : ''
-    router.push(`${pathname}${queryString}`, { scroll: false })
-  }, [router, pathname])
+    setQuery(null, { history: 'replace' })
+  }, [setQuery])
 
   return useMemo(() => ({
     query,
@@ -113,5 +101,3 @@ function useDocumentListQueryState() {
     resetQuery,
   }), [query, updateQuery, resetQuery])
 }
-
-export default useDocumentListQueryState

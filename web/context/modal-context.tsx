@@ -158,7 +158,7 @@ export const ModalContextProvider = ({
 }: ModalContextProviderProps) => {
   // Use nuqs hooks for URL-based modal state management
   const [showPricingModal, setPricingModalOpen] = usePricingModal()
-  const [urlAccountModalState, setUrlAccountModalState] = useAccountSettingModal<AccountSettingTab>()
+  const [urlAccountModalState, setUrlAccountModalState] = useAccountSettingModal()
 
   const accountSettingCallbacksRef = useRef<Omit<ModalState<AccountSettingTab>, 'payload'> | null>(null)
   const accountSettingTab = urlAccountModalState.isOpen
