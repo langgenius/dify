@@ -14,8 +14,10 @@ from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from core.workflow.nodes.document_extractor.exc import TextExtractionError
 from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_docx,
+    _extract_text_from_docx_xml_fallback,
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
@@ -211,6 +213,101 @@ def test_extract_text_from_docx(mock_document):
     mock_document.return_value.element = mock_element
     text = _extract_text_from_docx(b"PK\x03\x04")
     assert text == "Paragraph 1\nParagraph 2"
+
+
+def test_extract_text_from_docx_xml_fallback():
+    """Test extracting text from corrupted DOCX using XML parsing fallback."""
+    # Minimal DOCX document.xml content with text
+    document_xml = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:p>
+            <w:r>
+                <w:t>Hello World</w:t>
+            </w:r>
+        </w:p>
+        <w:p>
+            <w:r>
+                <w:t>This is a test</w:t>
+            </w:r>
+        </w:p>
+    </w:body>
+</w:document>"""
+
+    # Create a mock ZIP file structure
+    mock_zip = Mock()
+
+    def mock_read(path):
+        if path == "word/document.xml":
+            return document_xml
+        raise KeyError(f"File not found: {path}")
+
+    mock_zip.read.side_effect = mock_read
+    mock_zip.__enter__ = Mock(return_value=mock_zip)
+    mock_zip.__exit__ = Mock(return_value=False)
+
+    with patch("zipfile.ZipFile", return_value=mock_zip):
+        result = _extract_text_from_docx_xml_fallback(b"fake_docx_content")
+
+    # The function should extract text from <w:t> elements
+    assert "Hello World" in result
+    assert "This is a test" in result
+
+
+def test_extract_text_from_docx_xml_fallback_missing_document_xml():
+    """Test XML fallback when word/document.xml is missing."""
+    mock_zip = Mock()
+
+    def mock_read(path):
+        raise KeyError(f"File not found: {path}")
+
+    mock_zip.read.side_effect = mock_read
+    mock_zip.__enter__ = Mock(return_value=mock_zip)
+    mock_zip.__exit__ = Mock(return_value=False)
+
+    with patch("zipfile.ZipFile", return_value=mock_zip):
+        with pytest.raises(TextExtractionError) as exc_info:
+            _extract_text_from_docx_xml_fallback(b"fake_docx_content")
+
+    assert "Invalid DOCX structure" in str(exc_info.value)
+
+
+def test_extract_text_from_docx_xml_fallback_empty_text():
+    """Test XML fallback with empty text elements."""
+    # Document.xml with empty text elements
+    document_xml = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:p>
+            <w:r>
+                <w:t></w:t>
+            </w:r>
+        </w:p>
+        <w:p>
+            <w:r>
+                <w:t>Only this text</w:t>
+            </w:r>
+        </w:p>
+    </w:body>
+</w:document>"""
+
+    mock_zip = Mock()
+
+    def mock_read(path):
+        if path == "word/document.xml":
+            return document_xml
+        raise KeyError(f"File not found: {path}")
+
+    mock_zip.read.side_effect = mock_read
+    mock_zip.__enter__ = Mock(return_value=mock_zip)
+    mock_zip.__exit__ = Mock(return_value=False)
+
+    with patch("zipfile.ZipFile", return_value=mock_zip):
+        result = _extract_text_from_docx_xml_fallback(b"fake_docx_content")
+
+    # Should only contain non-empty text
+    assert "Only this text" in result
+    assert result.strip() == "Only this text"
 
 
 def test_node_type(document_extractor_node):
