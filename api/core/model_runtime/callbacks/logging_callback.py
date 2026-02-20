@@ -24,7 +24,7 @@ class LoggingCallback(Callback):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
-    ):
+    ) -> None:
         """
         Before invoke callback
 
@@ -80,7 +80,7 @@ class LoggingCallback(Callback):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
-    ):
+    ) -> None:
         """
         On new chunk callback
 
@@ -110,7 +110,7 @@ class LoggingCallback(Callback):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
-    ):
+    ) -> None:
         """
         After invoke callback
 
@@ -151,7 +151,7 @@ class LoggingCallback(Callback):
         stop: Sequence[str] | None = None,
         stream: bool = True,
         user: str | None = None,
-    ):
+    ) -> None:
         """
         Invoke error callback
 
