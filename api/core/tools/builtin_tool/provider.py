@@ -117,8 +117,13 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         returns the credentials schema of the provider
 
-        :param credential_type: the type of the credential
-        :return: the credentials schema of the provider
+        :param credential_type: the type of the credential, as CredentialType or str; str values
+            are normalized via CredentialType.of and may raise ValueError for invalid values.
+        :return: list[ProviderConfig] for CredentialType.OAUTH2 or CredentialType.API_KEY, an
+            empty list for CredentialType.UNAUTHORIZED or missing schemas.
+
+        Reads from self.entity.oauth_schema and self.entity.credentials_schema.
+        Raises ValueError for invalid credential types.
         """
         if isinstance(credential_type, str):
             credential_type = CredentialType.of(credential_type)

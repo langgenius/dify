@@ -25,12 +25,13 @@ def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     monkeypatch.setattr("core.tools.tool_file_manager.dify_config.FILES_ACCESS_TIMEOUT", 100)
 
     url = ToolFileManager.sign_file("tf-1", ".png")
-    assert "/files/tools/tf-1.png" in url
     return dict(part.split("=", 1) for part in url.split("?", 1)[1].split("&"))
 
 
 def test_tool_file_manager_sign_verify_valid(monkeypatch: pytest.MonkeyPatch) -> None:
     query = _setup_tool_file_signing(monkeypatch)
+    url = ToolFileManager.sign_file("tf-1", ".png")
+    assert "/files/tools/tf-1.png" in url
 
     assert ToolFileManager.verify_file("tf-1", query["timestamp"], query["nonce"], query["sign"]) is True
 
@@ -60,6 +61,7 @@ def test_create_file_by_raw_stores_file_and_persists_record() -> None:
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
         patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
+        patch("core.tools.tool_file_manager.guess_extension", return_value=".txt"),
         patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="abc")),
         patch("core.tools.tool_file_manager.Session") as session_cls,
     ):

@@ -8,6 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
+from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.builtin_tool.providers.audio.audio import AudioToolProvider
 from core.tools.builtin_tool.providers.audio.tools.asr import ASRTool
 from core.tools.builtin_tool.providers.audio.tools.tts import TTSTool
@@ -27,7 +28,7 @@ from core.tools.errors import ToolInvokeError
 from core.workflow.file.enums import FileType
 
 
-def _build_builtin_tool(tool_cls):
+def _build_builtin_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:
     entity = ToolEntity(
         identity=ToolIdentity(
             author="author",
@@ -41,7 +42,7 @@ def _build_builtin_tool(tool_cls):
     return tool_cls(provider="provider-a", entity=entity, runtime=runtime)
 
 
-def _raise_runtime_error(*args, **kwargs):
+def _raise_runtime_error(*_args: object, **_kwargs: object) -> None:
     raise RuntimeError("boom")
 
 
@@ -175,7 +176,7 @@ def test_webscraper_fetch_error(monkeypatch):
 
 def test_asr_invalid_file():
     asr = _build_builtin_tool(ASRTool)
-    file_obj = type("F", (), {"type": FileType.DOCUMENT})()
+    file_obj = SimpleNamespace(type=FileType.DOCUMENT)
     invalid_file = list(asr.invoke(user_id="u", tool_parameters={"audio_file": file_obj}))[0].message.text
     assert "not a valid audio file" in invalid_file
 
@@ -186,7 +187,7 @@ def test_asr_valid_file_invocation(monkeypatch):
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.download", lambda file: b"audio-bytes")
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.ModelManager", lambda: model_manager)
-    audio_file = type("AF", (), {"type": FileType.AUDIO})()
+    audio_file = SimpleNamespace(type=FileType.AUDIO)
     ok = list(asr.invoke(user_id="u", tool_parameters={"audio_file": audio_file, "model": "p#m"}))[0].message.text
     assert ok == "transcript"
 
@@ -300,6 +301,7 @@ def test_tts_tool_get_available_models_and_runtime_parameters(monkeypatch):
 
 
 def test_provider_classes_and_builtin_sort(monkeypatch):
+    # Use object.__new__ to avoid YAML-loading __init__; only pass-through validation is exercised.
     # Ensure pass-through _validate_credentials methods are executed.
     AudioToolProvider._validate_credentials(object.__new__(AudioToolProvider), "u", {})
     CodeToolProvider._validate_credentials(object.__new__(CodeToolProvider), "u", {})

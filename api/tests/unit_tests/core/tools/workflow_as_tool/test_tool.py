@@ -5,7 +5,9 @@ StubSession/StubScalars emulate SQLAlchemy session/scalars with minimal methods
 database access mocked and predictable in tests.
 """
 
+import json
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -26,44 +28,44 @@ from core.workflow.file import FILE_MODEL_IDENTITY
 
 
 class StubScalars:
-    def __init__(self, value):
+    def __init__(self, value: Any) -> None:
         self._value = value
 
-    def first(self):
+    def first(self) -> Any:
         return self._value
 
 
 class StubSession:
-    def __init__(self, *, scalar_results: list | None = None, scalars_results: list | None = None):
+    def __init__(self, *, scalar_results: list[Any] | None = None, scalars_results: list[Any] | None = None) -> None:
         self.scalar_results = list(scalar_results or [])
         self.scalars_results = list(scalars_results or [])
         self.expunge_calls: list[object] = []
 
-    def scalar(self, _stmt):
+    def scalar(self, _stmt: Any) -> Any:
         return self.scalar_results.pop(0)
 
-    def scalars(self, _stmt):
+    def scalars(self, _stmt: Any) -> StubScalars:
         return StubScalars(self.scalars_results.pop(0))
 
-    def expunge(self, value):
+    def expunge(self, value: Any) -> None:
         self.expunge_calls.append(value)
 
-    def begin(self):
+    def begin(self) -> "StubSession":
         return self
 
-    def commit(self):
+    def commit(self) -> None:
         pass
 
-    def refresh(self, _value):
+    def refresh(self, _value: Any) -> None:
         pass
 
-    def close(self):
+    def close(self) -> None:
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> "StubSession":
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
         return False
 
 
@@ -172,7 +174,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     # Verify text message
     text_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
     assert len(text_messages) == 1
-    assert '{"result": "success", "count": 42, "data": {"key": "value"}}' in text_messages[0].message.text
+    assert json.loads(text_messages[0].message.text) == mock_outputs
 
     # Verify JSON message
     json_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
@@ -390,6 +392,7 @@ def test_get_workflow_and_get_app_db_branches(monkeypatch: pytest.MonkeyPatch):
 
 
 def _setup_transform_args_tool(monkeypatch: pytest.MonkeyPatch) -> WorkflowTool:
+    """Build a WorkflowTool and stub merged runtime parameters for files/query."""
     tool = _build_tool()
     files_param = ToolParameter.get_simple_instance(
         name="files",
