@@ -5,7 +5,7 @@ import pytest
 from flask import Flask
 from flask_restx import Api
 
-from controllers.console.workspace.tool_providers import ToolProviderMCPApi
+from controllers.console.workspace.tool_providers import ToolMCPListAllApi, ToolProviderMCPApi
 from core.db.session_factory import configure_session_factory
 from extensions.ext_database import db
 from services.tools.mcp_tools_manage_service import ReconnectResult
@@ -98,3 +98,46 @@ def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_
     # 若 transform 后包含 tools 字段，确保非空
     assert isinstance(body.get("tools"), list)
     assert body["tools"]
+
+
+@pytest.fixture
+def list_client():
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    api = Api(app)
+    api.add_resource(ToolMCPListAllApi, "/console/api/workspaces/current/tools/mcp")
+    db.init_app(app)
+    with app.app_context():
+        configure_session_factory(db.engine)
+    return app.test_client()
+
+
+@patch(
+    "controllers.console.workspace.tool_providers.current_account_with_tenant", return_value=(MagicMock(id="u1"), "t1")
+)
+@patch("controllers.console.workspace.tool_providers.Session")
+@pytest.mark.usefixtures("_mock_cache", "_mock_user_tenant")
+def test_list_mcp_providers_uses_for_list_true(mock_session, mock_current_account_with_tenant, list_client):
+    """Test that list_providers is called with for_list=True to return provider ID instead of server_identifier."""
+    # Arrange
+    svc = MagicMock()
+    mock_provider = MagicMock()
+    mock_provider.to_dict.return_value = {"id": "provider-1", "server_identifier": "demo-sid"}
+    svc.list_providers.return_value = [mock_provider]
+    mock_session.return_value.__enter__.return_value = MagicMock()
+
+    with patch("controllers.console.workspace.tool_providers.MCPToolManageService", return_value=svc):
+        with (
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(MagicMock(id="u1"), "t1")),
+            patch("libs.login.check_csrf_token", return_value=None),
+            patch("libs.login._get_user", return_value=MagicMock(id="u1", is_authenticated=True)),
+        ):
+            # Act
+            resp = list_client.get("/console/api/workspaces/current/tools/mcp")
+
+    # Assert
+    assert resp.status_code == 200
+    # Verify list_providers was called with for_list=True (fixes #31763)
+    svc.list_providers.assert_called_once_with(tenant_id="t1", include_sensitive=False, for_list=True)
