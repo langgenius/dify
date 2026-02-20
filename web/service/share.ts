@@ -27,7 +27,6 @@ import {
   postPublic as post,
   ssePost,
 } from './base'
-import { getWebAppAccessToken } from './webapp-auth'
 
 export enum AppSourceType {
   webApp = 'webApp',
@@ -253,9 +252,6 @@ export const textToAudio = (url: string, appSourceType: AppSourceType, body: For
 export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
   const headers = new Headers()
   headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
-  const accessToken = getWebAppAccessToken()
-  if (accessToken)
-    headers.append('Authorization', `Bearer ${accessToken}`)
   const params = new URLSearchParams()
   if (userId)
     params.append('user_id', userId)
