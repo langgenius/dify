@@ -39,34 +39,32 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     """
     logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
-    model = WorkflowNodeExecutionModel()
-
-    # Map all required fields with validation
-    # Critical fields - must not be None
-    model.id = data.get("id") or ""
-    model.tenant_id = data.get("tenant_id") or ""
-    model.app_id = data.get("app_id") or ""
-    model.workflow_id = data.get("workflow_id") or ""
-    model.triggered_from = data.get("triggered_from") or ""
-    model.node_id = data.get("node_id") or ""
-    model.node_type = data.get("node_type") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
-    model.title = data.get("title") or ""
-    model.created_by_role = data.get("created_by_role") or ""
-    model.created_by = data.get("created_by") or ""
-
-    model.index = safe_int(data.get("index", 0))
-    model.elapsed_time = safe_float(data.get("elapsed_time", 0))
-
-    # Optional fields
-    model.workflow_run_id = data.get("workflow_run_id")
-    model.predecessor_node_id = data.get("predecessor_node_id")
-    model.node_execution_id = data.get("node_execution_id")
-    model.inputs = data.get("inputs")
-    model.process_data = data.get("process_data")
-    model.outputs = data.get("outputs")
-    model.error = data.get("error")
-    model.execution_metadata = data.get("execution_metadata")
+    model = WorkflowNodeExecutionModel(
+        # Map all required fields with validation
+        # Critical fields - must not be None
+        id=data.get("id") or "",
+        tenant_id=data.get("tenant_id") or "",
+        app_id=data.get("app_id") or "",
+        workflow_id=data.get("workflow_id") or "",
+        triggered_from=data.get("triggered_from") or "",
+        node_id=data.get("node_id") or "",
+        node_type=data.get("node_type") or "",
+        status=data.get("status") or "running",  # Default status if missing
+        title=data.get("title") or "",
+        created_by_role=data.get("created_by_role") or "",
+        created_by=data.get("created_by") or "",
+        index=safe_int(data.get("index", 0)),
+        elapsed_time=safe_float(data.get("elapsed_time", 0)),
+        # Optional fields
+        workflow_run_id=data.get("workflow_run_id"),
+        predecessor_node_id=data.get("predecessor_node_id"),
+        node_execution_id=data.get("node_execution_id"),
+        inputs=data.get("inputs"),
+        process_data=data.get("process_data"),
+        outputs=data.get("outputs"),
+        error=data.get("error"),
+        execution_metadata=data.get("execution_metadata"),
+    )
 
     # Handle datetime fields
     created_at = data.get("created_at")

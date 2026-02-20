@@ -217,46 +217,44 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         converter = WorkflowRuntimeTypeConverter()
 
         # json_converter = WorkflowRuntimeTypeConverter()
-        db_model = WorkflowNodeExecutionModel()
-        db_model.id = domain_model.id
-        db_model.tenant_id = self._tenant_id
-        if self._app_id is not None:
-            db_model.app_id = self._app_id
-        db_model.workflow_id = domain_model.workflow_id
-        db_model.triggered_from = self._triggered_from
-        db_model.workflow_run_id = domain_model.workflow_execution_id
-        db_model.index = domain_model.index
-        db_model.predecessor_node_id = domain_model.predecessor_node_id
-        db_model.node_execution_id = domain_model.node_execution_id
-        db_model.node_id = domain_model.node_id
-        db_model.node_type = domain_model.node_type
-        db_model.title = domain_model.title
-        db_model.inputs = (
-            _deterministic_json_dump(converter.to_json_encodable(domain_model.inputs))
-            if domain_model.inputs is not None
-            else None
+        db_model = WorkflowNodeExecutionModel(
+            id=domain_model.id,
+            tenant_id=self._tenant_id,
+            app_id=self._app_id,
+            workflow_id=domain_model.workflow_id,
+            triggered_from=self._triggered_from,
+            workflow_run_id=domain_model.workflow_execution_id,
+            index=domain_model.index,
+            predecessor_node_id=domain_model.predecessor_node_id,
+            node_execution_id=domain_model.node_execution_id,
+            node_id=domain_model.node_id,
+            node_type=domain_model.node_type,
+            title=domain_model.title,
+            inputs=(
+                _deterministic_json_dump(converter.to_json_encodable(domain_model.inputs))
+                if domain_model.inputs is not None
+                else None
+            ),
+            process_data=(
+                _deterministic_json_dump(converter.to_json_encodable(domain_model.process_data))
+                if domain_model.process_data is not None
+                else None
+            ),
+            outputs=(
+                _deterministic_json_dump(converter.to_json_encodable(domain_model.outputs))
+                if domain_model.outputs is not None
+                else None
+            ),
+            # inputs, process_data and outputs are handled below
+            status=domain_model.status,
+            error=domain_model.error,
+            elapsed_time=domain_model.elapsed_time,
+            execution_metadata=(json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else None),
+            created_at=domain_model.created_at,
+            created_by_role=self._creator_user_role,
+            created_by=self._creator_user_id,
+            finished_at=domain_model.finished_at,
         )
-        db_model.process_data = (
-            _deterministic_json_dump(converter.to_json_encodable(domain_model.process_data))
-            if domain_model.process_data is not None
-            else None
-        )
-        db_model.outputs = (
-            _deterministic_json_dump(converter.to_json_encodable(domain_model.outputs))
-            if domain_model.outputs is not None
-            else None
-        )
-        # inputs, process_data and outputs are handled below
-        db_model.status = domain_model.status
-        db_model.error = domain_model.error
-        db_model.elapsed_time = domain_model.elapsed_time
-        db_model.execution_metadata = (
-            json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else None
-        )
-        db_model.created_at = domain_model.created_at
-        db_model.created_by_role = self._creator_user_role
-        db_model.created_by = self._creator_user_id
-        db_model.finished_at = domain_model.finished_at
 
         return db_model
 
