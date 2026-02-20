@@ -51,7 +51,6 @@ allow_indirect_imports = True
 ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
@@ -120,7 +119,6 @@ ignore_imports =
     core.workflow.nodes.http_request.node -> configs
     core.workflow.nodes.http_request.node -> core.tools.tool_file_manager
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     core.workflow.nodes.llm.llm_utils -> configs
     core.workflow.nodes.llm.llm_utils -> core.app.entities.app_invoke_entities
     core.workflow.nodes.llm.llm_utils -> core.model_manager
@@ -187,11 +185,6 @@ ignore_imports =
     core.workflow.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
     core.workflow.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.retrieval.retrieval_methods
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> models.dataset
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> services.summary_index_service
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> tasks.generate_summary_index_task
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.processor.paragraph_index_processor
     core.workflow.nodes.llm.node -> models.dataset
     core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
     core.workflow.nodes.llm.file_saver -> core.tools.signature
@@ -249,7 +242,6 @@ ignore_imports =
     core.workflow.graph_engine.manager -> extensions.ext_redis
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
