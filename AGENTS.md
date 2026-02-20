@@ -21,7 +21,7 @@ The codebase is split into:
 - Read `web/AGENTS.md` for details
 
 ## Testing & Quality Practices
-
+    
 - Follow TDD: red → green → refactor.
 - Use `pytest` for backend tests with Arrange-Act-Assert structure.
 - Enforce strong typing; avoid `Any` and prefer explicit type annotations.
