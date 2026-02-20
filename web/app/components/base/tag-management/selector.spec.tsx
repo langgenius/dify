@@ -282,15 +282,5 @@ describe('TagSelector', () => {
         expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
       })
     })
-
-    it('should handle undefined minWidth', () => {
-      render(<TagSelector {...defaultProps} />)
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-    })
-
-    it('should apply min-width class when minWidth prop is provided', () => {
-      render(<TagSelector {...defaultProps} minWidth="320px" />)
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-    })
   })
 })

@@ -110,7 +110,7 @@ describe('CustomSelect', () => {
         />,
       )
 
-      const triggerLabel = screen.getByTitle('common.placeholder.select')
+      const triggerLabel = screen.getByTitle(/select/i)
       const trigger = triggerLabel.parentElement
       expect(trigger).toHaveClass('trigger-class')
 

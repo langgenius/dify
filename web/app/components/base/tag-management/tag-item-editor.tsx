@@ -127,7 +127,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
                   handleRemove()
               }}
             >
-              <span className="i-ri-delete-bin-line h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" data-testid="tag-item-editor-delete-button" />
+              <span className="i-ri-delete-bin-line h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" data-testid="tag-item-editor-remove-button" />
             </div>
           </>
         )}

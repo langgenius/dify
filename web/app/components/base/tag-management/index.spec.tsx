@@ -57,12 +57,7 @@ describe('TagManagementModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing when show is true', () => {
-      render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
-    })
-
-    it('should render the modal title', () => {
+    it('should render the modal title when show is true', () => {
       render(<TagManagementModal {...defaultProps} />)
       expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     })
@@ -342,10 +337,15 @@ describe('TagManagementModal', () => {
     })
 
     it('should close modal via the Modal onClose callback', async () => {
+      const user = userEvent.setup()
+      act(() => {
+        useTagStore.setState({ showTagManagementModal: true })
+      })
       render(<TagManagementModal {...defaultProps} />)
-      // The modal's onClose sets showTagManagementModal to false
-      // This is already tested via the close button, but verifying store state
-      expect(useTagStore.getState().showTagManagementModal).toBe(false)
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(useTagStore.getState().showTagManagementModal).toBe(false)
+      })
     })
   })
 })

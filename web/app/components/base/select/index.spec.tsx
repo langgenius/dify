@@ -189,7 +189,7 @@ describe('PortalSelect', () => {
       )
 
       await user.click(screen.getByText(/select/i))
-      await user.click(screen.getAllByTitle('Citrus')[0])
+      await user.click(screen.getByText('Citrus'))
 
       expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({
         value: 'citrus',

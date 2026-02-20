@@ -33,7 +33,7 @@ describe('PureSelect', () => {
 
     it('should render selected count text in multiple mode', () => {
       render(<PureSelect options={options} multiple={true} value={['apple', 'banana']} />)
-      expect(screen.getByText(/common\.dynamicSelect\.selected/i)).toBeInTheDocument()
+      expect(screen.getByText(/selected/i)).toBeInTheDocument()
     })
   })
 

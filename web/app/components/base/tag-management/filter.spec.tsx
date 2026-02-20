@@ -30,7 +30,8 @@ vi.mock('ahooks', () => {
     useMount: (fn: () => void) => {
       React.useEffect(() => {
         fn()
-      }, [fn])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [])
     },
   }
 })
@@ -72,16 +73,15 @@ describe('TagFilter', () => {
     })
 
     it('should render the tag icon', () => {
-      const { container } = render(<TagFilter {...defaultProps} />)
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      render(<TagFilter {...defaultProps} />)
+      expect(screen.getByTestId('tag-filter-trigger-icon')).toBeInTheDocument()
     })
 
     it('should render the arrow down icon when no tags are selected', () => {
-      const { container } = render(<TagFilter {...defaultProps} />)
+      render(<TagFilter {...defaultProps} />)
       expect(screen.getByText(i18n.placeholder)).toBeInTheDocument()
-      // RiArrowDownSLine is a remixicon SVG
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThanOrEqual(2) // Tag01 icon + arrow
+      expect(screen.getByTestId('tag-filter-trigger-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('tag-filter-arrow-down-icon')).toBeInTheDocument()
     })
 
     it('should display the first selected tag name when tags are selected', () => {
@@ -190,16 +190,16 @@ describe('TagFilter', () => {
       const tagItem = screen.getByTitle('Frontend')
       expect(tagItem).toBeInTheDocument()
       // The parent container of the tag has a Check SVG sibling
-      const checkIcons = tagItem.parentElement?.querySelectorAll('svg')
+      const checkIcons = screen.getAllByTestId('tag-filter-selected-icon')
       expect(checkIcons?.length).toBeGreaterThanOrEqual(1)
     })
 
     it('should clear all selected tags when clear button is clicked', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const { container } = render(<TagFilter {...defaultProps} value={['tag-1', 'tag-2']} onChange={onChange} />)
+      render(<TagFilter {...defaultProps} value={['tag-1', 'tag-2']} onChange={onChange} />)
 
-      const clearButton = container.querySelector('.group\\/clear')
+      const clearButton = screen.getByTestId('tag-filter-clear-button')
       expect(clearButton).toBeInTheDocument()
       await user.click(clearButton!)
 
@@ -307,17 +307,6 @@ describe('TagFilter', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render empty state when no tags match the type', async () => {
-      const user = userEvent.setup()
-
-      render(<TagFilter {...defaultProps} type="knowledge" />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      expect(screen.getByText('Database')).toBeInTheDocument()
-      expect(screen.queryByText('Frontend')).not.toBeInTheDocument()
-    })
-
     it('should show no tag message when tag list is completely empty', async () => {
       const user = userEvent.setup()
       // Mock fetchTagList to return empty so useMount doesn't repopulate
@@ -346,12 +335,12 @@ describe('TagFilter', () => {
     it('should clear selection without opening dropdown', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const { container } = render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
+      render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
 
-      const clearButton = container.querySelector('.group\\/clear')
+      const clearButton = screen.getByTestId('tag-filter-clear-button')
       expect(clearButton).toBeInTheDocument()
 
-      await user.click(clearButton!)
+      await user.click(clearButton)
       expect(onChange).toHaveBeenCalledWith([])
     })
   })

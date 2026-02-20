@@ -58,7 +58,7 @@ describe('TagInput', () => {
       const removeButton = screen.getAllByTestId('tag-remove-button')[0]
       expect(removeButton).toBeInTheDocument()
 
-      await user.click(removeButton as HTMLElement)
+      await user.click(removeButton)
       expect(onChange).toHaveBeenCalledWith(['beta'])
     })
 

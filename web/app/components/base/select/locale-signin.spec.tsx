@@ -95,6 +95,7 @@ describe('LocaleSigninSelect', () => {
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
       await user.click(screen.getByRole('menuitem', { name: '简体中文' }))
+      // No assertion needed — test verifies no exception is thrown during selection without onChange.
     })
 
     it('should render no options when items are empty', async () => {

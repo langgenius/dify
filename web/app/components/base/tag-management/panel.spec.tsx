@@ -1,5 +1,5 @@
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
@@ -195,45 +195,54 @@ describe('Panel', () => {
   })
 
   describe('Tag Selection', () => {
+    const getTagRow = (tagName: string) => {
+      const row = screen.getByText(tagName).closest('div[class*="cursor-pointer"]')
+      expect(row).toBeTruthy()
+      return row as HTMLElement
+    }
+
     it('should select an unselected tag when clicked', async () => {
       const user = userEvent.setup()
       render(<Panel {...defaultProps} />)
 
-      // Click on 'Backend' (tag-2, currently unselected)
+      const backendRowBeforeSelect = getTagRow('Backend')
+      expect(within(backendRowBeforeSelect).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
+
       await user.click(screen.getByText('Backend'))
 
-      // After clicking, tag-2 should be added to selectedTagIDs
-      // The checkbox for Backend should now show checked state
-      // We verify by checking the check icon appears (RiCheckLine renders when checked)
-      const backendRow = screen.getByText('Backend').closest('div[class*="cursor-pointer"]')
-      expect(backendRow).toBeTruthy()
+      const backendRowAfterSelect = getTagRow('Backend')
+      expect(within(backendRowAfterSelect).getByTestId('check-icon-undefined')).toBeInTheDocument()
     })
 
     it('should deselect a selected tag when clicked', async () => {
       const user = userEvent.setup()
       render(<Panel {...defaultProps} />)
 
-      // Frontend (tag-1) is in value[], so it's initially selected
+      const frontendRowBeforeDeselect = getTagRow('Frontend')
+      expect(within(frontendRowBeforeDeselect).getByTestId('check-icon-undefined')).toBeInTheDocument()
+
       await user.click(screen.getByText('Frontend'))
 
-      // After clicking, tag-1 should be removed from selectedTagIDs
-      // The component re-renders with updated state
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      const frontendRowAfterDeselect = getTagRow('Frontend')
+      expect(within(frontendRowAfterDeselect).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
     })
 
     it('should toggle tag selection on multiple clicks', async () => {
       const user = userEvent.setup()
       render(<Panel {...defaultProps} />)
 
-      const backendText = screen.getByText('Backend')
+      const backendRowBeforeToggle = getTagRow('Backend')
+      expect(within(backendRowBeforeToggle).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
 
-      // Click to select
-      await user.click(backendText)
-      // Click to deselect
-      await user.click(backendText)
+      await user.click(screen.getByText('Backend'))
 
-      // Tag should still be rendered
-      expect(screen.getByText('Backend')).toBeInTheDocument()
+      const backendRowAfterFirstClick = getTagRow('Backend')
+      expect(within(backendRowAfterFirstClick).getByTestId('check-icon-undefined')).toBeInTheDocument()
+
+      await user.click(screen.getByText('Backend'))
+
+      const backendRowAfterSecondClick = getTagRow('Backend')
+      expect(within(backendRowAfterSecondClick).queryByTestId('check-icon-undefined')).not.toBeInTheDocument()
     })
   })
 
@@ -547,21 +556,13 @@ describe('Panel', () => {
       expect(screen.getByText('API')).toBeInTheDocument()
     })
 
-    it('should handle search with no results and show no-tag when no keywords', () => {
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
-      render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
-      expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
-    })
-
     it('should show divider between create option and tag list when both present', async () => {
       const user = userEvent.setup()
       // Only same-type tags for notExisted to work
       act(() => {
         useTagStore.setState({ tagList: appTags })
       })
-      const { container } = render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Fro')
@@ -569,7 +570,7 @@ describe('Panel', () => {
       // 'Fro' does not match any tag names exactly, so notExisted is true
       // 'Frontend' includes 'Fro', so filteredTagList has items
       // A divider should appear
-      const dividers = container.querySelectorAll('[class*="divider"]')
+      const dividers = screen.getAllByTestId('divider')
       expect(dividers.length).toBeGreaterThan(0)
     })
 

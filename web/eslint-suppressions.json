@@ -1782,14 +1782,6 @@
       "count": 1
     }
   },
-  "app/components/base/divider/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/base/drawer-plus/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -2766,11 +2758,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/tag-management/panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/base/text-generation/hooks.ts": {

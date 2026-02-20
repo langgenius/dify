@@ -65,7 +65,7 @@ describe('TagRemoveModal', () => {
 
       const closeIconButton = screen.getByTestId('tag-remove-modal-close-button')
       expect(closeIconButton).toBeInTheDocument()
-      await user.click(closeIconButton as HTMLElement)
+      await user.click(closeIconButton)
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
