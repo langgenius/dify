@@ -1,4 +1,3 @@
-import { RiPriceTag3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -16,8 +15,8 @@ const Trigger = ({
       {!tags.length
         ? (
             <div className="flex items-center gap-x-0.5 rounded-[5px] border border-dashed border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
-              <RiPriceTag3Line className="h-3 w-3 shrink-0 text-text-quaternary" />
-              <div className="system-2xs-medium-uppercase text-nowrap text-text-tertiary">
+              <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
+              <div className="text-nowrap text-text-tertiary system-2xs-medium-uppercase">
                 {t('tag.addTag', { ns: 'common' })}
               </div>
             </div>
@@ -30,9 +29,10 @@ const Trigger = ({
                     <div
                       key={index}
                       className="flex items-center gap-x-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]"
+                      data-testid={`tag-badge-${index}`}
                     >
-                      <RiPriceTag3Line className="h-3 w-3 shrink-0 text-text-quaternary" />
-                      <div className="system-2xs-medium-uppercase text-nowrap text-text-tertiary">
+                      <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
+                      <div className="text-nowrap text-text-tertiary system-2xs-medium-uppercase">
                         {content}
                       </div>
                     </div>
