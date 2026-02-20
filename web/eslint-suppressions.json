@@ -1266,14 +1266,6 @@
       "count": 2
     }
   },
-  "app/components/base/alert.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/base/amplitude/AmplitudeProvider.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
