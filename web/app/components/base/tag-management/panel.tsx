@@ -130,6 +130,7 @@ const Panel = (props: PanelProps) => {
         <div className="p-1">
           <div
             className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
+            data-testid="create-tag-option"
             onClick={createNewTag}
           >
             <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />

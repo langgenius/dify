@@ -274,7 +274,7 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       // Click the create option
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       expect(createOption).toBeTruthy()
       await user.click(createOption!)
 
@@ -290,7 +290,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       await user.click(createOption!)
 
       await waitFor(() => {
@@ -308,7 +308,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       await user.click(createOption!)
 
       await waitFor(() => {
@@ -323,7 +323,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       await user.click(createOption!)
 
       await waitFor(() => {
@@ -341,7 +341,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       await user.click(createOption!)
 
       await waitFor(() => {
@@ -359,7 +359,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'FailTag')
 
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       await user.click(createOption!)
 
       await waitFor(() => {
@@ -390,7 +390,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByText(new RegExp(i18n.create)).closest('div[class*="cursor-pointer"]')
+      const createOption = screen.getByTestId('create-tag-option')
       await user.click(createOption!)
 
       expect(createTag).toHaveBeenCalledTimes(1)
