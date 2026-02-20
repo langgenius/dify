@@ -1,12 +1,10 @@
 import type { ModelItem, ModelProvider } from '../declarations'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { disableModel, enableModel } from '@/service/common'
+import { ModelStatusEnum } from '../declarations'
 import ModelListItem from './model-list-item'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+let mockModelLoadBalancingEnabled = false
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -18,7 +16,7 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: { type: 'pro' },
   }),
-  useProviderContextSelector: () => false,
+  useProviderContextSelector: () => mockModelLoadBalancingEnabled,
 }))
 
 vi.mock('@/service/common', () => ({
@@ -39,7 +37,9 @@ vi.mock('../model-name', () => ({
 }))
 
 vi.mock('../model-auth', () => ({
-  ConfigModel: () => <div data-testid="config-model" />,
+  ConfigModel: ({ onClick }: { onClick: () => void }) => (
+    <button type="button" onClick={onClick}>modify load balancing</button>
+  ),
 }))
 
 describe('ModelListItem', () => {
@@ -59,6 +59,7 @@ describe('ModelListItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockModelLoadBalancingEnabled = false
   })
 
   it('should render model item with icon and name', () => {
@@ -73,28 +74,57 @@ describe('ModelListItem', () => {
     expect(screen.getByTestId('model-name')).toBeInTheDocument()
   })
 
-  it('should render switch toggle', () => {
+  it('should disable an active model when switch is clicked', async () => {
+    const onChange = vi.fn()
     render(
       <ModelListItem
         model={mockModel}
         provider={mockProvider}
         isConfigurable={false}
+        onChange={onChange}
       />,
     )
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(disableModel).toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledWith('test-provider')
+    }, { timeout: 2000 })
   })
 
-  it('should show disabled switch when model is deprecated', () => {
-    const deprecatedModel = { ...mockModel, deprecated: true }
+  it('should enable a disabled model when switch is clicked', async () => {
+    const onChange = vi.fn()
+    const disabledModel = { ...mockModel, status: ModelStatusEnum.disabled }
     render(
       <ModelListItem
-        model={deprecatedModel}
+        model={disabledModel}
         provider={mockProvider}
         isConfigurable={false}
+        onChange={onChange}
       />,
     )
-    const switchEl = screen.getByRole('switch')
-    expect(switchEl).toBeInTheDocument()
-    expect(switchEl).toHaveClass('!opacity-50')
+    fireEvent.click(screen.getByRole('switch'))
+
+    await waitFor(() => {
+      expect(enableModel).toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledWith('test-provider')
+    }, { timeout: 2000 })
+  })
+
+  it('should open load balancing config action when available', () => {
+    mockModelLoadBalancingEnabled = true
+    const onModifyLoadBalancing = vi.fn()
+
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable={false}
+        onModifyLoadBalancing={onModifyLoadBalancing}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'modify load balancing' }))
+    expect(onModifyLoadBalancing).toHaveBeenCalledWith(mockModel)
   })
 })

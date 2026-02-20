@@ -1,28 +1,26 @@
 import type { ModelItem, ModelProvider } from '../declarations'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import ModelList from './model-list'
 
-const mockSetShowModelLoadBalancingModal: unknown = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (_key: string, options?: { num?: number }) => `${_key}${options?.num ? `:${options.num}` : ''}`,
-  }),
-}))
+const mockSetShowModelLoadBalancingModal = vi.fn()
+let mockIsCurrentWorkspaceManager = true
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
   }),
 }))
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: () => mockSetShowModelLoadBalancingModal as (selector: (state: unknown) => unknown) => unknown,
+  useModalContextSelector: (selector: (state: { setShowModelLoadBalancingModal: typeof mockSetShowModelLoadBalancingModal }) => unknown) =>
+    selector({ setShowModelLoadBalancingModal: mockSetShowModelLoadBalancingModal }),
 }))
 
 vi.mock('./model-list-item', () => ({
-  default: ({ model }: { model: ModelItem }) => (
-    <div data-testid={`model-item-${model.model}`}>{model.model}</div>
+  default: ({ model, onModifyLoadBalancing }: { model: ModelItem, onModifyLoadBalancing: (model: ModelItem) => void }) => (
+    <button type="button" onClick={() => onModifyLoadBalancing(model)}>
+      {model.model}
+    </button>
   ),
 }))
 
@@ -47,9 +45,10 @@ describe('ModelList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCurrentWorkspaceManager = true
   })
 
-  it('should render all models', () => {
+  it('should render model count and model items', () => {
     render(
       <ModelList
         provider={mockProvider}
@@ -58,11 +57,12 @@ describe('ModelList', () => {
         onChange={mockOnChange}
       />,
     )
-    expect(screen.getByTestId('model-item-gpt-4')).toBeInTheDocument()
-    expect(screen.getByTestId('model-item-gpt-3.5')).toBeInTheDocument()
+    expect(screen.getAllByText(/modelProvider\.modelsNum/).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'gpt-4' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'gpt-3.5' })).toBeInTheDocument()
   })
 
-  it('should display model count text', () => {
+  it('should trigger collapse when collapsed label is clicked', () => {
     render(
       <ModelList
         provider={mockProvider}
@@ -71,11 +71,13 @@ describe('ModelList', () => {
         onChange={mockOnChange}
       />,
     )
-    const countElements = screen.queryAllByText(/modelsNum:2/)
-    expect(countElements.length).toBeGreaterThan(0)
+
+    const countElements = screen.getAllByText(/modelProvider\.modelsNum/)
+    fireEvent.click(countElements[1])
+    expect(mockOnCollapse).toHaveBeenCalled()
   })
 
-  it('should render all model items in the list', () => {
+  it('should open load balancing modal for selected model', () => {
     render(
       <ModelList
         provider={mockProvider}
@@ -84,12 +86,14 @@ describe('ModelList', () => {
         onChange={mockOnChange}
       />,
     )
-    const modelItems = screen.getAllByTestId(/model-item/)
-    expect(modelItems.length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'gpt-4' }))
+    expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
   })
 
-  it('should render model list container', () => {
-    const { container } = render(
+  it('should hide custom model actions for non-manager', () => {
+    mockIsCurrentWorkspaceManager = false
+    render(
       <ModelList
         provider={mockProvider}
         models={mockModels}
@@ -97,6 +101,8 @@ describe('ModelList', () => {
         onChange={mockOnChange}
       />,
     )
-    expect(container.firstChild).toBeInTheDocument()
+
+    expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 })

@@ -1,28 +1,22 @@
 import type { PluginProvider } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import SerpapiPlugin from './SerpapiPlugin'
+import { updatePluginKey, validatePluginKey } from './utils'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: vi.fn(() => ({
-    t: (key: string) => key,
-  })),
-}))
+const mockNotify = vi.fn()
+const mockEmit = vi.fn()
+const mockUseSubscription = vi.fn()
 
 vi.mock('@/app/components/base/toast', () => ({
   useToastContext: vi.fn(() => ({
-    notify: vi.fn(),
+    notify: mockNotify,
   })),
 }))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
-}))
-
-vi.mock('next/image', () => ({
-  default: ({ alt }: { alt: string }) => (
-    <div aria-label={alt} />
-  ),
 }))
 
 vi.mock('./utils', () => ({
@@ -33,14 +27,18 @@ vi.mock('./utils', () => ({
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: vi.fn(() => ({
     eventEmitter: {
-      useSubscription: vi.fn(),
-      emit: vi.fn(),
+      useSubscription: mockUseSubscription,
+      emit: mockEmit,
     },
   })),
 }))
 
 describe('SerpapiPlugin', () => {
   const mockOnUpdate = vi.fn()
+  const basePlugin = {
+    tool_name: 'serpapi',
+    is_enabled: true,
+  } as PluginProvider
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -50,74 +48,78 @@ describe('SerpapiPlugin', () => {
     })
   })
 
-  it('should render serpapi plugin with credentials', () => {
-    const mockPlugin: PluginProvider = {
-      tool_name: 'serpapi',
-      credentials: {
-        api_key: 'existing-key',
-      },
-    } as PluginProvider
+  it('should open api key input when manager clicks add key', () => {
+    render(<SerpapiPlugin plugin={{ ...basePlugin, credentials: null }} onUpdate={mockOnUpdate} />)
 
-    render(<SerpapiPlugin plugin={mockPlugin} onUpdate={mockOnUpdate} />)
-    expect(screen.getByLabelText('serpapi logo')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/provider\.addKey/))
+
+    expect(screen.getByPlaceholderText(/plugin\.serpapi\.apiKeyPlaceholder/)).toBeInTheDocument()
   })
 
-  it('should render serpapi plugin without credentials', () => {
-    const mockPlugin = {
-      tool_name: 'serpapi',
-      is_enabled: true,
-      credentials: null,
-    } satisfies PluginProvider
-
-    render(<SerpapiPlugin plugin={mockPlugin} onUpdate={mockOnUpdate} />)
-    expect(screen.getByLabelText('serpapi logo')).toBeInTheDocument()
-  })
-
-  it('should open key input when clicking edit for existing key', () => {
-    const mockPlugin: PluginProvider = {
-      tool_name: 'serpapi',
-      credentials: {
-        api_key: 'existing-key',
-      },
-    } as PluginProvider
-
-    render(<SerpapiPlugin plugin={mockPlugin} onUpdate={mockOnUpdate} />)
-
-    fireEvent.click(screen.getByText('provider.editKey'))
-
-    expect(screen.getByPlaceholderText('plugin.serpapi.apiKeyPlaceholder')).toBeInTheDocument()
-  })
-
-  it('should open key input when clicking add for missing key', () => {
-    const mockPlugin = {
-      tool_name: 'serpapi',
-      is_enabled: true,
-      credentials: null,
-    } satisfies PluginProvider
-
-    render(<SerpapiPlugin plugin={mockPlugin} onUpdate={mockOnUpdate} />)
-
-    fireEvent.click(screen.getByText('provider.addKey'))
-
-    expect(screen.getByPlaceholderText('plugin.serpapi.apiKeyPlaceholder')).toBeInTheDocument()
-  })
-
-  it('should not open key input when user is not workspace manager', () => {
+  it('should not open key input for non-manager', () => {
     const mockUseAppContext = useAppContext as ReturnType<typeof vi.fn>
     mockUseAppContext.mockReturnValue({
       isCurrentWorkspaceManager: false,
     })
 
-    const mockPlugin = {
-      tool_name: 'serpapi',
-      is_enabled: true,
-      credentials: null,
-    } satisfies PluginProvider
+    render(<SerpapiPlugin plugin={{ ...basePlugin, credentials: null }} onUpdate={mockOnUpdate} />)
 
-    render(<SerpapiPlugin plugin={mockPlugin} onUpdate={mockOnUpdate} />)
+    fireEvent.click(screen.getByText(/provider\.addKey/))
 
-    fireEvent.click(screen.getByText('provider.addKey'))
+    expect(screen.queryByPlaceholderText(/plugin\.serpapi\.apiKeyPlaceholder/)).not.toBeInTheDocument()
+  })
 
-    expect(screen.queryByPlaceholderText('plugin.serpapi.apiKeyPlaceholder')).not.toBeInTheDocument()
+  it('should save a new api key and notify success', async () => {
+    const mockUseToastContext = useToastContext as ReturnType<typeof vi.fn>
+    mockUseToastContext.mockReturnValue({ notify: mockNotify })
+    const mockUpdatePluginKey = updatePluginKey as ReturnType<typeof vi.fn>
+    const mockValidatePluginKey = validatePluginKey as ReturnType<typeof vi.fn>
+    mockValidatePluginKey.mockResolvedValue({ result: 'success' })
+    mockUpdatePluginKey.mockResolvedValue({ status: 'success' })
+
+    render(
+      <SerpapiPlugin
+        plugin={{ ...basePlugin, credentials: { api_key: 'old-key' } }}
+        onUpdate={mockOnUpdate}
+      />,
+    )
+
+    fireEvent.click(screen.getByText(/provider\.editKey/))
+    fireEvent.focus(screen.getByPlaceholderText(/plugin\.serpapi\.apiKeyPlaceholder/))
+    fireEvent.change(screen.getByPlaceholderText(/plugin\.serpapi\.apiKeyPlaceholder/), { target: { value: 'new-key' } })
+    fireEvent.click(screen.getByText(/operation\.save/))
+
+    await waitFor(() => {
+      expect(mockValidatePluginKey).toHaveBeenCalled()
+      expect(mockUpdatePluginKey).toHaveBeenCalledWith('serpapi', {
+        credentials: { api_key: 'new-key' },
+      })
+      expect(mockNotify).toHaveBeenCalled()
+      expect(mockOnUpdate).toHaveBeenCalled()
+      expect(mockEmit).toHaveBeenCalled()
+    })
+  })
+
+  it('should not save when api key is unchanged', async () => {
+    const mockUpdatePluginKey = updatePluginKey as ReturnType<typeof vi.fn>
+    const mockValidatePluginKey = validatePluginKey as ReturnType<typeof vi.fn>
+    mockValidatePluginKey.mockResolvedValue({ result: 'success' })
+
+    render(
+      <SerpapiPlugin
+        plugin={{ ...basePlugin, credentials: { api_key: 'same-key' } }}
+        onUpdate={mockOnUpdate}
+      />,
+    )
+
+    fireEvent.click(screen.getByText(/provider\.editKey/))
+    fireEvent.change(screen.getByPlaceholderText(/plugin\.serpapi\.apiKeyPlaceholder/), { target: { value: 'same-key' } })
+    fireEvent.click(screen.getByText(/operation\.save/))
+
+    await waitFor(() => {
+      expect(mockValidatePluginKey).not.toHaveBeenCalled()
+      expect(mockUpdatePluginKey).not.toHaveBeenCalled()
+      expect(mockOnUpdate).not.toHaveBeenCalled()
+    })
   })
 })
