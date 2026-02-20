@@ -3,14 +3,16 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
+import { ToastContext } from '@/app/components/base/toast'
 import Panel from './panel'
 import { useStore as useTagStore } from './store'
 
 // Hoisted mocks
-const { createTag, bindTag, unBindTag } = vi.hoisted(() => ({
+const { createTag, bindTag, unBindTag, contextOverrides } = vi.hoisted(() => ({
   createTag: vi.fn(),
   bindTag: vi.fn(),
   unBindTag: vi.fn(),
+  contextOverrides: new Map<object, unknown>(),
 }))
 
 const mockNotify = vi.fn()
@@ -21,12 +23,17 @@ vi.mock('@/service/tag', () => ({
   unBindTag,
 }))
 
-// Mock use-context-selector for ToastContext
+// Mock use-context-selector with context-aware values and toast notify override.
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: mockNotify,
-  }),
+  useContext: <T,>(context: React.Context<T>) => {
+    const contextValue = React.useContext(context)
+    const override = contextOverrides.get(context as unknown as object)
+    if (override)
+      return override as T
+
+    return contextValue
+  },
 }))
 
 // i18n mock renders "ns.key" format (dot-separated)
@@ -62,6 +69,11 @@ const defaultProps = {
 describe('Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    contextOverrides.clear()
+    contextOverrides.set(ToastContext as unknown as object, {
+      notify: mockNotify,
+      close: vi.fn(),
+    })
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
@@ -157,7 +169,7 @@ describe('Panel', () => {
 
       // The create row shows "Create 'BrandNewTag'"
       expect(screen.getByText(/BrandNewTag/)).toBeInTheDocument()
-      expect(screen.getByText(new RegExp(i18n.create))).toBeInTheDocument()
+      expect(screen.getByText(i18n.create, { exact: false })).toBeInTheDocument()
     })
 
     it('should not show create option when keyword matches an existing tag name', async () => {
@@ -172,7 +184,7 @@ describe('Panel', () => {
       await user.type(input, 'Frontend')
 
       // 'Frontend' matches tag-1 name, so notExisted = false
-      expect(screen.queryByText(new RegExp(`${i18n.create}\\s`))).not.toBeInTheDocument()
+      expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
     })
 
     it('should clear search when clear button is clicked', async () => {
@@ -196,8 +208,8 @@ describe('Panel', () => {
 
   describe('Tag Selection', () => {
     const getTagRow = (tagName: string) => {
-      const row = screen.getByText(tagName).closest('div[class*="cursor-pointer"]')
-      expect(row).toBeTruthy()
+      const row = screen.getByText(tagName).closest('[data-testid="tag-row"]')
+      expect(row).not.toBeNull()
       return row as HTMLElement
     }
 
@@ -368,7 +380,7 @@ describe('Panel', () => {
 
     it('should not allow duplicate creation while pending', async () => {
       const user = userEvent.setup()
-      let resolveCreate: (value: Tag) => void
+      let resolveCreate!: (value: Tag) => void
       vi.mocked(createTag).mockImplementation(() => new Promise((resolve) => {
         resolveCreate = resolve
       }))
@@ -391,7 +403,7 @@ describe('Panel', () => {
 
       // Resolve the pending promise
       await act(async () => {
-        resolveCreate!({ id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 })
+        resolveCreate({ id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 })
       })
     })
   })

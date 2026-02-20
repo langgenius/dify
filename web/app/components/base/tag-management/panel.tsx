@@ -150,6 +150,7 @@ const Panel = (props: PanelProps) => {
               key={tag.id}
               className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
               onClick={() => selectTag(tag)}
+              data-testid="tag-row"
             >
               <Checkbox
                 className="shrink-0"
@@ -170,6 +171,7 @@ const Panel = (props: PanelProps) => {
               key={tag.id}
               className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
               onClick={() => selectTag(tag)}
+              data-testid="tag-row"
             >
               <Checkbox
                 className="shrink-0"
