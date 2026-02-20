@@ -643,22 +643,50 @@ def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: Uns
 
 
 def _extract_text_from_eml(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
     from unstructured.partition.email import partition_email
 
     try:
-        with io.BytesIO(file_content) as file:
-            elements = partition_email(file=file)
+        if dify_config.UNSTRUCTURED_API_URL:
+            with tempfile.NamedTemporaryFile(suffix=".eml", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
+                    )
+                os.unlink(temp_file.name)
+        else:
+            with io.BytesIO(file_content) as file:
+                elements = partition_email(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from EML: {str(e)}") from e
 
 
 def _extract_text_from_msg(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
     from unstructured.partition.msg import partition_msg
 
     try:
-        with io.BytesIO(file_content) as file:
-            elements = partition_msg(file=file)
+        if dify_config.UNSTRUCTURED_API_URL:
+            with tempfile.NamedTemporaryFile(suffix=".msg", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
+                    )
+                os.unlink(temp_file.name)
+        else:
+            with io.BytesIO(file_content) as file:
+                elements = partition_msg(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
