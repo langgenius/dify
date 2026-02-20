@@ -1,7 +1,6 @@
 import logging
 
 from sqlalchemy import update
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
@@ -67,7 +66,7 @@ class CreditPoolService:
         actual_credits = min(credits_required, pool.remaining_credits)
 
         try:
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 stmt = (
                     update(TenantCreditPool)
                     .where(

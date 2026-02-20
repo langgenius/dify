@@ -2,7 +2,6 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -324,7 +323,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
                     datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
-                    with sessionmaker(db.engine).begin() as session:
+                    with SessionLocal.begin() as session:
                         stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                         datasource_file = session.scalar(stmt)
                         if datasource_file is None:
@@ -347,7 +346,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
                     assert message.meta
 
                     datasource_file_id = message.message.text.split("/")[-1].split(".")[0]
-                    with sessionmaker(db.engine).begin() as session:
+                    with SessionLocal.begin() as session:
                         stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                         datasource_file = session.scalar(stmt)
                         if datasource_file is None:
@@ -461,7 +460,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
                 datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with sessionmaker(db.engine).begin() as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                     datasource_file = session.scalar(stmt)
                     if datasource_file is None:

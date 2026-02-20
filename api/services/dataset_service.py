@@ -12,7 +12,6 @@ from typing import Any, Literal, cast
 import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import exists, func, select
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -526,7 +525,7 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             external_knowledge_binding = (
                 session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
             )

@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -345,7 +344,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         :return: List of conversation variables ready for use
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             existing_variables = self._load_existing_conversation_variables(session)
 
             if not existing_variables:

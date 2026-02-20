@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -52,7 +51,7 @@ class DatasourceProviderService:
         """
         remove oauth custom client params
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             session.query(DatasourceOauthTenantParamConfig).filter_by(
                 tenant_id=tenant_id,
                 provider=datasource_provider_id.provider_name,
@@ -107,7 +106,7 @@ class DatasourceProviderService:
         """
         get credential by id
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             if credential_id:
                 datasource_provider = (
                     session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, id=credential_id).first()
@@ -171,7 +170,7 @@ class DatasourceProviderService:
         """
         get all datasource credentials by provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             datasource_providers = (
                 session.query(DatasourceProvider)
                 .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
@@ -230,7 +229,7 @@ class DatasourceProviderService:
         """
         update datasource provider name
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             target_provider = (
                 session.query(DatasourceProvider)
                 .filter_by(
@@ -271,7 +270,7 @@ class DatasourceProviderService:
         """
         set default datasource provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             # get provider
             target_provider = (
                 session.query(DatasourceProvider)
@@ -311,7 +310,7 @@ class DatasourceProviderService:
         """
         if client_params is None and enabled is None:
             return
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             tenant_oauth_client_params = (
                 session.query(DatasourceOauthTenantParamConfig)
                 .filter_by(
@@ -483,7 +482,7 @@ class DatasourceProviderService:
         """
         update datasource oauth provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.OAUTH2.value}"
             with redis_client.lock(lock, timeout=20):
                 target_provider = (
@@ -544,7 +543,7 @@ class DatasourceProviderService:
         add datasource oauth provider
         """
         credential_type = CredentialType.OAUTH2
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{credential_type.value}"
             with redis_client.lock(lock, timeout=60):
                 db_provider_name = name
@@ -616,7 +615,7 @@ class DatasourceProviderService:
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
             with redis_client.lock(lock, timeout=20):
                 db_provider_name = name or self.generate_next_datasource_provider_name(
@@ -914,7 +913,7 @@ class DatasourceProviderService:
         update datasource credentials.
         """
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             datasource_provider = (
                 session.query(DatasourceProvider)
                 .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)

@@ -5,7 +5,6 @@ from typing import Any, Literal, cast
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -600,7 +599,7 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             pipeline = session.merge(pipeline)
             workflow = rag_pipeline_service.publish_workflow(
                 session=session,
@@ -685,7 +684,7 @@ class PublishedAllRagPipelineApi(Resource):
                 raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
                 pipeline=pipeline,

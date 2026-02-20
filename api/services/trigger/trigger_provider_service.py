@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy import desc, func
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -401,7 +400,7 @@ class TriggerProviderService:
         :param subscription_id: Subscription instance ID
         :return: New token info
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             subscription = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
 
             if not subscription:
@@ -474,7 +473,7 @@ class TriggerProviderService:
         """
         now_ts: int = int(now if now is not None else _time.time())
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             subscription: TriggerSubscription | None = (
                 session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
             )
@@ -635,7 +634,7 @@ class TriggerProviderService:
             tenant_id=tenant_id, provider_id=provider_id
         )
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             # Find existing custom client params
             custom_client = (
                 session.query(TriggerOAuthTenantClient)
@@ -690,7 +689,7 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: Masked OAuth client parameters
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             custom_client = (
                 session.query(TriggerOAuthTenantClient)
                 .filter_by(
@@ -727,7 +726,7 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: Success response
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             session.query(TriggerOAuthTenantClient).filter_by(
                 tenant_id=tenant_id,
                 provider=provider_id.provider_name,

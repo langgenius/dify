@@ -12,7 +12,6 @@ from typing import Any, Literal, Union, cast, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -374,7 +373,7 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")
@@ -465,7 +464,7 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")

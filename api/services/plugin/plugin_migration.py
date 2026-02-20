@@ -12,7 +12,6 @@ import click
 import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
@@ -46,7 +45,7 @@ class PluginMigration:
         started_at = datetime.datetime(2023, 4, 3, 8, 59, 24)
         current_time = started_at
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             total_tenant_count = session.query(Tenant.id).count()
 
         click.echo(click.style(f"Total tenant count: {total_tenant_count}", fg="white"))
@@ -90,7 +89,7 @@ class PluginMigration:
             # Initial interval of 1 day, will be dynamically adjusted based on tenant count
             interval = datetime.timedelta(days=1)
             # Process tenants in this batch
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 # Calculate tenant count in next batch with current interval
                 # Try different intervals until we find one with a reasonable tenant count
                 test_intervals = [
@@ -199,7 +198,7 @@ class PluginMigration:
         """
         Extract model table.
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             rs = session.execute(
                 sa.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
             )
@@ -215,7 +214,7 @@ class PluginMigration:
         """
         Extract tool tables.
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             rs = session.query(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id).all()
             result = []
             for row in rs:
@@ -229,7 +228,7 @@ class PluginMigration:
         Extract workflow tables, only ToolNode is required.
         """
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             rs = session.query(Workflow).where(Workflow.tenant_id == tenant_id).all()
             result = []
             for row in rs:
@@ -252,7 +251,7 @@ class PluginMigration:
         """
         Extract app tables.
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             apps = session.query(App).where(App.tenant_id == tenant_id).all()
             if not apps:
                 return []

@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.schema import register_schema_models
 from controllers.console.auth.error import (
@@ -81,7 +80,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(request_email, session=session)
         token = None
         if account is None:
@@ -180,7 +179,7 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:

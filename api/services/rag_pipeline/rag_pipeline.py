@@ -10,7 +10,6 @@ from uuid import uuid4
 
 from flask_login import current_user
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -1089,7 +1088,7 @@ class RagPipelineService:
         workflow = db.session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
         if not workflow:
             raise ValueError("Workflow not found")
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             dataset = pipeline.retrieve_dataset(session=session)
             if not dataset:
                 raise ValueError("Dataset not found")
@@ -1116,7 +1115,7 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         if args.get("icon_info") is None:

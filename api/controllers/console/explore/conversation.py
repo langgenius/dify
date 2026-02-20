@@ -2,7 +2,6 @@ from typing import Any
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, model_validator
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -74,7 +73,7 @@ class ConversationListApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

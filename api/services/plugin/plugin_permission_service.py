@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.account import TenantPluginPermission
@@ -7,7 +6,7 @@ from models.account import TenantPluginPermission
 class PluginPermissionService:
     @staticmethod
     def get_permission(tenant_id: str) -> TenantPluginPermission | None:
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             return session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).first()
 
     @staticmethod
@@ -16,7 +15,7 @@ class PluginPermissionService:
         install_permission: TenantPluginPermission.InstallPermission,
         debug_permission: TenantPluginPermission.DebugPermission,
     ):
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             permission = (
                 session.query(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).first()
             )

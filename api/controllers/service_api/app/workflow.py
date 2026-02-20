@@ -5,7 +5,6 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -311,7 +310,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,

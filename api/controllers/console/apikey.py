@@ -2,7 +2,6 @@ import flask_restx
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -33,7 +32,7 @@ api_key_list_model = console_ns.model(
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
-    with sessionmaker(db.engine).begin() as session:
+    with SessionLocal.begin() as session:
         resource = session.execute(
             select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
         ).scalar_one_or_none()
@@ -94,7 +93,7 @@ class BaseApiKeyListResource(Resource):
         api_token.token = key
         api_token.type = self.resource_type
         
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             session.add(api_token)
             
         return api_token, 201
@@ -133,7 +132,7 @@ class BaseApiKeyResource(Resource):
         assert key is not None  # nosec - for type checker only
         ApiTokenCache.delete(key.token, key.type)
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
 
         return {"result": "success"}, 204

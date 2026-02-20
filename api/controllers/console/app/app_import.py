@@ -1,6 +1,5 @@
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -71,7 +70,7 @@ class AppImportApi(Resource):
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # Create service with session
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
@@ -112,7 +111,7 @@ class AppImportConfirmApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         # Create service with session
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
@@ -133,7 +132,7 @@ class AppImportCheckDependenciesApi(Resource):
     @marshal_with(app_import_check_dependencies_model)
     @edit_permission_required
     def get(self, app_model: App):
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 

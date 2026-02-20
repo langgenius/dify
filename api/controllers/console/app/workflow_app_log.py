@@ -4,7 +4,6 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -87,7 +86,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,
@@ -124,7 +123,7 @@ class WorkflowArchivedLogApi(Resource):
         args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         workflow_app_service = WorkflowAppService()
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_archive_logs(
                 session=session,
                 app_model=app_model,

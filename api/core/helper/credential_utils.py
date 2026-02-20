@@ -14,13 +14,12 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
     :return: True if credential exists, False otherwise
     """
     from sqlalchemy import select
-    from sqlalchemy.orm import Session, sessionmaker
 
     from extensions.ext_database import db
     from models.provider import ProviderCredential, ProviderModelCredential
     from models.tools import BuiltinToolProvider
 
-    with sessionmaker(db.engine).begin() as session:
+    with SessionLocal.begin() as session:
         if credential_type == PluginCredentialType.MODEL:
             # Check both pre-defined and custom model credentials using a single UNION query
             stmt = (

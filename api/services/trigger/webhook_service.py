@@ -9,7 +9,6 @@ import orjson
 from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -73,7 +72,7 @@ class WebhookService:
         Raises:
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             # Get webhook trigger
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
@@ -743,7 +742,7 @@ class WebhookService:
             Exception: If workflow execution fails
         """
         try:
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 # Prepare inputs for the webhook node
                 # The webhook node expects webhook_data in the inputs
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
@@ -874,7 +873,7 @@ class WebhookService:
                 logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
                 raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
 
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(

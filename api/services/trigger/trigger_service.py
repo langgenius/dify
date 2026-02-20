@@ -7,7 +7,6 @@ from typing import Any
 from flask import Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
@@ -214,7 +213,7 @@ class TriggerService:
                 not_found_in_cache.append(node_info)
                 continue
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             try:
                 # lock the concurrent plugin trigger creation
                 redis_client.lock(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)

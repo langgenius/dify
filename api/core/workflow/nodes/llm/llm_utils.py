@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from typing import cast
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -152,7 +151,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                 pool_type="paid",
             )
         else:
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 stmt = (
                     update(Provider)
                     .where(

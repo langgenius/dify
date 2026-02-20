@@ -12,7 +12,6 @@ from uuid import UUID, uuid4
 from cachetools import LRUCache
 from flask import current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
@@ -30,6 +29,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.utils import get_message_data
 from extensions.ext_storage import storage
 from models.engine import db
+from extensions.ext_database import SessionLocal
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
@@ -565,7 +565,7 @@ class TraceTask:
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             # get workflow_app_log_id
             workflow_app_log_data_stmt = select(WorkflowAppLog.id).where(
                 WorkflowAppLog.tenant_id == tenant_id,

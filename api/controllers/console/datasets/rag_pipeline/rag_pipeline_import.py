@@ -1,7 +1,6 @@
 from flask import request
 from flask_restx import Resource, fields, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
@@ -68,7 +67,7 @@ class RagPipelineImportApi(Resource):
         payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
 
         # Create service with session
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             import_service = RagPipelineDslService(session)
             # Import app
             account = current_user
@@ -101,7 +100,7 @@ class RagPipelineImportConfirmApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         # Create service with session
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             import_service = RagPipelineDslService(session)
             # Confirm import
             account = current_user
@@ -122,7 +121,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @edit_permission_required
     @marshal_with(pipeline_import_check_dependencies_model)
     def get(self, pipeline: Pipeline):
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             import_service = RagPipelineDslService(session)
             result = import_service.check_dependencies(pipeline=pipeline)
 
@@ -140,7 +139,7 @@ class RagPipelineExportApi(Resource):
         # Add include_secret params
         query = IncludeSecretQuery.model_validate(request.args.to_dict())
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             export_service = RagPipelineDslService(session)
             result = export_service.export_rag_pipeline_dsl(
                 pipeline=pipeline, include_secret=query.include_secret == "true"

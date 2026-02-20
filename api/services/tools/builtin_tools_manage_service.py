@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -46,7 +45,7 @@ class BuiltinToolManageService:
         delete custom oauth client params
         """
         tool_provider = ToolProviderID(provider)
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             session.query(ToolOAuthTenantClient).filter_by(
                 tenant_id=tenant_id,
                 provider=tool_provider.provider_name,
@@ -150,7 +149,7 @@ class BuiltinToolManageService:
         """
         update builtin tool provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             # get if the provider exists
             db_provider = (
                 session.query(BuiltinToolProvider)
@@ -221,7 +220,7 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             try:
                 lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
                 with redis_client.lock(lock, timeout=20):
@@ -379,7 +378,7 @@ class BuiltinToolManageService:
         """
         delete tool provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             db_provider = (
                 session.query(BuiltinToolProvider)
                 .where(
@@ -408,7 +407,7 @@ class BuiltinToolManageService:
         """
         set default provider
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             # get provider
             target_provider = session.query(BuiltinToolProvider).filter_by(id=id).first()
             if target_provider is None:
@@ -652,7 +651,7 @@ class BuiltinToolManageService:
         if not isinstance(provider_controller, (BuiltinToolProviderController, PluginToolProviderController)):
             raise ValueError(f"Provider {provider} is not a builtin or plugin provider")
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             custom_client_params = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -695,7 +694,7 @@ class BuiltinToolManageService:
         """
         get custom oauth client params
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             tool_provider = ToolProviderID(provider)
             custom_oauth_client_params: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)

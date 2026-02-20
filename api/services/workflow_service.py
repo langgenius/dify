@@ -6,7 +6,6 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
@@ -749,7 +748,7 @@ class WorkflowService:
         if workflow_node_execution is None:
             raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
 
         with Session(bind=db.engine) as session, session.begin():

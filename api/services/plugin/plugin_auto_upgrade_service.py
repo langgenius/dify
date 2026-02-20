@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
@@ -7,7 +6,7 @@ from models.account import TenantPluginAutoUpgradeStrategy
 class PluginAutoUpgradeService:
     @staticmethod
     def get_strategy(tenant_id: str) -> TenantPluginAutoUpgradeStrategy | None:
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             return (
                 session.query(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
@@ -23,7 +22,7 @@ class PluginAutoUpgradeService:
         exclude_plugins: list[str],
         include_plugins: list[str],
     ) -> bool:
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
@@ -50,7 +49,7 @@ class PluginAutoUpgradeService:
 
     @staticmethod
     def exclude_plugin(tenant_id: str, plugin_id: str) -> bool:
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
                 .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)

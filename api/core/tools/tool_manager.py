@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
 
 import sqlalchemy as sa
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
 import contexts
@@ -218,7 +217,7 @@ class ToolManager:
                 # fallback to the default provider
                 if builtin_provider is None:
                     # use the default provider
-                    with sessionmaker(db.engine).begin() as session:
+                    with SessionLocal.begin() as session:
                         builtin_provider = session.scalar(
                             sa.select(BuiltinToolProvider)
                             .where(
@@ -655,7 +654,7 @@ class ToolManager:
             filters.append(typ)
 
         # Use a single session for all database operations to reduce connection overhead
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             if "builtin" in filters:
                 builtin_providers = list(cls.list_builtin_providers(tenant_id))
 
@@ -810,7 +809,7 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        with sessionmaker(db.engine).begin() as session:
+        with SessionLocal.begin() as session:
             mcp_service = MCPToolManageService(session=session)
             try:
                 provider = mcp_service.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
@@ -953,7 +952,7 @@ class ToolManager:
     @classmethod
     def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str] | str:
         try:
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 mcp_service = MCPToolManageService(session=session)
                 try:
                     mcp_provider = mcp_service.get_provider_entity(

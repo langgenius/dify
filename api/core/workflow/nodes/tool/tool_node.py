@@ -2,7 +2,6 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -264,7 +263,7 @@ class ToolNode(Node[ToolNodeData]):
 
                 tool_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with sessionmaker(db.engine).begin() as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -287,7 +286,7 @@ class ToolNode(Node[ToolNodeData]):
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
-                with sessionmaker(db.engine).begin() as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:

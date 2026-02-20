@@ -8,7 +8,6 @@ This service centralizes all AppTrigger-related business logic.
 import logging
 
 from sqlalchemy import update
-from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.enums import AppTriggerStatus
@@ -34,7 +33,7 @@ class AppTriggerService:
 
         """
         try:
-            with sessionmaker(db.engine).begin() as session:
+            with SessionLocal.begin() as session:
                 session.execute(
                     update(AppTrigger)
                     .where(AppTrigger.tenant_id == tenant_id, AppTrigger.status == AppTriggerStatus.ENABLED)
