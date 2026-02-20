@@ -565,9 +565,11 @@ class TestDocumentSegmentIndexing:
         import models.dataset as dataset_module
 
         # Act
-        with patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True), patch(
-            "models.dataset.time.time", return_value=1700000000
-        ), patch("models.dataset.os.urandom", return_value=b"\x00" * 16):
+        with (
+            patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True),
+            patch("models.dataset.time.time", return_value=1700000000),
+            patch("models.dataset.os.urandom", return_value=b"\x00" * 16),
+        ):
             signed = segment.get_sign_content()
 
         # Assert
