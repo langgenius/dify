@@ -98,7 +98,7 @@ class Dispatcher:
                     self._event_queue.task_done()
                     self._process_commands(event)
                 except queue.Empty:
-                    time.sleep(0.1)
+                    pass
 
             self._process_commands()
             if paused:
