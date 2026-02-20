@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 
 from sqlalchemy import case
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db

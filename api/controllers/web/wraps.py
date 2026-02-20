@@ -6,7 +6,7 @@ from typing import Concatenate, ParamSpec, TypeVar
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE

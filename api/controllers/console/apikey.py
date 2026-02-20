@@ -92,10 +92,10 @@ class BaseApiKeyListResource(Resource):
         api_token.tenant_id = current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
-        
+
         with SessionLocal.begin() as session:
             session.add(api_token)
-            
+
         return api_token, 201
 
 

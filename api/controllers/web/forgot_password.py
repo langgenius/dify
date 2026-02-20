@@ -17,7 +17,6 @@ from controllers.console.auth.error import (
 from controllers.console.error import EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
 from controllers.web import web_ns
-from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account

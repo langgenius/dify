@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from configs import dify_config

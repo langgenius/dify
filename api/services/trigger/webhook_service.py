@@ -19,7 +19,6 @@ from core.variables.types import SegmentType
 from core.workflow.enums import NodeType
 from core.workflow.file.models import FileTransferMethod
 from enums.quota_type import QuotaType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
 from models.enums import AppTriggerStatus, AppTriggerType

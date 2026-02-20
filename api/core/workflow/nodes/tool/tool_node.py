@@ -22,7 +22,6 @@ from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from extensions.ext_database import db
 from factories import file_factory
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService

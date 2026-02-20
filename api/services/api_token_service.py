@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 from extensions.ext_database import db

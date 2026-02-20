@@ -246,7 +246,7 @@ class MCPTool(Tool):
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
 
-        from sqlalchemy.orm import Session, sessionmaker
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
         from services.tools.mcp_tools_manage_service import MCPToolManageService

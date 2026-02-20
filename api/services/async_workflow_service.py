@@ -13,7 +13,6 @@ from celery.result import AsyncResult
 from sqlalchemy import select
 
 from enums.quota_type import QuotaType
-from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser

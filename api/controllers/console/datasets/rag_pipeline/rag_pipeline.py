@@ -12,7 +12,6 @@ from controllers.console.wraps import (
     knowledge_pipeline_publish_enabled,
     setup_required,
 )
-from extensions.ext_database import db
 from libs.login import login_required
 from models.dataset import PipelineCustomizedTemplate
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity

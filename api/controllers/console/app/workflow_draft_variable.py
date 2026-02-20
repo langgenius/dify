@@ -6,7 +6,7 @@ from typing import Any, NoReturn, ParamSpec, TypeVar
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.error import (

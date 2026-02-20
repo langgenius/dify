@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper import encrypter

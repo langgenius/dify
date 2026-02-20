@@ -5,7 +5,7 @@ from typing import ParamSpec, TypeVar
 from flask import current_app, request
 from flask_login import user_logged_in
 from pydantic import BaseModel
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
 from libs.login import current_user

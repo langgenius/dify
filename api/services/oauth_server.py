@@ -4,7 +4,6 @@ import uuid
 from sqlalchemy import select
 from werkzeug.exceptions import BadRequest
 
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Account
 from models.model import OAuthProviderApp

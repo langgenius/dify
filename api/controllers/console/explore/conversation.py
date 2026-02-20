@@ -8,7 +8,6 @@ from controllers.common.schema import register_schema_models
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
     ResultResponse,

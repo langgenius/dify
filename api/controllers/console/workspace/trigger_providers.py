@@ -14,7 +14,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
-from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID

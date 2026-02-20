@@ -1,5 +1,3 @@
-
-from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
 
 

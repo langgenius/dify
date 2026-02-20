@@ -27,9 +27,9 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
+from extensions.ext_database import SessionLocal
 from extensions.ext_storage import storage
 from models.engine import db
-from extensions.ext_database import SessionLocal
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks

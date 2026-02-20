@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.entities.trace_entity import BaseTraceInfo

@@ -5,7 +5,7 @@ Tencent APM tracing implementation with separated concerns
 import logging
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import TencentConfig

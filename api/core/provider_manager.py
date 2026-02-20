@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity

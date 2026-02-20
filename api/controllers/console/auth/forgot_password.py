@@ -17,7 +17,6 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
 from services.account_service import AccountService, TenantService
