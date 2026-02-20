@@ -1,3 +1,10 @@
+"""Unit tests for `ToolFileManager` behavior.
+
+Covers signing/verification, file persistence flows, and retrieval APIs with
+mocked storage/session boundaries (httpx, SimpleNamespace, Mock/patch) to
+avoid real IO.
+"""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -235,7 +242,5 @@ def test_get_file_generator_returns_stream_when_found() -> None:
         with patch("core.tools.tool_file_manager.Session") as session_cls:
             session_cls.return_value.__enter__.return_value = session
             result_stream, result_file = manager.get_file_generator_by_tool_file_id("tool123")
-
-    # Assert
-    assert list(result_stream) == [b"a", b"b"]
-    assert result_file is tool_file
+            assert list(result_stream) == [b"a", b"b"]
+            assert result_file is tool_file

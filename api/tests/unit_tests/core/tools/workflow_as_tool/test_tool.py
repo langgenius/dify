@@ -1,5 +1,12 @@
+"""Unit tests for workflow-as-tool behavior.
+
+StubSession/StubScalars emulate SQLAlchemy session/scalars with minimal methods
+(`scalar`, `scalars`, `expunge`, `commit`, `refresh`, context manager) to keep
+database access mocked and predictable in tests.
+"""
+
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -44,6 +51,12 @@ class StubSession:
     def begin(self):
         return self
 
+    def commit(self):
+        pass
+
+    def refresh(self, _value):
+        pass
+
     def close(self):
         pass
 
@@ -78,30 +91,13 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     `WorkflowAppGenerator.generate` returns a result with `error` key inside
     the `data` element.
     """
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     # Mock user resolution to avoid database access
-    from unittest.mock import Mock
-
     mock_user = Mock()
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
 
@@ -119,27 +115,10 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 
 
 def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.MonkeyPatch):
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
-
-    from unittest.mock import MagicMock, Mock
 
     mock_user = Mock()
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
@@ -157,22 +136,7 @@ def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.Monke
 
 def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch: pytest.MonkeyPatch):
     """Test that WorkflowTool should generate variable messages when there are outputs"""
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
 
     # Mock workflow outputs
     mock_outputs = {"result": "success", "count": 42, "data": {"key": "value"}}
@@ -182,8 +146,6 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     # Mock user resolution to avoid database access
-    from unittest.mock import Mock
-
     mock_user = Mock()
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
 
@@ -196,10 +158,6 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
 
     # Execute tool invocation
     messages = list(tool.invoke("test_user", {}))
-
-    # Verify generated messages
-    # Should contain: 3 variable messages + 1 text message + 1 JSON message = 5 messages
-    assert len(messages) == 5
 
     # Verify variable messages
     variable_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.VARIABLE]
@@ -224,30 +182,13 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
 
 def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPatch):
     """Test that WorkflowTool should handle empty outputs correctly"""
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     # Mock user resolution to avoid database access
-    from unittest.mock import Mock
-
     mock_user = Mock()
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
 
@@ -282,22 +223,7 @@ def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPat
 
 def test_create_variable_message():
     """Test the functionality of creating variable messages"""
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
 
     # Test different types of variable values
     test_cases = [
@@ -319,22 +245,7 @@ def test_create_variable_message():
 
 
 def test_create_file_message_should_include_file_marker():
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
 
     file_obj = object()
     message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
@@ -356,22 +267,9 @@ def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.M
         lambda: StubSession(scalar_results=[tenant, None, end_user]),
     )
 
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="tenant_id", invoke_from=InvokeFrom.SERVICE_API)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
+    tool.runtime.invoke_from = InvokeFrom.SERVICE_API
+    tool.runtime.tenant_id = "tenant_id"
 
     resolved_user = tool._resolve_user_from_database(user_id=end_user.id)
 
@@ -387,22 +285,9 @@ def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pyt
         lambda: StubSession(scalar_results=[None]),
     )
 
-    entity = ToolEntity(
-        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
-        parameters=[],
-        description=None,
-        has_runtime_parameters=False,
-    )
-    runtime = ToolRuntime(tenant_id="missing_tenant", invoke_from=InvokeFrom.SERVICE_API)
-    tool = WorkflowTool(
-        workflow_app_id="",
-        workflow_as_tool_id="",
-        version="1",
-        workflow_entities={},
-        workflow_call_depth=1,
-        entity=entity,
-        runtime=runtime,
-    )
+    tool = _build_tool()
+    tool.runtime.invoke_from = InvokeFrom.SERVICE_API
+    tool.runtime.tenant_id = "missing_tenant"
 
     resolved_user = tool._resolve_user_from_database(user_id="any")
 

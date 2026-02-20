@@ -111,23 +111,57 @@ def test_builtin_tool_provider_init_load_tools_and_basic_accessors(monkeypatch):
     assert set(provider.get_supported_credential_types()) == {CredentialType.API_KEY, CredentialType.OAUTH2}
 
 
-def test_builtin_tool_provider_invalid_credential_type_and_validate_credentials():
-    with patch(
-        "core.tools.builtin_tool.provider.load_yaml_file_cached",
-        side_effect=[_provider_yaml(), _tool_yaml()],
+def test_builtin_tool_provider_invalid_credential_type_raises():
+    with (
+        patch(
+            "core.tools.builtin_tool.provider.load_yaml_file_cached",
+            side_effect=[_provider_yaml(), _tool_yaml()],
+        ),
+        patch("core.tools.builtin_tool.provider.listdir", return_value=["tool_a.yaml"]),
+        patch(
+            "core.tools.builtin_tool.provider.load_single_subclass_from_source",
+            return_value=_FakeBuiltinTool,
+        ),
     ):
-        with patch("core.tools.builtin_tool.provider.listdir", return_value=["tool_a.yaml"]):
-            with patch(
-                "core.tools.builtin_tool.provider.load_single_subclass_from_source",
-                return_value=_FakeBuiltinTool,
-            ):
-                provider = _ConcreteBuiltinProvider()
+        provider = _ConcreteBuiltinProvider()
 
-    with pytest.raises(ValueError, match="not a valid CredentialType"):
+    with pytest.raises(ValueError, match="Invalid credential type: invalid"):
         provider.get_credentials_schema_by_type("invalid")
+
+
+def test_builtin_tool_provider_validate_credentials_delegates():
+    with (
+        patch(
+            "core.tools.builtin_tool.provider.load_yaml_file_cached",
+            side_effect=[_provider_yaml(), _tool_yaml()],
+        ),
+        patch("core.tools.builtin_tool.provider.listdir", return_value=["tool_a.yaml"]),
+        patch(
+            "core.tools.builtin_tool.provider.load_single_subclass_from_source",
+            return_value=_FakeBuiltinTool,
+        ),
+    ):
+        provider = _ConcreteBuiltinProvider()
 
     provider.validate_credentials("user-1", {"api_key": "secret"})
     assert provider.last_validation == ("user-1", {"api_key": "secret"})
+
+
+def test_builtin_tool_provider_unauthorized_schema_is_empty():
+    with (
+        patch(
+            "core.tools.builtin_tool.provider.load_yaml_file_cached",
+            side_effect=[_provider_yaml(), _tool_yaml()],
+        ),
+        patch("core.tools.builtin_tool.provider.listdir", return_value=["tool_a.yaml"]),
+        patch(
+            "core.tools.builtin_tool.provider.load_single_subclass_from_source",
+            return_value=_FakeBuiltinTool,
+        ),
+    ):
+        provider = _ConcreteBuiltinProvider()
+
+    assert provider.get_credentials_schema_by_type(CredentialType.UNAUTHORIZED) == []
 
 
 def test_builtin_tool_provider_init_raises_when_provider_yaml_missing():
@@ -161,16 +195,18 @@ def test_builtin_tool_provider_handles_empty_credentials_and_oauth():
 
 
 def test_builtin_tool_provider_forked_tool_runtime_is_initialized():
-    with patch(
-        "core.tools.builtin_tool.provider.load_yaml_file_cached",
-        side_effect=[_provider_yaml(), _tool_yaml()],
+    with (
+        patch(
+            "core.tools.builtin_tool.provider.load_yaml_file_cached",
+            side_effect=[_provider_yaml(), _tool_yaml()],
+        ),
+        patch("core.tools.builtin_tool.provider.listdir", return_value=["tool_a.yaml"]),
+        patch(
+            "core.tools.builtin_tool.provider.load_single_subclass_from_source",
+            return_value=_FakeBuiltinTool,
+        ),
     ):
-        with patch("core.tools.builtin_tool.provider.listdir", return_value=["tool_a.yaml"]):
-            with patch(
-                "core.tools.builtin_tool.provider.load_single_subclass_from_source",
-                return_value=_FakeBuiltinTool,
-            ):
-                provider = _ConcreteBuiltinProvider()
+        provider = _ConcreteBuiltinProvider()
 
     tool = provider.get_tool("tool_a")
     assert tool is not None

@@ -175,7 +175,7 @@ def test_webscraper_fetch_error(monkeypatch):
 
 def test_asr_invalid_file():
     asr = _build_builtin_tool(ASRTool)
-    file_obj = type("F", (), {"type": "not-audio"})()
+    file_obj = type("F", (), {"type": FileType.DOCUMENT})()
     invalid_file = list(asr.invoke(user_id="u", tool_parameters={"audio_file": file_obj}))[0].message.text
     assert "not a valid audio file" in invalid_file
 
@@ -227,13 +227,15 @@ def test_tts_get_available_models_requires_runtime():
         tts.get_available_models()
 
 
-def test_tts_tool_runtime_missing_and_no_voice_branches(monkeypatch):
+def test_tts_tool_raises_when_runtime_missing():
     tts = _build_builtin_tool(TTSTool)
-
     tts.runtime = None
     with pytest.raises(ValueError, match="Runtime is required"):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
 
+
+def test_tts_tool_raises_when_voice_value_empty(monkeypatch):
+    tts = _build_builtin_tool(TTSTool)
     tts.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER)
     model_with_empty_voice = type(
         "TTSModelEmptyVoice",
@@ -250,6 +252,10 @@ def test_tts_tool_runtime_missing_and_no_voice_branches(monkeypatch):
     with pytest.raises(ValueError, match="no voice available"):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
 
+
+def test_tts_tool_raises_when_no_voices(monkeypatch):
+    tts = _build_builtin_tool(TTSTool)
+    tts.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER)
     model_without_voices = type(
         "TTSModelNoVoices",
         (),
@@ -301,8 +307,7 @@ def test_provider_classes_and_builtin_sort(monkeypatch):
     WebscraperProvider._validate_credentials(object.__new__(WebscraperProvider), "u", {})
 
     providers = [SimpleNamespace(name="b"), SimpleNamespace(name="a")]
-
-    BuiltinToolProviderSort._position = {}
+    monkeypatch.setattr(BuiltinToolProviderSort, "_position", {})
     monkeypatch.setattr(
         "core.tools.builtin_tool.providers._positions.get_tool_position_map",
         lambda _: {"a": 0, "b": 1},

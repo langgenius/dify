@@ -121,11 +121,13 @@ class BuiltinToolProviderController(ToolProviderController):
         :return: the credentials schema of the provider
         """
         if isinstance(credential_type, str):
-            credential_type = CredentialType(credential_type)
+            credential_type = CredentialType.of(credential_type)
         if credential_type == CredentialType.OAUTH2:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
         if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        if credential_type == CredentialType.UNAUTHORIZED:
+            return []
         raise ValueError(f"Invalid credential type: {credential_type}")
 
     def get_oauth_client_schema(self) -> list[ProviderConfig]:
