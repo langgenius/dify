@@ -116,19 +116,19 @@ const CustomWebAppBrand = () => {
 
   return (
     <div className="py-4">
-      <div className="system-md-medium mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary">
+      <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary system-md-medium">
         {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
           size="l"
-          defaultValue={webappBrandRemoved}
+          value={webappBrandRemoved ?? false}
           disabled={isSandbox || !isCurrentWorkspaceManager}
           onChange={handleSwitch}
         />
       </div>
       <div className={cn('flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4', webappBrandRemoved && 'opacity-30')}>
         <div>
-          <div className="system-md-medium text-text-primary">{t('webapp.changeLogo', { ns: 'custom' })}</div>
-          <div className="system-xs-regular text-text-tertiary">{t('webapp.changeLogoTip', { ns: 'custom' })}</div>
+          <div className="text-text-primary system-md-medium">{t('webapp.changeLogo', { ns: 'custom' })}</div>
+          <div className="text-text-tertiary system-xs-regular">{t('webapp.changeLogoTip', { ns: 'custom' })}</div>
         </div>
         <div className="flex items-center">
           {(!uploadDisabled && webappLogo && !webappBrandRemoved) && (
@@ -204,7 +204,7 @@ const CustomWebAppBrand = () => {
         <div className="mt-2 text-xs text-[#D92D20]">{t('uploadedFail', { ns: 'custom' })}</div>
       )}
       <div className="mb-2 mt-5 flex items-center gap-2">
-        <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('overview.appInfo.preview', { ns: 'appOverview' })}</div>
+        <div className="shrink-0 text-text-tertiary system-xs-medium-uppercase">{t('overview.appInfo.preview', { ns: 'appOverview' })}</div>
         <Divider bgStyle="gradient" className="grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">
@@ -215,7 +215,7 @@ const CustomWebAppBrand = () => {
               <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-blue-light-solid')}>
                 <BubbleTextMod className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
               </div>
-              <div className="system-md-semibold grow text-text-secondary">Chatflow App</div>
+              <div className="grow text-text-secondary system-md-semibold">Chatflow App</div>
               <div className="p-1.5">
                 <RiLayoutLeft2Line className="h-4 w-4 text-text-tertiary" />
               </div>
@@ -246,7 +246,7 @@ const CustomWebAppBrand = () => {
               <div className="flex items-center gap-1.5">
                 {!webappBrandRemoved && (
                   <>
-                    <div className="system-2xs-medium-uppercase text-text-tertiary">POWERED BY</div>
+                    <div className="text-text-tertiary system-2xs-medium-uppercase">POWERED BY</div>
                     {
                       systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                         ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -262,12 +262,12 @@ const CustomWebAppBrand = () => {
           <div className="flex w-[138px] grow flex-col justify-between p-2 pr-0">
             <div className="flex grow flex-col justify-between rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border-subtle bg-chatbot-bg pb-4 pl-[22px] pt-16">
               <div className="w-[720px] rounded-2xl border border-divider-subtle bg-chat-bubble-bg px-4 py-3">
-                <div className="body-md-regular mb-1 text-text-primary">Hello! How can I assist you today?</div>
+                <div className="mb-1 text-text-primary body-md-regular">Hello! How can I assist you today?</div>
                 <Button size="small">
                   <div className="h-2 w-[144px] rounded-sm bg-text-quaternary opacity-20"></div>
                 </Button>
               </div>
-              <div className="body-lg-regular flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 text-text-placeholder shadow-md backdrop-blur-sm">Talk to Dify</div>
+              <div className="flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 text-text-placeholder shadow-md backdrop-blur-sm body-lg-regular">Talk to Dify</div>
             </div>
           </div>
         </div>
@@ -278,14 +278,14 @@ const CustomWebAppBrand = () => {
               <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
                 <RiExchange2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
               </div>
-              <div className="system-md-semibold grow text-text-secondary">Workflow App</div>
+              <div className="grow text-text-secondary system-md-semibold">Workflow App</div>
               <div className="p-1.5">
                 <RiLayoutLeft2Line className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="system-md-semibold-uppercase flex h-10 shrink-0 items-center border-b-2 border-components-tab-active text-text-primary">RUN ONCE</div>
-              <div className="system-md-semibold-uppercase flex h-10 grow items-center border-b-2 border-transparent text-text-tertiary">RUN BATCH</div>
+              <div className="flex h-10 shrink-0 items-center border-b-2 border-components-tab-active text-text-primary system-md-semibold-uppercase">RUN ONCE</div>
+              <div className="flex h-10 grow items-center border-b-2 border-transparent text-text-tertiary system-md-semibold-uppercase">RUN BATCH</div>
             </div>
           </div>
           <div className="grow bg-components-panel-bg">
@@ -293,7 +293,7 @@ const CustomWebAppBrand = () => {
               <div className="mb-1 py-2">
                 <div className="h-2 w-20 rounded-sm bg-text-quaternary opacity-20"></div>
               </div>
-              <div className="h-16 w-full rounded-lg bg-components-input-bg-normal "></div>
+              <div className="h-16 w-full rounded-lg bg-components-input-bg-normal"></div>
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <Button size="small">
@@ -308,7 +308,7 @@ const CustomWebAppBrand = () => {
           <div className="flex h-12 shrink-0 items-center gap-1.5 bg-components-panel-bg p-4 pt-3">
             {!webappBrandRemoved && (
               <>
-                <div className="system-2xs-medium-uppercase text-text-tertiary">POWERED BY</div>
+                <div className="text-text-tertiary system-2xs-medium-uppercase">POWERED BY</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                     ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
