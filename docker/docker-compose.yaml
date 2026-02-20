@@ -874,7 +874,7 @@ services:
                -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-0}'
                -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-0}'
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - dify-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
@@ -929,7 +929,7 @@ services:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
       # Mount the redis data directory to the container.
-      - ./volumes/redis/data:/data
+      - dify-redis-data:/data
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
@@ -1621,5 +1621,7 @@ networks:
     internal: true
 
 volumes:
+  dify-postgres-data:
+  dify-redis-data:
   oradata:
   dify_es01_data:
