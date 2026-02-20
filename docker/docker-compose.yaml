@@ -547,6 +547,8 @@ x-shared-env: &shared-api-worker-env
   OPENSEARCH_MEMLOCK_HARD: ${OPENSEARCH_MEMLOCK_HARD:--1}
   OPENSEARCH_NOFILE_SOFT: ${OPENSEARCH_NOFILE_SOFT:-65536}
   OPENSEARCH_NOFILE_HARD: ${OPENSEARCH_NOFILE_HARD:-65536}
+  QDRANT_NOFILE_SOFT: ${QDRANT_NOFILE_SOFT:-524288}
+  QDRANT_NOFILE_HARD: ${QDRANT_NOFILE_HARD:-524288}
   NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
   NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
   NGINX_PORT: ${NGINX_PORT:-80}
@@ -1221,6 +1223,10 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT:-524288}
+        hard: ${QDRANT_NOFILE_HARD:-524288}
 
   # The Couchbase vector store.
   couchbase-server:
