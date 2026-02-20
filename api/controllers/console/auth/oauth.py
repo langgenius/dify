@@ -8,7 +8,7 @@ from werkzeug.exceptions import Unauthorized
 from configs import dify_config
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo

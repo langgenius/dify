@@ -15,7 +15,7 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
     """
     from sqlalchemy import select
 
-    from extensions.ext_database import db
+    from extensions.ext_database import SessionLocal, db
     from models.provider import ProviderCredential, ProviderModelCredential
     from models.tools import BuiltinToolProvider
 

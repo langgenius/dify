@@ -8,7 +8,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.schema import get_or_create_model
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
 from models.enums import AppTriggerStatus

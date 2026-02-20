@@ -6,7 +6,7 @@ from sqlalchemy import select
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.conversation_variable_fields import (
     conversation_variable_fields,
     paginated_conversation_variable_fields,

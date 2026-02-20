@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 import time
@@ -42,7 +43,7 @@ from core.workflow.variable_loader import load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now

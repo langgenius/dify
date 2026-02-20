@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 import re
@@ -51,7 +52,7 @@ from core.workflow.repositories.workflow_node_execution_repository import OrderC
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.dataset import (  # type: ignore

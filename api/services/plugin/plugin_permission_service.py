@@ -1,5 +1,5 @@
 
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.account import TenantPluginPermission
 
 

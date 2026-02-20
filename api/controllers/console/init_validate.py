@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.model import DifySetup
 from services.account_service import TenantService
 

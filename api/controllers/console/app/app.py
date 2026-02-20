@@ -26,7 +26,7 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from core.workflow.file import helpers as file_helpers
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType

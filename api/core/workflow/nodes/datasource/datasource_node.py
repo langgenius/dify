@@ -25,7 +25,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
 from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from factories import file_factory
 from models.model import UploadFile
 from models.tools import ToolFile

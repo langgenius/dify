@@ -9,7 +9,7 @@ import logging
 
 from sqlalchemy import update
 
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.enums import AppTriggerStatus
 from models.trigger import AppTrigger
 

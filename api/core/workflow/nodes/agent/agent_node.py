@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 from __future__ import annotations
 
 import json
@@ -43,7 +44,7 @@ from core.workflow.nodes.agent.entities import AgentNodeData, AgentOldVersionMod
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
 from models import ToolFile

@@ -11,7 +11,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import DatasetPermissionEnum

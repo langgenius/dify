@@ -67,7 +67,7 @@ from core.workflow.repositories.rag_retrieval_protocol import (
     SourceChildChunk,
     SourceMetadata,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile

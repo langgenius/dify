@@ -22,7 +22,7 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.dataset import (
     ChildChunk,
     Dataset,

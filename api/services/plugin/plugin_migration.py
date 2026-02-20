@@ -19,7 +19,7 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolProviderType
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.account import Tenant
 from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID

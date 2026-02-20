@@ -15,7 +15,7 @@ from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.data_source_fields import (
     integrate_fields,
     integrate_icon_fields,

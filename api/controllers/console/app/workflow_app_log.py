@@ -9,7 +9,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.workflow.enums import WorkflowExecutionStatus
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.workflow_app_log_fields import (
     build_workflow_app_log_pagination_model,
     build_workflow_archived_log_pagination_model,

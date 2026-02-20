@@ -4,7 +4,7 @@ from typing import ParamSpec, TypeVar
 
 from werkzeug.exceptions import Forbidden
 
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.login import current_account_with_tenant
 from models.account import TenantPluginPermission
 

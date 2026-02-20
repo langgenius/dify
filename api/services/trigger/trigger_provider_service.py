@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 import time as _time
@@ -27,7 +28,7 @@ from core.trigger.utils.encryption import (
     delete_cache_for_subscription,
 )
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
 from models.trigger import (

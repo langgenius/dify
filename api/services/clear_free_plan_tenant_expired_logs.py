@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import datetime
 import json
 import logging
@@ -11,7 +12,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import (

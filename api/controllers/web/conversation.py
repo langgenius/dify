@@ -9,7 +9,7 @@ from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
     ResultResponse,

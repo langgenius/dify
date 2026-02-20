@@ -36,7 +36,7 @@ from controllers.console.wraps import (
     only_edition_cloud,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.member_fields import Account as AccountResponse
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone

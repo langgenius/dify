@@ -4,7 +4,7 @@ from flask_restx._http import HTTPStatus
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset

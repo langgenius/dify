@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import contextvars
 import json
 import logging
@@ -16,7 +17,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerat
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom

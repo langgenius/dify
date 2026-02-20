@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 from collections.abc import Sequence
 from typing import cast
 
@@ -17,7 +18,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.file.models import File
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType

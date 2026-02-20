@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import logging
 from typing import Any, Literal
 
@@ -29,7 +30,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.graph_engine.manager import GraphEngineManager
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
 from libs.helper import OptionalTimestampField, TimestampField

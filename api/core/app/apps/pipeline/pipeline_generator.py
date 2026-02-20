@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import contextvars
 import datetime
 import json
@@ -39,7 +40,7 @@ from core.workflow.repositories.draft_variable_repository import DraftVariableSa
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -113,7 +114,7 @@ class PipelineGenerator(BaseAppGenerator):
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # Add null check for dataset
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with SessionLocal.begin() as session:
             dataset = pipeline.retrieve_dataset(session)
             if not dataset:
                 raise ValueError("Pipeline dataset is required")
@@ -200,7 +201,7 @@ class PipelineGenerator(BaseAppGenerator):
             else:
                 workflow_triggered_from = WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN
             # Create workflow node execution repository
-            session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+            session_factory = SessionLocal
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
                 user=user,
@@ -402,7 +403,7 @@ class PipelineGenerator(BaseAppGenerator):
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
         # Create workflow node execution repository
-        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        session_factory = SessionLocal
 
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
@@ -497,7 +498,7 @@ class PipelineGenerator(BaseAppGenerator):
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         # Create workflow node execution repository
-        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        session_factory = SessionLocal
 
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
@@ -556,7 +557,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         with preserve_flask_contexts(flask_app, context_vars=context):
             try:
-                with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                with SessionLocal.begin() as session:
                     workflow = session.scalar(
                         select(Workflow).where(
                             Workflow.tenant_id == application_generate_entity.app_config.tenant_id,

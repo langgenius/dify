@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 from collections.abc import Sequence
@@ -31,7 +32,7 @@ from core.trigger.debug.event_selectors import (
 from core.workflow.enums import NodeType
 from core.workflow.file.models import File
 from core.workflow.graph_engine.manager import GraphEngineManager
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields

@@ -4,7 +4,7 @@ from sqlalchemy import update
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models import TenantCreditPool
 
 logger = logging.getLogger(__name__)

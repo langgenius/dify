@@ -10,7 +10,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.rag_pipeline_fields import (
     leaked_dependency_fields,
     pipeline_import_check_dependencies_fields,

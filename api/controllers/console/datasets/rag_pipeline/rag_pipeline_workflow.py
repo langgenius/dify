@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 from typing import Any, Literal, cast
@@ -33,7 +34,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from factories import variable_factory
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty

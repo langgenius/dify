@@ -7,6 +7,7 @@ from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
 from models.engine import db
+from extensions.ext_database import SessionLocal
 
 logger = logging.getLogger(__name__)
 

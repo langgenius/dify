@@ -28,7 +28,7 @@ from core.workflow.file import helpers as file_helpers
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now

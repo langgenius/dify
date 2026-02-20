@@ -8,7 +8,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.app_fields import (
     app_import_check_dependencies_fields,
     app_import_fields,

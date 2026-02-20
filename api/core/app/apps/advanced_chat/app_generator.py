@@ -692,7 +692,7 @@ _T = TypeVar("_T", bound=Base)
 
 
 def _refresh_model(session, model: _T) -> _T:
-    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        detach_model = session.get(type(model), model.id)
+    with SessionLocal.begin() as db_session:
+        detach_model = db_session.get(type(model), model.id)
         assert detach_model is not None
         return detach_model

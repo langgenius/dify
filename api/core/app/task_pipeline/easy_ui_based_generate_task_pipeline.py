@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import logging
 import time
 from collections.abc import Generator
@@ -59,7 +60,7 @@ from core.tools.signature import sign_tool_file
 from core.workflow.file import helpers as file_helpers
 from core.workflow.file.enums import FileTransferMethod
 from events.message_event import message_was_created
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 

@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import logging
 import time
 from collections.abc import Mapping, Sequence
@@ -34,7 +35,7 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from models import Workflow

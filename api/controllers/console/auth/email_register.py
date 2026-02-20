@@ -13,7 +13,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models import Account
