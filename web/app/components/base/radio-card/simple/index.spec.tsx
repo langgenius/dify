@@ -78,7 +78,17 @@ describe('RadioCard', () => {
   })
 
   it('applies active class when isChosen is true', () => {
-    const { container } = render(
+    const { container: inactiveContainer } = render(
+      <RadioCard
+        title="Inactive"
+        description="Desc"
+        isChosen={false}
+        onChosen={vi.fn()}
+      />,
+    )
+    const inactiveClassName = (inactiveContainer.firstChild as HTMLElement).className
+
+    const { container: activeContainer } = render(
       <RadioCard
         title="Active"
         description="Desc"
@@ -87,8 +97,12 @@ describe('RadioCard', () => {
       />,
     )
 
-    const root = container.firstChild as HTMLElement
-    expect(root.className).not.toBe('')
+    const activeRoot = activeContainer.firstChild as HTMLElement
+    expect(activeRoot.className).not.toBe(inactiveClassName)
+    // Since it uses CSS modules, we expect the active class to be appended or changed
+    // In index.tsx it's cn(s.item, isChosen && s.active)
+    expect(activeRoot.className.length).toBeGreaterThan(inactiveClassName.length)
+    expect(activeRoot.className).toContain(inactiveClassName)
   })
 
   it('does not apply active styling logic when isChosen is false', () => {
@@ -103,6 +117,9 @@ describe('RadioCard', () => {
 
     const root = container.firstChild as HTMLElement
     expect(root).toBeTruthy()
+    // It should have some classes but not the active one
+    expect(root.className).not.toBe('')
+    expect(root.className).not.toContain('active') // CSS modules usually append _active
   })
 
   it('memo export renders correctly', () => {

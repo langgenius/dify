@@ -94,9 +94,12 @@ describe('RadioCard', () => {
     const root = container.firstChild as HTMLElement
     expect(root).toBeTruthy()
     expect(root.className).toContain('my-root-class')
+    expect(root.className).toContain('border-[1.5px]')
+    expect(root.className).toContain('bg-components-option-card-option-selected-bg')
 
     const chosenWrap = container.querySelector('.mt-2 .my-config-wrap')
     expect(chosenWrap).toBeTruthy()
+    expect(chosenWrap?.textContent).toBe('cfg')
   })
 
   it('does not render radio when noRadio true and still allows clicking on whole card', async () => {
