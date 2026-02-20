@@ -24,9 +24,15 @@ vi.mock('react-i18next', async () => {
   })
 })
 
+const mockNotify = vi.hoisted(() => vi.fn())
+const mockUpdateModelList = vi.hoisted(() => vi.fn())
+const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
+
+let mockIsCurrentWorkspaceManager = true
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
   }),
 }))
 
@@ -38,7 +44,7 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/app/components/base/toast', () => ({
   useToastContext: () => ({
-    notify: vi.fn(),
+    notify: mockNotify,
   }),
 }))
 
@@ -50,11 +56,11 @@ vi.mock('../hooks', () => ({
     defaultModel || { model: '', provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } } },
     vi.fn(),
   ],
-  useUpdateModelList: () => vi.fn(),
+  useUpdateModelList: () => mockUpdateModelList,
 }))
 
 vi.mock('@/service/common', () => ({
-  updateDefaultModel: vi.fn(() => Promise.resolve({ result: 'success' })),
+  updateDefaultModel: mockUpdateDefaultModel,
 }))
 
 vi.mock('../model-selector', () => ({
@@ -85,6 +91,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsCurrentWorkspaceManager = true
   })
 
   it('should render settings button', () => {
@@ -115,6 +122,39 @@ describe('SystemModel', () => {
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('should save selected models and show success feedback', async () => {
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    })
+
+    const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
+    selectorButtons.forEach(button => fireEvent.click(button))
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Modified successfully',
+      })
+      expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
+    })
+  })
+
+  it('should disable save when user is not workspace manager', async () => {
+    mockIsCurrentWorkspaceManager = false
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
     })
   })
 })

@@ -24,11 +24,11 @@ vi.mock('@/app/components/base/loading', () => ({
 }))
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  default: ({ plugins }: { plugins: { plugin_id: string, name: string }[] }) => (
+  default: ({ plugins, cardRender }: { plugins: { plugin_id: string, name: string, type?: string }[], cardRender: (plugin: { plugin_id: string, name: string, type?: string }) => React.ReactNode }) => (
     <div data-testid="plugin-list">
       {plugins.map(p => (
         <div key={p.plugin_id} data-testid="plugin-item">
-          {p.name}
+          {cardRender(p)}
         </div>
       ))}
     </div>
@@ -36,7 +36,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
 }))
 
 vi.mock('@/app/components/plugins/provider-card', () => ({
-  default: () => <div data-testid="provider-card" />,
+  default: ({ payload }: { payload: { name: string } }) => <div>{payload.name}</div>,
 }))
 
 vi.mock('./hooks', () => ({
@@ -85,6 +85,21 @@ describe('InstallFromMarketplace', () => {
     render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
     // Expanded by default
     expect(screen.getByText('Plugin 1')).toBeInTheDocument()
+  })
+
+  it('should hide bundle plugins from the list', () => {
+    (useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+      plugins: [
+        { plugin_id: '1', name: 'Plugin 1', type: 'plugin' },
+        { plugin_id: '2', name: 'Bundle 1', type: 'bundle' },
+      ],
+      isLoading: false,
+    })
+
+    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+
+    expect(screen.getByText('Plugin 1')).toBeInTheDocument()
+    expect(screen.queryByText('Bundle 1')).not.toBeInTheDocument()
   })
 
   it('should render discovery link', () => {
