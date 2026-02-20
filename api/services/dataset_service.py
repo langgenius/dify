@@ -2507,118 +2507,132 @@ class DocumentService:
             raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
-        # save process rule
-        if document_data.process_rule:
-            process_rule = document_data.process_rule
-            if process_rule.mode in {"custom", "hierarchical"}:
-                dataset_process_rule = DatasetProcessRule(
-                    dataset_id=dataset.id,
-                    mode=process_rule.mode,
-                    rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
-                    created_by=account.id,
-                )
-            elif process_rule.mode == "automatic":
-                dataset_process_rule = DatasetProcessRule(
-                    dataset_id=dataset.id,
-                    mode=process_rule.mode,
-                    rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
-                    created_by=account.id,
-                )
-            if dataset_process_rule is not None:
-                db.session.add(dataset_process_rule)
-                db.session.commit()
-                document.dataset_process_rule_id = dataset_process_rule.id
-        # update document data source
-        if document_data.data_source:
-            file_name = ""
-            data_source_info: dict[str, str | bool] = {}
-            if document_data.data_source.info_list.data_source_type == "upload_file":
-                if not document_data.data_source.info_list.file_info_list:
-                    raise ValueError("No file info list found.")
-                upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
-                for file_id in upload_file_list:
-                    file = (
-                        db.session.query(UploadFile)
-                        .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                        .first()
-                    )
 
-                    # raise error if file not found
-                    if not file:
-                        raise FileNotExistsError()
+        lock_name = f"update_document_lock_document_id_{document.id}"
+        document_id = document.id  # capture for error message (document is confirmed non-None here)
+        try:
+            with redis_client.lock(lock_name, timeout=600):
+                # double-check: ensure we have the latest state
+                document = DocumentService.get_document(dataset.id, document_data.original_document_id)
+                if document is None:
+                    raise NotFound("Document not found")
+                if document.display_status != "available":
+                    raise ValueError("Document is not available")
 
-                    file_name = file.name
-                    data_source_info = {
-                        "upload_file_id": file_id,
-                    }
-            elif document_data.data_source.info_list.data_source_type == "notion_import":
-                if not document_data.data_source.info_list.notion_info_list:
-                    raise ValueError("No notion info list found.")
-                notion_info_list = document_data.data_source.info_list.notion_info_list
-                for notion_info in notion_info_list:
-                    workspace_id = notion_info.workspace_id
-                    data_source_binding = (
-                        db.session.query(DataSourceOauthBinding)
-                        .where(
-                            sa.and_(
-                                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                                DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
-                                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                            )
+                # save process rule
+                if document_data.process_rule:
+                    process_rule = document_data.process_rule
+                    if process_rule.mode in {"custom", "hierarchical"}:
+                        dataset_process_rule = DatasetProcessRule(
+                            dataset_id=dataset.id,
+                            mode=process_rule.mode,
+                            rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
+                            created_by=account.id,
                         )
-                        .first()
-                    )
-                    if not data_source_binding:
-                        raise ValueError("Data source binding not found.")
-                    for page in notion_info.pages:
-                        data_source_info = {
-                            "credential_id": notion_info.credential_id,
-                            "notion_workspace_id": workspace_id,
-                            "notion_page_id": page.page_id,
-                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
-                            "type": page.type,
-                        }
-            elif document_data.data_source.info_list.data_source_type == "website_crawl":
-                website_info = document_data.data_source.info_list.website_info_list
-                if website_info:
-                    urls = website_info.urls
-                    for url in urls:
-                        data_source_info = {
-                            "url": url,
-                            "provider": website_info.provider,
-                            "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content,
-                            "mode": "crawl",
-                        }
-            document.data_source_type = document_data.data_source.info_list.data_source_type
-            document.data_source_info = json.dumps(data_source_info)
-            document.name = file_name
+                    elif process_rule.mode == "automatic":
+                        dataset_process_rule = DatasetProcessRule(
+                            dataset_id=dataset.id,
+                            mode=process_rule.mode,
+                            rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
+                            created_by=account.id,
+                        )
+                    if dataset_process_rule is not None:
+                        db.session.add(dataset_process_rule)
+                        db.session.commit()
+                        document.dataset_process_rule_id = dataset_process_rule.id
+                # update document data source
+                if document_data.data_source:
+                    file_name = ""
+                    data_source_info: dict[str, str | bool] = {}
+                    if document_data.data_source.info_list.data_source_type == "upload_file":
+                        if not document_data.data_source.info_list.file_info_list:
+                            raise ValueError("No file info list found.")
+                        upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
+                        for file_id in upload_file_list:
+                            file = (
+                                db.session.query(UploadFile)
+                                .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
+                                .first()
+                            )
 
-        # update document name
-        if document_data.name:
-            document.name = document_data.name
-        # update document to be waiting
-        document.indexing_status = "waiting"
-        document.completed_at = None
-        document.processing_started_at = None
-        document.parsing_completed_at = None
-        document.cleaning_completed_at = None
-        document.splitting_completed_at = None
-        document.updated_at = naive_utc_now()
-        document.created_from = created_from
-        document.doc_form = document_data.doc_form
-        db.session.add(document)
-        db.session.commit()
-        # update document segment
+                            # raise error if file not found
+                            if not file:
+                                raise FileNotExistsError()
 
-        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
-            {DocumentSegment.status: "re_segment"}
-        )
-        db.session.commit()
-        # trigger async task
-        document_indexing_update_task.delay(document.dataset_id, document.id)
-        return document
+                            file_name = file.name
+                            data_source_info = {
+                                "upload_file_id": file_id,
+                            }
+                    elif document_data.data_source.info_list.data_source_type == "notion_import":
+                        if not document_data.data_source.info_list.notion_info_list:
+                            raise ValueError("No notion info list found.")
+                        notion_info_list = document_data.data_source.info_list.notion_info_list
+                        for notion_info in notion_info_list:
+                            workspace_id = notion_info.workspace_id
+                            data_source_binding = (
+                                db.session.query(DataSourceOauthBinding)
+                                .where(
+                                    sa.and_(
+                                        DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                                        DataSourceOauthBinding.provider == "notion",
+                                        DataSourceOauthBinding.disabled == False,
+                                        DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                                    )
+                                )
+                                .first()
+                            )
+                            if not data_source_binding:
+                                raise ValueError("Data source binding not found.")
+                            for page in notion_info.pages:
+                                data_source_info = {
+                                    "credential_id": notion_info.credential_id,
+                                    "notion_workspace_id": workspace_id,
+                                    "notion_page_id": page.page_id,
+                                    "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
+                                    "type": page.type,
+                                }
+                    elif document_data.data_source.info_list.data_source_type == "website_crawl":
+                        website_info = document_data.data_source.info_list.website_info_list
+                        if website_info:
+                            urls = website_info.urls
+                            for url in urls:
+                                data_source_info = {
+                                    "url": url,
+                                    "provider": website_info.provider,
+                                    "job_id": website_info.job_id,
+                                    "only_main_content": website_info.only_main_content,
+                                    "mode": "crawl",
+                                }
+                    document.data_source_type = document_data.data_source.info_list.data_source_type
+                    document.data_source_info = json.dumps(data_source_info)
+                    document.name = file_name
+
+                # update document name
+                if document_data.name:
+                    document.name = document_data.name
+                # update document to be waiting
+                document.indexing_status = "waiting"
+                document.completed_at = None
+                document.processing_started_at = None
+                document.parsing_completed_at = None
+                document.cleaning_completed_at = None
+                document.splitting_completed_at = None
+                document.updated_at = naive_utc_now()
+                document.created_from = created_from
+                document.doc_form = document_data.doc_form
+                db.session.add(document)
+                db.session.commit()
+                # update document segment
+
+                db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
+                    {DocumentSegment.status: "re_segment"}
+                )
+                db.session.commit()
+                # trigger async task
+                document_indexing_update_task.delay(document.dataset_id, document.id)
+                return document
+        except LockNotOwnedError:
+            raise ValueError(f"Unable to acquire lock for document {document_id}. Please try again later.")
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
