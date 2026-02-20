@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
+from core.app.entities.agent_media import AgentMedia
 from core.entities.provider_configuration import ProviderModelBundle
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.workflow.file import File, FileUploadConfig
@@ -183,17 +184,17 @@ class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerat
     pass
 
 
-class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
-    """
-    Completion Application Generate Entity.
-    """
-
-    pass
-
-
 class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
     """
     Agent Chat Application Generate Entity.
+    """
+
+    media: list[AgentMedia] | None = None
+
+
+class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
+    """
+    Completion Application Generate Entity.
     """
 
     pass

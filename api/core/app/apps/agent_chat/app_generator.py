@@ -19,6 +19,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.agent_media import AgentMedia
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -76,12 +77,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     ) -> Union[Mapping, Generator[Mapping | str, None, None]]:
         """
         Generate App response.
-
-        :param app_model: App
-        :param user: account or end user
-        :param args: request args
-        :param invoke_from: invoke from source
-        :param streaming: is stream
         """
         if not streaming:
             raise ValueError("Agent Chat App does not support blocking mode")
@@ -98,39 +93,32 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
 
         extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
 
-        # get conversation
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user
             )
-        # get app model config
+
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
 
-        # validate override model config
         override_model_config_dict = None
         if args.get("model_config"):
             if invoke_from != InvokeFrom.DEBUGGER:
                 raise ValueError("Only in App debug mode can override model config")
 
-            # validate config
             override_model_config_dict = AgentChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id,
                 config=args["model_config"],
             )
-
-            # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
-        # parse files
-        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
-        # for better separation of concerns.
-        #
-        # For implementation reference, see the `_parse_file` function and
-        # `DraftWorkflowNodeRunApi` class which handle this properly.
+        # -------------------------
+        # File parsing (existing)
+        # -------------------------
         files = args.get("files") or []
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
+
         if file_extra_config:
             file_objs = file_factory.build_from_mappings(
                 mappings=files,
@@ -140,7 +128,27 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         else:
             file_objs = []
 
-        # convert to app config
+        # -------------------------
+        # Media extraction (NEW)
+        # -------------------------
+        media: list[AgentMedia] = []
+
+        for f in file_objs:
+            if f.content_type and (f.content_type.startswith("audio/") or f.content_type.startswith("video/")):
+                media.append(
+                    AgentMedia(
+                        file_id=f.id,
+                        media_type=f.content_type,
+                        filename=f.filename,
+                        content_type=f.content_type,
+                        size=f.size,
+                        duration=getattr(f, "duration", None),
+                    )
+                )
+
+        # -------------------------
+        # App config & tracing
+        # -------------------------
         app_config = AgentChatAppConfigManager.get_app_config(
             app_model=app_model,
             app_model_config=app_model_config,
@@ -148,10 +156,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             override_config_dict=override_model_config_dict,
         )
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+        trace_manager = TraceQueueManager(
+            app_model.id,
+            user.id if isinstance(user, Account) else user.session_id,
+        )
 
-        # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
@@ -159,10 +168,13 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
             inputs=self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                user_inputs=inputs,
+                variables=app_config.variables,
+                tenant_id=app_model.tenant_id,
             ),
             query=query,
             files=list(file_objs),
+            media=media or None,
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
             stream=streaming,
@@ -172,10 +184,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
         )
 
-        # init generate records
         (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
 
-        # init queue manager
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,
@@ -185,7 +195,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             message_id=message.id,
         )
 
-        # new thread with request context and contextvars
         context = contextvars.copy_context()
 
         worker_thread = threading.Thread(
@@ -202,7 +211,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
 
         worker_thread.start()
 
-        # return response or stream generator
         response = self._handle_response(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -211,6 +219,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             user=user,
             stream=streaming,
         )
+
         return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def _generate_worker(
@@ -222,23 +231,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
     ):
-        """
-        Generate worker in a new thread.
-        :param flask_app: Flask app
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param conversation_id: conversation ID
-        :param message_id: message ID
-        :return:
-        """
-
         with preserve_flask_contexts(flask_app, context_vars=context):
             try:
-                # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
 
-                # chatbot app
                 runner = AgentChatAppRunner()
                 runner.run(
                     application_generate_entity=application_generate_entity,
@@ -250,7 +247,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
-                    InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
+                    InvokeAuthorizationError("Incorrect API key provided"),
+                    PublishFrom.APPLICATION_MANAGER,
                 )
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
