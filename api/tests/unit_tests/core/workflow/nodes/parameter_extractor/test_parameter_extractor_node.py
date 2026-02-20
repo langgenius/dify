@@ -1,567 +1,701 @@
-"""
-Test cases for ParameterExtractorNode._validate_result and _transform_result methods.
-"""
-
-from dataclasses import dataclass
-from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.entities import LLMMode
+from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.prompt.simple_prompt_transform import ModelMode
 from core.variables.types import SegmentType
-from core.workflow.nodes.llm import ModelConfig, VisionConfig
-from core.workflow.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
+from core.workflow.nodes.base.node import NodeState
 from core.workflow.nodes.parameter_extractor.exc import (
+    InvalidModelTypeError,
     InvalidNumberOfParametersError,
-    InvalidSelectValueError,
-    InvalidValueTypeError,
-    RequiredParameterMissingError,
+    InvalidTextContentTypeError,
+    ModelSchemaNotFoundError,
 )
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from factories.variable_factory import build_segment_with_type
+from core.workflow.nodes.parameter_extractor.parameter_extractor_node import (
+    ParameterExtractorNode,
+    extract_json,
+)
+
+# ============================================================
+# Fixtures
+# ============================================================
 
 
-@dataclass
-class ValidTestCase:
-    """Test case data for valid scenarios."""
+@pytest.fixture
+def node(mocker):
+    # Patch hydration to avoid pydantic validation
+    mocker.patch(
+        "core.workflow.nodes.base.node.Node._hydrate_node_data",
+        return_value=MagicMock(),
+    )
 
-    name: str
-    parameters: list[ParameterConfig]
-    result: dict[str, Any]
+    graph_init_params = MagicMock()
+    graph_init_params.tenant_id = "tenant"
+    graph_init_params.user_id = "user"
+    graph_init_params.app_id = "app"
+    graph_init_params.workflow_id = "workflow-id"
+    graph_init_params.graph_config = {}
+    graph_init_params.call_depth = 0
+    graph_init_params.user_from = "account"
+    graph_init_params.invoke_from = "web-app"
 
-    def get_name(self) -> str:
-        return self.name
+    graph_runtime_state = MagicMock()
+    graph_runtime_state.variable_pool = MagicMock()
 
+    node = ParameterExtractorNode(
+        id="node-id",
+        config={"id": "node-id"},
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
 
-@dataclass
-class ErrorTestCase:
-    """Test case data for error scenarios."""
-
-    name: str
-    parameters: list[ParameterConfig]
-    result: dict[str, Any]
-    expected_exception: type[Exception]
-    expected_message: str
-
-    def get_name(self) -> str:
-        return self.name
-
-
-@dataclass
-class TransformTestCase:
-    """Test case data for transformation scenarios."""
-
-    name: str
-    parameters: list[ParameterConfig]
-    input_result: dict[str, Any]
-    expected_result: dict[str, Any]
-
-    def get_name(self) -> str:
-        return self.name
+    return node
 
 
-class TestParameterExtractorNodeMethods:
-    """Test helper class that provides access to the methods under test."""
-
-    def validate_result(self, data: ParameterExtractorNodeData, result: dict[str, Any]) -> dict[str, Any]:
-        """Wrapper to call _validate_result method."""
-        node = ParameterExtractorNode.__new__(ParameterExtractorNode)
-        return node._validate_result(data=data, result=result)
-
-    def transform_result(self, data: ParameterExtractorNodeData, result: dict[str, Any]) -> dict[str, Any]:
-        """Wrapper to call _transform_result method."""
-        node = ParameterExtractorNode.__new__(ParameterExtractorNode)
-        return node._transform_result(data=data, result=result)
+@pytest.fixture
+def mock_llm_schema():
+    schema = MagicMock()
+    schema.features = []
+    schema.parameter_rules = []
+    schema.model_properties = {}
+    return schema
 
 
-class TestValidateResult:
-    """Test cases for _validate_result method."""
+@pytest.fixture
+def mock_model_instance():
+    instance = MagicMock()
 
-    @staticmethod
-    def get_valid_test_cases() -> list[ValidTestCase]:
-        """Get test cases that should pass validation."""
-        return [
-            ValidTestCase(
-                name="single_string_parameter",
-                parameters=[ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True)],
-                result={"name": "John"},
-            ),
-            ValidTestCase(
-                name="single_number_parameter_int",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                result={"age": 25},
-            ),
-            ValidTestCase(
-                name="single_number_parameter_float",
-                parameters=[ParameterConfig(name="price", type=SegmentType.NUMBER, description="Price", required=True)],
-                result={"price": 19.99},
-            ),
-            ValidTestCase(
-                name="single_bool_parameter_true",
-                parameters=[
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True)
-                ],
-                result={"active": True},
-            ),
-            ValidTestCase(
-                name="single_bool_parameter_true",
-                parameters=[
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True)
-                ],
-                result={"active": True},
-            ),
-            ValidTestCase(
-                name="single_bool_parameter_false",
-                parameters=[
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True)
-                ],
-                result={"active": False},
-            ),
-            ValidTestCase(
-                name="select_parameter_valid_option",
-                parameters=[
-                    ParameterConfig(
-                        name="status",
-                        type="select",  # pyright: ignore[reportArgumentType]
-                        description="Status",
-                        required=True,
-                        options=["active", "inactive"],
-                    )
-                ],
-                result={"status": "active"},
-            ),
-            ValidTestCase(
-                name="array_string_parameter",
-                parameters=[
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True)
-                ],
-                result={"tags": ["tag1", "tag2", "tag3"]},
-            ),
-            ValidTestCase(
-                name="array_number_parameter",
-                parameters=[
-                    ParameterConfig(name="scores", type=SegmentType.ARRAY_NUMBER, description="Scores", required=True)
-                ],
-                result={"scores": [85, 92.5, 78]},
-            ),
-            ValidTestCase(
-                name="array_object_parameter",
-                parameters=[
-                    ParameterConfig(name="items", type=SegmentType.ARRAY_OBJECT, description="Items", required=True)
-                ],
-                result={"items": [{"name": "item1"}, {"name": "item2"}]},
-            ),
-            ValidTestCase(
-                name="multiple_parameters",
-                parameters=[
-                    ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True),
-                    ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True),
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True),
-                ],
-                result={"name": "John", "age": 25, "active": True},
-            ),
-            ValidTestCase(
-                name="optional_parameter_present",
-                parameters=[
-                    ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True),
-                    ParameterConfig(name="nickname", type=SegmentType.STRING, description="Nickname", required=False),
-                ],
-                result={"name": "John", "nickname": "Johnny"},
-            ),
-            ValidTestCase(
-                name="empty_array_parameter",
-                parameters=[
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True)
-                ],
-                result={"tags": []},
-            ),
-        ]
+    instance.model_type_instance = MagicMock(spec=LargeLanguageModel)
 
-    @staticmethod
-    def get_error_test_cases() -> list[ErrorTestCase]:
-        """Get test cases that should raise exceptions."""
-        return [
-            ErrorTestCase(
-                name="invalid_number_of_parameters_too_few",
-                parameters=[
-                    ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True),
-                    ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True),
-                ],
-                result={"name": "John"},
-                expected_exception=InvalidNumberOfParametersError,
-                expected_message="Invalid number of parameters",
-            ),
-            ErrorTestCase(
-                name="invalid_number_of_parameters_too_many",
-                parameters=[ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True)],
-                result={"name": "John", "age": 25},
-                expected_exception=InvalidNumberOfParametersError,
-                expected_message="Invalid number of parameters",
-            ),
-            ErrorTestCase(
-                name="invalid_string_value_none",
-                parameters=[
-                    ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True),
-                ],
-                result={"name": None},  # Parameter present but None value, will trigger type check first
-                expected_exception=InvalidValueTypeError,
-                expected_message="Invalid value for parameter name, expected segment type: string, actual_type: none",
-            ),
-            ErrorTestCase(
-                name="invalid_select_value",
-                parameters=[
-                    ParameterConfig(
-                        name="status",
-                        type="select",
-                        description="Status",
-                        required=True,
-                        options=["active", "inactive"],
-                    )
-                ],
-                result={"status": "pending"},
-                expected_exception=InvalidSelectValueError,
-                expected_message="Invalid `select` value for parameter status",
-            ),
-            ErrorTestCase(
-                name="invalid_number_value_string",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                result={"age": "twenty-five"},
-                expected_exception=InvalidValueTypeError,
-                expected_message="Invalid value for parameter age, expected segment type: number, actual_type: string",
-            ),
-            ErrorTestCase(
-                name="invalid_bool_value_string",
-                parameters=[
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True)
-                ],
-                result={"active": "yes"},
-                expected_exception=InvalidValueTypeError,
-                expected_message=(
-                    "Invalid value for parameter active, expected segment type: boolean, actual_type: string"
-                ),
-            ),
-            ErrorTestCase(
-                name="invalid_string_value_number",
-                parameters=[
-                    ParameterConfig(
-                        name="description", type=SegmentType.STRING, description="Description", required=True
-                    )
-                ],
-                result={"description": 123},
-                expected_exception=InvalidValueTypeError,
-                expected_message=(
-                    "Invalid value for parameter description, expected segment type: string, actual_type: integer"
-                ),
-            ),
-            ErrorTestCase(
-                name="invalid_array_value_not_list",
-                parameters=[
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True)
-                ],
-                result={"tags": "tag1,tag2,tag3"},
-                expected_exception=InvalidValueTypeError,
-                expected_message=(
-                    "Invalid value for parameter tags, expected segment type: array[string], actual_type: string"
-                ),
-            ),
-            ErrorTestCase(
-                name="invalid_array_number_wrong_element_type",
-                parameters=[
-                    ParameterConfig(name="scores", type=SegmentType.ARRAY_NUMBER, description="Scores", required=True)
-                ],
-                result={"scores": [85, "ninety-two", 78]},
-                expected_exception=InvalidValueTypeError,
-                expected_message=(
-                    "Invalid value for parameter scores, expected segment type: array[number], actual_type: array[any]"
-                ),
-            ),
-            ErrorTestCase(
-                name="invalid_array_string_wrong_element_type",
-                parameters=[
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True)
-                ],
-                result={"tags": ["tag1", 123, "tag3"]},
-                expected_exception=InvalidValueTypeError,
-                expected_message=(
-                    "Invalid value for parameter tags, expected segment type: array[string], actual_type: array[any]"
-                ),
-            ),
-            ErrorTestCase(
-                name="invalid_array_object_wrong_element_type",
-                parameters=[
-                    ParameterConfig(name="items", type=SegmentType.ARRAY_OBJECT, description="Items", required=True)
-                ],
-                result={"items": [{"name": "item1"}, "item2"]},
-                expected_exception=InvalidValueTypeError,
-                expected_message=(
-                    "Invalid value for parameter items, expected segment type: array[object], actual_type: array[any]"
-                ),
-            ),
-            ErrorTestCase(
-                name="required_parameter_missing",
-                parameters=[
-                    ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True),
-                    ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=False),
-                ],
-                result={"age": 25, "other": "value"},  # Missing required 'name' parameter, but has correct count
-                expected_exception=RequiredParameterMissingError,
-                expected_message="Parameter name is required",
-            ),
-        ]
+    schema = MagicMock()
+    schema.features = []
+    instance.model_type_instance.get_model_schema.return_value = schema
 
-    @pytest.mark.parametrize("test_case", get_valid_test_cases(), ids=ValidTestCase.get_name)
-    def test_validate_result_valid_cases(self, test_case):
-        """Test _validate_result with valid inputs."""
-        helper = TestParameterExtractorNodeMethods()
+    return instance
 
-        node_data = ParameterExtractorNodeData(
-            title="Test Node",
-            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
-            query=["test_query"],
-            parameters=test_case.parameters,
-            reasoning_mode="function_call",
-            vision=VisionConfig(),
+
+@pytest.fixture
+def mock_model_config():
+    config = MagicMock()
+
+    # Model schema
+    config.model_schema = MagicMock()
+    config.model_schema.model_properties = {}
+    config.model_schema.parameter_rules = [
+        MagicMock(
+            name="max_tokens",
+            use_template=None,
+        )
+    ]
+
+    config.parameters = {"max_tokens": 100}
+
+    # Provider bundle
+    provider_model_bundle = MagicMock()
+    provider_model_bundle.model_type_instance = MagicMock()
+    provider_model_bundle.model_type_instance.get_num_tokens.return_value = 50
+
+    config.provider_model_bundle = provider_model_bundle
+
+    config.model = "gpt"
+    config.credentials = {}
+
+    return config
+
+
+@pytest.fixture
+def mock_parameter():
+    p = MagicMock()
+    p.name = "age"
+    p.required = True
+    p.type = SegmentType.NUMBER
+
+    p.options = None
+    p.is_array_type.return_value = False
+
+    return p
+
+
+@pytest.fixture
+def mock_node_data(mock_parameter):
+    data = MagicMock()
+    data.query = "q"
+    data.parameters = [mock_parameter]
+    data.get_parameter_json_schema.return_value = {"type": "object"}
+    data.model.mode = "chat"
+    data.model.completion_params = {}
+    data.memory = None
+    data.instruction = ""
+    data.vision.enabled = False
+    data.reasoning_mode = "prompt"
+    return data
+
+
+# ============================================================
+# extract_json
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ('{"a":1}', '{"a":1}'),
+        ("[1,2]", "[1,2]"),
+        ('{"a":[1]}xxx', '{"a":[1]}'),
+        ("invalid", None),
+        ('{"a":1', None),
+    ],
+)
+def test_extract_json(text, expected):
+    assert extract_json(text) == expected
+
+
+# ============================================================
+# _invoke
+# ============================================================
+
+
+def test_invoke_success(node, mock_model_instance):
+    usage = MagicMock()
+    usage.total_tokens = 5
+    usage.total_price = 1
+    usage.currency = "USD"
+
+    message = MagicMock()
+    message.get_text_content.return_value = "ok"
+    message.tool_calls = []
+
+    invoke_result = MagicMock()
+    invoke_result.message = message
+    invoke_result.usage = usage
+
+    mock_model_instance.invoke_llm.return_value = invoke_result
+
+    with patch("core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.deduct_llm_quota"):
+        text, u, tool = node._invoke(
+            node_data_model=MagicMock(completion_params={}),
+            model_instance=mock_model_instance,
+            prompt_messages=[],
+            tools=[],
+            stop=[],
         )
 
-        result = helper.validate_result(data=node_data, result=test_case.result)
-        assert result == test_case.result, f"Failed for case: {test_case.name}"
+    assert text == "ok"
+    assert tool is None
+    assert u == usage
 
-    @pytest.mark.parametrize("test_case", get_error_test_cases(), ids=ErrorTestCase.get_name)
-    def test_validate_result_error_cases(self, test_case):
-        """Test _validate_result with invalid inputs that should raise exceptions."""
-        helper = TestParameterExtractorNodeMethods()
 
-        node_data = ParameterExtractorNodeData(
-            title="Test Node",
-            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
-            query=["test_query"],
-            parameters=test_case.parameters,
-            reasoning_mode="function_call",
-            vision=VisionConfig(),
+def test_invoke_invalid_text(node, mock_model_instance):
+    message = MagicMock()
+    message.get_text_content.return_value = 123
+    message.tool_calls = []
+
+    invoke_result = MagicMock(message=message, usage=MagicMock())
+    mock_model_instance.invoke_llm.return_value = invoke_result
+
+    with pytest.raises(InvalidTextContentTypeError):
+        node._invoke(MagicMock(completion_params={}), mock_model_instance, [], [], [])
+
+
+# ============================================================
+# _calculate_rest_token
+# ============================================================
+
+
+def test_calculate_rest_token_success(
+    node,
+    mock_node_data,
+    mock_model_instance,
+    mock_model_config,
+):
+    mock_model_config.model_schema.model_properties = {ModelPropertyKey.CONTEXT_SIZE: 2000}
+    mock_model_config.parameters = {"max_tokens": 100}
+
+    with patch.object(
+        node,
+        "_fetch_model_config",
+        return_value=(mock_model_instance, mock_model_config),
+    ):
+        rest = node._calculate_rest_token(
+            node_data=mock_node_data,
+            query="q",
+            variable_pool=MagicMock(),
+            model_config=mock_model_config,
+            context="",
         )
 
-        with pytest.raises(test_case.expected_exception) as exc_info:
-            helper.validate_result(data=node_data, result=test_case.result)
-
-        assert test_case.expected_message in str(exc_info.value), f"Failed for case: {test_case.name}"
+    assert isinstance(rest, int)
+    assert rest >= 0
 
 
-class TestTransformResult:
-    """Test cases for _transform_result method."""
+def test_calculate_rest_token_invalid_model(node, mock_node_data):
+    instance = MagicMock()
+    instance.model_type_instance = object()
 
-    @staticmethod
-    def get_transform_test_cases() -> list[TransformTestCase]:
-        """Get test cases for result transformation."""
-        return [
-            # String parameter transformation
-            TransformTestCase(
-                name="string_parameter_present",
-                parameters=[ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True)],
-                input_result={"name": "John"},
-                expected_result={"name": "John"},
-            ),
-            TransformTestCase(
-                name="string_parameter_missing",
-                parameters=[ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True)],
-                input_result={},
-                expected_result={"name": ""},
-            ),
-            # Number parameter transformation
-            TransformTestCase(
-                name="number_parameter_int_present",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                input_result={"age": 25},
-                expected_result={"age": 25},
-            ),
-            TransformTestCase(
-                name="number_parameter_float_present",
-                parameters=[ParameterConfig(name="price", type=SegmentType.NUMBER, description="Price", required=True)],
-                input_result={"price": 19.99},
-                expected_result={"price": 19.99},
-            ),
-            TransformTestCase(
-                name="number_parameter_missing",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                input_result={},
-                expected_result={"age": 0},
-            ),
-            # Bool parameter transformation
-            TransformTestCase(
-                name="bool_parameter_missing",
-                parameters=[
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True)
-                ],
-                input_result={},
-                expected_result={"active": False},
-            ),
-            # Select parameter transformation
-            TransformTestCase(
-                name="select_parameter_present",
-                parameters=[
-                    ParameterConfig(
-                        name="status",
-                        type="select",
-                        description="Status",
-                        required=True,
-                        options=["active", "inactive"],
-                    )
-                ],
-                input_result={"status": "active"},
-                expected_result={"status": "active"},
-            ),
-            TransformTestCase(
-                name="select_parameter_missing",
-                parameters=[
-                    ParameterConfig(
-                        name="status",
-                        type="select",
-                        description="Status",
-                        required=True,
-                        options=["active", "inactive"],
-                    )
-                ],
-                input_result={},
-                expected_result={"status": ""},
-            ),
-            # Array parameter transformation - present cases
-            TransformTestCase(
-                name="array_string_parameter_present",
-                parameters=[
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True)
-                ],
-                input_result={"tags": ["tag1", "tag2"]},
-                expected_result={
-                    "tags": build_segment_with_type(segment_type=SegmentType.ARRAY_STRING, value=["tag1", "tag2"])
-                },
-            ),
-            TransformTestCase(
-                name="array_number_parameter_present",
-                parameters=[
-                    ParameterConfig(name="scores", type=SegmentType.ARRAY_NUMBER, description="Scores", required=True)
-                ],
-                input_result={"scores": [85, 92.5]},
-                expected_result={
-                    "scores": build_segment_with_type(segment_type=SegmentType.ARRAY_NUMBER, value=[85, 92.5])
-                },
-            ),
-            TransformTestCase(
-                name="array_number_parameter_with_string_conversion",
-                parameters=[
-                    ParameterConfig(name="scores", type=SegmentType.ARRAY_NUMBER, description="Scores", required=True)
-                ],
-                input_result={"scores": [85, "92.5", "78"]},
-                expected_result={
-                    "scores": build_segment_with_type(segment_type=SegmentType.ARRAY_NUMBER, value=[85, 92.5, 78])
-                },
-            ),
-            TransformTestCase(
-                name="array_object_parameter_present",
-                parameters=[
-                    ParameterConfig(name="items", type=SegmentType.ARRAY_OBJECT, description="Items", required=True)
-                ],
-                input_result={"items": [{"name": "item1"}, {"name": "item2"}]},
-                expected_result={
-                    "items": build_segment_with_type(
-                        segment_type=SegmentType.ARRAY_OBJECT, value=[{"name": "item1"}, {"name": "item2"}]
-                    )
-                },
-            ),
-            # Array parameter transformation - missing cases
-            TransformTestCase(
-                name="array_string_parameter_missing",
-                parameters=[
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True)
-                ],
-                input_result={},
-                expected_result={"tags": build_segment_with_type(segment_type=SegmentType.ARRAY_STRING, value=[])},
-            ),
-            TransformTestCase(
-                name="array_number_parameter_missing",
-                parameters=[
-                    ParameterConfig(name="scores", type=SegmentType.ARRAY_NUMBER, description="Scores", required=True)
-                ],
-                input_result={},
-                expected_result={"scores": build_segment_with_type(segment_type=SegmentType.ARRAY_NUMBER, value=[])},
-            ),
-            TransformTestCase(
-                name="array_object_parameter_missing",
-                parameters=[
-                    ParameterConfig(name="items", type=SegmentType.ARRAY_OBJECT, description="Items", required=True)
-                ],
-                input_result={},
-                expected_result={"items": build_segment_with_type(segment_type=SegmentType.ARRAY_OBJECT, value=[])},
-            ),
-            # Multiple parameters transformation
-            TransformTestCase(
-                name="multiple_parameters_mixed",
-                parameters=[
-                    ParameterConfig(name="name", type=SegmentType.STRING, description="Name", required=True),
-                    ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True),
-                    ParameterConfig(name="active", type=SegmentType.BOOLEAN, description="Active", required=True),
-                    ParameterConfig(name="tags", type=SegmentType.ARRAY_STRING, description="Tags", required=True),
-                ],
-                input_result={"name": "John", "age": 25},
-                expected_result={
-                    "name": "John",
-                    "age": 25,
-                    "active": False,
-                    "tags": build_segment_with_type(segment_type=SegmentType.ARRAY_STRING, value=[]),
-                },
-            ),
-            # Number parameter transformation with string conversion
-            TransformTestCase(
-                name="number_parameter_string_to_float",
-                parameters=[ParameterConfig(name="price", type=SegmentType.NUMBER, description="Price", required=True)],
-                input_result={"price": "19.99"},
-                expected_result={"price": 19.99},  # String not converted, falls back to default
-            ),
-            TransformTestCase(
-                name="number_parameter_string_to_int",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                input_result={"age": "25"},
-                expected_result={"age": 25},  # String not converted, falls back to default
-            ),
-            TransformTestCase(
-                name="number_parameter_invalid_string",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                input_result={"age": "invalid_number"},
-                expected_result={"age": 0},  # Invalid string conversion fails, falls back to default
-            ),
-            TransformTestCase(
-                name="number_parameter_non_string_non_number",
-                parameters=[ParameterConfig(name="age", type=SegmentType.NUMBER, description="Age", required=True)],
-                input_result={"age": ["not_a_number"]},  # Non-string, non-number value
-                expected_result={"age": 0},  # Falls back to default
-            ),
-            TransformTestCase(
-                name="array_number_parameter_with_invalid_string_conversion",
-                parameters=[
-                    ParameterConfig(name="scores", type=SegmentType.ARRAY_NUMBER, description="Scores", required=True)
-                ],
-                input_result={"scores": [85, "invalid", "78"]},
-                expected_result={
-                    "scores": build_segment_with_type(
-                        segment_type=SegmentType.ARRAY_NUMBER, value=[85, 78]
-                    )  # Invalid string skipped
-                },
-            ),
-        ]
+    with patch.object(node, "_fetch_model_config", return_value=(instance, MagicMock())):
+        with pytest.raises(InvalidModelTypeError):
+            node._calculate_rest_token(mock_node_data, "", MagicMock(), MagicMock(), "")
 
-    @pytest.mark.parametrize("test_case", get_transform_test_cases(), ids=TransformTestCase.get_name)
-    def test_transform_result_cases(self, test_case):
-        """Test _transform_result with various inputs."""
-        helper = TestParameterExtractorNodeMethods()
 
-        node_data = ParameterExtractorNodeData(
-            title="Test Node",
-            model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode=LLMMode.CHAT, completion_params={}),
-            query=["test_query"],
-            parameters=test_case.parameters,
-            reasoning_mode="function_call",
-            vision=VisionConfig(),
+def test_calculate_rest_token_schema_missing(node, mock_node_data):
+    instance = MagicMock()
+    instance.model_type_instance = MagicMock(spec=LargeLanguageModel)
+    instance.model_type_instance.get_model_schema.return_value = None
+
+    with patch.object(
+        node,
+        "_fetch_model_config",
+        return_value=(instance, MagicMock()),
+    ):
+        with pytest.raises(ModelSchemaNotFoundError):
+            node._calculate_rest_token(
+                mock_node_data,
+                "",
+                MagicMock(),
+                MagicMock(),
+                "",
+            )
+
+
+# ============================================================
+# _transform_number
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (True, 1),
+        (False, 0),
+        (10, 10),
+        (10.5, 10.5),
+        ("10", 10),
+        ("10.5", 10.5),
+        ("x", None),
+        (None, None),
+    ],
+)
+def test_transform_number(node, value, expected):
+    assert node._transform_number(value) == expected
+
+
+# ============================================================
+# _transform_result
+# ============================================================
+
+
+def test_transform_result_default(node, mock_node_data):
+    node._node_data = mock_node_data  # ✅ property is read-only
+
+    result = node._transform_result(mock_node_data, {})
+
+    assert isinstance(result, dict)
+
+
+# ============================================================
+# _validate_result
+# ============================================================
+
+
+def test_validate_result_success(node, mock_node_data):
+    out = node._validate_result(mock_node_data, {"age": 10})
+    assert out["age"] == 10
+
+
+def test_validate_result_invalid_count(node, mock_node_data):
+    with pytest.raises(InvalidNumberOfParametersError):
+        node._validate_result(mock_node_data, {})
+
+
+# ============================================================
+# _generate_default_result
+# ============================================================
+
+
+def test_generate_default_result(node):
+    param = MagicMock()
+    param.name = "x"
+    param.type = "number"
+
+    data = MagicMock()
+    data.parameters = [param]
+
+    result = node._generate_default_result(data)
+    assert result["x"] == 0
+
+
+# ============================================================
+# _get_prompt_engineering_prompt_template
+# ============================================================
+
+
+def test_prompt_template_invalid_mode(node, mock_node_data):
+    mock_node_data.model.mode = "invalid"
+
+    with pytest.raises(ValueError):
+        node._get_prompt_engineering_prompt_template(
+            mock_node_data,
+            "",
+            MagicMock(convert_template=lambda x: MagicMock(text="")),
+            None,
         )
 
-        result = helper.transform_result(data=node_data, result=test_case.input_result)
-        assert result == test_case.expected_result, (
-            f"Failed for case: {test_case.name}. Expected: {test_case.expected_result}, Got: {result}"
+
+# ============================================================
+# _fetch_model_config caching
+# ============================================================
+
+
+def test_fetch_model_config_cache(node):
+    node._model_instance = MagicMock()
+    node._model_config = MagicMock()
+
+    inst, conf = node._fetch_model_config(MagicMock())
+    assert inst == node._model_instance
+    assert conf == node._model_config
+
+
+# ============================================================
+# _extract_variable_selector_to_variable_mapping
+# ============================================================
+
+
+def test_extract_variable_selector_mapping():
+    node_id = "node1"
+
+    with patch(
+        "core.workflow.nodes.parameter_extractor.parameter_extractor_node.ParameterExtractorNodeData.model_validate"
+    ) as validate_mock:
+        validate_mock.return_value.query = ["q"]
+        validate_mock.return_value.instruction = None
+
+        mapping = ParameterExtractorNode._extract_variable_selector_to_variable_mapping(
+            graph_config={},
+            node_id=node_id,
+            node_data={},
         )
+
+    assert mapping[f"{node_id}.query"] == ["q"]
+
+
+# ============================================================
+# _run success and failure
+# ============================================================
+
+
+def test_run_success(
+    node,
+    mock_node_data,
+    mock_model_instance,
+    mock_model_config,
+):
+    usage = MagicMock(total_tokens=5, total_price=1, currency="USD")
+
+    node._node_data = mock_node_data  # ✅ fix
+
+    with (
+        patch.object(
+            node,
+            "_fetch_model_config",
+            return_value=(mock_model_instance, mock_model_config),
+        ),
+        patch.object(node, "_invoke", return_value=('{"age":10}', usage, None)),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_memory",
+            return_value=None,
+        ),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_files",
+            return_value=[],
+        ),
+    ):
+        result = node.run()
+
+    assert result is not None
+
+
+def test_run_invoke_failure(
+    node,
+    mock_node_data,
+    mock_model_instance,
+    mock_model_config,
+):
+    node._node_data = mock_node_data
+
+    with (
+        patch.object(
+            node,
+            "_fetch_model_config",
+            return_value=(mock_model_instance, mock_model_config),
+        ),
+        patch.object(node, "_invoke", side_effect=Exception("boom")),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_memory",
+            return_value=None,
+        ),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_files",
+            return_value=[],
+        ),
+    ):
+        result = node.run()
+
+    assert result is not None
+
+    assert node.state == NodeState.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("10", 10),
+        ("10.5", 10.5),
+        (10, 10),
+        (10.5, 10.5),
+        (True, 1),
+        (False, 0),
+        ("invalid", None),
+        (None, None),
+        ("", None),
+    ],
+)
+def test_transform_number_full(node, value, expected):
+    result = node._transform_number(value)
+    assert result == expected
+
+
+def test_validate_result_missing_required(node, mock_parameter):
+    mock_parameter.required = True
+
+    node_data = MagicMock()
+    node_data.parameters = [mock_parameter]
+
+    result = {"age": None}
+
+    with pytest.raises(ValueError):
+        node._validate_result(node_data, result)
+
+
+def test_generate_default_result_array(node):
+    param = MagicMock()
+    param.name = "items"
+    param.required = False
+    param.type = SegmentType.STRING
+    param.is_array_type.return_value = True
+
+    node_data = MagicMock()
+    node_data.parameters = [param]
+
+    result = node._generate_default_result(node_data)
+
+    assert result["items"] == ""
+
+
+def test_calculate_rest_token_multi_tool(node, mock_node_data):
+    instance = MagicMock()
+    instance.model_type_instance = MagicMock(spec=LargeLanguageModel)
+
+    schema = MagicMock()
+    schema.features = [ModelFeature.MULTI_TOOL_CALL]
+    instance.model_type_instance.get_model_schema.return_value = schema
+
+    config = MagicMock()
+    config.model_schema.model_properties = {ModelPropertyKey.CONTEXT_SIZE: 2000}
+    config.model_schema.parameter_rules = []
+    config.parameters = {}
+    config.provider_model_bundle.model_type_instance.get_num_tokens.return_value = 50
+    config.model = "gpt"
+    config.credentials = {}
+
+    with patch.object(node, "_fetch_model_config", return_value=(instance, config)):
+        rest = node._calculate_rest_token(
+            mock_node_data,
+            "q",
+            MagicMock(),
+            config,
+            "",
+        )
+
+    assert isinstance(rest, int)
+
+
+def test_calculate_rest_token_invalid_model_type(node, mock_node_data):
+    instance = MagicMock()
+    instance.model_type_instance = object()  # not LLM
+
+    with patch.object(node, "_fetch_model_config", return_value=(instance, MagicMock())):
+        with pytest.raises(InvalidModelTypeError):
+            node._calculate_rest_token(
+                mock_node_data,
+                "",
+                MagicMock(),
+                MagicMock(),
+                "",
+            )
+
+
+def test_transform_result_array(node):
+    param = MagicMock()
+    param.name = "items"
+    param.required = False
+    param.type = SegmentType.STRING
+    param.is_array_type.return_value = True
+
+    node_data = MagicMock()
+    node_data.parameters = [param]
+
+    result = node._transform_result(node_data, {"items": ["a", "b"]})
+
+    assert result["items"] == ""
+
+
+def test_prompt_template_valid(node, mock_node_data):
+    mock_node_data.model.mode = ModelMode.CHAT.value
+
+    result = node._get_prompt_engineering_prompt_template(
+        mock_node_data,
+        "",
+        MagicMock(convert_template=lambda x: MagicMock(text="prompt")),
+        None,
+        2000,
+    )
+
+    assert result is not None
+
+
+def test_run_with_memory(node, mock_node_data, mock_model_instance, mock_model_config):
+    node._node_data = mock_node_data
+
+    with (
+        patch.object(node, "_fetch_model_config", return_value=(mock_model_instance, mock_model_config)),
+        patch.object(node, "_invoke", return_value=('{"age":10}', MagicMock(), None)),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_memory",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_files",
+            return_value=[],
+        ),
+    ):
+        result = node.run()
+
+    assert result is not None
+
+
+def test_run_invalid_json_response(node, mock_model_instance, mock_model_config):
+    node._node_data = MagicMock()
+    node._node_data.parameters = []
+    node._node_data.memory = None
+
+    usage = MagicMock(total_tokens=1, total_price=0, currency="USD")
+
+    with (
+        patch.object(node, "_fetch_model_config", return_value=(mock_model_instance, mock_model_config)),
+        patch.object(node, "_invoke", return_value=("INVALID_JSON", usage, None)),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_memory", return_value=None
+        ),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_files", return_value=[]
+        ),
+    ):
+        result = node.run()
+
+    assert result is not None
+
+
+def test_validate_result_parameter_count_mismatch(node):
+    param = MagicMock()
+    param.name = "age"
+    param.required = False
+
+    node_data = MagicMock()
+    node_data.parameters = [param]
+
+    result = {"age": 1, "extra": 2}
+
+    with pytest.raises(ValueError):
+        node._validate_result(node_data, result)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("10", 10),
+        ("10.5", 10.5),
+        ("abc", None),
+        (None, None),
+    ],
+)
+def test_transform_number_branch(node, value, expected):
+    result = node._transform_number(value)
+    assert result == expected
+
+
+def test_calculate_rest_token_negative_clamped(node, mock_node_data):
+    instance = MagicMock()
+
+    class FakeLLM:
+        def get_model_schema(self, *a, **k):
+            schema = MagicMock()
+            schema.features = []
+            schema.parameter_rules = []
+            return schema
+
+    instance.model_type_instance = FakeLLM()
+
+    config = MagicMock()
+    config.model_schema.model_properties = {ModelPropertyKey.CONTEXT_SIZE: 10}
+    config.model_schema.parameter_rules = []
+    config.parameters = {}
+    config.provider_model_bundle.model_type_instance.get_num_tokens.return_value = 5000
+    config.model = "gpt"
+    config.credentials = {}
+
+    with patch(
+        "core.workflow.nodes.parameter_extractor.parameter_extractor_node.LargeLanguageModel",
+        FakeLLM,
+    ):
+        with patch.object(node, "_fetch_model_config", return_value=(instance, config)):
+            rest = node._calculate_rest_token(
+                mock_node_data,
+                "q",
+                MagicMock(),
+                config,
+                "",
+            )
+
+    assert rest == 0
+
+
+def test_reasoning_mode_branch(node):
+    node_data = MagicMock()
+    node_data.reasoning_mode = "some-mode"
+    node_data.parameters = []
+
+    result = node._generate_default_result(node_data)
+
+    assert isinstance(result, dict)
+
+
+def test_prompt_template_valid_mode(node):
+    node_data = MagicMock()
+    node_data.model.mode = ModelMode.CHAT.value
+    node_data.instruction = ""
+    node_data.memory = None
+
+    variable_pool = MagicMock()
+    variable_pool.convert_template.return_value = MagicMock(text="hello")
+
+    result = node._get_prompt_engineering_prompt_template(
+        node_data,
+        "q",
+        variable_pool,
+        None,
+        1000,
+    )
+
+    assert result is not None

@@ -1,6 +1,20 @@
+"""Tests for CodeNode behavior, validation, and limits.
+
+Scope: node data validation, output transformation rules, execution paths, and
+limit enforcement. Assumes CodeNode limits can be overridden per-test and no
+shared state persists across cases.
+"""
+
+from collections.abc import Generator
+from types import SimpleNamespace
+from typing import Any, Optional
+
+import pytest
+
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeLanguage
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeLanguage
 from core.variables.types import SegmentType
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.code.exc import (
@@ -10,16 +24,94 @@ from core.workflow.nodes.code.exc import (
 )
 from core.workflow.nodes.code.limits import CodeNodeLimits
 
-CodeNode._limits = CodeNodeLimits(
-    max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
-    max_number=dify_config.CODE_MAX_NUMBER,
-    min_number=dify_config.CODE_MIN_NUMBER,
-    max_precision=dify_config.CODE_MAX_PRECISION,
-    max_depth=dify_config.CODE_MAX_DEPTH,
-    max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
-    max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
-    max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
-)
+
+class DummyOutput:
+    """Lightweight output schema test double.
+
+    Holds type and child schema mappings. Instances are independent and
+    mutable; no shared state or concurrency guarantees are assumed.
+    """
+
+    type: str
+    children: dict[str, Any]
+
+    def __init__(self, type_: str, children: Optional[dict[str, Any]] = None) -> None:
+        self.type: str = type_
+        self.children: dict[str, Any] = children or {}
+
+
+class DummyExecutor:
+    @staticmethod
+    def execute_workflow_code_template(language: str, code: str, inputs: dict[str, Any]) -> dict[str, Any]:
+        return {"x": 1}
+
+
+class FailingExecutor:
+    @staticmethod
+    def execute_workflow_code_template(language: str, code: str, inputs: dict[str, Any]) -> dict[str, Any]:
+        raise CodeExecutionError("boom")
+
+
+class AcceptProvider:
+    @staticmethod
+    def is_accept_language(language: str) -> bool:
+        return True
+
+    @staticmethod
+    def get_default_config() -> dict[str, Any]:
+        return {"ok": True}
+
+
+class RejectProvider:
+    @staticmethod
+    def is_accept_language(language: str) -> bool:
+        return False
+
+
+@pytest.fixture
+def limits() -> CodeNodeLimits:
+    return CodeNodeLimits(
+        max_string_length=5,
+        max_number=10,
+        min_number=0,
+        max_precision=2,
+        max_depth=2,
+        max_number_array_length=2,
+        max_string_array_length=2,
+        max_object_array_length=2,
+    )
+
+
+@pytest.fixture
+def node(limits: CodeNodeLimits) -> CodeNode:
+    node = CodeNode.__new__(CodeNode)
+    node._limits = limits
+    node._code_executor = DummyExecutor
+    node._code_providers = (AcceptProvider,)
+    variable_pool: SimpleNamespace = SimpleNamespace(get=lambda x: SimpleNamespace(to_object=lambda: 5))
+    node.graph_runtime_state = SimpleNamespace(variable_pool=variable_pool)
+    return node
+
+
+@pytest.fixture(autouse=True)
+def _code_node_limits() -> Generator[None, None, None]:
+    original_limits = getattr(CodeNode, "_limits", None)
+    had_limits = hasattr(CodeNode, "_limits")
+    CodeNode._limits = CodeNodeLimits(
+        max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+        max_number=dify_config.CODE_MAX_NUMBER,
+        min_number=dify_config.CODE_MIN_NUMBER,
+        max_precision=dify_config.CODE_MAX_PRECISION,
+        max_depth=dify_config.CODE_MAX_DEPTH,
+        max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+        max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+        max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+    )
+    yield
+    if had_limits:
+        CodeNode._limits = original_limits
+    else:
+        delattr(CodeNode, "_limits")
 
 
 class TestCodeNodeExceptions:
@@ -499,3 +591,263 @@ class TestCodeNodeInitialization:
 
         assert result == node._node_data
         assert result.title == "Base Test"
+
+
+class TestTransformNoSchema:
+    """Validate _transform_result behavior without a schema.
+
+    Covers allowed scalars/arrays, nesting depth limits, and string/number
+    constraints, asserting DepthLimitError or OutputValidationError when invalid.
+    """
+
+    def test_simple_valid_types(self, node):
+        result = {"a": 1, "b": "x", "c": True, "d": None}
+        assert node._transform_result(result, None) == result
+
+    def test_nested_within_depth(self, node):
+        result = {"a": {"b": 1}}
+        assert node._transform_result(result, None) == result
+
+    def test_depth_exceeded(self, node):
+        result = {"a": {"b": {"c": 1}}}
+        with pytest.raises(DepthLimitError):
+            node._transform_result(result, None)
+
+    def test_invalid_scalar_type(self, node):
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": object()}, None)
+
+    def test_array_numbers_valid(self, node):
+        result = {"a": [1, 2]}
+        assert node._transform_result(result, None) == result
+
+    def test_array_strings_valid(self, node):
+        result = {"a": ["x", "y"]}
+        assert node._transform_result(result, None) == result
+
+    def test_array_nested_objects(self, node):
+        result = {"a": [{"b": 1}]}
+        assert node._transform_result(result, None) == result
+
+    def test_array_mixed_invalid(self, node):
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": [1, "x"]}, None)
+
+    def test_string_too_long(self, node):
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": "abcdef"}, None)
+
+    def test_number_out_of_range(self, node):
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": 100}, None)
+
+    def test_number_precision_exceeded(self, node):
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": 1.234}, None)
+
+
+class TestTransformWithSchema:
+    """Validate _transform_result against explicit output schemas."""
+
+    def test_missing_output(self, node):
+        schema = {"a": DummyOutput(SegmentType.STRING)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({}, schema)
+
+    def test_extra_output_not_validated(self, node):
+        schema = {"a": DummyOutput(SegmentType.STRING)}
+        with pytest.raises(CodeNodeError):
+            node._transform_result({"a": "x", "b": "y"}, schema)
+
+    def test_number_valid(self, node):
+        schema = {"a": DummyOutput(SegmentType.NUMBER)}
+        result = node._transform_result({"a": 5}, schema)
+        assert result["a"] == 5
+
+    def test_number_boolean_conversion(self, node):
+        schema = {"a": DummyOutput(SegmentType.NUMBER)}
+        result = node._transform_result({"a": True}, schema)
+        assert result["a"] == 1
+
+    def test_number_invalid_type(self, node):
+        schema = {"a": DummyOutput(SegmentType.NUMBER)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": "x"}, schema)
+
+    def test_string_valid(self, node):
+        schema = {"a": DummyOutput(SegmentType.STRING)}
+        result = node._transform_result({"a": "abc"}, schema)
+        assert result["a"] == "abc"
+
+    def test_string_invalid_type(self, node):
+        schema = {"a": DummyOutput(SegmentType.STRING)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": 1}, schema)
+
+    def test_boolean_valid(self, node):
+        schema = {"a": DummyOutput(SegmentType.BOOLEAN)}
+        result = node._transform_result({"a": True}, schema)
+        assert result["a"] is True
+
+    def test_array_number_valid(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_NUMBER)}
+        result = node._transform_result({"a": [1, 2]}, schema)
+        assert result["a"] == [1, 2]
+
+    def test_array_number_length_exceeded(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_NUMBER)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": [1, 2, 3]}, schema)
+
+    def test_array_number_invalid_element(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_NUMBER)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": [1, "x"]}, schema)
+
+    def test_array_string_valid(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_STRING)}
+        result = node._transform_result({"a": ["x", "y"]}, schema)
+        assert result["a"] == ["x", "y"]
+
+    def test_array_string_length_exceeded(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_STRING)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": ["a", "b", "c"]}, schema)
+
+    def test_array_object_valid(self, node):
+        schema = {
+            "a": DummyOutput(
+                SegmentType.ARRAY_OBJECT,
+                children={"b": DummyOutput(SegmentType.NUMBER)},
+            )
+        }
+        result = node._transform_result({"a": [{"b": 1}]}, schema)
+        assert result["a"][0]["b"] == 1
+
+    def test_array_object_invalid_element(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_OBJECT, children={})}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": [1]}, schema)
+
+    def test_array_boolean_valid(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_BOOLEAN)}
+        result = node._transform_result({"a": [True, False]}, schema)
+        assert result["a"] == [True, False]
+
+    def test_array_boolean_invalid_element(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_BOOLEAN)}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": [True, 1]}, schema)
+
+    def test_object_valid(self, node):
+        schema = {
+            "a": DummyOutput(
+                SegmentType.OBJECT,
+                children={"b": DummyOutput(SegmentType.STRING)},
+            )
+        }
+        result = node._transform_result({"a": {"b": "x"}}, schema)
+        assert result["a"]["b"] == "x"
+
+    def test_object_invalid_type(self, node):
+        schema = {"a": DummyOutput(SegmentType.OBJECT, children={})}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": 1}, schema)
+
+    def test_unsupported_type(self, node):
+        schema = {"a": DummyOutput("unsupported")}
+        with pytest.raises(OutputValidationError):
+            node._transform_result({"a": 1}, schema)
+
+
+class TestRunAndProviders:
+    """Exercise CodeNode execution and provider selection paths.
+
+    Instances are created per test with SimpleNamespace runtime state and use
+    AcceptProvider/RejectProvider or FailingExecutor to drive behavior.
+    """
+
+    def test_run_failure(self, limits):
+        node = CodeNode.__new__(CodeNode)
+        node._limits = limits
+        node._code_executor = FailingExecutor
+        node._code_providers = (AcceptProvider,)
+        node.graph_runtime_state = SimpleNamespace(variable_pool=SimpleNamespace(get=lambda x: None))
+        node._node_data = SimpleNamespace(
+            code_language="python3",
+            code="",
+            variables=[],
+            outputs=None,
+        )
+        result = node._run()
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+
+    def test_select_provider_failure(self, limits):
+        node = CodeNode.__new__(CodeNode)
+        node._limits = limits
+        node._code_providers = (RejectProvider,)
+        with pytest.raises(CodeNodeError):
+            node._select_code_provider("python3")
+
+    def test_default_code_providers(self):
+        assert isinstance(CodeNode.default_code_providers(), tuple)
+
+    def test_get_default_config(self):
+        config = CodeNode.get_default_config()
+        assert isinstance(config, dict)
+
+
+class TestExtraBranches:
+    """Cover None handling, boolean/number conversions, and helper utilities.
+
+    Includes array/object None cases, selector mapping, and retry flag checks.
+    """
+
+    def test_array_number_bool_conversion(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_NUMBER)}
+        result = node._transform_result({"a": [True, False]}, schema)
+        assert result["a"] == [1, 0]
+
+    def test_array_number_none(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_NUMBER)}
+        result = node._transform_result({"a": None}, schema)
+        assert result["a"] is None
+
+    def test_array_string_none(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_STRING)}
+        result = node._transform_result({"a": None}, schema)
+        assert result["a"] is None
+
+    def test_array_object_none(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_OBJECT, children={})}
+        result = node._transform_result({"a": None}, schema)
+        assert result["a"] is None
+
+    def test_array_boolean_none(self, node):
+        schema = {"a": DummyOutput(SegmentType.ARRAY_BOOLEAN)}
+        result = node._transform_result({"a": None}, schema)
+        assert result["a"] is None
+
+    def test_object_none(self, node):
+        schema = {"a": DummyOutput(SegmentType.OBJECT, children={})}
+        result = node._transform_result({"a": None}, schema)
+        assert result["a"] is None
+
+    def test_extract_variable_selector_mapping(self):
+        data = {
+            "title": "x",
+            "variables": [{"variable": "a", "value_selector": ["x"]}],
+            "code_language": "python3",
+            "code": "",
+            "outputs": {},
+        }
+        mapping = CodeNode._extract_variable_selector_to_variable_mapping(
+            graph_config={},
+            node_id="node1",
+            node_data=data,
+        )
+        assert "node1.a" in mapping
+
+    def test_retry_property(self, node):
+        node._node_data = SimpleNamespace(retry_config=SimpleNamespace(retry_enabled=True))
+        assert node.retry is True

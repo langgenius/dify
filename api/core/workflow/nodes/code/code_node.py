@@ -81,6 +81,9 @@ class CodeNode(Node[CodeNodeData]):
     def version(cls) -> str:
         return "1"
 
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
+        self._node_data = CodeNodeData.model_validate(data)
+
     def _run(self) -> NodeRunResult:
         # Get code language
         code_language = self.node_data.code_language

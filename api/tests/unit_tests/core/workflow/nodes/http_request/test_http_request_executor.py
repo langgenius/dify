@@ -1,5 +1,10 @@
+import base64
+
+import httpx
 import pytest
 
+from configs import dify_config
+from core.workflow.file import FileTransferMethod
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
@@ -7,7 +12,15 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeData,
 )
 from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout
-from core.workflow.nodes.http_request.exc import AuthorizationConfigError
+from core.workflow.nodes.http_request.exc import (
+    AuthorizationConfigError,
+    FileFetchError,
+    HttpRequestNodeError,
+    InvalidHttpMethodError,
+    InvalidURLError,
+    RequestBodyError,
+    ResponseSizeError,
+)
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -602,3 +615,464 @@ def test_executor_with_json_body_preserves_numbers_and_strings():
 
     assert executor.json["count"] == 42
     assert executor.json["id"] == "abc-123"
+
+
+class DummyHttpClient:
+    class MaxRetriesExceededError(Exception):
+        pass
+
+    class RequestError(Exception):
+        pass
+
+    max_retries_exceeded_error = MaxRetriesExceededError
+    request_error = RequestError
+
+    def __init__(self, response=None, raise_error=None):
+        self._response = response
+        self._raise = raise_error
+
+    def get(self, **kwargs):
+        if self._raise:
+            raise self._raise("error")
+        return self._response
+
+    post = get
+    put = get
+    delete = get
+    patch = get
+    head = get
+
+
+class DummyFile:
+    def __init__(self):
+        self.filename = "file.txt"
+        self.mime_type = "text/plain"
+        self.related_id = "1"
+        self.transfer_method = FileTransferMethod.REMOTE_URL
+        self.remote_url = None
+
+
+class DummyFileManager:
+    def download(self, file):
+        return b"file-content"
+
+
+class TestExecutor:
+    def setup_method(self):
+        self.variable_pool = VariablePool(system_variables=SystemVariable.default())
+
+    def test_invalid_url_empty(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+        with pytest.raises(InvalidURLError):
+            Executor(
+                node_data=node,
+                timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+                variable_pool=self.variable_pool,
+            )
+
+    def test_invalid_url_scheme(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="ftp://invalid.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+        with pytest.raises(InvalidURLError):
+            Executor(
+                node_data=node,
+                timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+                variable_pool=self.variable_pool,
+            )
+
+    def test_raw_text_multiple_items_error(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="post",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+            body=HttpRequestNodeBody(
+                type="raw-text",
+                data=[
+                    BodyData(key="", type="text", value="a"),
+                    BodyData(key="", type="text", value="b"),
+                ],
+            ),
+        )
+
+        with pytest.raises(RequestBodyError):
+            Executor(
+                node_data=node,
+                timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+                variable_pool=self.variable_pool,
+            )
+
+    def test_binary_body_success(self, monkeypatch):
+        dummy_file = DummyFile()
+
+        class DummyFileVariable:
+            def __init__(self, value):
+                self.value = value
+
+        def fake_get_file(self, selector):
+            return DummyFileVariable(dummy_file)
+
+        monkeypatch.setattr(
+            type(self.variable_pool),
+            "get_file",
+            fake_get_file,
+        )
+
+        node = HttpRequestNodeData(
+            title="t",
+            method="post",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+            body=HttpRequestNodeBody(
+                type="binary",
+                data=[BodyData(key="", type="file", file=("node", "file"))],
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            file_manager=DummyFileManager(),
+        )
+
+        assert executor.content == b"file-content"
+
+    def test_binary_file_not_found(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="post",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+            body=HttpRequestNodeBody(
+                type="binary",
+                data=[BodyData(key="", type="file", file=("x", "y"))],
+            ),
+        )
+
+        with pytest.raises(FileFetchError):
+            Executor(
+                node_data=node,
+                timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+                variable_pool=self.variable_pool,
+            )
+
+    def test_invalid_http_method(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            http_client=DummyHttpClient(response=httpx.Response(200)),
+        )
+
+        executor.method = "trace"
+
+        with pytest.raises(InvalidHttpMethodError):
+            executor.invoke()
+
+    def test_http_client_request_error(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            http_client=DummyHttpClient(raise_error=DummyHttpClient.RequestError),
+        )
+
+        with pytest.raises(HttpRequestNodeError):
+            executor.invoke()
+
+    def test_response_size_exceeded_text(self, monkeypatch):
+        response = httpx.Response(200, content=b"x" * 10_000_000)
+
+        monkeypatch.setattr(
+            dify_config,
+            "HTTP_REQUEST_NODE_MAX_TEXT_SIZE",
+            1,
+        )
+
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            http_client=DummyHttpClient(response=response),
+        )
+
+        with pytest.raises(ResponseSizeError):
+            executor.invoke()
+
+    def test_basic_auth_base64_encoding(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(
+                type="api-key",
+                config={"type": "basic", "api_key": "user:pass"},
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        headers = executor._assembling_headers()
+        encoded = base64.b64encode(b"user:pass").decode()
+        assert headers["Authorization"] == f"Basic {encoded}"
+
+    def test_to_log_masks_authorization(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(
+                type="api-key",
+                config={"type": "bearer", "api_key": "secretkey"},
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        log = executor.to_log()
+        assert "secretkey" not in log
+        assert "*********" in log
+
+    def test_full_invoke_success(self):
+        response = httpx.Response(200, json={"ok": True})
+
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            http_client=DummyHttpClient(response=response),
+        )
+
+        result = executor.invoke()
+        assert result.status_code == 200
+
+    def test_body_none_type(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="post",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+            body=HttpRequestNodeBody(type="none", data=[]),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        assert executor.content == ""
+
+    def test_x_www_form_urlencoded_body(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="post",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+            body=HttpRequestNodeBody(
+                type="x-www-form-urlencoded",
+                data=[
+                    BodyData(key="a", type="text", value="1"),
+                    BodyData(key="b", type="text", value="2"),
+                ],
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        assert executor.data == {"a": "1", "b": "2"}
+
+    def test_custom_auth_header(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(
+                type="api-key",
+                config={"type": "custom", "api_key": "abc123", "header": "X-Auth"},
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        headers = executor._assembling_headers()
+        assert headers["X-Auth"] == "abc123"
+
+    def test_basic_auth_without_colon(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(
+                type="api-key",
+                config={"type": "basic", "api_key": "encodedvalue"},
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        headers = executor._assembling_headers()
+        assert headers["Authorization"] == "Basic encodedvalue"
+
+    def test_binary_response_size_exceeded(self, monkeypatch):
+        response = httpx.Response(
+            200,
+            content=b"x" * 1000,
+            headers={"content-disposition": "attachment; filename=test.bin"},
+        )
+
+        monkeypatch.setattr(
+            dify_config,
+            "HTTP_REQUEST_NODE_MAX_BINARY_SIZE",
+            1,
+        )
+
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            http_client=DummyHttpClient(response=response),
+        )
+
+        with pytest.raises(ResponseSizeError):
+            executor.invoke()
+
+    def test_http_max_retries_error(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="get",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+            http_client=DummyHttpClient(raise_error=DummyHttpClient.MaxRetriesExceededError),
+        )
+
+        with pytest.raises(HttpRequestNodeError):
+            executor.invoke()
+
+    def test_to_log_json_body(self):
+        node = HttpRequestNodeData(
+            title="t",
+            method="post",
+            url="http://example.com",
+            headers="",
+            params="",
+            authorization=HttpRequestNodeAuthorization(type="no-auth"),
+            body=HttpRequestNodeBody(
+                type="json",
+                data=[BodyData(key="", type="text", value='{"a":1}')],
+            ),
+        )
+
+        executor = Executor(
+            node_data=node,
+            timeout=HttpRequestNodeTimeout(connect=1, read=1, write=1),
+            variable_pool=self.variable_pool,
+        )
+
+        log = executor.to_log()
+        assert '{"a": 1}' in log

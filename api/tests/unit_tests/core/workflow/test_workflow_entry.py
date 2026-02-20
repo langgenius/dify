@@ -3,17 +3,19 @@ from types import SimpleNamespace
 import pytest
 
 from configs import dify_config
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.variables import StringVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.file.enums import FileType
-from core.workflow.file.models import File, FileTransferMethod
+from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.graph_events import GraphRunFailedEvent
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.runtime import VariablePool
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 
@@ -542,3 +544,246 @@ class TestWorkflowEntry:
         process_data = variable_pool.get(["process", "data"])
         assert process_data is not None
         assert process_data.value == {"value": 123, "status": "active"}
+
+    def test_mapping_user_inputs_with_structured_output_merge(self):
+        """Structured output inputs should merge into a single dict variable."""
+        variable_pool = VariablePool(system_variables=SystemVariable.default(), user_inputs={})
+
+        variable_mapping = {
+            "node1.structured_output.foo": ["node1", "structured_output", "foo"],
+            "node1.structured_output.bar": ["node1", "structured_output", "bar"],
+        }
+        user_inputs = {
+            "node1.structured_output.foo": "value_1",
+            "node1.structured_output.bar": "value_2",
+        }
+
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+            variable_pool=variable_pool,
+            tenant_id="test_tenant",
+        )
+
+        structured_output = variable_pool.get(["node1", "structured_output"])
+        assert structured_output is not None
+        assert structured_output.value == {"foo": "value_1", "bar": "value_2"}
+
+    def test_handle_special_values_with_file_and_nested_collections(self):
+        """File values should be serialized while other values remain intact."""
+        file_value = File(
+            tenant_id="test_tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="test_related_id",
+            remote_url="",
+            filename="doc.pdf",
+            storage_key="",
+        )
+        payload = {
+            "file": file_value,
+            "items": [
+                {"file": file_value, "value": 1},
+                {"value": 2},
+            ],
+        }
+
+        converted = WorkflowEntry.handle_special_values(payload)
+
+        assert converted is not None
+        assert converted["file"]["filename"] == "doc.pdf"
+        assert converted["items"][0]["file"]["filename"] == "doc.pdf"
+        assert converted["items"][0]["value"] == 1
+        assert converted["items"][1]["value"] == 2
+
+    def test_create_single_node_graph_structure(self):
+        """Single node graph should include a start node and an edge."""
+        node_id = "node_1"
+        node_data = {"type": NodeType.CODE, "title": "Code", "desc": None}
+
+        graph_dict = WorkflowEntry._create_single_node_graph(node_id=node_id, node_data=node_data)
+
+        assert graph_dict["nodes"][0]["id"] == "start"
+        assert graph_dict["nodes"][1]["id"] == node_id
+        assert graph_dict["edges"][0]["source"] == "start"
+        assert graph_dict["edges"][0]["target"] == node_id
+
+    def test_run_free_node_rejects_unsupported_node_type(self):
+        """run_free_node should reject non-supported node types."""
+        with pytest.raises(ValueError, match="not supported"):
+            WorkflowEntry.run_free_node(
+                node_data={"type": NodeType.CODE, "title": "Code", "desc": None},
+                node_id="node_1",
+                tenant_id="tenant",
+                user_id="user",
+                user_inputs={},
+            )
+
+    def test_mapping_user_inputs_with_falsy_primary_value_falls_back(self):
+        """Falsy primary input should fall back to key without node prefix."""
+        variable_pool = VariablePool(system_variables=SystemVariable.default(), user_inputs={})
+        variable_mapping = {
+            "node1.count": ["node1", "count"],
+        }
+        user_inputs = {
+            "node1.count": 0,
+            "count": 7,
+        }
+
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+            variable_pool=variable_pool,
+            tenant_id="test_tenant",
+        )
+
+        count_var = variable_pool.get(["node1", "count"])
+        assert count_var is not None
+        assert count_var.value == 7
+
+    def test_handle_special_values_with_list_input(self):
+        """Lists are not supported by handle_special_values and should raise."""
+        file_value = File(
+            tenant_id="test_tenant",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="test_related_id",
+            remote_url="",
+            filename="img.png",
+            storage_key="",
+        )
+        payload = ["a", file_value, {"nested": file_value}]
+
+        with pytest.raises(ValueError) as excinfo:
+            WorkflowEntry.handle_special_values(payload)
+
+        assert "dictionary update sequence" in str(excinfo.value)
+
+    def test_init_rejects_excessive_call_depth(self, monkeypatch):
+        monkeypatch.setattr(dify_config, "WORKFLOW_CALL_MAX_DEPTH", 0)
+
+        with pytest.raises(ValueError, match="Max workflow call depth"):
+            WorkflowEntry(
+                tenant_id="tenant",
+                app_id="app",
+                workflow_id="workflow",
+                graph_config={},
+                graph=SimpleNamespace(),
+                user_id="user",
+                user_from=None,
+                invoke_from=None,
+                call_depth=1,
+                variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+                graph_runtime_state=GraphRuntimeState(
+                    variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+                    start_at=0.0,
+                ),
+            )
+
+    def test_init_adds_layers_with_debug_and_otel(self, monkeypatch):
+        layers: list[object] = []
+
+        class StubGraphEngine:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def layer(self, layer):
+                layers.append(layer)
+
+            def run(self):
+                return iter(())
+
+        monkeypatch.setattr("core.workflow.workflow_entry.GraphEngine", StubGraphEngine)
+        monkeypatch.setattr(dify_config, "DEBUG", True)
+        monkeypatch.setattr(dify_config, "ENABLE_OTEL", True)
+
+        entry = WorkflowEntry(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={},
+            graph=SimpleNamespace(),
+            user_id="user",
+            user_from=None,
+            invoke_from=None,
+            call_depth=0,
+            variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+            graph_runtime_state=GraphRuntimeState(
+                variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+                start_at=0.0,
+            ),
+        )
+
+        assert entry.graph_engine is not None
+        assert len(layers) >= 2
+
+    def test_run_yields_failed_event_on_exception(self, monkeypatch):
+        class StubGraphEngine:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def layer(self, layer):
+                pass
+
+            def run(self):
+                raise RuntimeError("boom")
+
+        monkeypatch.setattr("core.workflow.workflow_entry.GraphEngine", StubGraphEngine)
+        monkeypatch.setattr(dify_config, "DEBUG", False)
+        monkeypatch.setattr(dify_config, "ENABLE_OTEL", False)
+
+        entry = WorkflowEntry(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={},
+            graph=SimpleNamespace(),
+            user_id="user",
+            user_from=None,
+            invoke_from=None,
+            call_depth=0,
+            variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+            graph_runtime_state=GraphRuntimeState(
+                variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+                start_at=0.0,
+            ),
+        )
+
+        events = list(entry.run())
+        assert len(events) == 1
+        assert isinstance(events[0], GraphRunFailedEvent)
+        assert events[0].error == "boom"
+
+    def test_run_swallows_generate_task_stopped(self, monkeypatch):
+        class StubGraphEngine:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def layer(self, layer):
+                pass
+
+            def run(self):
+                raise GenerateTaskStoppedError
+
+        monkeypatch.setattr("core.workflow.workflow_entry.GraphEngine", StubGraphEngine)
+        monkeypatch.setattr(dify_config, "DEBUG", False)
+        monkeypatch.setattr(dify_config, "ENABLE_OTEL", False)
+
+        entry = WorkflowEntry(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={},
+            graph=SimpleNamespace(),
+            user_id="user",
+            user_from=None,
+            invoke_from=None,
+            call_depth=0,
+            variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+            graph_runtime_state=GraphRuntimeState(
+                variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+                start_at=0.0,
+            ),
+        )
+
+        assert list(entry.run()) == []
