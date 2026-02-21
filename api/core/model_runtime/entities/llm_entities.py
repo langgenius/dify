@@ -192,6 +192,7 @@ class LLMResultChunkDelta(BaseModel):
     message: AssistantPromptMessage
     usage: LLMUsage | None = None
     finish_reason: str | None = None
+    reasoning_content: str | None = None
 
 
 class LLMResultChunk(BaseModel):
