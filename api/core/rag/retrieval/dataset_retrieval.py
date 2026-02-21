@@ -128,10 +128,14 @@ class DatasetRetrieval:
 
         if request.metadata_filtering_mode != "disabled":
             # Convert workflow layer types to app_config layer types
-            if not request.metadata_model_config:
+            if request.metadata_filtering_mode == "automatic" and not request.metadata_model_config:
                 raise ValueError("metadata_model_config is required for this method")
 
-            app_metadata_model_config = ModelConfig.model_validate(request.metadata_model_config.model_dump())
+            app_metadata_model_config = (
+                ModelConfig.model_validate(request.metadata_model_config.model_dump())
+                if request.metadata_model_config is not None
+                else None
+            )
 
             app_metadata_filtering_conditions = None
             if request.metadata_filtering_conditions is not None:
@@ -1286,7 +1290,7 @@ class DatasetRetrieval:
         tenant_id: str,
         user_id: str,
         metadata_filtering_mode: str,
-        metadata_model_config: ModelConfig,
+        metadata_model_config: ModelConfig | None,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
     ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
@@ -1301,6 +1305,9 @@ class DatasetRetrieval:
         if metadata_filtering_mode == "disabled":
             return None, None
         elif metadata_filtering_mode == "automatic":
+            if metadata_model_config is None:
+                raise ValueError("metadata_model_config is required for automatic mode")
+
             automatic_metadata_filters = self._automatic_metadata_filter_func(
                 dataset_ids, query, tenant_id, user_id, metadata_model_config
             )
