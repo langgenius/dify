@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Пишіть свої підказки тут, вводьте '{', щоб вставити змінну чи '/', щоб вставити блок-підказку",
   "promptEditor.query.item.desc": "Вставити шаблон запиту користувача",
   "promptEditor.query.item.title": "Запит",
+  "promptEditor.requestURL.item.desc": "Вставити URL запиту",
+  "promptEditor.requestURL.item.title": "URL запиту",
   "promptEditor.variable.item.desc": "Вставити змінні та зовнішні інструменти",
   "promptEditor.variable.item.title": "Змінні та зовнішні інструменти",
   "promptEditor.variable.modal.add": "Нова змінна",

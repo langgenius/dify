@@ -350,7 +350,7 @@ class TestDeleteWorkflowArchiveLogs:
         mock_query.where.return_value = mock_delete_query
         mock_db.session.query.return_value = mock_query
 
-        delete_func("log-1")
+        delete_func(mock_db.session, "log-1")
 
         mock_db.session.query.assert_called_once_with(WorkflowArchiveLog)
         mock_query.where.assert_called_once()

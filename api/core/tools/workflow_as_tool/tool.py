@@ -8,7 +8,6 @@ from typing import Any, cast
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -19,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
+from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from factories.file_factory import build_from_mapping
 from models import Account, Tenant
 from models.model import App, EndUser
@@ -98,6 +98,10 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
+            # NOTE(QuantumGhost): We explicitly set `pause_state_config` to `None`
+            # because workflow pausing mechanisms (such as HumanInput) are not
+            # supported within WorkflowTool execution context.
+            pause_state_config=None,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})

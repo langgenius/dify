@@ -14,7 +14,6 @@ const ErrorMessage = ({
   errorMsg,
 }: ErrorMessageProps) => {
   return (
-    // eslint-disable-next-line tailwindcss/migration-from-tailwind-2
     <div className={cn(
       'flex gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border bg-opacity-40 bg-toast-error-bg p-2 shadow-xs shadow-shadow-shadow-3',
       className,

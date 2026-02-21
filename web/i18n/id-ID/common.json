@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Tulis kata prompt Anda di sini, masukkan '{' untuk menyisipkan variabel, masukkan '/' untuk menyisipkan blok konten prompt",
   "promptEditor.query.item.desc": "Menyisipkan templat kueri pengguna",
   "promptEditor.query.item.title": "Kueri",
+  "promptEditor.requestURL.item.desc": "Sisipkan URL permintaan",
+  "promptEditor.requestURL.item.title": "URL Permintaan",
   "promptEditor.variable.item.desc": "Sisipkan Variabel & Alat Eksternal",
   "promptEditor.variable.item.title": "Variabel & Alat Eksternal",
   "promptEditor.variable.modal.add": "Variabel baru",

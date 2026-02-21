@@ -166,7 +166,7 @@ const CreateAppModal = ({
               <div className="flex items-center justify-between">
                 <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  defaultValue={useIconAsAnswerIcon}
+                  value={useIconAsAnswerIcon}
                   onChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>

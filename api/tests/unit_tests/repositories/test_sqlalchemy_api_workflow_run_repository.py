@@ -1,5 +1,6 @@
 """Unit tests for DifyAPISQLAlchemyWorkflowRunRepository implementation."""
 
+import secrets
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
@@ -7,12 +8,17 @@ import pytest
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReasonType
 from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
+from models.human_input import BackstageRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
+    _build_human_input_required_reason,
     _PrivateWorkflowPauseEntity,
     _WorkflowRunError,
 )
@@ -205,11 +211,11 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
     ):
         """Test workflow pause creation when workflow not in RUNNING status."""
         # Arrange
-        sample_workflow_run.status = WorkflowExecutionStatus.PAUSED
+        sample_workflow_run.status = WorkflowExecutionStatus.SUCCEEDED
         mock_session.get.return_value = sample_workflow_run
 
         # Act & Assert
-        with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING status can be paused"):
+        with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING or PAUSED status can be paused"):
             repository.create_workflow_pause(
                 workflow_run_id="workflow-run-123",
                 state_owner_user_id="user-123",
@@ -295,6 +301,7 @@ class TestResumeWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
         sample_workflow_pause.resumed_at = None
 
         mock_session.scalar.return_value = sample_workflow_run
+        mock_session.scalars.return_value.all.return_value = []
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.naive_utc_now") as mock_now:
             mock_now.return_value = datetime.now(UTC)
@@ -455,3 +462,53 @@ class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository)
             assert result1 == expected_state
             assert result2 == expected_state
             mock_storage.load.assert_called_once()  # Only called once due to caching
+
+
+class TestBuildHumanInputRequiredReason:
+    def test_prefers_backstage_token_when_available(self):
+        expiration_time = datetime.now(UTC)
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+        form_model = HumanInputForm(
+            id="form-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        reason_model = WorkflowPauseReason(
+            pause_id="pause-1",
+            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            form_id="form-1",
+            node_id="node-1",
+            message="",
+        )
+        access_token = secrets.token_urlsafe(8)
+        backstage_recipient = HumanInputFormRecipient(
+            form_id="form-1",
+            delivery_id="delivery-1",
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token=access_token,
+        )
+
+        reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient])
+
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.form_token == access_token
+        assert reason.node_title == "Ask Name"
+        assert reason.form_content == "content"
+        assert reason.inputs[0].output_variable_name == "name"
+        assert reason.actions[0].id == "approve"

@@ -154,7 +154,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
               </div>
             ))}
             {
-              showSummaryIndexSetting && (
+              showSummaryIndexSetting && IS_CE_EDITION && (
                 <div className="mt-3">
                   <SummaryIndexSetting
                     entry="create-document"

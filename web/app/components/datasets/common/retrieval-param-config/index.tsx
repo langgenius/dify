@@ -122,7 +122,7 @@ const RetrievalParamConfig: FC<Props> = ({
             {canToggleRerankModalEnable && (
               <Switch
                 size="md"
-                defaultValue={value.reranking_enable}
+                value={value.reranking_enable}
                 onChange={handleToggleRerankEnable}
               />
             )}

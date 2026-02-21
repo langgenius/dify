@@ -8,6 +8,7 @@ import 'dayjs/locale/fr'
 import 'dayjs/locale/hi'
 import 'dayjs/locale/id'
 import 'dayjs/locale/it'
+import 'dayjs/locale/nl'
 import 'dayjs/locale/ja'
 import 'dayjs/locale/ko'
 import 'dayjs/locale/pl'
@@ -38,7 +39,7 @@ export const formatNumber = (num: number | string) => {
   // Force fixed decimal for small numbers to avoid scientific notation
   if (Math.abs(n) < 0.001 && n !== 0) {
     const str = n.toString()
-    const match = str.match(/e-(\d+)$/)
+    const match = /e-(\d+)$/.exec(str)
     let precision: number
     if (match) {
       // Scientific notation: precision is exponent + decimal digits in mantissa
@@ -147,4 +148,24 @@ export const formatNumberAbbreviated = (num: number) => {
 
 export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
   return time.locale(localeMap[local] ?? 'en').format(format)
+}
+
+/**
+ * Get file extension from file name.
+ * @param fileName file name
+ * @example getFileExtension('document.pdf') will return 'pdf'
+ * @example getFileExtension('archive.tar.gz') will return 'gz'
+ * @example getFileExtension('.gitignore') will return '' (hidden file with no extension)
+ * @example getFileExtension('.hidden.txt') will return 'txt'
+ */
+export const getFileExtension = (fileName: string): string => {
+  if (!fileName)
+    return ''
+
+  // Handle hidden files (starting with dot) by finding dot after the first character
+  const dotIndex = fileName.indexOf('.', fileName.startsWith('.') ? 1 : 0)
+  if (dotIndex === -1 || dotIndex === fileName.length - 1)
+    return ''
+
+  return fileName.slice(dotIndex + 1).split('.').pop()?.toLowerCase() ?? ''
 }

@@ -24,6 +24,10 @@
 /api/services/tools/mcp_tools_manage_service.py @Nov1c444
 /api/controllers/mcp/ @Nov1c444
 /api/controllers/console/app/mcp_server.py @Nov1c444
+
+# Backend - Tests
+/api/tests/ @laipz8200 @QuantumGhost
+
 /api/tests/**/*mcp* @Nov1c444
 
 # Backend - Workflow - Engine (Core graph execution engine)
@@ -233,6 +237,9 @@
 
 # Frontend - Base Components
 /web/app/components/base/ @iamjoel @zxhlyh
+
+# Frontend - Base Components Tests
+/web/app/components/base/**/*.spec.tsx @hyoban @CodingOnStar
 
 # Frontend - Utils and Hooks
 /web/utils/classnames.ts @iamjoel @zxhlyh
