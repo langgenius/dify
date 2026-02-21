@@ -106,6 +106,7 @@ forbidden_modules =
 ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
+    core.workflow.graph_engine.graph_engine -> core.mcp.session_manager
     core.workflow.workflow_entry -> core.app.workflow.layers.observability
     core.workflow.nodes.agent.agent_node -> core.model_manager
     core.workflow.nodes.agent.agent_node -> core.provider_manager

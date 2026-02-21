@@ -33,12 +33,22 @@ class MCPClient:
         self._initialized = False
 
     def __enter__(self):
-        self._initialize()
-        self._initialized = True
-        return self
+        return self.connect()
 
     def __exit__(self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None):
         self.cleanup()
+
+    def connect(self) -> "MCPClient":
+        """Initialize the client once and return self.
+
+        This method allows MCPClient instances to be reused across calls without
+        re-establishing connections when already initialized.
+        """
+
+        if not self._initialized:
+            self._initialize()
+            self._initialized = True
+        return self
 
     def _initialize(
         self,

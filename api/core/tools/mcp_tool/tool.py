@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
+from core.mcp.session_manager import McpSessionRegistry
 from core.mcp.types import (
     AudioContent,
     BlobResourceContents,
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 class MCPTool(Tool):
+    # MCP session reuse key - set by workflow execution context
+    workflow_execution_id: str | None = None
+
     def __init__(
         self,
         entity: ToolEntity,
@@ -251,6 +255,8 @@ class MCPTool(Tool):
         from extensions.ext_database import db
         from services.tools.mcp_tools_manage_service import MCPToolManageService
 
+        workflow_execution_id = self.workflow_execution_id
+
         # Step 1: Load provider entity and credentials in a short-lived session
         # This minimizes database connection hold time
         with Session(db.engine, expire_on_commit=False) as session:
@@ -270,6 +276,30 @@ class MCPTool(Tool):
         # Step 2: Session is now closed, perform network operations without holding database connection
         # MCPClientWithAuthRetry will create a new session lazily only if auth retry is needed
         try:
+            if workflow_execution_id:
+                # Workflow path: reuse MCP session scoped by workflow_execution_id
+                session_manager = McpSessionRegistry.get_manager(workflow_execution_id)
+                session_key = self._build_session_key(server_url)
+
+                def factory() -> MCPClientWithAuthRetry:
+                    client = MCPClientWithAuthRetry(
+                        server_url=server_url,
+                        headers=headers,
+                        timeout=self.timeout,
+                        sse_read_timeout=self.sse_read_timeout,
+                        provider_entity=provider_entity,
+                    )
+                    return client.connect()
+
+                client = session_manager.acquire(session_key, factory)
+                try:
+                    return client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+                except MCPConnectionError:
+                    # Connection/auth issues should drop the session so the next call can re-establish cleanly
+                    session_manager.invalidate(session_key)
+                    raise
+
+            # Non-workflow path: fallback to ephemeral client
             with MCPClientWithAuthRetry(
                 server_url=server_url,
                 headers=headers,
@@ -282,3 +312,6 @@ class MCPTool(Tool):
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
             raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
+
+    def _build_session_key(self, server_url: str) -> str:
+        return f"{self.provider_id}:{server_url}"

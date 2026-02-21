@@ -13,6 +13,7 @@ import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
+from core.mcp.session_manager import McpSessionRegistry
 from core.workflow.context import capture_current_context
 from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeExecutionType
@@ -253,8 +254,8 @@ class GraphEngine:
             # Handle completion
             if self._graph_execution.is_paused:
                 pause_reasons = self._graph_execution.pause_reasons
-                assert pause_reasons, "pause_reasons should not be empty when execution is paused."
-                # Ensure we have a valid PauseReason for the event
+                if not pause_reasons:
+                    raise ValueError("pause_reasons should not be empty when execution is paused.")
                 paused_event = GraphRunPausedEvent(
                     reasons=pause_reasons,
                     outputs=self._graph_runtime_state.outputs,
@@ -359,6 +360,19 @@ class GraphEngine:
                 layer.on_graph_end(self._graph_execution.error)
             except Exception:
                 logger.exception("Layer %s failed on_graph_end", layer.__class__.__name__)
+
+        if self._graph_runtime_state.cleanup_mcp_sessions:
+            self._cleanup_mcp_sessions()
+
+    def _cleanup_mcp_sessions(self) -> None:
+        """Release any long-lived MCP sessions bound to this workflow run."""
+        try:
+            system_variables = self._graph_runtime_state.variable_pool.system_variables
+            workflow_execution_id = system_variables.workflow_execution_id
+            if workflow_execution_id:
+                McpSessionRegistry.cleanup(workflow_execution_id)
+        except Exception:
+            logger.warning("Failed to cleanup MCP sessions", exc_info=True)
 
     # Public property accessors for attributes that need external access
     @property
