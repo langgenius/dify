@@ -26,7 +26,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     LevelEnum,
     UnitEnum,
 )
-from core.ops.utils import filter_none_values
+from core.ops.utils import filter_none_values, should_trace_as_llm
 from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.enums import NodeType
 from extensions.ext_database import db
@@ -174,8 +174,8 @@ class LangFuseDataTrace(BaseTraceInstance):
                     }
                 )
 
-            # add generation span
-            if process_data and process_data.get("model_mode") == "chat":
+            # add generation span for LLM and agent nodes
+            if should_trace_as_llm(node_type, process_data):
                 total_token = metadata.get("total_tokens", 0)
                 prompt_tokens = 0
                 completion_tokens = 0

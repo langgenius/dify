@@ -112,6 +112,18 @@ class AgentNode(Node[AgentNodeData]):
             for_log=True,
             strategy=strategy,
         )
+
+        # Extract model provider and model name from the first MODEL_SELECTOR parameter
+        model_provider = ""
+        model_name = ""
+        for param in agent_parameters:
+            if param.type == AgentStrategyParameter.AgentStrategyParameterType.MODEL_SELECTOR:
+                model_selector_value = parameters.get(param.name)
+                if isinstance(model_selector_value, dict):
+                    model_provider = model_selector_value.get("provider", "")
+                    model_name = model_selector_value.get("model", "")
+                break
+
         credentials = self._generate_credentials(parameters=parameters)
 
         # get conversation id
@@ -149,6 +161,8 @@ class AgentNode(Node[AgentNodeData]):
                 node_type=self.node_type,
                 node_id=self._node_id,
                 node_execution_id=self.id,
+                model_provider=model_provider,
+                model_name=model_name,
             )
         except PluginDaemonClientSideError as e:
             transform_error = AgentMessageTransformError(
@@ -480,6 +494,8 @@ class AgentNode(Node[AgentNodeData]):
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
+        model_provider: str = "",
+        model_name: str = "",
     ) -> Generator[NodeEventBase, None, None]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
@@ -729,6 +745,15 @@ class AgentNode(Node[AgentNodeData]):
                 is_final=True,
             )
 
+        process_data: dict[str, Any] = {
+            "usage": jsonable_encoder(llm_usage),
+        }
+        if model_provider or model_name:
+            # Assume chat mode since agent strategies typically use chat-based LLMs
+            process_data["model_mode"] = "chat"
+            process_data["model_provider"] = model_provider
+            process_data["model_name"] = model_name
+
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -739,8 +764,12 @@ class AgentNode(Node[AgentNodeData]):
                     "json": json_output,
                     **variables,
                 },
+                process_data=process_data,
                 metadata={
                     **agent_execution_metadata,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: llm_usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: llm_usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: llm_usage.currency,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
                     WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_logs,
                 },
