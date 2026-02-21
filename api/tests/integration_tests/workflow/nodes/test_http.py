@@ -4,16 +4,27 @@ from urllib.parse import urlencode
 
 import pytest
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
-from core.workflow.nodes.http_request.node import HttpRequestNode
+from core.workflow.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
+
+HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
+    max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+    max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+    max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+    max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+    max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+    ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+    ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+)
 
 
 def init_http_node(config: dict):
@@ -64,6 +75,7 @@ def init_http_node(config: dict):
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        http_request_config=HTTP_REQUEST_CONFIG,
     )
 
     return node
@@ -215,6 +227,7 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
         Executor(
             node_data=node_data,
             timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
+            http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
         )
 
@@ -702,6 +715,7 @@ def test_nested_object_variable_selector(setup_http_mock):
         config=graph_config["nodes"][1],
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        http_request_config=HTTP_REQUEST_CONFIG,
     )
 
     result = node._run()
