@@ -1,4 +1,5 @@
 from core.tools.entities.tool_entities import ToolInvokeMeta
+from libs.exception import BaseHTTPException
 
 
 class ToolProviderNotFoundError(ValueError):
@@ -35,6 +36,12 @@ class ToolSSRFError(ValueError):
 
 class ToolCredentialPolicyViolationError(ValueError):
     pass
+
+
+class WorkflowToolHumanInputNotSupportedError(BaseHTTPException):
+    error_code = "workflow_tool_human_input_not_supported"
+    description = "Workflow with Human Input nodes cannot be published as a workflow tool."
+    code = 400
 
 
 class ToolEngineInvokeError(Exception):

@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Escribe tu palabra de indicación aquí, ingresa '{' para insertar una variable, ingresa '/' para insertar un bloque de contenido de indicación",
   "promptEditor.query.item.desc": "Insertar plantilla de consulta del usuario",
   "promptEditor.query.item.title": "Consulta",
+  "promptEditor.requestURL.item.desc": "Insertar URL de solicitud",
+  "promptEditor.requestURL.item.title": "URL de Solicitud",
   "promptEditor.variable.item.desc": "Insertar Variables y Herramientas Externas",
   "promptEditor.variable.item.title": "Variables y Herramientas Externas",
   "promptEditor.variable.modal.add": "Nueva variable",

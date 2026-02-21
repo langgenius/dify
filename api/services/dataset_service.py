@@ -18,7 +18,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.file import helpers as file_helpers
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -26,6 +25,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.file import helpers as file_helpers
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -1696,12 +1696,17 @@ class DocumentService:
             for document in documents
             if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        if dataset.doc_form is not None:
-            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
+        # Delete documents first, then dispatch cleanup task after commit
+        # to avoid deadlock between main transaction and async task
         for document in documents:
             db.session.delete(document)
         db.session.commit()
+
+        # Dispatch cleanup task after commit to avoid lock contention
+        # Task cleans up segments, files, and vector indexes
+        if dataset.doc_form is not None:
+            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:

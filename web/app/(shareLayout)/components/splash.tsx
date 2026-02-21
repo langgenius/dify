@@ -31,7 +31,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout, shareCode])
+  }, [getSigninUrl, router, shareCode])
 
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {

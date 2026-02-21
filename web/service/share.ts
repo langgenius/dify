@@ -2,20 +2,10 @@ import type {
   IOnCompleted,
   IOnData,
   IOnError,
-  IOnIterationFinished,
-  IOnIterationNext,
-  IOnIterationStarted,
-  IOnLoopFinished,
-  IOnLoopNext,
-  IOnLoopStarted,
   IOnMessageReplace,
-  IOnNodeFinished,
-  IOnNodeStarted,
-  IOnTextChunk,
-  IOnTextReplace,
-  IOnWorkflowFinished,
-  IOnWorkflowStarted,
+  IOtherOptions,
 } from './base'
+import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
@@ -95,33 +85,7 @@ export const sendCompletionMessage = async (body: Record<string, any>, { onData,
 
 export const sendWorkflowMessage = async (
   body: Record<string, any>,
-  {
-    onWorkflowStarted,
-    onNodeStarted,
-    onNodeFinished,
-    onWorkflowFinished,
-    onIterationStart,
-    onIterationNext,
-    onIterationFinish,
-    onLoopStart,
-    onLoopNext,
-    onLoopFinish,
-    onTextChunk,
-    onTextReplace,
-  }: {
-    onWorkflowStarted: IOnWorkflowStarted
-    onNodeStarted: IOnNodeStarted
-    onNodeFinished: IOnNodeFinished
-    onWorkflowFinished: IOnWorkflowFinished
-    onIterationStart: IOnIterationStarted
-    onIterationNext: IOnIterationNext
-    onIterationFinish: IOnIterationFinished
-    onLoopStart: IOnLoopStarted
-    onLoopNext: IOnLoopNext
-    onLoopFinish: IOnLoopFinished
-    onTextChunk: IOnTextChunk
-    onTextReplace: IOnTextReplace
-  },
+  otherOptions: IOtherOptions,
   appSourceType: AppSourceType,
   appId = '',
 ) => {
@@ -131,19 +95,8 @@ export const sendWorkflowMessage = async (
       response_mode: 'streaming',
     },
   }, {
-    onNodeStarted,
-    onWorkflowStarted,
-    onWorkflowFinished,
+    ...otherOptions,
     isPublicAPI: getIsPublicAPI(appSourceType),
-    onNodeFinished,
-    onIterationStart,
-    onIterationNext,
-    onIterationFinish,
-    onLoopStart,
-    onLoopNext,
-    onLoopFinish,
-    onTextChunk,
-    onTextReplace,
   })
 }
 
@@ -319,4 +272,15 @@ export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
 
 export const getAppAccessModeByAppCode = (appCode: string) => {
   return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
+}
+
+export const getHumanInputForm = (token: string) => {
+  return get<HumanInputFormData>(`/form/human_input/${token}`)
+}
+
+export const submitHumanInputForm = (token: string, data: {
+  inputs: Record<string, string>
+  action: string
+}) => {
+  return post(`/form/human_input/${token}`, { body: data })
 }

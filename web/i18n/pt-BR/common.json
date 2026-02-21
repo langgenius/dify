@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Escreva sua palavra de incentivo aqui, digite '{' para inserir uma variável, digite '/' para inserir um bloco de conteúdo de incentivo",
   "promptEditor.query.item.desc": "Inserir modelo de consulta do usuário",
   "promptEditor.query.item.title": "Consulta",
+  "promptEditor.requestURL.item.desc": "Inserir URL de solicitação",
+  "promptEditor.requestURL.item.title": "URL de Solicitação",
   "promptEditor.variable.item.desc": "Inserir Variáveis e Ferramentas Externas",
   "promptEditor.variable.item.title": "Variáveis e Ferramentas Externas",
   "promptEditor.variable.modal.add": "Nova variável",

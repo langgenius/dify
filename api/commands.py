@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
+from libs.db_migration_lock import DbMigrationAutoRenewLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -53,6 +54,8 @@ from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs i
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
+
+DB_UPGRADE_LOCK_TTL_SECONDS = 60
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -727,8 +730,15 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    lock = redis_client.lock(name="db_upgrade_lock", timeout=60)
+    lock = DbMigrationAutoRenewLock(
+        redis_client=redis_client,
+        name="db_upgrade_lock",
+        ttl_seconds=DB_UPGRADE_LOCK_TTL_SECONDS,
+        logger=logger,
+        log_context="db_migration",
+    )
     if lock.acquire(blocking=False):
+        migration_succeeded = False
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
 
@@ -737,12 +747,16 @@ def upgrade_db():
 
             flask_migrate.upgrade()
 
+            migration_succeeded = True
             click.echo(click.style("Database migration successful!", fg="green"))
 
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to execute database migration")
+            click.echo(click.style(f"Database migration failed: {e}", fg="red"))
+            raise SystemExit(1)
         finally:
-            lock.release()
+            status = "successful" if migration_succeeded else "failed"
+            lock.release_safely(status=status)
     else:
         click.echo("Database migration skipped")
 

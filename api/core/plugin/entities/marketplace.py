@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
@@ -48,3 +48,15 @@ class MarketplacePluginDeclaration(BaseModel):
         if "tool" in data and not data["tool"]:
             del data["tool"]
         return data
+
+
+class MarketplacePluginSnapshot(BaseModel):
+    org: str
+    name: str
+    latest_version: str
+    latest_package_identifier: str
+    latest_package_url: str
+
+    @computed_field
+    def plugin_id(self) -> str:
+        return f"{self.org}/{self.name}"

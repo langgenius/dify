@@ -5,9 +5,9 @@ from typing import Any, Literal
 from jsonschema import Draft7Validator, SchemaError
 from pydantic import BaseModel, Field, field_validator
 
-from core.file import FileTransferMethod, FileType, FileUploadConfig
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.workflow.file import FileTransferMethod, FileType, FileUploadConfig
 from models.model import AppMode
 
 
