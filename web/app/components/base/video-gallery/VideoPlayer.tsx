@@ -215,8 +215,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   }, [])
 
   return (
-    <div ref={containerRef} className={styles.videoPlayer} onMouseMove={showControls} onMouseEnter={showControls}>
-      <video ref={videoRef} src={src} className={styles.video}>
+    <div ref={containerRef} className={styles.videoPlayer} onMouseMove={showControls} onMouseEnter={showControls} data-testid="video-player-container">
+      <video ref={videoRef} src={src} className={styles.video} data-testid="video-element">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (
           <source key={index} src={srcUrl} />
@@ -232,12 +232,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               onMouseDown={handleMouseDown}
+              data-testid="video-progress-bar"
             >
               <div className={styles.progress} style={{ width: `${(currentTime / duration) * 100}%` }} />
               {hoverTime !== null && (
                 <div
                   className={styles.hoverTimeIndicator}
                   style={{ left: `${(hoverTime / duration) * 100}%` }}
+                  data-testid="video-hover-time"
                 >
                   {formatTime(hoverTime)}
                 </div>
@@ -246,11 +248,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
           </div>
           <div className={styles.controlsContent}>
             <div className={styles.leftControls}>
-              <button type="button" className={styles.playPauseButton} onClick={togglePlayPause}>
+              <button type="button" className={styles.playPauseButton} onClick={togglePlayPause} data-testid="video-play-pause-button">
                 {isPlaying ? <PauseIcon /> : <PlayIcon />}
               </button>
               {!isSmallSize && (
-                <span className={styles.time}>
+                <span className={styles.time} data-testid="video-time-display">
                   {formatTime(currentTime)}
                   {' '}
                   /
@@ -260,7 +262,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
               )}
             </div>
             <div className={styles.rightControls}>
-              <button type="button" className={styles.muteButton} onClick={toggleMute}>
+              <button type="button" className={styles.muteButton} onClick={toggleMute} data-testid="video-mute-button">
                 {isMuted ? <UnmuteIcon /> : <MuteIcon />}
               </button>
               {!isSmallSize && (
@@ -279,12 +281,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
                       document.addEventListener('mousemove', handleMouseMove)
                       document.addEventListener('mouseup', handleMouseUp)
                     }}
+                    data-testid="video-volume-slider"
                   >
                     <div className={styles.volumeLevel} style={{ width: `${volume * 100}%` }} />
                   </div>
                 </div>
               )}
-              <button type="button" className={styles.fullscreenButton} onClick={toggleFullscreen}>
+              <button type="button" className={styles.fullscreenButton} onClick={toggleFullscreen} data-testid="video-fullscreen-button">
                 <FullscreenIcon />
               </button>
             </div>

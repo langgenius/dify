@@ -2745,16 +2745,6 @@
       "count": 1
     }
   },
-  "app/components/base/tab-header/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/tab-slider-plain/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
-    }
-  },
   "app/components/base/tab-slider/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
@@ -2804,14 +2794,6 @@
   "app/components/base/textarea/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/base/timezone-label/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/toast/index.tsx": {
@@ -2838,11 +2820,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/voice-input/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
     }
   },
   "app/components/base/voice-input/utils.ts": {
