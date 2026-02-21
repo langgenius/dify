@@ -133,18 +133,20 @@ class AppService:
 
             default_model_config["model"] = json.dumps(default_model_dict)
 
-        app = App(**app_template["app"])
-        app.name = args["name"]
-        app.description = args.get("description", "")
-        app.mode = args["mode"]
-        app.icon_type = args.get("icon_type", "emoji")
-        app.icon = args["icon"]
-        app.icon_background = args["icon_background"]
-        app.tenant_id = tenant_id
-        app.api_rph = args.get("api_rph", 0)
-        app.api_rpm = args.get("api_rpm", 0)
-        app.created_by = account.id
-        app.updated_by = account.id
+        app = App(
+            **app_template["app"],
+            name=args["name"],
+            description=args.get("description", ""),
+            mode=args["mode"],
+            icon_type=args.get("icon_type", "emoji"),
+            icon=args["icon"],
+            icon_background=args["icon_background"],
+            tenant_id=tenant_id,
+            api_rph=args.get("api_rph", 0),
+            api_rpm=args.get("api_rpm", 0),
+            created_by=account.id,
+            updated_by=account.id,
+        )
 
         db.session.add(app)
         db.session.flush()
