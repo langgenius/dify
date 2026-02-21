@@ -1,6 +1,5 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { Fragment, useMemo } from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
@@ -38,7 +37,10 @@ const CredentialSelector = ({
       {
         ({ open }) => (
           <>
-            <MenuButton className={`flex h-7 items-center justify-center rounded-md p-1 pr-2 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}>
+            <MenuButton
+              className={`flex h-7 items-center justify-center rounded-md p-1 pr-2 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}
+              data-testid="notion-credential-selector-btn"
+            >
               <CredentialIcon
                 className="mr-2"
                 avatarUrl={currentCredential?.workspaceIcon}
@@ -48,10 +50,11 @@ const CredentialSelector = ({
               <div
                 className="mr-1 w-[90px] truncate text-left text-sm font-medium text-text-secondary"
                 title={currentDisplayName}
+                data-testid="notion-credential-selector-name"
               >
                 {currentDisplayName}
               </div>
-              <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />
+              <div className="i-ri-arrow-down-s-line h-4 w-4 text-text-secondary" />
             </MenuButton>
             <Transition
               as={Fragment}
@@ -76,6 +79,7 @@ const CredentialSelector = ({
                           <div
                             className="flex h-9 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
                             onClick={() => onSelect(item.credentialId)}
+                            data-testid={`notion-credential-item-${item.credentialId}`}
                           >
                             <CredentialIcon
                               className="mr-2 shrink-0"
@@ -84,7 +88,7 @@ const CredentialSelector = ({
                               size={20}
                             />
                             <div
-                              className="system-sm-medium mr-2 grow truncate text-text-secondary"
+                              className="mr-2 grow truncate text-text-secondary system-sm-medium"
                               title={displayName}
                             >
                               {displayName}

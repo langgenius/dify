@@ -1308,9 +1308,6 @@
     }
   },
   "app/components/base/audio-gallery/AudioPlayer.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2414,11 +2411,6 @@
   "app/components/base/notion-page-selector/base.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    }
-  },
-  "app/components/base/notion-page-selector/credential-selector/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/notion-page-selector/page-selector/index.tsx": {
