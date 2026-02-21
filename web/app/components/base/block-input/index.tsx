@@ -70,7 +70,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   const renderSafeContent = (value: string) => {
     const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableMatch = /^\{\{([^}]+)\}\}$/.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight

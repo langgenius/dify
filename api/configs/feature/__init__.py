@@ -265,6 +265,11 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size (bytes) for plugin-generated files",
+        default=50 * 1024 * 1024,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
@@ -1313,6 +1318,9 @@ class WorkflowLogConfig(BaseSettings):
     WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
+    )
+    WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: str = Field(
+        default="", description="Comma-separated list of workflow IDs to clean logs for"
     )
 
 
