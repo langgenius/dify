@@ -45,7 +45,7 @@ describe('ErrorBoundary', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalled()
 
-    const hasLoggedOurError = consoleErrorSpy.mock.calls.some((call: Error[]) =>
+    const hasLoggedOurError = consoleErrorSpy.mock.calls.some((call: unknown[]) =>
       call.includes(testError),
     )
 
