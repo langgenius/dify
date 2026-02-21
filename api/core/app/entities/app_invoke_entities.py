@@ -277,14 +277,12 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-from core.ops.ops_trace_manager import TraceQueueManager
-
-AppGenerateEntity.model_rebuild()
-EasyUIBasedAppGenerateEntity.model_rebuild()
-ConversationAppGenerateEntity.model_rebuild()
-ChatAppGenerateEntity.model_rebuild()
-CompletionAppGenerateEntity.model_rebuild()
-AgentChatAppGenerateEntity.model_rebuild()
-AdvancedChatAppGenerateEntity.model_rebuild()
-WorkflowAppGenerateEntity.model_rebuild()
-RagPipelineGenerateEntity.model_rebuild()
+AppGenerateEntity.model_rebuild(raise_errors=False)
+EasyUIBasedAppGenerateEntity.model_rebuild(raise_errors=False)
+ConversationAppGenerateEntity.model_rebuild(raise_errors=False)
+ChatAppGenerateEntity.model_rebuild(raise_errors=False)
+CompletionAppGenerateEntity.model_rebuild(raise_errors=False)
+AgentChatAppGenerateEntity.model_rebuild(raise_errors=False)
+AdvancedChatAppGenerateEntity.model_rebuild(raise_errors=False)
+WorkflowAppGenerateEntity.model_rebuild(raise_errors=False)
+RagPipelineGenerateEntity.model_rebuild(raise_errors=False)

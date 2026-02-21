@@ -28,7 +28,6 @@ from core.model_runtime.entities.message_entities import PromptMessage, SystemPr
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
@@ -38,6 +37,55 @@ from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+# Precompiled heuristic to detect common Persian (Farsi) words in short inputs.
+# Using a compiled regex avoids repeated recompilation on every call.
+_PERSIAN_HEURISTIC = re.compile(
+    r"\b(سلام|متشکرم|ممنون|خوب|چطور|سپاس)\b",
+    flags=re.IGNORECASE,
+)
+
+# Precompiled regex for Persian-specific characters (including Persian ye U+06CC)
+_persian_chars_re = re.compile(r"[پچژگک\u06CC]")
+
+# Optional langdetect import — import once at module import time to avoid repeated lookups
+_langdetect_available = False
+try:
+    from langdetect import DetectorFactory, detect  # type: ignore
+
+    DetectorFactory.seed = 0
+    _langdetect_available = True
+except Exception:
+    detect = None
+    DetectorFactory = None
+    _langdetect_available = False
+
+
+def _contains_persian(text: str) -> bool:
+    """Return True if text appears to be Persian (Farsi).
+
+    Detection is multi-layered: quick character check, word heuristics, and
+    an optional langdetect fallback when available.
+    """
+    text = text or ""
+
+    # 1) Quick check: Persian-specific letters
+    if _persian_chars_re.search(text):
+        return True
+
+    # 2) Heuristic check for common Persian words (fast, precompiled)
+    if _PERSIAN_HEURISTIC.search(text):
+        return True
+
+    # 3) Fallback: language detection (more expensive) — only run if langdetect is available
+    if _langdetect_available and detect is not None:
+        try:
+            return detect(text) == "fa"
+        except Exception as exc:
+            # langdetect can fail for very short/ambiguous texts; log and continue
+            logger.debug("langdetect detection failed: %s", exc)
+
+    return False
 
 
 class WorkflowServiceInterface(Protocol):
@@ -55,6 +103,8 @@ class LLMGenerator:
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
+        # _contains_persian is implemented at module scope for reuse and testability
+
         if len(query) > 2000:
             query = query[:300] + "...[TRUNCATED]..." + query[-300:]
 
@@ -67,35 +117,155 @@ class LLMGenerator:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
+
+        # If the input contains Persian characters, add explicit instruction to produce Persian title
+        is_persian_input = _contains_persian(query)
+
+        if is_persian_input:
+            prompt += (
+                "\nIMPORTANT: The user input is Persian (Farsi). "
+                "Only output the final title in Persian (Farsi), use Persian characters "
+                "(پ, چ, ژ, گ, ک, ی) and do NOT use Arabic or any other language.\n"
+            )
+
         prompts = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
-            )
-        answer = response.message.get_text_content()
-        if answer == "":
-            return ""
-        try:
-            result_dict = json.loads(answer)
-        except json.JSONDecodeError:
-            result_dict = json_repair.loads(answer)
+            # Try generation with up to 2 attempts.
+            # If Persian required but not produced, retry with stronger instruction.
+            attempts = 0
+            max_attempts = 2
+            generated_output = None
 
-        if not isinstance(result_dict, dict):
-            answer = query
-        else:
-            output = result_dict.get("Your Output")
-            if isinstance(output, str) and output.strip():
-                answer = output.strip()
+            while attempts < max_attempts:
+                attempts += 1
+                try:
+                    response: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=list(prompts),
+                        model_parameters={"max_tokens": 500, "temperature": 0.2},
+                        stream=False,
+                    )
+                except (InvokeError, InvokeAuthorizationError):
+                    logger.exception("Failed to invoke LLM for conversation name generation")
+                    break
+
+                answer = cast(str, response.message.content)
+
+                def _extract_and_parse_json(raw_text: str) -> dict | None:
+                    if not raw_text:
+                        return None
+                    # Try to extract JSON object by braces
+                    first_brace = raw_text.find("{")
+                    last_brace = raw_text.rfind("}")
+                    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                        candidate_json = raw_text[first_brace : last_brace + 1]
+                    else:
+                        candidate_json = raw_text
+
+                    # Try normal json loads, then attempt to repair malformed JSON
+                    try:
+                        parsed = json.loads(candidate_json)
+                        # Only accept dict results for structured conversation title parsing
+                        return parsed if isinstance(parsed, dict) else None
+                    except json.JSONDecodeError:
+                        # Prefer a json_repair.loads implementation if available
+                        json_repair_loads = getattr(json_repair, "loads", None)
+                        if callable(json_repair_loads):
+                            try:
+                                repaired_parsed = json_repair_loads(candidate_json)
+                                if isinstance(repaired_parsed, dict):
+                                    return repaired_parsed
+                                # If the repair function returns a string, try parsing it
+                                if isinstance(repaired_parsed, str):
+                                    try:
+                                        parsed2 = json.loads(repaired_parsed)
+                                        return parsed2 if isinstance(parsed2, dict) else None
+                                    except Exception:
+                                        return None
+                                return None
+                            except Exception as exc:
+                                logger.debug("json_repair.loads failed: %s", exc)
+                                return None
+
+                        # Otherwise try to call a 'repair' function if present and parse result
+                        json_repair_repair = getattr(json_repair, "repair", None)
+                        if callable(json_repair_repair):
+                            try:
+                                repaired = json_repair_repair(candidate_json)
+                                if isinstance(repaired, (dict, list)):
+                                    return repaired if isinstance(repaired, dict) else None
+                                if isinstance(repaired, str):
+                                    parsed = json.loads(repaired)
+                                    return parsed if isinstance(parsed, dict) else None
+                                return None
+                            except Exception as exc:
+                                logger.debug("json_repair.repair failed: %s", exc)
+                                return None
+
+                        logger.debug("No suitable json_repair function available to repair JSON")
+                        return None
+
+                result_dict = _extract_and_parse_json(answer)
+
+                if not isinstance(result_dict, dict):
+                    candidate = query
+                else:
+                    candidate = result_dict.get("Your Output", "")
+
+                # If input is Persian, ensure candidate contains Persian-specific characters.
+                # Otherwise retry with stronger instruction.
+                if is_persian_input and not _contains_persian(candidate):
+                    logger.info("Generated title doesn't appear to be Persian; retrying with stricter instruction")
+                    prompts = [
+                        UserPromptMessage(
+                            content=(
+                                prompt + "\nCRITICAL: You must output the title in Persian (Farsi) "
+                                "using Persian-specific letters (پ, چ, ژ, گ, ک, ی). "
+                                "Output only the JSON as specified earlier."
+                            )
+                        )
+                    ]
+                    continue
+
+                generated_output = candidate.strip()
+                break
+
+            if generated_output:
+                name = generated_output
             else:
-                answer = query
+                # Use the last non-Persian candidate (if any) so that the translation fallback
+                # can translate the generated candidate into Persian. Otherwise fall back to
+                # the original query.
+                last_candidate = locals().get("candidate", None)
+                name = last_candidate.strip() if isinstance(last_candidate, str) and last_candidate else (query or "")
 
-        name = answer.strip()
+        if is_persian_input and not _contains_persian(name):
+            # As a last resort, ask the model to translate the title into Persian directly
+            try:
+                translate_prompt = UserPromptMessage(
+                    content=(
+                        "Translate the following short chat title into Persian (Farsi) ONLY. "
+                        "Output the Persian translation only (no JSON):\n\n"
+                        f"{name}"
+                    )
+                )
+                translate_response: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=[translate_prompt],
+                    model_parameters={"max_tokens": 200, "temperature": 0},
+                    stream=False,
+                )
+                translation = cast(str, translate_response.message.content).strip()
+                if _contains_persian(translation):
+                    name = translation
+            except (InvokeError, InvokeAuthorizationError):
+                logger.exception("Failed to obtain Persian translation for the conversation title")
 
         if len(name) > 75:
             name = name[:75] + "..."
 
         # get tracing instance
+        from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+
         trace_manager = TraceQueueManager(app_id=app_id)
         trace_manager.add_trace_task(
             TraceTask(
@@ -381,10 +551,46 @@ class LLMGenerator:
 
             raw_content = response.message.get_text_content()
 
+            # Initialize parsed_content to ensure the variable is always bound for type-checkers
+            parsed_content: dict | list | None = None
             try:
                 parsed_content = json.loads(raw_content)
             except json.JSONDecodeError:
-                parsed_content = json_repair.loads(raw_content)
+                # Prefer a json_repair.loads implementation if available
+                json_repair_loads = getattr(json_repair, "loads", None)
+                if callable(json_repair_loads):
+                    try:
+                        parsed_candidate = json_repair_loads(raw_content)
+                        # Accept dict or list directly
+                        if isinstance(parsed_candidate, (dict, list)):
+                            parsed_content = parsed_candidate
+                        elif isinstance(parsed_candidate, str):
+                            try:
+                                parsed2 = json.loads(parsed_candidate)
+                                parsed_content = parsed2 if isinstance(parsed2, (dict, list)) else None
+                            except Exception as exc:
+                                logger.debug("json_repair.loads returned a string that failed to parse: %s", exc)
+                                parsed_content = None
+                        else:
+                            parsed_content = None
+                    except Exception as exc:
+                        logger.debug("json_repair.loads failed: %s", exc)
+                        parsed_content = None
+                else:
+                    # As a fallback, use a 'repair' function followed by json.loads
+                    json_repair_repair = getattr(json_repair, "repair", None)
+                    if callable(json_repair_repair):
+                        try:
+                            repaired = json_repair_repair(raw_content)
+                            if isinstance(repaired, (dict, list)):
+                                parsed_content = repaired
+                            elif isinstance(repaired, str):
+                                parsed_content = json.loads(repaired)
+                            else:
+                                parsed_content = None
+                        except Exception as exc:
+                            logger.debug("json_repair.repair failed: %s", exc)
+                            parsed_content = None
 
             if not isinstance(parsed_content, dict | list):
                 raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
@@ -567,16 +773,11 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_raw = response.message.get_text_content()
+            generated_raw = cast(str, response.message.content)
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
-                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
-            json_str = generated_raw[first_brace : last_brace + 1]
-            data = json_repair.loads(json_str)
-            if not isinstance(data, dict):
-                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
-            return data
+            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
+
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
