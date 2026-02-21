@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
+from typing import Concatenate, ParamSpec, TypeVar, overload
 from typing import Concatenate, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
@@ -44,10 +45,28 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
-    def decorator(view_func: Callable[P, R]):
+@overload
+def validate_app_token(
+    view: Callable[P, R],
+    *,
+    fetch_user_arg: FetchUserArg | None = None,
+) -> Callable[P, R]: ...
+
+
+@overload
+def validate_app_token(
+    view: None = None,
+    *,
+    fetch_user_arg: FetchUserArg | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
+def validate_app_token(
+    view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
             app_model = db.session.query(App).where(App.id == api_token.app_id).first()
@@ -124,9 +143,12 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
-    def interceptor(view: Callable[P, R]):
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+def cloud_edition_billing_resource_check(
+    resource: str, api_token_type: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def interceptor(view: Callable[P, R]) -> Callable[P, R]:
+        @wraps(view)
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
 
@@ -154,10 +176,12 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
-    def interceptor(view: Callable[P, R]):
+def cloud_edition_billing_knowledge_limit_check(
+    resource: str, api_token_type: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def interceptor(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
@@ -176,10 +200,12 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
-    def interceptor(view: Callable[P, R]):
+def cloud_edition_billing_rate_limit_check(
+    resource: str, api_token_type: str
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def interceptor(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":
@@ -287,7 +313,7 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-            return view(api_token.tenant_id, *args, **kwargs)
+            return view_func(api_token.tenant_id, *args, **kwargs)
 
         return decorated
 
