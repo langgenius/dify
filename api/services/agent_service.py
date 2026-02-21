@@ -102,7 +102,7 @@ class AgentService:
             tool_outputs = agent_thought.tool_outputs_dict or {}
             tool_calls = []
             # Generate ordinal keys using the shared helper for consistency
-            ordinal_keys = list(MessageAgentThought._parse_array_with_ordinal_keys(
+            ordinal_keys = list(MessageAgentThought.parse_array_with_ordinal_keys(
                 [{"name": t, "arguments": {}} for t in tools], tools, "arguments"
             ).keys()) if tools else []
             for i, tool in enumerate(tools):

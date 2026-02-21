@@ -1980,7 +1980,7 @@ class MessageAgentThought(TypeBase):
             return []
 
     @staticmethod
-    def _parse_array_with_ordinal_keys(
+    def parse_array_with_ordinal_keys(
         items: list, tools: list[str], value_key: str, default_value: Any = None
     ) -> dict[str, Any]:
         """Parse array format items into dict with ordinal keys for duplicate names.
@@ -2032,7 +2032,7 @@ class MessageAgentThought(TypeBase):
                 tools = self.tools
                 # New array format: [{"name": "search", "meta": {...}}, ...]
                 if isinstance(raw, list):
-                    return self._parse_array_with_ordinal_keys(raw, tools, "meta")
+                    return self.parse_array_with_ordinal_keys(raw, tools, "meta")
                 # Old dict format
                 if isinstance(raw, dict):
                     return cast(dict[str, Any], raw)
@@ -2050,7 +2050,7 @@ class MessageAgentThought(TypeBase):
                 data = json.loads(self.tool_input)
                 # New array format: [{"name": "search", "arguments": {...}}, ...]
                 if isinstance(data, list):
-                    return self._parse_array_with_ordinal_keys(data, tools, "arguments")
+                    return self.parse_array_with_ordinal_keys(data, tools, "arguments")
                 # Old dict format: {"tool_name": {...}, ...}
                 if isinstance(data, dict):
                     result = {}
@@ -2079,7 +2079,7 @@ class MessageAgentThought(TypeBase):
                 data = json.loads(self.observation)
                 # New array format: [{"name": "search", "output": "result"}, ...]
                 if isinstance(data, list):
-                    return self._parse_array_with_ordinal_keys(data, tools, "output", default_value="")
+                    return self.parse_array_with_ordinal_keys(data, tools, "output", default_value="")
                 # Old dict format
                 if isinstance(data, dict):
                     result = {}
