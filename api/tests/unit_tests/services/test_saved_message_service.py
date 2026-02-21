@@ -64,6 +64,22 @@ from models.web import SavedMessage
 from services.saved_message_service import SavedMessageService
 
 
+def _setup_session_cm(mock_create_session: Mock) -> MagicMock:
+    """
+    SavedMessageService uses `with session_factory.create_session() as session`.
+    Tests patch `session_factory.create_session` and pull the session mock from the context manager.
+    """
+    session = MagicMock()
+    mock_create_session.return_value.__enter__.return_value = session
+    mock_create_session.return_value.__exit__.return_value = None
+
+    tx = MagicMock()
+    tx.__enter__.return_value = None
+    tx.__exit__.return_value = None
+    session.begin.return_value = tx
+    return session
+
+
 class SavedMessageServiceTestDataFactory:
     """
     Factory for creating test data and mock objects.
@@ -202,10 +218,11 @@ class TestSavedMessageServicePagination:
     """Test saved message pagination operations."""
 
     @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
-    def test_pagination_with_account_user(self, mock_db_session, mock_message_pagination, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_pagination_with_account_user(self, mock_create_session, mock_message_pagination, factory):
         """Test pagination with an Account user."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
 
@@ -248,10 +265,11 @@ class TestSavedMessageServicePagination:
         )
 
     @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
-    def test_pagination_with_end_user(self, mock_db_session, mock_message_pagination, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_pagination_with_end_user(self, mock_create_session, mock_message_pagination, factory):
         """Test pagination with an EndUser."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_end_user_mock()
 
@@ -302,10 +320,11 @@ class TestSavedMessageServicePagination:
             SavedMessageService.pagination_by_last_id(app_model=app, user=None, last_id=None, limit=20)
 
     @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
-    def test_pagination_with_last_id(self, mock_db_session, mock_message_pagination, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_pagination_with_last_id(self, mock_create_session, mock_message_pagination, factory):
         """Test pagination with last_id parameter."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
         last_id = "msg-last"
@@ -341,10 +360,11 @@ class TestSavedMessageServicePagination:
         assert call_args.kwargs["last_id"] == last_id
 
     @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
-    def test_pagination_with_empty_saved_messages(self, mock_db_session, mock_message_pagination, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_pagination_with_empty_saved_messages(self, mock_create_session, mock_message_pagination, factory):
         """Test pagination when user has no saved messages."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
 
@@ -378,10 +398,11 @@ class TestSavedMessageServiceSave:
     """Test save message operations."""
 
     @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
-    def test_save_message_for_account(self, mock_db_session, mock_get_message, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_save_message_for_account(self, mock_create_session, mock_get_message, factory):
         """Test saving a message for an Account user."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
         message = factory.create_message_mock(message_id="msg-123", app_id=app.id)
@@ -405,13 +426,14 @@ class TestSavedMessageServiceSave:
         assert saved_message.message_id == message.id
         assert saved_message.created_by == user.id
         assert saved_message.created_by_role == "account"
-        mock_db_session.commit.assert_called_once()
+        mock_db_session.begin.assert_called_once()
 
     @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
-    def test_save_message_for_end_user(self, mock_db_session, mock_get_message, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_save_message_for_end_user(self, mock_create_session, mock_get_message, factory):
         """Test saving a message for an EndUser."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_end_user_mock()
         message = factory.create_message_mock(message_id="msg-456", app_id=app.id)
@@ -435,10 +457,10 @@ class TestSavedMessageServiceSave:
         assert saved_message.message_id == message.id
         assert saved_message.created_by == user.id
         assert saved_message.created_by_role == "end_user"
-        mock_db_session.commit.assert_called_once()
+        mock_db_session.begin.assert_called_once()
 
-    @patch("services.saved_message_service.db.session")
-    def test_save_without_user_does_nothing(self, mock_db_session, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_save_without_user_does_nothing(self, mock_create_session, factory):
         """Test that saving without user is a no-op."""
         # Arrange
         app = factory.create_app_mock()
@@ -447,15 +469,14 @@ class TestSavedMessageServiceSave:
         SavedMessageService.save(app_model=app, user=None, message_id="msg-123")
 
         # Assert
-        mock_db_session.query.assert_not_called()
-        mock_db_session.add.assert_not_called()
-        mock_db_session.commit.assert_not_called()
+        mock_create_session.assert_not_called()
 
     @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
-    def test_save_duplicate_message_is_idempotent(self, mock_db_session, mock_get_message, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_save_duplicate_message_is_idempotent(self, mock_create_session, mock_get_message, factory):
         """Test that saving an already saved message is idempotent."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
         message_id = "msg-789"
@@ -477,14 +498,14 @@ class TestSavedMessageServiceSave:
 
         # Assert - no new saved message created
         mock_db_session.add.assert_not_called()
-        mock_db_session.commit.assert_not_called()
         mock_get_message.assert_not_called()
 
     @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
-    def test_save_validates_message_exists(self, mock_db_session, mock_get_message, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_save_validates_message_exists(self, mock_create_session, mock_get_message, factory):
         """Test that save validates message exists through MessageService."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
         message = factory.create_message_mock()
@@ -508,10 +529,11 @@ class TestSavedMessageServiceSave:
 class TestSavedMessageServiceDelete:
     """Test delete saved message operations."""
 
-    @patch("services.saved_message_service.db.session")
-    def test_delete_saved_message_for_account(self, mock_db_session, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_delete_saved_message_for_account(self, mock_create_session, factory):
         """Test deleting a saved message for an Account user."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
         message_id = "msg-123"
@@ -533,12 +555,13 @@ class TestSavedMessageServiceDelete:
 
         # Assert
         mock_db_session.delete.assert_called_once_with(saved_message)
-        mock_db_session.commit.assert_called_once()
+        mock_db_session.begin.assert_called_once()
 
-    @patch("services.saved_message_service.db.session")
-    def test_delete_saved_message_for_end_user(self, mock_db_session, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_delete_saved_message_for_end_user(self, mock_create_session, factory):
         """Test deleting a saved message for an EndUser."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_end_user_mock()
         message_id = "msg-456"
@@ -560,10 +583,10 @@ class TestSavedMessageServiceDelete:
 
         # Assert
         mock_db_session.delete.assert_called_once_with(saved_message)
-        mock_db_session.commit.assert_called_once()
+        mock_db_session.begin.assert_called_once()
 
-    @patch("services.saved_message_service.db.session")
-    def test_delete_without_user_does_nothing(self, mock_db_session, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_delete_without_user_does_nothing(self, mock_create_session, factory):
         """Test that deleting without user is a no-op."""
         # Arrange
         app = factory.create_app_mock()
@@ -572,14 +595,13 @@ class TestSavedMessageServiceDelete:
         SavedMessageService.delete(app_model=app, user=None, message_id="msg-123")
 
         # Assert
-        mock_db_session.query.assert_not_called()
-        mock_db_session.delete.assert_not_called()
-        mock_db_session.commit.assert_not_called()
+        mock_create_session.assert_not_called()
 
-    @patch("services.saved_message_service.db.session")
-    def test_delete_non_existent_saved_message_does_nothing(self, mock_db_session, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_delete_non_existent_saved_message_does_nothing(self, mock_create_session, factory):
         """Test that deleting a non-existent saved message is a no-op."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user = factory.create_account_mock()
         message_id = "msg-nonexistent"
@@ -595,12 +617,12 @@ class TestSavedMessageServiceDelete:
 
         # Assert - no deletion occurred
         mock_db_session.delete.assert_not_called()
-        mock_db_session.commit.assert_not_called()
 
-    @patch("services.saved_message_service.db.session")
-    def test_delete_only_affects_user_own_saved_messages(self, mock_db_session, factory):
+    @patch("services.saved_message_service.session_factory.create_session")
+    def test_delete_only_affects_user_own_saved_messages(self, mock_create_session, factory):
         """Test that delete only removes the user's own saved message."""
         # Arrange
+        mock_db_session = _setup_session_cm(mock_create_session)
         app = factory.create_app_mock()
         user1 = factory.create_account_mock(account_id="user-1")
         message_id = "msg-shared"

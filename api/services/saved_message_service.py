@@ -1,6 +1,6 @@
 from typing import Union
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.model import App, EndUser
@@ -15,16 +15,17 @@ class SavedMessageService:
     ) -> InfiniteScrollPagination:
         if not user:
             raise ValueError("User is required")
-        saved_messages = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app_model.id,
-                SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                SavedMessage.created_by == user.id,
+        with session_factory.create_session() as session:
+            saved_messages = (
+                session.query(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app_model.id,
+                    SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
+                    SavedMessage.created_by == user.id,
+                )
+                .order_by(SavedMessage.created_at.desc())
+                .all()
             )
-            .order_by(SavedMessage.created_at.desc())
-            .all()
-        )
         message_ids = [sm.message_id for sm in saved_messages]
 
         return MessageService.pagination_by_last_id(
@@ -35,49 +36,50 @@ class SavedMessageService:
     def save(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
         if not user:
             return
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app_model.id,
-                SavedMessage.message_id == message_id,
-                SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                SavedMessage.created_by == user.id,
+
+        with session_factory.create_session() as session, session.begin():
+            saved_message = (
+                session.query(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app_model.id,
+                    SavedMessage.message_id == message_id,
+                    SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
+                    SavedMessage.created_by == user.id,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if saved_message:
-            return
+            if saved_message:
+                return
 
-        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
+            message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
 
-        saved_message = SavedMessage(
-            app_id=app_model.id,
-            message_id=message.id,
-            created_by_role="account" if isinstance(user, Account) else "end_user",
-            created_by=user.id,
-        )
+            saved_message = SavedMessage(
+                app_id=app_model.id,
+                message_id=message.id,
+                created_by_role="account" if isinstance(user, Account) else "end_user",
+                created_by=user.id,
+            )
 
-        db.session.add(saved_message)
-        db.session.commit()
+            session.add(saved_message)
 
     @classmethod
     def delete(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
         if not user:
             return
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app_model.id,
-                SavedMessage.message_id == message_id,
-                SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                SavedMessage.created_by == user.id,
+        with session_factory.create_session() as session, session.begin():
+            saved_message = (
+                session.query(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app_model.id,
+                    SavedMessage.message_id == message_id,
+                    SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
+                    SavedMessage.created_by == user.id,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if not saved_message:
-            return
+            if not saved_message:
+                return
 
-        db.session.delete(saved_message)
-        db.session.commit()
+            session.delete(saved_message)
