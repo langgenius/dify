@@ -47,10 +47,29 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --directory api --dev lint-imports
 
-      - name: Run Type Checks
+      - name: Run Ty Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: make type-check
+        env:
+          RUST_BACKTRACE: 1
+        run: uv --directory api add ty && uv --directory api run ty check || true
 
+      - name: Run pyrefly Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          RUST_BACKTRACE: 1
+        run: uv --directory api add pyrefly && uv --directory api run pyrefly check || true
+        
+      - name: Run zmypy Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          RUST_BACKTRACE: 1
+        run: uv --directory api add zuban && uv --directory api run zuban check --exclude '.venv/' --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+
+      - name: Run Basedpyright Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: dev/basedpyright-check
+
+        
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
