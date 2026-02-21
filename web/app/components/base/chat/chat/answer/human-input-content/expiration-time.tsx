@@ -1,5 +1,4 @@
 'use client'
-import { RiAlertFill, RiTimeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
@@ -19,8 +18,9 @@ const ExpirationTime = ({
 
   return (
     <div
+      data-testid="expiration-time"
       className={cn(
-        'system-xs-regular mt-1 flex items-center gap-x-1 text-text-tertiary',
+        'mt-1 flex items-center gap-x-1 text-text-tertiary system-xs-regular',
         !isSameOrAfter && 'text-text-warning',
       )}
     >
@@ -28,13 +28,13 @@ const ExpirationTime = ({
         isSameOrAfter
           ? (
               <>
-                <RiTimeLine className="size-3.5" />
+                <div className="i-ri-time-line size-3.5" />
                 <span>{t('humanInput.expirationTimeNowOrFuture', { relativeTime, ns: 'share' })}</span>
               </>
             )
           : (
               <>
-                <RiAlertFill className="size-3.5" />
+                <div className="i-ri-alert-fill size-3.5" />
                 <span>{t('humanInput.expiredTip', { ns: 'share' })}</span>
               </>
             )

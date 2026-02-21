@@ -18,6 +18,7 @@ export default function ContentSwitch({
       <div className="flex items-center justify-center pt-3.5 text-sm">
         <button
           type="button"
+          aria-label="Previous" // Added for accessibility and testing
           className={`${prevDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={prevDisabled}
           onClick={() => !prevDisabled && switchSibling('prev')}
@@ -32,6 +33,7 @@ export default function ContentSwitch({
         </span>
         <button
           type="button"
+          aria-label="Next" // Added for accessibility and testing
           className={`${nextDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={nextDisabled}
           onClick={() => !nextDisabled && switchSibling('next')}
