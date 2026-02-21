@@ -1661,7 +1661,7 @@ class WorkflowDraftVariable(Base):
         return self.last_edited_at is not None
 
 
-class WorkflowDraftVariableFile(Base):
+class WorkflowDraftVariableFile(TypeBase):
     """Stores metadata about files associated with large workflow draft variables.
 
     This model acts as an intermediary between WorkflowDraftVariable and UploadFile,
