@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import contextvars
 import json
 import logging
@@ -10,14 +11,13 @@ from typing import Any
 import click
 from celery import shared_task  # type: ignore
 from flask import current_app, g
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
@@ -116,7 +116,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
 
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 # Load required entities
                 account = session.query(Account).where(Account.id == user_id).first()
                 if not account:

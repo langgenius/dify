@@ -2,7 +2,6 @@ from typing import Literal
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -10,7 +9,7 @@ from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
     ResultResponse,
@@ -99,7 +98,7 @@ class ConversationListApi(WebApiResource):
         query = ConversationListQuery.model_validate(raw_args)
 
         try:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

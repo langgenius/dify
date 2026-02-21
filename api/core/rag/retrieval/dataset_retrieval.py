@@ -10,7 +10,6 @@ from typing import Any, Union, cast
 
 from flask import Flask, current_app
 from sqlalchemy import and_, func, literal, or_, select
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -68,7 +67,7 @@ from core.workflow.repositories.rag_retrieval_protocol import (
     SourceChildChunk,
     SourceMetadata,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
@@ -870,7 +869,7 @@ class DatasetRetrieval:
                 self._send_trace_task(message_id, documents, timer)
                 return
 
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 # Collect all document_ids and batch fetch DatasetDocuments
                 document_ids = {
                     doc.metadata["document_id"]
@@ -961,7 +960,6 @@ class DatasetRetrieval:
                         {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
                         synchronize_session=False,
                     )
-                    session.commit()
 
             self._send_trace_task(message_id, documents, timer)
 

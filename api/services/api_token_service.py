@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 from extensions.ext_database import db
@@ -284,7 +284,7 @@ def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
 
     Raises Unauthorized if token is invalid.
     """
-    with Session(db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
         api_token = session.scalar(stmt)
 

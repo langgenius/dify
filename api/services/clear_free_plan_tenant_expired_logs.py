@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import datetime
 import json
 import logging
@@ -7,12 +8,11 @@ from concurrent.futures import ThreadPoolExecutor
 import click
 from flask import Flask, current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import (
@@ -152,7 +152,6 @@ class ClearFreePlanTenantExpiredLogs:
                     ).delete(synchronize_session=False)
 
                     cls._clear_message_related_tables(session, tenant_id, message_ids)
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -190,7 +189,6 @@ class ClearFreePlanTenantExpiredLogs:
                     session.query(Conversation).where(
                         Conversation.id.in_(conversation_ids),
                     ).delete(synchronize_session=False)
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -326,7 +324,6 @@ class ClearFreePlanTenantExpiredLogs:
                     session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(
                         synchronize_session=False
                     )
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -346,7 +343,7 @@ class ClearFreePlanTenantExpiredLogs:
         started_at = datetime.datetime(2023, 4, 3, 8, 59, 24)
         current_time = started_at
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             total_tenant_count = session.query(Tenant.id).count()
 
         click.echo(click.style(f"Total tenant count: {total_tenant_count}", fg="white"))
@@ -398,7 +395,7 @@ class ClearFreePlanTenantExpiredLogs:
                 # Initial interval of 1 day, will be dynamically adjusted based on tenant count
                 interval = datetime.timedelta(days=1)
                 # Process tenants in this batch
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     # Calculate tenant count in next batch with current interval
                     # Try different intervals until we find one with a reasonable tenant count
                     test_intervals = [

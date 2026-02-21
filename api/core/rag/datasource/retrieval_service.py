@@ -5,7 +5,6 @@ from typing import Any
 
 from flask import Flask, current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -23,7 +22,7 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -197,7 +196,7 @@ class RetrievalService:
 
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
     @classmethod

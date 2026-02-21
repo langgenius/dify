@@ -9,7 +9,6 @@ import orjson
 from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -20,7 +19,7 @@ from core.variables.types import SegmentType
 from core.workflow.enums import NodeType
 from core.workflow.file.models import FileTransferMethod
 from enums.quota_type import QuotaType
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_redis import redis_client
 from factories import file_factory
 from models.enums import AppTriggerStatus, AppTriggerType
@@ -73,7 +72,7 @@ class WebhookService:
         Raises:
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             # Get webhook trigger
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
@@ -743,7 +742,7 @@ class WebhookService:
             Exception: If workflow execution fails
         """
         try:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 # Prepare inputs for the webhook node
                 # The webhook node expects webhook_data in the inputs
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
@@ -874,7 +873,7 @@ class WebhookService:
                 logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
                 raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
 
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
@@ -903,14 +902,13 @@ class WebhookService:
                     redis_client.set(
                         f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
                     )
-                session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-                session.commit()
+
         except Exception:
             logger.exception("Failed to sync webhook relationships for app %s", app.id)
             raise

@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
@@ -404,7 +404,7 @@ class ProviderManager:
     @staticmethod
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
             providers = session.scalars(stmt)
             for provider in providers:
@@ -421,7 +421,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             provider_models = session.scalars(stmt)
             for provider_model in provider_models:
@@ -437,7 +437,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_preferred_provider_type_records_dict = {}
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
             preferred_provider_types = session.scalars(stmt)
             provider_name_to_preferred_provider_type_records_dict = {
@@ -455,7 +455,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_settings_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
             provider_model_settings = session.scalars(stmt)
             for provider_model_setting in provider_model_settings:
@@ -473,7 +473,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
             provider_model_credentials = session.scalars(stmt)
             for provider_model_credential in provider_model_credentials:
@@ -503,7 +503,7 @@ class ProviderManager:
             return {}
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
             provider_load_balancing_configs = session.scalars(stmt)
             for provider_load_balancing_config in provider_load_balancing_configs:
@@ -537,7 +537,7 @@ class ProviderManager:
         :param provider_name: provider name
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = (
                 select(ProviderCredential)
                 .where(
@@ -567,7 +567,7 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = (
                 select(ProviderModelCredential)
                 .where(

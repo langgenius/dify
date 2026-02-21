@@ -3,7 +3,7 @@ from typing import Any, Union
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.schema import register_schema_model
 from controllers.console.app.mcp_server import AppMCPServerStatus
@@ -67,7 +67,7 @@ class MCPAppApi(Resource):
         request_id: Union[int, str] | None = args.id
         mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get MCP server and app
             mcp_server, app = self._get_mcp_server_and_app(server_code, session)
             self._validate_server_status(mcp_server)

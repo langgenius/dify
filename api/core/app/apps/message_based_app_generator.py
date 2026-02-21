@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Mapping
 from typing import Union, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -272,7 +272,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param conversation_id: conversation id
         :return: conversation
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id))
 
         if not conversation:
@@ -286,7 +286,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             message = session.scalar(select(Message).where(Message.id == message_id))
 
         if message is None:

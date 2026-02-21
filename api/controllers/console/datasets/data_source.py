@@ -6,7 +6,6 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import get_or_create_model, register_schema_model
@@ -16,7 +15,7 @@ from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.data_source_fields import (
     integrate_fields,
     integrate_icon_fields,
@@ -159,7 +158,7 @@ class DataSourceApi(Resource):
     @account_initialization_required
     def patch(self, binding_id, action: Literal["enable", "disable"]):
         binding_id = str(binding_id)
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             data_source_binding = session.execute(
                 select(DataSourceOauthBinding).filter_by(id=binding_id)
             ).scalar_one_or_none()
@@ -211,7 +210,7 @@ class DataSourceNotionListApi(Resource):
         if not credential:
             raise NotFound("Credential not found.")
         exist_page_ids = []
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             # import notion in the exist dataset
             if query.dataset_id:
                 dataset = DatasetService.get_dataset(query.dataset_id)

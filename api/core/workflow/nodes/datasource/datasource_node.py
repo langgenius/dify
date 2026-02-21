@@ -2,7 +2,6 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -26,7 +25,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
 from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from factories import file_factory
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -324,7 +323,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
                     datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
-                    with Session(db.engine) as session:
+                    with SessionLocal.begin() as session:
                         stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                         datasource_file = session.scalar(stmt)
                         if datasource_file is None:
@@ -347,7 +346,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
                     assert message.meta
 
                     datasource_file_id = message.message.text.split("/")[-1].split(".")[0]
-                    with Session(db.engine) as session:
+                    with SessionLocal.begin() as session:
                         stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                         datasource_file = session.scalar(stmt)
                         if datasource_file is None:
@@ -461,7 +460,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
                 datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
                     datasource_file = session.scalar(stmt)
                     if datasource_file is None:

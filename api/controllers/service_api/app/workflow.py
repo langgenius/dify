@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import logging
 from typing import Any, Literal
 
@@ -5,7 +6,6 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -30,7 +30,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.graph_engine.manager import GraphEngineManager
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
 from libs.helper import OptionalTimestampField, TimestampField
@@ -311,7 +311,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,

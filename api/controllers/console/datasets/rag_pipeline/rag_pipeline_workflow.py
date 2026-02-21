@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 from typing import Any, Literal, cast
@@ -5,7 +6,6 @@ from typing import Any, Literal, cast
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -34,7 +34,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from factories import variable_factory
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty
@@ -600,7 +600,7 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             pipeline = session.merge(pipeline)
             workflow = rag_pipeline_service.publish_workflow(
                 session=session,
@@ -611,8 +611,6 @@ class PublishedRagPipelineApi(Resource):
             pipeline.workflow_id = workflow.id
             session.add(pipeline)
             workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
 
         return {
             "result": "success",
@@ -687,7 +685,7 @@ class PublishedAllRagPipelineApi(Resource):
                 raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
                 pipeline=pipeline,
@@ -729,7 +727,7 @@ class RagPipelineByIdApi(Resource):
         rag_pipeline_service = RagPipelineService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -742,7 +740,6 @@ class RagPipelineByIdApi(Resource):
                 raise NotFound("Workflow not found")
 
             # Commit the transaction in the controller
-            session.commit()
 
         return workflow
 

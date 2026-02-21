@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 from __future__ import annotations
 
 from datetime import datetime, timedelta

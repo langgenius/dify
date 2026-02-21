@@ -1,3 +1,4 @@
+from sqlalchemy.orm import sessionmaker
 import json
 import logging
 import time
@@ -6,7 +7,6 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
@@ -43,7 +43,7 @@ from core.workflow.variable_loader import load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
@@ -749,7 +749,7 @@ class WorkflowService:
         if workflow_node_execution is None:
             raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
 
         with Session(bind=db.engine) as session, session.begin():
@@ -763,7 +763,6 @@ class WorkflowService:
                 user=account,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
-            session.commit()
 
         return workflow_node_execution
 
@@ -895,7 +894,6 @@ class WorkflowService:
                 enclosing_node_id=enclosing_node_id,
             )
             draft_var_saver.save(outputs=outputs, process_data={})
-            session.commit()
 
         return outputs
 

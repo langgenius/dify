@@ -9,7 +9,7 @@ from typing import cast
 import sqlalchemy as sa
 from sqlalchemy import delete, select, tuple_
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.model import (
@@ -203,7 +203,7 @@ class MessagesCleanService:
             batch_start = time.monotonic()
 
             # Step 1: Fetch a batch of messages using cursor
-            with Session(db.engine, expire_on_commit=False) as session:
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 fetch_messages_start = time.monotonic()
                 msg_stmt = (
                     select(Message.id, Message.app_id, Message.created_at)
@@ -291,7 +291,7 @@ class MessagesCleanService:
 
             # Step 4: Batch delete messages and their relations
             if not self._dry_run:
-                with Session(db.engine, expire_on_commit=False) as session:
+                with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                     delete_relations_start = time.monotonic()
                     # Delete related records first
                     self._batch_delete_message_relations(session, message_ids_to_delete)
