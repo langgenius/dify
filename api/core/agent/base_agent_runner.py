@@ -473,7 +473,7 @@ class BaseAgentRunner(AppRunner):
                                     tool_name = item["name"]
                                     tool_args = item.get("arguments", {})
                                 else:
-                                    tool_name = tool_names[idx] if idx < len(tool_names) else ""
+                                    tool_name = tool_names[idx] if idx < len(tool_names) else f"tool_{idx}"
                                     tool_args = item if isinstance(item, dict) else {}
 
                                 tool_calls.append(
@@ -489,17 +489,19 @@ class BaseAgentRunner(AppRunner):
 
                                 # Get corresponding response
                                 tool_resp_content = ""
-                                if isinstance(tool_responses_parsed, list) and idx < len(tool_responses_parsed):
-                                    resp_item = tool_responses_parsed[idx]
-                                    if isinstance(resp_item, dict) and "output" in resp_item:
-                                        resp_content = resp_item["output"]
-                                    else:
-                                        resp_content = resp_item
-                                    tool_resp_content = (
-                                        json.dumps(resp_content)
-                                        if isinstance(resp_content, (dict, list))
-                                        else str(resp_content)
-                                    )
+                                if isinstance(tool_responses_parsed, list):
+                                    if idx < len(tool_responses_parsed):
+                                        resp_item = tool_responses_parsed[idx]
+                                        resp_content = (
+                                            resp_item["output"]
+                                            if isinstance(resp_item, dict) and "output" in resp_item
+                                            else resp_item
+                                        )
+                                        tool_resp_content = (
+                                            json.dumps(resp_content)
+                                            if isinstance(resp_content, (dict, list))
+                                            else str(resp_content)
+                                        )
                                 elif observation_payload:
                                     tool_resp_content = observation_payload
 

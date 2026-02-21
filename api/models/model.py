@@ -1979,6 +1979,37 @@ class MessageAgentThought(TypeBase):
         else:
             return []
 
+    @staticmethod
+    def _parse_array_with_ordinal_keys(
+        items: list, tools: list[str], value_key: str, default_value: Any = None
+    ) -> dict[str, Any]:
+        """Parse array format items into dict with ordinal keys for duplicate names.
+
+        Args:
+            items: List of dicts with "name" and value_key fields.
+            tools: Fallback tool names from self.tools.
+            value_key: Key to extract value from each item (e.g., "arguments", "output", "meta").
+            default_value: Default when value_key is missing from a named item. Defaults to {}.
+
+        Returns:
+            Dict with ordinal keys: {"search": data, "search__2": data, ...}
+        """
+        if default_value is None:
+            default_value = {}
+        result: dict[str, Any] = {}
+        name_count: dict[str, int] = {}
+        for i, item in enumerate(items):
+            if isinstance(item, dict) and "name" in item:
+                name = item["name"]
+                value = item.get(value_key, default_value)
+            else:
+                name = tools[i] if i < len(tools) else f"tool_{i}"
+                value = item if isinstance(item, dict) else (item if default_value != {} else {})
+            name_count[name] = name_count.get(name, 0) + 1
+            key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
+            result[key] = value
+        return result
+
     @property
     def tools(self) -> list[str]:
         return self.tool.split(";") if self.tool else []
@@ -2001,19 +2032,7 @@ class MessageAgentThought(TypeBase):
                 tools = self.tools
                 # New array format: [{"name": "search", "meta": {...}}, ...]
                 if isinstance(raw, list):
-                    result: dict[str, Any] = {}
-                    name_count: dict[str, int] = {}
-                    for i, item in enumerate(raw):
-                        if isinstance(item, dict) and "name" in item:
-                            name = item["name"]
-                            meta = item.get("meta", {})
-                        else:
-                            name = tools[i] if i < len(tools) else f"tool_{i}"
-                            meta = item if isinstance(item, dict) else {}
-                        name_count[name] = name_count.get(name, 0) + 1
-                        key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
-                        result[key] = meta
-                    return result
+                    return self._parse_array_with_ordinal_keys(raw, tools, "meta")
                 # Old dict format
                 if isinstance(raw, dict):
                     return cast(dict[str, Any], raw)
@@ -2031,19 +2050,7 @@ class MessageAgentThought(TypeBase):
                 data = json.loads(self.tool_input)
                 # New array format: [{"name": "search", "arguments": {...}}, ...]
                 if isinstance(data, list):
-                    result: dict[str, Any] = {}
-                    name_count: dict[str, int] = {}
-                    for i, item in enumerate(data):
-                        if isinstance(item, dict) and "name" in item:
-                            name = item["name"]
-                            args = item.get("arguments", {})
-                        else:
-                            name = tools[i] if i < len(tools) else f"tool_{i}"
-                            args = item if isinstance(item, dict) else {}
-                        name_count[name] = name_count.get(name, 0) + 1
-                        key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
-                        result[key] = args
-                    return result
+                    return self._parse_array_with_ordinal_keys(data, tools, "arguments")
                 # Old dict format: {"tool_name": {...}, ...}
                 if isinstance(data, dict):
                     result = {}
@@ -2072,19 +2079,7 @@ class MessageAgentThought(TypeBase):
                 data = json.loads(self.observation)
                 # New array format: [{"name": "search", "output": "result"}, ...]
                 if isinstance(data, list):
-                    result: dict[str, Any] = {}
-                    name_count: dict[str, int] = {}
-                    for i, item in enumerate(data):
-                        if isinstance(item, dict) and "name" in item:
-                            name = item["name"]
-                            output = item.get("output", "")
-                        else:
-                            name = tools[i] if i < len(tools) else f"tool_{i}"
-                            output = item
-                        name_count[name] = name_count.get(name, 0) + 1
-                        key = name if name_count[name] == 1 else f"{name}__{name_count[name]}"
-                        result[key] = output
-                    return result
+                    return self._parse_array_with_ordinal_keys(data, tools, "output", default_value="")
                 # Old dict format
                 if isinstance(data, dict):
                     result = {}
