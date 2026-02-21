@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import charset_normalizer
 import docx
@@ -20,6 +20,7 @@ from docx.oxml.text.paragraph import CT_P
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
+from configs import dify_config
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment, FileSegment
@@ -28,14 +29,10 @@ from core.workflow.file import File, FileTransferMethod, file_manager
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 
-from .entities import DocumentExtractorNodeData, UnstructuredApiConfig
+from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
 
 
 class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
@@ -49,23 +46,6 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
-
-    def __init__(
-        self,
-        id: str,
-        config: Mapping[str, Any],
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
-        *,
-        unstructured_api_config: UnstructuredApiConfig | None = None,
-    ) -> None:
-        super().__init__(
-            id=id,
-            config=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-        )
-        self._unstructured_api_config = unstructured_api_config or UnstructuredApiConfig()
 
     def _run(self):
         variable_selector = self.node_data.variable_selector
@@ -84,10 +64,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
 
         try:
             if isinstance(value, list):
-                extracted_text_list = [
-                    _extract_text_from_file(file, unstructured_api_config=self._unstructured_api_config)
-                    for file in value
-                ]
+                extracted_text_list = list(map(_extract_text_from_file, value))
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
@@ -95,7 +72,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
                     outputs={"text": ArrayStringSegment(value=extracted_text_list)},
                 )
             elif isinstance(value, File):
-                extracted_text = _extract_text_from_file(value, unstructured_api_config=self._unstructured_api_config)
+                extracted_text = _extract_text_from_file(value)
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
@@ -126,12 +103,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         return {node_id + ".files": typed_node_data.variable_selector}
 
 
-def _extract_text_by_mime_type(
-    *,
-    file_content: bytes,
-    mime_type: str,
-    unstructured_api_config: UnstructuredApiConfig,
-) -> str:
+def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
     """Extract text from a file based on its MIME type."""
     match mime_type:
         case "text/plain" | "text/html" | "text/htm" | "text/markdown" | "text/xml":
@@ -139,7 +111,7 @@ def _extract_text_by_mime_type(
         case "application/pdf":
             return _extract_text_from_pdf(file_content)
         case "application/msword":
-            return _extract_text_from_doc(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_doc(file_content)
         case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
             return _extract_text_from_docx(file_content)
         case "text/csv":
@@ -147,11 +119,11 @@ def _extract_text_by_mime_type(
         case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "application/vnd.ms-excel":
             return _extract_text_from_excel(file_content)
         case "application/vnd.ms-powerpoint":
-            return _extract_text_from_ppt(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_ppt(file_content)
         case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-            return _extract_text_from_pptx(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_pptx(file_content)
         case "application/epub+zip":
-            return _extract_text_from_epub(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_epub(file_content)
         case "message/rfc822":
             return _extract_text_from_eml(file_content)
         case "application/vnd.ms-outlook":
@@ -168,12 +140,7 @@ def _extract_text_by_mime_type(
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
 
-def _extract_text_by_file_extension(
-    *,
-    file_content: bytes,
-    file_extension: str,
-    unstructured_api_config: UnstructuredApiConfig,
-) -> str:
+def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
         case (
@@ -236,7 +203,7 @@ def _extract_text_by_file_extension(
         case ".pdf":
             return _extract_text_from_pdf(file_content)
         case ".doc":
-            return _extract_text_from_doc(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_doc(file_content)
         case ".docx":
             return _extract_text_from_docx(file_content)
         case ".csv":
@@ -244,11 +211,11 @@ def _extract_text_by_file_extension(
         case ".xls" | ".xlsx":
             return _extract_text_from_excel(file_content)
         case ".ppt":
-            return _extract_text_from_ppt(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_ppt(file_content)
         case ".pptx":
-            return _extract_text_from_pptx(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_pptx(file_content)
         case ".epub":
-            return _extract_text_from_epub(file_content, unstructured_api_config=unstructured_api_config)
+            return _extract_text_from_epub(file_content)
         case ".eml":
             return _extract_text_from_eml(file_content)
         case ".msg":
@@ -345,15 +312,14 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from PDF: {str(e)}") from e
 
 
-def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
+def _extract_text_from_doc(file_content: bytes) -> str:
     """
     Extract text from a DOC file.
     """
     from unstructured.partition.api import partition_via_api
 
-    if not unstructured_api_config.api_url:
-        raise TextExtractionError("Unstructured API URL is not configured for DOC file processing.")
-    api_key = unstructured_api_config.api_key or ""
+    if not dify_config.UNSTRUCTURED_API_URL:
+        raise TextExtractionError("UNSTRUCTURED_API_URL must be set")
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
@@ -363,8 +329,8 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
                 elements = partition_via_api(
                     file=file,
                     metadata_filename=temp_file.name,
-                    api_url=unstructured_api_config.api_url,
-                    api_key=api_key,
+                    api_url=dify_config.UNSTRUCTURED_API_URL,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                 )
             os.unlink(temp_file.name)
         return "\n".join([getattr(element, "text", "") for element in elements])
@@ -454,20 +420,12 @@ def _download_file_content(file: File) -> bytes:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
 
-def _extract_text_from_file(file: File, *, unstructured_api_config: UnstructuredApiConfig) -> str:
+def _extract_text_from_file(file: File):
     file_content = _download_file_content(file)
     if file.extension:
-        extracted_text = _extract_text_by_file_extension(
-            file_content=file_content,
-            file_extension=file.extension,
-            unstructured_api_config=unstructured_api_config,
-        )
+        extracted_text = _extract_text_by_file_extension(file_content=file_content, file_extension=file.extension)
     elif file.mime_type:
-        extracted_text = _extract_text_by_mime_type(
-            file_content=file_content,
-            mime_type=file.mime_type,
-            unstructured_api_config=unstructured_api_config,
-        )
+        extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
     else:
         raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
     return extracted_text
@@ -559,14 +517,12 @@ def _extract_text_from_excel(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from Excel file: {str(e)}") from e
 
 
-def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
+def _extract_text_from_ppt(file_content: bytes) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.ppt import partition_ppt
 
-    api_key = unstructured_api_config.api_key or ""
-
     try:
-        if unstructured_api_config.api_url:
+        if dify_config.UNSTRUCTURED_API_URL:
             with tempfile.NamedTemporaryFile(suffix=".ppt", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
@@ -574,8 +530,8 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
                     elements = partition_via_api(
                         file=file,
                         metadata_filename=temp_file.name,
-                        api_url=unstructured_api_config.api_url,
-                        api_key=api_key,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                     )
                 os.unlink(temp_file.name)
         else:
@@ -587,14 +543,12 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
         raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
 
 
-def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
+def _extract_text_from_pptx(file_content: bytes) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.pptx import partition_pptx
 
-    api_key = unstructured_api_config.api_key or ""
-
     try:
-        if unstructured_api_config.api_url:
+        if dify_config.UNSTRUCTURED_API_URL:
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
@@ -602,8 +556,8 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
                     elements = partition_via_api(
                         file=file,
                         metadata_filename=temp_file.name,
-                        api_url=unstructured_api_config.api_url,
-                        api_key=api_key,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                     )
                 os.unlink(temp_file.name)
         else:
@@ -614,14 +568,12 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
         raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
 
 
-def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: UnstructuredApiConfig) -> str:
+def _extract_text_from_epub(file_content: bytes) -> str:
     from unstructured.partition.api import partition_via_api
     from unstructured.partition.epub import partition_epub
 
-    api_key = unstructured_api_config.api_key or ""
-
     try:
-        if unstructured_api_config.api_url:
+        if dify_config.UNSTRUCTURED_API_URL:
             with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
@@ -629,8 +581,8 @@ def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: Uns
                     elements = partition_via_api(
                         file=file,
                         metadata_filename=temp_file.name,
-                        api_url=unstructured_api_config.api_url,
-                        api_key=api_key,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                     )
                 os.unlink(temp_file.name)
         else:
