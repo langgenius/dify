@@ -1,10 +1,13 @@
 import copy
-from unittest.mock import patch
+from types import SimpleNamespace
+from typing import Any, Optional
+from unittest.mock import Mock, patch
 
 import pytest
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper.provider_encryption import ProviderConfigEncrypter
+from core.tools.utils.encryption import create_tool_provider_encrypter
 
 
 # ---------------------------
@@ -13,13 +16,13 @@ from core.helper.provider_encryption import ProviderConfigEncrypter
 class NoopCache:
     """Simple cache stub: always returns None, does nothing for set/delete."""
 
-    def get(self):
+    def get(self) -> Optional[Any]:
         return None
 
-    def set(self, config):
+    def set(self, config: Any) -> None:
         pass
 
-    def delete(self):
+    def delete(self) -> None:
         pass
 
 
@@ -179,3 +182,35 @@ def test_decrypt_swallow_exception_and_keep_original(encrypter_obj):
         out = encrypter_obj.decrypt({"password": "ENC_ERR"})
 
     assert out["password"] == "ENC_ERR"
+
+
+def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
+    basic_config = BasicProviderConfig(name="key", type=BasicProviderConfig.Type.TEXT_INPUT)
+    credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: basic_config)
+    controller = SimpleNamespace(
+        provider_type=SimpleNamespace(value="builtin"),
+        entity=SimpleNamespace(identity=SimpleNamespace(name="provider-a")),
+        get_credentials_schema=lambda: [credential_schema_item],
+    )
+
+    cache_instance = Mock()
+    encrypter_instance = Mock()
+
+    with patch(
+        "core.tools.utils.encryption.SingletonProviderCredentialsCache", return_value=cache_instance
+    ) as cache_cls:
+        with patch("core.tools.utils.encryption.ProviderConfigEncrypter", return_value=encrypter_instance) as enc_cls:
+            encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
+
+    assert encrypter is encrypter_instance
+    assert cache is cache_instance
+    cache_cls.assert_called_once_with(
+        tenant_id="tenant-1",
+        provider_type="builtin",
+        provider_identity="provider-a",
+    )
+    enc_cls.assert_called_once_with(
+        tenant_id="tenant-1",
+        config=[basic_config],
+        provider_config_cache=cache_instance,
+    )
