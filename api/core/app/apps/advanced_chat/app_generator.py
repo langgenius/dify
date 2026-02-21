@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from configs import dify_config
@@ -519,7 +519,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # release database connection, because the following new thread operations may take a long time
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = _refresh_model(session, workflow)
             message = _refresh_model(session, message)
         #     workflow_ = session.get(Workflow, workflow.id)
@@ -576,7 +576,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation = self._get_conversation(conversation_id)
             message = self._get_message(message_id)
 
-            with Session(db.engine, expire_on_commit=False) as session:
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 workflow = session.scalar(
                     select(Workflow).where(
                         Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
@@ -692,7 +692,7 @@ _T = TypeVar("_T", bound=Base)
 
 
 def _refresh_model(session, model: _T) -> _T:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         detach_model = session.get(type(model), model.id)
         assert detach_model is not None
         return detach_model

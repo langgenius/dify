@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -1018,7 +1017,7 @@ class ToolProviderMCPApi(Resource):
 
         # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
         validation_data = None
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
                 tenant_id=current_tenant_id, provider_id=payload.provider_id

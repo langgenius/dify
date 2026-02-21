@@ -5,7 +5,6 @@ from typing import Any
 
 from flask import Flask, current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -197,7 +196,7 @@ class RetrievalService:
 
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
     @classmethod

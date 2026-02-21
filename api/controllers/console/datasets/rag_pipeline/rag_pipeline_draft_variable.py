@@ -4,7 +4,7 @@ from typing import Any, NoReturn
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
@@ -94,7 +94,7 @@ class RagPipelineVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -140,7 +140,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -278,7 +278,7 @@ class RagPipelineVariableResetApi(Resource):
 
 
 def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )

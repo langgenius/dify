@@ -8,7 +8,6 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -561,7 +560,7 @@ class ChangeEmailSendEmailApi(Resource):
 
             user_email = current_user.email
         else:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
             if account is None:
                 raise AccountNotFound()

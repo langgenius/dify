@@ -6,7 +6,6 @@ from typing import Any
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -832,7 +831,7 @@ class PublishedWorkflowApi(Resource):
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
@@ -849,8 +848,6 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
 
         return {
             "result": "success",
@@ -974,7 +971,7 @@ class PublishedAllWorkflowApi(Resource):
                 raise Forbidden()
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=session,
                 app_model=app_model,
@@ -1027,7 +1024,7 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -1038,9 +1035,6 @@ class WorkflowByIdApi(Resource):
 
             if not workflow:
                 raise NotFound("Workflow not found")
-
-            # Commit the transaction in the controller
-            session.commit()
 
         return workflow
 
@@ -1056,13 +1050,11 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
                 )
-                # Commit the transaction in the controller
-                session.commit()
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
             except DraftWorkflowDeletionError as e:

@@ -2,7 +2,6 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -23,7 +22,6 @@ from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from extensions.ext_database import db
 from factories import file_factory
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -264,7 +262,7 @@ class ToolNode(Node[ToolNodeData]):
 
                 tool_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -287,7 +285,7 @@ class ToolNode(Node[ToolNodeData]):
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:

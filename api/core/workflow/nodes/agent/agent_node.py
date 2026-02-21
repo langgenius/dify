@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, cast
 from packaging.version import Version
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
@@ -417,7 +416,7 @@ class AgentNode(Node[AgentNodeData]):
             return None
         conversation_id = conversation_id_variable.value
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(Conversation).where(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
             conversation = session.scalar(stmt)
 
@@ -519,7 +518,7 @@ class AgentNode(Node[AgentNodeData]):
 
                 tool_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -542,7 +541,7 @@ class AgentNode(Node[AgentNodeData]):
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:

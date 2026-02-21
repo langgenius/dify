@@ -1,7 +1,6 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import languages
@@ -14,7 +13,6 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models import Account
@@ -73,7 +71,7 @@ class EmailRegisterSendEmailApi(Resource):
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
@@ -145,7 +143,7 @@ class EmailRegisterResetApi(Resource):
         email = register_data.get("email", "")
         normalized_email = email.lower()
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:

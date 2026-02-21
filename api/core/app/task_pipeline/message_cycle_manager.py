@@ -6,7 +6,7 @@ from typing import Union
 
 from flask import Flask, current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -206,7 +206,7 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
 
         if message_file and message_file.url is not None:

@@ -7,7 +7,6 @@ from typing import Any
 from flask import Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
@@ -18,7 +17,6 @@ from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import App
 from models.provider_ids import TriggerProviderID
@@ -214,7 +212,7 @@ class TriggerService:
                 not_found_in_cache.append(node_info)
                 continue
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             try:
                 # lock the concurrent plugin trigger creation
                 redis_client.lock(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
@@ -259,7 +257,6 @@ class TriggerService:
                         cache.model_dump_json(),
                         ex=60 * 60,
                     )
-                session.commit()
 
                 # Update existing records if subscription_id changed
                 for node_info in nodes_in_graph:
@@ -289,14 +286,13 @@ class TriggerService:
                                 cache.model_dump_json(),
                                 ex=60 * 60,
                             )
-                session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-                session.commit()
+
             except Exception:
                 logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
                 raise
