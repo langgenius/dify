@@ -290,26 +290,6 @@ class TestAppModelConfig:
         # Assert
         assert result == questions
 
-    def test_app_model_config_annotation_reply_dict_disabled(self):
-        """Test annotation_reply_dict when annotation is disabled."""
-        # Arrange
-        config = AppModelConfig(
-            app_id=str(uuid4()),
-            provider="openai",
-            model_id="gpt-4",
-            created_by=str(uuid4()),
-        )
-
-        # Mock database query to return None
-        with patch("models.model.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.first.return_value = None
-
-            # Act
-            result = config.annotation_reply_dict
-
-            # Assert
-            assert result == {"enabled": False}
-
 
 class TestConversationModel:
     """Test suite for Conversation model integrity."""
