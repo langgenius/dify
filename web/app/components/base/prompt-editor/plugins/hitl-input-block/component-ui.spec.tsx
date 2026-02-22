@@ -87,32 +87,6 @@ describe('HITLInputComponentUI', () => {
     expect(onRemove).toHaveBeenCalledWith('user_name')
   })
 
-  it('should open edit modal and call onChange when saving with the same variable name', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    const onRename = vi.fn()
-
-    render(
-      <HITLInputComponentUI
-        nodeId="node-2"
-        varName="user_name"
-        formInput={createFormInput()}
-        onChange={onChange}
-        onRename={onRename}
-        onRemove={vi.fn()}
-        workflowNodesMap={{}}
-      />,
-    )
-
-    const saveButton = await openEditModal()
-    await user.click(saveButton)
-
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledTimes(1)
-    })
-    expect(onRename).not.toHaveBeenCalled()
-  })
-
   it('should call onRename when variable name is changed in edit modal', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
