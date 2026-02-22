@@ -6,6 +6,12 @@
 import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
+const hasImageChild = (children: any[]): boolean => {
+  return children.some(
+    (child: any) => child && 'tagName' in child && child.tagName === 'img',
+  )
+}
+
 const Paragraph = (paragraph: any) => {
   const { node }: any = paragraph
   const children_node = node.children
@@ -21,6 +27,11 @@ const Paragraph = (paragraph: any) => {
       </div>
     )
   }
+  // Use <div> instead of <p> when any child is an image to avoid invalid
+  // <p><div>...</div></p> nesting that triggers React hydration warnings.
+  if (children_node && hasImageChild(children_node))
+    return <div className="markdown-paragraph">{paragraph.children}</div>
+
   return <p>{paragraph.children}</p>
 }
 
