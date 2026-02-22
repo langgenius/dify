@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import HITLInputComponentUI from './component-ui'
@@ -47,11 +47,13 @@ const getActionContainers = () => {
 
 const openEditModal = async () => {
   const { editContainer } = getActionContainers()
-  await waitFor(() => {
-    editContainer.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
-  const dialog = screen.getByRole('dialog')
+
+  // Fix: Use fireEvent to bypass JSDOM's inability to process group-hover visibility
+  // and remove it from inside a waitFor block to prevent infinite click loops.
+  fireEvent.click(editContainer)
+
+  // Wait for the modal dialog to appear in the DOM
+  const dialog = await screen.findByRole('dialog')
 
   const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
   expect(saveButton).toBeEnabled()
@@ -64,7 +66,6 @@ describe('HITLInputComponentUI', () => {
   })
 
   it('should render constant default value and call onRemove when remove action is clicked', async () => {
-    const user = userEvent.setup()
     const onRemove = vi.fn()
 
     render(
@@ -82,7 +83,8 @@ describe('HITLInputComponentUI', () => {
     expect(screen.getByText('hello')).toBeInTheDocument()
 
     const { removeContainer } = getActionContainers()
-    await user.click(removeContainer)
+    // Fix: fireEvent bypasses the 'hidden' tailwind class issue in headless testing
+    fireEvent.click(removeContainer)
 
     expect(onRemove).toHaveBeenCalledWith('user_name')
   })
@@ -107,11 +109,14 @@ describe('HITLInputComponentUI', () => {
     )
 
     const saveButton = await openEditModal()
+
+    // It is safe to use userEvent here because the modal is fully visible
     await user.click(saveButton)
 
     await waitFor(() => {
       expect(onRename).toHaveBeenCalledTimes(1)
     })
+
     expect(onChange).not.toHaveBeenCalled()
     expect(onRename.mock.calls[0][1]).toBe('user_name')
   })
