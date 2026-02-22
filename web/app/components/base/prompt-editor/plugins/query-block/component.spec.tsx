@@ -11,11 +11,11 @@ vi.mock('../../hooks', () => ({
   useSelectOrDelete: (...args: unknown[]) => mockUseSelectOrDelete(...args),
 }))
 
-const createHookReturn = (isSelected: boolean): [RefObject<HTMLDivElement | null>, boolean] => {
-  return [{ current: null }, isSelected]
-}
-
 describe('QueryBlockComponent', () => {
+  const createHookReturn = (isSelected: boolean): [RefObject<HTMLDivElement | null>, boolean] => {
+    return [{ current: null }, isSelected]
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
   })

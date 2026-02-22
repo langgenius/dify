@@ -16,11 +16,7 @@ import {
   QueryBlockNode,
 } from './index'
 
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
+const CaptureEditorPlugin = ({ onReady }: { onReady: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -30,10 +26,10 @@ const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
   return null
 }
 
-const renderQueryBlock = (props?: {
+const renderQueryBlock = (props: {
   onInsert?: () => void
   onDelete?: () => void
-}) => {
+} = {}) => {
   let editor: LexicalEditor | null = null
 
   const setEditor = (value: LexicalEditor) => {
@@ -50,7 +46,7 @@ const renderQueryBlock = (props?: {
         nodes: [CustomTextNode, QueryBlockNode],
       }}
     >
-      <QueryBlock {...(props ?? {})} />
+      <QueryBlock {...props} />
       <CaptureEditorPlugin onReady={setEditor} />
     </LexicalComposer>,
   )

@@ -7,30 +7,30 @@ import {
   RequestURLBlockNode,
 } from './node'
 
-const createTestEditor = () => {
-  return createEditor({
-    namespace: 'request-url-block-node-test',
-    onError: (error: Error) => {
-      throw error
-    },
-    nodes: [RequestURLBlockNode],
-  })
-}
-
-const createNodeInEditor = () => {
-  const editor = createTestEditor()
-  let node!: RequestURLBlockNode
-
-  act(() => {
-    editor.update(() => {
-      node = $createRequestURLBlockNode()
-    })
-  })
-
-  return { editor, node }
-}
-
 describe('RequestURLBlockNode', () => {
+  const createTestEditor = () => {
+    return createEditor({
+      namespace: 'request-url-block-node-test',
+      onError: (error: Error) => {
+        throw error
+      },
+      nodes: [RequestURLBlockNode],
+    })
+  }
+
+  const createNodeInEditor = () => {
+    const editor = createTestEditor()
+    let node!: RequestURLBlockNode
+
+    act(() => {
+      editor.update(() => {
+        node = $createRequestURLBlockNode()
+      })
+    })
+
+    return { editor, node }
+  }
+
   describe('Node metadata', () => {
     it('should expose request URL block type and inline behavior', () => {
       const { node } = createNodeInEditor()

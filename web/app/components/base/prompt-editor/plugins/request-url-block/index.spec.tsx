@@ -16,11 +16,7 @@ import {
   RequestURLBlockNode,
 } from './index'
 
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
+const CaptureEditorPlugin = ({ onReady }: { onReady: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -30,10 +26,10 @@ const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
   return null
 }
 
-const renderRequestURLBlock = (props?: {
+const renderRequestURLBlock = (props: {
   onInsert?: () => void
   onDelete?: () => void
-}) => {
+} = {}) => {
   let editor: LexicalEditor | null = null
 
   const setEditor = (value: LexicalEditor) => {
@@ -50,7 +46,7 @@ const renderRequestURLBlock = (props?: {
         nodes: [CustomTextNode, RequestURLBlockNode],
       }}
     >
-      <RequestURLBlock {...(props ?? {})} />
+      <RequestURLBlock {...props} />
       <CaptureEditorPlugin onReady={setEditor} />
     </LexicalComposer>,
   )

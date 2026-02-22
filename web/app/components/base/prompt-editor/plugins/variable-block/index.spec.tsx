@@ -10,11 +10,7 @@ import VariableBlock, {
   INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
 } from './index'
 
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
+const CaptureEditorPlugin = ({ onReady }: { onReady: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {

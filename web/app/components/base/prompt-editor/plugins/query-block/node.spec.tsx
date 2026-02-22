@@ -7,30 +7,30 @@ import {
   QueryBlockNode,
 } from './node'
 
-const createTestEditor = () => {
-  return createEditor({
-    namespace: 'query-block-node-test',
-    onError: (error: Error) => {
-      throw error
-    },
-    nodes: [QueryBlockNode],
-  })
-}
-
-const createNodeInEditor = () => {
-  const editor = createTestEditor()
-  let node!: QueryBlockNode
-
-  act(() => {
-    editor.update(() => {
-      node = $createQueryBlockNode()
-    })
-  })
-
-  return { editor, node }
-}
-
 describe('QueryBlockNode', () => {
+  const createTestEditor = () => {
+    return createEditor({
+      namespace: 'query-block-node-test',
+      onError: (error: Error) => {
+        throw error
+      },
+      nodes: [QueryBlockNode],
+    })
+  }
+
+  const createNodeInEditor = () => {
+    const editor = createTestEditor()
+    let node!: QueryBlockNode
+
+    act(() => {
+      editor.update(() => {
+        node = $createQueryBlockNode()
+      })
+    })
+
+    return { editor, node }
+  }
+
   describe('Node metadata', () => {
     it('should expose query block type and inline behavior', () => {
       const { node } = createNodeInEditor()
