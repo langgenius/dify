@@ -909,6 +909,12 @@ class TemplateMode(StrEnum):
     DISABLED = "disabled"
 
 
+class MailHtmlSanitizerProfile(StrEnum):
+    STRICT = "strict"
+    BALANCED = "balanced"
+    FREE = "free"
+
+
 class MailConfig(BaseSettings):
     """
     Configuration for email services
@@ -924,6 +930,11 @@ class MailConfig(BaseSettings):
         Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates.
         Only available in sandbox mode.""",
         default=3,
+    )
+
+    MAIL_HTML_SANITIZER_PROFILE: MailHtmlSanitizerProfile = Field(
+        description="HTML sanitizer profile for outbound email content (strict, balanced, free)",
+        default=MailHtmlSanitizerProfile.BALANCED,
     )
 
     MAIL_TYPE: str | None = Field(
