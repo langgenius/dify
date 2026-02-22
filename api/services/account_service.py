@@ -1225,7 +1225,12 @@ class TenantService:
 
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
-        """Remove member from tenant"""
+        """Remove member from tenant.
+
+        If the removed member has ``AccountStatus.PENDING`` (invited but never
+        activated) and no remaining workspace memberships, the orphaned account
+        record is deleted as well.
+        """
         if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
 
@@ -1235,8 +1240,30 @@ class TenantService:
         if not ta:
             raise MemberNotInTenantError("Member not in tenant.")
 
+        # Capture identifiers before any deletions; attribute access on the ORM
+        # object may fail after commit() expires the instance.
+        account_id = account.id
+        account_email = account.email
+
         db.session.delete(ta)
+
+        # Clean up orphaned pending accounts (invited but never activated)
+        should_delete_account = False
+        if account.status == AccountStatus.PENDING:
+            # autoflush flushes ta deletion before this query, so 0 means no remaining joins
+            remaining_joins = db.session.query(TenantAccountJoin).filter_by(account_id=account_id).count()
+            if remaining_joins == 0:
+                db.session.delete(account)
+                should_delete_account = True
+
         db.session.commit()
+
+        if should_delete_account:
+            logger.info(
+                "Deleted orphaned pending account: account_id=%s, email=%s",
+                account_id,
+                account_email,
+            )
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
@@ -1245,13 +1272,13 @@ class TenantService:
         from services.enterprise.account_deletion_sync import sync_workspace_member_removal
 
         sync_success = sync_workspace_member_removal(
-            workspace_id=tenant.id, member_id=account.id, source="workspace_member_removed"
+            workspace_id=tenant.id, member_id=account_id, source="workspace_member_removed"
         )
         if not sync_success:
             logger.warning(
                 "Enterprise workspace member removal sync failed: workspace_id=%s, member_id=%s",
                 tenant.id,
-                account.id,
+                account_id,
             )
 
     @staticmethod

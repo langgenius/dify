@@ -62,6 +62,9 @@ class FakeRepo:
         end_before: datetime.datetime,
         last_seen: tuple[datetime.datetime, str] | None,
         batch_size: int,
+        run_types=None,
+        tenant_ids=None,
+        workflow_ids=None,
     ) -> list[FakeRun]:
         if self.call_idx >= len(self.batches):
             return []

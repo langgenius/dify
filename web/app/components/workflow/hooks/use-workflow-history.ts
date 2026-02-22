@@ -27,6 +27,7 @@ export const WorkflowHistoryEvent = {
   NodeDelete: 'NodeDelete',
   EdgeDelete: 'EdgeDelete',
   EdgeDeleteByDeleteBranch: 'EdgeDeleteByDeleteBranch',
+  EdgeSourceHandleChange: 'EdgeSourceHandleChange',
   NodeAdd: 'NodeAdd',
   NodeResize: 'NodeResize',
   NoteAdd: 'NoteAdd',

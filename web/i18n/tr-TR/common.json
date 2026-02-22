@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Prompt kelimenizi buraya yazın, değişken eklemek için '{' tuşuna, prompt içerik bloğu eklemek için '/' tuşuna basın",
   "promptEditor.query.item.desc": "Kullanıcı sorgu şablonunu ekle",
   "promptEditor.query.item.title": "Sorgu",
+  "promptEditor.requestURL.item.desc": "İstek URL'sini ekle",
+  "promptEditor.requestURL.item.title": "İstek URL'si",
   "promptEditor.variable.item.desc": "Değişkenler & Harici Araçlar ekle",
   "promptEditor.variable.item.title": "Değişkenler & Harici Araçlar",
   "promptEditor.variable.modal.add": "Yeni değişken",

@@ -80,7 +80,7 @@ const Operator = ({
               <div>{t('nodes.note.editor.showAuthor', { ns: 'workflow' })}</div>
               <Switch
                 size="l"
-                defaultValue={showAuthor}
+                value={showAuthor}
                 onChange={onShowAuthorChange}
               />
             </div>

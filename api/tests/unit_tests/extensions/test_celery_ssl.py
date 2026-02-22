@@ -104,6 +104,7 @@ class TestCelerySSLConfiguration:
     def test_celery_init_applies_ssl_to_broker_and_backend(self):
         """Test that SSL options are applied to both broker and backend when using Redis."""
         mock_config = MagicMock()
+        mock_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.CELERY_BACKEND = "redis"
         mock_config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"

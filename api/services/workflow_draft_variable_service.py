@@ -14,7 +14,6 @@ from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import File
 from core.variables import Segment, StringSegment, VariableBase
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import (
@@ -25,6 +24,7 @@ from core.variables.types import SegmentType
 from core.variables.utils import dumps_with_segments
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import SystemVariableKey
+from core.workflow.file.models import File
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader

@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, TypeVar
 
 from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.util.types import AttributeValue
@@ -12,16 +12,19 @@ from models.model import Account
 logger = logging.getLogger(__name__)
 
 
+R = TypeVar("R")
+
+
 class AppGenerateHandler(SpanHandler):
     """Span handler for ``AppGenerateService.generate``."""
 
     def wrapper(
         self,
         tracer: Any,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> Any:
+        wrapped: Callable[..., R],
+        args: tuple[object, ...],
+        kwargs: Mapping[str, object],
+    ) -> R:
         try:
             arguments = self._extract_arguments(wrapped, args, kwargs)
             if not arguments:

@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "เขียนคําพร้อมท์ของคุณที่นี่ ป้อน '{' เพื่อแทรกตัวแปร ป้อน '/' เพื่อแทรกบล็อกเนื้อหาพร้อมท์",
   "promptEditor.query.item.desc": "แทรกเทมเพลตแบบสอบถามของผู้ใช้",
   "promptEditor.query.item.title": "สอบถาม",
+  "promptEditor.requestURL.item.desc": "แทรก URL คำขอ",
+  "promptEditor.requestURL.item.title": "URL คำขอ",
   "promptEditor.variable.item.desc": "แทรกตัวแปรและเครื่องมือภายนอก",
   "promptEditor.variable.item.title": "ตัวแปรและเครื่องมือภายนอก",
   "promptEditor.variable.modal.add": "ตัวแปรใหม่",

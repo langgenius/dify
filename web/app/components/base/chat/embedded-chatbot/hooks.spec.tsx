@@ -162,8 +162,10 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() => {
         expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.webApp, 'app-1')
       })
-      expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
-      expect(result.current.conversationList).toEqual(listData.data)
+      await waitFor(() => {
+        expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
+        expect(result.current.conversationList).toEqual(listData.data)
+      })
     })
   })
 
