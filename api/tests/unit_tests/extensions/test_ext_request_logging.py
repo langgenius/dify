@@ -322,3 +322,72 @@ class TestRequestFinishedInfoAccessLine:
             # The fields are space separated; ensure a standalone '-' appears
             assert " - " in msg or msg.endswith(" -")
             assert "tid-no-start" in msg
+
+
+class TestDuplicateInitialization:
+    """Test that multiple calls to init_app don't create duplicate handlers."""
+
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_multiple_init_app_calls_do_not_duplicate_logs(self, enable_request_logging, caplog):
+        """Verify that calling init_app multiple times doesn't create duplicate log entries."""
+        app = _get_test_app()
+        caplog.set_level(logging.INFO, logger=ext_request_logging.__name__)
+
+        # Call init_app multiple times (simulating hot reload scenario)
+        init_app(app)
+        init_app(app)
+        init_app(app)
+
+        # Make a single request
+        with app.test_client() as client:
+            client.get("/")
+
+        # Verify that we only get one INFO log entry (the access log line)
+        info_records = [rec for rec in caplog.records if rec.levelno == logging.INFO]
+        assert len(info_records) == 1, (
+            f"Expected 1 INFO log, got {len(info_records)}: {[r.getMessage() for r in info_records]}"
+        )
+
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_multiple_init_app_calls_with_mock_receivers(
+        self, enable_request_logging, mock_request_receiver, mock_response_receiver
+    ):
+        """Verify that calling init_app multiple times doesn't register duplicate signal handlers."""
+        app = _get_test_app()
+
+        # Call init_app multiple times
+        init_app(app)
+        init_app(app)
+        init_app(app)
+
+        # Make a single request
+        with app.test_client() as client:
+            client.post("/", json={_KEY_NEEDLE: _VALUE_NEEDLE})
+
+        # Verify that each handler was called only once (not 3 times)
+        mock_request_receiver.assert_called_once()
+        mock_response_receiver.assert_called_once()
+
+    def test_init_app_sets_initialization_flag(self, enable_request_logging):
+        """Verify that init_app sets the _request_logging_initialized flag."""
+        app = _get_test_app()
+        assert not hasattr(app, "_request_logging_initialized")
+
+        init_app(app)
+        assert hasattr(app, "_request_logging_initialized")
+        assert app._request_logging_initialized is True
+
+    def test_init_app_respects_flag_on_subsequent_calls(self, enable_request_logging, caplog):
+        """Verify that init_app respects the flag and doesn't reconnect handlers."""
+        app = _get_test_app()
+        caplog.set_level(logging.WARNING, logger=ext_request_logging.__name__)
+
+        # First call should initialize
+        init_app(app)
+        assert not any("already initialized" in rec.getMessage() for rec in caplog.records)
+
+        # Second call should log a warning and skip
+        init_app(app)
+        warning_records = [rec for rec in caplog.records if rec.levelno == logging.WARNING]
+        assert len(warning_records) == 1
+        assert "already initialized" in warning_records[0].getMessage()
