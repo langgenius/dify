@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import HITLInputComponentUI from './component-ui'
@@ -47,16 +47,15 @@ const getActionContainers = () => {
 
 const openEditModal = async () => {
   const { editContainer } = getActionContainers()
-  await act(async () => {
-    editContainer.dispatchEvent(new MouseEvent('click'))
-  })
-  const dialog = await screen.findByRole('dialog')
-
   await waitFor(() => {
-    expect(dialog).toBeInTheDocument()
+    editContainer.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
+  const dialog = screen.getByRole('dialog')
 
-  return within(dialog).getByRole('button', { name: 'common.operation.save' })
+  const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
+  expect(saveButton).toBeEnabled()
+  return saveButton
 }
 
 describe('HITLInputComponentUI', () => {
