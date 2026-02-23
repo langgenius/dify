@@ -20,7 +20,9 @@ class TestDatasetDocumentProperties:
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        dataset = Dataset(tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by)
+        dataset = Dataset(
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+        )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
 
@@ -47,7 +49,9 @@ class TestDatasetDocumentProperties:
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        dataset = Dataset(tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by)
+        dataset = Dataset(
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+        )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
 
@@ -105,7 +109,9 @@ class TestDatasetDocumentProperties:
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        dataset = Dataset(tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by)
+        dataset = Dataset(
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+        )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
 
@@ -133,7 +139,9 @@ class TestDatasetDocumentProperties:
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        dataset = Dataset(tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by)
+        dataset = Dataset(
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+        )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
 
@@ -191,7 +199,9 @@ class TestDatasetDocumentProperties:
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        dataset = Dataset(tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by)
+        dataset = Dataset(
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+        )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
 
@@ -231,7 +241,9 @@ class TestDatasetDocumentProperties:
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        dataset = Dataset(tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by)
+        dataset = Dataset(
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
+        )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
 
