@@ -39,7 +39,7 @@ class Moderation(Extensible, ABC):
 
     @classmethod
     @abstractmethod
-    def validate_config(cls, tenant_id: str, config: dict):
+    def validate_config(cls, tenant_id: str, config: dict) -> None:
         """
         Validate the incoming form config data.
 
@@ -47,7 +47,7 @@ class Moderation(Extensible, ABC):
         :param config: the form config data
         :return:
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
