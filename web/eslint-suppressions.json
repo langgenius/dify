@@ -2458,9 +2458,6 @@
     }
   },
   "app/components/base/prompt-editor/plugins/context-block/component.tsx": {
-    "tailwindcss/no-duplicate-classes": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
