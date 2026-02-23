@@ -457,10 +457,9 @@ describe('Panel', () => {
 
       unmount()
 
-      await waitFor(() => {
-        expect(bindTag).not.toHaveBeenCalled()
-        expect(unBindTag).not.toHaveBeenCalled()
-      })
+      await act(async () => {})
+      expect(bindTag).not.toHaveBeenCalled()
+      expect(unBindTag).not.toHaveBeenCalled()
     })
 
     it('should call onChange after all operations complete on unmount', async () => {
