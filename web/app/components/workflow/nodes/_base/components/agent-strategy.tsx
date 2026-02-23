@@ -251,10 +251,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                     {' '}
                     <br />
                     <Link
-                      href={docLink('/guides/workflow/node/agent#select-an-agent-strategy', {
-                        'zh-Hans': '/guides/workflow/node/agent#选择-agent-策略',
-                        'ja-JP': '/guides/workflow/node/agent#エージェント戦略の選択',
-                      })}
+                      href={docLink('/use-dify/nodes/agent')}
                       className="text-text-accent-secondary"
                       target="_blank"
                     >

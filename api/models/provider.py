@@ -181,6 +181,7 @@ class TenantDefaultModel(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_default_model_pkey"),
         sa.Index("tenant_default_model_tenant_id_provider_type_idx", "tenant_id", "provider_name", "model_type"),
+        sa.UniqueConstraint("tenant_id", "model_type", name="unique_tenant_default_model_type"),
     )
 
     id: Mapped[str] = mapped_column(

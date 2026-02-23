@@ -914,9 +914,6 @@ class TestMetadataService:
         metadata_args = MetadataArgs(type="string", name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
-        # Mock DocumentService.get_document to return None (document not found)
-        mock_external_service_dependencies["document_service"].get_document.return_value = None
-
         # Create metadata operation data
         from services.entities.knowledge_entities.knowledge_entities import (
             DocumentMetadataOperation,
@@ -926,16 +923,17 @@ class TestMetadataService:
 
         metadata_detail = MetadataDetail(id=metadata.id, name=metadata.name, value="test_value")
 
-        operation = DocumentMetadataOperation(document_id="non-existent-document-id", metadata_list=[metadata_detail])
+        # Use a valid UUID format that does not exist in the database
+        operation = DocumentMetadataOperation(
+            document_id="00000000-0000-0000-0000-000000000000", metadata_list=[metadata_detail]
+        )
 
         operation_data = MetadataOperationData(operation_data=[operation])
 
-        # Act: Execute the method under test
-        # The method should handle the error gracefully and continue
-        MetadataService.update_documents_metadata(dataset, operation_data)
-
-        # Assert: Verify the method completes without raising exceptions
-        # The main functionality (error handling) is verified
+        # Act & Assert: The method should raise ValueError("Document not found.")
+        # because the exception is now re-raised after rollback
+        with pytest.raises(ValueError, match="Document not found"):
+            MetadataService.update_documents_metadata(dataset, operation_data)
 
     def test_knowledge_base_metadata_lock_check_dataset_id(
         self, db_session_with_containers, mock_external_service_dependencies

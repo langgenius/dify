@@ -8,8 +8,7 @@ import {
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
+import { useDocLink } from '@/context/i18n'
 import { useCreateMCP } from '@/service/use-tools'
 import MCPModal from './modal'
 
@@ -19,8 +18,7 @@ type Props = {
 
 const NewMCPCard = ({ handleCreate }: Props) => {
   const { t } = useTranslation()
-  const locale = useLocale()
-  const language = getLanguage(locale)
+  const docLink = useDocLink()
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const { mutateAsync: createMCP } = useCreateMCP()
@@ -30,13 +28,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
     handleCreate(provider)
   }
 
-  const linkUrl = useMemo(() => {
-    if (language.startsWith('zh_'))
-      return 'https://docs.dify.ai/zh-hans/guides/tools/mcp'
-    if (language.startsWith('ja_jp'))
-      return 'https://docs.dify.ai/ja_jp/guides/tools/mcp'
-    return 'https://docs.dify.ai/en/guides/tools/mcp'
-  }, [language])
+  const linkUrl = useMemo(() => docLink('/use-dify/build/mcp'), [docLink])
 
   const [showModal, setShowModal] = useState(false)
 

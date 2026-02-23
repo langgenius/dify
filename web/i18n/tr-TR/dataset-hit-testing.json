@@ -3,7 +3,7 @@
   "dateTimeFormat": "GG/AA/YYYY ss:dd ÖÖ/ÖS",
   "desc": "Verilen sorgu metnine göre Bilginin isabet etkisini test edin.",
   "hit.emptyTip": "Geri Alım Testi sonuçları burada gösterilecektir",
-  "hit.title": "GERİ ALINAN PARAGRAFLAR",
+  "hit.title": "{{num}} geri alınan paragraflar",
   "hitChunks": "{{num}} alt parçalarına basın",
   "imageUploader.dropZoneTip": "Yüklemek için dosyayı buraya sürükleyin",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Tek parça eklerin sayısı {{limit}} değerini aşamaz",

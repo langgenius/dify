@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "حصة رفع المستندات",
   "usagePage.perMonth": "شهريًا",
   "usagePage.resetsIn": "يتم إعادة التعيين في {{count,number}} أيام",
+  "usagePage.storageThresholdTooltip": "يتم عرض الاستخدام التفصيلي بمجرد أن تتجاوز مساحة التخزين 50 ميجابايت.",
   "usagePage.teamMembers": "أعضاء الفريق",
   "usagePage.triggerEvents": "أحداث المشغل",
   "usagePage.vectorSpace": "تخزين بيانات المعرفة",

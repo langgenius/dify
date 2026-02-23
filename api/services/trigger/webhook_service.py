@@ -15,10 +15,10 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
 from core.workflow.enums import NodeType
+from core.workflow.file.models import FileTransferMethod
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client

@@ -79,7 +79,7 @@
   "pipelineNameAndIcon": "Ime in ikona cevovoda",
   "publishPipeline.error.message": "Objava cevovoda znanja ni uspela",
   "publishPipeline.success.message": "Objavljen Knowledge Pipeline",
-  "publishPipeline.success.tip": "Pojdite v Dokumente, da dodate ali upravljate z dokumenti.",
+  "publishPipeline.success.tip": "Pojdite v <CustomLink>Dokumente</CustomLink>, da dodate ali upravljate z dokumenti.",
   "publishTemplate.error.message": "Ni bilo mogoče objaviti predloge cevovoda",
   "publishTemplate.success.learnMore": "Izvedi več",
   "publishTemplate.success.message": "Objavljena predloga cevovoda",

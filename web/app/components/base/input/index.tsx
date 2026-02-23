@@ -109,7 +109,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         disabled={disabled}
         {...props}
       />
-      {showClearIcon && value && !disabled && !destructive && (
+      {!!(showClearIcon && value && !disabled && !destructive) && (
         <div
           className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
           onClick={onClear}

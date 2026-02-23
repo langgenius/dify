@@ -12,10 +12,10 @@ import VideoPreview from '@/app/components/base/file-uploader/video-preview'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileTypeIcon from '../file-type-icon'
 import {
-  downloadFile,
   fileIsUploaded,
   getFileAppearanceType,
   getFileExtension,
@@ -100,7 +100,7 @@ const FileItem = ({
                 className="absolute -right-1 -top-1 hidden group-hover/file-item:flex"
                 onClick={(e) => {
                   e.stopPropagation()
-                  downloadFile(download_url || '', name)
+                  downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
               >
                 <RiDownloadLine className="h-3.5 w-3.5 text-text-tertiary" />

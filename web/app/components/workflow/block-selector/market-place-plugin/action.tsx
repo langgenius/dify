@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useDownloadPlugin } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import { downloadFile } from '@/utils/format'
+import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
@@ -67,7 +67,7 @@ const OperationDropdown: FC<Props> = ({
     if (!needDownload || !blob)
       return
     const fileName = `${author}-${name}_${version}.zip`
-    downloadFile({ data: blob, fileName })
+    downloadBlob({ data: blob, fileName })
     setNeedDownload(false)
     queryClient.removeQueries({
       queryKey: ['plugins', 'downloadPlugin', downloadInfo],
