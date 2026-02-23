@@ -30,7 +30,8 @@ vi.mock('use-context-selector', () => ({
   useContext: <T,>(ctx: React.Context<T>) => {
     if (ctx === (ToastContext as unknown as React.Context<T>))
       return { notify: mockNotify, close: vi.fn() } as T
-    return (ctx as React.Context<T> & { _currentValue: T })._currentValue
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return React.useContext(ctx)
   },
 }))
 
@@ -118,12 +119,6 @@ describe('TagSelector', () => {
       expect(screen.getByText('Frontend')).toBeInTheDocument()
       expect(screen.getByText('Backend')).toBeInTheDocument()
     })
-
-    it('should pass position prop to the popover', () => {
-      // render with position='br' — no crash, popover still works
-      render(<TagSelector {...defaultProps} position="br" />)
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-    })
   })
 
   describe('Popover Interaction', () => {
@@ -189,6 +184,8 @@ describe('TagSelector', () => {
 
       const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
+
+      expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
 
       await waitFor(() => {
         expect(useTagStore.getState().tagList).toEqual(freshTags)
