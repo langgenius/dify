@@ -4,10 +4,10 @@ import typing as tp
 from sqlalchemy import Engine
 
 from constants.mimetypes import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
-from core.file import File, FileTransferMethod, FileType
 from core.helper import ssrf_proxy
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.file import File, FileTransferMethod, FileType
 from extensions.ext_database import db as global_db
 
 

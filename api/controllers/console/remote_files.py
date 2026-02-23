@@ -12,8 +12,8 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console import console_ns
-from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
+from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from libs.login import current_account_with_tenant, login_required
