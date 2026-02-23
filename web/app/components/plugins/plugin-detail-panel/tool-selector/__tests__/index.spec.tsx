@@ -208,7 +208,7 @@ vi.mock('../components/reasoning-config-form', () => ({
 // Track MCP availability mock state
 let mockMCPToolAllowed = true
 
-vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
+vi.mock('@/app/components/workflow/block-selector/context/mcp-tool-availability-context', () => ({
   useMCPToolAvailability: () => ({ allowed: mockMCPToolAllowed }),
 }))
 

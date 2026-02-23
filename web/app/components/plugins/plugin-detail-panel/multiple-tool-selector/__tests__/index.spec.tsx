@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ==================== Imports (after mocks) ====================
 
-import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { MCPToolAvailabilityProvider } from '@/app/components/workflow/block-selector/context/mcp-tool-availability-context'
 import MultipleToolSelector from '../index'
 
 // ==================== Mock Setup ====================
