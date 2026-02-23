@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 from models.dataset import Dataset, Document, DocumentSegment
 
 
-class TestDatasetDocumentCascadeDeletes:
-    """Integration tests for Dataset-Document cascade delete operations."""
+class TestDatasetDocumentProperties:
+    """Integration tests for Dataset and Document model properties."""
 
     def test_dataset_with_documents_relationship(self, db_session_with_containers: Session) -> None:
         """Test dataset can track its documents."""
