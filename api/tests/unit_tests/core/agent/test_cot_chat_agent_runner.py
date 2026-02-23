@@ -104,7 +104,7 @@ class TestOrganizeUserQuery:
 
     @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
-    def test_organize_user_query_with_image_file_no_config(self, mock_to_prompt, mock_user_prompt, runner):
+    def test_organize_user_query_with_image_file_default_config(self, mock_to_prompt, mock_user_prompt, runner):
         from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 
         mock_content = ImagePromptMessageContent(
@@ -122,6 +122,23 @@ class TestOrganizeUserQuery:
         assert len(result) == 1
         assert isinstance(result[0].content, list)
         assert mock_content in result[0].content
+        mock_to_prompt.assert_called_once_with(
+            "file1",
+            image_detail_config=ImagePromptMessageContent.DETAIL.LOW,
+        )
+
+    @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
+    @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
+    def test_organize_user_query_with_image_file_high_detail(self, mock_to_prompt, mock_user_prompt, runner):
+        from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+
+        mock_content = ImagePromptMessageContent(
+            url="http://test",
+            format="png",
+            mime_type="image/png",
+        )
+        mock_to_prompt.return_value = mock_content
+        mock_user_prompt.side_effect = lambda content: MagicMock(content=content)
 
         runner.files = ["file1"]
 
@@ -132,6 +149,10 @@ class TestOrganizeUserQuery:
         assert len(result) == 1
         assert isinstance(result[0].content, list)
         assert mock_content in result[0].content
+        mock_to_prompt.assert_called_once_with(
+            "file1",
+            image_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        )
 
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_text_file_no_config(self, mock_to_prompt, runner):

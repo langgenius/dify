@@ -5,6 +5,7 @@ import pytest
 
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.queue_entities import QueueMessageFileEvent
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
     DocumentPromptMessageContent,
@@ -418,9 +419,11 @@ class TestRunMethod:
 
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
-        runner.queue_manager.publish.assert_any_call(
-            mocker.ANY,
-            PublishFrom.APPLICATION_MANAGER,
+        assert any(
+            isinstance(call.args[0], QueueMessageFileEvent)
+            and call.args[0].message_file_id == "file1"
+            and call.args[1] == PublishFrom.APPLICATION_MANAGER
+            for call in runner.queue_manager.publish.call_args_list
         )
 
     def test_run_max_iteration_error(self, runner):
