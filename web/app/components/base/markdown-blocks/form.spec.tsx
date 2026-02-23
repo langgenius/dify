@@ -208,12 +208,15 @@ describe('MarkdownForm', () => {
         createElementNode('button', {}, [createTextNode('Submit')]),
       ])
 
-      render(<MarkdownForm node={node} />)
+      try {
+        render(<MarkdownForm node={node} />)
 
-      expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
-      expect(consoleErrorSpy).toHaveBeenCalled()
-
-      consoleErrorSpy.mockRestore()
+        expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
+        expect(consoleErrorSpy).toHaveBeenCalled()
+      }
+      finally {
+        consoleErrorSpy.mockRestore()
+      }
     })
 
     it('should update selected value via onSelect and submit the new option', async () => {
@@ -276,7 +279,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await userEvent.click(screen.getByTestId('checkbox-undefined'))
+      await userEvent.click(screen.getByTestId('checkbox-acceptTerms'))
       await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {

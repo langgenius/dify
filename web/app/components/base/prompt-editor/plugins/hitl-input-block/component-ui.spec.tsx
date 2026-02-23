@@ -81,8 +81,16 @@ const createFormInput = (overrides?: Partial<FormInputItem>): FormInputItem => (
   ...overrides,
 })
 
-const getActionButtons = (container: HTMLElement) => {
-  return Array.from(container.querySelectorAll('button.action-btn')) as HTMLButtonElement[]
+const getActionButtons = () => {
+  return screen.queryAllByTestId('action-btn') as HTMLButtonElement[]
+}
+
+const expectActionButtons = () => {
+  const buttons = getActionButtons()
+  expect(buttons).toHaveLength(2)
+  expect(buttons[0]).toHaveAccessibleName('common.operation.edit')
+  expect(buttons[1]).toHaveAccessibleName('common.operation.remove')
+  return buttons
 }
 
 describe('HITLInputComponentUI', () => {
@@ -128,12 +136,12 @@ describe('HITLInputComponentUI', () => {
   // Render basic variable info with constant default value.
   describe('Rendering', () => {
     it('should render var name and constant default value', () => {
-      const { container } = renderComponent()
+      renderComponent()
 
       expect(screen.getByText(varName)).toBeInTheDocument()
       expect(screen.getByText('John Doe')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-variable-block')).not.toBeInTheDocument()
-      expect(getActionButtons(container)).toHaveLength(2)
+      expectActionButtons()
     })
 
     it('should render variable block when default type is variable', () => {
@@ -157,17 +165,17 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should hide action buttons when readonly is true', () => {
-      const { container } = renderComponent({ readonly: true })
+      renderComponent({ readonly: true })
 
-      expect(getActionButtons(container)).toHaveLength(0)
+      expect(getActionButtons()).toHaveLength(0)
     })
   })
 
   // Remove handler should be triggered from lexical-style native click listener.
   describe('Remove action', () => {
     it('should call onRemove with current var name when remove button is clicked', async () => {
-      const { container, onRemove } = renderComponent()
-      const buttons = getActionButtons(container)
+      const { onRemove } = renderComponent()
+      const buttons = expectActionButtons()
 
       await userEvent.click(buttons[1])
 
@@ -179,8 +187,8 @@ describe('HITLInputComponentUI', () => {
   // Edit flow should route to onChange or onRename based on output variable name.
   describe('Edit flow', () => {
     it('should call onChange and close modal when edited name is unchanged', async () => {
-      const { container, onChange, onRename } = renderComponent()
-      const buttons = getActionButtons(container)
+      const { onChange, onRename } = renderComponent()
+      const buttons = expectActionButtons()
 
       await userEvent.click(buttons[0])
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
@@ -198,8 +206,8 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should call onRename and close modal when edited name changes', async () => {
-      const { container, onChange, onRename } = renderComponent()
-      const buttons = getActionButtons(container)
+      const { onChange, onRename } = renderComponent()
+      const buttons = expectActionButtons()
 
       await userEvent.click(buttons[0])
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
@@ -217,8 +225,8 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should close modal without update when cancel is clicked', async () => {
-      const { container, onChange, onRename } = renderComponent()
-      const buttons = getActionButtons(container)
+      const { onChange, onRename } = renderComponent()
+      const buttons = expectActionButtons()
 
       await userEvent.click(buttons[0])
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
@@ -237,8 +245,8 @@ describe('HITLInputComponentUI', () => {
   // Missing formInput should use component default payload derived from varName.
   describe('Default formInput', () => {
     it('should pass default payload to InputField when formInput is undefined', async () => {
-      const { container } = renderComponent({ formInput: undefined })
-      const buttons = getActionButtons(container)
+      renderComponent({ formInput: undefined })
+      const buttons = expectActionButtons()
 
       await userEvent.click(buttons[0])
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()

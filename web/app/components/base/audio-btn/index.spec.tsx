@@ -23,6 +23,12 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
 
 describe('AudioBtn', () => {
   const getButton = () => screen.getByRole('button')
+  const mockUseParams = (value: Partial<Record<string, string>>) => {
+    (useParams as ReturnType<typeof vi.fn>).mockReturnValue(value)
+  }
+  const mockUsePathname = (value: string) => {
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(value)
+  }
 
   const hoverAndCheckTooltip = async (expectedText: string) => {
     await userEvent.hover(getButton())
@@ -49,8 +55,8 @@ describe('AudioBtn', () => {
       playAudio: mockPlayAudio,
       pauseAudio: mockPauseAudio,
     })
-    ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({})
-    ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/')
+    mockUseParams({})
+    mockUsePathname('/')
   })
 
   // Core rendering and base UI integration.
@@ -74,7 +80,7 @@ describe('AudioBtn', () => {
   // URL path resolution for app/public audio endpoints.
   describe('URL routing', () => {
     it('should call public text-to-audio endpoint when token exists', async () => {
-      ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ token: 'public-token' })
+      mockUseParams({ token: 'public-token' })
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
@@ -86,8 +92,8 @@ describe('AudioBtn', () => {
     })
 
     it('should call app endpoint when appId exists', async () => {
-      ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '123' })
-      ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/apps/123/chat')
+      mockUseParams({ appId: '123' })
+      mockUsePathname('/apps/123/chat')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
@@ -99,8 +105,8 @@ describe('AudioBtn', () => {
     })
 
     it('should call installed app endpoint for explore installed routes', async () => {
-      ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '456' })
-      ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/explore/installed/app/456')
+      mockUseParams({ appId: '456' })
+      mockUsePathname('/explore/installed/app/456')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
@@ -115,14 +121,13 @@ describe('AudioBtn', () => {
   // User-visible playback state transitions.
   describe('Playback interactions', () => {
     it('should start loading and call playAudio when button is clicked', async () => {
-      const { container } = render(<AudioBtn value="test" className="custom-wrapper" />)
+      render(<AudioBtn value="test" className="custom-wrapper" />)
       await userEvent.click(getButton())
 
       await waitFor(() => {
         expect(mockPlayAudio).toHaveBeenCalledTimes(1)
         expect(getButton()).toBeDisabled()
       })
-      expect(container.firstElementChild).toHaveClass('mr-1')
       expect(screen.getByRole('status')).toBeInTheDocument()
       await hoverAndCheckTooltip('loading')
     })
