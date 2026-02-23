@@ -70,7 +70,7 @@ dependencies = [
     "pydantic-settings~=2.12.0",
     "pyjwt~=2.10.1",
     "pypdfium2==5.2.0",
-    "python-docx~=1.1.0",
+    "python-docx~=1.2.0",
     "python-dotenv==1.0.1",
     "pyyaml~=6.0.1",
     "readabilipy~=0.3.0",
