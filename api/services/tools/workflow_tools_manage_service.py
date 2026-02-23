@@ -1,8 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -10,6 +8,7 @@ from sqlalchemy.orm import Session
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
@@ -38,12 +37,10 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: list[Mapping[str, Any]],
+        parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ):
-        WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
-
         # check if the name is unique
         existing_workflow_tool_provider = (
             db.session.query(WorkflowToolProvider)
@@ -67,6 +64,8 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
+        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
+
         workflow_tool_provider = WorkflowToolProvider(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -75,7 +74,7 @@ class WorkflowToolManageService:
             label=label,
             icon=json.dumps(icon),
             description=description,
-            parameter_configuration=json.dumps(parameters),
+            parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
             privacy_policy=privacy_policy,
             version=workflow.version,
         )
@@ -104,7 +103,7 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: list[Mapping[str, Any]],
+        parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ):
@@ -122,8 +121,6 @@ class WorkflowToolManageService:
         :param labels: labels
         :return: the updated tool
         """
-        WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
-
         # check if the name is unique
         existing_workflow_tool_provider = (
             db.session.query(WorkflowToolProvider)
@@ -158,11 +155,13 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
 
+        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
+
         workflow_tool_provider.name = name
         workflow_tool_provider.label = label
         workflow_tool_provider.icon = json.dumps(icon)
         workflow_tool_provider.description = description
-        workflow_tool_provider.parameter_configuration = json.dumps(parameters)
+        workflow_tool_provider.parameter_configuration = json.dumps([p.model_dump() for p in parameters])
         workflow_tool_provider.privacy_policy = privacy_policy
         workflow_tool_provider.version = workflow.version
         workflow_tool_provider.updated_at = datetime.now()

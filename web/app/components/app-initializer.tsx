@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import Cookies from 'js-cookie'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { parseAsString, useQueryState } from 'nuqs'
+import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
@@ -28,7 +28,7 @@ export const AppInitializer = ({
   const [init, setInit] = useState(false)
   const [oauthNewUser, setOauthNewUser] = useQueryState(
     'oauth_new_user',
-    parseAsString.withOptions({ history: 'replace' }),
+    parseAsBoolean.withOptions({ history: 'replace' }),
   )
 
   const isSetupFinished = useCallback(async () => {
@@ -46,7 +46,7 @@ export const AppInitializer = ({
     (async () => {
       const action = searchParams.get('action')
 
-      if (oauthNewUser === 'true') {
+      if (oauthNewUser) {
         let utmInfo = null
         const utmInfoStr = Cookies.get('utm_info')
         if (utmInfoStr) {

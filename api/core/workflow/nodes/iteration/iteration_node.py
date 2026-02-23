@@ -397,7 +397,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             return outputs
 
         # Check if all non-None outputs are lists
-        non_none_outputs = [output for output in outputs if output is not None]
+        non_none_outputs: list[object] = [output for output in outputs if output is not None]
         if not non_none_outputs:
             return outputs
 

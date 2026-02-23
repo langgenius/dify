@@ -1,13 +1,26 @@
 from typing import Literal
-from uuid import UUID
 
+from flask import request
+from flask_restx import Namespace, Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from controllers.fastopenapi import console_router
 from libs.login import current_account_with_tenant, login_required
 from services.tag_service import TagService
+
+dataset_tag_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "type": fields.String,
+    "binding_count": fields.String,
+}
+
+
+def build_dataset_tag_fields(api_or_ns: Namespace):
+    return api_or_ns.model("DataSetTag", dataset_tag_fields)
 
 
 class TagBasePayload(BaseModel):
@@ -32,129 +45,115 @@ class TagListQueryParam(BaseModel):
     keyword: str | None = Field(None, description="Search keyword")
 
 
-class TagResponse(BaseModel):
-    id: str = Field(description="Tag ID")
-    name: str = Field(description="Tag name")
-    type: str = Field(description="Tag type")
-    binding_count: int = Field(description="Number of bindings")
-
-
-class TagBindingResult(BaseModel):
-    result: Literal["success"] = Field(description="Operation result", examples=["success"])
-
-
-@console_router.get(
-    "/tags",
-    response_model=list[TagResponse],
-    tags=["console"],
+register_schema_models(
+    console_ns,
+    TagBasePayload,
+    TagBindingPayload,
+    TagBindingRemovePayload,
+    TagListQueryParam,
 )
-@setup_required
-@login_required
-@account_initialization_required
-def list_tags(query: TagListQueryParam) -> list[TagResponse]:
-    _, current_tenant_id = current_account_with_tenant()
-    tags = TagService.get_tags(query.type, current_tenant_id, query.keyword)
-
-    return [
-        TagResponse(
-            id=tag.id,
-            name=tag.name,
-            type=tag.type,
-            binding_count=int(tag.binding_count),
-        )
-        for tag in tags
-    ]
 
 
-@console_router.post(
-    "/tags",
-    response_model=TagResponse,
-    tags=["console"],
-)
-@setup_required
-@login_required
-@account_initialization_required
-def create_tag(payload: TagBasePayload) -> TagResponse:
-    current_user, _ = current_account_with_tenant()
-    # The role of the current user in the tag table must be admin, owner, or editor
-    if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-        raise Forbidden()
+@console_ns.route("/tags")
+class TagListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @console_ns.doc(
+        params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
+    )
+    @marshal_with(dataset_tag_fields)
+    def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+        raw_args = request.args.to_dict()
+        param = TagListQueryParam.model_validate(raw_args)
+        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
 
-    tag = TagService.save_tags(payload.model_dump())
+        return tags, 200
 
-    return TagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count=0)
+    @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        current_user, _ = current_account_with_tenant()
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
+            raise Forbidden()
 
+        payload = TagBasePayload.model_validate(console_ns.payload or {})
+        tag = TagService.save_tags(payload.model_dump())
 
-@console_router.patch(
-    "/tags/<uuid:tag_id>",
-    response_model=TagResponse,
-    tags=["console"],
-)
-@setup_required
-@login_required
-@account_initialization_required
-def update_tag(tag_id: UUID, payload: TagBasePayload) -> TagResponse:
-    current_user, _ = current_account_with_tenant()
-    tag_id_str = str(tag_id)
-    # The role of the current user in the ta table must be admin, owner, or editor
-    if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-        raise Forbidden()
+        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
 
-    tag = TagService.update_tags(payload.model_dump(), tag_id_str)
-
-    binding_count = TagService.get_tag_binding_count(tag_id_str)
-
-    return TagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count=binding_count)
+        return response, 200
 
 
-@console_router.delete(
-    "/tags/<uuid:tag_id>",
-    tags=["console"],
-    status_code=204,
-)
-@setup_required
-@login_required
-@account_initialization_required
-@edit_permission_required
-def delete_tag(tag_id: UUID) -> None:
-    tag_id_str = str(tag_id)
+@console_ns.route("/tags/<uuid:tag_id>")
+class TagUpdateDeleteApi(Resource):
+    @console_ns.expect(console_ns.models[TagBasePayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, tag_id):
+        current_user, _ = current_account_with_tenant()
+        tag_id = str(tag_id)
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
+            raise Forbidden()
 
-    TagService.delete_tag(tag_id_str)
+        payload = TagBasePayload.model_validate(console_ns.payload or {})
+        tag = TagService.update_tags(payload.model_dump(), tag_id)
+
+        binding_count = TagService.get_tag_binding_count(tag_id)
+
+        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
+
+        return response, 200
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def delete(self, tag_id):
+        tag_id = str(tag_id)
+
+        TagService.delete_tag(tag_id)
+
+        return "", 204
 
 
-@console_router.post(
-    "/tag-bindings/create",
-    response_model=TagBindingResult,
-    tags=["console"],
-)
-@setup_required
-@login_required
-@account_initialization_required
-def create_tag_binding(payload: TagBindingPayload) -> TagBindingResult:
-    current_user, _ = current_account_with_tenant()
-    # The role of the current user in the tag table must be admin, owner, editor, or dataset_operator
-    if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-        raise Forbidden()
+@console_ns.route("/tag-bindings/create")
+class TagBindingCreateApi(Resource):
+    @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        current_user, _ = current_account_with_tenant()
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
+            raise Forbidden()
 
-    TagService.save_tag_binding(payload.model_dump())
+        payload = TagBindingPayload.model_validate(console_ns.payload or {})
+        TagService.save_tag_binding(payload.model_dump())
 
-    return TagBindingResult(result="success")
+        return {"result": "success"}, 200
 
 
-@console_router.post(
-    "/tag-bindings/remove",
-    response_model=TagBindingResult,
-    tags=["console"],
-)
-@setup_required
-@login_required
-@account_initialization_required
-def delete_tag_binding(payload: TagBindingRemovePayload) -> TagBindingResult:
-    current_user, _ = current_account_with_tenant()
-    # The role of the current user in the tag table must be admin, owner, editor, or dataset_operator
-    if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-        raise Forbidden()
+@console_ns.route("/tag-bindings/remove")
+class TagBindingDeleteApi(Resource):
+    @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        current_user, _ = current_account_with_tenant()
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
+            raise Forbidden()
 
-    TagService.delete_tag_binding(payload.model_dump())
+        payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
+        TagService.delete_tag_binding(payload.model_dump())
 
-    return TagBindingResult(result="success")
+        return {"result": "success"}, 200

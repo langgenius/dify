@@ -1,10 +1,9 @@
 import json
 import logging
 from typing import Any, Literal, cast
-from uuid import UUID
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with, reqparse  # type: ignore
+from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -38,7 +37,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
@@ -110,7 +109,7 @@ class NodeIdQuery(BaseModel):
 
 
 class WorkflowRunQuery(BaseModel):
-    last_id: UUID | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 
@@ -119,6 +118,10 @@ class DatasourceVariablesPayload(BaseModel):
     datasource_info: dict[str, Any]
     start_node_id: str
     start_node_title: str
+
+
+class RagPipelineRecommendedPluginQuery(BaseModel):
+    type: str = "all"
 
 
 register_schema_models(
@@ -135,6 +138,7 @@ register_schema_models(
     NodeIdQuery,
     WorkflowRunQuery,
     DatasourceVariablesPayload,
+    RagPipelineRecommendedPluginQuery,
 )
 
 
@@ -975,11 +979,8 @@ class RagPipelineRecommendedPluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, location="args", required=False, default="all")
-        args = parser.parse_args()
-        type = args["type"]
+        query = RagPipelineRecommendedPluginQuery.model_validate(request.args.to_dict())
 
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins(type)
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type)
         return recommended_plugins

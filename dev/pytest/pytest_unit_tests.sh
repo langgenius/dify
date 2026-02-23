@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -euxo pipefail
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/../.."

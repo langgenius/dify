@@ -9,10 +9,10 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.file.models import File
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
@@ -144,11 +144,11 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        node_config = dict(workflow.get_node_config_by_id(node_id))
-        node_config_data = node_config.get("data", {})
+        node_config = workflow.get_node_config_by_id(node_id)
+        node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data.get("type"))
+        node_type = NodeType(node_config_data["type"])
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
