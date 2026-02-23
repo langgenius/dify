@@ -3,10 +3,10 @@ from datetime import datetime
 
 from pydantic import Field
 
-from core.file import File
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult
 
 from .base import NodeEventBase
@@ -47,3 +47,19 @@ class StreamCompletedEvent(NodeEventBase):
 
 class PauseRequestedEvent(NodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
+
+
+class HumanInputFormFilledEvent(NodeEventBase):
+    """Event emitted when a human input form is submitted."""
+
+    node_title: str
+    rendered_content: str
+    action_id: str
+    action_text: str
+
+
+class HumanInputFormTimeoutEvent(NodeEventBase):
+    """Event emitted when a human input form times out."""
+
+    node_title: str
+    expiration_time: datetime

@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from core.file import File
+from core.workflow.file import File
 
 
 class FilesContainedField(fields.Raw):

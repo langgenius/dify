@@ -1,12 +1,13 @@
 import json
 import logging
-import math
-from typing import Any
+import re
+from typing import Any, Literal
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient, l2_distance  # type: ignore
+from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance  # type: ignore
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -19,10 +20,14 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OCEANBASE_HNSW_BUILD_PARAM = {"M": 16, "efConstruction": 256}
-DEFAULT_OCEANBASE_HNSW_SEARCH_PARAM = {"efSearch": 64}
 OCEANBASE_SUPPORTED_VECTOR_INDEX_TYPE = "HNSW"
-DEFAULT_OCEANBASE_VECTOR_METRIC_TYPE = "l2"
+_VALID_TABLE_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
+
+_DISTANCE_FUNC_MAP = {
+    "l2": l2_distance,
+    "cosine": cosine_distance,
+    "inner_product": inner_product,
+}
 
 
 class OceanBaseVectorConfig(BaseModel):
@@ -32,6 +37,14 @@ class OceanBaseVectorConfig(BaseModel):
     password: str
     database: str
     enable_hybrid_search: bool = False
+    batch_size: int = 100
+    metric_type: Literal["l2", "cosine", "inner_product"] = "l2"
+    hnsw_m: int = 16
+    hnsw_ef_construction: int = 256
+    hnsw_ef_search: int = -1
+    pool_size: int = 5
+    max_overflow: int = 10
+    hnsw_refresh_threshold: int = 1000
 
     @model_validator(mode="before")
     @classmethod
@@ -49,14 +62,23 @@ class OceanBaseVectorConfig(BaseModel):
 
 class OceanBaseVector(BaseVector):
     def __init__(self, collection_name: str, config: OceanBaseVectorConfig):
+        if not _VALID_TABLE_NAME_RE.match(collection_name):
+            raise ValueError(
+                f"Invalid collection name '{collection_name}': "
+                "only alphanumeric characters and underscores are allowed."
+            )
         super().__init__(collection_name)
         self._config = config
-        self._hnsw_ef_search = -1
+        self._hnsw_ef_search = self._config.hnsw_ef_search
         self._client = ObVecClient(
             uri=f"{self._config.host}:{self._config.port}",
             user=self._config.user,
             password=self._config.password,
             db_name=self._config.database,
+            pool_size=self._config.pool_size,
+            max_overflow=self._config.max_overflow,
+            pool_recycle=3600,
+            pool_pre_ping=True,
         )
         self._fields: list[str] = []  # List of fields in the collection
         if self._client.check_table_exists(collection_name):
@@ -136,8 +158,8 @@ class OceanBaseVector(BaseVector):
                 field_name="vector",
                 index_type=OCEANBASE_SUPPORTED_VECTOR_INDEX_TYPE,
                 index_name="vector_index",
-                metric_type=DEFAULT_OCEANBASE_VECTOR_METRIC_TYPE,
-                params=DEFAULT_OCEANBASE_HNSW_BUILD_PARAM,
+                metric_type=self._config.metric_type,
+                params={"M": self._config.hnsw_m, "efConstruction": self._config.hnsw_ef_construction},
             )
 
             self._client.create_table_with_index_params(
@@ -178,6 +200,17 @@ class OceanBaseVector(BaseVector):
             else:
                 logger.debug("DEBUG: Hybrid search is NOT enabled for '%s'", self._collection_name)
 
+            try:
+                self._client.perform_raw_text_sql(
+                    f"CREATE INDEX IF NOT EXISTS idx_metadata_doc_id ON `{self._collection_name}` "
+                    f"((CAST(metadata->>'$.document_id' AS CHAR(64))))"
+                )
+            except SQLAlchemyError:
+                logger.warning(
+                    "Failed to create metadata functional index on '%s'; metadata queries may be slow without it.",
+                    self._collection_name,
+                )
+
             self._client.refresh_metadata([self._collection_name])
             self._load_collection_fields()
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
@@ -205,24 +238,49 @@ class OceanBaseVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
-        for id, doc, emb in zip(ids, documents, embeddings):
+        batch_size = self._config.batch_size
+        total = len(documents)
+
+        all_data = [
+            {
+                "id": doc_id,
+                "vector": emb,
+                "text": doc.page_content,
+                "metadata": doc.metadata,
+            }
+            for doc_id, doc, emb in zip(ids, documents, embeddings)
+        ]
+
+        for start in range(0, total, batch_size):
+            batch = all_data[start : start + batch_size]
             try:
                 self._client.insert(
                     table_name=self._collection_name,
-                    data={
-                        "id": id,
-                        "vector": emb,
-                        "text": doc.page_content,
-                        "metadata": doc.metadata,
-                    },
+                    data=batch,
                 )
             except Exception as e:
                 logger.exception(
-                    "Failed to insert document with id '%s' in collection '%s'",
-                    id,
+                    "Failed to insert batch [%d:%d] into collection '%s'",
+                    start,
+                    start + len(batch),
                     self._collection_name,
                 )
-                raise Exception(f"Failed to insert document with id '{id}'") from e
+                raise Exception(
+                    f"Failed to insert batch [{start}:{start + len(batch)}] into collection '{self._collection_name}'"
+                ) from e
+
+        if self._config.hnsw_refresh_threshold > 0 and total >= self._config.hnsw_refresh_threshold:
+            try:
+                self._client.refresh_index(
+                    table_name=self._collection_name,
+                    index_name="vector_index",
+                )
+            except SQLAlchemyError:
+                logger.warning(
+                    "Failed to refresh HNSW index after inserting %d documents into '%s'",
+                    total,
+                    self._collection_name,
+                )
 
     def text_exists(self, id: str) -> bool:
         try:
@@ -412,7 +470,7 @@ class OceanBaseVector(BaseVector):
                 vec_column_name="vector",
                 vec_data=query_vector,
                 topk=topk,
-                distance_func=l2_distance,
+                distance_func=self._get_distance_func(),
                 output_column_names=["text", "metadata"],
                 with_dist=True,
                 where_clause=_where_clause,
@@ -424,13 +482,30 @@ class OceanBaseVector(BaseVector):
             )
             raise Exception(f"Vector search failed for collection '{self._collection_name}'") from e
 
-        # Convert distance to score and prepare results for processing
         results = []
         for _text, metadata_str, distance in cur:
-            score = 1 - distance / math.sqrt(2)
+            score = self._distance_to_score(distance)
             results.append((_text, metadata_str, score))
 
         return self._process_search_results(results, score_threshold=score_threshold)
+
+    def _get_distance_func(self):
+        func = _DISTANCE_FUNC_MAP.get(self._config.metric_type)
+        if func is None:
+            raise ValueError(
+                f"Unsupported metric_type '{self._config.metric_type}'. Supported: {', '.join(_DISTANCE_FUNC_MAP)}"
+            )
+        return func
+
+    def _distance_to_score(self, distance: float) -> float:
+        metric = self._config.metric_type
+        if metric == "l2":
+            return 1.0 / (1.0 + distance)
+        elif metric == "cosine":
+            return 1.0 - distance
+        elif metric == "inner_product":
+            return -distance
+        raise ValueError(f"Unsupported metric_type '{metric}'")
 
     def delete(self):
         try:
@@ -464,5 +539,13 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
                 password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
                 database=dify_config.OCEANBASE_VECTOR_DATABASE or "",
                 enable_hybrid_search=dify_config.OCEANBASE_ENABLE_HYBRID_SEARCH or False,
+                batch_size=dify_config.OCEANBASE_VECTOR_BATCH_SIZE,
+                metric_type=dify_config.OCEANBASE_VECTOR_METRIC_TYPE,
+                hnsw_m=dify_config.OCEANBASE_HNSW_M,
+                hnsw_ef_construction=dify_config.OCEANBASE_HNSW_EF_CONSTRUCTION,
+                hnsw_ef_search=dify_config.OCEANBASE_HNSW_EF_SEARCH,
+                pool_size=dify_config.OCEANBASE_VECTOR_POOL_SIZE,
+                max_overflow=dify_config.OCEANBASE_VECTOR_MAX_OVERFLOW,
+                hnsw_refresh_threshold=dify_config.OCEANBASE_HNSW_REFRESH_THRESHOLD,
             ),
         )

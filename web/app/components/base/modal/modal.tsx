@@ -1,5 +1,4 @@
 import type { ButtonProps } from '@/app/components/base/button'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,11 +68,11 @@ const Modal = ({
           )}
           onClick={e => e.stopPropagation()}
         >
-          <div className="title-2xl-semi-bold relative shrink-0 p-6 pb-3 pr-14 text-text-primary">
+          <div className="relative shrink-0 p-6 pb-3 pr-14 text-text-primary title-2xl-semi-bold">
             {title}
             {
               subTitle && (
-                <div className="system-xs-regular mt-1 text-text-tertiary">
+                <div className="mt-1 text-text-tertiary system-xs-regular">
                   {subTitle}
                 </div>
               )
@@ -82,7 +81,7 @@ const Modal = ({
               className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={onClose}
             >
-              <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+              <span className="i-ri-close-line h-5 w-5 text-text-tertiary" data-testid="close-icon" />
             </div>
           </div>
           {

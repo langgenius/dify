@@ -58,5 +58,15 @@
   "generation.tabs.create": "Einmal ausführen",
   "generation.tabs.saved": "Gespeichert",
   "generation.title": "KI-Vervollständigung",
+  "humanInput.completed": "Es scheint, dass diese Anfrage woanders bearbeitet wurde.",
+  "humanInput.expirationTimeNowOrFuture": "Diese Aktion läuft {{relativeTime}} ab.",
+  "humanInput.expired": "Es scheint, dass diese Anfrage abgelaufen ist.",
+  "humanInput.expiredTip": "Diese Aktion ist abgelaufen.",
+  "humanInput.formNotFound": "Formular nicht gefunden.",
+  "humanInput.rateLimitExceeded": "Zu viele Anfragen, bitte versuchen Sie es später erneut.",
+  "humanInput.recorded": "Ihre Eingabe wurde aufgezeichnet.",
+  "humanInput.sorry": "Entschuldigung!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Danke!",
   "login.backToHome": "Zurück zur Startseite"
 }

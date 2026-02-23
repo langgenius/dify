@@ -89,6 +89,7 @@ status_count_model = console_ns.model(
         "success": fields.Integer,
         "failed": fields.Integer,
         "partial_success": fields.Integer,
+        "paused": fields.Integer,
     },
 )
 
@@ -598,7 +599,12 @@ def _get_conversation(app_model, conversation_id):
     db.session.execute(
         sa.update(Conversation)
         .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
-        .values(read_at=naive_utc_now(), read_account_id=current_user.id)
+        # Keep updated_at unchanged when only marking a conversation as read.
+        .values(
+            read_at=naive_utc_now(),
+            read_account_id=current_user.id,
+            updated_at=Conversation.updated_at,
+        )
     )
     db.session.commit()
     db.session.refresh(conversation)

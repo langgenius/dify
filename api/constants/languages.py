@@ -21,6 +21,7 @@ language_timezone_mapping = {
     "th-TH": "Asia/Bangkok",
     "id-ID": "Asia/Jakarta",
     "ar-TN": "Africa/Tunis",
+    "nl-NL": "Europe/Amsterdam",
 }
 
 languages = list(language_timezone_mapping.keys())

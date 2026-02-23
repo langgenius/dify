@@ -58,5 +58,15 @@
   "generation.tabs.create": "執行一次",
   "generation.tabs.saved": "已儲存",
   "generation.title": "AI 智慧書寫",
+  "humanInput.completed": "似乎這個請求已在別處處理。",
+  "humanInput.expirationTimeNowOrFuture": "此操作將在{{relativeTime}}過期。",
+  "humanInput.expired": "似乎這個請求已過期。",
+  "humanInput.expiredTip": "此操作已過期。",
+  "humanInput.formNotFound": "未找到表單。",
+  "humanInput.rateLimitExceeded": "請求過多,請稍後再試。",
+  "humanInput.recorded": "您的輸入已記錄。",
+  "humanInput.sorry": "抱歉!",
+  "humanInput.submissionID": "提交 ID: {{id}}",
+  "humanInput.thanks": "謝謝!",
   "login.backToHome": "返回首頁"
 }
