@@ -53,7 +53,7 @@ def strategy(mock_declaration):
 
 
 class TestPluginAgentStrategyInitialization:
-    def test_init_sets_attributes(self, mock_declaration):
+    def test_init_sets_attributes(self, mock_declaration) -> None:
         strategy = PluginAgentStrategy(
             tenant_id="tenant_test",
             declaration=mock_declaration,
@@ -64,7 +64,7 @@ class TestPluginAgentStrategyInitialization:
         assert strategy.declaration == mock_declaration
         assert strategy.meta_version == "meta_v"
 
-    def test_init_meta_version_none(self, mock_declaration):
+    def test_init_meta_version_none(self, mock_declaration) -> None:
         strategy = PluginAgentStrategy(
             tenant_id="tenant_test",
             declaration=mock_declaration,
@@ -80,7 +80,7 @@ class TestPluginAgentStrategyInitialization:
 
 
 class TestGetParameters:
-    def test_get_parameters_returns_parameters(self, strategy, mock_declaration):
+    def test_get_parameters_returns_parameters(self, strategy, mock_declaration) -> None:
         result = strategy.get_parameters()
         assert result == mock_declaration.parameters
 
@@ -91,7 +91,7 @@ class TestGetParameters:
 
 
 class TestInitializeParameters:
-    def test_initialize_parameters_success(self, strategy, mock_declaration):
+    def test_initialize_parameters_success(self, strategy, mock_declaration) -> None:
         params = {"param1": "value1"}
 
         result = strategy.initialize_parameters(params.copy())
@@ -113,13 +113,13 @@ class TestInitializeParameters:
             {"param1": {}, "param2": "value"},
         ],
     )
-    def test_initialize_parameters_edge_cases(self, strategy, input_params):
+    def test_initialize_parameters_edge_cases(self, strategy, input_params) -> None:
         result = strategy.initialize_parameters(input_params.copy())
 
         for param in strategy.declaration.parameters:
             assert param.name in result
 
-    def test_initialize_parameters_invalid_input_type(self, strategy):
+    def test_initialize_parameters_invalid_input_type(self, strategy) -> None:
         with pytest.raises(AttributeError):
             strategy.initialize_parameters(None)
 
@@ -130,7 +130,7 @@ class TestInitializeParameters:
 
 
 class TestInvoke:
-    def test_invoke_success_all_arguments(self, strategy, mocker):
+    def test_invoke_success_all_arguments(self, strategy, mocker) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter(["msg1", "msg2"]))
 
@@ -170,7 +170,7 @@ class TestInvoke:
         assert call_kwargs["message_id"] == "msg_1"
         assert call_kwargs["context"] is not None
 
-    def test_invoke_with_credentials(self, strategy, mocker):
+    def test_invoke_with_credentials(self, strategy, mocker) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter([]))
 
@@ -213,7 +213,7 @@ class TestInvoke:
             (None, None, "msg"),
         ],
     )
-    def test_invoke_optional_arguments(self, strategy, mocker, conversation_id, app_id, message_id):
+    def test_invoke_optional_arguments(self, strategy, mocker, conversation_id, app_id, message_id) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter([]))
 
@@ -240,7 +240,7 @@ class TestInvoke:
         assert result == []
         mock_manager.invoke.assert_called_once()
 
-    def test_invoke_convert_raises_exception(self, strategy, mocker):
+    def test_invoke_convert_raises_exception(self, strategy, mocker) -> None:
         mocker.patch(
             "core.agent.strategy.plugin.PluginAgentClient",
             return_value=MagicMock(),
@@ -254,7 +254,7 @@ class TestInvoke:
         with pytest.raises(ValueError):
             list(strategy._invoke(params={}, user_id="user_1"))
 
-    def test_invoke_manager_raises_exception(self, strategy, mocker):
+    def test_invoke_manager_raises_exception(self, strategy, mocker) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke.side_effect = RuntimeError("invoke failed")
 

@@ -104,7 +104,7 @@ class TestOrganizeUserQuery:
 
     @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
-    def test_organize_user_query_with_files_no_config(self, mock_to_prompt, mock_user_prompt, runner):
+    def test_organize_user_query_with_image_file_no_config(self, mock_to_prompt, mock_user_prompt, runner):
         from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 
         mock_content = ImagePromptMessageContent(
@@ -134,7 +134,7 @@ class TestOrganizeUserQuery:
         assert mock_content in result[0].content
 
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
-    def test_organize_user_query_with_files_no_config(self, mock_to_prompt, runner):
+    def test_organize_user_query_with_text_file_no_config(self, mock_to_prompt, runner):
         mock_to_prompt.return_value = TextPromptMessageContent(data="file_content")
         runner.files = ["file1"]
         runner.application_generate_entity = DummyGenerateEntity(None)

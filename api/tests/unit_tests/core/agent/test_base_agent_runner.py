@@ -247,12 +247,6 @@ class TestSaveAgentThought:
         runner.save_agent_thought("id", None, None, None, None, None, None, None, None)
         assert mock_db_session.commit.called
 
-    def test_messages_ids_none(self, runner, mock_db_session, mocker):
-        agent = self.setup_agent(mocker)
-        mock_db_session.scalar.return_value = agent
-        runner.save_agent_thought("id", None, None, None, None, None, None, None, None)
-        assert mock_db_session.commit.called
-
     def test_success_dict_serialization(self, runner, mock_db_session, mocker):
         agent = self.setup_agent(mocker)
         mock_db_session.scalar.return_value = agent
@@ -301,12 +295,6 @@ class TestOrganizeUserPrompt:
         msg = mocker.MagicMock(id="1", query="hello")
         msg.app_model_config.to_dict.return_value = {}
 
-        result = runner.organize_agent_user_prompt(msg)
-        assert result.content == "hello"
-
-    def test_with_files_no_config(self, runner, mock_db_session, mocker):
-        mock_db_session.scalars.return_value.all.return_value = [mocker.MagicMock()]
-        msg = mocker.MagicMock(id="1", query="hello", app_model_config=None)
         result = runner.organize_agent_user_prompt(msg)
         assert result.content == "hello"
 

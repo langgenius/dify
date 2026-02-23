@@ -9,6 +9,8 @@ from core.workflow.nodes.agent.exc import AgentMaxIterationError
 
 
 class DummyRunner(CotAgentRunner):
+    """Concrete implementation for testing abstract methods."""
+
     def __init__(self, **kwargs):
         # Completely bypass BaseAgentRunner __init__ to avoid DB/session usage
         for k, v in kwargs.items():
@@ -16,8 +18,6 @@ class DummyRunner(CotAgentRunner):
         # Minimal required defaults
         self.history_prompt_messages = []
         self.memory = None
-
-    """Concrete implementation for testing abstract methods."""
 
     def _organize_prompt_messages(self):
         return []

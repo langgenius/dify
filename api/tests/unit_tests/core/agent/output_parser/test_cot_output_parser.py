@@ -61,6 +61,7 @@ class TestCotAgentOutputParser:
     results in Action instantiation. Usage: invoke via pytest (e.g.,
     `pytest -k TestCotAgentOutputParser`).
     """
+
     # --------------------------------------------------------
     # Basic streaming & usage
     # --------------------------------------------------------
@@ -249,6 +250,8 @@ class TestCotAgentOutputParser:
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         assert all(isinstance(item, str) for item in result)
         joined = "".join(result)
+        if content == "   ":
+            assert result == [] or joined == content
         if content in {"```", "{", "}", "```json"}:
             assert content in joined
         if content.lower() in {"action:", "thought:"}:

@@ -41,7 +41,7 @@ class DummyStrategy(BaseAgentStrategy):
 
 
 class TestBaseAgentStrategyInstantiation:
-    def test_cannot_instantiate_abstract_class(self):
+    def test_cannot_instantiate_abstract_class(self) -> None:
         with pytest.raises(TypeError):
             BaseAgentStrategy()
 
@@ -73,7 +73,7 @@ class TestBaseAgentStrategyInvoke:
         conversation_id,
         app_id,
         message_id,
-    ):
+    ) -> None:
         # Arrange
         strategy = DummyStrategy(return_values=[mock_message])
 
@@ -100,7 +100,7 @@ class TestBaseAgentStrategyInvoke:
             mock_credentials,
         )
 
-    def test_invoke_multiple_yields(self, mock_message):
+    def test_invoke_multiple_yields(self, mock_message) -> None:
         # Arrange
         messages = [mock_message, MagicMock(), MagicMock()]
         strategy = DummyStrategy(return_values=messages)
@@ -111,7 +111,7 @@ class TestBaseAgentStrategyInvoke:
         # Assert
         assert result == messages
 
-    def test_invoke_empty_generator(self):
+    def test_invoke_empty_generator(self) -> None:
         # Arrange
         strategy = DummyStrategy(return_values=[])
 
@@ -121,7 +121,7 @@ class TestBaseAgentStrategyInvoke:
         # Assert
         assert result == []
 
-    def test_invoke_propagates_exception(self):
+    def test_invoke_propagates_exception(self) -> None:
         # Arrange
         strategy = DummyStrategy(raise_exception=ValueError("failure"))
 
@@ -138,7 +138,7 @@ class TestBaseAgentStrategyInvoke:
             [],
         ],
     )
-    def test_invoke_invalid_params_type_pass_through(self, invalid_params):
+    def test_invoke_invalid_params_type_pass_through(self, invalid_params) -> None:
         """
         Base class does not validate types — ensure pass-through behavior
         """
@@ -148,7 +148,7 @@ class TestBaseAgentStrategyInvoke:
 
         assert result == []
 
-    def test_invoke_none_user_id(self):
+    def test_invoke_none_user_id(self) -> None:
         strategy = DummyStrategy(return_values=[])
 
         result = list(strategy.invoke(params={}, user_id=None))
@@ -157,14 +157,14 @@ class TestBaseAgentStrategyInvoke:
 
 
 class TestBaseAgentStrategyGetParameters:
-    def test_get_parameters_default_empty_list(self):
+    def test_get_parameters_default_empty_list(self) -> None:
         strategy = DummyStrategy()
         result = strategy.get_parameters()
 
         assert isinstance(result, list)
         assert result == []
 
-    def test_get_parameters_returns_new_list_each_time(self):
+    def test_get_parameters_returns_new_list_each_time(self) -> None:
         strategy = DummyStrategy()
 
         first = strategy.get_parameters()

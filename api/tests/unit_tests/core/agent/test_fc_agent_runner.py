@@ -344,33 +344,33 @@ class TestRunMethod:
         assert len(outputs) == 1
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
-        def test_run_streaming_tool_call_inputs_type_error(self, runner, mocker):
-            message = MagicMock(id="m1")
-            runner.stream_tool_call = True
+    def test_run_streaming_tool_call_inputs_type_error(self, runner, mocker):
+        message = MagicMock(id="m1")
+        runner.stream_tool_call = True
 
-            tool_call = MagicMock()
-            tool_call.id = "1"
-            tool_call.function.name = "tool"
-            tool_call.function.arguments = json.dumps({"a": 1})
+        tool_call = MagicMock()
+        tool_call.id = "1"
+        tool_call.function.name = "tool"
+        tool_call.function.arguments = json.dumps({"a": 1})
 
-            chunk = DummyChunk(message=DummyMessage(content="hi", tool_calls=[tool_call]), usage=build_usage())
+        chunk = DummyChunk(message=DummyMessage(content="hi", tool_calls=[tool_call]), usage=build_usage())
 
-            def generator():
-                yield chunk
+        def generator():
+            yield chunk
 
-            runner.model_instance.invoke_llm.return_value = generator()
+        runner.model_instance.invoke_llm.return_value = generator()
 
-            real_dumps = json.dumps
+        real_dumps = json.dumps
 
-            def flaky_dumps(obj, *args, **kwargs):
-                if kwargs.get("ensure_ascii") is False:
-                    return real_dumps(obj, *args, **kwargs)
-                raise TypeError("boom")
+        def flaky_dumps(obj, *args, **kwargs):
+            if kwargs.get("ensure_ascii") is False:
+                return real_dumps(obj, *args, **kwargs)
+            raise TypeError("boom")
 
-            mocker.patch("core.agent.fc_agent_runner.json.dumps", side_effect=flaky_dumps)
+        mocker.patch("core.agent.fc_agent_runner.json.dumps", side_effect=flaky_dumps)
 
-            outputs = list(runner.run(message, "query"))
-            assert len(outputs) == 1
+        outputs = list(runner.run(message, "query"))
+        assert len(outputs) == 1
 
     def test_run_with_missing_tool_instance(self, runner):
         message = MagicMock(id="m1")
@@ -390,37 +390,38 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-        def test_run_with_tool_instance_and_files(self, runner, mocker):
-            message = MagicMock(id="m1")
+    def test_run_with_tool_instance_and_files(self, runner, mocker):
+        message = MagicMock(id="m1")
 
-            tool_call = MagicMock()
-            tool_call.id = "1"
-            tool_call.function.name = "tool"
-            tool_call.function.arguments = json.dumps({"a": 1})
+        tool_call = MagicMock()
+        tool_call.id = "1"
+        tool_call.function.name = "tool"
+        tool_call.function.arguments = json.dumps({"a": 1})
 
-            dummy_message = DummyMessage(content="", tool_calls=[tool_call])
-            result = DummyResult(message=dummy_message, usage=build_usage())
-            final_result = DummyResult(message=DummyMessage(content="done", tool_calls=[]), usage=build_usage())
+        dummy_message = DummyMessage(content="", tool_calls=[tool_call])
+        result = DummyResult(message=dummy_message, usage=build_usage())
+        final_result = DummyResult(message=DummyMessage(content="done", tool_calls=[]), usage=build_usage())
 
-            runner.model_instance.invoke_llm.side_effect = [result, final_result]
+        runner.model_instance.invoke_llm.side_effect = [result, final_result]
 
-            tool_instance = MagicMock()
-            prompt_tool = MagicMock(name="tool")
-            runner._init_prompt_tools.return_value = ({"tool": tool_instance}, [prompt_tool])
+        tool_instance = MagicMock()
+        prompt_tool = MagicMock()
+        prompt_tool.name = "tool"
+        runner._init_prompt_tools.return_value = ({"tool": tool_instance}, [prompt_tool])
 
-            tool_invoke_meta = MagicMock()
-            tool_invoke_meta.to_dict.return_value = {"ok": True}
-            mocker.patch(
-                "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
-                return_value=("ok", ["file1"], tool_invoke_meta),
-            )
+        tool_invoke_meta = MagicMock()
+        tool_invoke_meta.to_dict.return_value = {"ok": True}
+        mocker.patch(
+            "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
+            return_value=("ok", ["file1"], tool_invoke_meta),
+        )
 
-            outputs = list(runner.run(message, "query"))
-            assert len(outputs) >= 1
-            runner.queue_manager.publish.assert_any_call(
-                mocker.ANY,
-                PublishFrom.APPLICATION_MANAGER,
-            )
+        outputs = list(runner.run(message, "query"))
+        assert len(outputs) >= 1
+        runner.queue_manager.publish.assert_any_call(
+            mocker.ANY,
+            PublishFrom.APPLICATION_MANAGER,
+        )
 
     def test_run_max_iteration_error(self, runner):
         runner.app_config.agent.max_iteration = 0

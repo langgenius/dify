@@ -11,60 +11,16 @@ from core.model_runtime.entities.message_entities import (
 )
 
 # -----------------------------
-# Dummy Helpers
-# -----------------------------
-
-
-class DummyTool:
-    def __init__(self, name):
-        self.name = name
-
-
-class DummyPromptEntity:
-    def __init__(self, first_prompt):
-        self.first_prompt = first_prompt
-
-
-class DummyAgentConfig:
-    def __init__(self, prompt_entity=None):
-        self.prompt = prompt_entity
-
-
-class DummyAppConfig:
-    def __init__(self, agent=None):
-        self.agent = agent
-
-
-class DummyScratchpadUnit:
-    def __init__(
-        self,
-        final=False,
-        thought=None,
-        action_str=None,
-        observation=None,
-        agent_response=None,
-    ):
-        self._final = final
-        self.thought = thought
-        self.action_str = action_str
-        self.observation = observation
-        self.agent_response = agent_response
-
-    def is_final(self):
-        return self._final
-
-
-# -----------------------------
 # Fixtures
 # -----------------------------
 
 
 @pytest.fixture
-def runner(mocker):
+def runner(mocker, dummy_tool_factory):
     runner = CotCompletionAgentRunner.__new__(CotCompletionAgentRunner)
 
     runner._instruction = "Test instruction"
-    runner._prompt_messages_tools = [DummyTool("toolA"), DummyTool("toolB")]
+    runner._prompt_messages_tools = [dummy_tool_factory("toolA"), dummy_tool_factory("toolB")]
     runner._query = "What is Python?"
     runner._agent_scratchpad = []
 
@@ -82,12 +38,16 @@ def runner(mocker):
 
 
 class TestOrganizeInstructionPrompt:
-    def test_success_all_placeholders(self, runner):
+    def test_success_all_placeholders(
+        self, runner, dummy_app_config_factory, dummy_agent_config_factory, dummy_prompt_entity_factory
+    ):
         template = (
             "{{instruction}} | {{tools}} | {{tool_names}} | {{historic_messages}} | {{agent_scratchpad}} | {{query}}"
         )
 
-        runner.app_config = DummyAppConfig(agent=DummyAgentConfig(prompt_entity=DummyPromptEntity(template)))
+        runner.app_config = dummy_app_config_factory(
+            agent=dummy_agent_config_factory(prompt_entity=dummy_prompt_entity_factory(template))
+        )
 
         result = runner._organize_instruction_prompt()
 
@@ -97,13 +57,13 @@ class TestOrganizeInstructionPrompt:
         tools_payload = json.loads(result.split(" | ")[1])
         assert {item["name"] for item in tools_payload} == {"toolA", "toolB"}
 
-    def test_agent_none_raises(self, runner):
-        runner.app_config = DummyAppConfig(agent=None)
+    def test_agent_none_raises(self, runner, dummy_app_config_factory):
+        runner.app_config = dummy_app_config_factory(agent=None)
         with pytest.raises(ValueError, match="Agent configuration is not set"):
             runner._organize_instruction_prompt()
 
-    def test_prompt_entity_none_raises(self, runner):
-        runner.app_config = DummyAppConfig(agent=DummyAgentConfig(prompt_entity=None))
+    def test_prompt_entity_none_raises(self, runner, dummy_app_config_factory, dummy_agent_config_factory):
+        runner.app_config = dummy_app_config_factory(agent=dummy_agent_config_factory(prompt_entity=None))
         with pytest.raises(ValueError, match="prompt entity is not set"):
             runner._organize_instruction_prompt()
 
@@ -173,16 +133,26 @@ class TestOrganizeHistoricPrompt:
 
 
 class TestOrganizePromptMessages:
-    def test_full_flow_with_scratchpad(self, runner, mocker):
+    def test_full_flow_with_scratchpad(
+        self,
+        runner,
+        mocker,
+        dummy_app_config_factory,
+        dummy_agent_config_factory,
+        dummy_prompt_entity_factory,
+        dummy_scratchpad_unit_factory,
+    ):
         template = "SYS {{historic_messages}} {{agent_scratchpad}} {{query}}"
 
-        runner.app_config = DummyAppConfig(agent=DummyAgentConfig(prompt_entity=DummyPromptEntity(template)))
+        runner.app_config = dummy_app_config_factory(
+            agent=dummy_agent_config_factory(prompt_entity=dummy_prompt_entity_factory(template))
+        )
 
         mocker.patch.object(runner, "_organize_historic_prompt", return_value="History\n")
 
         runner._agent_scratchpad = [
-            DummyScratchpadUnit(final=False, thought="Thinking", action_str="Act", observation="Obs"),
-            DummyScratchpadUnit(final=True, agent_response="Done"),
+            dummy_scratchpad_unit_factory(final=False, thought="Thinking", action_str="Act", observation="Obs"),
+            dummy_scratchpad_unit_factory(final=True, agent_response="Done"),
         ]
 
         result = runner._organize_prompt_messages()
@@ -200,10 +170,14 @@ class TestOrganizePromptMessages:
         assert "Final Answer: Done" in content
         assert "Question: What is Python?" in content
 
-    def test_no_scratchpad(self, runner, mocker):
+    def test_no_scratchpad(
+        self, runner, mocker, dummy_app_config_factory, dummy_agent_config_factory, dummy_prompt_entity_factory
+    ):
         template = "SYS {{historic_messages}} {{agent_scratchpad}} {{query}}"
 
-        runner.app_config = DummyAppConfig(agent=DummyAgentConfig(prompt_entity=DummyPromptEntity(template)))
+        runner.app_config = dummy_app_config_factory(
+            agent=dummy_agent_config_factory(prompt_entity=dummy_prompt_entity_factory(template))
+        )
 
         mocker.patch.object(runner, "_organize_historic_prompt", return_value="")
 
@@ -221,15 +195,28 @@ class TestOrganizePromptMessages:
             ("T", None, "O"),
         ],
     )
-    def test_partial_scratchpad_units(self, runner, mocker, thought, action, observation):
+    def test_partial_scratchpad_units(
+        self,
+        runner,
+        mocker,
+        thought,
+        action,
+        observation,
+        dummy_app_config_factory,
+        dummy_agent_config_factory,
+        dummy_prompt_entity_factory,
+        dummy_scratchpad_unit_factory,
+    ):
         template = "SYS {{historic_messages}} {{agent_scratchpad}} {{query}}"
 
-        runner.app_config = DummyAppConfig(agent=DummyAgentConfig(prompt_entity=DummyPromptEntity(template)))
+        runner.app_config = dummy_app_config_factory(
+            agent=dummy_agent_config_factory(prompt_entity=dummy_prompt_entity_factory(template))
+        )
 
         mocker.patch.object(runner, "_organize_historic_prompt", return_value="")
 
         runner._agent_scratchpad = [
-            DummyScratchpadUnit(
+            dummy_scratchpad_unit_factory(
                 final=False,
                 thought=thought,
                 action_str=action,
