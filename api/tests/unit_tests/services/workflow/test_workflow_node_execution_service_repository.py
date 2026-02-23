@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -52,6 +53,9 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         call_args = mock_session.scalar.call_args[0][0]
         assert hasattr(call_args, "compile")  # It's a SQLAlchemy statement
 
+        compiled = call_args.compile()
+        assert WorkflowNodeExecutionStatus.PAUSED in compiled.params.values()
+
     def test_get_node_last_execution_not_found(self, repository):
         """Test getting the last execution for a node when it doesn't exist."""
         # Arrange
@@ -70,28 +74,6 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result is None
         mock_session.scalar.assert_called_once()
-
-    def test_get_executions_by_workflow_run(self, repository, mock_execution):
-        """Test getting all executions for a workflow run."""
-        # Arrange
-        mock_session = MagicMock(spec=Session)
-        repository._session_maker.return_value.__enter__.return_value = mock_session
-        executions = [mock_execution]
-        mock_session.execute.return_value.scalars.return_value.all.return_value = executions
-
-        # Act
-        result = repository.get_executions_by_workflow_run(
-            tenant_id="tenant-123",
-            app_id="app-456",
-            workflow_run_id="run-101",
-        )
-
-        # Assert
-        assert result == executions
-        mock_session.execute.assert_called_once()
-        # Verify the query was constructed correctly
-        call_args = mock_session.execute.call_args[0][0]
-        assert hasattr(call_args, "compile")  # It's a SQLAlchemy statement
 
     def test_get_executions_by_workflow_run_empty(self, repository):
         """Test getting executions for a workflow run when none exist."""

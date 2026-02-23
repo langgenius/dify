@@ -88,7 +88,7 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
     DefaultParameterName.MAX_TOKENS: {
         "label": {
             "en_US": "Max Tokens",
-            "zh_Hans": "最大标记",
+            "zh_Hans": "最大 Token 数",
         },
         "type": "int",
         "help": {

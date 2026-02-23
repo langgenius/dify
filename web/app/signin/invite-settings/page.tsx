@@ -11,8 +11,8 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
+import { LICENSE_LINK } from '@/constants/link'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useDocLink } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import { activateMember } from '@/service/common'
@@ -23,7 +23,6 @@ import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
@@ -161,7 +160,7 @@ export default function InviteSettingsPage() {
             className="system-xs-medium text-text-accent-secondary"
             target="_blank"
             rel="noopener noreferrer"
-            href={docLink('/policies/open-source')}
+            href={LICENSE_LINK}
           >
             {t('license.link', { ns: 'login' })}
           </Link>

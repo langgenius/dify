@@ -90,7 +90,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
       <PortalToFollowElemContent className="z-50">
         <div className="w-[260px] rounded-lg border-[0.5px] border-gray-200 bg-white p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} disabled={disabled} />
-          {hasUploadFromLocal && (
+          {!!hasUploadFromLocal && (
             <>
               <div className="mt-2 flex items-center px-2 text-xs font-medium text-gray-400">
                 <div className="mr-3 h-px w-[93px] bg-gradient-to-l from-[#F3F4F6]" />

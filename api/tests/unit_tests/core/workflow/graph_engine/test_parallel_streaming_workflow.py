@@ -13,10 +13,11 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunSucceededEvent,
@@ -26,7 +27,6 @@ from core.workflow.graph_events import (
 )
 from core.workflow.node_events import NodeRunResult, StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
@@ -123,6 +123,7 @@ def test_parallel_streaming_workflow():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     # Define LLM outputs

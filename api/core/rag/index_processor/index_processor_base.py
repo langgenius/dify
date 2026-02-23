@@ -13,6 +13,7 @@ from urllib.parse import unquote, urlparse
 import httpx
 
 from configs import dify_config
+from core.entities.knowledge_entities import PreviewDetail
 from core.helper import ssrf_proxy
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
@@ -43,6 +44,27 @@ class BaseIndexProcessor(ABC):
 
     @abstractmethod
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
+    ) -> list[PreviewDetail]:
+        """
+        For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
+        The summary can be stored in a new attribute, e.g., summary.
+        This method should be implemented by subclasses.
+
+        Args:
+            tenant_id: Tenant ID
+            preview_texts: List of preview details to generate summaries for
+            summary_index_setting: Summary index configuration
+            doc_language: Optional document language to ensure summary is generated in the correct language
+        """
         raise NotImplementedError
 
     @abstractmethod

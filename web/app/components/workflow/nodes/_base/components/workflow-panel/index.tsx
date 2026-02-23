@@ -324,7 +324,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const currentDataSource = useMemo(() => {
     if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
       return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
-  }, [dataSourceList, data.provider_id, data.type, data.provider_type])
+  }, [data.type, data.provider_type, data.plugin_id, dataSourceList])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -445,6 +445,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   {...passedLogParams}
                   existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
                   filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+                  handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
                 />
               )}
 

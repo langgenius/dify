@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { DataSourceInfo, FileItem, LegacyDataSourceInfo } from '@/models/datasets'
+import type { DataSourceInfo, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -256,7 +256,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className="mr-2 mt-3"
               datasetId={datasetId}
               documentId={documentId}
-              docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
+              docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as FullDocumentDetail}
             />
           </FloatRightContainer>
         </div>

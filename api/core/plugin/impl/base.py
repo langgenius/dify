@@ -320,18 +320,17 @@ class BasePluginClient:
             case PluginInvokeError.__name__:
                 error_object = json.loads(message)
                 invoke_error_type = error_object.get("error_type")
-                args = error_object.get("args")
                 match invoke_error_type:
                     case InvokeRateLimitError.__name__:
-                        raise InvokeRateLimitError(description=args.get("description"))
+                        raise InvokeRateLimitError(description=error_object.get("message"))
                     case InvokeAuthorizationError.__name__:
-                        raise InvokeAuthorizationError(description=args.get("description"))
+                        raise InvokeAuthorizationError(description=error_object.get("message"))
                     case InvokeBadRequestError.__name__:
-                        raise InvokeBadRequestError(description=args.get("description"))
+                        raise InvokeBadRequestError(description=error_object.get("message"))
                     case InvokeConnectionError.__name__:
-                        raise InvokeConnectionError(description=args.get("description"))
+                        raise InvokeConnectionError(description=error_object.get("message"))
                     case InvokeServerUnavailableError.__name__:
-                        raise InvokeServerUnavailableError(description=args.get("description"))
+                        raise InvokeServerUnavailableError(description=error_object.get("message"))
                     case CredentialsValidateFailedError.__name__:
                         raise CredentialsValidateFailedError(error_object.get("message"))
                     case EndpointSetupFailedError.__name__:
@@ -339,11 +338,11 @@ class BasePluginClient:
                     case TriggerProviderCredentialValidationError.__name__:
                         raise TriggerProviderCredentialValidationError(error_object.get("message"))
                     case TriggerPluginInvokeError.__name__:
-                        raise TriggerPluginInvokeError(description=error_object.get("description"))
+                        raise TriggerPluginInvokeError(description=error_object.get("message"))
                     case TriggerInvokeError.__name__:
                         raise TriggerInvokeError(error_object.get("message"))
                     case EventIgnoreError.__name__:
-                        raise EventIgnoreError(description=error_object.get("description"))
+                        raise EventIgnoreError(description=error_object.get("message"))
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

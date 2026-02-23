@@ -150,10 +150,9 @@ class AppService:
         db.session.flush()
 
         if default_model_config:
-            app_model_config = AppModelConfig(**default_model_config)
-            app_model_config.app_id = app.id
-            app_model_config.created_by = account.id
-            app_model_config.updated_by = account.id
+            app_model_config = AppModelConfig(
+                **default_model_config, app_id=app.id, created_by=account.id, updated_by=account.id
+            )
             db.session.add(app_model_config)
             db.session.flush()
 

@@ -236,7 +236,7 @@
   "task.installSuccess": "{{successLength}} plugins installed successfully",
   "task.installed": "Installed",
   "task.installedError": "{{errorLength}} vtičnikov ni uspelo namestiti",
-  "task.installing": "Namestitev {{installingLength}} vtičnikov, 0 končanih.",
+  "task.installing": "Nameščanje vtičnikov.",
   "task.installingWithError": "Namestitev {{installingLength}} vtičnikov, {{successLength}} uspešnih, {{errorLength}} neuspešnih",
   "task.installingWithSuccess": "Namestitev {{installingLength}} dodatkov, {{successLength}} uspešnih.",
   "task.runningPlugins": "Installing Plugins",

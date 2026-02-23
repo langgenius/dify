@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Баз знань не знайдено",
   "gotoAnything.emptyState.noPluginsFound": "Плагінів не знайдено",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Вузли бізнес-процесу не знайдено",
-  "gotoAnything.emptyState.tryDifferentTerm": "Спробуйте інший пошуковий термін або видаліть фільтр {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Спробуйте інший пошуковий термін",
   "gotoAnything.emptyState.trySpecificSearch": "Спробуйте {{shortcuts}} для конкретного пошуку",
   "gotoAnything.groups.apps": "Програми",
   "gotoAnything.groups.commands": "Команди",

@@ -47,15 +47,16 @@ class CodeNodeProvider(BaseModel, ABC):
 
     @classmethod
     def get_default_config(cls) -> DefaultConfig:
-        return {
-            "type": "code",
-            "config": {
-                "variables": [
-                    {"variable": "arg1", "value_selector": []},
-                    {"variable": "arg2", "value_selector": []},
-                ],
-                "code_language": cls.get_language(),
-                "code": cls.get_default_code(),
-                "outputs": {"result": {"type": "string", "children": None}},
-            },
+        variables: list[VariableConfig] = [
+            {"variable": "arg1", "value_selector": []},
+            {"variable": "arg2", "value_selector": []},
+        ]
+        outputs: dict[str, OutputConfig] = {"result": {"type": "string", "children": None}}
+
+        config: CodeConfig = {
+            "variables": variables,
+            "code_language": cls.get_language(),
+            "code": cls.get_default_code(),
+            "outputs": outputs,
         }
+        return {"type": "code", "config": config}

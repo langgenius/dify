@@ -1,4 +1,5 @@
 import type { BlockEnum } from '@/app/components/workflow/types'
+import type { UseDifyNodesPath } from '@/types/doc-paths'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
 export type GenNodeMetaDataParams = {
@@ -7,7 +8,7 @@ export type GenNodeMetaDataParams = {
   type: BlockEnum
   title?: string
   author?: string
-  helpLinkUri?: string
+  helpLinkUri?: UseDifyNodesPath
   isRequired?: boolean
   isUndeletable?: boolean
   isStart?: boolean

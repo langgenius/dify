@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "هیچ پایگاه دانش یافت نشد",
   "gotoAnything.emptyState.noPluginsFound": "هیچ افزونه ای یافت نشد",
   "gotoAnything.emptyState.noWorkflowNodesFound": "هیچ گره گردش کاری یافت نشد",
-  "gotoAnything.emptyState.tryDifferentTerm": "یک عبارت جستجوی متفاوت را امتحان کنید یا فیلتر {{mode}} را حذف کنید",
+  "gotoAnything.emptyState.tryDifferentTerm": "یک عبارت جستجوی متفاوت را امتحان کنید",
   "gotoAnything.emptyState.trySpecificSearch": "{{shortcuts}} را برای جستجوهای خاص امتحان کنید",
   "gotoAnything.groups.apps": "برنامه‌ها",
   "gotoAnything.groups.commands": "دستورات",

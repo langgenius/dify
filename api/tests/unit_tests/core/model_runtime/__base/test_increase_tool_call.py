@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.model_runtime.entities.message_entities import AssistantPromptMessage
 from core.model_runtime.model_providers.__base.large_language_model import _increase_tool_call
 
@@ -97,3 +99,14 @@ def test__increase_tool_call():
     mock_id_generator.side_effect = [_exp_case.id for _exp_case in EXPECTED_CASE_4]
     with patch("core.model_runtime.model_providers.__base.large_language_model._gen_tool_call_id", mock_id_generator):
         _run_case(INPUTS_CASE_4, EXPECTED_CASE_4)
+
+
+def test__increase_tool_call__no_id_no_name_first_delta_should_raise():
+    inputs = [
+        ToolCall(id="", type="function", function=ToolCall.ToolCallFunction(name="", arguments='{"arg1": ')),
+        ToolCall(id="", type="function", function=ToolCall.ToolCallFunction(name="func_foo", arguments='"value"}')),
+    ]
+    actual: list[ToolCall] = []
+    with patch("core.model_runtime.model_providers.__base.large_language_model._gen_tool_call_id", MagicMock()):
+        with pytest.raises(ValueError):
+            _increase_tool_call(inputs, actual)

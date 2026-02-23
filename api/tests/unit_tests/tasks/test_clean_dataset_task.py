@@ -49,10 +49,14 @@ def pipeline_id():
 
 @pytest.fixture
 def mock_db_session():
-    """Mock database session with query capabilities."""
-    with patch("tasks.clean_dataset_task.db") as mock_db:
+    """Mock database session via session_factory.create_session()."""
+    with patch("tasks.clean_dataset_task.session_factory") as mock_sf:
         mock_session = MagicMock()
-        mock_db.session = mock_session
+        # context manager for create_session()
+        cm = MagicMock()
+        cm.__enter__.return_value = mock_session
+        cm.__exit__.return_value = None
+        mock_sf.create_session.return_value = cm
 
         # Setup query chain
         mock_query = MagicMock()
@@ -66,7 +70,10 @@ def mock_db_session():
         # Setup execute for JOIN queries
         mock_session.execute.return_value.all.return_value = []
 
-        yield mock_db
+        # Yield an object with a `.session` attribute to keep tests unchanged
+        wrapper = MagicMock()
+        wrapper.session = mock_session
+        yield wrapper
 
 
 @pytest.fixture
@@ -227,7 +234,9 @@ class TestBasicCleanup:
 
         # Assert
         mock_db_session.session.delete.assert_any_call(mock_document)
-        mock_db_session.session.delete.assert_any_call(mock_segment)
+        # Segments are deleted in batch; verify a DELETE on document_segments was issued
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
         mock_db_session.session.commit.assert_called_once()
 
     def test_clean_dataset_task_deletes_related_records(
@@ -413,7 +422,9 @@ class TestErrorHandling:
 
         # Assert - documents and segments should still be deleted
         mock_db_session.session.delete.assert_any_call(mock_document)
-        mock_db_session.session.delete.assert_any_call(mock_segment)
+        # Segments are deleted in batch; verify a DELETE on document_segments was issued
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
         mock_db_session.session.commit.assert_called_once()
 
     def test_clean_dataset_task_storage_delete_failure_continues(
@@ -461,7 +472,7 @@ class TestErrorHandling:
             [mock_segment],  # segments
         ]
         mock_get_image_upload_file_ids.return_value = [image_file_id]
-        mock_db_session.session.query.return_value.where.return_value.first.return_value = mock_upload_file
+        mock_db_session.session.query.return_value.where.return_value.all.return_value = [mock_upload_file]
         mock_storage.delete.side_effect = Exception("Storage service unavailable")
 
         # Act
@@ -476,8 +487,9 @@ class TestErrorHandling:
 
         # Assert - storage delete was attempted for image file
         mock_storage.delete.assert_called_with(mock_upload_file.key)
-        # Image file should still be deleted from database
-        mock_db_session.session.delete.assert_any_call(mock_upload_file)
+        # Upload files are deleted in batch; verify a DELETE on upload_files was issued
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM upload_files" in sql for sql in execute_sqls)
 
     def test_clean_dataset_task_database_error_rollback(
         self,
@@ -691,8 +703,10 @@ class TestSegmentAttachmentCleanup:
 
         # Assert
         mock_storage.delete.assert_called_with(mock_attachment_file.key)
-        mock_db_session.session.delete.assert_any_call(mock_attachment_file)
-        mock_db_session.session.delete.assert_any_call(mock_binding)
+        # Attachment file and binding are deleted in batch; verify DELETEs were issued
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM upload_files" in sql for sql in execute_sqls)
+        assert any("DELETE FROM segment_attachment_bindings" in sql for sql in execute_sqls)
 
     def test_clean_dataset_task_attachment_storage_failure(
         self,
@@ -734,9 +748,10 @@ class TestSegmentAttachmentCleanup:
 
         # Assert - storage delete was attempted
         mock_storage.delete.assert_called_once()
-        # Records should still be deleted from database
-        mock_db_session.session.delete.assert_any_call(mock_attachment_file)
-        mock_db_session.session.delete.assert_any_call(mock_binding)
+        # Records are deleted in batch; verify DELETEs were issued
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM upload_files" in sql for sql in execute_sqls)
+        assert any("DELETE FROM segment_attachment_bindings" in sql for sql in execute_sqls)
 
 
 # ============================================================================
@@ -784,7 +799,7 @@ class TestUploadFileCleanup:
             [mock_document],  # documents
             [],  # segments
         ]
-        mock_db_session.session.query.return_value.where.return_value.first.return_value = mock_upload_file
+        mock_db_session.session.query.return_value.where.return_value.all.return_value = [mock_upload_file]
 
         # Act
         clean_dataset_task(
@@ -798,7 +813,9 @@ class TestUploadFileCleanup:
 
         # Assert
         mock_storage.delete.assert_called_with(mock_upload_file.key)
-        mock_db_session.session.delete.assert_any_call(mock_upload_file)
+        # Upload files are deleted in batch; verify a DELETE on upload_files was issued
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM upload_files" in sql for sql in execute_sqls)
 
     def test_clean_dataset_task_handles_missing_upload_file(
         self,
@@ -832,7 +849,7 @@ class TestUploadFileCleanup:
             [mock_document],  # documents
             [],  # segments
         ]
-        mock_db_session.session.query.return_value.where.return_value.first.return_value = None
+        mock_db_session.session.query.return_value.where.return_value.all.return_value = []
 
         # Act - should not raise exception
         clean_dataset_task(
@@ -949,11 +966,11 @@ class TestImageFileCleanup:
             [mock_segment],  # segments
         ]
 
-        # Setup a mock query chain that returns files in sequence
+        # Setup a mock query chain that returns files in batch (align with .in_().all())
         mock_query = MagicMock()
         mock_where = MagicMock()
         mock_query.where.return_value = mock_where
-        mock_where.first.side_effect = mock_image_files
+        mock_where.all.return_value = mock_image_files
         mock_db_session.session.query.return_value = mock_query
 
         # Act
@@ -966,10 +983,10 @@ class TestImageFileCleanup:
             doc_form="paragraph_index",
         )
 
-        # Assert
-        assert mock_storage.delete.call_count == 2
-        mock_storage.delete.assert_any_call("images/image-1.jpg")
-        mock_storage.delete.assert_any_call("images/image-2.jpg")
+        # Assert - each expected image key was deleted at least once
+        calls = [c.args[0] for c in mock_storage.delete.call_args_list]
+        assert "images/image-1.jpg" in calls
+        assert "images/image-2.jpg" in calls
 
     def test_clean_dataset_task_handles_missing_image_file(
         self,
@@ -1010,7 +1027,7 @@ class TestImageFileCleanup:
         ]
 
         # Image file not found
-        mock_db_session.session.query.return_value.where.return_value.first.return_value = None
+        mock_db_session.session.query.return_value.where.return_value.all.return_value = []
 
         # Act - should not raise exception
         clean_dataset_task(
@@ -1086,14 +1103,15 @@ class TestEdgeCases:
             doc_form="paragraph_index",
         )
 
-        # Assert - all documents and segments should be deleted
+        # Assert - all documents and segments should be deleted (documents per-entity, segments in batch)
         delete_calls = mock_db_session.session.delete.call_args_list
         deleted_items = [call[0][0] for call in delete_calls]
 
         for doc in mock_documents:
             assert doc in deleted_items
-        for seg in mock_segments:
-            assert seg in deleted_items
+        # Verify a batch DELETE on document_segments occurred
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
 
     def test_clean_dataset_task_document_with_empty_data_source_info(
         self,

@@ -21,7 +21,7 @@ describe('completion-params', () => {
 
     it('validates int type parameter within range', () => {
       const rules: ModelParameterRule[] = [
-        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
+        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' }, required: false },
       ]
       const oldParams: FormValue = { max_tokens: 100 }
       const result = mergeValidCompletionParams(oldParams, rules)
@@ -32,7 +32,7 @@ describe('completion-params', () => {
 
     it('removes int parameter below minimum', () => {
       const rules: ModelParameterRule[] = [
-        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
+        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' }, required: false },
       ]
       const oldParams: FormValue = { max_tokens: 0 }
       const result = mergeValidCompletionParams(oldParams, rules)
@@ -43,7 +43,7 @@ describe('completion-params', () => {
 
     it('removes int parameter above maximum', () => {
       const rules: ModelParameterRule[] = [
-        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
+        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' }, required: false },
       ]
       const oldParams: FormValue = { max_tokens: 5000 }
       const result = mergeValidCompletionParams(oldParams, rules)
@@ -54,7 +54,7 @@ describe('completion-params', () => {
 
     it('removes int parameter with invalid type', () => {
       const rules: ModelParameterRule[] = [
-        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
+        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' }, required: false },
       ]
       const oldParams: FormValue = { max_tokens: 'not a number' as any }
       const result = mergeValidCompletionParams(oldParams, rules)
@@ -184,7 +184,7 @@ describe('completion-params', () => {
     it('handles multiple parameters with mixed validity', () => {
       const rules: ModelParameterRule[] = [
         { name: 'temperature', type: 'float', min: 0, max: 2, label: { en_US: 'Temperature', zh_Hans: '温度' }, required: false },
-        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
+        { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' }, required: false },
         { name: 'model', type: 'string', options: ['gpt-4'], label: { en_US: 'Model', zh_Hans: '模型' }, required: false },
       ]
       const oldParams: FormValue = {

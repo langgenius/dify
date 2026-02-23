@@ -16,7 +16,7 @@
   "form.indexMethod": "Metoda indeksiranja",
   "form.indexMethodChangeToEconomyDisabledTip": "Ni na voljo za pregradnjo iz HQ v ECO",
   "form.indexMethodEconomy": "Varčna",
-  "form.indexMethodEconomyTip": "Uporabite offline vektorske motorje, indeksiranje ključnih besed itd., da zmanjšate natančnost brez porabe žetonov",
+  "form.indexMethodEconomyTip": "Uporabite {{count}} ključnih besed na kos za pridobivanje brez porabe žetonov na račun manjše natančnosti.",
   "form.indexMethodHighQuality": "Visoka kakovost",
   "form.indexMethodHighQualityTip": "Za obdelavo pokličite vdelani model za zagotovitev večje natančnosti pri poizvedbah uporabnikov.",
   "form.me": "(Vi)",
@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Nastavitve pridobivanja",
   "form.save": "Shrani",
   "form.searchModel": "Išči model",
+  "form.summaryAutoGen": "Samodejna Tvorba Povzetka",
+  "form.summaryAutoGenEnableTip": "Ko je omogočeno, bodo povzetki samodejno ustvarjeni za novo dodane dokumente. Obstoječe dokumente lahko še vedno povzamete ročno.",
+  "form.summaryAutoGenTip": "Povzetki so samodejno ustvarjeni za novo dodane dokumente. Obstoječe dokumente lahko še vedno povzamete ročno.",
+  "form.summaryInstructions": "Navodila",
+  "form.summaryInstructionsPlaceholder": "Opišite pravila ali slog za samodejno ustvarjene povzetke…",
+  "form.summaryModel": "Model Povzetka",
   "form.upgradeHighQualityTip": "Ko nadgradite na način visoke kakovosti, vrnitev v ekonomični način ni na voljo",
   "title": "Nastavitve znanja"
 }

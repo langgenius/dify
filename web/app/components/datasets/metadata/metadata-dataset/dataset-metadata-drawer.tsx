@@ -204,7 +204,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
         <div className="mt-3 flex h-6 items-center">
           <Switch
-            defaultValue={isBuiltInEnabled}
+            value={isBuiltInEnabled}
             onChange={onIsBuiltInEnabledChange}
           />
           <div className="system-sm-semibold ml-2 mr-0.5 text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>

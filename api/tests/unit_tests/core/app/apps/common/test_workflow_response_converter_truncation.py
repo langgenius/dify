@@ -23,6 +23,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeType
 from core.workflow.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
@@ -124,7 +125,12 @@ class TestWorkflowResponseConverter:
         original_data = {"large_field": "x" * 10000, "metadata": "info"}
         truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -160,7 +166,12 @@ class TestWorkflowResponseConverter:
 
         original_data = {"small": "data"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -191,7 +202,12 @@ class TestWorkflowResponseConverter:
         """Test node finish response when process_data is None."""
         converter = self.create_workflow_response_converter()
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -225,7 +241,12 @@ class TestWorkflowResponseConverter:
         original_data = {"large_field": "x" * 10000, "metadata": "info"}
         truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -261,7 +282,12 @@ class TestWorkflowResponseConverter:
 
         original_data = {"small": "data"}
 
-        converter.workflow_start_to_stream_response(task_id="bootstrap", workflow_run_id="run-id", workflow_id="wf-id")
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
             event=start_event,
@@ -400,6 +426,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             task_id="test-task-id",
             workflow_run_id="test-workflow-run-id",
             workflow_id="test-workflow-id",
+            reason=WorkflowStartReason.INITIAL,
         )
         return converter
 

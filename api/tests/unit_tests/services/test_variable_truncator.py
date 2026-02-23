@@ -17,8 +17,6 @@ from uuid import uuid4
 
 import pytest
 
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
 from core.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -30,6 +28,8 @@ from core.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
+from core.workflow.file.enums import FileTransferMethod, FileType
+from core.workflow.file.models import File
 from services.variable_truncator import (
     DummyVariableTruncator,
     MaxDepthExceededError,
