@@ -127,17 +127,16 @@ def test_yaml_config():
 
     missing_ssrf_timeout_keys_in_compose = SSRF_TIMEOUT_CONFIG_KEYS - DOCKER_COMPOSE_CONFIG_SET
     if missing_ssrf_timeout_keys_in_compose:
-        print(f"Missing SSRF timeout keys in docker/docker-compose.yaml x-shared-env: {missing_ssrf_timeout_keys_in_compose}")
+        print(
+            f"Missing SSRF timeout keys in docker/docker-compose.yaml x-shared-env: {missing_ssrf_timeout_keys_in_compose}"
+        )
         raise Exception("docker-compose.yaml x-shared-env is missing SSRF timeout keys")
 
     docker_compose_template = (Path("docker") / Path("docker-compose-template.yaml")).read_text(encoding="utf-8")
     for key, expected_value in SSRF_PROXY_ENV_DEFAULTS.items():
         expected_line = f"{key}: {expected_value}"
         if expected_line not in docker_compose_template:
-            print(
-                "Missing SSRF proxy timeout env mapping in docker-compose-template.yaml: "
-                f"{expected_line!r}"
-            )
+            print(f"Missing SSRF proxy timeout env mapping in docker-compose-template.yaml: {expected_line!r}")
             raise Exception("docker-compose-template.yaml is missing SSRF timeout env mapping")
 
     squid_template = (Path("docker") / Path("ssrf_proxy") / Path("squid.conf.template")).read_text(encoding="utf-8")
