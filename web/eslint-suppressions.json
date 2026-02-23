@@ -452,9 +452,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -803,11 +800,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
-    }
-  },
   "app/components/app/configuration/dataset-config/params-config/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -952,11 +944,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/app/configuration/tools/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/app/create-app-dialog/app-card/index.spec.tsx": {
@@ -2356,9 +2343,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2368,19 +2352,9 @@
       "count": 3
     }
   },
-  "app/components/base/modal-like-wrap/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/modal/index.stories.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/base/modal/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/modal/modal.stories.tsx": {
@@ -2389,11 +2363,6 @@
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/base/modal/modal.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/new-audio-button/index.tsx": {
@@ -2631,11 +2600,6 @@
       "count": 1
     }
   },
-  "app/components/base/qrcode/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/radio-card/index.stories.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2747,14 +2711,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/switch/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -2919,9 +2875,6 @@
   "app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/billing/pricing/plan-switcher/tab.tsx": {
@@ -2993,12 +2946,6 @@
     }
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 12
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -5026,11 +4973,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/tool-settings-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -6311,11 +6253,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/retry/retry-on-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/workflow/nodes/_base/components/selector.tsx": {
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
@@ -6934,16 +6871,6 @@
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/search-method-option.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/top-k-and-score-threshold.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {

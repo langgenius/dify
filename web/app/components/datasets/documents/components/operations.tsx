@@ -191,7 +191,7 @@ const Operations = ({
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
       {isListScene && !embeddingAvailable && (
-        <Switch defaultValue={false} onChange={noop} disabled={true} size="md" />
+        <Switch value={false} onChange={noop} disabled={true} size="md" />
       )}
       {isListScene && embeddingAvailable && (
         <>
@@ -202,11 +202,11 @@ const Operations = ({
                   popupClassName="!font-semibold"
                 >
                   <div>
-                    <Switch defaultValue={false} onChange={noop} disabled={true} size="md" />
+                    <Switch value={false} onChange={noop} disabled={true} size="md" />
                   </div>
                 </Tooltip>
               )
-            : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
+            : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
           <Divider className="!ml-4 !mr-2 !h-3" type="vertical" />
         </>
       )}
