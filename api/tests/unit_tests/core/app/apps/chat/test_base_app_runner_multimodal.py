@@ -9,8 +9,8 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
-from core.file.enums import FileTransferMethod, FileType
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.workflow.file.enums import FileTransferMethod, FileType
 from models.enums import CreatorUserRole
 
 

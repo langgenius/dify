@@ -257,7 +257,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <div className="mr-2 w-7">
                 <Switch
-                  defaultValue={!isNullOrUndefined(value)}
+                  value={!isNullOrUndefined(value)}
                   onChange={handleSwitch}
                   size="md"
                 />

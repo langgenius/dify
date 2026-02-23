@@ -20,7 +20,6 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginInvokeError
@@ -31,6 +30,7 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.workflow.enums import NodeType
+from core.workflow.file.models import File
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
