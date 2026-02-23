@@ -4387,11 +4387,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
