@@ -96,6 +96,7 @@ describe('MarkdownForm', () => {
   // Convert current form values to plain text output by default.
   describe('Text format submission', () => {
     it('should call onSend with text output when dataFormat is not provided', async () => {
+      const user = userEvent.setup()
       const node = createRootNode([
         createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
         createElementNode('textarea', { name: 'bio', value: 'Hello' }),
@@ -104,7 +105,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
         expect(mockOnSend).toHaveBeenCalledWith('name: Alice\nbio: Hello')
@@ -136,6 +137,7 @@ describe('MarkdownForm', () => {
   // Emit serialized JSON when data-format requests JSON output.
   describe('JSON format submission', () => {
     it('should call onSend with JSON output when dataFormat is json', async () => {
+      const user = userEvent.setup()
       const node = createRootNode(
         [
           createElementNode('input', { type: 'hidden', name: 'token', value: 'secret-token' }),
@@ -147,7 +149,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Send JSON' }))
+      await user.click(screen.getByRole('button', { name: 'Send JSON' }))
 
       await waitFor(() => {
         expect(mockOnSend).toHaveBeenCalledWith('{"token":"secret-token","color":"red"}')
@@ -177,6 +179,7 @@ describe('MarkdownForm', () => {
   // Select options parser should handle both valid and invalid string payloads.
   describe('Select options parsing', () => {
     it('should parse options from data-options string and submit selected value', async () => {
+      const user = userEvent.setup()
       const node = createRootNode([
         createElementNode('input', {
           'type': 'select',
@@ -189,7 +192,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
         expect(mockOnSend).toHaveBeenCalledWith('city: Paris')
@@ -247,6 +250,7 @@ describe('MarkdownForm', () => {
   // Date and datetime values should be formatted through shared utility before submission.
   describe('Date formatting', () => {
     it('should format date and datetime values before sending', async () => {
+      const user = userEvent.setup()
       const node = createRootNode(
         [
           createElementNode('input', { type: 'date', name: 'startDate', value: dayjs('2026-01-10') }),
@@ -258,7 +262,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
         expect(mockFormatDateForOutput).toHaveBeenCalledTimes(2)
@@ -272,6 +276,7 @@ describe('MarkdownForm', () => {
   // Checkbox interactions should update form state and be reflected in submission output.
   describe('Checkbox interaction', () => {
     it('should toggle checkbox value and submit updated value', async () => {
+      const user = userEvent.setup()
       const node = createRootNode([
         createElementNode('input', { type: 'checkbox', name: 'acceptTerms', value: false, dataTip: 'Accept terms' }),
         createElementNode('button', {}, [createTextNode('Submit')]),
@@ -279,8 +284,8 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await userEvent.click(screen.getByTestId('checkbox-acceptTerms'))
-      await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+      await user.click(screen.getByTestId('checkbox-acceptTerms'))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
         expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
@@ -303,10 +308,11 @@ describe('MarkdownForm', () => {
       )
 
       const form = container.querySelector('form')
-      expect(form).toBeInTheDocument()
+      expect(form).not.toBeNull()
+      if (!form)
+        throw new Error('Form element not found')
 
-      fireEvent.submit(form as HTMLFormElement)
-
+      fireEvent.submit(form)
       expect(parentOnSubmit).not.toHaveBeenCalled()
       expect(mockOnSend).not.toHaveBeenCalled()
     })

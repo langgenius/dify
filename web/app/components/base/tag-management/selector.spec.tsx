@@ -1,5 +1,5 @@
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
@@ -206,6 +206,48 @@ describe('TagSelector', () => {
         expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
       })
     })
+
+    it('should bind a newly selected tag and update cache when closing the panel', async () => {
+      const user = userEvent.setup()
+      render(<TagSelector {...defaultProps} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+
+      const popoverContent = await screen.findByTestId('popover-content')
+      await user.click(within(popoverContent).getByText('Backend'))
+
+      // Close panel to trigger unmount side effects.
+      await user.click(triggerButton)
+
+      await waitFor(() => {
+        expect(bindTag).toHaveBeenCalledTimes(1)
+        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
+        expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
+        expect(defaultProps.onCacheUpdate).toHaveBeenCalledWith(appTags)
+      })
+    })
+
+    it('should unbind a deselected tag and update cache when closing the panel', async () => {
+      const user = userEvent.setup()
+      render(<TagSelector {...defaultProps} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+
+      const popoverContent = await screen.findByTestId('popover-content')
+      await user.click(within(popoverContent).getByText('Frontend'))
+
+      // Close panel to trigger unmount side effects.
+      await user.click(triggerButton)
+
+      await waitFor(() => {
+        expect(unBindTag).toHaveBeenCalledTimes(1)
+        expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
+        expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
+        expect(defaultProps.onCacheUpdate).toHaveBeenCalledWith([])
+      })
+    })
   })
 
   describe('Data Fetching (getTagList / onCreate)', () => {
@@ -234,6 +276,10 @@ describe('TagSelector', () => {
 
       await waitFor(() => {
         expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
+      })
+
+      await waitFor(() => {
+        expect(fetchTagList).toHaveBeenCalled()
       })
 
       await waitFor(() => {

@@ -136,7 +136,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             <div className="flex h-full items-center" ref={editBtnRef}>
               <ActionButton
                 size="s"
-                data-testid="action-btn"
+                data-testid="action-btn-edit"
                 aria-label={t('operation.edit', { ns: 'common' })}
               >
                 <span className="i-ri-edit-line size-4 text-text-tertiary" />
@@ -146,7 +146,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             <div className="flex h-full items-center" ref={removeBtnRef}>
               <ActionButton
                 size="s"
-                data-testid="action-btn"
+                data-testid="action-btn-remove"
                 aria-label={t('operation.remove', { ns: 'common' })}
               >
                 <span className="i-ri-delete-bin-line size-4 text-text-tertiary" />

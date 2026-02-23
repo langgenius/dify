@@ -82,14 +82,14 @@ const createFormInput = (overrides?: Partial<FormInputItem>): FormInputItem => (
 })
 
 const getActionButtons = () => {
-  return screen.queryAllByTestId('action-btn') as HTMLButtonElement[]
+  return screen.queryAllByTestId(/action-btn/) as HTMLButtonElement[]
 }
 
 const expectActionButtons = () => {
   const buttons = getActionButtons()
   expect(buttons).toHaveLength(2)
-  expect(buttons[0]).toHaveAccessibleName('common.operation.edit')
-  expect(buttons[1]).toHaveAccessibleName('common.operation.remove')
+  expect(screen.getByTestId('action-btn-edit')).toHaveAccessibleName('common.operation.edit')
+  expect(screen.getByTestId('action-btn-remove')).toHaveAccessibleName('common.operation.remove')
   return buttons
 }
 
@@ -104,6 +104,7 @@ describe('HITLInputComponentUI', () => {
   }
 
   const renderComponent = (props?: Partial<React.ComponentProps<typeof HITLInputComponentUI>>) => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     const onRename = vi.fn()
     const onRemove = vi.fn()
@@ -123,6 +124,7 @@ describe('HITLInputComponentUI', () => {
 
     return {
       ...utils,
+      user,
       onChange,
       onRename,
       onRemove,
@@ -174,10 +176,9 @@ describe('HITLInputComponentUI', () => {
   // Remove handler should be triggered from lexical-style native click listener.
   describe('Remove action', () => {
     it('should call onRemove with current var name when remove button is clicked', async () => {
-      const { onRemove } = renderComponent()
-      const buttons = expectActionButtons()
+      const { user, onRemove } = renderComponent()
 
-      await userEvent.click(buttons[1])
+      await user.click(screen.getByTestId('action-btn-remove'))
 
       expect(onRemove).toHaveBeenCalledWith(varName)
       expect(onRemove).toHaveBeenCalledTimes(1)
@@ -187,13 +188,12 @@ describe('HITLInputComponentUI', () => {
   // Edit flow should route to onChange or onRename based on output variable name.
   describe('Edit flow', () => {
     it('should call onChange and close modal when edited name is unchanged', async () => {
-      const { onChange, onRename } = renderComponent()
-      const buttons = expectActionButtons()
+      const { user, onChange, onRename } = renderComponent()
 
-      await userEvent.click(buttons[0])
+      await user.click(screen.getByTestId('action-btn-edit'))
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
 
-      await userEvent.click(screen.getByRole('button', { name: 'apply-same' }))
+      await user.click(screen.getByRole('button', { name: 'apply-same' }))
 
       expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
         output_variable_name: varName,
@@ -206,13 +206,12 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should call onRename and close modal when edited name changes', async () => {
-      const { onChange, onRename } = renderComponent()
-      const buttons = expectActionButtons()
+      const { user, onChange, onRename } = renderComponent()
 
-      await userEvent.click(buttons[0])
+      await user.click(screen.getByTestId('action-btn-edit'))
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
 
-      await userEvent.click(screen.getByRole('button', { name: 'apply-rename' }))
+      await user.click(screen.getByRole('button', { name: 'apply-rename' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).toHaveBeenCalledWith(expect.objectContaining({
@@ -225,13 +224,12 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should close modal without update when cancel is clicked', async () => {
-      const { onChange, onRename } = renderComponent()
-      const buttons = expectActionButtons()
+      const { user, onChange, onRename } = renderComponent()
 
-      await userEvent.click(buttons[0])
+      await user.click(screen.getByTestId('action-btn-edit'))
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
 
-      await userEvent.click(screen.getByRole('button', { name: 'cancel-edit' }))
+      await user.click(screen.getByRole('button', { name: 'cancel-edit' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -245,10 +243,9 @@ describe('HITLInputComponentUI', () => {
   // Missing formInput should use component default payload derived from varName.
   describe('Default formInput', () => {
     it('should pass default payload to InputField when formInput is undefined', async () => {
-      renderComponent({ formInput: undefined })
-      const buttons = expectActionButtons()
+      const { user } = renderComponent({ formInput: undefined })
 
-      await userEvent.click(buttons[0])
+      await user.click(screen.getByTestId('action-btn-edit'))
       expect(await screen.findByTestId('mock-input-field')).toBeInTheDocument()
 
       const call = mockInputFieldProps.mock.calls.at(-1)?.[0]

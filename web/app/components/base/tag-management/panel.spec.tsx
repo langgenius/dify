@@ -61,9 +61,9 @@ const defaultProps = {
   type: 'app' as const,
   value: ['tag-1'], // tag-1 is already selected/bound
   selectedTags: [appTags[0]], // pre-selected tags shown separately
-  onCacheUpdate: vi.fn(),
-  onChange: vi.fn(),
-  onCreate: vi.fn(),
+  onCacheUpdate: vi.fn<(tags: Tag[]) => void>(),
+  onChange: vi.fn<() => void>(),
+  onCreate: vi.fn<() => void>(),
 }
 
 describe('Panel', () => {
@@ -372,7 +372,7 @@ describe('Panel', () => {
       render(<Panel {...defaultProps} />)
 
       // The create option should not appear when no keywords
-      expect(screen.queryByText(new RegExp(i18n.create))).not.toBeInTheDocument()
+      expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
       expect(createTag).not.toHaveBeenCalled()
     })
 
@@ -449,16 +449,18 @@ describe('Panel', () => {
       })
 
       const [updatedTags] = vi.mocked(defaultProps.onCacheUpdate).mock.calls[0]
-      expect(updatedTags.map((tag: Tag) => tag.id)).toEqual(['tag-1', 'tag-2'])
+      expect(updatedTags.map(tag => tag.id)).toEqual(['tag-1', 'tag-2'])
     })
 
-    it('should not call bind/unbind when value has not changed', () => {
+    it('should not call bind/unbind when value has not changed', async () => {
       const { unmount } = render(<Panel {...defaultProps} />)
 
       unmount()
 
-      expect(bindTag).not.toHaveBeenCalled()
-      expect(unBindTag).not.toHaveBeenCalled()
+      await waitFor(() => {
+        expect(bindTag).not.toHaveBeenCalled()
+        expect(unBindTag).not.toHaveBeenCalled()
+      })
     })
 
     it('should call onChange after all operations complete on unmount', async () => {

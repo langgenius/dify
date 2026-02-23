@@ -24,10 +24,10 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
 describe('AudioBtn', () => {
   const getButton = () => screen.getByRole('button')
   const mockUseParams = (value: Partial<Record<string, string>>) => {
-    (useParams as ReturnType<typeof vi.fn>).mockReturnValue(value)
+    vi.mocked(useParams).mockReturnValue(value as ReturnType<typeof useParams>)
   }
   const mockUsePathname = (value: string) => {
-    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue(value)
+    vi.mocked(usePathname).mockReturnValue(value)
   }
 
   const hoverAndCheckTooltip = async (expectedText: string) => {
@@ -136,7 +136,7 @@ describe('AudioBtn', () => {
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
 
-      act(() => {
+      await act(() => {
         getLatestAudioCallback()('play')
       })
 
@@ -154,7 +154,7 @@ describe('AudioBtn', () => {
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
 
-      act(() => {
+      await act(() => {
         getLatestAudioCallback()('loaded')
       })
 
@@ -166,7 +166,7 @@ describe('AudioBtn', () => {
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
 
-      act(() => {
+      await act(() => {
         getLatestAudioCallback()(event)
       })
 
