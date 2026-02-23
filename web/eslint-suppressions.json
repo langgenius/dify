@@ -2236,9 +2236,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 11
     }
@@ -2495,11 +2492,6 @@
   "app/components/base/prompt-editor/plugins/history-block/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    }
-  },
-  "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
