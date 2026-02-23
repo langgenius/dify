@@ -273,10 +273,8 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      // Click the create option
       const createOption = screen.getByTestId('create-tag-option')
-      expect(createOption).toBeTruthy()
-      await user.click(createOption!)
+      await user.click(createOption)
 
       await waitFor(() => {
         expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
@@ -291,7 +289,7 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       const createOption = screen.getByTestId('create-tag-option')
-      await user.click(createOption!)
+      await user.click(createOption)
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
@@ -309,7 +307,7 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       const createOption = screen.getByTestId('create-tag-option')
-      await user.click(createOption!)
+      await user.click(createOption)
 
       await waitFor(() => {
         expect(input).toHaveValue('')
@@ -324,7 +322,7 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       const createOption = screen.getByTestId('create-tag-option')
-      await user.click(createOption!)
+      await user.click(createOption)
 
       await waitFor(() => {
         expect(defaultProps.onCreate).toHaveBeenCalled()
@@ -342,7 +340,7 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       const createOption = screen.getByTestId('create-tag-option')
-      await user.click(createOption!)
+      await user.click(createOption)
 
       await waitFor(() => {
         const storeTagList = useTagStore.getState().tagList
@@ -360,7 +358,7 @@ describe('Panel', () => {
       await user.type(input, 'FailTag')
 
       const createOption = screen.getByTestId('create-tag-option')
-      await user.click(createOption!)
+      await user.click(createOption)
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
@@ -575,15 +573,12 @@ describe('Panel', () => {
         useTagStore.setState({ tagList: appTags })
       })
       render(<Panel {...defaultProps} />)
-
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
-      await user.type(input, 'Fro')
-
-      // 'Fro' does not match any tag names exactly, so notExisted is true
-      // 'Frontend' includes 'Fro', so filteredTagList has items
-      // A divider should appear
+      await user.type(input, 'Back')
+      // 'Back' matches Backend (unselected), notExisted is true (no tag named 'Back')
+      // filteredTagList has items, so the conditional divider between create-option and tag-list renders
       const dividers = screen.getAllByTestId('divider')
-      expect(dividers.length).toBeGreaterThan(0)
+      expect(dividers.length).toBeGreaterThanOrEqual(2)
     })
 
     it('should handle knowledge type tags correctly', () => {
