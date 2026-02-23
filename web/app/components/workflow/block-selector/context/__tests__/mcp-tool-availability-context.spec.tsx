@@ -10,6 +10,18 @@ describe('useMCPToolAvailability', () => {
     expect(result.current).toEqual({ allowed: true })
   })
 
+  it('returns allowed=false when version is not provided to provider', () => {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <MCPToolAvailabilityProvider>
+        {children}
+      </MCPToolAvailabilityProvider>
+    )
+
+    const { result } = renderHook(() => useMCPToolAvailability(), { wrapper })
+
+    expect(result.current).toEqual({ allowed: false })
+  })
+
   it('returns allowed=false when version is not supported', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <MCPToolAvailabilityProvider versionSupported={false}>
