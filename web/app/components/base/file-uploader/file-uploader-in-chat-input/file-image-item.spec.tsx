@@ -118,9 +118,8 @@ describe('FileImageItem', () => {
     expect(previewContainer).toBeInTheDocument()
 
     // Close button is the last clickable div with an SVG in the preview container
-    const svgs = previewContainer.querySelectorAll('svg')
-    const closeSvg = svgs[svgs.length - 1]
-    fireEvent.click(closeSvg.parentElement!)
+    const closeIcon = screen.getByTestId('image-preview-close-button')
+    fireEvent.click(closeIcon.parentElement!)
 
     expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
   })
