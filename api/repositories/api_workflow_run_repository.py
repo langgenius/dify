@@ -264,9 +264,15 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         batch_size: int,
         run_types: Sequence[WorkflowType] | None = None,
         tenant_ids: Sequence[str] | None = None,
+        workflow_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
+
+        Optional filters:
+        - run_types
+        - tenant_ids
+        - workflow_ids
         """
         ...
 
@@ -430,6 +436,13 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         # NOTE: we may get rid of the `state_owner_user_id` in parameter list.
         # However, removing it would require an extra for `Workflow` model
         # while creating pause.
+        ...
+
+    def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:
+        """Retrieve the current pause for a workflow execution.
+
+        If there is no current pause, this method would return `None`.
+        """
         ...
 
     def resume_workflow_pause(
@@ -625,5 +638,21 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Returns:
             List of dictionaries containing date and average interactions:
             [{"date": "2024-01-01", "interactions": 2.5}, ...]
+        """
+        ...
+
+    def get_workflow_run_by_id_and_tenant_id(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
+        """
+        Get a specific workflow run by its id and the associated tenant id.
+
+        This function does not apply application isolation. It should only be used when
+        the application identifier is not available.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            run_id: Workflow run identifier
+
+        Returns:
+            WorkflowRun object if found, None otherwise
         """
         ...

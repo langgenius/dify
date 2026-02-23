@@ -56,10 +56,13 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.tools.signature import sign_tool_file
+from core.workflow.file import helpers as file_helpers
+from core.workflow.file.enums import FileTransferMethod
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -462,6 +465,85 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             id=self._message_id,
             metadata=metadata_dict,
         )
+
+    def _record_files(self):
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
+            if not message_files:
+                return None
+
+            files_list = []
+            upload_file_ids = [
+                mf.upload_file_id
+                for mf in message_files
+                if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
+            ]
+            upload_files_map = {}
+            if upload_file_ids:
+                upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+                upload_files_map = {uf.id: uf for uf in upload_files}
+
+            for message_file in message_files:
+                upload_file = None
+                if message_file.transfer_method == FileTransferMethod.LOCAL_FILE and message_file.upload_file_id:
+                    upload_file = upload_files_map.get(message_file.upload_file_id)
+
+                url = None
+                filename = "file"
+                mime_type = "application/octet-stream"
+                size = 0
+                extension = ""
+
+                if message_file.transfer_method == FileTransferMethod.REMOTE_URL:
+                    url = message_file.url
+                    if message_file.url:
+                        filename = message_file.url.split("/")[-1].split("?")[0]  # Remove query params
+                elif message_file.transfer_method == FileTransferMethod.LOCAL_FILE:
+                    if upload_file:
+                        url = file_helpers.get_signed_file_url(upload_file_id=str(upload_file.id))
+                        filename = upload_file.name
+                        mime_type = upload_file.mime_type or "application/octet-stream"
+                        size = upload_file.size or 0
+                        extension = f".{upload_file.extension}" if upload_file.extension else ""
+                    elif message_file.upload_file_id:
+                        # Fallback: generate URL even if upload_file not found
+                        url = file_helpers.get_signed_file_url(upload_file_id=str(message_file.upload_file_id))
+                elif message_file.transfer_method == FileTransferMethod.TOOL_FILE and message_file.url:
+                    # For tool files, use URL directly if it's HTTP, otherwise sign it
+                    if message_file.url.startswith("http"):
+                        url = message_file.url
+                        filename = message_file.url.split("/")[-1].split("?")[0]
+                    else:
+                        # Extract tool file id and extension from URL
+                        url_parts = message_file.url.split("/")
+                        if url_parts:
+                            file_part = url_parts[-1].split("?")[0]  # Remove query params first
+                            # Use rsplit to correctly handle filenames with multiple dots
+                            if "." in file_part:
+                                tool_file_id, ext = file_part.rsplit(".", 1)
+                                extension = f".{ext}"
+                            else:
+                                tool_file_id = file_part
+                                extension = ".bin"
+                            url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
+                            filename = file_part
+
+                transfer_method_value = message_file.transfer_method
+                remote_url = message_file.url if message_file.transfer_method == FileTransferMethod.REMOTE_URL else ""
+                file_dict = {
+                    "related_id": message_file.id,
+                    "extension": extension,
+                    "filename": filename,
+                    "size": size,
+                    "mime_type": mime_type,
+                    "transfer_method": transfer_method_value,
+                    "type": message_file.type,
+                    "url": url or "",
+                    "upload_file_id": message_file.upload_file_id or message_file.id,
+                    "remote_url": remote_url,
+                }
+                files_list.append(file_dict)
+            return files_list or None
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:
         """

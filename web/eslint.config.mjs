@@ -1,10 +1,15 @@
 // @ts-check
-import antfu from '@antfu/eslint-config'
+import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import tailwindcss from 'eslint-plugin-better-tailwindcss'
+import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import tailwind from 'eslint-plugin-tailwindcss'
 import dify from './eslint-rules/index.js'
+
+// Enable Tailwind CSS IntelliSense mode for ESLint runs
+// See: tailwind-css-plugin.ts
+process.env.TAILWIND_MODE ??= 'ESLINT'
 
 export default antfu(
   {
@@ -23,7 +28,7 @@ export default antfu(
       },
     },
     nextjs: true,
-    ignores: ['public', 'types/doc-paths.ts'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -66,46 +71,61 @@ export default antfu(
       sonarjs: sonar,
     },
   },
-  tailwind.configs['flat/recommended'],
   {
-    settings: {
-      tailwindcss: {
-        // These are the default values but feel free to customize
-        callees: ['classnames', 'clsx', 'ctl', 'cn', 'classNames'],
-        config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
-        cssFiles: [
-          '**/*.css',
-          '!**/node_modules',
-          '!**/.*',
-          '!**/dist',
-          '!**/build',
-          '!**/.storybook',
-          '!**/.next',
-          '!**/.public',
-        ],
-        cssFilesRefreshRate: 5_000,
-        removeDuplicates: true,
-        skipClassAttribute: false,
-        whitelist: [],
-        tags: [], // can be set to e.g. ['tw'] for use in tw`bg-blue`
-        classRegex: '^class(Name)?$', // can be modified to support custom attributes. E.g. "^tw$" for `twin.macro`
-      },
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: GLOB_TESTS,
+    plugins: {
+      tailwindcss,
     },
     rules: {
-      // due to 1k lines of tailwind config, these rule have performance issue
-      'tailwindcss/no-contradicting-classname': 'off',
-      'tailwindcss/enforces-shorthand': 'off',
-      'tailwindcss/no-custom-classname': 'off',
-      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
-
-      'tailwindcss/no-arbitrary-value': 'off',
-      'tailwindcss/classnames-order': 'warn',
-      'tailwindcss/enforces-negative-arbitrary-values': 'warn',
-      'tailwindcss/migration-from-tailwind-2': 'warn',
+      'tailwindcss/enforce-consistent-class-order': 'error',
+      'tailwindcss/no-duplicate-classes': 'error',
+      'tailwindcss/no-unnecessary-whitespace': 'error',
+      'tailwindcss/no-unknown-classes': 'warn',
     },
   },
   {
-    plugins: { dify },
+    name: 'dify/custom/setup',
+    plugins: {
+      dify,
+      hyoban,
+    },
+  },
+  {
+    files: ['**/*.tsx'],
+    rules: {
+      'hyoban/prefer-tailwind-icons': ['warn', {
+        prefix: 'i-',
+        propMappings: {
+          size: 'size',
+          width: 'w',
+          height: 'h',
+        },
+        libraries: [
+          {
+            prefix: 'i-custom-',
+            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
+            name: '^(?<name>.*)$',
+          },
+          {
+            source: '^@remixicon/react$',
+            name: '^(?<set>Ri)(?<name>.+)$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/24/outline$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
+            name: '^(?<name>.*)Icon$',
+          },
+          {
+            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
+            name: '^(?<name>.*)Icon$',
+          },
+        ],
+      }],
+    },
   },
   {
     files: ['i18n/**/*.json'],
@@ -114,7 +134,7 @@ export default antfu(
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
-      'dify/valid-i18n-keys': 'error',
+      'hyoban/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
       'dify/consistent-placeholders': 'error',
     },
@@ -122,7 +142,7 @@ export default antfu(
   {
     files: ['**/package.json'],
     rules: {
-      'dify/no-version-prefix': 'error',
+      'hyoban/no-dependency-version-prefix': 'error',
     },
   },
 )

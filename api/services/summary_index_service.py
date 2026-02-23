@@ -49,11 +49,18 @@ class SummaryIndexService:
         # Use lazy import to avoid circular import
         from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 
+        # Get document language to ensure summary is generated in the correct language
+        # This is especially important for image-only chunks where text is empty or minimal
+        document_language = None
+        if segment.document and segment.document.doc_language:
+            document_language = segment.document.doc_language
+
         summary_content, usage = ParagraphIndexProcessor.generate_summary(
             tenant_id=dataset.tenant_id,
             text=segment.content,
             summary_index_setting=summary_index_setting,
             segment_id=segment.id,
+            document_language=document_language,
         )
 
         if not summary_content:
@@ -558,6 +565,9 @@ class SummaryIndexService:
                     )
                     session.add(summary_record)
 
+            # Commit the batch created records
+            session.commit()
+
     @staticmethod
     def update_summary_record_error(
         segment: DocumentSegment,
@@ -762,7 +772,6 @@ class SummaryIndexService:
                 dataset=dataset,
                 status="not_started",
             )
-            session.commit()  # Commit initial records
 
             summary_records = []
 

@@ -3,9 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.list_operator.entities import (
     ExtractConfig,
     FilterBy,
