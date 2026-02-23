@@ -6,6 +6,7 @@
  */
 import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
+import { hasImageChild } from './utils'
 
 const Paragraph = (paragraph: any) => {
   const { node }: any = paragraph
@@ -13,9 +14,7 @@ const Paragraph = (paragraph: any) => {
 
   // Check if any child is an img tag — if so, we must use <div> instead of <p>
   // to avoid invalid HTML nesting (img renders as <div> via ImageGallery)
-  const hasImage = children_node?.some(
-    (child: any) => 'tagName' in child && child.tagName === 'img',
-  )
+  const hasImage = hasImageChild(children_node)
 
   if (hasImage) {
     // If the first child is an image, render it via ImageGallery with remaining children

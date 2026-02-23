@@ -1,5 +1,26 @@
 import { ALLOW_UNSAFE_DATA_SCHEME, MARKETPLACE_API_PREFIX } from '@/config'
 
+interface MdastNode {
+  tagName?: string
+  children?: MdastNode[]
+  [key: string]: any
+}
+
+/**
+ * Recursively checks whether any child node is an <img> element.
+ * Handles nested structures like linked images ([![alt](url)](link))
+ * or formatted images (**![alt](url)**).
+ */
+export const hasImageChild = (children: MdastNode[] | undefined): boolean => {
+  return children?.some((child) => {
+    if (child.tagName === 'img')
+      return true
+    if (child.children)
+      return hasImageChild(child.children)
+    return false
+  }) || false
+}
+
 export const isValidUrl = (url: string): boolean => {
   const validPrefixes = ['http:', 'https:', '//', 'mailto:']
   if (ALLOW_UNSAFE_DATA_SCHEME)
