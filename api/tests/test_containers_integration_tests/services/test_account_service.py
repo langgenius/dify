@@ -2313,6 +2313,8 @@ class TestRegisterService:
         from models.model import DifySetup
 
         db.session.query(DifySetup).delete()
+        from models import Account
+        db.session.query(Account).filter_by(email=admin_email).delete()
         db.session.commit()
 
         # Execute setup
@@ -2325,9 +2327,12 @@ class TestRegisterService:
         )
 
         # Verify account was created
-        from models import Account
-
-        account = db.session.query(Account).filter_by(email=admin_email).first()
+        account = (
+            db.session.query(Account)
+            .filter_by(email=admin_email)
+            .order_by(Account.created_at.desc())
+            .first()
+        )
         assert account is not None
         assert account.name == admin_name
         assert account.last_login_ip == ip_address
