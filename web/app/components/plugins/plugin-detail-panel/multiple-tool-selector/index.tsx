@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Tooltip from '@/app/components/base/tooltip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
-import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { useMCPToolAvailability } from '@/app/components/workflow/block-selector/context/mcp-tool-availability-context'
 import { useAllMCPTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 

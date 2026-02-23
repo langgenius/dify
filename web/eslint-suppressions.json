@@ -2970,11 +2970,6 @@
       "count": 7
     }
   },
-  "app/components/workflow/nodes/_base/components/mcp-tool-availability.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/memory-config.tsx": {
     "unicorn/prefer-number-properties": {
       "count": 1

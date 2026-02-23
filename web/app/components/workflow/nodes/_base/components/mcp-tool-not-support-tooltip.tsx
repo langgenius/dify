@@ -4,7 +4,7 @@ import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { useMCPToolAvailability } from './mcp-tool-availability'
+import { useMCPToolAvailability } from '@/app/components/workflow/block-selector/context/mcp-tool-availability-context'
 
 const McpToolNotSupportTooltip: FC = () => {
   const { t } = useTranslation()

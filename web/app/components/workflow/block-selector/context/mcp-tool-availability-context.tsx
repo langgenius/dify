@@ -39,6 +39,7 @@ export function MCPToolAvailabilityProvider({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useMCPToolAvailability(): MCPToolAvailability {
   const context = useContext(MCPToolAvailabilityContext)
 
@@ -55,5 +56,8 @@ export function useMCPToolAvailability(): MCPToolAvailability {
   else if (!sandboxAllowed)
     blockedBy = 'sandbox'
 
-  return { allowed, blockedBy }
+  if (blockedBy)
+    return { allowed, blockedBy }
+
+  return { allowed }
 }
