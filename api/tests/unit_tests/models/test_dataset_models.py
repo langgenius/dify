@@ -917,8 +917,8 @@ class TestChildChunk:
             word_count=3,
             created_by=created_by,
             type="automatic",
-            index_node_id="xxx",
-            index_node_hash="xxx",
+            index_node_id="test_index_node_id",
+            index_node_hash="test_index_node_hash",
         )
 
         # Assert
