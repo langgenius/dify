@@ -196,8 +196,8 @@ describe('TagSelector', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByText(/common\.tag\.create/).closest('div[class*="cursor-pointer"]')
-      await user.click(createOption!)
+      const createOption = screen.getByTestId('create-tag-option')
+      await user.click(createOption)
 
       await waitFor(() => {
         expect(useTagStore.getState().tagList).toEqual(freshTags)

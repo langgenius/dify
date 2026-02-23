@@ -171,5 +171,17 @@ describe('GA', () => {
         expect(script).toHaveAttribute('data-nonce', '')
       })
     })
+
+    it('should omit nonce when CSP header is null', async () => {
+      mockHeadersGet.mockReturnValue(null)
+      await renderGA('admin')
+
+      const scripts = screen.getAllByTestId('mock-next-script')
+
+      expect(mockHeaders).toHaveBeenCalledTimes(1)
+      scripts.forEach((script) => {
+        expect(script).toHaveAttribute('data-nonce', '')
+      })
+    })
   })
 })
