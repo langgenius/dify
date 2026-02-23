@@ -13,11 +13,11 @@ describe('InvitedModal', () => {
     { email: 'failed@example.com', status: 'failed', message: 'Error msg' },
   ]
 
-  it('should show success and failed invitation sections', () => {
+  it('should show success and failed invitation sections', async () => {
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 
-    expect(screen.getByText(/members\.invitationSent$/i)).toBeInTheDocument()
-    expect(screen.getByText(/members\.invitationLink/i)).toBeInTheDocument()
+    expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
+    expect(await screen.findByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.getByText('http://invite.com/1')).toBeInTheDocument()
     expect(screen.getByText('failed@example.com')).toBeInTheDocument()
   })

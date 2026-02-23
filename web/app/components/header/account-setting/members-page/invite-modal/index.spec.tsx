@@ -39,17 +39,17 @@ describe('InviteModal', () => {
     </ToastContext.Provider>,
   )
 
-  it('should render invite modal content', () => {
+  it('should render invite modal content', async () => {
     renderModal()
 
-    expect(screen.getByText(/members\.inviteTeamMember$/i)).toBeInTheDocument()
+    expect(await screen.findByText(/members\.inviteTeamMember$/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeDisabled()
   })
 
-  it('should show warning when email service is not configured', () => {
+  it('should show warning when email service is not configured', async () => {
     renderModal(false)
 
-    expect(screen.getByText(/members\.emailNotSetup$/i)).toBeInTheDocument()
+    expect(await screen.findByText(/members\.emailNotSetup$/i)).toBeInTheDocument()
   })
 
   it('should enable send button after entering an email', async () => {

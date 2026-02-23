@@ -1,6 +1,6 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ICurrentWorkspace } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast'
@@ -34,17 +34,20 @@ describe('EditWorkspaceModal', () => {
     </ToastContext.Provider>,
   )
 
-  it('should show current workspace name in the input', () => {
+  it('should show current workspace name in the input', async () => {
     renderModal()
 
-    expect(screen.getByDisplayValue('Test Workspace')).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
   })
 
   it('should let user edit workspace name', async () => {
+    const user = userEvent.setup()
+
     renderModal()
 
     const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
-    fireEvent.change(input, { target: { value: 'New Workspace Name' } })
+    await user.clear(input)
+    await user.type(input, 'New Workspace Name')
 
     expect(input).toHaveValue('New Workspace Name')
   })
@@ -58,7 +61,8 @@ describe('EditWorkspaceModal', () => {
     renderModal()
 
     const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
-    fireEvent.change(input, { target: { value: 'Renamed Workspace' } })
+    await user.clear(input)
+    await user.type(input, 'Renamed Workspace')
     await user.click(screen.getByRole('button', { name: /operation\.confirm/i }))
 
     await waitFor(() => {
@@ -86,7 +90,7 @@ describe('EditWorkspaceModal', () => {
     })
   })
 
-  it('should disable confirm button for non-owners', () => {
+  it('should disable confirm button for non-owners', async () => {
     vi.mocked(useAppContext).mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
@@ -94,6 +98,6 @@ describe('EditWorkspaceModal', () => {
 
     renderModal()
 
-    expect(screen.getByRole('button', { name: /operation\.confirm/i })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: /operation\.confirm/i })).toBeDisabled()
   })
 })
