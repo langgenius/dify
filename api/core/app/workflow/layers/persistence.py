@@ -45,7 +45,7 @@ from core.workflow.graph_events import (
 from core.workflow.node_events import NodeRunResult
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
 
 @dataclass(slots=True)
@@ -356,6 +356,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         finished_at = naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
+        start_at = ensure_naive_utc(start_at)
         domain_execution.status = status
         domain_execution.finished_at = finished_at
         domain_execution.elapsed_time = max((finished_at - start_at).total_seconds(), 0.0)
@@ -381,7 +382,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 execution.status = WorkflowNodeExecutionStatus.FAILED
                 execution.error = error_message
                 execution.finished_at = now
-                execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
+                created_at = ensure_naive_utc(execution.created_at)
+                execution.elapsed_time = max((now - created_at).total_seconds(), 0.0)
                 self._workflow_node_execution_repository.save(execution)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
