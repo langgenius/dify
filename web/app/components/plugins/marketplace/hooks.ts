@@ -100,11 +100,11 @@ export const useMarketplacePlugins = () => {
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
 
   const normalizeParams = useCallback((pluginsSearchParams: PluginsSearchParams) => {
-    const pageSize = pluginsSearchParams.pageSize || 40
+    const page_size = pluginsSearchParams.page_size || 40
 
     return {
       ...pluginsSearchParams,
-      pageSize,
+      page_size,
     }
   }, [])
 
@@ -116,20 +116,20 @@ export const useMarketplacePlugins = () => {
           plugins: [] as Plugin[],
           total: 0,
           page: 1,
-          pageSize: 40,
+          page_size: 40,
         }
       }
 
       const params = normalizeParams(queryParams)
       const {
         query,
-        sortBy,
-        sortOrder,
+        sort_by,
+        sort_order,
         category,
         tags,
         exclude,
         type,
-        pageSize,
+        page_size,
       } = params
       const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
 
@@ -137,10 +137,10 @@ export const useMarketplacePlugins = () => {
         const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
           body: {
             page: pageParam,
-            page_size: pageSize,
+            page_size,
             query,
-            sort_by: sortBy,
-            sort_order: sortOrder,
+            sort_by,
+            sort_order,
             category: category !== 'all' ? category : '',
             tags,
             exclude,
@@ -154,7 +154,7 @@ export const useMarketplacePlugins = () => {
           plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
           total: res.data.total,
           page: pageParam,
-          pageSize,
+          page_size,
         }
       }
       catch {
@@ -162,13 +162,13 @@ export const useMarketplacePlugins = () => {
           plugins: [],
           total: 0,
           page: pageParam,
-          pageSize,
+          page_size,
         }
       }
     },
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.page + 1
-      const loaded = lastPage.page * lastPage.pageSize
+      const loaded = lastPage.page * lastPage.page_size
       return loaded < (lastPage.total || 0) ? nextPage : undefined
     },
     initialPageParam: 1,

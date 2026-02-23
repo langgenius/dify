@@ -1,6 +1,6 @@
 import logging
 
-from core.variables import Variable
+from core.variables import VariableBase
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.enums import NodeType
@@ -44,7 +44,7 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
             variable = self.graph_runtime_state.variable_pool.get(selector)
-            if not isinstance(variable, Variable):
+            if not isinstance(variable, VariableBase):
                 logger.warning(
                     "Conversation variable not found in variable pool. selector=%s",
                     selector,

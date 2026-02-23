@@ -8,6 +8,7 @@ import {
 } from '@/app/components/base/prompt-editor/constants'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getMaxVarNameLength, MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW } from '@/config'
+import { env } from '@/env'
 
 const otherAllowedRegex = /^\w+$/
 
@@ -30,7 +31,7 @@ export const getNewVar = (key: string, type: string) => {
 }
 
 export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
-  const { max_length: _maxLength, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
+  const { ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
       ...rest,
@@ -129,7 +130,7 @@ export const getVars = (value: string) => {
 
 // Set the value of basePath
 // example: /dify
-export const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+export const basePath = env.NEXT_PUBLIC_BASE_PATH
 
 export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
   const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })

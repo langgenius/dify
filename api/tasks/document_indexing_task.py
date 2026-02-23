@@ -6,14 +6,15 @@ import click
 from celery import shared_task
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from services.feature_service import FeatureService
+from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
 
@@ -46,55 +47,55 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     documents = []
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
-    if not dataset:
-        logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
-        db.session.close()
-        return
-    # check document limit
-    features = FeatureService.get_features(dataset.tenant_id)
-    try:
-        if features.billing.enabled:
-            vector_space = features.vector_space
-            count = len(document_ids)
-            batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-            if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-            if count > batch_upload_limit:
-                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-            if 0 < vector_space.limit <= vector_space.size:
-                raise ValueError(
-                    "Your total number of documents plus the number of uploads have over the limit of "
-                    "your subscription."
+    with session_factory.create_session() as session:
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if not dataset:
+            logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
+            return
+        # check document limit
+        features = FeatureService.get_features(dataset.tenant_id)
+        try:
+            if features.billing.enabled:
+                vector_space = features.vector_space
+                count = len(document_ids)
+                batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+                if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
+                    raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+                if count > batch_upload_limit:
+                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+                if 0 < vector_space.limit <= vector_space.size:
+                    raise ValueError(
+                        "Your total number of documents plus the number of uploads have over the limit of "
+                        "your subscription."
+                    )
+        except Exception as e:
+            for document_id in document_ids:
+                document = (
+                    session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
                 )
-    except Exception as e:
-        for document_id in document_ids:
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
-            if document:
-                document.indexing_status = "error"
-                document.error = str(e)
-                document.stopped_at = naive_utc_now()
-                db.session.add(document)
-        db.session.commit()
-        db.session.close()
-        return
+                if document:
+                    document.indexing_status = "error"
+                    document.error = str(e)
+                    document.stopped_at = naive_utc_now()
+                    session.add(document)
+            session.commit()
+            return
 
-    for document_id in document_ids:
-        logger.info(click.style(f"Start process document: {document_id}", fg="green"))
-
-        document = (
-            db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    # Phase 1: Update status to parsing (short transaction)
+    with session_factory.create_session() as session, session.begin():
+        documents = (
+            session.query(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id).all()
         )
 
-        if document:
-            document.indexing_status = "parsing"
-            document.processing_started_at = naive_utc_now()
-            documents.append(document)
-            db.session.add(document)
-    db.session.commit()
+        for document in documents:
+            if document:
+                document.indexing_status = "parsing"
+                document.processing_started_at = naive_utc_now()
+                session.add(document)
+    # Transaction committed and closed
 
+    # Phase 2: Execute indexing (no transaction - IndexingRunner creates its own sessions)
+    has_error = False
     try:
         indexing_runner = IndexingRunner()
         indexing_runner.run(documents)
@@ -102,10 +103,79 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
+        has_error = True
     except Exception:
         logger.exception("Document indexing task failed, dataset_id: %s", dataset_id)
-    finally:
-        db.session.close()
+        has_error = True
+
+    if not has_error:
+        with session_factory.create_session() as session:
+            # Trigger summary index generation for completed documents if enabled
+            # Only generate for high_quality indexing technique and when summary_index_setting is enabled
+            # Re-query dataset to get latest summary_index_setting (in case it was updated)
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            if not dataset:
+                logger.warning("Dataset %s not found after indexing", dataset_id)
+                return
+
+            if dataset.indexing_technique == "high_quality":
+                summary_index_setting = dataset.summary_index_setting
+                if summary_index_setting and summary_index_setting.get("enable"):
+                    # expire all session to get latest document's indexing status
+                    session.expire_all()
+                    # Check each document's indexing status and trigger summary generation if completed
+
+                    documents = (
+                        session.query(Document)
+                        .where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        .all()
+                    )
+
+                    for document in documents:
+                        if document:
+                            logger.info(
+                                "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
+                                document.id,
+                                document.indexing_status,
+                                document.doc_form,
+                                document.need_summary,
+                            )
+                            if (
+                                document.indexing_status == "completed"
+                                and document.doc_form != "qa_model"
+                                and document.need_summary is True
+                            ):
+                                try:
+                                    generate_summary_index_task.delay(dataset.id, document.id, None)
+                                    logger.info(
+                                        "Queued summary index generation task for document %s in dataset %s "
+                                        "after indexing completed",
+                                        document.id,
+                                        dataset.id,
+                                    )
+                                except Exception:
+                                    logger.exception(
+                                        "Failed to queue summary index generation task for document %s",
+                                        document.id,
+                                    )
+                                    # Don't fail the entire indexing process if summary task queuing fails
+                            else:
+                                logger.info(
+                                    "Skipping summary generation for document %s: "
+                                    "status=%s, doc_form=%s, need_summary=%s",
+                                    document.id,
+                                    document.indexing_status,
+                                    document.doc_form,
+                                    document.need_summary,
+                                )
+                        else:
+                            logger.warning("Document %s not found after indexing", document.id)
+            else:
+                logger.info(
+                    "Summary index generation skipped for dataset %s: indexing_technique=%s (not 'high_quality')",
+                    dataset.id,
+                    dataset.indexing_technique,
+                )
 
 
 def _document_indexing_with_tenant_queue(

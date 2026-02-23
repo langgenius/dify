@@ -66,7 +66,9 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code: encryptVerificationCode(code), token })
       if (ret.result === 'success') {
-        setWebAppAccessToken(ret.data.access_token)
+        if (ret?.data?.access_token) {
+          setWebAppAccessToken(ret.data.access_token)
+        }
         const { access_token } = await fetchAccessToken({
           appCode: appCode!,
           userId: embeddedUserId || undefined,

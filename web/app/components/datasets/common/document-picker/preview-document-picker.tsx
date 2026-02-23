@@ -18,7 +18,7 @@ import DocumentList from './document-list'
 
 type Props = {
   className?: string
-  value: DocumentItem
+  value?: DocumentItem
   files: DocumentItem[]
   onChange: (value: DocumentItem) => void
 }
@@ -30,7 +30,8 @@ const PreviewDocumentPicker: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { name, extension } = value
+  const name = value?.name || ''
+  const extension = value?.extension
 
   const [open, {
     set: setOpen,

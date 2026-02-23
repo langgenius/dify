@@ -8,6 +8,7 @@ import {
   RiMicLine,
   RiSendPlane2Fill,
 } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
@@ -15,6 +16,7 @@ import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import { cn } from '@/utils/classnames'
 
 type OperationProps = {
+  readonly?: boolean
   fileConfig?: FileUpload
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
@@ -23,6 +25,7 @@ type OperationProps = {
   ref?: Ref<HTMLDivElement>
 }
 const Operation: FC<OperationProps> = ({
+  readonly,
   ref,
   fileConfig,
   speechToTextConfig,
@@ -41,11 +44,12 @@ const Operation: FC<OperationProps> = ({
         ref={ref}
       >
         <div className="flex items-center space-x-1">
-          {fileConfig?.enabled && <FileUploaderInChatInput fileConfig={fileConfig} />}
+          {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
           {
             speechToTextConfig?.enabled && (
               <ActionButton
                 size="l"
+                disabled={readonly}
                 onClick={onShowVoiceInput}
               >
                 <RiMicLine className="h-5 w-5" />
@@ -56,7 +60,7 @@ const Operation: FC<OperationProps> = ({
         <Button
           className="ml-3 w-8 px-0"
           variant="primary"
-          onClick={onSend}
+          onClick={readonly ? noop : onSend}
           style={
             theme
               ? {

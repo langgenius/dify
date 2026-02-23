@@ -1,13 +1,11 @@
 'use client'
-import {
-  RiQrCodeLine,
-} from '@remixicon/react'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
+import { downloadUrl } from '@/utils/download'
 
 type Props = {
   content: string
@@ -40,11 +38,10 @@ const ShareQRCode = ({ content }: Props) => {
   }, [isShow])
 
   const downloadQR = () => {
-    const canvas = document.getElementsByTagName('canvas')[0]
-    const link = document.createElement('a')
-    link.download = 'qrcode.png'
-    link.href = canvas.toDataURL()
-    link.click()
+    const canvas = qrCodeRef.current?.querySelector('canvas')
+    if (!(canvas instanceof HTMLCanvasElement))
+      return
+    downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
   const handlePanelClick = (event: React.MouseEvent) => {
@@ -55,9 +52,9 @@ const ShareQRCode = ({ content }: Props) => {
     <Tooltip
       popupContent={t(`${prefixEmbedded}`, { ns: 'appOverview' }) || ''}
     >
-      <div className="relative h-6 w-6" onClick={toggleQRCode}>
+      <div className="relative h-6 w-6" onClick={toggleQRCode} data-testid="qrcode-container">
         <ActionButton>
-          <RiQrCodeLine className="h-4 w-4" />
+          <span className="i-ri-qr-code-line h-4 w-4" />
         </ActionButton>
         {isShow && (
           <div
@@ -66,7 +63,7 @@ const ShareQRCode = ({ content }: Props) => {
             onClick={handlePanelClick}
           >
             <QRCode size={160} value={content} className="mb-2" />
-            <div className="system-xs-regular flex items-center">
+            <div className="flex items-center system-xs-regular">
               <div className="text-text-tertiary">{t('overview.appInfo.qrcode.scan', { ns: 'appOverview' })}</div>
               <div className="text-text-tertiary">·</div>
               <div className="cursor-pointer text-text-accent-secondary" onClick={downloadQR}>{t('overview.appInfo.qrcode.download', { ns: 'appOverview' })}</div>

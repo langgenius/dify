@@ -4,7 +4,13 @@ import pytest
 from faker import Faker
 
 from enums.cloud_plan import CloudPlan
-from services.feature_service import FeatureModel, FeatureService, KnowledgeRateLimitModel, SystemFeatureModel
+from services.feature_service import (
+    FeatureModel,
+    FeatureService,
+    KnowledgeRateLimitModel,
+    LicenseStatus,
+    SystemFeatureModel,
+)
 
 
 class TestFeatureService:
@@ -274,7 +280,7 @@ class TestFeatureService:
             mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = FeatureService.get_system_features(is_authenticated=True)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -323,6 +329,61 @@ class TestFeatureService:
 
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
+
+    def test_get_system_features_unauthenticated(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test system features retrieval for an unauthenticated user.
+
+        This test verifies that:
+        - The response payload is minimized (e.g., verbose license details are excluded).
+        - Essential UI configuration (Branding, SSO, Marketplace) remains available.
+        - The response structure adheres to the public schema for unauthenticated clients.
+        """
+        # Arrange: Setup test data with exact same config as success test
+        with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.MARKETPLACE_ENABLED = True
+            mock_config.ENABLE_EMAIL_CODE_LOGIN = True
+            mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
+            mock_config.ENABLE_SOCIAL_OAUTH_LOGIN = False
+            mock_config.ALLOW_REGISTER = False
+            mock_config.ALLOW_CREATE_WORKSPACE = False
+            mock_config.MAIL_TYPE = "smtp"
+            mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
+
+            # Act: Execute with is_authenticated=False
+            result = FeatureService.get_system_features(is_authenticated=False)
+
+        # Assert: Basic structure
+        assert result is not None
+        assert isinstance(result, SystemFeatureModel)
+
+        # --- 1. Verify Response Payload Optimization (Data Minimization) ---
+        # Ensure only essential UI flags are returned to unauthenticated clients
+        # to keep the payload lightweight and adhere to architectural boundaries.
+        assert result.license.status == LicenseStatus.NONE
+        assert result.license.expired_at == ""
+        assert result.license.workspaces.enabled is False
+        assert result.license.workspaces.limit == 0
+        assert result.license.workspaces.size == 0
+
+        # --- 2. Verify Public UI Configuration Availability ---
+        # Ensure that data required for frontend rendering remains accessible.
+
+        # Branding should match the mock data
+        assert result.branding.enabled is True
+        assert result.branding.application_title == "Test Enterprise"
+        assert result.branding.login_page_logo == "https://example.com/logo.png"
+
+        # SSO settings should be visible for login page rendering
+        assert result.sso_enforced_for_signin is True
+        assert result.sso_enforced_for_signin_protocol == "saml"
+
+        # General auth settings should be visible
+        assert result.enable_email_code_login is True
+
+        # Marketplace should be visible
+        assert result.enable_marketplace is True
 
     def test_get_system_features_basic_config(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -1031,7 +1092,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = FeatureService.get_system_features(is_authenticated=True)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1400,7 +1461,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = FeatureService.get_system_features(is_authenticated=True)
 
         # Assert: Verify the expected outcomes
         assert result is not None

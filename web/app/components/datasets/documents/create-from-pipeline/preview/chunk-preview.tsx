@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
@@ -181,6 +182,7 @@ const ChunkPreview = ({
             characterCount={item.content.length}
           >
             {item.content}
+            {item.summary && <SummaryLabel summary={item.summary} />}
           </ChunkContainer>
         ))
       )}
@@ -207,6 +209,7 @@ const ChunkPreview = ({
                     />
                   )
                 })}
+                {item.summary && <SummaryLabel summary={item.summary} />}
               </FormattedText>
             </ChunkContainer>
           )

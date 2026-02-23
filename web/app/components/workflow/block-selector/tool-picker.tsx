@@ -50,7 +50,6 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -66,7 +65,6 @@ const ToolPicker: FC<Props> = ({
   scope = 'all',
   selectedTools,
   panelClassName,
-  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -198,7 +196,6 @@ const ToolPicker: FC<Props> = ({
             workflowTools={workflowToolList || []}
             mcpTools={mcpTools || []}
             selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
             onTagsChange={setTags}
             featuredPlugins={featuredPlugins}
             featuredLoading={isFeaturedLoading}

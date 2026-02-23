@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import type { SegmentListContextValue } from '..'
 import * as React from 'react'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
@@ -14,13 +15,15 @@ type ChunkContentProps = {
   className?: string
 }
 
+const selectIsCollapsed = (s: SegmentListContextValue) => s.isCollapsed
+
 const ChunkContent: FC<ChunkContentProps> = ({
   detail,
   isFullDocMode,
   className,
 }) => {
   const { answer, content, sign_content } = detail
-  const isCollapsed = useSegmentListContext(s => s.isCollapsed)
+  const isCollapsed = useSegmentListContext(selectIsCollapsed)
 
   if (answer) {
     return (

@@ -99,7 +99,7 @@
   "createTool.viewSchemaSpec": "檢視 OpenAPI-Swagger 規範",
   "customToolTip": "瞭解有關 Dify 自訂工具的更多資訊",
   "howToGet": "如何獲取",
-  "includeToolNum": "包含 {{num}} 個工具",
+  "includeToolNum": "包含 {{num}} {{action}}",
   "mcp.authorize": "授權",
   "mcp.authorizeTip": "授權後，這裡將顯示工具。",
   "mcp.authorizing": "正在授權...",

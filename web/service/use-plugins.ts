@@ -488,23 +488,23 @@ export const useMutationPluginsFromMarketplace = () => {
     mutationFn: (pluginsSearchParams: PluginsSearchParams) => {
       const {
         query,
-        sortBy,
-        sortOrder,
+        sort_by,
+        sort_order,
         category,
         tags,
         exclude,
         type,
         page = 1,
-        pageSize = 40,
+        page_size = 40,
       } = pluginsSearchParams
       const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
         body: {
           page,
-          page_size: pageSize,
+          page_size,
           query,
-          sort_by: sortBy,
-          sort_order: sortOrder,
+          sort_by,
+          sort_order,
           category: category !== 'all' ? category : '',
           tags,
           exclude,
@@ -535,23 +535,23 @@ export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearc
     queryFn: () => {
       const {
         query,
-        sortBy,
-        sortOrder,
+        sort_by,
+        sort_order,
         category,
         tags,
         exclude,
         type,
         page = 1,
-        pageSize = 40,
+        page_size = 40,
       } = pluginsSearchParams
       const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
         body: {
           page,
-          page_size: pageSize,
+          page_size,
           query,
-          sort_by: sortBy,
-          sort_order: sortOrder,
+          sort_by,
+          sort_order,
           category: category !== 'all' ? category : '',
           tags,
           exclude,

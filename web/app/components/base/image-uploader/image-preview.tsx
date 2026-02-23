@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { downloadUrl } from '@/utils/download'
 
 type ImagePreviewProps = {
   url: string
@@ -60,27 +61,14 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
   const downloadImage = () => {
     // Open in a new window, considering the case when the page is inside an iframe
-    if (url.startsWith('http') || url.startsWith('https')) {
-      const a = document.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.download = title
-      a.click()
+    if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:image')) {
+      downloadUrl({ url, fileName: title, target: '_blank' })
+      return
     }
-    else if (url.startsWith('data:image')) {
-      // Base64 image
-      const a = document.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.download = title
-      a.click()
-    }
-    else {
-      Toast.notify({
-        type: 'error',
-        message: `Unable to open image: ${url}`,
-      })
-    }
+    Toast.notify({
+      type: 'error',
+      message: `Unable to open image: ${url}`,
+    })
   }
 
   const zoomIn = () => {
@@ -135,12 +123,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       catch (err) {
         console.error('Failed to copy image:', err)
 
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${title}.png`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        downloadUrl({ url, fileName: `${title}.png` })
 
         Toast.notify({
           type: 'info',
@@ -215,6 +198,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       tabIndex={-1}
     >
       { }
+      {/* eslint-disable-next-line next/no-img-element */}
       <img
         ref={imgRef}
         alt={title}

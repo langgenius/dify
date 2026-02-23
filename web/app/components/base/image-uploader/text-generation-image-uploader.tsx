@@ -70,10 +70,12 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 type TextGenerationImageUploaderProps = {
   settings: VisionSettings
   onFilesChange: (files: ImageFile[]) => void
+  disabled?: boolean
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   settings,
   onFilesChange,
+  disabled,
 }) => {
   const { t } = useTranslation()
 
@@ -93,7 +95,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const localUpload = (
     <Uploader
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
       limit={+settings.image_file_size_limit!}
     >
       {
@@ -115,7 +117,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const urlUpload = (
     <PasteImageLinkButton
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
     />
   )
 

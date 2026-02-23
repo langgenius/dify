@@ -46,7 +46,7 @@ const Field: FC<Props> = ({
             {' '}
             {required && <span className="text-text-destructive">*</span>}
           </div>
-          {tooltip && (
+          {!!tooltip && (
             <Tooltip
               popupContent={tooltip}
               popupClassName="ml-1"
@@ -55,13 +55,13 @@ const Field: FC<Props> = ({
           )}
         </div>
         <div className="flex">
-          {operations && <div>{operations}</div>}
+          {!!operations && <div>{operations}</div>}
           {supportFold && (
             <RiArrowDownSLine className="h-4 w-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>
-      {children && (!supportFold || (supportFold && !fold)) && <div className={cn(!inline && 'mt-1')}>{children}</div>}
+      {!!(children && (!supportFold || (supportFold && !fold))) && <div className={cn(!inline && 'mt-1')}>{children}</div>}
     </div>
   )
 }

@@ -96,10 +96,7 @@ const ModifyRetrievalModal: FC<Props> = ({
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href={docLink('/guides/knowledge-base/retrieval-test-and-citation#modify-text-retrieval-setting', {
-                'zh-Hans': '/guides/knowledge-base/retrieval-test-and-citation#修改文本检索方式',
-                'ja-JP': '/guides/knowledge-base/retrieval-test-and-citation',
-              })}
+              href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
               className="text-text-accent"
             >
               {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}

@@ -2,7 +2,7 @@ import json
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.variables import SegmentType, Variable
+from core.variables import SegmentType, VariableBase
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -118,7 +118,7 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
                 # ==================== Validation Part
 
                 # Check if variable exists
-                if not isinstance(variable, Variable):
+                if not isinstance(variable, VariableBase):
                     raise VariableNotFoundError(variable_selector=item.variable_selector)
 
                 # Check if operation is supported
@@ -192,7 +192,7 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
 
         for selector in updated_variable_selectors:
             variable = self.graph_runtime_state.variable_pool.get(selector)
-            if not isinstance(variable, Variable):
+            if not isinstance(variable, VariableBase):
                 raise VariableNotFoundError(variable_selector=selector)
             process_data[variable.name] = variable.value
 
@@ -213,7 +213,7 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
     def _handle_item(
         self,
         *,
-        variable: Variable,
+        variable: VariableBase,
         operation: Operation,
         value: Any,
     ):

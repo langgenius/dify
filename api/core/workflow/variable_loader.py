@@ -2,7 +2,7 @@ import abc
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
-from core.variables import Variable
+from core.variables import VariableBase
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.runtime import VariablePool
 
@@ -26,7 +26,7 @@ class VariableLoader(Protocol):
     """
 
     @abc.abstractmethod
-    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
+    def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         """Load variables based on the provided selectors. If the selectors are empty,
         this method should return an empty list.
 
@@ -36,7 +36,7 @@ class VariableLoader(Protocol):
         :param: selectors: a list of string list, each inner list should have at least two elements:
             - the first element is the node ID,
             - the second element is the variable name.
-        :return: a list of Variable objects that match the provided selectors.
+        :return: a list of VariableBase objects that match the provided selectors.
         """
         pass
 
@@ -46,7 +46,7 @@ class _DummyVariableLoader(VariableLoader):
     Serves as a placeholder when no variable loading is needed.
     """
 
-    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
+    def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         return []
 
 

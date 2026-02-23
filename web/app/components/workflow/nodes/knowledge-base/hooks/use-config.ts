@@ -1,6 +1,7 @@
 import type {
   KnowledgeBaseNodeType,
   RerankingModel,
+  SummaryIndexSetting,
 } from '../types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
@@ -246,6 +247,16 @@ export const useConfig = (id: string) => {
     })
   }, [handleNodeDataUpdate])
 
+  const handleSummaryIndexSettingChange = useCallback((summaryIndexSetting: SummaryIndexSetting) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      summary_index_setting: {
+        ...nodeData?.data.summary_index_setting,
+        ...summaryIndexSetting,
+      },
+    })
+  }, [handleNodeDataUpdate, getNodeData])
+
   return {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -260,5 +271,6 @@ export const useConfig = (id: string) => {
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleSummaryIndexSettingChange,
   }
 }

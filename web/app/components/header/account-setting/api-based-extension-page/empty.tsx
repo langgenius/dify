@@ -17,7 +17,7 @@ const Empty = () => {
       <div className="system-sm-medium mb-1 text-text-secondary">{t('apiBasedExtension.title', { ns: 'common' })}</div>
       <a
         className="system-xs-regular flex items-center text-text-accent"
-        href={docLink('/guides/extension/api-based-extension/README')}
+        href={docLink('/use-dify/workspace/api-extension/api-extension')}
         target="_blank"
         rel="noopener noreferrer"
       >

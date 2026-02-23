@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Aucune base de connaissances trouvée",
   "gotoAnything.emptyState.noPluginsFound": "Aucun plugin trouvé",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Aucun nœud de workflow trouvé",
-  "gotoAnything.emptyState.tryDifferentTerm": "Essayez un terme de recherche différent ou supprimez le filtre {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Essayez un terme de recherche différent",
   "gotoAnything.emptyState.trySpecificSearch": "Essayez {{shortcuts}} pour des recherches spécifiques",
   "gotoAnything.groups.apps": "Applications",
   "gotoAnything.groups.commands": "Commandes",

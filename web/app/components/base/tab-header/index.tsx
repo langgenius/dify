@@ -16,6 +16,8 @@ export type ITabHeaderProps = {
   items: Item[]
   value: string
   itemClassName?: string
+  itemWrapClassName?: string
+  activeItemClassName?: string
   onChange: (value: string) => void
 }
 
@@ -23,6 +25,8 @@ const TabHeader: FC<ITabHeaderProps> = ({
   items,
   value,
   itemClassName,
+  itemWrapClassName,
+  activeItemClassName,
   onChange,
 }) => {
   const renderItem = ({ id, name, icon, extra, disabled }: Item) => (
@@ -30,8 +34,9 @@ const TabHeader: FC<ITabHeaderProps> = ({
       key={id}
       className={cn(
         'system-md-semibold relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5',
-        id === value ? 'border-components-tab-active text-text-primary' : 'text-text-tertiary',
+        id === value ? cn('border-components-tab-active text-text-primary', activeItemClassName) : 'text-text-tertiary',
         disabled && 'cursor-not-allowed opacity-30',
+        itemWrapClassName,
       )}
       onClick={() => !disabled && onChange(id)}
     >

@@ -1,4 +1,4 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
@@ -23,24 +23,6 @@ export type CodeGenRes = {
   code: string
   language: string[]
   error?: string
-}
-
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onFile: IOnFile
-  onThought: IOnThought
-  onMessageEnd: IOnMessageEnd
-  onMessageReplace: IOnMessageReplace
-  onError: IOnError
-  getAbortController?: (abortController: AbortController) => void
-}) => {
-  return ssePost(`apps/${appId}/chat-messages`, {
-    body: {
-      ...body,
-      response_mode: 'streaming',
-    },
-  }, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {

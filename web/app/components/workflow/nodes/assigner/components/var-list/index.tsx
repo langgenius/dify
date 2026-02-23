@@ -178,7 +178,7 @@ const VarList: FC<Props> = ({
                     className="w-full"
                   />
                 )}
-              {item.operation === WriteMode.set && assignedVarType && (
+              {!!(item.operation === WriteMode.set && assignedVarType) && (
                 <>
                   {assignedVarType === 'number' && (
                     <Input

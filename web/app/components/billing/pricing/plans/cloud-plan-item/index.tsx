@@ -6,7 +6,8 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import { fetchSubscriptionUrls } from '@/service/billing'
+import { consoleClient } from '@/service/client'
 import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
 import { Plan } from '../../../type'
@@ -76,7 +77,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     try {
       if (isCurrentPaidPlan) {
         await openAsyncWindow(async () => {
-          const res = await fetchBillingUrl()
+          const res = await consoleClient.billing.invoices()
           if (res.url)
             return res.url
           throw new Error('Failed to open billing page')

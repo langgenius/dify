@@ -36,7 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.variables.variables import Variable
+from core.variables.variables import VariableBase
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -270,8 +270,8 @@ class RagPipelineService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list,
     ) -> Workflow:
         """
@@ -436,7 +436,7 @@ class RagPipelineService:
                 user_inputs=user_inputs,
                 user_id=account.id,
                 variable_pool=VariablePool(
-                    system_variables=SystemVariable.empty(),
+                    system_variables=SystemVariable.default(),
                     user_inputs=user_inputs,
                     environment_variables=[],
                     conversation_variables=[],
@@ -1329,10 +1329,24 @@ class RagPipelineService:
         """
         Get datasource plugins
         """
-        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = (
+            db.session.query(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = (
+            db.session.query(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -1413,10 +1427,24 @@ class RagPipelineService:
         """
         Get pipeline
         """
-        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = (
+            db.session.query(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = (
+            db.session.query(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not pipeline:
             raise ValueError("Pipeline not found")
         return pipeline
