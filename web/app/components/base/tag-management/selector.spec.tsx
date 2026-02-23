@@ -237,6 +237,14 @@ describe('TagSelector', () => {
       await waitFor(() => {
         expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
       })
+
+      const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
+      await user.type(input, 'NewKnowledgeTag')
+
+      const createOption = await screen.findByTestId('create-tag-option')
+      await user.click(createOption)
+
+      expect(createTag).toHaveBeenCalledWith('NewKnowledgeTag', 'knowledge')
     })
   })
 })
