@@ -130,7 +130,7 @@ describe('TagSelector', () => {
     it('should render nothing when isPopover is false', () => {
       const { container } = render(<TagSelector {...defaultProps} isPopover={false} />)
       // Only the empty fragment wrapper
-      expect(container.innerHTML).toBe('')
+      expect(container).toBeEmptyDOMElement()
     })
 
     it('should render the popover trigger button', () => {

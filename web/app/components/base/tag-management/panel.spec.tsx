@@ -331,7 +331,7 @@ describe('Panel', () => {
 
     it('should add new tag to the store tag list', async () => {
       const user = userEvent.setup()
-      const newTag = { id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 }
+      const newTag: Tag = { id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 }
       vi.mocked(createTag).mockResolvedValue(newTag)
 
       render(<Panel {...defaultProps} />)
