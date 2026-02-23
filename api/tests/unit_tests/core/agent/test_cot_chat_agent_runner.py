@@ -107,7 +107,11 @@ class TestOrganizeUserQuery:
     def test_organize_user_query_with_files_no_config(self, mock_to_prompt, mock_user_prompt, runner):
         from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 
-        mock_content = ImagePromptMessageContent(type="image_url", image_url={"url": "http://test"})
+        mock_content = ImagePromptMessageContent(
+            url="http://test",
+            format="png",
+            mime_type="image/png",
+        )
         mock_to_prompt.return_value = mock_content
         mock_user_prompt.side_effect = lambda content: MagicMock(content=content)
 

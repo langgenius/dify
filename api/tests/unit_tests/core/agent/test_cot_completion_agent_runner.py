@@ -94,7 +94,8 @@ class TestOrganizeInstructionPrompt:
         assert "Test instruction" in result
         assert "toolA" in result
         assert "toolB" in result
-        assert json.dumps([{"name": "toolA"}, {"name": "toolB"}]) in result
+        tools_payload = json.loads(result.split(" | ")[1])
+        assert {item["name"] for item in tools_payload} == {"toolA", "toolB"}
 
     def test_agent_none_raises(self, runner):
         runner.app_config = DummyAppConfig(agent=None)

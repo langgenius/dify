@@ -1,3 +1,12 @@
+"""Unit tests for core.agent.plugin_entities.
+
+Covers entities such as AgentFeature, AgentProviderEntityWithPlugin,
+AgentStrategyEntity, AgentStrategyIdentity, AgentStrategyParameter,
+AgentStrategyProviderEntity, and AgentStrategyProviderIdentity. Tests rely on
+Pydantic ValidationError behavior and pytest fixtures for validation and
+mocking; ensure entity invariants and validation rules remain stable.
+"""
+
 import pytest
 from pydantic import ValidationError
 
@@ -204,22 +213,21 @@ class TestAgentStrategyProviderEntity:
 
 class TestAgentStrategyEntity:
     def test_parameters_default_empty(self, mock_identity, mock_i18n):
-        entity = AgentStrategyEntity.model_construct(
+        entity = AgentStrategyEntity(
             identity=mock_identity,
             description=__import__("core.tools.entities.common_entities", fromlist=["I18nObject"]).I18nObject(
                 en_US="test"
             ),
-            parameters=[],
         )
         assert entity.parameters == []
 
     def test_parameters_none_converted_to_empty(self, mock_identity, mock_i18n):
-        entity = AgentStrategyEntity.model_construct(
+        entity = AgentStrategyEntity(
             identity=mock_identity,
             description=__import__("core.tools.entities.common_entities", fromlist=["I18nObject"]).I18nObject(
                 en_US="test"
             ),
-            parameters=[],
+            parameters=None,
         )
         assert entity.parameters == []
 
@@ -240,10 +248,12 @@ class TestAgentStrategyEntity:
         assert entity.parameters == [param]
 
     def test_invalid_parameters_type_raises(self, mock_identity, mock_i18n):
+        from core.tools.entities.common_entities import I18nObject
+
         with pytest.raises(ValidationError):
             AgentStrategyEntity(
                 identity=mock_identity,
-                description=mock_i18n,
+                description=I18nObject(en_US="test"),
                 parameters="invalid",
             )
 
@@ -266,10 +276,12 @@ class TestAgentStrategyEntity:
         assert entity.features == features
 
     def test_invalid_features_type_raises(self, mock_identity, mock_i18n):
+        from core.tools.entities.common_entities import I18nObject
+
         with pytest.raises(ValidationError):
             AgentStrategyEntity(
                 identity=mock_identity,
-                description=mock_i18n,
+                description=I18nObject(en_US="test"),
                 features="invalid",
             )
 

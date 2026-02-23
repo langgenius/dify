@@ -120,6 +120,7 @@ def runner(mocker):
     runner.history_prompt_messages = []
     runner._current_thoughts = []
     runner.files = []
+    runner.agent_callback = MagicMock()
 
     runner._init_prompt_tools = MagicMock(return_value=({}, []))
     runner.create_agent_thought = MagicMock(return_value="thought1")

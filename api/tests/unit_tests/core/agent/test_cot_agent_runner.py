@@ -163,11 +163,6 @@ class TestHandleInvokeAction:
         response, meta = runner._handle_invoke_action(action, {}, [])
         assert "there is not a tool named" in response
 
-    def test_tool_not_found(self, runner):
-        action = AgentScratchpadUnit.Action(action_name="missing", action_input={})
-        response, meta = runner._handle_invoke_action(action, {}, [])
-        assert "there is not a tool" in response
-
     def test_tool_with_json_string_args(self, runner, mocker):
         action = AgentScratchpadUnit.Action(action_name="tool", action_input=json.dumps({"a": 1}))
         tool_instance = MagicMock()
@@ -455,14 +450,6 @@ class TestOrganizeHistoricPromptMessagesExtended:
         assert result == ["final"]
 
     def test_tool_message_without_scratchpad_raises(self, runner):
-        from core.model_runtime.entities.message_entities import ToolPromptMessage
-
-        runner.history_prompt_messages = [ToolPromptMessage(content="obs", tool_call_id="1")]
-
-        with pytest.raises(NotImplementedError):
-            runner._organize_historic_prompt_messages([])
-
-    def test_tool_message_without_scratchpad_branch(self, runner):
         from core.model_runtime.entities.message_entities import ToolPromptMessage
 
         runner.history_prompt_messages = [ToolPromptMessage(content="obs", tool_call_id="1")]
