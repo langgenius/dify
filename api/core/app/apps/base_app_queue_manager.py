@@ -133,7 +133,7 @@ class AppQueueManager(ABC):
         self._publish(event, pub_from)
 
     @abstractmethod
-    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
         Publish event to queue
         :param event:
