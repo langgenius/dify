@@ -12,11 +12,11 @@ from sqlalchemy.orm import Session
 from models.dataset import Dataset, Document, DocumentSegment
 
 
-class TestDatasetDocumentProperties:
-    """Integration tests for Dataset and Document aggregate properties."""
+class TestDatasetDocumentCascadeDeletes:
+    """Integration tests for Dataset-Document cascade delete operations."""
 
-    def test_dataset_total_documents(self, db_session_with_containers: Session) -> None:
-        """Test Dataset.total_documents counts all documents in the dataset."""
+    def test_dataset_with_documents_relationship(self, db_session_with_containers: Session) -> None:
+        """Test dataset can track its documents."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
@@ -44,8 +44,8 @@ class TestDatasetDocumentProperties:
 
         db_session_with_containers.rollback()
 
-    def test_dataset_total_available_documents(self, db_session_with_containers: Session) -> None:
-        """Test Dataset.total_available_documents counts only completed, enabled, non-archived documents."""
+    def test_dataset_available_documents_count(self, db_session_with_containers: Session) -> None:
+        """Test dataset can count available documents."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
@@ -104,8 +104,8 @@ class TestDatasetDocumentProperties:
 
         db_session_with_containers.rollback()
 
-    def test_dataset_word_count(self, db_session_with_containers: Session) -> None:
-        """Test Dataset.word_count aggregates word counts from all documents."""
+    def test_dataset_word_count_aggregation(self, db_session_with_containers: Session) -> None:
+        """Test dataset can aggregate word count from documents."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
@@ -194,8 +194,8 @@ class TestDatasetDocumentProperties:
 
         db_session_with_containers.rollback()
 
-    def test_document_segment_count(self, db_session_with_containers: Session) -> None:
-        """Test Document.segment_count counts all segments for the document."""
+    def test_document_segment_count_property(self, db_session_with_containers: Session) -> None:
+        """Test document can count its segments."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
@@ -236,8 +236,8 @@ class TestDatasetDocumentProperties:
 
         db_session_with_containers.rollback()
 
-    def test_document_hit_count(self, db_session_with_containers: Session) -> None:
-        """Test Document.hit_count aggregates hit counts from all segments."""
+    def test_document_hit_count_aggregation(self, db_session_with_containers: Session) -> None:
+        """Test document can aggregate hit count from segments."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
