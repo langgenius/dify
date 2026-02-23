@@ -11,6 +11,12 @@ html[data-theme="dark"] {
     --color-workflow-process-bg: linear-gradient(90deg,
             rgba(24, 24, 27, 0.25) 0%,
             rgba(24, 24, 27, 0.04) 100%);
+    --color-workflow-process-paused-bg: linear-gradient(90deg,
+            rgba(247, 144, 9, 0.14) 0%,
+            rgba(247, 144, 9, 0.00) 100%);
+    --color-workflow-process-failed-bg: linear-gradient(90deg,
+            rgba(240, 68, 56, 0.14) 0%,
+            rgba(240, 68, 56, 0.00) 100%);
     --color-workflow-run-failed-bg: linear-gradient(98deg,
             rgba(240, 68, 56, 0.12) 0%,
             rgba(0, 0, 0, 0) 26.01%);
@@ -75,4 +81,5 @@ html[data-theme="dark"] {
     --color-billing-plan-card-enterprise-bg: linear-gradient(180deg, #03F 0%, rgba(0, 51, 255, 0.00) 100%);
     --color-knowledge-pipeline-creation-footer-bg: linear-gradient(90deg, rgba(34, 34, 37, 1) 4.89%, rgba(0, 0, 0, 0) 100%);
     --color-progress-bar-indeterminate-stripe: repeating-linear-gradient(-55deg, #3A3A40, #3A3A40 2px, transparent 2px, transparent 5px);
+    --color-chat-answer-human-input-form-divider-bg: linear-gradient(0deg, rgba(200, 206, 218, 0.14) 0%, rgba(0, 0, 0, 0) 212.5%);
 }

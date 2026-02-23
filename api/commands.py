@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
+from libs.db_migration_lock import DbMigrationAutoRenewLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -53,6 +54,8 @@ from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs i
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
+
+DB_UPGRADE_LOCK_TTL_SECONDS = 60
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -727,8 +730,15 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    lock = redis_client.lock(name="db_upgrade_lock", timeout=60)
+    lock = DbMigrationAutoRenewLock(
+        redis_client=redis_client,
+        name="db_upgrade_lock",
+        ttl_seconds=DB_UPGRADE_LOCK_TTL_SECONDS,
+        logger=logger,
+        log_context="db_migration",
+    )
     if lock.acquire(blocking=False):
+        migration_succeeded = False
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
 
@@ -737,12 +747,16 @@ def upgrade_db():
 
             flask_migrate.upgrade()
 
+            migration_succeeded = True
             click.echo(click.style("Database migration successful!", fg="green"))
 
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to execute database migration")
+            click.echo(click.style(f"Database migration failed: {e}", fg="red"))
+            raise SystemExit(1)
         finally:
-            lock.release()
+            status = "successful" if migration_succeeded else "failed"
+            lock.release_safely(status=status)
     else:
         click.echo("Database migration skipped")
 
@@ -1450,54 +1464,58 @@ def clear_orphaned_file_records(force: bool):
         all_ids_in_tables = []
         for ids_table in ids_tables:
             query = ""
-            if ids_table["type"] == "uuid":
-                click.echo(
-                    click.style(
-                        f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}", fg="white"
+            match ids_table["type"]:
+                case "uuid":
+                    click.echo(
+                        click.style(
+                            f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}",
+                            fg="white",
+                        )
                     )
-                )
-                query = (
-                    f"SELECT {ids_table['column']} FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
-                )
-                with db.engine.begin() as conn:
-                    rs = conn.execute(sa.text(query))
-                for i in rs:
-                    all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
-            elif ids_table["type"] == "text":
-                click.echo(
-                    click.style(
-                        f"- Listing file-id-like strings in column {ids_table['column']} in table {ids_table['table']}",
-                        fg="white",
+                    c = ids_table["column"]
+                    query = f"SELECT {c} FROM {ids_table['table']} WHERE {c} IS NOT NULL"
+                    with db.engine.begin() as conn:
+                        rs = conn.execute(sa.text(query))
+                    for i in rs:
+                        all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
+                case "text":
+                    t = ids_table["table"]
+                    click.echo(
+                        click.style(
+                            f"- Listing file-id-like strings in column {ids_table['column']} in table {t}",
+                            fg="white",
+                        )
                     )
-                )
-                query = (
-                    f"SELECT regexp_matches({ids_table['column']}, '{guid_regexp}', 'g') AS extracted_id "
-                    f"FROM {ids_table['table']}"
-                )
-                with db.engine.begin() as conn:
-                    rs = conn.execute(sa.text(query))
-                for i in rs:
-                    for j in i[0]:
-                        all_ids_in_tables.append({"table": ids_table["table"], "id": j})
-            elif ids_table["type"] == "json":
-                click.echo(
-                    click.style(
-                        (
-                            f"- Listing file-id-like JSON string in column {ids_table['column']} "
-                            f"in table {ids_table['table']}"
-                        ),
-                        fg="white",
+                    query = (
+                        f"SELECT regexp_matches({ids_table['column']}, '{guid_regexp}', 'g') AS extracted_id "
+                        f"FROM {ids_table['table']}"
                     )
-                )
-                query = (
-                    f"SELECT regexp_matches({ids_table['column']}::text, '{guid_regexp}', 'g') AS extracted_id "
-                    f"FROM {ids_table['table']}"
-                )
-                with db.engine.begin() as conn:
-                    rs = conn.execute(sa.text(query))
-                for i in rs:
-                    for j in i[0]:
-                        all_ids_in_tables.append({"table": ids_table["table"], "id": j})
+                    with db.engine.begin() as conn:
+                        rs = conn.execute(sa.text(query))
+                    for i in rs:
+                        for j in i[0]:
+                            all_ids_in_tables.append({"table": ids_table["table"], "id": j})
+                case "json":
+                    click.echo(
+                        click.style(
+                            (
+                                f"- Listing file-id-like JSON string in column {ids_table['column']} "
+                                f"in table {ids_table['table']}"
+                            ),
+                            fg="white",
+                        )
+                    )
+                    query = (
+                        f"SELECT regexp_matches({ids_table['column']}::text, '{guid_regexp}', 'g') AS extracted_id "
+                        f"FROM {ids_table['table']}"
+                    )
+                    with db.engine.begin() as conn:
+                        rs = conn.execute(sa.text(query))
+                    for i in rs:
+                        for j in i[0]:
+                            all_ids_in_tables.append({"table": ids_table["table"], "id": j})
+                case _:
+                    pass
         click.echo(click.style(f"Found {len(all_ids_in_tables)} file ids in tables.", fg="white"))
 
     except Exception as e:
@@ -1737,59 +1755,18 @@ def file_usage(
                 if src_filter != src:
                     continue
 
-        if ids_table["type"] == "uuid":
-            # Direct UUID match
-            query = (
-                f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
-                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
-            )
-            with db.engine.begin() as conn:
-                rs = conn.execute(sa.text(query))
-                for row in rs:
-                    record_id = str(row[0])
-                    ref_file_id = str(row[1])
-                    if ref_file_id not in file_key_map:
-                        continue
-                    storage_key = file_key_map[ref_file_id]
-
-                    # Apply filters
-                    if file_id and ref_file_id != file_id:
-                        continue
-                    if key and not storage_key.endswith(key):
-                        continue
-
-                    # Only collect items within the requested page range
-                    if offset <= total_count < offset + limit:
-                        paginated_usages.append(
-                            {
-                                "src": f"{ids_table['table']}.{ids_table['column']}",
-                                "record_id": record_id,
-                                "file_id": ref_file_id,
-                                "key": storage_key,
-                            }
-                        )
-                    total_count += 1
-
-        elif ids_table["type"] in ("text", "json"):
-            # Extract UUIDs from text/json content
-            column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
-            query = (
-                f"SELECT {ids_table['pk_column']}, {column_cast} "
-                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
-            )
-            with db.engine.begin() as conn:
-                rs = conn.execute(sa.text(query))
-                for row in rs:
-                    record_id = str(row[0])
-                    content = str(row[1])
-
-                    # Find all UUIDs in the content
-                    import re
-
-                    uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
-                    matches = uuid_pattern.findall(content)
-
-                    for ref_file_id in matches:
+        match ids_table["type"]:
+            case "uuid":
+                # Direct UUID match
+                query = (
+                    f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
+                    f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+                )
+                with db.engine.begin() as conn:
+                    rs = conn.execute(sa.text(query))
+                    for row in rs:
+                        record_id = str(row[0])
+                        ref_file_id = str(row[1])
                         if ref_file_id not in file_key_map:
                             continue
                         storage_key = file_key_map[ref_file_id]
@@ -1811,6 +1788,50 @@ def file_usage(
                                 }
                             )
                         total_count += 1
+
+            case "text" | "json":
+                # Extract UUIDs from text/json content
+                column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
+                query = (
+                    f"SELECT {ids_table['pk_column']}, {column_cast} "
+                    f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+                )
+                with db.engine.begin() as conn:
+                    rs = conn.execute(sa.text(query))
+                    for row in rs:
+                        record_id = str(row[0])
+                        content = str(row[1])
+
+                        # Find all UUIDs in the content
+                        import re
+
+                        uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
+                        matches = uuid_pattern.findall(content)
+
+                        for ref_file_id in matches:
+                            if ref_file_id not in file_key_map:
+                                continue
+                            storage_key = file_key_map[ref_file_id]
+
+                            # Apply filters
+                            if file_id and ref_file_id != file_id:
+                                continue
+                            if key and not storage_key.endswith(key):
+                                continue
+
+                            # Only collect items within the requested page range
+                            if offset <= total_count < offset + limit:
+                                paginated_usages.append(
+                                    {
+                                        "src": f"{ids_table['table']}.{ids_table['column']}",
+                                        "record_id": record_id,
+                                        "file_id": ref_file_id,
+                                        "key": storage_key,
+                                    }
+                                )
+                            total_count += 1
+            case _:
+                pass
 
     # Output results
     if output_json:

@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
+import { IS_CE_EDITION } from '@/config'
 import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
@@ -87,7 +88,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             <span className="px-0.5">{t('metadata.metadata', { ns: 'dataset' })}</span>
           </Button>
         )}
-        {onBatchSummary && (
+        {onBatchSummary && IS_CE_EDITION && (
           <Button
             variant="ghost"
             className="gap-x-0.5 px-3"

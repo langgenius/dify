@@ -3,6 +3,9 @@ import {
   useWorkflowFailed,
   useWorkflowFinished,
   useWorkflowNodeFinished,
+  useWorkflowNodeHumanInputFormFilled,
+  useWorkflowNodeHumanInputFormTimeout,
+  useWorkflowNodeHumanInputRequired,
   useWorkflowNodeIterationFinished,
   useWorkflowNodeIterationNext,
   useWorkflowNodeIterationStarted,
@@ -11,6 +14,7 @@ import {
   useWorkflowNodeLoopStarted,
   useWorkflowNodeRetry,
   useWorkflowNodeStarted,
+  useWorkflowPaused,
   useWorkflowStarted,
   useWorkflowTextChunk,
   useWorkflowTextReplace,
@@ -32,6 +36,10 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
+  const { handleWorkflowPaused } = useWorkflowPaused()
+  const { handleWorkflowNodeHumanInputRequired } = useWorkflowNodeHumanInputRequired()
+  const { handleWorkflowNodeHumanInputFormFilled } = useWorkflowNodeHumanInputFormFilled()
+  const { handleWorkflowNodeHumanInputFormTimeout } = useWorkflowNodeHumanInputFormTimeout()
 
   return {
     handleWorkflowStarted,
@@ -49,5 +57,9 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowAgentLog,
+    handleWorkflowPaused,
+    handleWorkflowNodeHumanInputFormFilled,
+    handleWorkflowNodeHumanInputRequired,
+    handleWorkflowNodeHumanInputFormTimeout,
   }
 }

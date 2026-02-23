@@ -18,25 +18,11 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
-import { ToolTypeEnum } from '../workflow/block-selector/types'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
+import { getToolType } from './utils'
 
-const getToolType = (type: string) => {
-  switch (type) {
-    case 'builtin':
-      return ToolTypeEnum.BuiltIn
-    case 'api':
-      return ToolTypeEnum.Custom
-    case 'workflow':
-      return ToolTypeEnum.Workflow
-    case 'mcp':
-      return ToolTypeEnum.MCP
-    default:
-      return ToolTypeEnum.BuiltIn
-  }
-}
 const ProviderList = () => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'

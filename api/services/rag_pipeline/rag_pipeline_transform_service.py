@@ -174,6 +174,10 @@ class RagPipelineTransformService:
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
 
+        # Copy summary_index_setting from dataset to knowledge_index node configuration
+        if dataset.summary_index_setting:
+            knowledge_configuration.summary_index_setting = dataset.summary_index_setting
+
         knowledge_configuration_dict.update(knowledge_configuration.model_dump())
         node["data"] = knowledge_configuration_dict
         return node

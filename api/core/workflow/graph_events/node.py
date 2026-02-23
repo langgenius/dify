@@ -54,6 +54,22 @@ class NodeRunRetryEvent(NodeRunStartedEvent):
     retry_index: int = Field(..., description="which retry attempt is about to be performed")
 
 
+class NodeRunHumanInputFormFilledEvent(GraphNodeEventBase):
+    """Emitted when a HumanInput form is submitted and before the node finishes."""
+
+    node_title: str = Field(..., description="HumanInput node title")
+    rendered_content: str = Field(..., description="Markdown content rendered with user inputs.")
+    action_id: str = Field(..., description="User action identifier chosen in the form.")
+    action_text: str = Field(..., description="Display text of the chosen action button.")
+
+
+class NodeRunHumanInputFormTimeoutEvent(GraphNodeEventBase):
+    """Emitted when a HumanInput form times out."""
+
+    node_title: str = Field(..., description="HumanInput node title")
+    expiration_time: datetime = Field(..., description="Form expiration time")
+
+
 class NodeRunPauseRequestedEvent(GraphNodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
 
