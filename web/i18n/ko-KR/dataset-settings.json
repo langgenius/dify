@@ -16,7 +16,7 @@
   "form.indexMethod": "인덱스 방법",
   "form.indexMethodChangeToEconomyDisabledTip": "HQ 에서 ECO 로 다운그레이드할 수 없습니다.",
   "form.indexMethodEconomy": "경제적",
-  "form.indexMethodEconomyTip": "오프라인 벡터 엔진, 키워드 인덱스 등을 사용하여 토큰을 소비하지 않고도 정확도를 감소시킵니다.",
+  "form.indexMethodEconomyTip": "각 청크에 {{count}}개의 키워드를 사용하여 검색하며, 토큰을 소비하지 않는 대신 정확도가 감소합니다.",
   "form.indexMethodHighQuality": "고품질",
   "form.indexMethodHighQualityTip": "사용자 쿼리 시 더 높은 정확도를 제공하기 위해 Embedding 모델을 호출하여 처리합니다.",
   "form.me": "(당신)",
@@ -39,6 +39,12 @@
   "form.retrievalSettings": "검색 설정",
   "form.save": "저장",
   "form.searchModel": "모델 검색",
+  "form.summaryAutoGen": "요약 자동 생성",
+  "form.summaryAutoGenEnableTip": "활성화하면 새로 추가된 문서에 대해 요약이 자동으로 생성됩니다. 기존 문서는 여전히 수동으로 요약할 수 있습니다.",
+  "form.summaryAutoGenTip": "새로 추가된 문서에 대해 요약이 자동으로 생성됩니다. 기존 문서는 여전히 수동으로 요약할 수 있습니다.",
+  "form.summaryInstructions": "지침",
+  "form.summaryInstructionsPlaceholder": "자동 생성 요약의 규칙이나 스타일을 설명하세요…",
+  "form.summaryModel": "요약 모델",
   "form.upgradeHighQualityTip": "고품질 모드로 업그레이드한 후에는 경제적 모드로 되돌릴 수 없습니다.",
   "title": "지식 설정"
 }

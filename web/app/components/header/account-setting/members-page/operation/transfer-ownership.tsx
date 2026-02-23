@@ -5,6 +5,10 @@ import {
 } from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWorkspacePermissions } from '@/service/use-workspace'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -13,6 +17,17 @@ type Props = {
 
 const TransferOwnership = ({ onOperate }: Props) => {
   const { t } = useTranslation()
+  const { currentWorkspace } = useAppContext()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
+  if (systemFeatures.branding.enabled) {
+    if (isFetchingWorkspacePermissions) {
+      return <Loading />
+    }
+    if (!workspacePermissions || workspacePermissions.allow_owner_transfer !== true) {
+      return <span className="system-sm-regular px-3 text-text-secondary">{t('members.owner', { ns: 'common' })}</span>
+    }
+  }
 
   return (
     <Menu as="div" className="relative h-full w-full">

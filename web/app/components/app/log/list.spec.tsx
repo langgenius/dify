@@ -182,12 +182,12 @@ describe('Chat Message Loading Race Condition Prevention', () => {
 
       // Update pagination anchor with oldest answer ID
       const answerItems = chatItems.filter(item => item.isAnswer)
-      const oldestAnswer = answerItems[answerItems.length - 1]
+      const oldestAnswer = answerItems[0]
       if (oldestAnswer?.id) {
         oldestAnswerIdRef = oldestAnswer.id
       }
 
-      expect(oldestAnswerIdRef).toBe('answer-2')
+      expect(oldestAnswerIdRef).toBe('answer-1')
     })
 
     it('should use pagination anchor in subsequent requests', () => {

@@ -134,6 +134,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Allow github-actions bot to trigger this workflow via repository_dispatch
+          # See: https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          allowed_bots: 'github-actions[bot]'
           prompt: |
             You are a professional i18n synchronization engineer for the Dify project.
             Your task is to keep all language translations in sync with the English source (en-US).
@@ -285,6 +288,22 @@ jobs:
               - `${variable}` - Template literal
               - `<tag>content</tag>` - HTML tags
               - `_one`, `_other` - Pluralization suffixes (these are KEY suffixes, not values)
+
+              **CRITICAL: Variable names and tag names MUST stay in English - NEVER translate them**
+
+              ✅ CORRECT examples:
+              - English: "{{count}} items" → Japanese: "{{count}} 個のアイテム"
+              - English: "{{name}} updated" → Korean: "{{name}} 업데이트됨"
+              - English: "<email>{{email}}</email>" → Chinese: "<email>{{email}}</email>"
+              - English: "<CustomLink>Marketplace</CustomLink>" → Japanese: "<CustomLink>マーケットプレイス</CustomLink>"
+
+              ❌ WRONG examples (NEVER do this - will break the application):
+              - "{{count}}" → "{{カウント}}" ❌ (variable name translated to Japanese)
+              - "{{name}}" → "{{이름}}" ❌ (variable name translated to Korean)
+              - "{{email}}" → "{{邮箱}}" ❌ (variable name translated to Chinese)
+              - "<email>" → "<メール>" ❌ (tag name translated)
+              - "<CustomLink>" → "<自定义链接>" ❌ (component name translated)
+
             - Use appropriate language register (formal/informal) based on existing translations
             - Match existing translation style in each language
             - Technical terms: check existing conventions per language

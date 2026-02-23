@@ -9,6 +9,7 @@ import type {
   CustomFile,
   FullDocumentDetail,
   ProcessRule,
+  SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
 import { useCallback } from 'react'
@@ -141,6 +142,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     retrievalConfig: RetrievalConfig,
     embeddingModel: DefaultModel,
     indexingTechnique: string,
+    summaryIndexSetting?: SummaryIndexSettingType,
   ): CreateDocumentReq | null => {
     if (isSetting) {
       return {
@@ -148,6 +150,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         doc_form: currentDocForm,
         doc_language: docLanguage,
         process_rule: processRule,
+        summary_index_setting: summaryIndexSetting,
         retrieval_model: retrievalConfig,
         embedding_model: embeddingModel.model,
         embedding_model_provider: embeddingModel.provider,
@@ -164,6 +167,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
       },
       indexing_technique: indexingTechnique,
       process_rule: processRule,
+      summary_index_setting: summaryIndexSetting,
       doc_form: currentDocForm,
       doc_language: docLanguage,
       retrieval_model: retrievalConfig,

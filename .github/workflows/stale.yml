@@ -18,7 +18,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/stale@v5
+      - uses: actions/stale@v10
         with:
           days-before-issue-stale: 15
           days-before-issue-close: 3

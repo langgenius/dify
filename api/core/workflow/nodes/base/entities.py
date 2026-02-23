@@ -115,7 +115,7 @@ class DefaultValue(BaseModel):
     @model_validator(mode="after")
     def validate_value_type(self) -> DefaultValue:
         # Type validation configuration
-        type_validators = {
+        type_validators: dict[DefaultValueType, dict[str, Any]] = {
             DefaultValueType.STRING: {
                 "type": str,
                 "converter": lambda x: x,

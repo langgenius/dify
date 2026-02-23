@@ -19,6 +19,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
 
@@ -146,26 +147,14 @@ const MoreActions: FC = () => {
         }
       }
 
+      const fileName = `${filename}.${type}`
+
       if (currentWorkflow) {
         setPreviewUrl(dataUrl)
-        setPreviewTitle(`${filename}.${type}`)
+        setPreviewTitle(fileName)
+      }
 
-        const link = document.createElement('a')
-        link.href = dataUrl
-        link.download = `${filename}.${type}`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-      else {
-        // For current view, just download
-        const link = document.createElement('a')
-        link.href = dataUrl
-        link.download = `${filename}.${type}`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
+      downloadUrl({ url: dataUrl, fileName })
     }
     catch (error) {
       console.error('Export image failed:', error)

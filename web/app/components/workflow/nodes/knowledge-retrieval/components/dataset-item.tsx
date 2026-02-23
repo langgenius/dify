@@ -110,7 +110,7 @@ const DatasetItem: FC<Props> = ({
         </div>
       )}
       {
-        payload.indexing_technique && (
+        !!payload.indexing_technique && (
           <Badge
             className="shrink-0 group-hover/dataset-item:hidden"
             text={formatIndexingTechniqueAndMethod(payload.indexing_technique, payload.retrieval_model_dict?.search_method)}

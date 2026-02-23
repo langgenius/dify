@@ -30,7 +30,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink('https://docs.dify.ai/versions/3-0-x')
+  const docLink = useDocLink()
   const [localeData, setLocaleData] = useState(data)
   const [loading, setLoading] = useState(false)
   const { notify } = useToastContext()
@@ -102,7 +102,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
           {t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })}
           <a
-            href={docLink('/user-guide/extension/api-based-extension/README#api-based-extension')}
+            href={docLink('/use-dify/workspace/api-extension/api-extension')}
             target="_blank"
             rel="noopener noreferrer"
             className="group flex items-center text-xs font-normal text-text-accent"

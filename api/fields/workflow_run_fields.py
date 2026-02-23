@@ -23,6 +23,19 @@ def build_workflow_run_for_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
 
 
+workflow_run_for_archived_log_fields = {
+    "id": fields.String,
+    "status": fields.String,
+    "triggered_from": fields.String,
+    "elapsed_time": fields.Float,
+    "total_tokens": fields.Integer,
+}
+
+
+def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
+    return api_or_ns.model("WorkflowRunForArchivedLog", workflow_run_for_archived_log_fields)
+
+
 workflow_run_for_list_fields = {
     "id": fields.String,
     "version": fields.String,
