@@ -445,8 +445,11 @@ describe('Panel', () => {
       unmount()
 
       await waitFor(() => {
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalledWith(['tag-1', 'tag-2'])
+        expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
       })
+
+      const [updatedTags] = vi.mocked(defaultProps.onCacheUpdate).mock.calls[0]
+      expect(updatedTags.map((tag: Tag) => tag.id)).toEqual(['tag-1', 'tag-2'])
     })
 
     it('should not call bind/unbind when value has not changed', () => {

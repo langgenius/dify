@@ -24,6 +24,53 @@ vi.mock('@/service/tag', () => ({
   unBindTag,
 }))
 
+// Mock popover for deterministic open/close behavior in unit tests.
+vi.mock('@/app/components/base/popover', () => {
+  type PopoverContentProps = {
+    open?: boolean
+    onClose?: () => void
+  }
+  type MockPopoverProps = {
+    htmlContent: React.ReactNode
+    btnElement?: React.ReactNode
+    btnClassName?: string | ((open: boolean) => string)
+  }
+
+  const MockPopover = ({ htmlContent, btnElement, btnClassName }: MockPopoverProps) => {
+    const [isOpen, setIsOpen] = React.useState(false)
+    const computedClassName = typeof btnClassName === 'function'
+      ? btnClassName(isOpen)
+      : btnClassName
+
+    const content = React.isValidElement(htmlContent)
+      ? React.cloneElement(htmlContent as React.ReactElement<PopoverContentProps>, {
+          open: isOpen,
+          onClose: () => setIsOpen(false),
+        })
+      : htmlContent
+
+    return (
+      <div data-testid="custom-popover">
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          className={computedClassName}
+          onClick={() => setIsOpen(prev => !prev)}
+        >
+          {btnElement}
+        </button>
+        {isOpen && (
+          <div data-testid="popover-content">
+            {content}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return { __esModule: true, default: MockPopover }
+})
+
 // Mock use-context-selector for ToastContext
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
@@ -185,7 +232,9 @@ describe('TagSelector', () => {
       const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
 
-      expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
+      await waitFor(() => {
+        expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
+      })
 
       await waitFor(() => {
         expect(useTagStore.getState().tagList).toEqual(freshTags)
@@ -244,7 +293,9 @@ describe('TagSelector', () => {
       const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
 
-      expect(createTag).toHaveBeenCalledWith('NewKnowledgeTag', 'knowledge')
+      await waitFor(() => {
+        expect(createTag).toHaveBeenCalledWith('NewKnowledgeTag', 'knowledge')
+      })
     })
   })
 })
