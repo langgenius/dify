@@ -23,8 +23,8 @@ const PAGE_SIZE = 20
 type Props = {
   value?: {
     app_id: string
-    inputs: Record<string, any>
-    files?: any[]
+    inputs: Record<string, unknown>
+    files?: unknown[]
   }
   scope?: string
   disabled?: boolean
@@ -32,8 +32,8 @@ type Props = {
   offset?: OffsetOptions
   onSelect: (app: {
     app_id: string
-    inputs: Record<string, any>
-    files?: any[]
+    inputs: Record<string, unknown>
+    files?: unknown[]
   }) => void
   supportAddCustomTool?: boolean
 }
@@ -63,12 +63,12 @@ const AppSelector: FC<Props> = ({
     name: searchText,
   })
 
-  const pages = data?.pages ?? []
   const displayedApps = useMemo(() => {
+    const pages = data?.pages ?? []
     if (!pages.length)
       return []
     return pages.flatMap(({ data: apps }) => apps)
-  }, [pages])
+  }, [data?.pages])
 
   // fetch selected app by id to avoid pagination gaps
   const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
@@ -130,7 +130,7 @@ const AppSelector: FC<Props> = ({
     setIsShowChooseApp(false)
   }
 
-  const handleFormChange = (inputs: Record<string, any>) => {
+  const handleFormChange = (inputs: Record<string, unknown>) => {
     const newFiles = inputs['#image#']
     delete inputs['#image#']
     const newValue = {

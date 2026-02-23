@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { Item } from '.'
 import { useState } from 'react'
 import Select, { PortalSelect, SimpleSelect } from '.'

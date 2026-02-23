@@ -19,7 +19,7 @@ jobs:
       github.event.workflow_run.head_branch == 'deploy/agent-dev'
     steps:
       - name: Deploy to server
-        uses: appleboy/ssh-action@v0.1.8
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.AGENT_DEV_SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

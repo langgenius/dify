@@ -41,7 +41,7 @@ const Empty = ({
       <div className="mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary">
         {(hasTitle && renderType) ? t(`addToolModal.${renderType}.title`, { ns: 'tools' }) : 'No tools available'}
       </div>
-      {(!isAgent && hasTitle && renderType) && (
+      {!!(!isAgent && hasTitle && renderType) && (
         <Comp className={cn('flex items-center text-[13px] leading-[18px] text-text-tertiary', hasLink && 'cursor-pointer hover:text-text-accent')} {...linkProps}>
           {t(`addToolModal.${renderType}.tip`, { ns: 'tools' })}
           {' '}

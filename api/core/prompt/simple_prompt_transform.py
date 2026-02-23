@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -19,10 +18,11 @@ from core.model_runtime.entities.message_entities import (
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.file import file_manager
 from models.model import AppMode
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from core.workflow.file.models import File
 
 
 class ModelMode(StrEnum):

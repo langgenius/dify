@@ -1,5 +1,6 @@
 'use client'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
+import type { WorkflowToolModalPayload } from '@/app/components/tools/workflow-tool'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -412,7 +413,7 @@ const ProviderDetail = ({
         )}
         {isShowEditWorkflowToolModal && (
           <WorkflowToolModal
-            payload={customCollection}
+            payload={customCollection as unknown as WorkflowToolModalPayload}
             onHide={() => setIsShowEditWorkflowToolModal(false)}
             onRemove={onClickWorkflowToolDelete}
             onSave={updateWorkflowToolProvider}

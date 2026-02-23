@@ -1,4 +1,5 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
+import type { InputValueTypes } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -25,9 +26,9 @@ import { cn } from '@/utils/classnames'
 export type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
-  inputs: Record<string, any>
-  inputsRef: React.RefObject<Record<string, any>>
-  onInputsChange: (inputs: Record<string, any>) => void
+  inputs: Record<string, InputValueTypes>
+  inputsRef: React.RefObject<Record<string, InputValueTypes>>
+  onInputsChange: (inputs: Record<string, InputValueTypes>) => void
   onSend: () => void
   visionConfig: VisionSettings
   onVisionFilesChange: (files: VisionFile[]) => void
@@ -52,7 +53,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   const [isInitialized, setIsInitialized] = useState(false)
 
   const onClear = () => {
-    const newInputs: Record<string, any> = {}
+    const newInputs: Record<string, InputValueTypes> = {}
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = ''
@@ -127,7 +128,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     {item.type === 'select' && (
                       <Select
                         className="w-full"
-                        defaultValue={inputs[item.key]}
+                        defaultValue={inputs[item.key] as (string | number | undefined)}
                         onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
                         items={(item.options || []).map(i => ({ name: i, value: i }))}
                         allowSearch={false}
@@ -137,7 +138,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                       <Input
                         type="text"
                         placeholder={item.name}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as string}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                         maxLength={item.max_length}
                       />
@@ -146,7 +147,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                       <Textarea
                         className="h-[104px] sm:text-xs"
                         placeholder={item.name}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as string}
                         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                       />
                     )}
@@ -154,14 +155,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                       <Input
                         type="number"
                         placeholder={item.name}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as number}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                       />
                     )}
                     {item.type === 'checkbox' && (
                       <BoolInput
                         name={item.name || item.key}
-                        value={!!inputs[item.key]}
+                        value={!!inputs[item.key] as boolean}
                         required={item.required}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                       />
@@ -182,6 +183,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{
                           ...item.config,
+                          // eslint-disable-next-line ts/no-explicit-any
                           fileUploadConfig: (visionConfig as any).fileUploadConfig,
                         }}
                       />
@@ -189,7 +191,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     {item.type === 'json_object' && (
                       <CodeEditor
                         language={CodeLanguage.json}
-                        value={inputs[item.key]}
+                        value={inputs[item.key] as string}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                         noWrapper
                         className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"

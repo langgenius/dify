@@ -83,7 +83,30 @@
       <p class="content1">尊敬的 {{ to }}，</p>
       <p class="content2">{{ inviter_name }} 现邀请您加入我们在 Dify 的工作区，这是一个专为 LLM 应用开发而设计的平台。在 Dify 上，您可以探索、创造和合作，构建和运营 AI 应用。</p>
       <p class="content2">点击下方按钮即可登录 Dify 并且加入空间。</p>
-      <p style="text-align: center; margin: 0; margin-bottom: 32px;"><a style="color: #fff; text-decoration: none" class="button" href="{{ url }}">在此登录</a></p>
+      <div style="text-align: center; margin-bottom: 32px;">
+        <a href="{{ url }}"
+           style="background-color:#2563eb;
+                  color:#ffffff !important;
+                  text-decoration:none;
+                  display:inline-block;
+                  font-weight:600;
+                  border-radius:4px;
+                  font-size:14px;
+                  line-height:18px;
+                  font-family: Helvetica, Arial, sans-serif;
+                  text-align:center;
+                  border-top: 10px solid #2563eb;
+                  border-bottom: 10px solid #2563eb;
+                  border-left: 20px solid #2563eb;
+                  border-right: 20px solid #2563eb;
+                  ">在此登录</a>
+        <p style="font-size: 12px; color: #666666; margin-top: 20px; margin-bottom: 0;">
+          如果按钮无法使用，请将以下链接复制到浏览器打开：<br>
+          <a href="{{ url }}" style="color: #2563eb; text-decoration: underline; word-break: break-all;">
+            {{ url }}
+          </a>
+        </p>
+      </div>
       <p class="content2">此致，</p>
       <p class="content2">Dify 团队</p>
     </div>

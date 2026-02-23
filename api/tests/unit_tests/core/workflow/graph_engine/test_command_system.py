@@ -8,7 +8,7 @@ from core.variables import IntegerVariable, StringVariable
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.entities.commands import (
     AbortCommand,
@@ -67,6 +67,7 @@ def test_abort_command():
         graph=mock_graph,
         graph_runtime_state=shared_runtime_state,  # Use shared instance
         command_channel=command_channel,
+        config=GraphEngineConfig(),
     )
 
     # Send abort command before starting
@@ -173,6 +174,7 @@ def test_pause_command():
         graph=mock_graph,
         graph_runtime_state=shared_runtime_state,
         command_channel=command_channel,
+        config=GraphEngineConfig(),
     )
 
     pause_command = PauseCommand(reason="User requested pause")
@@ -228,6 +230,7 @@ def test_update_variables_command_updates_pool():
         graph=mock_graph,
         graph_runtime_state=shared_runtime_state,
         command_channel=command_channel,
+        config=GraphEngineConfig(),
     )
 
     update_command = UpdateVariablesCommand(

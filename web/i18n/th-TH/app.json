@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "ไม่พบฐานความรู้",
   "gotoAnything.emptyState.noPluginsFound": "ไม่พบปลั๊กอิน",
   "gotoAnything.emptyState.noWorkflowNodesFound": "ไม่พบโหนดเวิร์กโฟลว์",
-  "gotoAnything.emptyState.tryDifferentTerm": "ลองใช้คำค้นหาที่แตกต่างออกไปหรือลบตัวกรอง {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "ลองใช้คำค้นหาที่แตกต่างออกไป",
   "gotoAnything.emptyState.trySpecificSearch": "ลองใช้ {{shortcuts}} สำหรับการค้นหาเฉพาะ",
   "gotoAnything.groups.apps": "แอปพลิเคชัน",
   "gotoAnything.groups.commands": "คำสั่ง",

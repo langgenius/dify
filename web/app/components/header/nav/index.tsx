@@ -30,6 +30,7 @@ const Nav = ({
   createText,
   onCreate,
   onLoadMore,
+  isLoadingMore,
   isApp,
 }: INavProps) => {
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -81,6 +82,7 @@ const Nav = ({
               createText={createText}
               onCreate={onCreate}
               onLoadMore={onLoadMore}
+              isLoadingMore={isLoadingMore}
             />
           </>
         )

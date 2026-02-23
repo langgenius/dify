@@ -99,7 +99,7 @@
   "createTool.viewSchemaSpec": "Ver a Especificação OpenAPI-Swagger",
   "customToolTip": "Saiba mais sobre as ferramentas personalizadas da Dify",
   "howToGet": "Como obter",
-  "includeToolNum": "{{num}} ferramentas incluídas",
+  "includeToolNum": "{{num}} {{action}} incluídas",
   "mcp.authorize": "Autorizar",
   "mcp.authorizeTip": "Após a autorização, as ferramentas serão exibidas aqui.",
   "mcp.authorizing": "Autorizando...",

@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "未找到知識庫",
   "gotoAnything.emptyState.noPluginsFound": "未找到外掛程式",
   "gotoAnything.emptyState.noWorkflowNodesFound": "未找到工作流節點",
-  "gotoAnything.emptyState.tryDifferentTerm": "嘗試不同的搜索詞或移除 {{mode}} 過濾器",
+  "gotoAnything.emptyState.tryDifferentTerm": "嘗試不同的搜索詞",
   "gotoAnything.emptyState.trySpecificSearch": "嘗試使用 {{shortcuts}} 進行特定搜索",
   "gotoAnything.groups.apps": "應用程式",
   "gotoAnything.groups.commands": "指令",

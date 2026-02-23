@@ -12,6 +12,7 @@ import { cn } from '@/utils/classnames'
 import ImageList from '../../common/image-list'
 import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
+import SummaryText from '../../documents/detail/completed/common/summary-text'
 import ChildChunksItem from './child-chunks-item'
 import Mask from './mask'
 import Score from './score'
@@ -28,7 +29,7 @@ const ChunkDetailModal = ({
   onHide,
 }: ChunkDetailModalProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, files } = payload
+  const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
@@ -104,10 +105,13 @@ const ChunkDetailModal = ({
             {/* Mask */}
             <Mask className="absolute inset-x-0 bottom-0" />
           </div>
-          {(showImages || showKeywords) && (
+          {(showImages || showKeywords || !!summary) && (
             <div className="flex flex-col gap-y-3 pt-3">
               {showImages && (
                 <ImageList images={images} size="md" className="py-1" />
+              )}
+              {!!summary && (
+                <SummaryText value={summary} disabled />
               )}
               {showKeywords && (
                 <div className="flex flex-col gap-y-1">

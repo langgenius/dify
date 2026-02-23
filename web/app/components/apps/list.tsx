@@ -1,18 +1,8 @@
 'use client'
 
-import {
-  RiApps2Line,
-  RiDragDropLine,
-  RiExchange2Line,
-  RiFile4Line,
-  RiMessage3Line,
-  RiRobot3Line,
-} from '@remixicon/react'
+import type { FC } from 'react'
 import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
-import {
-  useRouter,
-} from 'next/navigation'
 import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,16 +26,6 @@ import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import NewAppCard from './new-app-card'
 
-// Define valid tabs at module scope to avoid re-creation on each render and stale closures
-const validTabs = new Set<string | AppModeEnum>([
-  'all',
-  AppModeEnum.WORKFLOW,
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.CHAT,
-  AppModeEnum.AGENT_CHAT,
-  AppModeEnum.COMPLETION,
-])
-
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
 })
@@ -53,10 +33,14 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-const List = () => {
+type Props = {
+  controlRefreshList?: number
+}
+const List: FC<Props> = ({
+  controlRefreshList = 0,
+}) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
-  const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
@@ -110,14 +94,21 @@ const List = () => {
     refetch,
   } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
 
+  useEffect(() => {
+    if (controlRefreshList > 0) {
+      refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlRefreshList])
+
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="i-ri-apps-2-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="i-ri-exchange-2-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="i-ri-robot-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="i-ri-file-4-line mr-1 h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -126,11 +117,6 @@ const List = () => {
       refetch()
     }
   }, [refetch])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [router, isCurrentWorkspaceDatasetOperator])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -248,6 +234,9 @@ const List = () => {
             // No apps - show empty state
             return <Empty />
           })()}
+          {isFetchingNextPage && (
+            <AppCardSkeleton count={3} />
+          )}
         </div>
 
         {isCurrentWorkspaceEditor && (
@@ -256,7 +245,7 @@ const List = () => {
             role="region"
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <RiDragDropLine className="h-4 w-4" />
+            <span className="i-ri-drag-drop-line h-4 w-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}

@@ -42,6 +42,13 @@ export type IconInfo = {
   icon_url?: string
 }
 
+export type SummaryIndexSetting = {
+  enable?: boolean
+  model_name?: string
+  model_provider_name?: string
+  summary_prompt?: string
+}
+
 export type DataSet = {
   id: string
   name: string
@@ -88,6 +95,7 @@ export type DataSet = {
   runtime_mode: 'rag_pipeline' | 'general'
   enable_api: boolean // Indicates if the service API is enabled
   is_multimodal: boolean // Indicates if the dataset supports multimodal
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type ExternalAPIItem = {
@@ -225,7 +233,7 @@ export type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string, child_chunks: string[] }>
+  preview: Array<{ content: string, child_chunks: string[], summary?: string }>
   qa_preview?: QA[]
 }
 
@@ -262,6 +270,7 @@ export type ProcessRuleResponse = {
   mode: ProcessMode
   rules: Rules
   limits: Limits
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type Rules = {
@@ -392,6 +401,7 @@ export type InitialDocumentDetail = {
   total_segments?: number
   doc_form: ChunkingMode
   doc_language: string
+  summary_index_status?: string
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {
@@ -425,6 +435,7 @@ export type DocumentReq = {
   doc_form: ChunkingMode
   doc_language: string
   process_rule: ProcessRule
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type CreateDocumentReq = DocumentReq & {
@@ -467,6 +478,7 @@ export type NotionPage = {
 export type ProcessRule = {
   mode: ProcessMode
   rules: Rules
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type createDocumentResponse = {
@@ -575,6 +587,7 @@ export type SegmentDetailModel = {
   error: string | null
   stopped_at: number
   answer?: string
+  summary?: string
   child_chunks?: ChildChunkDetail[]
   updated_at: number
   attachments: Attachment[]
@@ -618,6 +631,7 @@ export type HitTesting = {
   tsne_position: TsnePosition
   child_chunks: HitTestingChildChunk[] | null
   files: Attachment[]
+  summary?: string
 }
 
 export type ExternalKnowledgeBaseHitTesting = {
@@ -697,6 +711,7 @@ export type RelatedAppResponse = {
 export type SegmentUpdater = {
   content: string
   answer?: string
+  summary?: string
   keywords?: string[]
   regenerate_child_chunks?: boolean
   attachment_ids?: string[]
@@ -778,6 +793,7 @@ export enum DocumentActionType {
   archive = 'archive',
   unArchive = 'un_archive',
   delete = 'delete',
+  summary = 'summary',
 }
 
 export type UpdateDocumentBatchParams = {
