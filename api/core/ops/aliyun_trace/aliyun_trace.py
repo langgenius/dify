@@ -496,9 +496,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     inputs=inputs_json,
                     outputs=outputs_json,
                 ),
-                **(
-                    {DIFY_APP_ID: app_id} if message_span_id is None else {}
-                ),
+                **({DIFY_APP_ID: app_id} if message_span_id is None else {}),
             },
             status=status,
             links=trace_metadata.links,
