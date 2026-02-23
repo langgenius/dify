@@ -339,7 +339,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByTestId('create-tag-option')
+      const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
 
       await waitFor(() => {
@@ -357,7 +357,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'FailTag')
 
-      const createOption = screen.getByTestId('create-tag-option')
+      const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
 
       await waitFor(() => {
@@ -388,7 +388,7 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByTestId('create-tag-option')
+      const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
 
       expect(createTag).toHaveBeenCalledTimes(1)
