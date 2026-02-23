@@ -98,6 +98,12 @@ class WorkflowTaskData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
+class WorkflowResumeTaskData(BaseModel):
+    """Payload for workflow resumption tasks."""
+
+    workflow_run_id: str
+
+
 class AsyncTriggerExecutionResult(BaseModel):
     """Result from async trigger-based workflow execution"""
 

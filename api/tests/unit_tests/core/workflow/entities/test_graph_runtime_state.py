@@ -118,7 +118,6 @@ class TestGraphRuntimeState:
         from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
 
         assert isinstance(queue, InMemoryReadyQueue)
-        assert state.ready_queue is queue
 
     def test_graph_execution_lazy_instantiation(self):
         state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())

@@ -233,7 +233,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return 204
+        return "", 204
 
     @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__])
     @service_api_ns.doc("update_segment")
@@ -499,7 +499,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return 204
+        return "", 204
 
     @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__])
     @service_api_ns.doc("update_child_chunk")

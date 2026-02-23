@@ -138,6 +138,8 @@ class FeatureModel(BaseModel):
     is_allow_transfer_workspace: bool = True
     trigger_event: Quota = Quota(usage=0, limit=3000, reset_date=0)
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
+    # Controls whether email delivery is allowed for HumanInput nodes.
+    human_input_email_delivery_enabled: bool = False
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
@@ -191,6 +193,11 @@ class FeatureService:
             features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
 
+        features.human_input_email_delivery_enabled = cls._resolve_human_input_email_delivery_enabled(
+            features=features,
+            tenant_id=tenant_id,
+        )
+
         return features
 
     @classmethod
@@ -202,6 +209,17 @@ class FeatureService:
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
             knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
         return knowledge_rate_limit
+
+    @classmethod
+    def _resolve_human_input_email_delivery_enabled(cls, *, features: FeatureModel, tenant_id: str | None) -> bool:
+        if dify_config.ENTERPRISE_ENABLED or not dify_config.BILLING_ENABLED:
+            return True
+        if not tenant_id:
+            return False
+        return features.billing.enabled and features.billing.subscription.plan in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        )
 
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:

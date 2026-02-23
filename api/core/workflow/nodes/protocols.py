@@ -2,7 +2,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from core.file import File
+from core.workflow.file import File
 
 
 class HttpClientProtocol(Protocol):

@@ -2,10 +2,11 @@ import base64
 import secrets
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
@@ -48,8 +49,31 @@ class ForgotPasswordResetPayload(BaseModel):
         return valid_password(value)
 
 
-for model in (ForgotPasswordSendPayload, ForgotPasswordCheckPayload, ForgotPasswordResetPayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class ForgotPasswordEmailResponse(BaseModel):
+    result: str = Field(description="Operation result")
+    data: str | None = Field(default=None, description="Reset token")
+    code: str | None = Field(default=None, description="Error code if account not found")
+
+
+class ForgotPasswordCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether code is valid")
+    email: EmailStr = Field(description="Email address")
+    token: str = Field(description="New reset token")
+
+
+class ForgotPasswordResetResponse(BaseModel):
+    result: str = Field(description="Operation result")
+
+
+register_schema_models(
+    console_ns,
+    ForgotPasswordSendPayload,
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordEmailResponse,
+    ForgotPasswordCheckResponse,
+    ForgotPasswordResetResponse,
+)
 
 
 @console_ns.route("/forgot-password")
@@ -60,14 +84,7 @@ class ForgotPasswordSendEmailApi(Resource):
     @console_ns.response(
         200,
         "Email sent successfully",
-        console_ns.model(
-            "ForgotPasswordEmailResponse",
-            {
-                "result": fields.String(description="Operation result"),
-                "data": fields.String(description="Reset token"),
-                "code": fields.String(description="Error code if account not found"),
-            },
-        ),
+        console_ns.models[ForgotPasswordEmailResponse.__name__],
     )
     @console_ns.response(400, "Invalid email or rate limit exceeded")
     @setup_required
@@ -106,14 +123,7 @@ class ForgotPasswordCheckApi(Resource):
     @console_ns.response(
         200,
         "Code verified successfully",
-        console_ns.model(
-            "ForgotPasswordCheckResponse",
-            {
-                "is_valid": fields.Boolean(description="Whether code is valid"),
-                "email": fields.String(description="Email address"),
-                "token": fields.String(description="New reset token"),
-            },
-        ),
+        console_ns.models[ForgotPasswordCheckResponse.__name__],
     )
     @console_ns.response(400, "Invalid code or token")
     @setup_required
@@ -163,7 +173,7 @@ class ForgotPasswordResetApi(Resource):
     @console_ns.response(
         200,
         "Password reset successfully",
-        console_ns.model("ForgotPasswordResetResponse", {"result": fields.String(description="Operation result")}),
+        console_ns.models[ForgotPasswordResetResponse.__name__],
     )
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required

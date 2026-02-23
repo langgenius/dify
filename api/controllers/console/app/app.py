@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
@@ -22,10 +23,10 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
-from core.file import helpers as _file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
+from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
 from fields.app_fields import (
     AppDetail,
@@ -69,6 +70,8 @@ file_helpers = _file_helpers
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
+
+_logger = logging.getLogger(__name__)
 
 
 class AppListQuery(BaseModel):
@@ -280,6 +283,7 @@ class AppListApi(Resource):
                     select(Workflow).where(
                         Workflow.version == Workflow.VERSION_DRAFT,
                         Workflow.app_id.in_(workflow_capable_app_ids),
+                        Workflow.tenant_id == current_tenant_id,
                     )
                 )
                 .scalars()
@@ -291,12 +295,14 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
+                node_id = None
                 try:
-                    for _, node_data in workflow.walk_nodes():
+                    for node_id, node_data in workflow.walk_nodes():
                         if node_data.get("type") in trigger_node_types:
                             draft_trigger_app_ids.add(str(workflow.app_id))
                             break
                 except Exception:
+                    _logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
                     continue
 
         for app in app_pagination.items:
@@ -434,6 +440,19 @@ class AppCopyApi(Resource):
                 icon_background=args.icon_background,
             )
             session.commit()
+
+            # Inherit web app permission from original app
+            if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+                try:
+                    # Get the original app's access mode
+                    original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_model.id)
+                    access_mode = original_settings.access_mode
+                except Exception:
+                    # If original app has no settings (old app), default to public to match fallback behavior
+                    access_mode = "public"
+
+                # Apply the same access mode to the copied app
+                EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, access_mode)
 
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
