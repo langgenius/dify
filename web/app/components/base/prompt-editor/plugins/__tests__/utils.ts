@@ -1,4 +1,4 @@
-import type { Klass, LexicalNode } from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import { createEditor } from 'lexical'
 
 export function createTestEditor(nodes: Array<Klass<LexicalNode>> = []) {
@@ -12,7 +12,7 @@ export function createTestEditor(nodes: Array<Klass<LexicalNode>> = []) {
 }
 
 export function withEditorUpdate(
-  editor: ReturnType<typeof createEditor>,
+  editor: LexicalEditor,
   fn: () => void,
 ) {
   editor.update(fn, { discrete: true })

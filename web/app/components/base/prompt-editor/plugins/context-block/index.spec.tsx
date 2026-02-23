@@ -40,13 +40,10 @@ vi.mock('lexical', async () => {
 
 // Mock node module
 const mockCreateContextBlockNode = vi.fn((
-  datasets: Dataset[],
-  onAddContext: () => void,
-  canNotAddContext?: boolean,
+  _datasets: Dataset[],
+  _onAddContext: () => void,
+  _canNotAddContext?: boolean,
 ) => {
-  void datasets
-  void onAddContext
-  void canNotAddContext
   return { __type: 'MockContextBlockNode' }
 })
 vi.mock('./node', () => {
@@ -221,11 +218,7 @@ describe('ContextBlock', () => {
       render(<ContextBlock />)
       const handler = getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
       handler()
-      const firstCall = mockCreateContextBlockNode.mock.calls[0]
-      expect(firstCall).toBeDefined()
-      if (!firstCall)
-        throw new Error('Expected createContextBlockNode to be called')
-      const onAddContextArg = firstCall[1]
+      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0][1]
       expect(typeof onAddContextArg).toBe('function')
       expect(() => onAddContextArg()).not.toThrow()
     })

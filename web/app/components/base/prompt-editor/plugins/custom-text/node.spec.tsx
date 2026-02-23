@@ -1,4 +1,4 @@
-import type { EditorConfig } from 'lexical'
+import type { EditorConfig, LexicalEditor } from 'lexical'
 import { $createParagraphNode, $getRoot } from 'lexical'
 import { createTestEditor, withEditorUpdate } from '../__tests__/utils'
 import { $createCustomTextNode, CustomTextNode } from './node'
@@ -6,13 +6,22 @@ import { $createCustomTextNode, CustomTextNode } from './node'
 const createCustomTextTestEditor = () => createTestEditor([CustomTextNode])
 
 describe('CustomTextNode', () => {
+  let editor: LexicalEditor
+
+  beforeEach(() => {
+    editor = createCustomTextTestEditor()
+  })
+
+  afterEach(() => {
+    editor.setRootElement(null)
+  })
+
   describe('Static Methods', () => {
     it('should return correct type', () => {
       expect(CustomTextNode.getType()).toBe('custom-text')
     })
 
     it('should clone a node', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const paragraph = $createParagraphNode()
         $getRoot().append(paragraph)
@@ -26,7 +35,6 @@ describe('CustomTextNode', () => {
 
   describe('createDOM', () => {
     it('should create a DOM element', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('test')
         const config: EditorConfig = { namespace: 'test', theme: {} }
@@ -38,7 +46,6 @@ describe('CustomTextNode', () => {
 
   describe('exportJSON', () => {
     it('should export correct JSON structure', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const paragraph = $createParagraphNode()
         $getRoot().append(paragraph)
@@ -57,7 +64,6 @@ describe('CustomTextNode', () => {
 
   describe('importJSON', () => {
     it('should create a text node from serialized data', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const serialized = {
           type: 'custom-text' as const,
@@ -77,7 +83,6 @@ describe('CustomTextNode', () => {
 
   describe('isSimpleText', () => {
     it('should return true for custom-text type with mode 0', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('simple')
         expect(node.isSimpleText()).toBe(true)
@@ -87,7 +92,6 @@ describe('CustomTextNode', () => {
 
   describe('getTextContent', () => {
     it('should return the text content', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('my content')
         expect(node.getTextContent()).toBe('my content')
@@ -97,7 +101,6 @@ describe('CustomTextNode', () => {
 
   describe('$createCustomTextNode', () => {
     it('should create a CustomTextNode instance', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('test')
         expect(node).toBeInstanceOf(CustomTextNode)
@@ -105,7 +108,6 @@ describe('CustomTextNode', () => {
     })
 
     it('should set the text content', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('hello')
         expect(node.getTextContent()).toBe('hello')
@@ -115,7 +117,6 @@ describe('CustomTextNode', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty string', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('')
         expect(node.getTextContent()).toBe('')
@@ -123,7 +124,6 @@ describe('CustomTextNode', () => {
     })
 
     it('should handle special characters', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createCustomTextNode('{{#context#}}')
         expect(node.getTextContent()).toBe('{{#context#}}')
@@ -131,7 +131,6 @@ describe('CustomTextNode', () => {
     })
 
     it('should handle very long text', () => {
-      const editor = createCustomTextTestEditor()
       withEditorUpdate(editor, () => {
         const longText = 'A'.repeat(10000)
         const node = $createCustomTextNode(longText)
