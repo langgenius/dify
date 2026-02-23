@@ -4,6 +4,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { render } from '@testing-library/react'
 import { $createParagraphNode, $getRoot, $nodesOfType } from 'lexical'
+import * as React from 'react'
 import { ContextBlockNode } from '../context-block/node'
 import { $createCustomTextNode, CustomTextNode } from '../custom-text/node'
 import ContextBlockReplacementBlock from './context-block-replacement-block'
@@ -35,9 +36,16 @@ function renderWithEditor(ui: ReactNode) {
 
 // Captures the editor instance so we can do updates after the initial render
 let capturedEditor: LexicalEditor | null = null
-function EditorCapture() {
-  const [editor] = useLexicalComposerContext()
+
+const defaultOnCapture = (editor: LexicalEditor) => {
   capturedEditor = editor
+}
+
+function EditorCapture({ onCapture = defaultOnCapture }: { onCapture?: (e: LexicalEditor) => void }) {
+  const [editor] = useLexicalComposerContext()
+  React.useEffect(() => {
+    onCapture(editor)
+  }, [editor, onCapture])
   return null
 }
 
@@ -82,13 +90,13 @@ describe('ContextBlockReplacementBlock', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      const { container } = renderWithEditor(
+      renderWithEditor(
         <>
           <ContextBlockReplacementBlock />
           <EditorCapture />
         </>,
       )
-      expect(container).toBeDefined()
+      expect(capturedEditor).not.toBeNull()
     })
 
     it('should return null (no visible output from the plugin itself)', () => {

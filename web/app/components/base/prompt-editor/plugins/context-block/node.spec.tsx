@@ -1,4 +1,5 @@
-import { $getRoot, createEditor } from 'lexical'
+import { $getRoot } from 'lexical'
+import { createTestEditor, withEditorUpdate } from '../__tests__/utils'
 import { $createContextBlockNode, $isContextBlockNode, ContextBlockNode } from './node'
 
 const mockDatasets = [
@@ -6,21 +7,7 @@ const mockDatasets = [
   { id: '2', name: 'Dataset B', type: 'text' },
 ]
 const mockOnAddContext = vi.fn()
-
-function createTestEditor() {
-  const editor = createEditor({
-    nodes: [ContextBlockNode],
-    onError: (error) => { throw error },
-  })
-  const root = document.createElement('div')
-  editor.setRootElement(root)
-  return editor
-}
-
-function withEditorUpdate(editor: ReturnType<typeof createEditor>, fn: () => void) {
-  editor.update(fn, { discrete: true })
-}
-
+const createContextBlockTestEditor = () => createTestEditor([ContextBlockNode])
 describe('ContextBlockNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -32,7 +19,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should clone a node', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext, true)
         $getRoot().append(node)
@@ -44,7 +31,7 @@ describe('ContextBlockNode', () => {
 
   describe('Constructor', () => {
     it('should store datasets', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         $getRoot().append(node)
@@ -53,7 +40,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should store onAddContext callback', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         $getRoot().append(node)
@@ -62,7 +49,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should store canNotAddContext', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext, true)
         $getRoot().append(node)
@@ -71,7 +58,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should default canNotAddContext to false', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         $getRoot().append(node)
@@ -82,7 +69,7 @@ describe('ContextBlockNode', () => {
 
   describe('isInline', () => {
     it('should return true', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         expect(node.isInline()).toBe(true)
@@ -92,7 +79,7 @@ describe('ContextBlockNode', () => {
 
   describe('createDOM', () => {
     it('should create a div element', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         const dom = node.createDOM()
@@ -101,7 +88,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should add correct CSS classes', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         const dom = node.createDOM()
@@ -114,7 +101,7 @@ describe('ContextBlockNode', () => {
 
   describe('updateDOM', () => {
     it('should return false', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         expect(node.updateDOM()).toBe(false)
@@ -124,7 +111,7 @@ describe('ContextBlockNode', () => {
 
   describe('decorate', () => {
     it('should return a React element', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext, true)
         $getRoot().append(node)
@@ -141,7 +128,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should pass nodeKey prop', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         $getRoot().append(node)
@@ -153,7 +140,7 @@ describe('ContextBlockNode', () => {
 
   describe('getTextContent', () => {
     it('should return the context placeholder', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         expect(node.getTextContent()).toBe('{{#context#}}')
@@ -163,7 +150,7 @@ describe('ContextBlockNode', () => {
 
   describe('exportJSON', () => {
     it('should export correct JSON structure', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext, true)
         $getRoot().append(node)
@@ -179,7 +166,7 @@ describe('ContextBlockNode', () => {
 
   describe('importJSON', () => {
     it('should create a node from serialized data', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const serialized = {
           type: 'context-block' as const,
@@ -200,7 +187,7 @@ describe('ContextBlockNode', () => {
 
   describe('$createContextBlockNode', () => {
     it('should create a ContextBlockNode instance', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         expect(node).toBeInstanceOf(ContextBlockNode)
@@ -208,7 +195,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should pass canNotAddContext when provided', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext, true)
         $getRoot().append(node)
@@ -219,7 +206,7 @@ describe('ContextBlockNode', () => {
 
   describe('$isContextBlockNode', () => {
     it('should return true for ContextBlockNode instances', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext)
         expect($isContextBlockNode(node)).toBe(true)
@@ -237,7 +224,7 @@ describe('ContextBlockNode', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty datasets', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode([], mockOnAddContext)
         $getRoot().append(node)
@@ -246,7 +233,7 @@ describe('ContextBlockNode', () => {
     })
 
     it('should handle canNotAddContext as false explicitly', () => {
-      const editor = createTestEditor()
+      const editor = createContextBlockTestEditor()
       withEditorUpdate(editor, () => {
         const node = $createContextBlockNode(mockDatasets, mockOnAddContext, false)
         $getRoot().append(node)

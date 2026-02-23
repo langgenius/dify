@@ -1,6 +1,6 @@
 import type { EntityMatch } from '@lexical/text'
 import type { Klass, LexicalEditor, TextNode } from 'lexical'
-import { render, renderHook, screen, waitFor } from '@testing-library/react'
+import { render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { COMMAND_PRIORITY_LOW, KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND } from 'lexical'
 import * as React from 'react'
@@ -254,10 +254,14 @@ describe('prompt-editor/hooks', () => {
       )
 
       expect(mockState.editor.registerNodeTransform).toHaveBeenCalledTimes(2)
-      expect(mockState.editor.registerNodeTransform).toHaveBeenCalledWith(
-        expect.any(Function),
-        expect.any(Function),
-      )
+      // expect(mockState.editor.registerNodeTransform).toHaveBeenCalledWith(
+      // //   expect.any(Function),
+      // //   expect.any(Function),
+      // // )
+      // Verify the first call uses TextNode, not MockTargetNode
+      const calls = mockState.editor.registerNodeTransform.mock.calls
+      expect(calls[0][0]).not.toBe(MockTargetNode)
+      expect(typeof calls[0][0]).toBe('function')
       expect(mockState.editor.registerNodeTransform).toHaveBeenCalledWith(
         MockTargetNode,
         expect.any(Function),
@@ -297,15 +301,12 @@ describe('prompt-editor/hooks', () => {
       expect(result.current('prefix @.', {} as LexicalEditor)).toBeNull()
     })
 
-    it('should return null when matching text exceeds maxLength', async () => {
+    it('should return null when matching text exceeds maxLength', () => {
       const { result } = renderHook(() => useBasicTypeaheadTriggerMatch('@', {
         minLength: 1,
         maxLength: 2,
       }))
-
-      await waitFor(() => {
-        expect(result.current('prefix @...', {} as LexicalEditor)).toBeNull()
-      })
+      expect(result.current('prefix @...', {} as LexicalEditor)).toBeNull()
     })
   })
 })

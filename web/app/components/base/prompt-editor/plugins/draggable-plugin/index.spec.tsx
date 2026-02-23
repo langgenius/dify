@@ -6,7 +6,7 @@ type DraggablePluginMockProps = {
   anchorElem: HTMLElement
   menuComponent: React.ReactNode
   targetLineComponent: React.ReactNode
-  isOnMenu: (element: Element | null) => boolean
+  isOnMenu: (element: Element) => boolean
 }
 
 const mockState = vi.hoisted(() => ({

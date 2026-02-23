@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
 import ContextBlockComponent from './component'
-
 // Mock the hooks used by ContextBlockComponent
 const mockUseSelectOrDelete = vi.fn()
 const mockUseTrigger = vi.fn()
@@ -298,7 +298,7 @@ describe('ContextBlockComponent', () => {
       // Simulate event with new datasets
       act(() => {
         subscriptionCallback({
-          type: 'prompt-editor-context-block-update-datasets',
+          type: UPDATE_DATASETS_EVENT_EMITTER,
           payload: [
             { id: '3', name: 'New Dataset', type: 'text' },
           ],

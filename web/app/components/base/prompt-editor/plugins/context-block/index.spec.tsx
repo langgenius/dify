@@ -1,24 +1,18 @@
-import type { LexicalCommand } from 'lexical'
+import type { LexicalCommand, LexicalEditor } from 'lexical'
 import type { Dataset } from './index'
 import { render } from '@testing-library/react'
 import { COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { ContextBlock, DELETE_CONTEXT_BLOCK_COMMAND, INSERT_CONTEXT_BLOCK_COMMAND } from './index'
 
-type CommandHandler = () => boolean
+type CommandHandler<T = unknown> = (payload?: T, editor?: LexicalEditor) => boolean
 type RegisteredCall = [LexicalCommand<unknown>, CommandHandler, number]
 
 // Mock Lexical editor
 const mockUnregister = vi.fn()
-const mockRegisterCommand = vi.fn((command: LexicalCommand<unknown>, handler: CommandHandler, priority: number) => {
-  void command
-  void handler
-  void priority
+const mockRegisterCommand = vi.fn((_command: LexicalCommand<unknown>, _handler: CommandHandler, _priority: number) => {
   return mockUnregister
 })
-const mockHasNodes = vi.fn((nodes: unknown[]) => {
-  void nodes
-  return true
-})
+const mockHasNodes = vi.fn((_nodes: unknown[]) => true)
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
   useLexicalComposerContext: () => [{
@@ -83,12 +77,7 @@ describe('ContextBlock', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ContextBlock />)
-      expect(container.innerHTML).toBe('')
-    })
-
-    it('should return null (no visible output)', () => {
+    it('should render (no visible output)', () => {
       const { container } = render(<ContextBlock />)
       expect(container.childElementCount).toBe(0)
     })
