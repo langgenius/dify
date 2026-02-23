@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
+import { ToastContext } from '@/app/components/base/toast'
 import TagSelector from './selector'
 import { useStore as useTagStore } from './store'
 
@@ -26,9 +27,11 @@ vi.mock('@/service/tag', () => ({
 // Mock use-context-selector for ToastContext
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: mockNotify,
-  }),
+  useContext: <T,>(ctx: React.Context<T>) => {
+    if (ctx === (ToastContext as unknown as React.Context<T>))
+      return { notify: mockNotify, close: vi.fn() } as T
+    return (ctx as React.Context<T> & { _currentValue: T })._currentValue
+  },
 }))
 
 // i18n keys rendered in "ns.key" format
@@ -66,18 +69,12 @@ describe('TagSelector', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TagSelector {...defaultProps} />)
-      // The Trigger component shows selected tag names
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-    })
-
-    it('should render the trigger with selected tag names', () => {
+    it('should render TagSelector trigger with selected tag names from defaultProps when isPopover defaults to true', () => {
       render(<TagSelector {...defaultProps} />)
       expect(screen.getByText('Frontend')).toBeInTheDocument()
     })
 
-    it('should render add-tag placeholder when no tags are selected', () => {
+    it('should render TagSelector add-tag placeholder when defaultProps are overridden with empty selectedTags and value', () => {
       render(<TagSelector {...defaultProps} selectedTags={[]} value={[]} />)
       expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
     })
@@ -96,12 +93,6 @@ describe('TagSelector', () => {
   })
 
   describe('Props', () => {
-    it('should default isPopover to true', () => {
-      render(<TagSelector {...defaultProps} />)
-      // Popover renders, trigger is visible
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-    })
-
     it('should filter selectedTags to only those present in store tagList', () => {
       const unknownTag: Tag = { id: 'unknown', name: 'Unknown', type: 'app', binding_count: 0 }
       render(
@@ -145,8 +136,8 @@ describe('TagSelector', () => {
       // Panel renders the search input and manage tags
       await waitFor(() => {
         expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
+        expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
       })
-      expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     })
 
     it('should show unselected tags in the panel', async () => {
@@ -196,7 +187,7 @@ describe('TagSelector', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
 
-      const createOption = screen.getByTestId('create-tag-option')
+      const createOption = await screen.findByTestId('create-tag-option')
       await user.click(createOption)
 
       await waitFor(() => {
@@ -206,11 +197,6 @@ describe('TagSelector', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty selectedTags array', () => {
-      render(<TagSelector {...defaultProps} selectedTags={[]} value={[]} />)
-      expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
-    })
-
     it('should handle selectedTags with no matching tags in store', () => {
       const orphanTags: Tag[] = [
         { id: 'orphan-1', name: 'Orphan', type: 'app', binding_count: 0 },
