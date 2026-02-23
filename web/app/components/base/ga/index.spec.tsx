@@ -11,6 +11,7 @@ type GaProps = {
 }
 
 type GaRenderFn = (props: GaProps) => Promise<ReactNode>
+type GaTypeValue = 'admin' | 'webapp'
 
 const { mockHeaders, mockHeadersGet, configState } = vi.hoisted(() => ({
   mockHeaders: vi.fn(),
@@ -61,11 +62,11 @@ vi.mock('next/script', () => ({
 
 const loadComponent = async () => {
   const mod = await import('./index')
-  const maybeMemoComponent = mod.default as unknown as { type?: GaRenderFn }
-
-  const renderer = typeof maybeMemoComponent === 'function'
-    ? (maybeMemoComponent as unknown as GaRenderFn)
-    : maybeMemoComponent.type
+  // mod.default is either an async function (server component) or
+  // a React.memo object whose .type is the async function.
+  const rawExport = mod.default as unknown
+  const renderer: GaRenderFn | undefined
+    = typeof rawExport === 'function' ? (rawExport as GaRenderFn) : (rawExport as { type?: GaRenderFn }).type
 
   if (!renderer)
     throw new Error('GA component is not callable in tests')
@@ -76,13 +77,14 @@ const loadComponent = async () => {
   }
 }
 
-const renderGA = async (gaType: string) => {
+const renderGA = async (gaType: GaTypeValue) => {
   const { renderer } = await loadComponent()
   const element = await renderer({ gaType })
   if (!element)
-    return null
+    return { element }
 
-  return render(element as ReactElement)
+  render(element as ReactElement)
+  return { element }
 }
 
 describe('GA', () => {
@@ -102,17 +104,14 @@ describe('GA', () => {
   describe('Rendering', () => {
     it('should return null when CE edition is enabled', async () => {
       configState.isCeEdition = true
-      const { renderer, GaType } = await loadComponent()
-
-      const element = await renderer({ gaType: GaType.admin })
+      const { element } = await renderGA('admin')
 
       expect(element).toBeNull()
       expect(mockHeaders).not.toHaveBeenCalled()
     })
 
     it('should render three script tags with admin GA id in production', async () => {
-      const { GaType } = await loadComponent()
-      await renderGA(GaType.admin)
+      await renderGA('admin')
 
       const scripts = screen.getAllByTestId('mock-next-script')
       expect(scripts).toHaveLength(3)
@@ -139,8 +138,7 @@ describe('GA', () => {
 
   describe('Props', () => {
     it('should use webapp GA id when gaType is webapp', async () => {
-      const { GaType } = await loadComponent()
-      await renderGA(GaType.webapp)
+      await renderGA('webapp')
 
       const scripts = screen.getAllByTestId('mock-next-script')
 
@@ -152,8 +150,7 @@ describe('GA', () => {
   describe('Edge Cases', () => {
     it('should not read headers and should omit nonce when not in production', async () => {
       configState.isProd = false
-      const { GaType } = await loadComponent()
-      await renderGA(GaType.admin)
+      await renderGA('admin')
 
       const scripts = screen.getAllByTestId('mock-next-script')
 
@@ -165,8 +162,7 @@ describe('GA', () => {
 
     it('should omit nonce when CSP header does not contain nonce token', async () => {
       mockHeadersGet.mockReturnValue(`default-src 'self'; script-src 'self'`)
-      const { GaType } = await loadComponent()
-      await renderGA(GaType.admin)
+      await renderGA('admin')
 
       const scripts = screen.getAllByTestId('mock-next-script')
 

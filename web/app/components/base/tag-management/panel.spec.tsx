@@ -389,12 +389,12 @@ describe('Panel', () => {
       await user.type(input, 'BrandNewTag')
 
       const createOption = screen.getByTestId('create-tag-option')
-      await user.click(createOption!)
+      await user.click(createOption)
 
       expect(createTag).toHaveBeenCalledTimes(1)
 
       // Try clicking again while still pending
-      await user.click(createOption!)
+      await user.click(createOption)
 
       // Should still be only 1 call because creating guard blocks it
       expect(createTag).toHaveBeenCalledTimes(1)
@@ -445,7 +445,7 @@ describe('Panel', () => {
       unmount()
 
       await waitFor(() => {
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalled()
+        expect(defaultProps.onCacheUpdate).toHaveBeenCalledWith(['tag-1', 'tag-2'])
       })
     })
 

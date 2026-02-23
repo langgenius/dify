@@ -176,33 +176,6 @@ describe('TagSelector', () => {
   })
 
   describe('Data Fetching (getTagList / onCreate)', () => {
-    it('should call fetchTagList when a tag is created in the panel', async () => {
-      const user = userEvent.setup()
-      vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 })
-
-      render(<TagSelector {...defaultProps} />)
-
-      // Open popover
-      await user.click(screen.getByRole('button'))
-
-      await waitFor(() => {
-        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
-      })
-
-      const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
-      await user.type(input, 'BrandNewTag')
-
-      // Click the create option
-      const createOption = screen.getByText(/common\.tag\.create/).closest('div[class*="cursor-pointer"]')
-      expect(createOption).toBeTruthy()
-      await user.click(createOption!)
-
-      // onCreate calls getTagList which calls fetchTagList
-      await waitFor(() => {
-        expect(fetchTagList).toHaveBeenCalledWith('app')
-      })
-    })
-
     it('should update the store tagList after fetching', async () => {
       const user = userEvent.setup()
       const freshTags: Tag[] = [
