@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "여기에 프롬프트 단어를 입력하세요. 변수를 삽입하려면 \"{{\"를 입력하고, 프롬프트 컨텐츠 블록을 삽입하려면 \"/\"를 입력하세요.",
   "promptEditor.query.item.desc": "사용자 쿼리 템플릿을 삽입합니다.",
   "promptEditor.query.item.title": "쿼리",
+  "promptEditor.requestURL.item.desc": "요청 URL 삽입",
+  "promptEditor.requestURL.item.title": "요청 URL",
   "promptEditor.variable.item.desc": "변수 및 외부 도구를 삽입합니다.",
   "promptEditor.variable.item.title": "변수 및 외부 도구",
   "promptEditor.variable.modal.add": "새로운 변수",

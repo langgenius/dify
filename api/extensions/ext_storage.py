@@ -94,6 +94,10 @@ class Storage:
     @overload
     def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
 
+    # Keep a bool fallback overload for callers that forward a runtime bool flag.
+    @overload
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]: ...
+
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         if stream:
             return self.load_stream(filename)
@@ -124,3 +128,6 @@ storage = Storage()
 
 def init_app(app: DifyApp):
     storage.init_app(app)
+    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+
+    bind_dify_workflow_file_runtime()

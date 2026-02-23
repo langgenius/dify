@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
@@ -18,15 +18,15 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
 from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from core.workflow.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
 from .account import Account, Tenant
-from .base import Base, TypeBase
+from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
 from .enums import CreatorUserRole
 from .provider_ids import GenericProviderID
@@ -227,7 +227,7 @@ class App(Base):
         with Session(db.engine) as session:
             if api_provider_ids:
                 existing_api_providers = [
-                    api_provider.id
+                    str(api_provider.id)
                     for api_provider in session.execute(
                         text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"),
                         {"provider_ids": tuple(api_provider_ids)},
@@ -620,7 +620,7 @@ class TrialApp(Base):
         sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, default=gen_uuidv4_string)
     app_id = mapped_column(StringUUID, nullable=False)
     tenant_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -640,7 +640,7 @@ class AccountTrialAppRecord(Base):
         sa.Index("account_trial_app_record_app_id_idx", "app_id"),
         sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
     )
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id = mapped_column(StringUUID, default=gen_uuidv4_string)
     account_id = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=False)
     count = mapped_column(sa.Integer, nullable=False, default=0)
@@ -660,7 +660,7 @@ class AccountTrialAppRecord(Base):
 class ExporleBanner(TypeBase):
     __tablename__ = "exporle_banners"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv4_string, init=False)
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -943,6 +943,7 @@ class Conversation(Base):
             WorkflowExecutionStatus.FAILED: 0,
             WorkflowExecutionStatus.STOPPED: 0,
             WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 0,
+            WorkflowExecutionStatus.PAUSED: 0,
         }
 
         for message in messages:
@@ -963,6 +964,7 @@ class Conversation(Base):
             "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
             "failed": status_counts[WorkflowExecutionStatus.FAILED],
             "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
+            "paused": status_counts[WorkflowExecutionStatus.PAUSED],
         }
 
     @property
@@ -1038,7 +1040,6 @@ class Message(Base):
         Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
-        Index("message_created_at_idx", "created_at"),
         Index("message_app_mode_idx", "app_mode"),
         Index("message_created_at_id_idx", "created_at", "id"),
     )
@@ -1344,6 +1345,14 @@ class Message(Base):
 
         db.session.commit()
         return result
+
+    # TODO(QuantumGhost): dirty hacks, fix this later.
+    def set_extra_contents(self, contents: Sequence[dict[str, Any]]) -> None:
+        self._extra_contents = list(contents)
+
+    @property
+    def extra_contents(self) -> list[dict[str, Any]]:
+        return getattr(self, "_extra_contents", [])
 
     @property
     def workflow_run(self):

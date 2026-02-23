@@ -10,6 +10,7 @@ import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { env } from '@/env'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
@@ -204,7 +205,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }}
     >
       <div className="flex h-full flex-col overflow-y-auto">
-        {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
+        {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
         <div className="relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body">
           {children}
         </div>

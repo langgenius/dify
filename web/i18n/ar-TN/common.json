@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "اكتب كلمة المطالبة هنا، أدخل '{' لإدراج متغير، أدخل '/' لإدراج كتلة محتوى مطالبة",
   "promptEditor.query.item.desc": "إدراج قالب استعلام المستخدم",
   "promptEditor.query.item.title": "استعلام",
+  "promptEditor.requestURL.item.desc": "إدراج عنوان URL للطلب",
+  "promptEditor.requestURL.item.title": "عنوان URL للطلب",
   "promptEditor.variable.item.desc": "إدراج المتغيرات والأدوات الخارجية",
   "promptEditor.variable.item.title": "المتغيرات والأدوات الخارجية",
   "promptEditor.variable.modal.add": "متغير جديد",

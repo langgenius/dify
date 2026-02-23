@@ -48,6 +48,7 @@ from models.workflow import (
     WorkflowArchiveLog,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.api_token_service import ApiTokenCache
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,12 @@ def _delete_app_mcp_servers(tenant_id: str, app_id: str):
 
 def _delete_app_api_tokens(tenant_id: str, app_id: str):
     def del_api_token(session, api_token_id: str):
+        # Fetch token details for cache invalidation
+        token_obj = session.query(ApiToken).where(ApiToken.id == api_token_id).first()
+        if token_obj:
+            # Invalidate cache before deletion
+            ApiTokenCache.delete(token_obj.token, token_obj.type)
+
         session.query(ApiToken).where(ApiToken.id == api_token_id).delete(synchronize_session=False)
 
     _delete_records(

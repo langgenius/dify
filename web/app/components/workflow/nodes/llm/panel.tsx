@@ -94,7 +94,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         handleModelChanged(model)
       }
     })()
-  }, [inputs.model.completion_params])
+  }, [handleCompletionParamsChange, handleModelChanged, inputs.model.completion_params, t])
+
   return (
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
@@ -284,7 +285,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             </Tooltip>
             <Switch
               className="ml-2"
-              defaultValue={!!inputs.structured_output_enabled}
+              value={!!inputs.structured_output_enabled}
               onChange={handleStructureOutputEnableChange}
               size="md"
               disabled={readOnly}
