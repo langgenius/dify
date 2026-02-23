@@ -10,7 +10,7 @@ import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import get_or_create_model
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -469,7 +469,7 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app site info.
 
@@ -491,7 +491,7 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app parameters."""
 
@@ -520,7 +520,7 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
@@ -533,7 +533,7 @@ class AppApi(Resource):
 
 class AppWorkflowApi(Resource):
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
         """Get workflow detail"""
@@ -552,7 +552,7 @@ class AppWorkflowApi(Resource):
 
 class DatasetListApi(Resource):
     @trial_feature_enable
-    @get_app_model_with_trial
+    @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -570,27 +570,31 @@ class DatasetListApi(Resource):
         return response
 
 
-api.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
 
-api.add_resource(
+console_ns.add_resource(
     TrialMessageSuggestedQuestionApi,
     "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
     endpoint="trial_app_suggested_question",
 )
 
-api.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
-api.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
+console_ns.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
+console_ns.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
 
-api.add_resource(TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion")
+console_ns.add_resource(
+    TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion"
+)
 
-api.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
+console_ns.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
 
-api.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
+console_ns.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
 
-api.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
+console_ns.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
 
-api.add_resource(TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run")
-api.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+console_ns.add_resource(
+    TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run"
+)
+console_ns.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 
-api.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
-api.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")
+console_ns.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
+console_ns.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")
