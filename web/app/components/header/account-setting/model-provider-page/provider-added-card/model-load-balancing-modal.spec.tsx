@@ -49,41 +49,6 @@ vi.mock('@/app/components/base/toast', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) =>
-    isShow
-      ? (
-          <div>
-            <div>{title}</div>
-            {children}
-          </div>
-        )
-      : null,
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, title, onCancel, onConfirm }: { isShow: boolean, title: string, onCancel: () => void, onConfirm: () => void }) =>
-    isShow
-      ? (
-          <div>
-            <span>{title}</span>
-            <button type="button" onClick={onCancel}>cancel confirm</button>
-            <button type="button" onClick={onConfirm}>confirm delete</button>
-          </div>
-        )
-      : null,
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled }: { children: React.ReactNode, onClick?: () => void, disabled?: boolean }) => (
-    <button type="button" disabled={disabled} onClick={onClick}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading</div>,
-}))
-
 vi.mock('@/service/use-models', () => ({
   useGetModelCredential: () => ({
     isLoading: false,
@@ -187,7 +152,7 @@ describe('ModelLoadBalancingModal', () => {
       />,
     )
 
-    expect(screen.getByText('loading')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('should render predefined model content', () => {
@@ -292,7 +257,7 @@ describe('ModelLoadBalancingModal', () => {
     )
 
     fireEvent.click(screen.getByText(/modelProvider\.auth\.removeModel/))
-    fireEvent.click(screen.getByRole('button', { name: 'confirm delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
       expect(mockOpenConfirmDelete).toHaveBeenCalled()

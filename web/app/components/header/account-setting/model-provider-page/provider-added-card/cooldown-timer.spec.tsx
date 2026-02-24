@@ -1,12 +1,6 @@
 import { render } from '@testing-library/react'
 import CooldownTimer from './cooldown-timer'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (_key: string, options: { seconds: number }) => `Rate limit: ${options.seconds}s`,
-  }),
-}))
-
 describe('CooldownTimer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
