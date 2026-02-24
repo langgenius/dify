@@ -20,8 +20,13 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.file import File, FileTransferMethod
-from core.workflow.node_events import NodeEventBase, NodeRunResult, RunRetrieverResourceEvent, StreamChunkEvent, StreamCompletedEvent
-
+from core.workflow.node_events import (
+    NodeEventBase,
+    NodeRunResult,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamCompletedEvent,
+)
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
