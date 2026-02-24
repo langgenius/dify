@@ -142,6 +142,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             prompt_template=prompt_template,
             sys_query="",
             memory=memory,
+            model_instance=model_instance,
             model_config=model_config,
             sys_files=files,
             vision_enabled=node_data.vision.enabled,
