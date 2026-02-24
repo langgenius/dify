@@ -64,6 +64,7 @@ class TestOnlineDocumentDatasourcePlugin:
 
         mock_generator = MagicMock()
 
+        # Patch PluginDatasourceManager to isolate plugin behavior from external dependencies
         with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
             mock_manager_instance = MockManager.return_value
             mock_manager_instance.get_online_document_pages.return_value = mock_generator
