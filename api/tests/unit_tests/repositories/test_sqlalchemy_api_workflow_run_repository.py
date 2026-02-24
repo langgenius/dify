@@ -20,6 +20,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
 
 @pytest.fixture
 def sample_workflow_pause() -> Mock:
+    """Create a sample WorkflowPause model."""
     pause = Mock(spec=WorkflowPauseModel)
     pause.id = "pause-123"
     pause.workflow_id = "workflow-123"
@@ -34,6 +35,7 @@ class TestPrivateWorkflowPauseEntity:
     """Test _PrivateWorkflowPauseEntity class."""
 
     def test_properties(self, sample_workflow_pause: Mock) -> None:
+        """Test entity properties."""
         # Arrange
         entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
 
@@ -43,6 +45,7 @@ class TestPrivateWorkflowPauseEntity:
         assert entity.resumed_at == sample_workflow_pause.resumed_at
 
     def test_get_state(self, sample_workflow_pause: Mock) -> None:
+        """Test getting state from storage."""
         # Arrange
         entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
         expected_state = b'{"test": "state"}'
@@ -58,6 +61,7 @@ class TestPrivateWorkflowPauseEntity:
             mock_storage.load.assert_called_once_with(sample_workflow_pause.state_object_key)
 
     def test_get_state_caching(self, sample_workflow_pause: Mock) -> None:
+        """Test state caching in get_state method."""
         # Arrange
         entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
         expected_state = b'{"test": "state"}'
@@ -76,7 +80,10 @@ class TestPrivateWorkflowPauseEntity:
 
 
 class TestBuildHumanInputRequiredReason:
+    """Test helper that builds HumanInputRequired pause reasons."""
+
     def test_prefers_backstage_token_when_available(self) -> None:
+        """Use backstage token when multiple recipient types may exist."""
         # Arrange
         expiration_time = datetime.now(UTC)
         form_definition = FormDefinition(
