@@ -771,7 +771,6 @@ class TestConversationServiceMessageAnnotation:
 
         Annotations can be retrieved in a paginated list for display in the UI.
         """
-        """Test retrieving paginated annotation list."""
         # Arrange
         app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
             db_session_with_containers
