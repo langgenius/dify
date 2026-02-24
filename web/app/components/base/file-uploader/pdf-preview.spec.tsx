@@ -1,22 +1,8 @@
 import type { ReactNode } from 'react'
-import { act, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import PdfPreview from './pdf-preview'
 
-const mockUseHotkeys = vi.fn()
-vi.mock('react-hotkeys-hook', () => ({
-  useHotkeys: (...args: unknown[]) => mockUseHotkeys(...args),
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'pc',
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
-}))
-
-vi.mock('react-pdf-highlighter', () => ({
+vi.mock('./pdf-highlighter-adapter', () => ({
   PdfLoader: ({ children, beforeLoad }: { children: (doc: unknown) => ReactNode, beforeLoad: ReactNode }) => (
     <div data-testid="pdf-loader">
       {beforeLoad}
@@ -30,7 +16,6 @@ vi.mock('react-pdf-highlighter', () => ({
     onScrollChange?: () => void
     onSelectionFinished?: () => unknown
   }) => {
-    // Invoke callback props to cover lines 69-73
     enableAreaSelection?.(new MouseEvent('click'))
     highlightTransform?.()
     scrollRef?.(null)
@@ -40,24 +25,34 @@ vi.mock('react-pdf-highlighter', () => ({
   },
 }))
 
-vi.mock('react-pdf-highlighter/dist/style.css', () => ({}))
-
 describe('PdfPreview', () => {
   const mockOnCancel = vi.fn()
-  const getHotkeyCallback = (key: string) => {
-    const call = mockUseHotkeys.mock.calls.find((item: unknown[]) => item[0] === key)
-    return call?.[1] as (() => void) | undefined
+
+  const getScaleContainer = () => {
+    const container = document.querySelector('div[style*="transform"]') as HTMLDivElement | null
+    expect(container).toBeInTheDocument()
+    return container!
+  }
+
+  const getControl = (rightClass: 'right-24' | 'right-16' | 'right-6') => {
+    const control = document.querySelector(`div.absolute.${rightClass}.top-6`) as HTMLDivElement | null
+    expect(control).toBeInTheDocument()
+    return control!
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.innerWidth = 1024
+    fireEvent(window, new Event('resize'))
   })
 
-  it('should render the pdf preview portal with PdfLoader and PdfHighlighter', () => {
+  it('should render the pdf preview portal with overlay and loading indicator', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
+    expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-highlighter')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('should render zoom in, zoom out, and close icon SVGs', () => {
@@ -67,91 +62,69 @@ describe('PdfPreview', () => {
     expect(svgs.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('should register hotkeys for esc, up, and down', () => {
+  it('should zoom in when zoom in control is clicked', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    expect(mockUseHotkeys).toHaveBeenCalledWith('esc', expect.any(Function))
-    expect(mockUseHotkeys).toHaveBeenCalledWith('up', expect.any(Function))
-    expect(mockUseHotkeys).toHaveBeenCalledWith('down', expect.any(Function))
+    fireEvent.click(getControl('right-16'))
+
+    expect(getScaleContainer().getAttribute('style')).toContain('scale(1.2)')
   })
 
-  it('should zoom in when up hotkey callback is invoked', () => {
+  it('should zoom out when zoom out control is clicked', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    // Extract the 'up' hotkey callback and invoke it
-    const zoomInFn = getHotkeyCallback('up')!
-    act(() => {
-      zoomInFn()
-    })
+    fireEvent.click(getControl('right-24'))
 
-    const scaleContainer = document.querySelector('div[style*="transform"]')
-    expect(scaleContainer).toBeInTheDocument()
-    expect(scaleContainer!.getAttribute('style')).toContain('scale(1.2)')
+    expect(getScaleContainer().getAttribute('style')).toMatch(/scale\(0\.8333/)
   })
 
-  it('should zoom out when down hotkey callback is invoked', () => {
+  it('should keep non-1 scale when zooming out from a larger scale', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    // Extract the 'down' hotkey callback and invoke it
-    const zoomOutFn = getHotkeyCallback('down')!
-    act(() => {
-      zoomOutFn()
-    })
+    fireEvent.click(getControl('right-16'))
+    fireEvent.click(getControl('right-16'))
+    fireEvent.click(getControl('right-24'))
 
-    const scaleContainer = document.querySelector('div[style*="transform"]')
-    expect(scaleContainer).toBeInTheDocument()
-    // Default scale 1 / 1.2 = 0.833...
-    expect(scaleContainer!.getAttribute('style')).toMatch(/scale\(0\.8333/)
+    expect(getScaleContainer().getAttribute('style')).toContain('scale(1.2)')
   })
 
-  it('should zoom out to a non-1 scale and adjust position', () => {
+  it('should reset scale back to 1 when zooming in then out', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const zoomInFn = getHotkeyCallback('up')!
-    const zoomOutFn = getHotkeyCallback('down')!
+    fireEvent.click(getControl('right-16'))
+    fireEvent.click(getControl('right-24'))
 
-    // Zoom in twice to scale 1.44, then zoom out to 1.2 (hits else branch since newScale !== 1)
-    act(() => {
-      zoomInFn()
-    })
-    act(() => {
-      zoomInFn()
-    })
-    act(() => {
-      zoomOutFn()
-    })
-
-    const scaleContainer = document.querySelector('div[style*="transform"]')
-    expect(scaleContainer).toBeInTheDocument()
-    // 1 * 1.2 * 1.2 / 1.2 = 1.2
-    expect(scaleContainer!.getAttribute('style')).toContain('scale(1.2)')
+    expect(getScaleContainer().getAttribute('style')).toContain('scale(1)')
   })
 
-  it('should zoom in and then zoom out back to scale 1 to reset position', () => {
+  it('should zoom in when ArrowUp key is pressed', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const zoomInFn = getHotkeyCallback('up')!
-    const zoomOutFn = getHotkeyCallback('down')!
+    fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' })
 
-    // Zoom in once to 1.2, then zoom out back to 1.0 (hits if branch where newScale === 1)
-    act(() => {
-      zoomInFn()
-    })
-    act(() => {
-      zoomOutFn()
-    })
-
-    const scaleContainer = document.querySelector('div[style*="transform"]')
-    expect(scaleContainer).toBeInTheDocument()
-    expect(scaleContainer!.getAttribute('style')).toContain('scale(1)')
+    expect(getScaleContainer().getAttribute('style')).toContain('scale(1.2)')
   })
 
-  it('should call onCancel when esc hotkey callback is invoked', () => {
+  it('should zoom out when ArrowDown key is pressed', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const escCall = mockUseHotkeys.mock.calls.find((call: unknown[]) => call[0] === 'esc')
-    const escFn = escCall![1] as () => void
-    escFn()
+    fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' })
+
+    expect(getScaleContainer().getAttribute('style')).toMatch(/scale\(0\.8333/)
+  })
+
+  it('should call onCancel when close control is clicked', () => {
+    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    fireEvent.click(getControl('right-6'))
+
+    expect(mockOnCancel).toHaveBeenCalled()
+  })
+
+  it('should call onCancel when Escape key is pressed', () => {
+    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
     expect(mockOnCancel).toHaveBeenCalled()
   })
@@ -165,14 +138,5 @@ describe('PdfPreview', () => {
     const stopPropagation = vi.spyOn(event, 'stopPropagation')
     overlay!.dispatchEvent(event)
     expect(stopPropagation).toHaveBeenCalled()
-  })
-
-  it('should render the Loading component in PdfLoader beforeLoad', () => {
-    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
-
-    const pdfLoader = screen.getByTestId('pdf-loader')
-    expect(pdfLoader).toBeInTheDocument()
-    const loadingIndicator = pdfLoader.querySelector('svg')
-    expect(loadingIndicator).toBeInTheDocument()
   })
 })

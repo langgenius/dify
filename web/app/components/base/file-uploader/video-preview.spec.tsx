@@ -1,10 +1,6 @@
 import { fireEvent, render } from '@testing-library/react'
 import VideoPreview from './video-preview'
 
-vi.mock('react-hotkeys-hook', () => ({
-  useHotkeys: vi.fn(),
-}))
-
 describe('VideoPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -54,13 +50,14 @@ describe('VideoPreview', () => {
     expect(stopPropagation).toHaveBeenCalled()
   })
 
-  it('should register esc hotkey', async () => {
-    const { useHotkeys } = vi.mocked(await import('react-hotkeys-hook'))
+  it('should call onCancel when Escape key is pressed', () => {
     const onCancel = vi.fn()
 
     render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={onCancel} />)
 
-    expect(useHotkeys).toHaveBeenCalledWith('esc', onCancel)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(onCancel).toHaveBeenCalled()
   })
 
   it('should render in a portal attached to document.body', () => {

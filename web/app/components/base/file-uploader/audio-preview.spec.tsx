@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AudioPreview from './audio-preview'
 
-vi.mock('react-hotkeys-hook', () => ({
-  useHotkeys: vi.fn(),
-}))
-
 describe('AudioPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -54,13 +50,14 @@ describe('AudioPreview', () => {
     expect(stopPropagation).toHaveBeenCalled()
   })
 
-  it('should register esc hotkey', async () => {
-    const { useHotkeys } = vi.mocked(await import('react-hotkeys-hook'))
+  it('should call onCancel when Escape key is pressed', () => {
     const onCancel = vi.fn()
 
     render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
 
-    expect(useHotkeys).toHaveBeenCalledWith('esc', onCancel)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(onCancel).toHaveBeenCalled()
   })
 
   it('should render in a portal attached to document.body', () => {
