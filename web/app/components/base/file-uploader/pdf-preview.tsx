@@ -6,11 +6,10 @@ import * as React from 'react'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { PdfHighlighter, PdfLoader } from 'react-pdf-highlighter'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import 'react-pdf-highlighter/dist/style.css'
+import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
 
 type PdfPreviewProps = {
   url: string
