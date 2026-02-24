@@ -23,6 +23,12 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
 # ============================================================================
 
 
+@pytest.fixture(autouse=True)
+def _ensure_testcontainers_db(db_session_with_containers):
+    """Ensure this migrated suite runs under testcontainers infrastructure."""
+    return db_session_with_containers
+
+
 @pytest.fixture
 def tenant_id():
     """Generate a unique tenant ID for testing."""
