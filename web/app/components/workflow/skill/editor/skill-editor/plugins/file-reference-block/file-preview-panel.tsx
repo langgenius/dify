@@ -1,5 +1,6 @@
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import type { AppAssetTreeView } from '@/types/app-asset'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +12,7 @@ import SkillEditor from '@/app/components/workflow/skill/editor/skill-editor'
 import { useFileTypeInfo } from '@/app/components/workflow/skill/hooks/use-file-type-info'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
-import { useGetAppAssetFileContent, useGetAppAssetFileDownloadUrl } from '@/service/use-app-asset'
+import { appAssetFileContentOptions, appAssetFileDownloadUrlOptions } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 
 type FilePreviewPanelProps = {
@@ -36,7 +37,8 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
     data: fileContent,
     isLoading: isContentLoading,
     error: contentError,
-  } = useGetAppAssetFileContent(appId, resourceId, {
+  } = useQuery({
+    ...appAssetFileContentOptions(appId, resourceId),
     enabled: isMarkdownPreview,
   })
 
@@ -44,7 +46,8 @@ const FilePreviewPanel = ({ resourceId, currentNode, className, style, onClose }
     data: downloadUrlData,
     isLoading: isDownloadLoading,
     error: downloadError,
-  } = useGetAppAssetFileDownloadUrl(appId, resourceId, {
+  } = useQuery({
+    ...appAssetFileDownloadUrlOptions(appId, resourceId),
     enabled: isReadOnlyPreview,
   })
 

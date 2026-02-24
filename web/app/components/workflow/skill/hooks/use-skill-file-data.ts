@@ -1,40 +1,29 @@
-import { useGetAppAssetFileContent, useGetAppAssetFileDownloadUrl } from '@/service/use-app-asset'
+import { useQuery } from '@tanstack/react-query'
+import { appAssetFileContentOptions, appAssetFileDownloadUrlOptions } from '@/service/use-app-asset'
 
 export type SkillFileDataMode = 'none' | 'content' | 'download'
 
-export type SkillFileDataResult = {
-  fileContent: ReturnType<typeof useGetAppAssetFileContent>['data']
-  downloadUrlData: ReturnType<typeof useGetAppAssetFileDownloadUrl>['data']
-  isLoading: boolean
-  error: Error | null
-}
-
-/**
- * Hook to fetch file data for skill documents.
- * Uses explicit mode to control data fetching:
- * - 'content': fetch editable file content
- * - 'download': fetch non-editable file download URL
- * - 'none': skip file-related requests while node metadata is unresolved
- */
 export function useSkillFileData(
   appId: string,
   nodeId: string | null | undefined,
   mode: SkillFileDataMode,
-): SkillFileDataResult {
+) {
   const {
     data: fileContent,
     isLoading: isContentLoading,
     error: contentError,
-  } = useGetAppAssetFileContent(appId, nodeId || '', {
-    enabled: mode === 'content',
+  } = useQuery({
+    ...appAssetFileContentOptions(appId, nodeId || ''),
+    enabled: mode === 'content' && !!appId && !!nodeId,
   })
 
   const {
     data: downloadUrlData,
     isLoading: isDownloadUrlLoading,
     error: downloadUrlError,
-  } = useGetAppAssetFileDownloadUrl(appId, nodeId || '', {
-    enabled: mode === 'download' && !!nodeId,
+  } = useQuery({
+    ...appAssetFileDownloadUrlOptions(appId, nodeId || ''),
+    enabled: mode === 'download' && !!appId && !!nodeId,
   })
 
   const isLoading = mode === 'content'

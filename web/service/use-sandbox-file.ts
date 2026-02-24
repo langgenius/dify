@@ -1,66 +1,21 @@
 import type {
-  SandboxFileListQuery,
   SandboxFileNode,
   SandboxFileTreeNode,
 } from '@/types/sandbox-file'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { consoleClient, consoleQuery } from '@/service/client'
 
-type UseGetSandboxFilesOptions = {
-  path?: string
-  recursive?: boolean
-  enabled?: boolean
-  refetchInterval?: number | false
-}
-
-type UseSandboxFileDownloadUrlOptions = {
-  enabled?: boolean
-  retry?: boolean | number
+export function sandboxFileDownloadUrlOptions(appId: string | undefined, path: string | undefined) {
+  return consoleQuery.sandboxFile.downloadFile.queryOptions({
+    input: appId && path
+      ? { params: { appId }, body: { path } }
+      : skipToken,
+  })
 }
 
 type InvalidateSandboxFilesOptions = {
   refetchDownloadFile?: boolean
-}
-
-export function useGetSandboxFiles(
-  appId: string | undefined,
-  options?: UseGetSandboxFilesOptions,
-) {
-  const query: SandboxFileListQuery = {
-    path: options?.path,
-    recursive: options?.recursive,
-  }
-
-  return useQuery({
-    queryKey: consoleQuery.sandboxFile.listFiles.queryKey({
-      input: { params: { appId: appId! }, query },
-    }),
-    queryFn: () => consoleClient.sandboxFile.listFiles({
-      params: { appId: appId! },
-      query,
-    }),
-    enabled: !!appId && (options?.enabled ?? true),
-    refetchInterval: options?.refetchInterval,
-  })
-}
-
-export function useSandboxFileDownloadUrl(
-  appId: string | undefined,
-  path: string | undefined,
-  options?: UseSandboxFileDownloadUrlOptions,
-) {
-  return useQuery({
-    queryKey: consoleQuery.sandboxFile.downloadFile.queryKey({
-      input: { params: { appId: appId! }, body: { path: path! } },
-    }),
-    queryFn: () => consoleClient.sandboxFile.downloadFile({
-      params: { appId: appId! },
-      body: { path: path! },
-    }),
-    enabled: !!appId && !!path && (options?.enabled ?? true),
-    retry: options?.retry,
-  })
 }
 
 export function useInvalidateSandboxFiles() {
@@ -131,13 +86,21 @@ function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] 
   return roots
 }
 
+type UseSandboxFilesTreeOptions = {
+  enabled?: boolean
+  refetchInterval?: number | false
+}
+
 export function useSandboxFilesTree(
   appId: string | undefined,
-  options?: UseGetSandboxFilesOptions,
+  options?: UseSandboxFilesTreeOptions,
 ) {
-  const { data, isLoading, error, refetch } = useGetSandboxFiles(appId, {
-    ...options,
-    recursive: true,
+  const { data, isLoading, error, refetch } = useQuery({
+    ...consoleQuery.sandboxFile.listFiles.queryOptions({
+      input: { params: { appId: appId! }, query: { recursive: true } },
+    }),
+    enabled: !!appId && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval,
   })
 
   const treeData = useMemo(() => {

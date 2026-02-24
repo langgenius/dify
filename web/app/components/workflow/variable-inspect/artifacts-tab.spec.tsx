@@ -26,14 +26,24 @@ const mocks = vi.hoisted(() => ({
   hasFiles: false,
   isLoading: false,
   fetchDownloadUrl: vi.fn(),
-  useSandboxFileDownloadUrl: vi.fn(),
+  mockUseQuery: vi.fn(),
+  mockDownloadUrlOptions: vi.fn().mockReturnValue({
+    queryKey: ['sandboxFile', 'downloadFile'],
+    queryFn: vi.fn(),
+  }),
 }))
 
 vi.mock('../store', () => ({
   useStore: (selector: (state: MockStoreState) => unknown) => selector(mocks.storeState),
 }))
 
+vi.mock('@tanstack/react-query', async importOriginal => ({
+  ...await importOriginal<typeof import('@tanstack/react-query')>(),
+  useQuery: (options: unknown) => mocks.mockUseQuery(options),
+}))
+
 vi.mock('@/service/use-sandbox-file', () => ({
+  sandboxFileDownloadUrlOptions: (...args: unknown[]) => mocks.mockDownloadUrlOptions(...args),
   useSandboxFilesTree: () => ({
     data: mocks.treeData,
     flatData: mocks.flatData,
@@ -44,7 +54,6 @@ vi.mock('@/service/use-sandbox-file', () => ({
     mutateAsync: mocks.fetchDownloadUrl,
     isPending: false,
   }),
-  useSandboxFileDownloadUrl: (...args: unknown[]) => mocks.useSandboxFileDownloadUrl(...args),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -98,7 +107,7 @@ describe('ArtifactsTab', () => {
     mocks.flatData = [createFlatFileNode()]
     mocks.hasFiles = true
     mocks.isLoading = false
-    mocks.useSandboxFileDownloadUrl.mockReturnValue({
+    mocks.mockUseQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
     })
@@ -116,11 +125,7 @@ describe('ArtifactsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'a.txt' }))
 
     await waitFor(() => {
-      expect(mocks.useSandboxFileDownloadUrl).toHaveBeenCalledWith(
-        'app-1',
-        'a.txt',
-        { retry: false },
-      )
+      expect(mocks.mockDownloadUrlOptions).toHaveBeenCalledWith('app-1', 'a.txt')
     })
 
     mocks.treeData = undefined
@@ -130,12 +135,8 @@ describe('ArtifactsTab', () => {
     rerender(<ArtifactsTab {...headerProps} />)
 
     await waitFor(() => {
-      const lastCall = mocks.useSandboxFileDownloadUrl.mock.calls.at(-1)
-      expect(lastCall).toEqual([
-        'app-1',
-        undefined,
-        { retry: false },
-      ])
+      const lastCall = mocks.mockDownloadUrlOptions.mock.calls.at(-1)
+      expect(lastCall).toEqual(['app-1', undefined])
     })
   })
 })

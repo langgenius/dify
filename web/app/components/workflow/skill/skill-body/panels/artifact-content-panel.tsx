@@ -1,10 +1,11 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useStore } from '@/app/components/workflow/store'
-import { useSandboxFileDownloadUrl } from '@/service/use-sandbox-file'
+import { sandboxFileDownloadUrlOptions } from '@/service/use-sandbox-file'
 import { getArtifactPath } from '../../constants'
 import { getFileExtension } from '../../utils/file-utils'
 import ReadOnlyFilePreview from '../../viewer/read-only-file-preview'
@@ -18,7 +19,7 @@ const ArtifactContentPanel = () => {
   const fileName = path?.split('/').pop() ?? ''
   const extension = getFileExtension(fileName)
 
-  const { data: ticket, isLoading } = useSandboxFileDownloadUrl(appId, path)
+  const { data: ticket, isLoading } = useQuery(sandboxFileDownloadUrlOptions(appId, path))
 
   if (isLoading) {
     return (

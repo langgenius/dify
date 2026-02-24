@@ -1,6 +1,7 @@
 import type { InspectHeaderProps } from './inspect-layout'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -10,7 +11,7 @@ import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts/artifacts-tree'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
 import { useDocLink } from '@/context/i18n'
-import { useDownloadSandboxFile, useSandboxFileDownloadUrl, useSandboxFilesTree } from '@/service/use-sandbox-file'
+import { sandboxFileDownloadUrlOptions, useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { useStore } from '../store'
@@ -83,11 +84,10 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
     return selectedExists ? selectedFile.path : undefined
   }, [flatData, selectedFile])
 
-  const { data: downloadUrlData, isLoading: isDownloadUrlLoading } = useSandboxFileDownloadUrl(
-    appId,
-    selectedFilePath,
-    { retry: false },
-  )
+  const { data: downloadUrlData, isLoading: isDownloadUrlLoading } = useQuery({
+    ...sandboxFileDownloadUrlOptions(appId, selectedFilePath),
+    retry: false,
+  })
 
   const handleFileSelect = useCallback((node: SandboxFileTreeNode) => {
     if (node.node_type === 'file')
