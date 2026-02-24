@@ -1,19 +1,17 @@
 from collections.abc import Mapping
 
-from configs import dify_config
-
 from .entities import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNodeConfig
 
 
 def build_http_request_config() -> HttpRequestNodeConfig:
     return HttpRequestNodeConfig(
-        max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
-        max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
-        max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
-        max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
-        max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
-        ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
-        ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+        max_connect_timeout=10,
+        max_read_timeout=600,
+        max_write_timeout=600,
+        max_binary_size=10 * 1024 * 1024,
+        max_text_size=1 * 1024 * 1024,
+        ssl_verify=True,
+        ssrf_default_max_retries=3,
     )
 
 
