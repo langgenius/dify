@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -128,7 +128,7 @@ class TestGetRunsBatchByTimeRange:
     ) -> None:
         """Return only terminal workflow runs, excluding RUNNING and PAUSED."""
 
-        now = datetime.now(UTC)
+        now = naive_utc_now()
         ended_statuses = [
             WorkflowExecutionStatus.SUCCEEDED,
             WorkflowExecutionStatus.FAILED,
