@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask_restx import marshal
 
-from core.workflow.file.enums import FileTransferMethod, FileType
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,
     _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS,
@@ -16,6 +15,7 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.file.enums import FileTransferMethod, FileType
 from core.workflow.file.models import File
 from factories.variable_factory import build_segment
 from libs.datetime_utils import naive_utc_now
