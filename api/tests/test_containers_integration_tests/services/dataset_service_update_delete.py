@@ -1,8 +1,8 @@
 """
-Comprehensive unit tests for DatasetService update and delete operations.
+Integration tests for DatasetService update and delete operations using a real database.
 
-This module contains extensive unit tests for the DatasetService class,
-specifically focusing on update and delete operations for datasets.
+This module contains comprehensive integration tests for the DatasetService class,
+specifically focusing on update and delete operations for datasets backed by Testcontainers.
 """
 
 import datetime
