@@ -4,12 +4,12 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod
-from core.file.file_manager import file_manager as default_file_manager
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.segments import ArrayFileSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod
+from core.workflow.file.file_manager import file_manager as default_file_manager
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import VariableSelector

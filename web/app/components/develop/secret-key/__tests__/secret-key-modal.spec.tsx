@@ -88,6 +88,8 @@ describe('SecretKeyModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Suppress expected React act() warnings from Headless UI Dialog transitions and async API state updates
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
@@ -101,6 +103,7 @@ describe('SecretKeyModal', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('rendering when shown', () => {

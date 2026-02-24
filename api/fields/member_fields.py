@@ -5,7 +5,7 @@ from datetime import datetime
 from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
-from core.file import helpers as file_helpers
+from core.workflow.file import helpers as file_helpers
 
 simple_account_fields = {
     "id": fields.String,

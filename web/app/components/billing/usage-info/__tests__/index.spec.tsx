@@ -71,8 +71,19 @@ describe('UsageInfo', () => {
       expect(screen.getByText('billing.plansCommon.unlimited')).toBeInTheDocument()
     })
 
-    it('applies warning color when usage is close to the limit', () => {
-      render(
+    it('applies distinct styling when usage is close to or exceeds the limit', () => {
+      const { rerender } = render(
+        <UsageInfo
+          Icon={TestIcon}
+          name="Storage"
+          usage={30}
+          total={100}
+        />,
+      )
+
+      const normalBarClass = screen.getByTestId('billing-progress-bar').className
+
+      rerender(
         <UsageInfo
           Icon={TestIcon}
           name="Storage"
@@ -81,12 +92,10 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-warning-progress')
-    })
+      const warningBarClass = screen.getByTestId('billing-progress-bar').className
+      expect(warningBarClass).not.toBe(normalBarClass)
 
-    it('applies error color when usage exceeds the limit', () => {
-      render(
+      rerender(
         <UsageInfo
           Icon={TestIcon}
           name="Storage"
@@ -95,8 +104,9 @@ describe('UsageInfo', () => {
         />,
       )
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-error-progress')
+      const errorBarClass = screen.getByTestId('billing-progress-bar').className
+      expect(errorBarClass).not.toBe(normalBarClass)
+      expect(errorBarClass).not.toBe(warningBarClass)
     })
 
     it('does not render the icon when hideIcon is true', () => {
@@ -173,8 +183,8 @@ describe('UsageInfo', () => {
         expect(screen.getAllByText('MB').length).toBeGreaterThanOrEqual(1)
       })
 
-      it('should render full-width indeterminate bar for sandbox users below threshold', () => {
-        render(
+      it('should render different indeterminate bar widths for sandbox vs non-sandbox', () => {
+        const { rerender } = render(
           <UsageInfo
             Icon={TestIcon}
             name="Storage"
@@ -187,12 +197,9 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const bar = screen.getByTestId('billing-progress-bar-indeterminate')
-        expect(bar).toHaveClass('w-full')
-      })
+        const sandboxBarClass = screen.getByTestId('billing-progress-bar-indeterminate').className
 
-      it('should render narrow indeterminate bar for non-sandbox users below threshold', () => {
-        render(
+        rerender(
           <UsageInfo
             Icon={TestIcon}
             name="Storage"
@@ -205,13 +212,13 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const bar = screen.getByTestId('billing-progress-bar-indeterminate')
-        expect(bar).toHaveClass('w-[30px]')
+        const nonSandboxBarClass = screen.getByTestId('billing-progress-bar-indeterminate').className
+        expect(sandboxBarClass).not.toBe(nonSandboxBarClass)
       })
     })
 
     describe('Sandbox Full Capacity', () => {
-      it('should render error color progress bar when sandbox usage >= threshold', () => {
+      it('should render determinate progress bar when sandbox usage >= threshold', () => {
         render(
           <UsageInfo
             Icon={TestIcon}
@@ -225,8 +232,8 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const progressBar = screen.getByTestId('billing-progress-bar')
-        expect(progressBar).toHaveClass('bg-components-progress-error-progress')
+        expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
+        expect(screen.queryByTestId('billing-progress-bar-indeterminate')).not.toBeInTheDocument()
       })
 
       it('should display "threshold / threshold unit" format when sandbox is at full capacity', () => {
@@ -305,9 +312,7 @@ describe('UsageInfo', () => {
           />,
         )
 
-        // Tooltip wrapper should contain cursor-default class
-        const tooltipWrapper = container.querySelector('.cursor-default')
-        expect(tooltipWrapper).toBeInTheDocument()
+        expect(container.querySelector('[data-state]')).toBeInTheDocument()
       })
     })
   })

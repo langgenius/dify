@@ -1,6 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import SubscriptionCard from '../subscription-card'
 
@@ -29,12 +30,6 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
-
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'sub-1',
   name: 'Subscription One',
@@ -50,6 +45,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('SubscriptionCard', () => {
@@ -69,11 +65,9 @@ describe('SubscriptionCard', () => {
   it('should open delete confirmation when delete action is clicked', () => {
     const { container } = render(<SubscriptionCard data={createSubscription()} />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn')
+    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
     expect(deleteButton).toBeTruthy()
-
-    if (deleteButton)
-      fireEvent.click(deleteButton)
+    fireEvent.click(deleteButton)
 
     expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
   })
@@ -81,9 +75,7 @@ describe('SubscriptionCard', () => {
   it('should open edit modal when edit action is clicked', () => {
     const { container } = render(<SubscriptionCard data={createSubscription()} />)
 
-    const actionButtons = container.querySelectorAll('button')
-    const editButton = actionButtons[0]
-
+    const editButton = container.querySelectorAll('button')[0]
     fireEvent.click(editButton)
 
     expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/)).toBeInTheDocument()
