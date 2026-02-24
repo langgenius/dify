@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { RiAddBoxLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
 import * as React from 'react'
@@ -256,7 +256,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
           onClick={onCancel}
         >
-          <RiCloseLine className="h-4 w-4 text-gray-500" />
+          <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="image-preview-close-button" />
         </div>
       </Tooltip>
     </div>,

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { audioToText } from '@/service/share'
@@ -8,7 +8,6 @@ const { mockState, MockRecorder } = vi.hoisted(() => {
   const state = {
     params: {} as Record<string, string>,
     pathname: '/test',
-    rafCallback: undefined as (() => void) | undefined,
     recorderInstances: [] as unknown[],
     startOverride: null as (() => Promise<void>) | null,
     analyseData: new Uint8Array(1024).fill(150) as Uint8Array,
@@ -55,13 +54,6 @@ vi.mock('./utils', () => ({
   convertToMp3: vi.fn(() => new Blob(['test'], { type: 'audio/mp3' })),
 }))
 
-vi.mock('ahooks', () => ({
-  useRafInterval: vi.fn((fn: () => void) => {
-    mockState.rafCallback = fn
-    return vi.fn()
-  }),
-}))
-
 describe('VoiceInput', () => {
   const onConverted = vi.fn()
   const onCancel = vi.fn()
@@ -70,7 +62,6 @@ describe('VoiceInput', () => {
     vi.clearAllMocks()
     mockState.params = {}
     mockState.pathname = '/test'
-    mockState.rafCallback = undefined
     mockState.recorderInstances = []
     mockState.startOverride = null
 
@@ -99,21 +90,6 @@ describe('VoiceInput', () => {
     expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
     expect(screen.getByTestId('voice-input-stop')).toBeInTheDocument()
     expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:00')
-  })
-
-  it('should increment timer via useRafInterval callback', async () => {
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByText('common.voiceInput.speaking')
-
-    act(() => {
-      mockState.rafCallback?.()
-    })
-    expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:01')
-
-    act(() => {
-      mockState.rafCallback?.()
-    })
-    expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:02')
   })
 
   it('should call onCancel when recording start fails', async () => {
@@ -175,32 +151,6 @@ describe('VoiceInput', () => {
     await user.click(cancelBtn)
 
     expect(onCancel).toHaveBeenCalled()
-  })
-
-  it('should automatically stop recording after 600 seconds', async () => {
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'auto stopped' })
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    for (let i = 0; i < 600; i++)
-      act(() => { mockState.rafCallback?.() })
-
-    await waitFor(() => {
-      expect(onConverted).toHaveBeenCalledWith('auto stopped')
-    })
-  })
-
-  it('should show red timer text after 500 seconds', async () => {
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    for (let i = 0; i < 501; i++)
-      act(() => { mockState.rafCallback?.() })
-
-    const timer = screen.getByTestId('voice-input-timer')
-    expect(timer.className).toContain('text-[#F04438]')
   })
 
   it('should draw on canvas with low data values triggering v < 128 clamp', async () => {

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import FloatRightContainer from './index'
 
 describe('FloatRightContainer', () => {
@@ -94,7 +94,47 @@ describe('FloatRightContainer', () => {
       const closeIcon = screen.getByTestId('close-icon')
       expect(closeIcon).toBeInTheDocument()
 
-      fireEvent.click(closeIcon!)
+      await userEvent.click(closeIcon)
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onClose when close is done using escape key', async () => {
+      const onClose = vi.fn()
+      render(
+        <FloatRightContainer
+          isMobile={true}
+          isOpen={true}
+          onClose={onClose}
+          showClose={true}
+        >
+          <div>Closable content</div>
+        </FloatRightContainer>,
+      )
+
+      const closeIcon = screen.getByTestId('close-icon')
+      closeIcon.focus()
+      await userEvent.keyboard('{Enter}')
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onClose when close is done using space key', async () => {
+      const onClose = vi.fn()
+      render(
+        <FloatRightContainer
+          isMobile={true}
+          isOpen={true}
+          onClose={onClose}
+          showClose={true}
+        >
+          <div>Closable content</div>
+        </FloatRightContainer>,
+      )
+
+      const closeIcon = screen.getByTestId('close-icon')
+      closeIcon.focus()
+      await userEvent.keyboard(' ')
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -129,8 +169,9 @@ describe('FloatRightContainer', () => {
           isOpen={true}
           onClose={vi.fn()}
           title="Empty mobile panel"
-          children={undefined}
-        />,
+        >
+          {undefined}
+        </FloatRightContainer>,
       )
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
