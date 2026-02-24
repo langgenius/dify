@@ -80,7 +80,18 @@ export default function Drawer({
               )}
               {showClose && (
                 <DialogTitle className="mb-4 flex cursor-pointer items-center" as="div">
-                  <span className="i-heroicons-x-mark h-4 w-4 text-text-tertiary" onClick={onClose} data-testid="close-icon" />
+                  <span
+                    className="i-heroicons-x-mark h-4 w-4 text-text-tertiary"
+                    onClick={onClose}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ')
+                        onClose()
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t('operation.close', { ns: 'common' })}
+                    data-testid="close-icon"
+                  />
                 </DialogTitle>
               )}
             </div>
