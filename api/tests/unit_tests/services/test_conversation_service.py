@@ -110,8 +110,8 @@ class ConversationServiceTestDataFactory:
         conversation.is_deleted = kwargs.get("is_deleted", False)
         conversation.name = kwargs.get("name", "Test Conversation")
         conversation.status = kwargs.get("status", "normal")
-        conversation.created_at = kwargs.get("created_at", datetime.now())
-        conversation.updated_at = kwargs.get("updated_at", datetime.now())
+        conversation.created_at = kwargs.get("created_at", datetime.utcnow())
+        conversation.updated_at = kwargs.get("updated_at", datetime.utcnow())
         for key, value in kwargs.items():
             setattr(conversation, key, value)
         return conversation
