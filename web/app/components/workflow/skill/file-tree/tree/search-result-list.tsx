@@ -53,7 +53,8 @@ const SearchResultRow = ({ node, parentPath, treeChildren }: SearchResultRowProp
       role="button"
       tabIndex={0}
       className={cn(
-        'flex h-6 w-full cursor-pointer items-center rounded-md px-2',
+        'flex h-6 w-full items-center gap-2 overflow-hidden rounded-md px-2',
+        'cursor-pointer',
         'hover:bg-state-base-hover',
         isActive && 'bg-state-base-active',
       )}
@@ -84,7 +85,10 @@ const SearchResultRow = ({ node, parentPath, treeChildren }: SearchResultRowProp
         </span>
       </div>
       {parentPath && (
-        <span className="shrink-0 text-text-tertiary system-xs-regular">
+        <span
+          title={parentPath}
+          className="block min-w-0 max-w-[45%] truncate text-right text-text-tertiary system-xs-regular"
+        >
           {parentPath}
         </span>
       )}

@@ -83,6 +83,23 @@ describe('SearchResultList', () => {
       expect(screen.queryByText('readme.md')).not.toBeInTheDocument()
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
+
+    it('should apply truncation semantics to long parent paths', () => {
+      const longParentPath = 'docx/scripts/office/schemas/ISO-IEC29500-4_2016/very/deep/path'
+      const treeChildren = [
+        createNode({
+          id: 'file-1',
+          name: 'sample.md',
+          path: `/${longParentPath}/sample.md`,
+        }),
+      ]
+
+      render(<SearchResultList searchTerm="sample" treeChildren={treeChildren} />)
+
+      const parentPath = screen.getByText(longParentPath)
+      expect(parentPath).toHaveClass('truncate', 'text-right')
+      expect(parentPath).toHaveAttribute('title', longParentPath)
+    })
   })
 
   // File and folder actions should dispatch the correct store operations.
