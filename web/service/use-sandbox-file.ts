@@ -95,11 +95,14 @@ export function useSandboxFilesTree(
   appId: string | undefined,
   options?: UseSandboxFilesTreeOptions,
 ) {
+  const input = appId && (options?.enabled ?? true)
+    ? { params: { appId }, query: { recursive: true } }
+    : skipToken
+
   const { data, isLoading, error, refetch } = useQuery({
     ...consoleQuery.sandboxFile.listFiles.queryOptions({
-      input: { params: { appId: appId! }, query: { recursive: true } },
+      input,
     }),
-    enabled: !!appId && (options?.enabled ?? true),
     refetchInterval: options?.refetchInterval,
   })
 
