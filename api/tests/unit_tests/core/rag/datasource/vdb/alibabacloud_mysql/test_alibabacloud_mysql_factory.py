@@ -69,8 +69,6 @@ def test_factory_init_vector_generates_collection_name_when_index_struct_is_miss
         result = factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
 
     assert result == "vector"
-    # Safely access the collection_name kwarg and assert call count
-    assert vector_cls.call_args is not None
-    assert vector_cls.call_args.kwargs.get("collection_name") == "COL_dataset-2"
     vector_cls.assert_called_once()
+    assert vector_cls.call_args.kwargs["collection_name"] == "COL_dataset-2"
     assert dataset.index_struct is not None
