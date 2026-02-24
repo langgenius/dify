@@ -1460,26 +1460,6 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/answer/human-input-content/content-wrapper.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/answer/human-input-content/executed-action.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/base/chat/chat/answer/human-input-content/expiration-time.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/answer/human-input-content/tips.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/base/chat/chat/answer/human-input-content/utils.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1496,21 +1476,6 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/answer/more.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/answer/operation.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/answer/suggested-questions.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/chat/answer/tool-detail.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
@@ -1518,9 +1483,6 @@
   },
   "app/components/base/chat/chat/answer/workflow-process.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -1539,27 +1501,6 @@
   },
   "app/components/base/chat/chat/citation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/citation/popup.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/base/chat/chat/citation/progress-tooltip.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/chat/citation/tooltip.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -1582,11 +1523,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/base/chat/chat/question.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/chat/chat/try-to-ask.tsx": {
