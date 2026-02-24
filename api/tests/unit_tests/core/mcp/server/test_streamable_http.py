@@ -401,7 +401,6 @@ class TestUtilityFunctions:
 
         assert result == "more thinking"
 
-
     def test_process_mapping_response_invalid_mode(self):
         """Test processing mapping response with invalid app mode"""
         app = Mock(spec=App)

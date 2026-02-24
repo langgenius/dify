@@ -221,7 +221,6 @@ def process_streaming_response(response: RateLimitGenerator) -> str:
     return answer or last_thought
 
 
-
 def process_mapping_response(app: App, response: Mapping) -> str:
     """Process mapping response based on app mode"""
     if app.mode in {
