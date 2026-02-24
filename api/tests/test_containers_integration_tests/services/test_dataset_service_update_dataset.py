@@ -1,4 +1,3 @@
-import datetime
 from unittest.mock import Mock, create_autospec, patch
 from uuid import uuid4
 
