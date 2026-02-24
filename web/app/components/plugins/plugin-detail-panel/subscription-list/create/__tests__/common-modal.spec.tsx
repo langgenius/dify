@@ -714,6 +714,7 @@ describe('CommonCreateModal', () => {
 
   describe('Manual Properties Change', () => {
     it('should call updateBuilder when manual properties change', async () => {
+      const builder = createMockSubscriptionBuilder()
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
           trigger: {
@@ -729,11 +730,7 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithManualSchema)
 
-      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
-
-      await waitFor(() => {
-        expect(mockCreateBuilder).toHaveBeenCalled()
-      })
+      render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} builder={builder} />)
 
       const input = screen.getByTestId('form-field-webhook_url')
       fireEvent.change(input, { target: { value: 'https://example.com/webhook' } })
