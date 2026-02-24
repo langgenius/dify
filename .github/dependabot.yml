@@ -1,12 +1,21 @@
 version: 2
-updates:
-  - package-ecosystem: "npm"
-    directory: "/web"
+
+multi-ecosystem-groups:
+  python:
     schedule:
-      interval: "weekly"
+      interval: "weekly"  # or whatever schedule you want
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/api"
     open-pull-requests-limit: 2
+    patterns: ["*"]
   - package-ecosystem: "uv"
     directory: "/api"
+    open-pull-requests-limit: 2
+    patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/web"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 2
