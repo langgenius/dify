@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import useEmblaCarousel from 'embla-carousel-react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Carousel, useCarousel } from './index'
 
 vi.mock('embla-carousel-react', () => ({
@@ -52,7 +51,9 @@ const createMockEmblaApi = (): MockEmblaApi => ({
 })
 
 const emitEmblaEvent = (event: EmblaEventName, api: MockEmblaApi | undefined = mockApi) => {
-  listeners[event].forEach(callback => callback(api))
+  listeners[event].forEach((callback) => {
+    callback(api)
+  })
 }
 
 const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'horizontal') => {
@@ -60,6 +61,8 @@ const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'ho
     <Carousel orientation={orientation}>
       <Carousel.Content data-testid="carousel-content">
         <Carousel.Item>Slide 1</Carousel.Item>
+        <Carousel.Item>Slide 2</Carousel.Item>
+        <Carousel.Item>Slide 3</Carousel.Item>
       </Carousel.Content>
       <Carousel.Previous>Prev</Carousel.Previous>
       <Carousel.Next>Next</Carousel.Next>
@@ -67,6 +70,13 @@ const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'ho
     </Carousel>,
   )
 }
+
+const mockPlugin = () => ({
+  name: 'mock',
+  options: {},
+  init: vi.fn(),
+  destroy: vi.fn(),
+})
 
 describe('Carousel', () => {
   beforeEach(() => {
@@ -90,22 +100,25 @@ describe('Carousel', () => {
 
       expect(screen.getByRole('region')).toHaveAttribute('aria-roledescription', 'carousel')
       expect(screen.getByTestId('carousel-content')).toHaveClass('flex')
-      expect(screen.getByRole('group')).toHaveAttribute('aria-roledescription', 'slide')
+      screen.getAllByRole('group').forEach((slide) => {
+        expect(slide).toHaveAttribute('aria-roledescription', 'slide')
+      })
     })
   })
 
   // Props should be translated into Embla options and visible layout.
   describe('Props', () => {
     it('should configure embla with horizontal axis when orientation is omitted', () => {
+      const plugin = mockPlugin()
       render(
-        <Carousel opts={{ loop: true }} plugins={['plugin-marker' as unknown as never]}>
+        <Carousel opts={{ loop: true }} plugins={[plugin]}>
           <Carousel.Content />
         </Carousel>,
       )
 
       expect(mockedUseEmblaCarousel).toHaveBeenCalledWith(
         { loop: true, axis: 'x' },
-        ['plugin-marker'],
+        [plugin],
       )
     })
 

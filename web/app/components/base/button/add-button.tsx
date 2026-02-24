@@ -13,7 +13,7 @@ const AddButton: FC<Props> = ({
   onClick,
 }) => {
   return (
-    <div className={cn(className, 'cursor-pointer select-none rounded-md p-1 hover:bg-state-base-hover')} onClick={onClick}>
+    <div className={cn(className, 'cursor-pointer select-none rounded-md p-1 hover:bg-state-base-hover')} onClick={onClick} data-testid="add-button">
       <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
     </div>
   )
