@@ -14,12 +14,6 @@ const mockEventEmitter: { useSubscription: unknown, emit: unknown } = {
   emit: vi.fn(),
 }
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (_key: string, options?: { num?: number }) => `${_key}${options?.num ? `:${options.num}` : ''}`,
-  }),
-}))
-
 vi.mock('@/service/common', () => ({
   fetchModelProviderModelList: vi.fn(),
 }))
@@ -85,7 +79,7 @@ describe('ProviderAddedCard', () => {
     vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [{ model: 'gpt-4' }] } as unknown as { data: ModelItem[] })
     render(<ProviderAddedCard provider={mockProvider} />)
 
-    const showModelsBtn = screen.getAllByText('modelProvider.showModels')[1]
+    const showModelsBtn = screen.getAllByText('common.modelProvider.showModels')[1]
     fireEvent.click(showModelsBtn)
 
     await screen.findByTestId('model-list')
@@ -97,7 +91,7 @@ describe('ProviderAddedCard', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'collapse list' }))
-    expect(screen.getAllByText('modelProvider.showModelsNum:1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/common\.modelProvider\.showModelsNum:\{"num":1\}/).length).toBeGreaterThan(0)
   })
 
   it('should render configure tip when provider is not in quota list and not configured', () => {
@@ -106,7 +100,7 @@ describe('ProviderAddedCard', () => {
       provider: 'custom/provider',
     } as unknown as ModelProvider
     render(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
-    expect(screen.getByText('modelProvider.configureTip')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
   it('should refresh model list on matching event subscription', async () => {
