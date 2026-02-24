@@ -1,9 +1,9 @@
 """
-Comprehensive unit tests for DatasetPermissionService and DatasetService permission methods.
+Comprehensive integration tests for DatasetPermissionService and DatasetService permission methods.
 
-This module contains extensive unit tests for dataset permission management,
-including partial member list operations, permission validation, and permission
-enum handling.
+This module contains extensive testcontainers-backed integration tests for dataset
+permission management, including partial member list operations, permission
+validation, and permission enum handling.
 """
 
 from uuid import uuid4
