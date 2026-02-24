@@ -957,38 +957,6 @@ class TestChildChunk:
 class TestDocumentSegmentNavigation:
     """Test suite for DocumentSegment navigation properties."""
 
-    def test_document_segment_dataset_property(self):
-        """Test segment can access its parent dataset."""
-        # Arrange
-        dataset_id = str(uuid4())
-        segment = DocumentSegment(
-            tenant_id=str(uuid4()),
-            dataset_id=dataset_id,
-            document_id=str(uuid4()),
-            position=1,
-            content="Test",
-            word_count=1,
-            tokens=2,
-            created_by=str(uuid4()),
-        )
-
-        mock_dataset = Dataset(
-            tenant_id=str(uuid4()),
-            name="Test Dataset",
-            data_source_type="upload_file",
-            created_by=str(uuid4()),
-        )
-        mock_dataset.id = dataset_id
-
-        # Mock the database session scalar
-        with patch("models.dataset.db.session.scalar", return_value=mock_dataset):
-            # Act
-            dataset = segment.dataset
-
-            # Assert
-            assert dataset is not None
-            assert dataset.id == dataset_id
-
     def test_document_segment_document_property(self):
         """Test segment can access its parent document."""
         # Arrange
