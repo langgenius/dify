@@ -918,7 +918,7 @@ class TestDatasetServiceDocumentIndexing:
         - Track active indexing operations (document_{id}_indexing)
         """
         with (
-            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.redis_client", new=Mock()) as mock_redis,
             patch("services.dataset_service.db.session") as mock_db,
             patch("services.dataset_service.current_user") as mock_current_user,
         ):
