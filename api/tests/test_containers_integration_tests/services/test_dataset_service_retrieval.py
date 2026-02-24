@@ -28,7 +28,7 @@ from services.dataset_service import DatasetService, DocumentService
 
 
 class DatasetRetrievalTestDataFactory:
-    """Factory class for creating test data and mock objects for dataset retrieval tests."""
+    """Factory class for creating database-backed test data for dataset retrieval integration tests."""
 
     @staticmethod
     def create_account_with_tenant(role: TenantAccountRole = TenantAccountRole.NORMAL) -> tuple[Account, Tenant]:
