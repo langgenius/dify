@@ -1,30 +1,25 @@
-import type { Area } from 'react-easy-crop'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ImageInput from './ImageInput'
-
-vi.mock('react-easy-crop', () => ({
-  default: ({ onCropComplete }: { onCropComplete: (crop: Area, pixelCrop: Area) => void }) => {
-    return (
-      <div data-testid="mock-cropper">
-        <button
-          type="button"
-          data-testid="trigger-crop"
-          onClick={() => onCropComplete(
-            { x: 0, y: 0, width: 100, height: 100 },
-            { x: 10, y: 20, width: 80, height: 80 },
-          )}
-        >
-          Trigger Crop
-        </button>
-      </div>
-    )
-  },
-}))
 
 const createObjectURLMock = vi.fn(() => 'blob:mock-url')
 const revokeObjectURLMock = vi.fn()
 const originalCreateObjectURL = globalThis.URL.createObjectURL
 const originalRevokeObjectURL = globalThis.URL.revokeObjectURL
+
+const waitForCropperContainer = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId('container')).toBeInTheDocument()
+  })
+}
+
+const loadCropperImage = async () => {
+  await waitForCropperContainer()
+  const cropperImage = screen.getByTestId('container').querySelector('img')
+  if (!cropperImage)
+    throw new Error('Could not find cropper image')
+
+  fireEvent.load(cropperImage)
+}
 
 describe('ImageInput', () => {
   beforeEach(() => {
@@ -82,9 +77,7 @@ describe('ImageInput', () => {
       const input = screen.getByTestId('image-input')
       fireEvent.change(input, { target: { files: [file] } })
 
-      await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
-      })
+      await waitForCropperContainer()
 
       // Upload prompt should be gone
       expect(screen.queryByText(/browse/i)).not.toBeInTheDocument()
@@ -98,18 +91,21 @@ describe('ImageInput', () => {
       const input = screen.getByTestId('image-input')
       fireEvent.change(input, { target: { files: [file] } })
 
+      await loadCropperImage()
+
       await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
+        expect(onImageInput).toHaveBeenCalledWith(
+          true,
+          'blob:mock-url',
+          expect.objectContaining({
+            x: expect.any(Number),
+            y: expect.any(Number),
+            width: expect.any(Number),
+            height: expect.any(Number),
+          }),
+          'photo.png',
+        )
       })
-
-      fireEvent.click(screen.getByTestId('trigger-crop'))
-
-      expect(onImageInput).toHaveBeenCalledWith(
-        true,
-        'blob:mock-url',
-        { x: 10, y: 20, width: 80, height: 80 },
-        'photo.png',
-      )
     })
 
     it('should show img tag and call onImageInput with isCropped=false for animated GIF', async () => {
@@ -128,7 +124,7 @@ describe('ImageInput', () => {
       })
 
       // Cropper should NOT be shown
-      expect(screen.queryByTestId('mock-cropper')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('container')).not.toBeInTheDocument()
       expect(onImageInput).toHaveBeenCalledWith(false, file)
     })
 
@@ -185,9 +181,7 @@ describe('ImageInput', () => {
         dataTransfer: { files: [file] },
       })
 
-      await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
-      })
+      await waitForCropperContainer()
     })
   })
 
@@ -199,9 +193,7 @@ describe('ImageInput', () => {
       const input = screen.getByTestId('image-input')
       fireEvent.change(input, { target: { files: [file] } })
 
-      await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
-      })
+      await waitForCropperContainer()
 
       unmount()
 
@@ -225,12 +217,10 @@ describe('ImageInput', () => {
       // Should not throw
       fireEvent.change(input, { target: { files: [file] } })
 
+      await loadCropperImage()
       await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
+        expect(screen.getByTestId('cropper')).toBeInTheDocument()
       })
-
-      // Triggering crop should also not throw
-      fireEvent.click(screen.getByTestId('trigger-crop'))
     })
 
     it('should accept the correct file extensions', () => {
