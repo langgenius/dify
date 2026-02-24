@@ -1,7 +1,6 @@
 import json
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.file import file_manager
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -11,6 +10,7 @@ from core.model_runtime.entities import (
 )
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.file import file_manager
 
 
 class CotChatAgentRunner(CotAgentRunner):

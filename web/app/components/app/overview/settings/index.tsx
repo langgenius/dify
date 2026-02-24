@@ -281,7 +281,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  defaultValue={inputInfo.use_icon_as_answer_icon}
+                  value={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
@@ -315,7 +315,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
                 <div className="flex items-center justify-between">
                   <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
-                  <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                  <Switch value={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
               </div>
             </div>
@@ -326,7 +326,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
               <Switch
                 disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
-                defaultValue={inputInfo.show_workflow_steps}
+                value={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
@@ -380,7 +380,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   >
                     <Switch
                       disabled={!webappCopyrightEnabled}
-                      defaultValue={inputInfo.copyrightSwitchValue}
+                      value={inputInfo.copyrightSwitchValue}
                       onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
                   </Tooltip>
