@@ -112,6 +112,7 @@ class TestGetRunsBatchByTimeRange:
         db_session_with_containers: Session,
         test_scope: _TestScope,
     ) -> None:
+        now = datetime.now(UTC)
         ended_statuses = [
             WorkflowExecutionStatus.SUCCEEDED,
             WorkflowExecutionStatus.FAILED,
@@ -123,7 +124,7 @@ class TestGetRunsBatchByTimeRange:
                 db_session_with_containers,
                 test_scope,
                 status=status,
-                created_at=datetime.now(UTC) - timedelta(minutes=3),
+                created_at=now - timedelta(minutes=3),
             ).id
             for status in ended_statuses
         }
@@ -131,18 +132,18 @@ class TestGetRunsBatchByTimeRange:
             db_session_with_containers,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
-            created_at=datetime.now(UTC) - timedelta(minutes=2),
+            created_at=now - timedelta(minutes=2),
         )
         _create_workflow_run(
             db_session_with_containers,
             test_scope,
             status=WorkflowExecutionStatus.PAUSED,
-            created_at=datetime.now(UTC) - timedelta(minutes=1),
+            created_at=now - timedelta(minutes=1),
         )
 
         runs = repository.get_runs_batch_by_time_range(
-            start_from=datetime.now(UTC) - timedelta(days=1),
-            end_before=datetime.now(UTC) + timedelta(days=1),
+            start_from=now - timedelta(days=1),
+            end_before=now + timedelta(days=1),
             last_seen=None,
             batch_size=50,
             tenant_ids=[test_scope.tenant_id],
