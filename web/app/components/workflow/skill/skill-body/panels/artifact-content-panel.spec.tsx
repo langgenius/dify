@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import ArtifactContentPanel from './artifact-content-panel'
 
@@ -12,39 +11,32 @@ const mocks = vi.hoisted(() => ({
     activeTabId: 'artifact:/assets/report.bin',
     appId: 'app-1',
   } as WorkflowStoreState,
-  useSandboxFileDownloadUrl: vi.fn(),
+  mockUseQuery: vi.fn(),
+  mockDownloadUrlOptions: vi.fn().mockReturnValue({
+    queryKey: ['sandboxFile', 'downloadFile'],
+    queryFn: vi.fn(),
+  }),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: WorkflowStoreState) => unknown) => selector(mocks.workflowState),
 }))
 
-vi.mock('@/service/use-sandbox-file', () => ({
-  useSandboxFileDownloadUrl: (...args: unknown[]) => mocks.useSandboxFileDownloadUrl(...args),
+vi.mock('@tanstack/react-query', async importOriginal => ({
+  ...await importOriginal<typeof import('@tanstack/react-query')>(),
+  useQuery: (options: unknown) => mocks.mockUseQuery(options),
 }))
 
-const renderPanel = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ArtifactContentPanel />
-    </QueryClientProvider>,
-  )
-}
+vi.mock('@/service/use-sandbox-file', () => ({
+  sandboxFileDownloadUrlOptions: (...args: unknown[]) => mocks.mockDownloadUrlOptions(...args),
+}))
 
 describe('ArtifactContentPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.workflowState.activeTabId = 'artifact:/assets/report.bin'
     mocks.workflowState.appId = 'app-1'
-    mocks.useSandboxFileDownloadUrl.mockReturnValue({
+    mocks.mockUseQuery.mockReturnValue({
       data: { download_url: 'https://example.com/report.bin' },
       isLoading: false,
     })
@@ -52,38 +44,30 @@ describe('ArtifactContentPanel', () => {
 
   describe('Rendering', () => {
     it('should show loading indicator when download ticket is loading', () => {
-      // Arrange
-      mocks.useSandboxFileDownloadUrl.mockReturnValue({
+      mocks.mockUseQuery.mockReturnValue({
         data: undefined,
         isLoading: true,
       })
 
-      // Act
-      renderPanel()
+      render(<ArtifactContentPanel />)
 
-      // Assert
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should show load error message when download url is unavailable', () => {
-      // Arrange
-      mocks.useSandboxFileDownloadUrl.mockReturnValue({
+      mocks.mockUseQuery.mockReturnValue({
         data: { download_url: '' },
         isLoading: false,
       })
 
-      // Act
-      renderPanel()
+      render(<ArtifactContentPanel />)
 
-      // Assert
       expect(screen.getByText('workflow.skillSidebar.loadError')).toBeInTheDocument()
     })
 
     it('should render preview panel when ticket contains download url', () => {
-      // Act
-      renderPanel()
+      render(<ArtifactContentPanel />)
 
-      // Assert
       expect(screen.getByText('report.bin')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.download/i })).toBeInTheDocument()
     })
@@ -91,25 +75,19 @@ describe('ArtifactContentPanel', () => {
 
   describe('Data flow', () => {
     it('should request ticket using app id and artifact path when tab is selected', () => {
-      // Act
-      renderPanel()
+      render(<ArtifactContentPanel />)
 
-      // Assert
-      expect(mocks.useSandboxFileDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(mocks.useSandboxFileDownloadUrl).toHaveBeenCalledWith('app-1', '/assets/report.bin')
+      expect(mocks.mockDownloadUrlOptions).toHaveBeenCalledWith('app-1', '/assets/report.bin')
     })
   })
 
   describe('Edge Cases', () => {
-    it('should request ticket with undefined path when active tab id is null', () => {
-      // Arrange
+    it('should pass undefined path to options factory when active tab id is null', () => {
       mocks.workflowState.activeTabId = null
 
-      // Act
-      renderPanel()
+      render(<ArtifactContentPanel />)
 
-      // Assert
-      expect(mocks.useSandboxFileDownloadUrl).toHaveBeenCalledWith('app-1', undefined)
+      expect(mocks.mockDownloadUrlOptions).toHaveBeenCalledWith('app-1', undefined)
     })
   })
 })

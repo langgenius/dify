@@ -8,12 +8,22 @@ import {
   useSkillAssetTreeData,
 } from './use-skill-asset-tree'
 
-const { mockUseGetAppAssetTree } = vi.hoisted(() => ({
-  mockUseGetAppAssetTree: vi.fn(),
+const { mockUseQuery, mockAppAssetTreeOptions } = vi.hoisted(() => ({
+  mockUseQuery: vi.fn(),
+  mockAppAssetTreeOptions: vi.fn().mockReturnValue({
+    queryKey: ['test', 'tree'],
+    queryFn: vi.fn(),
+    enabled: true,
+  }),
+}))
+
+vi.mock('@tanstack/react-query', async importOriginal => ({
+  ...await importOriginal<typeof import('@tanstack/react-query')>(),
+  useQuery: (options: unknown) => mockUseQuery(options),
 }))
 
 vi.mock('@/service/use-app-asset', () => ({
-  useGetAppAssetTree: (...args: unknown[]) => mockUseGetAppAssetTree(...args),
+  appAssetTreeOptions: (...args: unknown[]) => mockAppAssetTreeOptions(...args),
 }))
 
 const createTreeNode = (
@@ -34,22 +44,21 @@ describe('useSkillAssetTree', () => {
     useAppStore.setState({
       appDetail: { id: 'app-1' } as App & Partial<AppSSO>,
     })
-    mockUseGetAppAssetTree.mockReturnValue({
+    mockUseQuery.mockReturnValue({
       data: null,
       isPending: false,
       error: null,
     })
   })
 
-  // Scenario: should pass app id from app store to the data query hook.
   describe('useSkillAssetTreeData', () => {
     it('should request tree data with current app id', () => {
       const expectedResult = { data: { children: [] }, isPending: false }
-      mockUseGetAppAssetTree.mockReturnValue(expectedResult)
+      mockUseQuery.mockReturnValue(expectedResult)
 
       const { result } = renderHook(() => useSkillAssetTreeData())
 
-      expect(mockUseGetAppAssetTree).toHaveBeenCalledWith('app-1')
+      expect(mockAppAssetTreeOptions).toHaveBeenCalledWith('app-1')
       expect(result.current).toBe(expectedResult)
     })
 
@@ -58,16 +67,15 @@ describe('useSkillAssetTree', () => {
 
       renderHook(() => useSkillAssetTreeData())
 
-      expect(mockUseGetAppAssetTree).toHaveBeenCalledWith('')
+      expect(mockAppAssetTreeOptions).toHaveBeenCalledWith('')
     })
   })
 
-  // Scenario: should expose a select transform that builds node lookup maps.
   describe('useSkillAssetNodeMap', () => {
     it('should build a map including nested nodes', () => {
       renderHook(() => useSkillAssetNodeMap())
 
-      const options = mockUseGetAppAssetTree.mock.calls[0][1] as {
+      const options = mockUseQuery.mock.calls[0][0] as {
         select: (data: AppAssetTreeResponse) => Map<string, AppAssetTreeView>
       }
 
@@ -97,7 +105,7 @@ describe('useSkillAssetTree', () => {
     it('should return an empty map when tree response has no children', () => {
       renderHook(() => useSkillAssetNodeMap())
 
-      const options = mockUseGetAppAssetTree.mock.calls[0][1] as {
+      const options = mockUseQuery.mock.calls[0][0] as {
         select: (data: AppAssetTreeResponse) => Map<string, AppAssetTreeView>
       }
 
@@ -107,12 +115,11 @@ describe('useSkillAssetTree', () => {
     })
   })
 
-  // Scenario: should expose root-level existing skill folder names.
   describe('useExistingSkillNames', () => {
     it('should collect only root folder names', () => {
       renderHook(() => useExistingSkillNames())
 
-      const options = mockUseGetAppAssetTree.mock.calls[0][1] as {
+      const options = mockUseQuery.mock.calls[0][0] as {
         select: (data: AppAssetTreeResponse) => Set<string>
       }
 
@@ -153,7 +160,7 @@ describe('useSkillAssetTree', () => {
     it('should return an empty set when tree response has no children', () => {
       renderHook(() => useExistingSkillNames())
 
-      const options = mockUseGetAppAssetTree.mock.calls[0][1] as {
+      const options = mockUseQuery.mock.calls[0][0] as {
         select: (data: AppAssetTreeResponse) => Set<string>
       }
 

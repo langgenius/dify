@@ -1,6 +1,5 @@
 import type {
   AppAssetNode,
-  AppAssetTreeResponse,
   BatchUploadNodeInput,
   BatchUploadNodeOutput,
   CreateFolderPayload,
@@ -12,26 +11,36 @@ import type {
 } from '@/types/app-asset'
 import {
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { upload } from './base'
 import { uploadToPresignedUrl } from './upload-to-presigned-url'
 
-type UseGetAppAssetTreeOptions<TData = AppAssetTreeResponse> = {
-  select?: (data: AppAssetTreeResponse) => TData
+export function appAssetTreeOptions(appId: string) {
+  return consoleQuery.appAsset.tree.queryOptions({
+    input: { params: { appId } },
+    enabled: !!appId,
+  })
 }
 
-export function useGetAppAssetTree<TData = AppAssetTreeResponse>(
-  appId: string,
-  options?: UseGetAppAssetTreeOptions<TData>,
-) {
-  return useQuery({
-    queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId } } }),
-    queryFn: () => consoleClient.appAsset.tree({ params: { appId } }),
-    enabled: !!appId,
-    select: options?.select,
+export function appAssetFileContentOptions(appId: string, nodeId: string) {
+  return consoleQuery.appAsset.getFileContent.queryOptions({
+    input: { params: { appId, nodeId } },
+    select: (data) => {
+      try {
+        return JSON.parse(data.content)
+      }
+      catch {
+        return { content: data.content }
+      }
+    },
+  })
+}
+
+export function appAssetFileDownloadUrlOptions(appId: string, nodeId: string) {
+  return consoleQuery.appAsset.getFileDownloadUrl.queryOptions({
+    input: { params: { appId, nodeId } },
   })
 }
 
@@ -50,31 +59,6 @@ export const useCreateAppAssetFolder = () => {
         queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
       })
     },
-  })
-}
-
-export const useGetAppAssetFileContent = (appId: string, nodeId: string, options?: { enabled?: boolean }) => {
-  return useQuery({
-    queryKey: consoleQuery.appAsset.getFileContent.queryKey({ input: { params: { appId, nodeId } } }),
-    queryFn: () => consoleClient.appAsset.getFileContent({ params: { appId, nodeId } }),
-    select: (data) => {
-      try {
-        const result = JSON.parse(data.content)
-        return result
-      }
-      catch {
-        return { content: data.content }
-      }
-    },
-    enabled: (options?.enabled ?? true) && !!appId && !!nodeId,
-  })
-}
-
-export const useGetAppAssetFileDownloadUrl = (appId: string, nodeId: string, options?: { enabled?: boolean }) => {
-  return useQuery({
-    queryKey: consoleQuery.appAsset.getFileDownloadUrl.queryKey({ input: { params: { appId, nodeId } } }),
-    queryFn: () => consoleClient.appAsset.getFileDownloadUrl({ params: { appId, nodeId } }),
-    enabled: (options?.enabled ?? true) && !!appId && !!nodeId,
   })
 }
 
