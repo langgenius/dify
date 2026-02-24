@@ -6,8 +6,16 @@ from core.model_manager import ModelInstance
 
 
 class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
+    """Port for loading runtime credentials for a provider/model pair."""
+
+    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
+        """Return credentials for the target provider/model or raise a domain error."""
+        ...
 
 
 class ModelFactory(Protocol):
-    def init_model_instance(self, provider_name: str, model_name: str) -> ModelInstance: ...
+    """Port for creating initialized LLM model instances for execution."""
+
+    def init_model_instance(self, provider_name: str, model_name: str) -> ModelInstance:
+        """Create a model instance that is ready for schema lookup and invocation."""
+        ...

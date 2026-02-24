@@ -12,7 +12,7 @@ from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 
 
-class TenantBoundCredentialsProvider:
+class DifyCredentialsProvider:
     tenant_id: str
     provider_manager: ProviderManager
 
@@ -38,7 +38,7 @@ class TenantBoundCredentialsProvider:
         return credentials
 
 
-class TenantBoundModelFactory:
+class DifyModelFactory:
     tenant_id: str
     model_manager: ModelManager
 
@@ -55,10 +55,10 @@ class TenantBoundModelFactory:
         )
 
 
-def build_tenant_bound_access(tenant_id: str) -> tuple[CredentialsProvider, ModelFactory]:
+def build_dify_model_access(tenant_id: str) -> tuple[CredentialsProvider, ModelFactory]:
     return (
-        TenantBoundCredentialsProvider(tenant_id=tenant_id),
-        TenantBoundModelFactory(tenant_id=tenant_id),
+        DifyCredentialsProvider(tenant_id=tenant_id),
+        DifyModelFactory(tenant_id=tenant_id),
     )
 
 

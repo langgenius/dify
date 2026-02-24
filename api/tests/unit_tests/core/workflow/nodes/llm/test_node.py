@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
-from core.app.llm.model_access import TenantBoundCredentialsProvider, TenantBoundModelFactory, fetch_model_config
+from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
@@ -212,7 +212,7 @@ def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsE
     provider_model.raise_for_status.assert_called_once()
 
 
-def test_tenant_bound_adapters_call_managers():
+def test_dify_model_access_adapters_call_managers():
     mock_provider_manager = mock.MagicMock()
     mock_model_manager = mock.MagicMock()
     mock_configurations = mock.MagicMock()
@@ -223,11 +223,11 @@ def test_tenant_bound_adapters_call_managers():
     mock_provider_configuration.get_provider_model.return_value = mock_provider_model
     mock_provider_configuration.get_current_credentials.return_value = {"api_key": "test"}
 
-    credentials_provider = TenantBoundCredentialsProvider(
+    credentials_provider = DifyCredentialsProvider(
         tenant_id="tenant",
         provider_manager=mock_provider_manager,
     )
-    model_factory = TenantBoundModelFactory(
+    model_factory = DifyModelFactory(
         tenant_id="tenant",
         model_manager=mock_model_manager,
     )
