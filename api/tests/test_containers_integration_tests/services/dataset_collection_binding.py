@@ -17,12 +17,10 @@ from services.dataset_service import DatasetCollectionBindingService
 
 class DatasetCollectionBindingTestDataFactory:
     """
-    Factory class for creating test data and mock objects for dataset collection binding tests.
+    Factory class for creating test data for dataset collection binding integration tests.
 
-    This factory provides static methods to create mock objects for:
-    - DatasetCollectionBinding instances
-    - Database query results
-    - Collection name generation results
+    This factory provides a static method to create and persist `DatasetCollectionBinding`
+    instances in the test database.
 
     The factory methods help maintain consistency across tests and reduce
     code duplication when setting up test scenarios.
