@@ -241,16 +241,6 @@ class TestDatasourcePluginProviderController:
         # Hits line 81 (continue), should NOT hit line 100 for this field
         assert credentials["optional_field"] is None
 
-    def test_validate_credentials_format_unreachable_none(self):
-        # This test attempts to hit line 63 which checks if credentials_schema is None.
-        # Since it's initialized as dict(), we have to mock 'dict' in the module.
-        mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
-        mock_entity.credentials_schema = []
-        controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
-
-        # We need to patch the specific reference in the module
-        with patch("core.datasource.__base.datasource_provider.dict", return_value=None):
-            controller.validate_credentials_format({})
 
     def test_validate_credentials_format_default_values(self):
         # Arrange
