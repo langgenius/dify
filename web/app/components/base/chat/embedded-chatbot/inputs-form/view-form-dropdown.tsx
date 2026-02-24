@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
@@ -13,7 +14,7 @@ const ViewFormDropdown = ({
   iconColor,
 }: Props) => {
   const { t } = useTranslation()
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
     <PortalToFollowElem

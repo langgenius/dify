@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { Theme } from '../theme/theme-context'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -98,9 +97,9 @@ const Header: FC<IHeaderProps> = ({
                 <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                    ? <Image src={systemFeatures.branding.workspace_logo} alt="logo" width={0} height={20} className="block h-5 w-auto" unoptimized />
+                    ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
                     : appData?.custom_config?.replace_webapp_logo
-                      ? <Image src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" width={0} height={20} className="block h-5 w-auto" unoptimized />
+                      ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
                       : <DifyLogo size="small" />
                 }
               </div>
