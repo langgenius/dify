@@ -34,34 +34,42 @@ class TestPrivateWorkflowPauseEntity:
     """Test _PrivateWorkflowPauseEntity class."""
 
     def test_properties(self, sample_workflow_pause: Mock) -> None:
+        # Arrange
         entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
 
+        # Assert
         assert entity.id == sample_workflow_pause.id
         assert entity.workflow_execution_id == sample_workflow_pause.workflow_run_id
         assert entity.resumed_at == sample_workflow_pause.resumed_at
 
     def test_get_state(self, sample_workflow_pause: Mock) -> None:
+        # Arrange
         entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
         expected_state = b'{"test": "state"}'
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.storage") as mock_storage:
             mock_storage.load.return_value = expected_state
 
+            # Act
             result = entity.get_state()
 
+            # Assert
             assert result == expected_state
             mock_storage.load.assert_called_once_with(sample_workflow_pause.state_object_key)
 
     def test_get_state_caching(self, sample_workflow_pause: Mock) -> None:
+        # Arrange
         entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
         expected_state = b'{"test": "state"}'
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.storage") as mock_storage:
             mock_storage.load.return_value = expected_state
 
+            # Act
             result1 = entity.get_state()
             result2 = entity.get_state()
 
+            # Assert
             assert result1 == expected_state
             assert result2 == expected_state
             mock_storage.load.assert_called_once()
@@ -69,6 +77,7 @@ class TestPrivateWorkflowPauseEntity:
 
 class TestBuildHumanInputRequiredReason:
     def test_prefers_backstage_token_when_available(self) -> None:
+        # Arrange
         expiration_time = datetime.now(UTC)
         form_definition = FormDefinition(
             form_content="content",
@@ -107,8 +116,10 @@ class TestBuildHumanInputRequiredReason:
             access_token=access_token,
         )
 
+        # Act
         reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient])
 
+        # Assert
         assert isinstance(reason, HumanInputRequired)
         assert reason.form_token == access_token
         assert reason.node_title == "Ask Name"
