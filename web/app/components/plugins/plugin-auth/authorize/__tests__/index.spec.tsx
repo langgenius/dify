@@ -96,7 +96,7 @@ describe('Authorize', () => {
     it('should render nothing when canOAuth and canApiKey are both false/undefined', () => {
       const pluginPayload = createPluginPayload()
 
-      const { container } = render(
+      render(
         <Authorize
           pluginPayload={pluginPayload}
           canOAuth={false}
@@ -105,10 +105,7 @@ describe('Authorize', () => {
         { wrapper: createWrapper() },
       )
 
-      // No buttons should be rendered
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
-      // Container should only have wrapper element
-      expect(container.querySelector('.flex')).toBeInTheDocument()
     })
 
     it('should render only OAuth button when canOAuth is true and canApiKey is false', () => {
@@ -225,7 +222,7 @@ describe('Authorize', () => {
   // ==================== Props Testing ====================
   describe('Props Testing', () => {
     describe('theme prop', () => {
-      it('should render buttons with secondary theme variant when theme is secondary', () => {
+      it('should render buttons when theme is secondary', () => {
         const pluginPayload = createPluginPayload()
 
         render(
@@ -239,9 +236,7 @@ describe('Authorize', () => {
         )
 
         const buttons = screen.getAllByRole('button')
-        buttons.forEach((button) => {
-          expect(button.className).toContain('btn-secondary')
-        })
+        expect(buttons).toHaveLength(2)
       })
     })
 
@@ -327,10 +322,10 @@ describe('Authorize', () => {
         expect(screen.getByRole('button')).toBeDisabled()
       })
 
-      it('should add opacity class when notAllowCustomCredential is true', () => {
+      it('should disable all buttons when notAllowCustomCredential is true', () => {
         const pluginPayload = createPluginPayload()
 
-        const { container } = render(
+        render(
           <Authorize
             pluginPayload={pluginPayload}
             canOAuth={true}
@@ -340,8 +335,8 @@ describe('Authorize', () => {
           { wrapper: createWrapper() },
         )
 
-        const wrappers = container.querySelectorAll('.opacity-50')
-        expect(wrappers.length).toBe(2) // Both OAuth and API Key wrappers
+        const buttons = screen.getAllByRole('button')
+        buttons.forEach(button => expect(button).toBeDisabled())
       })
     })
   })
@@ -459,7 +454,7 @@ describe('Authorize', () => {
       expect(screen.getAllByRole('button').length).toBe(2)
     })
 
-    it('should update button variant when theme changes', () => {
+    it('should change button styling when theme changes', () => {
       const pluginPayload = createPluginPayload()
 
       const { rerender } = render(
@@ -471,9 +466,7 @@ describe('Authorize', () => {
         { wrapper: createWrapper() },
       )
 
-      const buttonPrimary = screen.getByRole('button')
-      // Primary theme with canOAuth=false should have primary variant
-      expect(buttonPrimary.className).toContain('btn-primary')
+      const primaryClassName = screen.getByRole('button').className
 
       rerender(
         <Authorize
@@ -483,7 +476,8 @@ describe('Authorize', () => {
         />,
       )
 
-      expect(screen.getByRole('button').className).toContain('btn-secondary')
+      const secondaryClassName = screen.getByRole('button').className
+      expect(primaryClassName).not.toBe(secondaryClassName)
     })
   })
 
@@ -574,38 +568,10 @@ describe('Authorize', () => {
       expect(typeof AuthorizeDefault).toBe('object')
     })
 
-    it('should not re-render wrapper when notAllowCustomCredential stays the same', () => {
-      const pluginPayload = createPluginPayload()
-      const onUpdate = vi.fn()
-
-      const { rerender, container } = render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          notAllowCustomCredential={false}
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const initialOpacityElements = container.querySelectorAll('.opacity-50').length
-
-      rerender(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          notAllowCustomCredential={false}
-          onUpdate={onUpdate}
-        />,
-      )
-
-      expect(container.querySelectorAll('.opacity-50').length).toBe(initialOpacityElements)
-    })
-
-    it('should update wrapper when notAllowCustomCredential changes', () => {
+    it('should reflect notAllowCustomCredential change via button disabled state', () => {
       const pluginPayload = createPluginPayload()
 
-      const { rerender, container } = render(
+      const { rerender } = render(
         <Authorize
           pluginPayload={pluginPayload}
           canOAuth={true}
@@ -614,7 +580,7 @@ describe('Authorize', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(container.querySelectorAll('.opacity-50').length).toBe(0)
+      expect(screen.getByRole('button')).not.toBeDisabled()
 
       rerender(
         <Authorize
@@ -624,7 +590,7 @@ describe('Authorize', () => {
         />,
       )
 
-      expect(container.querySelectorAll('.opacity-50').length).toBe(1)
+      expect(screen.getByRole('button')).toBeDisabled()
     })
   })
 

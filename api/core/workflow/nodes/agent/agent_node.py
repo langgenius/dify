@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
-from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
@@ -33,6 +32,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import (
     AgentLogEvent,
     NodeEventBase,
