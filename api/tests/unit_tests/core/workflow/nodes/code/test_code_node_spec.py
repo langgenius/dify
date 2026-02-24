@@ -7,7 +7,7 @@ shared state persists across cases.
 
 from collections.abc import Generator
 from types import SimpleNamespace
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -35,7 +35,7 @@ class DummyOutput:
     type: str
     children: dict[str, Any]
 
-    def __init__(self, type_: str, children: Optional[dict[str, Any]] = None) -> None:
+    def __init__(self, type_: str, children: dict[str, Any] | None = None) -> None:
         self.type: str = type_
         self.children: dict[str, Any] = children or {}
 
