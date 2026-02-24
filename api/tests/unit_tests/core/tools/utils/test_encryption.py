@@ -1,6 +1,6 @@
 import copy
 from types import SimpleNamespace
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -16,7 +16,7 @@ from core.tools.utils.encryption import create_tool_provider_encrypter
 class NoopCache:
     """Simple cache stub: always returns None, does nothing for set/delete."""
 
-    def get(self) -> Optional[Any]:
+    def get(self) -> Any | None:
         return None
 
     def set(self, config: Any) -> None:
