@@ -11,12 +11,12 @@ export const ToolTipContent: FC<ToolTipContentProps> = ({
   children,
 }) => {
   return (
-    <div className="w-[180px]">
+    <div className="w-[180px]" data-testid="tooltip-content">
       {!!title && (
-        <div className="mb-1.5 font-semibold text-text-secondary">{title}</div>
+        <div className="mb-1.5 font-semibold text-text-secondary" data-testid="tooltip-content-title">{title}</div>
       )}
-      <div className="mb-1.5 text-text-tertiary">{children}</div>
-      {!!action && <div className="cursor-pointer text-text-accent">{action}</div>}
+      <div className="mb-1.5 text-text-tertiary" data-testid="tooltip-content-body">{children}</div>
+      {!!action && <div className="cursor-pointer text-text-accent" data-testid="tooltip-content-action">{action}</div>}
     </div>
   )
 }
