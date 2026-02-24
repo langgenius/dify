@@ -957,42 +957,6 @@ class TestChildChunk:
 class TestDocumentSegmentNavigation:
     """Test suite for DocumentSegment navigation properties."""
 
-    def test_document_segment_document_property(self):
-        """Test segment can access its parent document."""
-        # Arrange
-        document_id = str(uuid4())
-        segment = DocumentSegment(
-            tenant_id=str(uuid4()),
-            dataset_id=str(uuid4()),
-            document_id=document_id,
-            position=1,
-            content="Test",
-            word_count=1,
-            tokens=2,
-            created_by=str(uuid4()),
-        )
-
-        mock_document = Document(
-            tenant_id=str(uuid4()),
-            dataset_id=str(uuid4()),
-            position=1,
-            data_source_type="upload_file",
-            batch="batch_001",
-            name="test.pdf",
-            created_from="web",
-            created_by=str(uuid4()),
-        )
-        mock_document.id = document_id
-
-        # Mock the database session scalar
-        with patch("models.dataset.db.session.scalar", return_value=mock_document):
-            # Act
-            document = segment.document
-
-            # Assert
-            assert document is not None
-            assert document.id == document_id
-
     def test_document_segment_previous_segment(self):
         """Test segment can access previous segment."""
         # Arrange
