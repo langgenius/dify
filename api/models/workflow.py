@@ -22,8 +22,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from typing_extensions import deprecated
 
-from core.file.constants import maybe_file_object
-from core.file.models import File
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import (
@@ -39,6 +37,8 @@ from core.workflow.entities.pause_reason import (
     ToolCallPending,
 )
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
+from core.workflow.file.constants import maybe_file_object
+from core.workflow.file.models import File
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now

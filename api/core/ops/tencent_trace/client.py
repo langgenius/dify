@@ -18,8 +18,7 @@ except ImportError:
     from importlib_metadata import version  # type: ignore[import-not-found]
 
 if TYPE_CHECKING:
-    from opentelemetry.metrics import Meter
-    from opentelemetry.metrics._internal.instrument import Histogram
+    from opentelemetry.metrics import Histogram, Meter
     from opentelemetry.sdk.metrics.export import MetricReader
 
 from opentelemetry import trace as trace_api

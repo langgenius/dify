@@ -15,11 +15,11 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from core.file import helpers as file_helpers
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type

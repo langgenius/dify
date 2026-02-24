@@ -21,7 +21,7 @@ export type IGAProps = {
 const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
   if (!cspHeader)
     return undefined
-  const nonceMatch = cspHeader.match(/'nonce-([^']+)'/)
+  const nonceMatch = /'nonce-([^']+)'/.exec(cspHeader)
   return nonceMatch ? nonceMatch[1] : undefined
 }
 

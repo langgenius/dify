@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any, Literal
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -67,6 +66,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod, FileType, file_manager
 from core.workflow.node_events import (
     ModelInvokeCompletedEvent,
     NodeEventBase,
@@ -104,7 +104,7 @@ from .exc import (
 from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from core.workflow.file.models import File
     from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)

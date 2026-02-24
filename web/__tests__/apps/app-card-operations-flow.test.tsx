@@ -277,7 +277,10 @@ describe('App Card Operations Flow', () => {
     }
   })
 
-  // -- Basic rendering --
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('Card Rendering', () => {
     it('should render app name and description', () => {
       renderAppCard({ name: 'My AI Bot', description: 'An intelligent assistant' })
