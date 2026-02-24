@@ -5,10 +5,14 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 
+# Keep module-level redis_client references aligned with unit-test mock behavior.
+import services.dataset_service as dataset_service_module
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
 from tests.unit_tests.conftest import redis_mock
+
+dataset_service_module.redis_client = redis_mock
 
 
 class DocumentBatchUpdateTestDataFactory:
