@@ -161,7 +161,7 @@ class DatasetRetrievalTestDataFactory:
 
 class TestDatasetServiceGetDatasets:
     """
-    Comprehensive unit tests for DatasetService.get_datasets method.
+    Comprehensive integration tests for DatasetService.get_datasets method.
 
     This test suite covers:
     - Pagination
