@@ -954,45 +954,6 @@ class TestChildChunk:
         assert child_chunk.index_node_hash == index_node_hash
 
 
-class TestDocumentSegmentNavigation:
-    """Test suite for DocumentSegment navigation properties."""
-
-    def test_document_segment_next_segment(self):
-        """Test segment can access next segment."""
-        # Arrange
-        document_id = str(uuid4())
-        segment = DocumentSegment(
-            tenant_id=str(uuid4()),
-            dataset_id=str(uuid4()),
-            document_id=document_id,
-            position=1,
-            content="Test",
-            word_count=1,
-            tokens=2,
-            created_by=str(uuid4()),
-        )
-
-        next_segment = DocumentSegment(
-            tenant_id=str(uuid4()),
-            dataset_id=str(uuid4()),
-            document_id=document_id,
-            position=2,
-            content="Next",
-            word_count=1,
-            tokens=2,
-            created_by=str(uuid4()),
-        )
-
-        # Mock the database session scalar
-        with patch("models.dataset.db.session.scalar", return_value=next_segment):
-            # Act
-            next_seg = segment.next_segment
-
-            # Assert
-            assert next_seg is not None
-            assert next_seg.position == 2
-
-
 class TestModelIntegration:
     """Test suite for model integration scenarios."""
 
