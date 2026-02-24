@@ -19,8 +19,8 @@ class DatasetUpdateTestDataFactory:
     def create_account_with_tenant(role: TenantAccountRole = TenantAccountRole.OWNER) -> tuple[Account, Tenant]:
         """Create a real account and tenant with the given role."""
         account = Account(
-            email=f"{datetime.datetime.now(datetime.UTC).timestamp()}-{id(role)}@example.com",
-            name=f"user-{datetime.datetime.now(datetime.UTC).timestamp()}",
+            email=f"{uuid4()}@example.com",
+            name=f"user-{uuid4()}",
             interface_language="en-US",
             status="active",
         )
