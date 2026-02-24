@@ -1553,11 +1553,6 @@
       "count": 7
     }
   },
-  "app/components/base/chat/embedded-chatbot/header/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
@@ -1569,21 +1564,8 @@
     }
   },
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/base/chat/embedded-chatbot/inputs-form/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/chat/utils.ts": {
