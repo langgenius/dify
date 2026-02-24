@@ -99,7 +99,7 @@ export function useSandboxFilesTree(
     ? { params: { appId }, query: { recursive: true } }
     : skipToken
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error } = useQuery({
     ...consoleQuery.sandboxFile.listFiles.queryOptions({
       input,
     }),
@@ -122,6 +122,5 @@ export function useSandboxFilesTree(
     hasFiles,
     isLoading,
     error,
-    refetch,
   }
 }
