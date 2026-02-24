@@ -46,11 +46,13 @@ class ApiBasedToolSchemaParser:
             methods = ["get", "post", "put", "delete", "patch", "head", "options", "trace"]
             for method in methods:
                 if method in path_item:
-                    interfaces.append({
-                        "path": path,
-                        "method": method,
-                        "operation": path_item[method],
-                    })
+                    interfaces.append(
+                        {
+                            "path": path,
+                            "method": method,
+                            "operation": path_item[method],
+                        }
+                    )
 
         # get all parameters
         bundles = []
