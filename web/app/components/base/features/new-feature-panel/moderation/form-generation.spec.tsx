@@ -6,10 +6,6 @@ import FormGeneration from './form-generation'
 const i18n = (en: string, zh = en): I18nText =>
   ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 const createForm = (overrides: Partial<CodeBasedExtensionForm> = {}): CodeBasedExtensionForm => ({
   type: 'text-input',
   variable: 'api_key',

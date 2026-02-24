@@ -1,31 +1,5 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import Slider from './index'
-
-vi.mock('react-slider', () => ({
-  default: ({ value, min, max, step, disabled, onChange, renderThumb, className }: {
-    value: number
-    min: number
-    max: number
-    step: number
-    disabled?: boolean
-    onChange: (v: number) => void
-    renderThumb: (props: Record<string, unknown>, state: { valueNow: number }) => ReactNode
-    className: string
-  }) => (
-    <div data-testid="react-slider" className={className} data-disabled={disabled}>
-      <input
-        type="range"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={e => onChange(Number(e.target.value))}
-      />
-      {renderThumb({ key: 'thumb' }, { valueNow: value })}
-    </div>
-  ),
-}))
 
 describe('BaseSlider', () => {
   beforeEach(() => {
@@ -35,7 +9,7 @@ describe('BaseSlider', () => {
   it('should render the slider component', () => {
     render(<Slider value={50} onChange={vi.fn()} />)
 
-    expect(screen.getByTestId('react-slider')).toBeInTheDocument()
+    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 
   it('should display the formatted value in the thumb', () => {
@@ -47,30 +21,30 @@ describe('BaseSlider', () => {
   it('should use default min/max/step when not provided', () => {
     render(<Slider value={50} onChange={vi.fn()} />)
 
-    const input = screen.getByRole('slider')
-    expect(input).toHaveAttribute('min', '0')
-    expect(input).toHaveAttribute('max', '100')
-    expect(input).toHaveAttribute('step', '1')
+    const slider = screen.getByRole('slider')
+    expect(slider).toHaveAttribute('aria-valuemin', '0')
+    expect(slider).toHaveAttribute('aria-valuemax', '100')
+    expect(slider).toHaveAttribute('aria-valuenow', '50')
   })
 
   it('should use custom min/max/step when provided', () => {
     render(<Slider value={90} min={80} max={100} step={5} onChange={vi.fn()} />)
 
-    const input = screen.getByRole('slider')
-    expect(input).toHaveAttribute('min', '80')
-    expect(input).toHaveAttribute('max', '100')
-    expect(input).toHaveAttribute('step', '5')
+    const slider = screen.getByRole('slider')
+    expect(slider).toHaveAttribute('aria-valuemin', '80')
+    expect(slider).toHaveAttribute('aria-valuemax', '100')
+    expect(slider).toHaveAttribute('aria-valuenow', '90')
   })
 
   it('should handle NaN value as 0', () => {
     render(<Slider value={Number.NaN} onChange={vi.fn()} />)
 
-    expect(screen.getByRole('slider')).toHaveValue('0')
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '0')
   })
 
   it('should pass disabled prop', () => {
     render(<Slider value={50} disabled onChange={vi.fn()} />)
 
-    expect(screen.getByTestId('react-slider')).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
   })
 })
