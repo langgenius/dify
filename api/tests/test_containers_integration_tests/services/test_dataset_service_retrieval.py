@@ -1,5 +1,5 @@
 """
-Comprehensive unit tests for DatasetService retrieval/list methods.
+Comprehensive integration tests for DatasetService retrieval/list methods.
 
 This test suite covers:
 - get_datasets - pagination, search, filtering, permissions
