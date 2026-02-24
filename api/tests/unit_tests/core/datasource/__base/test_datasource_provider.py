@@ -196,7 +196,6 @@ class TestDatasourcePluginProviderController:
         controller = ConcreteDatasourcePluginProviderController(entity=mock_entity, tenant_id="test")
 
         # Act
-        # Call the base class method to cover line 53
         result = DatasourcePluginProviderController.get_datasource(controller, "test")
 
         # Assert
@@ -218,7 +217,6 @@ class TestDatasourcePluginProviderController:
         controller.validate_credentials_format(credentials)
 
         # Assert
-        # Line 100 should have been hit (pop from credentials_need_to_validate)
         assert "valid_field" in credentials
         assert credentials["valid_field"] == "valid_value"
 
@@ -238,9 +236,7 @@ class TestDatasourcePluginProviderController:
         controller.validate_credentials_format(credentials)
 
         # Assert
-        # Hits line 81 (continue), should NOT hit line 100 for this field
         assert credentials["optional_field"] is None
-
 
     def test_validate_credentials_format_default_values(self):
         # Arrange
