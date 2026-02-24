@@ -517,7 +517,7 @@ class TestDatasetServiceGetProcessRules:
 
         rules_data = {
             "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
-            "segmentation": {"delimiter": "\\n", "max_tokens": 500},
+            "segmentation": {"delimiter": "\n", "max_tokens": 500},
         }
         DatasetRetrievalTestDataFactory.create_process_rule(
             dataset_id=dataset.id,
