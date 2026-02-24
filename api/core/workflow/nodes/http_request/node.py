@@ -17,8 +17,8 @@ from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from factories import file_factory
 
+from .config import resolve_http_request_config
 from .entities import (
-    HTTP_REQUEST_CONFIG_FILTER_KEY,
     HttpRequestNodeConfig,
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
@@ -31,15 +31,6 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
-
-
-def _resolve_http_request_config(filters: Mapping[str, object] | None) -> HttpRequestNodeConfig:
-    if not filters:
-        raise ValueError("http_request_config is required to build HTTP request default config")
-    config = filters.get(HTTP_REQUEST_CONFIG_FILTER_KEY)
-    if not isinstance(config, HttpRequestNodeConfig):
-        raise ValueError("http_request_config must be an HttpRequestNodeConfig instance")
-    return config
 
 
 class HttpRequestNode(Node[HttpRequestNodeData]):
@@ -70,7 +61,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
-        http_request_config = _resolve_http_request_config(filters)
+        http_request_config = resolve_http_request_config(filters)
         default_timeout = http_request_config.default_timeout()
         return {
             "type": "http-request",

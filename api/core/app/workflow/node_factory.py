@@ -17,7 +17,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
-from core.workflow.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
+from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
@@ -88,15 +88,7 @@ class DifyNodeFactory(NodeFactory):
                 api_key=dify_config.UNSTRUCTURED_API_KEY or "",
             )
         )
-        self._http_request_config = http_request_config or HttpRequestNodeConfig(
-            max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
-            max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
-            max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
-            max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
-            max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
-            ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
-            ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
-        )
+        self._http_request_config = http_request_config or build_http_request_config()
 
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:

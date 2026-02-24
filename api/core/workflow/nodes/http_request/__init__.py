@@ -1,3 +1,4 @@
+from .config import build_http_request_config, resolve_http_request_config
 from .entities import (
     HTTP_REQUEST_CONFIG_FILTER_KEY,
     BodyData,
@@ -16,4 +17,6 @@ __all__ = [
     "HttpRequestNodeBody",
     "HttpRequestNodeConfig",
     "HttpRequestNodeData",
+    "build_http_request_config",
+    "resolve_http_request_config",
 ]

@@ -102,12 +102,11 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        resolved_ssl_verify = ssl_verify if ssl_verify is not None else node_data.ssl_verify
-        if resolved_ssl_verify is None:
-            resolved_ssl_verify = self._http_request_config.ssl_verify
-        if not isinstance(resolved_ssl_verify, bool):
+        self.ssl_verify = ssl_verify if ssl_verify is not None else node_data.ssl_verify
+        if self.ssl_verify is None:
+            self.ssl_verify = self._http_request_config.ssl_verify
+        if not isinstance(self.ssl_verify, bool):
             raise ValueError("ssl_verify must be a boolean")
-        self.ssl_verify = resolved_ssl_verify
         self.params = None
         self.headers = {}
         self.content = None
