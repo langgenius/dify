@@ -141,8 +141,8 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
         result = LLMGenerator.generate_rule_config("tenant_id", payload)
-        # The code has a bug where it overwrites rule_config["error"] if it was set by Exception
-        assert result["error"] == ""
+        assert "Failed to generate rule config" in result["error"]
+        assert "Random error" in result["error"]
 
     def test_generate_rule_config_with_variable_success(self, mock_model_instance, model_config_entity):
         payload = RuleGeneratePayload(
@@ -203,6 +203,17 @@ class TestLLMGenerator:
 
         result = LLMGenerator.generate_rule_config("tenant_id", payload)
         assert "Failed to generate conversation opener" in result["error"]
+
+    def test_generate_rule_config_with_variable_exception(self, mock_model_instance, model_config_entity):
+        payload = RuleGeneratePayload(
+            instruction="test instruction", model_config=model_config_entity, no_variable=False
+        )
+        # Mock any step to throw Exception
+        mock_model_instance.invoke_llm.side_effect = Exception("Unexpected multi-step error")
+
+        result = LLMGenerator.generate_rule_config("tenant_id", payload)
+        assert "Failed to handle unexpected exception" in result["error"]
+        assert "Unexpected multi-step error" in result["error"]
 
     def test_generate_code_python_success(self, mock_model_instance, model_config_entity):
         payload = RuleCodeGeneratePayload(
