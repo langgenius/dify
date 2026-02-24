@@ -1,13 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import CustomizedPagination from './index'
-
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => void) => ({
-    run: fn,
-    cancel: vi.fn(),
-    flush: vi.fn(),
-  }),
-}))
 
 describe('CustomizedPagination', () => {
   const defaultProps = {
@@ -18,6 +10,7 @@ describe('CustomizedPagination', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   describe('Rendering', () => {
@@ -127,12 +120,16 @@ describe('CustomizedPagination', () => {
     })
 
     it('should navigate to entered page on Enter key', () => {
+      vi.useFakeTimers()
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={0} onChange={onChange} />)
       fireEvent.click(screen.getByText('/'))
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '5' } })
       fireEvent.keyDown(input, { key: 'Enter' })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
       expect(onChange).toHaveBeenCalledWith(4) // 0-indexed
     })
 
@@ -147,32 +144,44 @@ describe('CustomizedPagination', () => {
     })
 
     it('should confirm input on blur', () => {
+      vi.useFakeTimers()
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={0} onChange={onChange} />)
       fireEvent.click(screen.getByText('/'))
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '3' } })
       fireEvent.blur(input)
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
       expect(onChange).toHaveBeenCalledWith(2) // 0-indexed
     })
 
     it('should clamp page to max when input exceeds total pages', () => {
+      vi.useFakeTimers()
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={0} total={100} limit={10} onChange={onChange} />)
       fireEvent.click(screen.getByText('/'))
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '999' } })
       fireEvent.keyDown(input, { key: 'Enter' })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
       expect(onChange).toHaveBeenCalledWith(9) // last page (0-indexed)
     })
 
     it('should clamp page to min when input is less than 1', () => {
+      vi.useFakeTimers()
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={5} onChange={onChange} />)
       fireEvent.click(screen.getByText('/'))
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '0' } })
       fireEvent.keyDown(input, { key: 'Enter' })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
       expect(onChange).toHaveBeenCalledWith(0)
     })
 
