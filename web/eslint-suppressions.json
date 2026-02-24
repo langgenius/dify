@@ -1953,11 +1953,6 @@
       "count": 1
     }
   },
-  "app/components/base/file-uploader/file-uploader-in-chat-input/file-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/file-uploader/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -1969,9 +1964,6 @@
     }
   },
   "app/components/base/file-uploader/utils.spec.ts": {
-    "test/no-identical-title": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
