@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import SyncButton from './sync-button'
 
-vi.mock('ahooks', () => ({
-  useBoolean: () => [false, { setTrue: vi.fn(), setFalse: vi.fn() }],
-}))
-
 describe('SyncButton', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {

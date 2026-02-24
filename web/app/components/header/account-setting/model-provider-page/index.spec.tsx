@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   CurrentSystemQuotaTypeEnum,
@@ -6,11 +6,6 @@ import {
   QuotaUnitEnum,
 } from './declarations'
 import ModelProviderPage from './index'
-
-// Mock dependencies
-vi.mock('ahooks', () => ({
-  useDebounce: (value: unknown) => value,
-}))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -92,6 +87,7 @@ vi.mock('./system-model-selector', () => ({
 
 describe('ModelProviderPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
     mockGlobalState.systemFeatures.enable_marketplace = true
     mockDefaultModelState.data = null
@@ -117,6 +113,10 @@ describe('ModelProviderPage', () => {
     })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('should render main elements', () => {
     render(<ModelProviderPage searchText="" />)
     expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
@@ -131,14 +131,20 @@ describe('ModelProviderPage', () => {
     expect(screen.getByText('anthropic')).toBeInTheDocument()
   })
 
-  it('should filter providers based on search text', async () => {
+  it('should filter providers based on search text', () => {
     render(<ModelProviderPage searchText="open" />)
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     expect(screen.getByText('openai')).toBeInTheDocument()
     expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
   })
 
   it('should show empty state if no configured providers match', () => {
     render(<ModelProviderPage searchText="non-existent" />)
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
   })
 
