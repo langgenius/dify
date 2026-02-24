@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sleep } from '@/utils'
 import AutoHeightTextarea from './index'
 
@@ -18,8 +17,8 @@ describe('AutoHeightTextarea', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<AutoHeightTextarea value="" onChange={vi.fn()} />)
-      const textarea = document.querySelector('textarea')
+      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} />)
+      const textarea = container.querySelector('textarea')
       expect(textarea).toBeInTheDocument()
     })
 
@@ -37,26 +36,26 @@ describe('AutoHeightTextarea', () => {
 
   describe('Props', () => {
     it('should apply custom className to textarea', () => {
-      render(<AutoHeightTextarea value="" onChange={vi.fn()} className="custom-class" />)
-      const textarea = document.querySelector('textarea')
+      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} className="custom-class" />)
+      const textarea = container.querySelector('textarea')
       expect(textarea).toHaveClass('custom-class')
     })
 
     it('should apply custom wrapperClassName to wrapper div', () => {
-      render(<AutoHeightTextarea value="" onChange={vi.fn()} wrapperClassName="wrapper-class" />)
-      const wrapper = document.querySelector('div.relative')
+      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} wrapperClassName="wrapper-class" />)
+      const wrapper = container.querySelector('div.relative')
       expect(wrapper).toHaveClass('wrapper-class')
     })
 
     it('should apply minHeight and maxHeight styles to hidden div', () => {
-      render(<AutoHeightTextarea value="" onChange={vi.fn()} minHeight={50} maxHeight={200} />)
-      const hiddenDiv = document.querySelector('div.invisible')
+      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} minHeight={50} maxHeight={200} />)
+      const hiddenDiv = container.querySelector('div.invisible')
       expect(hiddenDiv).toHaveStyle({ minHeight: '50px', maxHeight: '200px' })
     })
 
     it('should use default minHeight and maxHeight when not provided', () => {
-      render(<AutoHeightTextarea value="" onChange={vi.fn()} />)
-      const hiddenDiv = document.querySelector('div.invisible')
+      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} />)
+      const hiddenDiv = container.querySelector('div.invisible')
       expect(hiddenDiv).toHaveStyle({ minHeight: '36px', maxHeight: '96px' })
     })
 
@@ -64,6 +63,7 @@ describe('AutoHeightTextarea', () => {
       const focusSpy = vi.spyOn(HTMLTextAreaElement.prototype, 'focus')
       render(<AutoHeightTextarea value="" onChange={vi.fn()} autoFocus />)
       expect(focusSpy).toHaveBeenCalled()
+      focusSpy.mockRestore()
     })
   })
 
@@ -122,7 +122,7 @@ describe('AutoHeightTextarea', () => {
     it('should handle newlines in value', () => {
       const textWithNewlines = 'line1\nline2\nline3'
       render(<AutoHeightTextarea value={textWithNewlines} onChange={vi.fn()} />)
-      const textarea = document.querySelector('textarea')
+      const textarea = screen.getByRole('textbox')
       expect(textarea).toHaveValue(textWithNewlines)
     })
 
