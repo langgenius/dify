@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any, Mapping, Sequence
-from unittest.mock import MagicMock, Mock, patch
+from typing import Any
+from unittest.mock import MagicMock, Mock
 
 import psycopg2.errors
 import pytest
@@ -28,7 +29,6 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
-from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
@@ -247,7 +247,9 @@ def test_to_db_model_requires_creator_user_id_and_role(monkeypatch: pytest.Monke
         repo._to_db_model(execution)
 
 
-def test_is_duplicate_key_error_and_regenerate_id(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+def test_is_duplicate_key_error_and_regenerate_id(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
         lambda *_: SimpleNamespace(upload_file=Mock()),
@@ -297,7 +299,7 @@ def test_persist_to_database_updates_existing_and_inserts_new(monkeypatch: pytes
     existing = SimpleNamespace()
     session.get.return_value = existing
     repo._persist_to_database(db_model)
-    assert getattr(existing, "foo") == "bar"
+    assert existing.foo == "bar"
     session.add.assert_not_called()
     assert repo._node_execution_cache["node1"] is db_model
 
@@ -339,7 +341,9 @@ def test_truncate_and_upload_uploads_and_builds_offload(monkeypatch: pytest.Monk
             uploaded.update({"filename": filename, "content": content, "mimetype": mimetype, "user": user})
             return SimpleNamespace(id="file-id", key="file-key")
 
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.FileService", lambda *_: FakeFileService())
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService", lambda *_: FakeFileService()
+    )
     monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "offload-id")
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
@@ -498,7 +502,9 @@ def test_save_execution_data_handles_existing_db_model_and_truncation(monkeypatc
         truncated_value={"trunc": True},
         offload=WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS, file_id="f1"),
     )
-    monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args, **_kwargs: trunc_result if values == {"a": 1} else None)
+    monkeypatch.setattr(
+        repo, "_truncate_and_upload", lambda values, *_args, **_kwargs: trunc_result if values == {"a": 1} else None
+    )
     monkeypatch.setattr(repo, "_json_encode", lambda values: json.dumps(values, sort_keys=True))
 
     repo.save_execution_data(execution)
@@ -593,7 +599,9 @@ def test_save_execution_data_handles_missing_db_model(monkeypatch: pytest.Monkey
     assert merged.inputs == '{"a": 1}'
 
 
-def test_save_retries_duplicate_and_logs_non_duplicate(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+def test_save_retries_duplicate_and_logs_non_duplicate(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
         lambda *_: SimpleNamespace(upload_file=Mock()),
@@ -616,7 +624,6 @@ def test_save_retries_duplicate_and_logs_non_duplicate(monkeypatch: pytest.Monke
         calls["n"] += 1
         if calls["n"] == 1:
             raise duplicate_error
-        return None
 
     monkeypatch.setattr(repo, "_persist_to_database", persist)
     monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "new-id")
@@ -631,7 +638,9 @@ def test_save_retries_duplicate_and_logs_non_duplicate(monkeypatch: pytest.Monke
     assert any("Non-duplicate key integrity error" in r.message for r in caplog.records)
 
 
-def test_save_logs_and_reraises_on_unexpected_error(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+def test_save_logs_and_reraises_on_unexpected_error(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
         lambda *_: SimpleNamespace(upload_file=Mock()),
@@ -660,11 +669,11 @@ def test_get_db_models_by_workflow_run_orders_and_caches(monkeypatch: pytest.Mon
             self.where_calls = 0
             self.order_by_args: tuple[Any, ...] | None = None
 
-        def where(self, *_args: Any) -> "FakeStmt":
+        def where(self, *_args: Any) -> FakeStmt:
             self.where_calls += 1
             return self
 
-        def order_by(self, *args: Any) -> "FakeStmt":
+        def order_by(self, *args: Any) -> FakeStmt:
             self.order_by_args = args
             return self
 
@@ -701,10 +710,10 @@ def test_get_db_models_by_workflow_run_uses_asc_order(monkeypatch: pytest.Monkey
     )
 
     class FakeStmt:
-        def where(self, *_args: Any) -> "FakeStmt":
+        def where(self, *_args: Any) -> FakeStmt:
             return self
 
-        def order_by(self, *args: Any) -> "FakeStmt":
+        def order_by(self, *args: Any) -> FakeStmt:
             self.args = args  # type: ignore[attr-defined]
             return self
 
@@ -744,7 +753,7 @@ def test_get_by_workflow_run_maps_to_domain(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(repo, "_to_domain_model", lambda m: f"domain:{m.id}")
 
     class FakeExecutor:
-        def __enter__(self) -> "FakeExecutor":
+        def __enter__(self) -> FakeExecutor:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> None:

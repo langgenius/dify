@@ -1,8 +1,5 @@
 import json
-import os
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from core.schemas.registry import SchemaRegistry
 
@@ -86,10 +83,10 @@ class TestSchemaRegistry:
     def test_load_schema_os_error(self, tmp_path, caplog):
         schema_path = tmp_path / "error.json"
         schema_path.write_text("{}")
-        
+
         registry = SchemaRegistry(str(tmp_path))
         registry.versions["v1"] = {}
-        
+
         with patch("builtins.open", side_effect=OSError("Read error")):
             registry._load_schema("v1", "error", schema_path)
 
@@ -98,13 +95,13 @@ class TestSchemaRegistry:
     def test_get_schema(self):
         registry = SchemaRegistry("/tmp")
         registry.versions = {"v1": {"test": {"type": "object"}}}
-        
+
         # Valid URI
         assert registry.get_schema("https://dify.ai/schemas/v1/test.json") == {"type": "object"}
-        
+
         # Invalid URI
         assert registry.get_schema("invalid-uri") is None
-        
+
         # Missing version
         assert registry.get_schema("https://dify.ai/schemas/v2/test.json") is None
 
@@ -116,24 +113,20 @@ class TestSchemaRegistry:
     def test_list_schemas(self):
         registry = SchemaRegistry("/tmp")
         registry.versions = {"v1": {"b": {}, "a": {}}}
-        
+
         assert registry.list_schemas("v1") == ["a", "b"]
         assert registry.list_schemas("v2") == []
 
     def test_get_all_schemas_for_version(self):
         registry = SchemaRegistry("/tmp")
-        registry.versions = {
-            "v1": {
-                "test": {"title": "Test Label"}
-            }
-        }
-        
+        registry.versions = {"v1": {"test": {"title": "Test Label"}}}
+
         results = registry.get_all_schemas_for_version("v1")
         assert len(results) == 1
         assert results[0]["name"] == "test"
         assert results[0]["label"] == "Test Label"
         assert results[0]["schema"] == {"title": "Test Label"}
-        
+
         # Default label if title missing
         registry.versions["v1"]["no_title"] = {}
         results = registry.get_all_schemas_for_version("v1")

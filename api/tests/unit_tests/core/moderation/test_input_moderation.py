@@ -28,12 +28,7 @@ class TestInputModeration:
         message_id = "test_message_id"
 
         flagged, final_inputs, final_query = input_moderation.check(
-            app_id=app_id,
-            tenant_id=tenant_id,
-            app_config=app_config,
-            inputs=inputs,
-            query=query,
-            message_id=message_id
+            app_id=app_id, tenant_id=tenant_id, app_config=app_config, inputs=inputs, query=query, message_id=message_id
         )
 
         assert flagged is False
@@ -56,29 +51,18 @@ class TestInputModeration:
 
         # Setup factory mock
         mock_factory = mock_factory_cls.return_value
-        mock_result = ModerationInputsResult(
-            flagged=False,
-            action=ModerationAction.DIRECT_OUTPUT
-        )
+        mock_result = ModerationInputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
         mock_factory.moderation_for_inputs.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
-            app_id=app_id,
-            tenant_id=tenant_id,
-            app_config=app_config,
-            inputs=inputs,
-            query=query,
-            message_id=message_id
+            app_id=app_id, tenant_id=tenant_id, app_config=app_config, inputs=inputs, query=query, message_id=message_id
         )
 
         assert flagged is False
         assert final_inputs == inputs
         assert final_query == query
         mock_factory_cls.assert_called_once_with(
-            name="keywords",
-            app_id=app_id,
-            tenant_id=tenant_id,
-            config={"keywords": ["bad"]}
+            name="keywords", app_id=app_id, tenant_id=tenant_id, config={"keywords": ["bad"]}
         )
         mock_factory.moderation_for_inputs.assert_called_once_with(dict(inputs), query)
 
@@ -100,10 +84,7 @@ class TestInputModeration:
 
         # Setup factory mock
         mock_factory = mock_factory_cls.return_value
-        mock_result = ModerationInputsResult(
-            flagged=False,
-            action=ModerationAction.DIRECT_OUTPUT
-        )
+        mock_result = ModerationInputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
         mock_factory.moderation_for_inputs.return_value = mock_result
 
         input_moderation.check(
@@ -113,7 +94,7 @@ class TestInputModeration:
             inputs=inputs,
             query=query,
             message_id=message_id,
-            trace_manager=trace_manager
+            trace_manager=trace_manager,
         )
 
         trace_manager.add_trace_task.assert_called_once_with(mock_trace_task.return_value)
@@ -143,9 +124,7 @@ class TestInputModeration:
         # Setup factory mock
         mock_factory = mock_factory_cls.return_value
         mock_result = ModerationInputsResult(
-            flagged=True,
-            action=ModerationAction.DIRECT_OUTPUT,
-            preset_response="Blocked content"
+            flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="Blocked content"
         )
         mock_factory.moderation_for_inputs.return_value = mock_result
 
@@ -156,9 +135,9 @@ class TestInputModeration:
                 app_config=app_config,
                 inputs=inputs,
                 query=query,
-                message_id=message_id
+                message_id=message_id,
             )
-        
+
         assert str(excinfo.value) == "Blocked content"
 
     @patch("core.moderation.input_moderation.ModerationFactory")
@@ -181,17 +160,12 @@ class TestInputModeration:
             flagged=True,
             action=ModerationAction.OVERRIDDEN,
             inputs={"input_key": "overridden_value"},
-            query="overridden query"
+            query="overridden query",
         )
         mock_factory.moderation_for_inputs.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
-            app_id=app_id,
-            tenant_id=tenant_id,
-            app_config=app_config,
-            inputs=inputs,
-            query=query,
-            message_id=message_id
+            app_id=app_id, tenant_id=tenant_id, app_config=app_config, inputs=inputs, query=query, message_id=message_id
         )
 
         assert flagged is True

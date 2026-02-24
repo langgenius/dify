@@ -24,11 +24,7 @@ class TestApiModeration:
 
     @pytest.fixture
     def api_moderation(self, api_config):
-        return ApiModeration(
-            app_id="test-app-id",
-            tenant_id="test-tenant-id",
-            config=api_config
-        )
+        return ApiModeration(app_id="test-app-id", tenant_id="test-tenant-id", config=api_config)
 
     def test_moderation_input_params(self):
         params = ModerationInputParams(app_id="app-1", inputs={"key": "val"}, query="test query")
@@ -72,33 +68,29 @@ class TestApiModeration:
 
     @patch("core.moderation.api.api.ApiModeration._get_config_by_requestor")
     def test_moderation_for_inputs_enabled(self, mock_get_config, api_moderation):
-        mock_get_config.return_value = {
-            "flagged": True,
-            "action": "direct_output",
-            "preset_response": "Blocked by API"
-        }
-        
+        mock_get_config.return_value = {"flagged": True, "action": "direct_output", "preset_response": "Blocked by API"}
+
         result = api_moderation.moderation_for_inputs(inputs={"q": "a"}, query="hello")
-        
+
         assert isinstance(result, ModerationInputsResult)
         assert result.flagged is True
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Blocked by API"
-        
+
         mock_get_config.assert_called_once_with(
             APIBasedExtensionPoint.APP_MODERATION_INPUT,
-            {"app_id": "test-app-id", "inputs": {"q": "a"}, "query": "hello"}
+            {"app_id": "test-app-id", "inputs": {"q": "a"}, "query": "hello"},
         )
 
     def test_moderation_for_inputs_disabled(self):
         config = {
             "inputs_config": {"enabled": False},
             "outputs_config": {"enabled": True},
-            "api_based_extension_id": "ext-id"
+            "api_based_extension_id": "ext-id",
         }
         moderation = ApiModeration("app-id", "tenant-id", config)
         result = moderation.moderation_for_inputs(inputs={}, query="")
-        
+
         assert result.flagged is False
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == ""
@@ -110,31 +102,26 @@ class TestApiModeration:
 
     @patch("core.moderation.api.api.ApiModeration._get_config_by_requestor")
     def test_moderation_for_outputs_enabled(self, mock_get_config, api_moderation):
-        mock_get_config.return_value = {
-            "flagged": False,
-            "action": "direct_output",
-            "preset_response": ""
-        }
-        
+        mock_get_config.return_value = {"flagged": False, "action": "direct_output", "preset_response": ""}
+
         result = api_moderation.moderation_for_outputs(text="hello world")
-        
+
         assert isinstance(result, ModerationOutputsResult)
         assert result.flagged is False
-        
+
         mock_get_config.assert_called_once_with(
-            APIBasedExtensionPoint.APP_MODERATION_OUTPUT,
-            {"app_id": "test-app-id", "text": "hello world"}
+            APIBasedExtensionPoint.APP_MODERATION_OUTPUT, {"app_id": "test-app-id", "text": "hello world"}
         )
 
     def test_moderation_for_outputs_disabled(self):
         config = {
             "inputs_config": {"enabled": True},
             "outputs_config": {"enabled": False},
-            "api_based_extension_id": "ext-id"
+            "api_based_extension_id": "ext-id",
         }
         moderation = ApiModeration("app-id", "tenant-id", config)
         result = moderation.moderation_for_outputs(text="test")
-        
+
         assert result.flagged is False
         assert result.action == ModerationAction.DIRECT_OUTPUT
 
@@ -151,16 +138,16 @@ class TestApiModeration:
         mock_ext.api_endpoint = "http://api.test"
         mock_ext.api_key = "encrypted-key"
         mock_get_ext.return_value = mock_ext
-        
+
         mock_decrypt.return_value = "decrypted-key"
-        
+
         mock_requestor = MagicMock()
         mock_requestor.request.return_value = {"flagged": True}
         mock_requestor_cls.return_value = mock_requestor
-        
+
         params = {"some": "params"}
         result = api_moderation._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, params)
-        
+
         assert result == {"flagged": True}
         mock_get_ext.assert_called_once_with("test-tenant-id", "test-extension-id")
         mock_decrypt.assert_called_once_with("test-tenant-id", "encrypted-key")
@@ -182,13 +169,13 @@ class TestApiModeration:
     def test_get_api_based_extension(self, mock_scalar):
         mock_ext = MagicMock(spec=APIBasedExtension)
         mock_scalar.return_value = mock_ext
-        
+
         result = ApiModeration._get_api_based_extension("tenant-1", "ext-1")
-        
+
         assert result == mock_ext
         mock_scalar.assert_called_once()
         # Verify the call has the correct filters
         args, kwargs = mock_scalar.call_args
         stmt = args[0]
-        # We can't easily inspect the statement without complex sqlalchemy tricks, 
+        # We can't easily inspect the statement without complex sqlalchemy tricks,
         # but calling it is usually enough for unit tests if we mock the result.

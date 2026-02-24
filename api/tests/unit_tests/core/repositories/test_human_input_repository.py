@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, Sequence
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -37,13 +38,13 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 @pytest.fixture(autouse=True)
 def _stub_select(monkeypatch: pytest.MonkeyPatch) -> None:
     class _FakeSelect:
-        def join(self, *_args: Any, **_kwargs: Any) -> "_FakeSelect":
+        def join(self, *_args: Any, **_kwargs: Any) -> _FakeSelect:
             return self
 
-        def where(self, *_args: Any, **_kwargs: Any) -> "_FakeSelect":
+        def where(self, *_args: Any, **_kwargs: Any) -> _FakeSelect:
             return self
 
-        def options(self, *_args: Any, **_kwargs: Any) -> "_FakeSelect":
+        def options(self, *_args: Any, **_kwargs: Any) -> _FakeSelect:
             return self
 
     monkeypatch.setattr("core.repositories.human_input_repository.select", lambda *_args, **_kwargs: _FakeSelect())
@@ -162,8 +163,8 @@ class _FakeSession:
     def flush(self) -> None:
         # Simulate DB default population for attributes referenced in entity wrappers.
         for obj in self.added:
-            if hasattr(obj, "id") and getattr(obj, "id") in (None, ""):
-                setattr(obj, "id", f"gen-{len(str(self.added))}")
+            if hasattr(obj, "id") and obj.id in (None, ""):
+                obj.id = f"gen-{len(str(self.added))}"
             if isinstance(obj, HumanInputFormRecipient) and obj.access_token is None:
                 if obj.recipient_type == RecipientType.CONSOLE:
                     obj.access_token = "token-console"
@@ -175,10 +176,10 @@ class _FakeSession:
     def refresh(self, _obj: Any) -> None:
         return None
 
-    def begin(self) -> "_FakeSession":
+    def begin(self) -> _FakeSession:
         return self
 
-    def __enter__(self) -> "_FakeSession":
+    def __enter__(self) -> _FakeSession:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -225,7 +226,9 @@ def test_form_entity_web_app_token_prefers_console_then_webapp_then_none() -> No
         expiration_time=naive_utc_now(),
     )
     console = _DummyRecipient(id="c1", form_id=form.id, recipient_type=RecipientType.CONSOLE, access_token="ctok")
-    webapp = _DummyRecipient(id="w1", form_id=form.id, recipient_type=RecipientType.STANDALONE_WEB_APP, access_token="wtok")
+    webapp = _DummyRecipient(
+        id="w1", form_id=form.id, recipient_type=RecipientType.STANDALONE_WEB_APP, access_token="wtok"
+    )
 
     entity = _HumanInputFormEntityImpl(form_model=form, recipient_models=[webapp, console])  # type: ignore[arg-type]
     assert entity.web_app_token == "ctok"
@@ -342,7 +345,9 @@ def test_repository_init_accepts_engine_session_factory() -> None:
 def test_delivery_method_to_model_webapp_creates_delivery_and_recipient(monkeypatch: pytest.MonkeyPatch) -> None:
     repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
     monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: "del-1")
-    result = repo._delivery_method_to_model(session=MagicMock(), form_id="form-1", delivery_method=WebAppDeliveryMethod())
+    result = repo._delivery_method_to_model(
+        session=MagicMock(), form_id="form-1", delivery_method=WebAppDeliveryMethod()
+    )
     assert result.delivery.id == "del-1"
     assert result.delivery.form_id == "form-1"
     assert len(result.recipients) == 1
@@ -355,7 +360,9 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
     called: dict[str, Any] = {}
 
     def fake_build(*, session: Any, form_id: str, delivery_id: str, recipients_config: Any) -> list[Any]:
-        called.update({"session": session, "form_id": form_id, "delivery_id": delivery_id, "recipients_config": recipients_config})
+        called.update(
+            {"session": session, "form_id": form_id, "delivery_id": delivery_id, "recipients_config": recipients_config}
+        )
         return ["r"]
 
     monkeypatch.setattr(repo, "_build_email_recipients", fake_build)
@@ -377,7 +384,11 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
 
 def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
     repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
-    monkeypatch.setattr(repo, "_query_all_workspace_members", lambda *, session: [_WorkspaceMemberInfo(user_id="u", email="a@example.com")])
+    monkeypatch.setattr(
+        repo,
+        "_query_all_workspace_members",
+        lambda *, session: [_WorkspaceMemberInfo(user_id="u", email="a@example.com")],
+    )
     monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
     recipients = repo._build_email_recipients(
         session=MagicMock(),
