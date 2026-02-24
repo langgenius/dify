@@ -587,7 +587,7 @@ class TestResponseRegistry:
 # ── _is_initialization_request / _is_initialized_notification ────────────────
 
 
-class TestMessageClassifiersNew:
+class TestMessageClassifiers:
     def test_is_initialization_request_true(self):
         t = _new_transport()
         assert t._is_initialization_request(_make_request_msg("initialize")) is True
