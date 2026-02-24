@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
+from core.indexing_runner import DocumentIsPausedError
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -783,3 +784,75 @@ class TestDuplicateDocumentIndexingTasks:
             document_ids=document_ids,
         )
         mock_queue.delete_task_key.assert_not_called()
+
+    def test_successful_duplicate_document_indexing(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test successful duplicate document indexing flow."""
+        self.test_duplicate_document_indexing_task_success(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+    def test_duplicate_document_indexing_dataset_not_found(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test duplicate document indexing when dataset is not found."""
+        self.test_duplicate_document_indexing_task_dataset_not_found(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+    def test_duplicate_document_indexing_with_billing_enabled_sandbox_plan(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test duplicate document indexing with billing enabled and sandbox plan."""
+        self.test_duplicate_document_indexing_task_billing_sandbox_plan_batch_limit(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+    def test_duplicate_document_indexing_with_billing_limit_exceeded(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test duplicate document indexing when billing limit is exceeded."""
+        self.test_duplicate_document_indexing_task_billing_vector_space_limit_exceeded(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+    def test_duplicate_document_indexing_runner_error(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test duplicate document indexing when IndexingRunner raises an error."""
+        self.test_duplicate_document_indexing_task_indexing_runner_exception(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+    def test_duplicate_document_indexing_document_is_paused(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test duplicate document indexing when document is paused."""
+        # Arrange
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=2
+        )
+        document_ids = [doc.id for doc in documents]
+        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError(
+            "Document paused"
+        )
+
+        # Act
+        _duplicate_document_indexing_task(dataset.id, document_ids)
+        db_session_with_containers.expire_all()
+
+        # Assert
+        for doc_id in document_ids:
+            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+    def test_duplicate_document_indexing_cleans_old_segments(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test that duplicate document indexing cleans old segments."""
+        self.test_duplicate_document_indexing_task_with_segment_cleanup(
+            db_session_with_containers, mock_external_service_dependencies
+        )
