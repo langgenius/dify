@@ -81,18 +81,19 @@ def test_console_features_fastopenapi_returns_tenant_features(app: Flask):
             "controllers.console.wraps.current_account_with_tenant",
             return_value=(mock_account, mock_tenant_id),
         ),
-        # Mock FeatureService.get_features in wraps module (used by cloud_utm_record)
-        patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features),
+        # Mock FeatureService at the service module level (shared by both wraps and feature modules)
+        patch("services.feature_service.FeatureService.get_features", return_value=mock_features) as mock_svc,
         # Mock the actual endpoint call
         patch(
             "controllers.console.feature.current_account_with_tenant",
             return_value=(mock_account, mock_tenant_id),
         ),
-        patch("controllers.console.feature.FeatureService.get_features", return_value=mock_features) as mock_svc,
     ):
         client = app.test_client()
         response = client.get("/console/api/features")
 
     assert response.status_code == 200
     assert response.get_json() == mock_features.model_dump()
-    mock_svc.assert_called_once_with(mock_tenant_id)
+    # Called twice: once by cloud_utm_record decorator, once by the endpoint itself
+    assert mock_svc.call_count == 2
+    mock_svc.assert_called_with(mock_tenant_id)
