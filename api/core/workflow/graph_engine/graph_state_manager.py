@@ -4,12 +4,15 @@ Graph state manager that combines node, edge, and execution tracking.
 
 import threading
 from collections.abc import Sequence
-from typing import TypedDict, final
+from typing import TYPE_CHECKING, TypedDict, final
 
 from core.workflow.enums import NodeState
 from core.workflow.graph import Edge, Graph
 
 from .ready_queue import ReadyQueue
+
+if TYPE_CHECKING:
+    from .response_coordinator import ResponseStreamCoordinator
 
 
 class EdgeStateAnalysis(TypedDict):
@@ -22,16 +25,20 @@ class EdgeStateAnalysis(TypedDict):
 
 @final
 class GraphStateManager:
-    def __init__(self, graph: Graph, ready_queue: ReadyQueue) -> None:
+    def __init__(
+        self, graph: Graph, ready_queue: ReadyQueue, response_coordinator: "ResponseStreamCoordinator | None" = None
+    ) -> None:
         """
         Initialize the state manager.
 
         Args:
             graph: The workflow graph
             ready_queue: Queue for nodes ready to execute
+            response_coordinator: Optional response stream coordinator for checking pending sessions
         """
         self._graph = graph
         self._ready_queue = ready_queue
+        self._response_coordinator = response_coordinator
         self._lock = threading.RLock()
 
         # Execution tracking state
@@ -253,12 +260,21 @@ class GraphStateManager:
         Execution is complete when:
         - Ready queue is empty
         - No nodes are executing
+        - No pending response sessions (if response coordinator is available)
 
         Returns:
             True if execution is complete
         """
         with self._lock:
-            return self._ready_queue.empty() and len(self._executing_nodes) == 0
+            basic_complete = self._ready_queue.empty() and len(self._executing_nodes) == 0
+
+            if not basic_complete:
+                return False
+
+            if self._response_coordinator and self._response_coordinator.has_pending_sessions():
+                return False
+
+            return True
 
     def get_queue_depth(self) -> int:
         """
