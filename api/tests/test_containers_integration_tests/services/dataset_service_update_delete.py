@@ -111,7 +111,7 @@ class DatasetUpdateDeleteTestDataFactory:
 
 class TestDatasetServiceDeleteDataset:
     """
-    Comprehensive unit tests for DatasetService.delete_dataset method.
+    Comprehensive integration tests for DatasetService.delete_dataset method.
     """
 
     def test_delete_dataset_success(self, db_session_with_containers):
