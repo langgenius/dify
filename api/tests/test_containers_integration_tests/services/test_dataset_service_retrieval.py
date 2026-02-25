@@ -549,7 +549,7 @@ class TestDatasetServiceGetProcessRules:
 
 
 class TestDatasetServiceGetDatasetQueries:
-    """Comprehensive unit tests for DatasetService.get_dataset_queries method."""
+    """Comprehensive integration tests for DatasetService.get_dataset_queries method."""
 
     def test_get_dataset_queries_success(self, db_session_with_containers):
         """Test successful retrieval of dataset queries."""
