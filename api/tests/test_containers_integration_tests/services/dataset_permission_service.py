@@ -187,7 +187,7 @@ class TestDatasetPermissionServiceGetPartialMemberList:
 
 class TestDatasetPermissionServiceUpdatePartialMemberList:
     """
-    Comprehensive unit tests for DatasetPermissionService.update_partial_member_list method.
+    Comprehensive integration tests for DatasetPermissionService.update_partial_member_list method.
     """
 
     def test_update_partial_member_list_add_new_members(self, db_session_with_containers):
