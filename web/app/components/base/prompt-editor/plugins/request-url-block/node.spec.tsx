@@ -1,5 +1,8 @@
 import { act } from '@testing-library/react'
-import { createEditor } from 'lexical'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../test-helpers'
 import RequestURLBlockComponent from './component'
 import {
   $createRequestURLBlockNode,
@@ -9,13 +12,7 @@ import {
 
 describe('RequestURLBlockNode', () => {
   const createTestEditor = () => {
-    return createEditor({
-      namespace: 'request-url-block-node-test',
-      onError: (error: Error) => {
-        throw error
-      },
-      nodes: [RequestURLBlockNode],
-    })
+    return createLexicalTestEditor('request-url-block-node-test', [RequestURLBlockNode])
   }
 
   const createNodeInEditor = () => {
@@ -61,10 +58,7 @@ describe('RequestURLBlockNode', () => {
       const { node } = createNodeInEditor()
       const dom = node.createDOM()
 
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
+      expectInlineWrapperDom(dom)
     })
 
     it('should not update DOM', () => {

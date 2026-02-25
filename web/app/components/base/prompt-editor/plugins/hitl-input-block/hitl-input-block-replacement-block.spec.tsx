@@ -3,19 +3,21 @@ import type { GetVarType } from '../../types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-  $nodesOfType,
-} from 'lexical'
+import { render, waitFor } from '@testing-library/react'
+import { $nodesOfType } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   BlockEnum,
   InputVarType,
 } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
+import {
+  getNodesByType,
+  readEditorStateValue,
+  renderLexicalEditor,
+  setEditorRootText,
+  waitForEditorReady,
+} from '../test-helpers'
 import HITLInputReplacementBlock from './hitl-input-block-replacement-block'
 import { HITLInputNode } from './node'
 
@@ -71,26 +73,17 @@ const renderReplacementPlugin = (props?: {
   variables?: NodeOutPutVar[]
   readonly?: boolean
   getVarType?: GetVarType
+  formInputs?: FormInputItem[] | null
 }) => {
-  let editor: LexicalEditor | null = null
+  const formInputs = props?.formInputs === null ? undefined : (props?.formInputs ?? [createFormInput()])
 
-  const setEditor = (value: LexicalEditor) => {
-    editor = value
-  }
-
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'hitl-input-replacement-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode, HITLInputNode],
-      }}
-    >
+  return renderLexicalEditor({
+    namespace: 'hitl-input-replacement-plugin-test',
+    nodes: [CustomTextNode, HITLInputNode],
+    children: (
       <HITLInputReplacementBlock
         nodeId="node-1"
-        formInputs={[createFormInput()]}
+        formInputs={formInputs}
         onFormInputsChange={vi.fn()}
         onFormInputItemRename={vi.fn()}
         onFormInputItemRemove={vi.fn()}
@@ -99,38 +92,8 @@ const renderReplacementPlugin = (props?: {
         getVarType={props?.getVarType}
         readonly={props?.readonly}
       />
-      <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
-  )
-
-  return {
-    ...utils,
-    getEditor: () => editor,
-  }
-}
-
-const setEditorText = (editor: LexicalEditor, text: string) => {
-  act(() => {
-    editor.update(() => {
-      const root = $getRoot()
-      root.clear()
-
-      const paragraph = $createParagraphNode()
-      paragraph.append(new CustomTextNode(text))
-      root.append(paragraph)
-      paragraph.selectEnd()
-    })
+    ),
   })
-}
-
-const getHITLInputNodes = (editor: LexicalEditor) => {
-  let nodes: HITLInputNode[] = []
-
-  editor.getEditorState().read(() => {
-    nodes = $nodesOfType(HITLInputNode)
-  })
-
-  return nodes
 }
 
 type HITLInputNodeSnapshot = {
@@ -141,16 +104,16 @@ type HITLInputNodeSnapshot = {
   environmentVariables: Var[]
   conversationVariables: Var[]
   ragVariables: Var[]
+  formInputsLength: number
 }
 
 const readFirstHITLInputNodeSnapshot = (editor: LexicalEditor): HITLInputNodeSnapshot | null => {
-  let snapshot: HITLInputNodeSnapshot | null = null
-  editor.getEditorState().read(() => {
+  return readEditorStateValue(editor, () => {
     const node = $nodesOfType(HITLInputNode)[0]
     if (!node)
-      return
+      return null
 
-    snapshot = {
+    return {
       variableName: node.getVariableName(),
       nodeId: node.getNodeId(),
       getVarType: node.getGetVarType(),
@@ -158,10 +121,9 @@ const readFirstHITLInputNodeSnapshot = (editor: LexicalEditor): HITLInputNodeSna
       environmentVariables: node.getEnvironmentVariables(),
       conversationVariables: node.getConversationVariables(),
       ragVariables: node.getRagVariables(),
+      formInputsLength: node.getFormInputs().length,
     }
   })
-
-  return snapshot
 }
 
 describe('HITLInputReplacementBlock', () => {
@@ -178,20 +140,15 @@ describe('HITLInputReplacementBlock', () => {
         getVarType,
       })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, 'before {{#$output.user_name#}} after')
+      setEditorRootText(editor, 'before {{#$output.user_name#}} after', text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getHITLInputNodes(editor!)).toHaveLength(1)
+        expect(getNodesByType(editor, HITLInputNode)).toHaveLength(1)
       })
 
-      const node = readFirstHITLInputNodeSnapshot(editor!)
+      const node = readFirstHITLInputNodeSnapshot(editor)
       expect(node).not.toBeNull()
       if (!node)
         throw new Error('Expected HITLInputNode snapshot')
@@ -213,37 +170,27 @@ describe('HITLInputReplacementBlock', () => {
         variables: createVariables(),
       })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, 'plain text without replacement token')
+      setEditorRootText(editor, 'plain text without replacement token', text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getHITLInputNodes(editor!)).toHaveLength(0)
+        expect(getNodesByType(editor, HITLInputNode)).toHaveLength(0)
       })
     })
 
     it('should replace token with empty env conversation and rag lists when variables are not provided', async () => {
       const { getEditor } = renderReplacementPlugin()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, '{{#$output.user_name#}}')
+      setEditorRootText(editor, '{{#$output.user_name#}}', text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getHITLInputNodes(editor!)).toHaveLength(1)
+        expect(getNodesByType(editor, HITLInputNode)).toHaveLength(1)
       })
 
-      const node = readFirstHITLInputNodeSnapshot(editor!)
+      const node = readFirstHITLInputNodeSnapshot(editor)
       expect(node).not.toBeNull()
       if (!node)
         throw new Error('Expected HITLInputNode snapshot')
@@ -252,6 +199,25 @@ describe('HITLInputReplacementBlock', () => {
       expect(node.conversationVariables).toEqual([])
       expect(node.ragVariables).toEqual([])
       expect(node.readonly).toBe(false)
+    })
+
+    it('should replace token with empty form inputs when formInputs is undefined', async () => {
+      const { getEditor } = renderReplacementPlugin({ formInputs: null })
+
+      const editor = await waitForEditorReady(getEditor)
+
+      setEditorRootText(editor, '{{#$output.user_name#}}', text => new CustomTextNode(text))
+
+      await waitFor(() => {
+        expect(getNodesByType(editor, HITLInputNode)).toHaveLength(1)
+      })
+
+      const node = readFirstHITLInputNodeSnapshot(editor)
+      expect(node).not.toBeNull()
+      if (!node)
+        throw new Error('Expected HITLInputNode snapshot')
+
+      expect(node.formInputsLength).toBe(0)
     })
   })
 

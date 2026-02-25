@@ -1,5 +1,8 @@
 import { act } from '@testing-library/react'
-import { createEditor } from 'lexical'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../test-helpers'
 import LastRunBlockComponent from './component'
 import {
   $createLastRunBlockNode,
@@ -8,13 +11,7 @@ import {
 } from './node'
 
 const createTestEditor = () => {
-  return createEditor({
-    namespace: 'last-run-block-node-test',
-    onError: (error: Error) => {
-      throw error
-    },
-    nodes: [LastRunBlockNode],
-  })
+  return createLexicalTestEditor('last-run-block-node-test', [LastRunBlockNode])
 }
 
 const createNodeInEditor = () => {
@@ -61,10 +58,7 @@ describe('LastRunBlockNode', () => {
       const { node } = createNodeInEditor()
       const dom = node.createDOM()
 
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
+      expectInlineWrapperDom(dom)
     })
 
     it('should not update DOM', () => {

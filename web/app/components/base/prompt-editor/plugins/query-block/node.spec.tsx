@@ -1,5 +1,8 @@
 import { act } from '@testing-library/react'
-import { createEditor } from 'lexical'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../test-helpers'
 import QueryBlockComponent from './component'
 import {
   $createQueryBlockNode,
@@ -9,13 +12,7 @@ import {
 
 describe('QueryBlockNode', () => {
   const createTestEditor = () => {
-    return createEditor({
-      namespace: 'query-block-node-test',
-      onError: (error: Error) => {
-        throw error
-      },
-      nodes: [QueryBlockNode],
-    })
+    return createLexicalTestEditor('query-block-node-test', [QueryBlockNode])
   }
 
   const createNodeInEditor = () => {
@@ -60,10 +57,7 @@ describe('QueryBlockNode', () => {
       const { node } = createNodeInEditor()
       const dom = node.createDOM()
 
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
+      expectInlineWrapperDom(dom)
     })
 
     it('should not update DOM', () => {

@@ -1,6 +1,10 @@
 import type { SerializedNode as SerializedHistoryBlockNode } from './node'
 import { act } from '@testing-library/react'
-import { $getNodeByKey, $getRoot, createEditor } from 'lexical'
+import { $getNodeByKey, $getRoot } from 'lexical'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../test-helpers'
 import HistoryBlockComponent from './component'
 import {
   $createHistoryBlockNode,
@@ -16,13 +20,7 @@ const createRoleName = (overrides?: { user?: string, assistant?: string }) => ({
 })
 
 const createTestEditor = () => {
-  return createEditor({
-    namespace: 'history-block-node-test',
-    onError: (error: Error) => {
-      throw error
-    },
-    nodes: [HistoryBlockNode],
-  })
+  return createLexicalTestEditor('history-block-node-test', [HistoryBlockNode])
 }
 
 const createNodeInEditor = () => {
@@ -75,10 +73,7 @@ describe('HistoryBlockNode', () => {
     const { node } = createNodeInEditor()
     const dom = node.createDOM()
 
-    expect(dom.tagName).toBe('DIV')
-    expect(dom).toHaveClass('inline-flex')
-    expect(dom).toHaveClass('items-center')
-    expect(dom).toHaveClass('align-middle')
+    expectInlineWrapperDom(dom)
   })
 
   it('should not update DOM', () => {

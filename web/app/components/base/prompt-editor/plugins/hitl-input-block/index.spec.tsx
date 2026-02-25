@@ -1,11 +1,8 @@
-import type { LexicalEditor } from 'lexical'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import {
-  $getRoot,
-  $nodesOfType,
   COMMAND_PRIORITY_EDITOR,
 } from 'lexical'
 import { useEffect } from 'react'
@@ -14,7 +11,13 @@ import {
   InputVarType,
 } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
+import {
+  getNodeCount,
+  readRootTextContent,
+  renderLexicalEditor,
+  selectRootEnd,
+  waitForEditorReady,
+} from '../test-helpers'
 import {
   DELETE_HITL_INPUT_BLOCK_COMMAND,
   HITLInputBlock,
@@ -79,70 +82,26 @@ const renderHITLInputBlock = (props?: {
   workflowNodesMap?: ReturnType<typeof createWorkflowNodesMap>
   onWorkflowMapUpdate?: (payload: unknown) => void
 }) => {
-  let editor: LexicalEditor | null = null
-
-  const setEditor = (value: LexicalEditor) => {
-    editor = value
-  }
-
   const workflowNodesMap = props?.workflowNodesMap ?? createWorkflowNodesMap('First Node')
 
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'hitl-input-block-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode, HITLInputNode],
-      }}
-    >
-      {props?.onWorkflowMapUpdate && <UpdateWorkflowNodesMapPlugin onUpdate={props.onWorkflowMapUpdate} />}
-      <HITLInputBlock
-        nodeId="node-1"
-        formInputs={[createFormInput()]}
-        onFormInputItemRename={vi.fn()}
-        onFormInputItemRemove={vi.fn()}
-        workflowNodesMap={workflowNodesMap}
-        onInsert={props?.onInsert}
-        onDelete={props?.onDelete}
-      />
-      <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
-  )
-
-  return {
-    ...utils,
-    getEditor: () => editor,
-  }
-}
-
-const selectRoot = (editor: LexicalEditor) => {
-  act(() => {
-    editor.update(() => {
-      $getRoot().selectEnd()
-    })
+  return renderLexicalEditor({
+    namespace: 'hitl-input-block-plugin-test',
+    nodes: [CustomTextNode, HITLInputNode],
+    children: (
+      <>
+        {props?.onWorkflowMapUpdate && <UpdateWorkflowNodesMapPlugin onUpdate={props.onWorkflowMapUpdate} />}
+        <HITLInputBlock
+          nodeId="node-1"
+          formInputs={[createFormInput()]}
+          onFormInputItemRename={vi.fn()}
+          onFormInputItemRemove={vi.fn()}
+          workflowNodesMap={workflowNodesMap}
+          onInsert={props?.onInsert}
+          onDelete={props?.onDelete}
+        />
+      </>
+    ),
   })
-}
-
-const readEditorText = (editor: LexicalEditor) => {
-  let content = ''
-
-  editor.getEditorState().read(() => {
-    content = $getRoot().getTextContent()
-  })
-
-  return content
-}
-
-const getHITLInputNodeCount = (editor: LexicalEditor) => {
-  let count = 0
-
-  editor.getEditorState().read(() => {
-    count = $nodesOfType(HITLInputNode).length
-  })
-
-  return count
 }
 
 describe('HITLInputBlock', () => {
@@ -171,66 +130,51 @@ describe('HITLInputBlock', () => {
       const onInsert = vi.fn()
       const { getEditor } = renderHITLInputBlock({ onInsert })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      selectRoot(editor!)
+      selectRootEnd(editor)
 
       let handled = false
       act(() => {
-        handled = editor!.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+        handled = editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
       })
 
       expect(handled).toBe(true)
       expect(onInsert).toHaveBeenCalledTimes(1)
       await waitFor(() => {
-        expect(readEditorText(editor!)).toContain('{{#$output.user_name#}}')
+        expect(readRootTextContent(editor)).toContain('{{#$output.user_name#}}')
       })
-      expect(getHITLInputNodeCount(editor!)).toBe(1)
+      expect(getNodeCount(editor, HITLInputNode)).toBe(1)
     })
 
     it('should insert hitl input block without onInsert callback', async () => {
       const { getEditor } = renderHITLInputBlock()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      selectRoot(editor!)
+      selectRootEnd(editor)
 
       let handled = false
       act(() => {
-        handled = editor!.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+        handled = editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
       })
 
       expect(handled).toBe(true)
       await waitFor(() => {
-        expect(readEditorText(editor!)).toContain('{{#$output.user_name#}}')
+        expect(readRootTextContent(editor)).toContain('{{#$output.user_name#}}')
       })
-      expect(getHITLInputNodeCount(editor!)).toBe(1)
+      expect(getNodeCount(editor, HITLInputNode)).toBe(1)
     })
 
     it('should call onDelete when delete command is dispatched', async () => {
       const onDelete = vi.fn()
       const { getEditor } = renderHITLInputBlock({ onDelete })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
+      const editor = await waitForEditorReady(getEditor)
 
       let handled = false
       act(() => {
-        handled = editor!.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
+        handled = editor.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
       })
 
       expect(handled).toBe(true)
@@ -240,16 +184,11 @@ describe('HITLInputBlock', () => {
     it('should handle delete command without onDelete callback', async () => {
       const { getEditor } = renderHITLInputBlock()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
+      const editor = await waitForEditorReady(getEditor)
 
       let handled = false
       act(() => {
-        handled = editor!.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
+        handled = editor.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
       })
 
       expect(handled).toBe(true)
@@ -260,20 +199,15 @@ describe('HITLInputBlock', () => {
     it('should unregister insert and delete commands when unmounted', async () => {
       const { getEditor, unmount } = renderHITLInputBlock()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
+      const editor = await waitForEditorReady(getEditor)
 
       unmount()
 
       let insertHandled = true
       let deleteHandled = true
       act(() => {
-        insertHandled = editor!.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
-        deleteHandled = editor!.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
+        insertHandled = editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+        deleteHandled = editor.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
       })
 
       expect(insertHandled).toBe(false)

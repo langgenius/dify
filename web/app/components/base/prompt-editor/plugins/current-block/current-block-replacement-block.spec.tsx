@@ -1,15 +1,17 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-  $nodesOfType,
-} from 'lexical'
+import { render, waitFor } from '@testing-library/react'
+import { $nodesOfType } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { CURRENT_PLACEHOLDER_TEXT } from '../../constants'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
+import {
+  getNodeCount,
+  readEditorStateValue,
+  renderLexicalEditor,
+  setEditorRootText,
+  waitForEditorReady,
+} from '../test-helpers'
 import CurrentBlockReplacementBlock from './current-block-replacement-block'
 import { CurrentBlockNode } from './index'
 
@@ -17,70 +19,24 @@ const renderReplacementPlugin = (props?: {
   generatorType?: GeneratorType
   onInsert?: () => void
 }) => {
-  let editor: LexicalEditor | null = null
-
-  const setEditor = (value: LexicalEditor) => {
-    editor = value
-  }
-
   const {
     generatorType = GeneratorType.prompt,
     onInsert,
   } = props ?? {}
 
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'current-block-replacement-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode, CurrentBlockNode],
-      }}
-    >
+  return renderLexicalEditor({
+    namespace: 'current-block-replacement-plugin-test',
+    nodes: [CustomTextNode, CurrentBlockNode],
+    children: (
       <CurrentBlockReplacementBlock generatorType={generatorType} onInsert={onInsert} />
-      <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
-  )
-
-  return {
-    ...utils,
-    getEditor: () => editor,
-  }
-}
-
-const setEditorText = (editor: LexicalEditor, text: string) => {
-  act(() => {
-    editor.update(() => {
-      const root = $getRoot()
-      root.clear()
-
-      const paragraph = $createParagraphNode()
-      paragraph.append(new CustomTextNode(text))
-      root.append(paragraph)
-      paragraph.selectEnd()
-    })
+    ),
   })
-}
-
-const getCurrentNodeCount = (editor: LexicalEditor) => {
-  let count = 0
-
-  editor.getEditorState().read(() => {
-    count = $nodesOfType(CurrentBlockNode).length
-  })
-
-  return count
 }
 
 const getCurrentNodeGeneratorTypes = (editor: LexicalEditor) => {
-  let generatorTypes: GeneratorType[] = []
-
-  editor.getEditorState().read(() => {
-    generatorTypes = $nodesOfType(CurrentBlockNode).map(node => node.getGeneratorType())
+  return readEditorStateValue(editor, () => {
+    return $nodesOfType(CurrentBlockNode).map(node => node.getGeneratorType())
   })
-
-  return generatorTypes
 }
 
 describe('CurrentBlockReplacementBlock', () => {
@@ -96,19 +52,14 @@ describe('CurrentBlockReplacementBlock', () => {
         onInsert,
       })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, `prefix ${CURRENT_PLACEHOLDER_TEXT} suffix`)
+      setEditorRootText(editor, `prefix ${CURRENT_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getCurrentNodeCount(editor!)).toBe(1)
+        expect(getNodeCount(editor, CurrentBlockNode)).toBe(1)
       })
-      expect(getCurrentNodeGeneratorTypes(editor!)).toEqual([GeneratorType.prompt])
+      expect(getCurrentNodeGeneratorTypes(editor)).toEqual([GeneratorType.prompt])
       expect(onInsert).toHaveBeenCalledTimes(1)
     })
 
@@ -119,17 +70,12 @@ describe('CurrentBlockReplacementBlock', () => {
         onInsert,
       })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, 'plain text without current placeholder')
+      setEditorRootText(editor, 'plain text without current placeholder', text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getCurrentNodeCount(editor!)).toBe(0)
+        expect(getNodeCount(editor, CurrentBlockNode)).toBe(0)
       })
       expect(onInsert).not.toHaveBeenCalled()
     })
@@ -139,19 +85,14 @@ describe('CurrentBlockReplacementBlock', () => {
         generatorType: GeneratorType.code,
       })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, CURRENT_PLACEHOLDER_TEXT)
+      setEditorRootText(editor, CURRENT_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getCurrentNodeCount(editor!)).toBe(1)
+        expect(getNodeCount(editor, CurrentBlockNode)).toBe(1)
       })
-      expect(getCurrentNodeGeneratorTypes(editor!)).toEqual([GeneratorType.code])
+      expect(getCurrentNodeGeneratorTypes(editor)).toEqual([GeneratorType.code])
     })
   })
 

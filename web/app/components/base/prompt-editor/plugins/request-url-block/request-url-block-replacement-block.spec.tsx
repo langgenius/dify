@@ -1,69 +1,26 @@
-import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-  $nodesOfType,
-} from 'lexical'
+import { render, waitFor } from '@testing-library/react'
 import { REQUEST_URL_PLACEHOLDER_TEXT } from '../../constants'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
+import {
+  getNodeCount,
+  renderLexicalEditor,
+  setEditorRootText,
+  waitForEditorReady,
+} from '../test-helpers'
 import { RequestURLBlockNode } from './index'
 import RequestURLBlockReplacementBlock from './request-url-block-replacement-block'
 
 const renderReplacementPlugin = (props: {
   onInsert?: () => void
 } = {}) => {
-  let editor: LexicalEditor | null = null
-
-  const setEditor = (value: LexicalEditor) => {
-    editor = value
-  }
-
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'request-url-block-replacement-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode, RequestURLBlockNode],
-      }}
-    >
+  return renderLexicalEditor({
+    namespace: 'request-url-block-replacement-plugin-test',
+    nodes: [CustomTextNode, RequestURLBlockNode],
+    children: (
       <RequestURLBlockReplacementBlock {...props} />
-      <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
-  )
-
-  return {
-    ...utils,
-    getEditor: () => editor,
-  }
-}
-
-const setEditorText = (editor: LexicalEditor, text: string) => {
-  act(() => {
-    editor.update(() => {
-      const root = $getRoot()
-      root.clear()
-
-      const paragraph = $createParagraphNode()
-      paragraph.append(new CustomTextNode(text))
-      root.append(paragraph)
-      paragraph.selectEnd()
-    })
+    ),
   })
-}
-
-const getRequestURLNodeCount = (editor: LexicalEditor) => {
-  let count = 0
-
-  editor.getEditorState().read(() => {
-    count = $nodesOfType(RequestURLBlockNode).length
-  })
-
-  return count
 }
 
 describe('RequestURLBlockReplacementBlock', () => {
@@ -76,17 +33,12 @@ describe('RequestURLBlockReplacementBlock', () => {
       const onInsert = vi.fn()
       const { getEditor } = renderReplacementPlugin({ onInsert })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, `prefix ${REQUEST_URL_PLACEHOLDER_TEXT} suffix`)
+      setEditorRootText(editor, `prefix ${REQUEST_URL_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getRequestURLNodeCount(editor!)).toBe(1)
+        expect(getNodeCount(editor, RequestURLBlockNode)).toBe(1)
       })
       expect(onInsert).toHaveBeenCalledTimes(1)
     })
@@ -95,17 +47,12 @@ describe('RequestURLBlockReplacementBlock', () => {
       const onInsert = vi.fn()
       const { getEditor } = renderReplacementPlugin({ onInsert })
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, 'plain text without placeholder')
+      setEditorRootText(editor, 'plain text without placeholder', text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getRequestURLNodeCount(editor!)).toBe(0)
+        expect(getNodeCount(editor, RequestURLBlockNode)).toBe(0)
       })
       expect(onInsert).not.toHaveBeenCalled()
     })
@@ -113,17 +60,12 @@ describe('RequestURLBlockReplacementBlock', () => {
     it('should replace placeholder text without onInsert callback', async () => {
       const { getEditor } = renderReplacementPlugin()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      setEditorText(editor!, REQUEST_URL_PLACEHOLDER_TEXT)
+      setEditorRootText(editor, REQUEST_URL_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
 
       await waitFor(() => {
-        expect(getRequestURLNodeCount(editor!)).toBe(1)
+        expect(getNodeCount(editor, RequestURLBlockNode)).toBe(1)
       })
     })
   })

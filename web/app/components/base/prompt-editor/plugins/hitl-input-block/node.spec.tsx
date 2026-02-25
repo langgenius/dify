@@ -1,11 +1,14 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Var } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
-import { createEditor } from 'lexical'
 import {
   BlockEnum,
   InputVarType,
 } from '@/app/components/workflow/types'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../test-helpers'
 import HITLInputBlockComponent from './component'
 import {
   $createHITLInputNode,
@@ -49,13 +52,7 @@ const createNodeProps = () => {
 }
 
 const createTestEditor = () => {
-  return createEditor({
-    namespace: 'hitl-input-node-test',
-    onError: (error: Error) => {
-      throw error
-    },
-    nodes: [HITLInputNode],
-  })
+  return createLexicalTestEditor('hitl-input-node-test', [HITLInputNode])
 }
 
 describe('HITLInputNode', () => {
@@ -168,6 +165,41 @@ describe('HITLInputNode', () => {
     })
   })
 
+  it('should fallback to empty form inputs when imported payload omits formInputs', () => {
+    const editor = createTestEditor()
+    const props = createNodeProps()
+
+    act(() => {
+      editor.update(() => {
+        const source = $createHITLInputNode(
+          props.variableName,
+          props.nodeId,
+          props.formInputs,
+          props.onFormInputsChange,
+          props.onFormInputItemRename,
+          props.onFormInputItemRemove,
+          props.workflowNodesMap,
+          props.getVarType,
+          props.environmentVariables,
+          props.conversationVariables,
+          props.ragVariables,
+          props.readonly,
+        )
+
+        const payload = {
+          ...source.exportJSON(),
+          formInputs: undefined as unknown as FormInputItem[],
+        }
+
+        const imported = HITLInputNode.importJSON(payload)
+        const cloned = HITLInputNode.clone(imported)
+
+        expect(imported.getFormInputs()).toEqual([])
+        expect(cloned.getFormInputs()).toEqual([])
+      })
+    })
+  })
+
   it('should create and update DOM and support helper type guard', () => {
     const editor = createTestEditor()
     const props = createNodeProps()
@@ -191,12 +223,7 @@ describe('HITLInputNode', () => {
 
         const dom = node.createDOM()
 
-        expect(dom.tagName).toBe('DIV')
-        expect(dom).toHaveClass('inline-flex')
-        expect(dom).toHaveClass('w-[calc(100%-1px)]')
-        expect(dom).toHaveClass('items-center')
-        expect(dom).toHaveClass('align-middle')
-        expect(dom).toHaveClass('support-drag')
+        expectInlineWrapperDom(dom, ['w-[calc(100%-1px)]', 'support-drag'])
         expect(node.updateDOM()).toBe(false)
         expect($isHITLInputNode(node)).toBe(true)
       })

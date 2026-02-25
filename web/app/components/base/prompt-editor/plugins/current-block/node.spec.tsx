@@ -2,9 +2,12 @@ import { act } from '@testing-library/react'
 import {
   $createParagraphNode,
   $getRoot,
-  createEditor,
 } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../test-helpers'
 import CurrentBlockComponent from './component'
 import {
   $createCurrentBlockNode,
@@ -13,13 +16,7 @@ import {
 } from './node'
 
 const createTestEditor = () => {
-  return createEditor({
-    namespace: 'current-block-node-test',
-    onError: (error: Error) => {
-      throw error
-    },
-    nodes: [CurrentBlockNode],
-  })
+  return createLexicalTestEditor('current-block-node-test', [CurrentBlockNode])
 }
 
 const appendNodeToRoot = (node: CurrentBlockNode) => {
@@ -90,10 +87,7 @@ describe('CurrentBlockNode', () => {
 
       const dom = node.createDOM()
 
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
+      expectInlineWrapperDom(dom)
     })
 
     it('should not update DOM', () => {

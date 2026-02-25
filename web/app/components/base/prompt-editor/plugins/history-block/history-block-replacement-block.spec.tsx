@@ -1,15 +1,17 @@
 import type { LexicalEditor } from 'lexical'
 import type { RoleName } from './index'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-  $nodesOfType,
-} from 'lexical'
+import { render, waitFor } from '@testing-library/react'
+import { $nodesOfType } from 'lexical'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../constants'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
+import {
+  getNodeCount,
+  readEditorStateValue,
+  renderLexicalEditor,
+  setEditorRootText,
+  waitForEditorReady,
+} from '../test-helpers'
 import HistoryBlockReplacementBlock from './history-block-replacement-block'
 import { HistoryBlockNode } from './node'
 
@@ -24,70 +26,24 @@ const renderReplacementPlugin = (props?: {
   onEditRole?: () => void
   onInsert?: () => void
 }) => {
-  let editor: LexicalEditor | null = null
-
-  const setEditor = (value: LexicalEditor) => {
-    editor = value
-  }
-
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'history-block-replacement-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode, HistoryBlockNode],
-      }}
-    >
+  return renderLexicalEditor({
+    namespace: 'history-block-replacement-plugin-test',
+    nodes: [CustomTextNode, HistoryBlockNode],
+    children: (
       <HistoryBlockReplacementBlock
         history={props?.history}
         onEditRole={props?.onEditRole}
         onInsert={props?.onInsert}
       />
-      <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
-  )
-
-  return {
-    ...utils,
-    getEditor: () => editor,
-  }
-}
-
-const setEditorText = (editor: LexicalEditor, text: string) => {
-  act(() => {
-    editor.update(() => {
-      const root = $getRoot()
-      root.clear()
-
-      const paragraph = $createParagraphNode()
-      paragraph.append(new CustomTextNode(text))
-      root.append(paragraph)
-      paragraph.selectEnd()
-    })
+    ),
   })
-}
-
-const getHistoryNodeCount = (editor: LexicalEditor) => {
-  let count = 0
-
-  editor.getEditorState().read(() => {
-    count = $nodesOfType(HistoryBlockNode).length
-  })
-
-  return count
 }
 
 const getFirstNodeRoleName = (editor: LexicalEditor) => {
-  let roleName: RoleName | null = null
-
-  editor.getEditorState().read(() => {
+  return readEditorStateValue(editor, () => {
     const node = $nodesOfType(HistoryBlockNode)[0]
-    roleName = node?.getRoleName() ?? null
+    return node?.getRoleName() ?? null
   })
-
-  return roleName
 }
 
 describe('HistoryBlockReplacementBlock', () => {
@@ -105,37 +61,27 @@ describe('HistoryBlockReplacementBlock', () => {
       onEditRole,
     })
 
-    await waitFor(() => {
-      expect(getEditor()).not.toBeNull()
-    })
+    const editor = await waitForEditorReady(getEditor)
 
-    const editor = getEditor()
-    expect(editor).not.toBeNull()
-
-    setEditorText(editor!, `prefix ${HISTORY_PLACEHOLDER_TEXT} suffix`)
+    setEditorRootText(editor, `prefix ${HISTORY_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
 
     await waitFor(() => {
-      expect(getHistoryNodeCount(editor!)).toBe(1)
+      expect(getNodeCount(editor, HistoryBlockNode)).toBe(1)
     })
     expect(onInsert).toHaveBeenCalledTimes(1)
-    expect(getFirstNodeRoleName(editor!)).toEqual(history)
+    expect(getFirstNodeRoleName(editor)).toEqual(history)
   })
 
   it('should not replace text when history placeholder is absent', async () => {
     const onInsert = vi.fn()
     const { getEditor } = renderReplacementPlugin({ onInsert })
 
-    await waitFor(() => {
-      expect(getEditor()).not.toBeNull()
-    })
+    const editor = await waitForEditorReady(getEditor)
 
-    const editor = getEditor()
-    expect(editor).not.toBeNull()
-
-    setEditorText(editor!, 'plain text without history placeholder')
+    setEditorRootText(editor, 'plain text without history placeholder', text => new CustomTextNode(text))
 
     await waitFor(() => {
-      expect(getHistoryNodeCount(editor!)).toBe(0)
+      expect(getNodeCount(editor, HistoryBlockNode)).toBe(0)
     })
     expect(onInsert).not.toHaveBeenCalled()
   })
@@ -143,17 +89,12 @@ describe('HistoryBlockReplacementBlock', () => {
   it('should replace history placeholder without onInsert callback', async () => {
     const { getEditor } = renderReplacementPlugin()
 
-    await waitFor(() => {
-      expect(getEditor()).not.toBeNull()
-    })
+    const editor = await waitForEditorReady(getEditor)
 
-    const editor = getEditor()
-    expect(editor).not.toBeNull()
-
-    setEditorText(editor!, HISTORY_PLACEHOLDER_TEXT)
+    setEditorRootText(editor, HISTORY_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
 
     await waitFor(() => {
-      expect(getHistoryNodeCount(editor!)).toBe(1)
+      expect(getNodeCount(editor, HistoryBlockNode)).toBe(1)
     })
   })
 

@@ -1,57 +1,23 @@
-import type { LexicalEditor } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
-import { $getRoot } from 'lexical'
+import { act, waitFor } from '@testing-library/react'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
+import {
+  readRootTextContent,
+  renderLexicalEditor,
+  selectRootEnd,
+  waitForEditorReady,
+} from '../test-helpers'
 import VariableBlock, {
   INSERT_VARIABLE_BLOCK_COMMAND,
   INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
 } from './index'
 
 const renderVariableBlock = () => {
-  let editor: LexicalEditor | null = null
-
-  const setEditor = (value: LexicalEditor) => {
-    editor = value
-  }
-
-  const utils = render(
-    <LexicalComposer
-      initialConfig={{
-        namespace: 'variable-block-plugin-test',
-        onError: (error: Error) => {
-          throw error
-        },
-        nodes: [CustomTextNode],
-      }}
-    >
+  return renderLexicalEditor({
+    namespace: 'variable-block-plugin-test',
+    nodes: [CustomTextNode],
+    children: (
       <VariableBlock />
-      <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
-  )
-
-  return {
-    ...utils,
-    getEditor: () => editor,
-  }
-}
-
-const readEditorText = (editor: LexicalEditor) => {
-  let content = ''
-
-  editor.getEditorState().read(() => {
-    content = $getRoot().getTextContent()
-  })
-
-  return content
-}
-
-const selectRoot = (editor: LexicalEditor) => {
-  act(() => {
-    editor.update(() => {
-      $getRoot().selectEnd()
-    })
+    ),
   })
 }
 
@@ -64,48 +30,38 @@ describe('VariableBlock', () => {
     it('should insert an opening brace when INSERT_VARIABLE_BLOCK_COMMAND is dispatched', async () => {
       const { getEditor } = renderVariableBlock()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      selectRoot(editor!)
+      selectRootEnd(editor)
 
       let handled = false
 
       act(() => {
-        handled = editor!.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
+        handled = editor.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
       })
 
       expect(handled).toBe(true)
       await waitFor(() => {
-        expect(readEditorText(editor!)).toBe('{')
+        expect(readRootTextContent(editor)).toBe('{')
       })
     })
 
     it('should insert provided value when INSERT_VARIABLE_VALUE_BLOCK_COMMAND is dispatched', async () => {
       const { getEditor } = renderVariableBlock()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
+      const editor = await waitForEditorReady(getEditor)
 
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      selectRoot(editor!)
+      selectRootEnd(editor)
 
       let handled = false
 
       act(() => {
-        handled = editor!.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, 'user.name')
+        handled = editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, 'user.name')
       })
 
       expect(handled).toBe(true)
       await waitFor(() => {
-        expect(readEditorText(editor!)).toBe('user.name')
+        expect(readRootTextContent(editor)).toBe('user.name')
       })
     })
   })
@@ -114,12 +70,7 @@ describe('VariableBlock', () => {
     it('should unregister command handlers when the plugin unmounts', async () => {
       const { getEditor, unmount } = renderVariableBlock()
 
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
+      const editor = await waitForEditorReady(getEditor)
 
       unmount()
 
@@ -127,8 +78,8 @@ describe('VariableBlock', () => {
       let valueHandled = true
 
       act(() => {
-        variableHandled = editor!.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
-        valueHandled = editor!.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, 'ignored')
+        variableHandled = editor.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
+        valueHandled = editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, 'ignored')
       })
 
       expect(variableHandled).toBe(false)
