@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => {
         '~@': __dirname,
       },
     },
+
+    // vinext related config
     optimizeDeps: {
       exclude: ['nuqs'],
     },
@@ -47,6 +49,11 @@ export default defineConfig(({ mode }) => {
       port: 3000,
     },
     envPrefix: 'NEXT_PUBLIC_',
+    define: {
+      'process.env': env,
+    },
+
+    // Vitest config
     test: {
       environment: 'jsdom',
       globals: true,
@@ -55,9 +62,6 @@ export default defineConfig(({ mode }) => {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
       },
-    },
-    define: {
-      'process.env': env,
     },
   }
 })
