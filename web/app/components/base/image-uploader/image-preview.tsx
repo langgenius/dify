@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
 import * as React from 'react'
@@ -196,6 +195,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       onMouseUp={handleMouseUp}
       style={{ cursor: scale > 1 ? 'move' : 'default' }}
       tabIndex={-1}
+      data-testid="image-preview-container"
     >
       { }
       {/* eslint-disable-next-line next/no-img-element */}
@@ -208,6 +208,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
           transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
         }}
+        data-testid="image-preview-image"
       />
       <Tooltip popupContent={t('operation.copyImage', { ns: 'common' })}>
         <div
@@ -215,8 +216,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           onClick={imageCopy}
         >
           {isCopied
-            ? <RiFileCopyLine className="h-4 w-4 text-green-500" />
-            : <RiFileCopyLine className="h-4 w-4 text-gray-500" />}
+            ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" data-testid="image-preview-copied-icon" />
+            : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" data-testid="image-preview-copy-button" />}
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.zoomOut', { ns: 'common' })}>
@@ -224,7 +225,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           className="absolute right-40 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomOut}
         >
-          <RiZoomOutLine className="h-4 w-4 text-gray-500" />
+          <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-out-button" />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
@@ -232,7 +233,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           className="absolute right-32 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomIn}
         >
-          <RiZoomInLine className="h-4 w-4 text-gray-500" />
+          <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-in-button" />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.download', { ns: 'common' })}>
@@ -240,7 +241,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={downloadImage}
         >
-          <RiDownloadCloud2Line className="h-4 w-4 text-gray-500" />
+          <span className="i-ri-download-cloud-2-line h-4 w-4 text-gray-500" data-testid="image-preview-download-button" />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.openInNewTab', { ns: 'common' })}>
@@ -248,7 +249,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={openInNewTab}
         >
-          <RiAddBoxLine className="h-4 w-4 text-gray-500" />
+          <span className="i-ri-add-box-line h-4 w-4 text-gray-500" data-testid="image-preview-open-in-tab-button" />
         </div>
       </Tooltip>
       <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
@@ -256,7 +257,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
           onClick={onCancel}
         >
-          <RiCloseLine className="h-4 w-4 text-gray-500" />
+          <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="image-preview-close-button" />
         </div>
       </Tooltip>
     </div>,
