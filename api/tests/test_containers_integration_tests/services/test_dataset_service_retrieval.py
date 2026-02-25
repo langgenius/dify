@@ -507,7 +507,7 @@ class TestDatasetServiceGetDatasetsByIds:
 
 
 class TestDatasetServiceGetProcessRules:
-    """Comprehensive unit tests for DatasetService.get_process_rules method."""
+    """Comprehensive integration tests for DatasetService.get_process_rules method."""
 
     def test_get_process_rules_with_existing_rule(self, db_session_with_containers):
         """Test retrieval of process rules when rule exists."""
