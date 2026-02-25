@@ -100,7 +100,7 @@ class DatasetUpdateTestDataFactory:
 
 class TestDatasetServiceUpdateDataset:
     """
-    Comprehensive unit tests for DatasetService.update_dataset method.
+    Comprehensive integration tests for DatasetService.update_dataset method.
 
     This test suite covers all supported scenarios including:
     - External dataset updates
