@@ -560,11 +560,6 @@
       "count": 3
     }
   },
-  "app/components/app/configuration/config-var/config-modal/field.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/config-var/config-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
