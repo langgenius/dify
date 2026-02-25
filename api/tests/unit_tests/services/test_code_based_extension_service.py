@@ -33,9 +33,7 @@ class TestCodeBasedExtensionService:
             extension_class=object,
             position=30,
         )
-        module_extensions_mock = MagicMock(
-            return_value=[moderation_extension, builtin_extension, retrieval_extension]
-        )
+        module_extensions_mock = MagicMock(return_value=[moderation_extension, builtin_extension, retrieval_extension])
         monkeypatch.setattr(
             "services.code_based_extension_service.code_based_extension.module_extensions",
             module_extensions_mock,
