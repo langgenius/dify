@@ -2586,21 +2586,6 @@
       "count": 1
     }
   },
-  "app/components/base/tag-management/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/base/tag-management/panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
-  "app/components/base/tag-management/trigger.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/text-generation/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
