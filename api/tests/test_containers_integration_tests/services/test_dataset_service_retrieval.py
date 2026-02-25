@@ -461,7 +461,7 @@ class TestDatasetServiceGetDataset:
 
 
 class TestDatasetServiceGetDatasetsByIds:
-    """Comprehensive unit tests for DatasetService.get_datasets_by_ids method."""
+    """Comprehensive integration tests for DatasetService.get_datasets_by_ids method."""
 
     def test_get_datasets_by_ids_success(self, db_session_with_containers):
         """Test successful bulk retrieval of datasets by IDs."""
