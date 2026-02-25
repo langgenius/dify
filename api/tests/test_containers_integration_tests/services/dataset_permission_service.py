@@ -387,7 +387,7 @@ class TestDatasetServiceCheckDatasetPermission:
 
 class TestDatasetServiceCheckDatasetOperatorPermission:
     """
-    Comprehensive unit tests for DatasetService.check_dataset_operator_permission method.
+    Comprehensive integration tests for DatasetService.check_dataset_operator_permission method.
     """
 
     def test_check_dataset_operator_permission_partial_members_with_permission_success(
