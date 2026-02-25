@@ -3,36 +3,21 @@ import type { GetVarType } from '../../types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import {
   $createParagraphNode,
   $getRoot,
   $nodesOfType,
 } from 'lexical'
-import { useEffect } from 'react'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   BlockEnum,
   InputVarType,
 } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../custom-text/node'
+import { CaptureEditorPlugin } from '../test-utils'
 import HITLInputReplacementBlock from './hitl-input-block-replacement-block'
 import { HITLInputNode } from './node'
-
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 const createWorkflowNodesMap = () => ({
   'node-1': {

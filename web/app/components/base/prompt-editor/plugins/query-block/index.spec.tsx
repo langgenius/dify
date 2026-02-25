@@ -1,30 +1,19 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import {
   $getRoot,
   $nodesOfType,
 } from 'lexical'
-import { useEffect } from 'react'
 import { QUERY_PLACEHOLDER_TEXT } from '../../constants'
 import { CustomTextNode } from '../custom-text/node'
+import { CaptureEditorPlugin } from '../test-utils'
 import {
   DELETE_QUERY_BLOCK_COMMAND,
   INSERT_QUERY_BLOCK_COMMAND,
   QueryBlock,
   QueryBlockNode,
 } from './index'
-
-const CaptureEditorPlugin = ({ onReady }: { onReady: (editor: LexicalEditor) => void }) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 const renderQueryBlock = (props: {
   onInsert?: () => void

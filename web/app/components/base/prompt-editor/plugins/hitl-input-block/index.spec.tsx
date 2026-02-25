@@ -14,6 +14,7 @@ import {
   InputVarType,
 } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../custom-text/node'
+import { CaptureEditorPlugin } from '../test-utils'
 import {
   DELETE_HITL_INPUT_BLOCK_COMMAND,
   HITLInputBlock,
@@ -22,22 +23,8 @@ import {
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
 
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
 type UpdateWorkflowNodesMapPluginProps = {
   onUpdate: (payload: unknown) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
 }
 
 const UpdateWorkflowNodesMapPlugin = ({ onUpdate }: UpdateWorkflowNodesMapPluginProps) => {

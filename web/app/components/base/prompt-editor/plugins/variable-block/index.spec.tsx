@@ -1,24 +1,13 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import { $getRoot } from 'lexical'
-import { useEffect } from 'react'
 import { CustomTextNode } from '../custom-text/node'
+import { CaptureEditorPlugin } from '../test-utils'
 import VariableBlock, {
   INSERT_VARIABLE_BLOCK_COMMAND,
   INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
 } from './index'
-
-const CaptureEditorPlugin = ({ onReady }: { onReady: (editor: LexicalEditor) => void }) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 const renderVariableBlock = () => {
   let editor: LexicalEditor | null = null

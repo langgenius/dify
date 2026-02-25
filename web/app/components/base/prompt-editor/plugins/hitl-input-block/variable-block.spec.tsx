@@ -2,33 +2,18 @@ import type { LexicalEditor } from 'lexical'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import {
   $getRoot,
 } from 'lexical'
-import { useEffect } from 'react'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
+import { CaptureEditorPlugin } from '../test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../workflow-variable-block'
 import { HITLInputNode } from './node'
 import HITLInputVariableBlockComponent from './variable-block'
-
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 const createWorkflowNodesMap = (title = 'Node One'): WorkflowNodesMap => ({
   'node-1': {

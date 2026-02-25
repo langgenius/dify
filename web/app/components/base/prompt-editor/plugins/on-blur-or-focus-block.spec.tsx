@@ -1,6 +1,5 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import {
   BLUR_COMMAND,
@@ -8,23 +7,9 @@ import {
   FOCUS_COMMAND,
   KEY_ESCAPE_COMMAND,
 } from 'lexical'
-import { useEffect } from 'react'
 import OnBlurBlock from './on-blur-or-focus-block'
+import { CaptureEditorPlugin } from './test-utils'
 import { CLEAR_HIDE_MENU_TIMEOUT } from './workflow-variable-block'
-
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 const renderOnBlurBlock = (props?: {
   onBlur?: () => void

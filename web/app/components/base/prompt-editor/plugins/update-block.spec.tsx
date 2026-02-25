@@ -1,10 +1,9 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import { $getRoot, COMMAND_PRIORITY_EDITOR } from 'lexical'
-import { useEffect } from 'react'
 import { CustomTextNode } from './custom-text/node'
+import { CaptureEditorPlugin } from './test-utils'
 import UpdateBlock, {
   PROMPT_EDITOR_INSERT_QUICKLY,
   PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
@@ -18,20 +17,6 @@ const { mockUseEventEmitterContextContext } = vi.hoisted(() => ({
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => mockUseEventEmitterContextContext(),
 }))
-
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 type TestEvent = {
   type: string

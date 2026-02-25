@@ -1,8 +1,7 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { render, screen, waitFor } from '@testing-library/react'
-import { useEffect } from 'react'
+import { CaptureEditorPlugin } from './test-utils'
 import TreeViewPlugin from './tree-view'
 
 const { mockTreeView } = vi.hoisted(() => ({
@@ -15,20 +14,6 @@ vi.mock('@lexical/react/LexicalTreeView', () => ({
     return <div data-testid="lexical-tree-view" />
   },
 }))
-
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 describe('TreeViewPlugin', () => {
   beforeEach(() => {

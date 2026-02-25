@@ -1,32 +1,17 @@
 import type { LexicalEditor } from 'lexical'
 import type { RoleName } from './index'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
 import {
   $createParagraphNode,
   $getRoot,
   $nodesOfType,
 } from 'lexical'
-import { useEffect } from 'react'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../constants'
 import { CustomTextNode } from '../custom-text/node'
+import { CaptureEditorPlugin } from '../test-utils'
 import HistoryBlockReplacementBlock from './history-block-replacement-block'
 import { HistoryBlockNode } from './node'
-
-type CaptureEditorPluginProps = {
-  onReady: (editor: LexicalEditor) => void
-}
-
-const CaptureEditorPlugin = ({ onReady }: CaptureEditorPluginProps) => {
-  const [editor] = useLexicalComposerContext()
-
-  useEffect(() => {
-    onReady(editor)
-  }, [editor, onReady])
-
-  return null
-}
 
 const createRoleName = (overrides?: Partial<RoleName>): RoleName => ({
   user: 'user-role',
