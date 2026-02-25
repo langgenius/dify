@@ -231,7 +231,7 @@ class LindormVectorStore(BaseVector):
                 params["routing"] = self._routing
             self._client.get(index=self._collection_name, id=id, params=params)
             return True
-        except:
+        except Exception:
             return False
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

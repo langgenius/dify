@@ -70,7 +70,7 @@ def test_dify_api():
             if response.status_code == 200:
                 print("✓ Dify API is ready")
                 break
-        except:
+        except Exception:
             if i == max_retries - 1:
                 print("✗ Dify API is not responding")
                 return False

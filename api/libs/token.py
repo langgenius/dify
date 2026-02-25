@@ -212,7 +212,7 @@ def check_csrf_token(request: Request, user_id: str):
     verified = {}
     try:
         verified = PassportService().verify(csrf_token)
-    except:
+    except Exception:
         _unauthorized()
 
     if verified.get("sub") != user_id:

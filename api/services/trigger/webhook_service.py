@@ -816,7 +816,7 @@ class WebhookService:
                     response_data = {"message": response_body}
             else:
                 response_data = {"status": "success", "message": "Webhook processed successfully"}
-        except:
+        except Exception:
             response_data = {"message": response_body or "Webhook processed successfully"}
 
         return response_data, status_code
