@@ -206,9 +206,6 @@ importers:
       i18next-resources-to-backend:
         specifier: 1.2.1
         version: 1.2.1
-      image-size:
-        specifier: 2.0.2
-        version: 2.0.2
       immer:
         specifier: 11.1.0
         version: 11.1.0
@@ -561,6 +558,9 @@ importers:
       iconify-import-svg:
         specifier: 0.1.1
         version: 0.1.1
+      image-size:
+        specifier: 2.0.2
+        version: 2.0.2
       jiti:
         specifier: 1.21.7
         version: 1.21.7
