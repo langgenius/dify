@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, TypeGuard, cast, final
+from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
@@ -34,14 +34,6 @@ from core.workflow.nodes.template_transform.template_transform_node import Templ
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
-
-
-def _is_question_classifier_node_class(node_class: type[Node]) -> TypeGuard[type[QuestionClassifierNode]]:
-    return issubclass(node_class, QuestionClassifierNode)
-
-
-def _is_parameter_extractor_node_class(node_class: type[Node]) -> TypeGuard[type[ParameterExtractorNode]]:
-    return issubclass(node_class, ParameterExtractorNode)
 
 
 @final
@@ -160,8 +152,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.LLM:
-            llm_node_class = cast(type[LLMNode], node_class)
-            return llm_node_class(
+            return LLMNode(
                 id=node_id,
                 config=node_config,
                 graph_init_params=self.graph_init_params,
@@ -189,9 +180,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
-            if not _is_question_classifier_node_class(node_class):
-                raise ValueError(f"Invalid node class for question classifier: {node_class}")
-            return node_class(
+            return QuestionClassifierNode(
                 id=node_id,
                 config=node_config,
                 graph_init_params=self.graph_init_params,
@@ -201,9 +190,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
-            if not _is_parameter_extractor_node_class(node_class):
-                raise ValueError(f"Invalid node class for parameter extractor: {node_class}")
-            return node_class(
+            return ParameterExtractorNode(
                 id=node_id,
                 config=node_config,
                 graph_init_params=self.graph_init_params,
