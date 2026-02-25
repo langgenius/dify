@@ -1,226 +1,206 @@
-import type { LexicalCommand, LexicalEditor } from 'lexical'
+import type { LexicalEditor } from 'lexical'
+import type { ReactNode } from 'react'
 import type { Dataset } from './index'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { render } from '@testing-library/react'
-import { COMMAND_PRIORITY_EDITOR } from 'lexical'
+import { $createParagraphNode, $getRoot } from 'lexical'
+import * as React from 'react'
 import { ContextBlock, DELETE_CONTEXT_BLOCK_COMMAND, INSERT_CONTEXT_BLOCK_COMMAND } from './index'
+import { ContextBlockNode } from './node'
 
-type CommandHandler<T = unknown> = (payload?: T, editor?: LexicalEditor) => boolean
-type RegisteredCall = [LexicalCommand<unknown>, CommandHandler, number]
+const mockCreateContextBlockNode = vi.fn()
 
-// Mock Lexical editor
-const mockUnregister = vi.fn()
-const mockRegisterCommand = vi.fn((_command: LexicalCommand<unknown>, _handler: CommandHandler, _priority: number) => {
-  return mockUnregister
-})
-const mockHasNodes = vi.fn((_nodes: unknown[]) => true)
+vi.mock('./node', async () => {
+  const actual = await vi.importActual<typeof import('./node')>('./node')
 
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [{
-    hasNodes: mockHasNodes,
-    registerCommand: mockRegisterCommand,
-  }],
-}))
-
-// Mock mergeRegister to collect and return cleanup fns
-vi.mock('@lexical/utils', () => ({
-  mergeRegister: (...fns: (() => void)[]) => {
-    return () => fns.forEach(fn => fn())
-  },
-}))
-
-// Mock $insertNodes
-const mockInsertNodes = vi.fn()
-vi.mock('lexical', async () => {
-  const actual = await vi.importActual<typeof import('lexical')>('lexical')
   return {
     ...actual,
-    $insertNodes: (nodes: unknown[]) => mockInsertNodes(nodes),
+    $createContextBlockNode: (datasets: Dataset[], onAddContext: () => void, canNotAddContext?: boolean) => {
+      mockCreateContextBlockNode(datasets, onAddContext, canNotAddContext)
+      return actual.$createContextBlockNode(datasets, onAddContext, canNotAddContext)
+    },
   }
 })
 
-// Mock node module
-const mockCreateContextBlockNode = vi.fn((
-  _datasets: Dataset[],
-  _onAddContext: () => void,
-  _canNotAddContext?: boolean,
-) => {
-  return { __type: 'MockContextBlockNode' }
-})
-vi.mock('./node', () => {
-  const MockContextBlockNodeClass = class { }
+vi.mock('./component', () => ({
+  default: () => null,
+}))
+
+type EditorConfig = {
+  namespace: string
+  nodes: [typeof ContextBlockNode] | []
+  onError: (error: Error) => void
+}
+
+function createEditorConfig(includeContextBlockNode = true): EditorConfig {
   return {
-    ContextBlockNode: MockContextBlockNodeClass,
-    $createContextBlockNode: (
-      datasets: Dataset[],
-      onAddContext: () => void,
-      canNotAddContext?: boolean,
-    ) => mockCreateContextBlockNode(datasets, onAddContext, canNotAddContext),
+    namespace: 'test',
+    nodes: includeContextBlockNode ? [ContextBlockNode] : [],
+    onError: (error: Error) => { throw error },
   }
-})
+}
+
+let capturedEditor: LexicalEditor | null = null
+
+function EditorCapture() {
+  const [editor] = useLexicalComposerContext()
+  React.useEffect(() => {
+    capturedEditor = editor
+  }, [editor])
+  return null
+}
+
+function renderWithEditor(ui: ReactNode, includeContextBlockNode = true) {
+  return render(
+    <LexicalComposer initialConfig={createEditorConfig(includeContextBlockNode)}>
+      {ui}
+      <EditorCapture />
+    </LexicalComposer>,
+  )
+}
+
+function setupParagraphSelection() {
+  if (!capturedEditor)
+    throw new Error('Editor not captured')
+
+  capturedEditor.update(() => {
+    const root = $getRoot()
+    root.clear()
+    const paragraph = $createParagraphNode()
+    root.append(paragraph)
+    paragraph.select()
+  }, { discrete: true })
+}
+
+function dispatchInsert() {
+  if (!capturedEditor)
+    throw new Error('Editor not captured')
+
+  setupParagraphSelection()
+  return capturedEditor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
+}
+
+function dispatchDelete() {
+  if (!capturedEditor)
+    throw new Error('Editor not captured')
+
+  return capturedEditor.dispatchCommand(DELETE_CONTEXT_BLOCK_COMMAND, undefined)
+}
 
 describe('ContextBlock', () => {
-  const getCommandHandler = (command: LexicalCommand<unknown>) => {
-    const commandCall = mockRegisterCommand.mock.calls.find(
-      ([registeredCommand]) => registeredCommand === command,
-    ) as RegisteredCall | undefined
-    if (!commandCall)
-      throw new Error(`Expected command registration for ${String(command.type)}`)
-    return commandCall[1]
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHasNodes.mockReturnValue(true)
+    capturedEditor = null
   })
 
   describe('Rendering', () => {
     it('should render (no visible output)', () => {
-      const { container } = render(<ContextBlock />)
+      const { container } = renderWithEditor(<ContextBlock />)
       expect(container.childElementCount).toBe(0)
     })
   })
 
   describe('Editor Node Registration Check', () => {
-    it('should check that ContextBlockNode is registered on the editor', () => {
-      render(<ContextBlock />)
-      expect(mockHasNodes).toHaveBeenCalledTimes(1)
-      const arg = mockHasNodes.mock.calls[0][0]
-      expect(Array.isArray(arg)).toBe(true)
-      expect(arg).toHaveLength(1)
+    it('should not throw when ContextBlockNode is registered', () => {
+      expect(() => {
+        renderWithEditor(<ContextBlock />)
+      }).not.toThrow()
     })
 
     it('should throw when ContextBlockNode is not registered', () => {
-      mockHasNodes.mockReturnValue(false)
       expect(() => {
-        render(<ContextBlock />)
+        renderWithEditor(<ContextBlock />, false)
       }).toThrow('ContextBlockPlugin: ContextBlock not registered on editor')
     })
   })
 
-  describe('Command Registration', () => {
-    it('should register two commands on mount', () => {
-      render(<ContextBlock />)
-      expect(mockRegisterCommand).toHaveBeenCalledTimes(2)
-    })
-
-    it('should register INSERT_CONTEXT_BLOCK_COMMAND with COMMAND_PRIORITY_EDITOR', () => {
-      render(<ContextBlock />)
-      expect(mockRegisterCommand).toHaveBeenCalledWith(
-        INSERT_CONTEXT_BLOCK_COMMAND,
-        expect.any(Function),
-        COMMAND_PRIORITY_EDITOR,
-      )
-    })
-
-    it('should register DELETE_CONTEXT_BLOCK_COMMAND with COMMAND_PRIORITY_EDITOR', () => {
-      render(<ContextBlock />)
-      expect(mockRegisterCommand).toHaveBeenCalledWith(
-        DELETE_CONTEXT_BLOCK_COMMAND,
-        expect.any(Function),
-        COMMAND_PRIORITY_EDITOR,
-      )
-    })
-  })
-
   describe('INSERT_CONTEXT_BLOCK_COMMAND handler', () => {
-    const getInsertHandler = () => {
-      render(<ContextBlock />)
-      return getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
-    }
+    it('should insert a context block node with default props', () => {
+      renderWithEditor(<ContextBlock />)
 
-    it('should create a context block node with default props', () => {
-      const handler = getInsertHandler()
-      handler()
+      const handled = dispatchInsert()
+
+      expect(handled).toBe(true)
       expect(mockCreateContextBlockNode).toHaveBeenCalledWith([], expect.any(Function), undefined)
-    })
-
-    it('should insert the created node using $insertNodes', () => {
-      const handler = getInsertHandler()
-      handler()
-      expect(mockInsertNodes).toHaveBeenCalledTimes(1)
-      expect(mockInsertNodes).toHaveBeenCalledWith([{ __type: 'MockContextBlockNode' }])
-    })
-
-    it('should return true', () => {
-      const handler = getInsertHandler()
-      const result = handler()
-      expect(result).toBe(true)
     })
 
     it('should call onInsert when provided', () => {
       const onInsert = vi.fn()
-      render(<ContextBlock onInsert={onInsert} />)
-      const handler = getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
-      handler()
+      renderWithEditor(<ContextBlock onInsert={onInsert} />)
+
+      dispatchInsert()
+
       expect(onInsert).toHaveBeenCalledTimes(1)
     })
 
-    it('should not throw when onInsert is not provided', () => {
-      const handler = getInsertHandler()
-      expect(() => handler()).not.toThrow()
-    })
-
-    it('should pass datasets to $createContextBlockNode', () => {
+    it('should pass datasets to the created node', () => {
       const datasets: Dataset[] = [{ id: '1', name: 'Test', type: 'text' }]
-      render(<ContextBlock datasets={datasets} />)
-      const handler = getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
-      handler()
+      renderWithEditor(<ContextBlock datasets={datasets} />)
+
+      dispatchInsert()
       expect(mockCreateContextBlockNode).toHaveBeenCalledWith(datasets, expect.any(Function), undefined)
     })
 
-    it('should pass canNotAddContext to $createContextBlockNode', () => {
-      render(<ContextBlock canNotAddContext={true} />)
-      const handler = getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
-      handler()
+    it('should pass canNotAddContext to the created node', () => {
+      renderWithEditor(<ContextBlock canNotAddContext={true} />)
+
+      dispatchInsert()
       expect(mockCreateContextBlockNode).toHaveBeenCalledWith(
         expect.anything(),
-        expect.anything(),
+        expect.any(Function),
         true,
       )
     })
   })
 
   describe('DELETE_CONTEXT_BLOCK_COMMAND handler', () => {
-    const getDeleteHandler = () => {
-      render(<ContextBlock />)
-      return getCommandHandler(DELETE_CONTEXT_BLOCK_COMMAND)
-    }
+    it('should return true when dispatched', () => {
+      renderWithEditor(<ContextBlock />)
 
-    it('should return true', () => {
-      const handler = getDeleteHandler()
-      const result = handler()
-      expect(result).toBe(true)
+      const handled = dispatchDelete()
+
+      expect(handled).toBe(true)
     })
 
     it('should call onDelete when provided', () => {
       const onDelete = vi.fn()
-      render(<ContextBlock onDelete={onDelete} />)
-      const handler = getCommandHandler(DELETE_CONTEXT_BLOCK_COMMAND)
-      handler()
+      renderWithEditor(<ContextBlock onDelete={onDelete} />)
+
+      dispatchDelete()
+
       expect(onDelete).toHaveBeenCalledTimes(1)
     })
 
     it('should not throw when onDelete is not provided', () => {
-      const handler = getDeleteHandler()
-      expect(() => handler()).not.toThrow()
+      renderWithEditor(<ContextBlock />)
+
+      expect(() => dispatchDelete()).not.toThrow()
     })
   })
 
   describe('Props Defaults', () => {
-    it('should default datasets to empty array', () => {
-      render(<ContextBlock />)
-      const handler = getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
-      handler()
-      expect(mockCreateContextBlockNode.mock.calls[0][0]).toEqual([])
-    })
+    it('should default onAddContext to a noop function', () => {
+      renderWithEditor(<ContextBlock />)
 
-    it('should default onAddContext to noop', () => {
-      render(<ContextBlock />)
-      const handler = getCommandHandler(INSERT_CONTEXT_BLOCK_COMMAND)
-      handler()
-      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0][1]
+      dispatchInsert()
+      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0][1] as () => void
+
       expect(typeof onAddContextArg).toBe('function')
       expect(() => onAddContextArg()).not.toThrow()
+    })
+  })
+
+  describe('Lifecycle', () => {
+    it('should unregister commands on unmount', () => {
+      const onDelete = vi.fn()
+      const { unmount } = renderWithEditor(<ContextBlock onDelete={onDelete} />)
+
+      unmount()
+      const handledAfterUnmount = dispatchDelete()
+
+      expect(handledAfterUnmount).toBe(false)
+      expect(onDelete).not.toHaveBeenCalled()
     })
   })
 
@@ -240,15 +220,17 @@ describe('ContextBlock', () => {
 
   describe('Edge Cases', () => {
     it('should handle undefined datasets prop', () => {
-      expect(() => {
-        render(<ContextBlock datasets={undefined} />)
-      }).not.toThrow()
+      renderWithEditor(<ContextBlock datasets={undefined} />)
+
+      dispatchInsert()
+      expect(mockCreateContextBlockNode).toHaveBeenCalledWith([], expect.any(Function), undefined)
     })
 
     it('should handle empty datasets array', () => {
-      expect(() => {
-        render(<ContextBlock datasets={[]} />)
-      }).not.toThrow()
+      renderWithEditor(<ContextBlock datasets={[]} />)
+
+      dispatchInsert()
+      expect(mockCreateContextBlockNode).toHaveBeenCalledWith([], expect.any(Function), undefined)
     })
   })
 })

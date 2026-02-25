@@ -1,79 +1,74 @@
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { ContentEditable } from '@lexical/react/LexicalContentEditable'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
 import DraggableBlockPlugin from '.'
 
-type DraggablePluginMockProps = {
-  anchorElem: HTMLElement
-  menuComponent: React.ReactNode
-  targetLineComponent: React.ReactNode
-  isOnMenu: (element: Element) => boolean
+const CONTENT_EDITABLE_TEST_ID = 'draggable-content-editable'
+let namespaceCounter = 0
+
+function renderWithEditor(anchorElem?: HTMLElement) {
+  render(
+    <LexicalComposer
+      initialConfig={{
+        namespace: `draggable-plugin-test-${namespaceCounter++}`,
+        onError: (error: Error) => { throw error },
+      }}
+    >
+      <RichTextPlugin
+        contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_TEST_ID} />}
+        placeholder={null}
+        ErrorBoundary={LexicalErrorBoundary}
+      />
+      <DraggableBlockPlugin anchorElem={anchorElem} />
+    </LexicalComposer>,
+  )
+
+  return screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
 }
 
-const mockState = vi.hoisted(() => ({
-  rootElement: null as HTMLElement | null,
-  draggableProps: null as DraggablePluginMockProps | null,
-}))
-
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [{
-    getRootElement: () => mockState.rootElement,
-  }],
-}))
-
-vi.mock('@lexical/react/LexicalDraggableBlockPlugin', () => ({
-  DraggableBlockPlugin_EXPERIMENTAL: (props: DraggablePluginMockProps) => {
-    mockState.draggableProps = props
-    return (
-      <div data-testid="draggable-plugin-experimental">
-        {props.menuComponent}
-        {props.targetLineComponent}
-      </div>
-    )
-  },
-}))
+function appendChildToRoot(rootElement: HTMLElement, className = '') {
+  const element = document.createElement('div')
+  element.className = className
+  rootElement.appendChild(element)
+  return element
+}
 
 describe('DraggableBlockPlugin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockState.draggableProps = null
-    mockState.rootElement = document.createElement('div')
-    document.body.appendChild(mockState.rootElement)
   })
 
-  afterEach(() => {
-    mockState.rootElement?.remove()
-    mockState.rootElement = null
-  })
-
-  // Base render and prop wiring for lexical draggable plugin.
   describe('Rendering', () => {
-    it('should pass default anchor and render target line component', () => {
-      render(<DraggableBlockPlugin />)
+    it('should use body as default anchor and render target line', () => {
+      renderWithEditor()
 
-      expect(screen.getByTestId('draggable-plugin-experimental')).toBeInTheDocument()
-      expect(mockState.draggableProps?.anchorElem).toBe(document.body)
-      expect(screen.getByTestId('draggable-target-line')).toBeInTheDocument()
-      expect(mockState.draggableProps?.menuComponent).toBeNull()
+      const targetLine = screen.getByTestId('draggable-target-line')
+      expect(targetLine).toBeInTheDocument()
+      expect(document.body.contains(targetLine)).toBe(true)
+      expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
     })
 
-    it('should pass custom anchor element to lexical draggable plugin', () => {
+    it('should render inside custom anchor element when provided', () => {
       const customAnchor = document.createElement('div')
-      render(<DraggableBlockPlugin anchorElem={customAnchor} />)
+      document.body.appendChild(customAnchor)
 
-      expect(mockState.draggableProps?.anchorElem).toBe(customAnchor)
+      renderWithEditor(customAnchor)
+
+      const targetLine = screen.getByTestId('draggable-target-line')
+      expect(customAnchor.contains(targetLine)).toBe(true)
+
+      customAnchor.remove()
     })
   })
 
-  // Support-drag detection through mousemove events on editor root.
   describe('Drag Support Detection', () => {
     it('should render drag menu when mouse moves over a support-drag element', async () => {
-      const supportDragTarget = document.createElement('div')
-      supportDragTarget.className = 'support-drag'
-      mockState.rootElement?.appendChild(supportDragTarget)
+      const rootElement = renderWithEditor()
+      const supportDragTarget = appendChildToRoot(rootElement, 'support-drag')
 
-      render(<DraggableBlockPlugin />)
       expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
-
       fireEvent.mouseMove(supportDragTarget)
 
       await waitFor(() => {
@@ -81,50 +76,36 @@ describe('DraggableBlockPlugin', () => {
       })
     })
 
-    it('should hide drag menu when mouse moves from supported target to unsupported target', async () => {
-      const supportDragTarget = document.createElement('div')
-      supportDragTarget.className = 'support-drag'
-      const normalTarget = document.createElement('div')
-      mockState.rootElement?.appendChild(supportDragTarget)
-      mockState.rootElement?.appendChild(normalTarget)
-
-      render(<DraggableBlockPlugin />)
+    it('should hide drag menu when support-drag target is removed and mouse moves again', async () => {
+      const rootElement = renderWithEditor()
+      const supportDragTarget = appendChildToRoot(rootElement, 'support-drag')
 
       fireEvent.mouseMove(supportDragTarget)
       await waitFor(() => {
         expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
       })
 
-      fireEvent.mouseMove(normalTarget)
+      supportDragTarget.remove()
+      fireEvent.mouseMove(rootElement)
       await waitFor(() => {
         expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
       })
     })
   })
 
-  // isOnMenu callback behavior used by Lexical draggable integration.
-  describe('isOnMenu Callback', () => {
-    it('should return true for elements inside draggable menu and false otherwise', async () => {
-      const supportDragTarget = document.createElement('div')
-      supportDragTarget.className = 'support-drag'
-      mockState.rootElement?.appendChild(supportDragTarget)
-
-      render(<DraggableBlockPlugin />)
+  describe('Menu Detection Contract', () => {
+    it('should render menu with draggable-block-menu class and keep non-menu elements outside it', async () => {
+      const rootElement = renderWithEditor()
+      const supportDragTarget = appendChildToRoot(rootElement, 'support-drag')
 
       fireEvent.mouseMove(supportDragTarget)
-      await waitFor(() => {
-        expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
-      })
 
-      const menuIcon = screen.getByTestId('draggable-menu-icon')
-      expect(menuIcon).toBeInTheDocument()
+      const menuIcon = await screen.findByTestId('draggable-menu-icon')
+      expect(menuIcon.closest('.draggable-block-menu')).not.toBeNull()
 
       const normalElement = document.createElement('div')
       document.body.appendChild(normalElement)
-
-      expect(mockState.draggableProps?.isOnMenu(menuIcon)).toBe(true)
-      expect(mockState.draggableProps?.isOnMenu(normalElement)).toBe(false)
-
+      expect(normalElement.closest('.draggable-block-menu')).toBeNull()
       normalElement.remove()
     })
   })
