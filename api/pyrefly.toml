@@ -1,6 +1,6 @@
 project-includes = ["."]
 project-excludes = [
-    "tests/",
+    "tests/unit_tests/",
     ".venv",
     "migrations/",
 ]
