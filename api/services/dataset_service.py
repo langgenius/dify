@@ -100,14 +100,6 @@ logger = logging.getLogger(__name__)
 
 class DatasetService:
     @staticmethod
-    def resolve_model_name(model_instance: Any) -> str:
-        model_name = getattr(model_instance, "model_name", None)
-        if isinstance(model_name, str):
-            return model_name
-
-        raise ValueError("Model instance does not include a valid model name.")
-
-    @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
@@ -260,7 +252,7 @@ class DatasetService:
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = DatasetService.resolve_model_name(embedding_model) if embedding_model else None
+        dataset.embedding_model = embedding_model.model_name if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
@@ -392,10 +384,7 @@ class DatasetService:
                 model=model,
             )
             text_embedding_model = cast(TextEmbeddingModel, model_instance.model_type_instance)
-            model_schema = text_embedding_model.get_model_schema(
-                DatasetService.resolve_model_name(model_instance),
-                model_instance.credentials,
-            )
+            model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
             if model_schema.features and ModelFeature.VISION in model_schema.features:
@@ -754,7 +743,7 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
             )
-            embedding_model_name = DatasetService.resolve_model_name(embedding_model)
+            embedding_model_name = embedding_model.model_name
             filtered_data["embedding_model"] = embedding_model_name
             filtered_data["embedding_model_provider"] = embedding_model.provider
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -889,7 +878,7 @@ class DatasetService:
             return
 
         # Apply new embedding model settings
-        embedding_model_name = DatasetService.resolve_model_name(embedding_model)
+        embedding_model_name = embedding_model.model_name
         filtered_data["embedding_model"] = embedding_model_name
         filtered_data["embedding_model_provider"] = embedding_model.provider
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -970,7 +959,7 @@ class DatasetService:
                     knowledge_configuration.embedding_model,
                 )
                 dataset.is_multimodal = is_multimodal
-                embedding_model_name = DatasetService.resolve_model_name(embedding_model)
+                embedding_model_name = embedding_model.model_name
                 dataset.embedding_model = embedding_model_name
                 dataset.embedding_model_provider = embedding_model.provider
                 dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -1006,7 +995,7 @@ class DatasetService:
                             model_type=ModelType.TEXT_EMBEDDING,
                             model=knowledge_configuration.embedding_model,
                         )
-                        embedding_model_name = DatasetService.resolve_model_name(embedding_model)
+                        embedding_model_name = embedding_model.model_name
                         dataset.embedding_model = embedding_model_name
                         dataset.embedding_model_provider = embedding_model.provider
                         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -1068,7 +1057,7 @@ class DatasetService:
                                 skip_embedding_update = True
                             if not skip_embedding_update:
                                 if embedding_model:
-                                    embedding_model_name = DatasetService.resolve_model_name(embedding_model)
+                                    embedding_model_name = embedding_model.model_name
                                     dataset.embedding_model = embedding_model_name
                                     dataset.embedding_model_provider = embedding_model.provider
                                     dataset_collection_binding = (
@@ -1905,7 +1894,7 @@ class DocumentService:
                     embedding_model = model_manager.get_default_model_instance(
                         tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
                     )
-                    dataset_embedding_model = DatasetService.resolve_model_name(embedding_model)
+                    dataset_embedding_model = embedding_model.model_name
                     dataset_embedding_model_provider = embedding_model.provider
                 dataset.embedding_model = dataset_embedding_model
                 dataset.embedding_model_provider = dataset_embedding_model_provider
