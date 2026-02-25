@@ -17,7 +17,7 @@ const getStringConfig = (
 
 export const API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_API_PREFIX,
-  'http://localhost:5001/console/api',
+  'https://cloud.dify.ai/console/api',
 )
 export const PUBLIC_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
