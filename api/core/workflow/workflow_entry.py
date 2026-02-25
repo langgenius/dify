@@ -10,6 +10,7 @@ from core.app.workflow.layers.observability import ObservabilityLayer
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.graph_config import NodeConfigData, NodeConfigDict
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.file.models import File
 from core.workflow.graph import Graph
@@ -302,12 +303,15 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config = {"id": node_id, "data": node_data}
+        node_config: NodeConfigDict = {
+            "id": node_id,
+            "data": cast(NodeConfigData, node_data),
+        }
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node = node_factory.create_node(cast(dict[str, object], node_config))
+        node = node_factory.create_node(node_config)
 
         try:
             # variable selector to variable mapping
