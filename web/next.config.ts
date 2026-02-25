@@ -1,12 +1,13 @@
 import type { NextConfig } from 'next'
 import type { env as Env } from './env'
+import { fileURLToPath } from 'node:url'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
-import { createJiti } from 'jiti'
+import createJiti from 'jiti'
 
-const jiti = createJiti(import.meta.url)
+const jiti = createJiti(fileURLToPath(import.meta.url))
 
-const { env } = await jiti.import<{ env: typeof Env }>('./env')
+const { env } = jiti('./env') as { env: typeof Env }
 
 const isDev = env.NODE_ENV === 'development'
 const withMDX = createMDX({
