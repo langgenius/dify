@@ -99,7 +99,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 variable_pool=self.graph_runtime_state.variable_pool,
                 http_request_config=self._http_request_config,
                 max_retries=0,
-                ssl_verify=self._resolve_ssl_verify(self.node_data),
+                ssl_verify=self.node_data.ssl_verify,
                 http_client=self._http_client,
                 file_manager=self._file_manager,
             )
@@ -143,19 +143,17 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 error_type=type(e).__name__,
             )
 
-    def _resolve_ssl_verify(self, node_data: HttpRequestNodeData) -> bool:
-        return self._http_request_config.ssl_verify if node_data.ssl_verify is None else node_data.ssl_verify
-
     def _get_request_timeout(self, node_data: HttpRequestNodeData) -> HttpRequestNodeTimeout:
         default_timeout = self._http_request_config.default_timeout()
         timeout = node_data.timeout
         if timeout is None:
             return default_timeout
 
-        timeout.connect = timeout.connect or default_timeout.connect
-        timeout.read = timeout.read or default_timeout.read
-        timeout.write = timeout.write or default_timeout.write
-        return timeout
+        return HttpRequestNodeTimeout(
+            connect=timeout.connect or default_timeout.connect,
+            read=timeout.read or default_timeout.read,
+            write=timeout.write or default_timeout.write,
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
