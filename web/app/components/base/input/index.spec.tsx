@@ -9,6 +9,16 @@ vi.mock('react-i18next', () => createReactI18nextMock({
   'placeholder.input': 'Please input',
 }))
 
+const getInputReactProps = (input: HTMLInputElement) => {
+  const reactPropsKey = Object.getOwnPropertyNames(input).find(key => key.startsWith('__reactProps$'))
+  if (!reactPropsKey)
+    throw new Error('Unable to find React props on input element')
+
+  return (input as unknown as Record<string, unknown>)[reactPropsKey] as {
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  }
+}
+
 describe('Input component', () => {
   describe('Variants', () => {
     it('should return correct classes for regular size', () => {
@@ -103,7 +113,7 @@ describe('Input component', () => {
   })
 
   it('applies large size variant correctly', () => {
-    render(<Input size={'large' as any} />)
+    render(<Input size="large" />)
     const input = screen.getByPlaceholderText('Please input')
     expect(input.className).toContain(inputVariants({ size: 'large' }))
   })
@@ -113,5 +123,59 @@ describe('Input component', () => {
     render(<Input placeholder={placeholder} />)
     const input = screen.getByPlaceholderText(placeholder)
     expect(input).toBeInTheDocument()
+  })
+
+  describe('Number Input Formatting', () => {
+    it('removes leading zeros on change when current value is zero', () => {
+      const onChange = vi.fn()
+      render(<Input type="number" value={0} onChange={onChange} />)
+
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      const event = { target: { value: '00042' } } as React.ChangeEvent<HTMLInputElement>
+      getInputReactProps(input).onChange?.(event)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange.mock.calls[0][0].target.value).toBe('42')
+    })
+
+    it('keeps typed value on change when current value is not zero', () => {
+      const onChange = vi.fn()
+      render(<Input type="number" value={1} onChange={onChange} />)
+
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      const event = { target: { value: '00042' } } as React.ChangeEvent<HTMLInputElement>
+      getInputReactProps(input).onChange?.(event)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange.mock.calls[0][0].target.value).toBe('00042')
+    })
+
+    it('normalizes value and triggers change on blur when leading zeros exist', () => {
+      const onChange = vi.fn()
+      const onBlur = vi.fn()
+      render(<Input type="number" defaultValue="0012" onChange={onChange} onBlur={onBlur} />)
+
+      const input = screen.getByRole('spinbutton')
+      fireEvent.blur(input)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange.mock.calls[0][0].type).toBe('change')
+      expect(onChange.mock.calls[0][0].target.value).toBe('12')
+      expect(onBlur).toHaveBeenCalledTimes(1)
+      expect(onBlur.mock.calls[0][0].target.value).toBe('12')
+    })
+
+    it('does not trigger change on blur when value is already normalized', () => {
+      const onChange = vi.fn()
+      const onBlur = vi.fn()
+      render(<Input type="number" defaultValue="12" onChange={onChange} onBlur={onBlur} />)
+
+      const input = screen.getByRole('spinbutton')
+      fireEvent.blur(input)
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(onBlur).toHaveBeenCalledTimes(1)
+      expect(onBlur.mock.calls[0][0].target.value).toBe('12')
+    })
   })
 })
