@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
         ? [
             react(),
             {
-            // Stub .mdx files so components importing them can be unit-tested
+              // Stub .mdx files so components importing them can be unit-tested
               name: 'mdx-stub',
               enforce: 'pre',
               transform(_, id) {
