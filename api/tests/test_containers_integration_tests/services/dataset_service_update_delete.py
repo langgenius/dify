@@ -247,7 +247,7 @@ class TestDatasetServiceDatasetUseCheck:
 
 class TestDatasetServiceUpdateDatasetApiStatus:
     """
-    Comprehensive unit tests for DatasetService.update_dataset_api_status method.
+    Comprehensive integration tests for DatasetService.update_dataset_api_status method.
     """
 
     def test_update_dataset_api_status_enable_success(self, db_session_with_containers):
