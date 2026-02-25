@@ -105,10 +105,6 @@ class DatasetService:
         if isinstance(model_name, str):
             return model_name
 
-        legacy_model_name = getattr(model_instance, "model", None)
-        if isinstance(legacy_model_name, str):
-            return legacy_model_name
-
         raise ValueError("Model instance does not include a valid model name.")
 
     @staticmethod

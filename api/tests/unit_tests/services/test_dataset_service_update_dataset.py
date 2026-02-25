@@ -65,7 +65,7 @@ class DatasetUpdateTestDataFactory:
     def create_embedding_model_mock(model: str = "text-embedding-ada-002", provider: str = "openai") -> Mock:
         """Create a mock embedding model."""
         embedding_model = Mock()
-        embedding_model.model = model
+        embedding_model.model_name = model
         embedding_model.provider = provider
         return embedding_model
 
