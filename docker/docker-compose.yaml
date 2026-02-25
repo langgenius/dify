@@ -470,6 +470,7 @@ x-shared-env: &shared-api-worker-env
   WORKFLOW_LOG_CLEANUP_ENABLED: ${WORKFLOW_LOG_CLEANUP_ENABLED:-false}
   WORKFLOW_LOG_RETENTION_DAYS: ${WORKFLOW_LOG_RETENTION_DAYS:-30}
   WORKFLOW_LOG_CLEANUP_BATCH_SIZE: ${WORKFLOW_LOG_CLEANUP_BATCH_SIZE:-100}
+  WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: ${WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS:-}
   ALIYUN_SLS_ACCESS_KEY_ID: ${ALIYUN_SLS_ACCESS_KEY_ID:-}
   ALIYUN_SLS_ACCESS_KEY_SECRET: ${ALIYUN_SLS_ACCESS_KEY_SECRET:-}
   ALIYUN_SLS_ENDPOINT: ${ALIYUN_SLS_ENDPOINT:-}
@@ -684,6 +685,7 @@ x-shared-env: &shared-api-worker-env
   AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
   SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: ${SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD:-21}
   SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: ${SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE:-1000}
+  SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: ${SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL:-200}
   SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: ${SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS:-30}
   PUBSUB_REDIS_URL: ${PUBSUB_REDIS_URL:-}
   PUBSUB_REDIS_CHANNEL_TYPE: ${PUBSUB_REDIS_CHANNEL_TYPE:-pubsub}
@@ -714,7 +716,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.12.1
+    image: langgenius/dify-api:1.13.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -756,7 +758,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.12.1
+    image: langgenius/dify-api:1.13.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -795,7 +797,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.12.1
+    image: langgenius/dify-api:1.13.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -825,7 +827,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.12.1
+    image: langgenius/dify-web:1.13.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

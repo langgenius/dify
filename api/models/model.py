@@ -18,10 +18,10 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
 from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from core.workflow.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
@@ -1040,7 +1040,6 @@ class Message(Base):
         Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
-        Index("message_created_at_idx", "created_at"),
         Index("message_app_mode_idx", "app_mode"),
         Index("message_created_at_id_idx", "created_at", "id"),
     )
