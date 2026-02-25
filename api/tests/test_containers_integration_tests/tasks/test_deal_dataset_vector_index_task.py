@@ -73,6 +73,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -142,6 +143,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -252,6 +254,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset with parent-child index
         dataset = Dataset(
@@ -377,6 +380,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset without documents
         dataset = Dataset(
@@ -418,6 +422,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -483,6 +488,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset without documents
         dataset = Dataset(
@@ -525,6 +531,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -630,6 +637,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset with custom index type
         dataset = Dataset(
@@ -715,6 +723,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset without doc_form (should use default)
         dataset = Dataset(
@@ -800,6 +809,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -912,6 +922,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -1018,6 +1029,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -1148,6 +1160,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
@@ -1278,6 +1291,7 @@ class TestDealDatasetVectorIndexTask:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create dataset
         dataset = Dataset(
