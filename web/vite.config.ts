@@ -1,7 +1,4 @@
 import type { Plugin } from 'vite'
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import mdx from '@mdx-js/rollup'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
@@ -9,32 +6,6 @@ import { defineConfig, loadEnv } from 'vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 const isCI = !!process.env.CI
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const vinextFontGoogleShimPath = fs.realpathSync(path.resolve(__dirname, 'node_modules/vinext/dist/shims/font-google.js'))
-
-function vinextGoogleFontExportPatch(): Plugin {
-  return {
-    name: 'vinext:google-font-export-patch',
-    enforce: 'pre',
-    load(id) {
-      if (id.includes('?vinext-font-proxy'))
-        return null
-
-      const [resolvedId] = id.split('?', 1)
-      if (resolvedId !== vinextFontGoogleShimPath)
-        return null
-
-      const shimWithQuery = `${vinextFontGoogleShimPath}?vinext-font-proxy`
-      return `
-import googleFonts from ${JSON.stringify(shimWithQuery)}
-export { default } from ${JSON.stringify(shimWithQuery)}
-export * from ${JSON.stringify(shimWithQuery)}
-export const Instrument_Serif = (options = {}) => googleFonts.Instrument_Serif(options)
-`
-    },
-  }
-}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -55,7 +26,6 @@ export default defineConfig(({ mode }) => {
           ]
         : [
             mdx(),
-            vinextGoogleFontExportPatch(),
             vinext(),
           ]),
       tsconfigPaths(),
