@@ -1,4 +1,3 @@
-from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
@@ -23,11 +22,9 @@ from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import Kno
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from core.workflow.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
-    Jinja2TemplateRenderer,
 )
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 
