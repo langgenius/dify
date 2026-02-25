@@ -167,7 +167,7 @@ class OpenSearchVector(BaseVector):
         try:
             self._client.get(index=self._collection_name.lower(), id=id)
             return True
-        except Exception:
+        except NotFoundError:
             return False
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
