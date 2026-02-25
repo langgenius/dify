@@ -122,6 +122,7 @@ export default defineConfig(env => ({
   server: {
     port: 3000,
   },
+  envPrefix: 'NEXT_PUBLIC_',
   test: {
     environment: 'jsdom',
     globals: true,
