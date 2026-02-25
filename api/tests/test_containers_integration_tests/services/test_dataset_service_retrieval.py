@@ -433,7 +433,7 @@ class TestDatasetServiceGetDatasets:
 
 
 class TestDatasetServiceGetDataset:
-    """Comprehensive unit tests for DatasetService.get_dataset method."""
+    """Comprehensive integration tests for DatasetService.get_dataset method."""
 
     def test_get_dataset_success(self, db_session_with_containers):
         """Test successful retrieval of a single dataset."""
