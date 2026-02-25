@@ -335,7 +335,7 @@ class TestDatasetPermissionServiceClearPartialMemberList:
 
 class TestDatasetServiceCheckDatasetPermission:
     """
-    Comprehensive unit tests for DatasetService.check_dataset_permission method.
+    Comprehensive integration tests for DatasetService.check_dataset_permission method.
     """
 
     def test_check_dataset_permission_partial_members_with_permission_success(self, db_session_with_containers):
