@@ -100,17 +100,17 @@ class RedisSubscriptionBase(Subscription):
                 )
                 continue
 
-            payload_data = raw_message.get("data")
-            if not isinstance(payload_data, bytes):
+            payload_bytes: bytes | None = raw_message.get("data")
+            if not isinstance(payload_bytes, bytes):
                 _logger.error(
                     "Received invalid data from %s channel %s, type=%s",
                     self._get_subscription_type(),
                     self._topic,
-                    type(payload_data),
+                    type(payload_bytes),
                 )
                 continue
 
-            self._enqueue_message(payload_data)
+            self._enqueue_message(payload_bytes)
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
         try:
