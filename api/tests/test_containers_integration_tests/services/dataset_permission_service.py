@@ -125,7 +125,7 @@ class DatasetPermissionTestDataFactory:
 
 class TestDatasetPermissionServiceGetPartialMemberList:
     """
-    Comprehensive unit tests for DatasetPermissionService.get_dataset_partial_member_list method.
+    Comprehensive integration tests for DatasetPermissionService.get_dataset_partial_member_list method.
     """
 
     def test_get_dataset_partial_member_list_with_members(self, db_session_with_containers):
