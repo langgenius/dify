@@ -33,7 +33,7 @@ export function usePasteOperation({
   const storeApi = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const moveNode = useMoveAppAssetNode()
+  const { mutateAsync: moveNodeAsync, isPending: isPasting } = useMoveAppAssetNode()
   const emitTreeUpdate = useSkillTreeUpdateEmitter()
   const isPastingRef = useRef(false)
 
@@ -77,7 +77,7 @@ export function usePasteOperation({
       try {
         await Promise.all(
           nodeIdsArray.map(nodeId =>
-            moveNode.mutateAsync({
+            moveNodeAsync({
               appId,
               nodeId,
               payload: { parent_id: targetParentId },
@@ -103,7 +103,7 @@ export function usePasteOperation({
         isPastingRef.current = false
       }
     }
-  }, [appId, moveNode, storeApi, t, treeData?.children, treeRef, emitTreeUpdate])
+  }, [appId, moveNodeAsync, storeApi, t, treeData?.children, treeRef, emitTreeUpdate])
 
   useEffect(() => {
     if (!enabled)
@@ -120,7 +120,7 @@ export function usePasteOperation({
   }, [enabled, handlePaste])
 
   return {
-    isPasting: moveNode.isPending,
+    isPasting,
     handlePaste,
   }
 }

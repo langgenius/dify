@@ -13,12 +13,12 @@ export function useNodeReorder() {
   const { t } = useTranslation('workflow')
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const reorderNode = useReorderAppAssetNode()
+  const { mutateAsync: reorderNodeAsync, isPending: isReordering } = useReorderAppAssetNode()
   const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const executeReorderNode = useCallback(async (nodeId: string, afterNodeId: string | null) => {
     try {
-      await reorderNode.mutateAsync({
+      await reorderNodeAsync({
         appId,
         nodeId,
         payload: { after_node_id: afterNodeId },
@@ -36,10 +36,10 @@ export function useNodeReorder() {
         message: t('skillSidebar.menu.moveError'),
       })
     }
-  }, [appId, reorderNode, t, emitTreeUpdate])
+  }, [appId, reorderNodeAsync, t, emitTreeUpdate])
 
   return {
     executeReorderNode,
-    isReordering: reorderNode.isPending,
+    isReordering,
   }
 }

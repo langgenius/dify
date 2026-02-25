@@ -15,13 +15,13 @@ export function useNodeMove() {
   const { t } = useTranslation('workflow')
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const moveNode = useMoveAppAssetNode()
+  const { mutateAsync: moveNodeAsync, isPending: isMoving } = useMoveAppAssetNode()
   const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   // Execute move API call - validation is handled by react-arborist's disableDrop callback
   const executeMoveNode = useCallback(async (nodeId: string, targetFolderId: string | null) => {
     try {
-      await moveNode.mutateAsync({
+      await moveNodeAsync({
         appId,
         nodeId,
         payload: { parent_id: toApiParentId(targetFolderId) },
@@ -39,10 +39,10 @@ export function useNodeMove() {
         message: t('skillSidebar.menu.moveError'),
       })
     }
-  }, [appId, moveNode, t, emitTreeUpdate])
+  }, [appId, moveNodeAsync, t, emitTreeUpdate])
 
   return {
     executeMoveNode,
-    isMoving: moveNode.isPending,
+    isMoving,
   }
 }

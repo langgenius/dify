@@ -32,9 +32,9 @@ export function useCreateOperations({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
-  const createFolder = useCreateAppAssetFolder()
-  const uploadFile = useUploadFileWithPresignedUrl()
-  const batchUpload = useBatchUpload()
+  const { isPending: isCreateFolderPending } = useCreateAppAssetFolder()
+  const { mutateAsync: uploadFileAsync, isPending: isUploadFilePending } = useUploadFileWithPresignedUrl()
+  const { mutateAsync: batchUploadAsync, isPending: isBatchUploadPending } = useBatchUpload()
   const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const handleNewFile = useCallback(() => {
@@ -65,7 +65,7 @@ export function useCreateOperations({
       await Promise.all(
         uploadFiles.map(async (file) => {
           try {
-            await uploadFile.mutateAsync({ appId, file, parentId })
+            await uploadFileAsync({ appId, file, parentId })
             progress.uploaded++
           }
           catch {
@@ -87,7 +87,7 @@ export function useCreateOperations({
       e.target.value = ''
       onClose()
     }
-  }, [appId, uploadFile, onClose, parentId, storeApi, emitTreeUpdate])
+  }, [appId, uploadFileAsync, onClose, parentId, storeApi, emitTreeUpdate])
 
   const handleFolderChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -144,7 +144,7 @@ export function useCreateOperations({
         }
       }
 
-      await batchUpload.mutateAsync({
+      await batchUploadAsync({
         appId,
         tree,
         files: fileMap,
@@ -165,12 +165,12 @@ export function useCreateOperations({
       e.target.value = ''
       onClose()
     }
-  }, [appId, batchUpload, onClose, parentId, storeApi, emitTreeUpdate])
+  }, [appId, batchUploadAsync, onClose, parentId, storeApi, emitTreeUpdate])
 
   return {
     fileInputRef,
     folderInputRef,
-    isCreating: uploadFile.isPending || createFolder.isPending || batchUpload.isPending,
+    isCreating: isUploadFilePending || isCreateFolderPending || isBatchUploadPending,
     handleNewFile,
     handleNewFolder,
     handleFileChange,

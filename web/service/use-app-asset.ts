@@ -20,7 +20,6 @@ import { uploadToPresignedUrl } from './upload-to-presigned-url'
 export function appAssetTreeOptions(appId: string) {
   return consoleQuery.appAsset.tree.queryOptions({
     input: { params: { appId } },
-    enabled: !!appId,
   })
 }
 

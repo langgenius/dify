@@ -35,7 +35,7 @@ export function useModifyOperations({
 }: UseModifyOperationsOptions) {
   const { t } = useTranslation('workflow')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const deleteNode = useDeleteAppAssetNode()
+  const { mutateAsync: deleteNodeAsync, isPending: isDeleting } = useDeleteAppAssetNode()
   const emitTreeUpdate = useSkillTreeUpdateEmitter()
 
   const handleRename = useCallback(() => {
@@ -60,7 +60,7 @@ export function useModifyOperations({
         ? getAllDescendantFileIds(nodeId, treeData.children)
         : []
 
-      await deleteNode.mutateAsync({ appId, nodeId })
+      await deleteNodeAsync({ appId, nodeId })
       emitTreeUpdate()
 
       descendantFileIds.forEach((fileId) => {
@@ -93,7 +93,7 @@ export function useModifyOperations({
       setShowDeleteConfirm(false)
       onClose()
     }
-  }, [appId, nodeId, node?.data?.node_type, deleteNode, storeApi, treeData?.children, onClose, t, emitTreeUpdate])
+  }, [appId, nodeId, node?.data?.node_type, deleteNodeAsync, storeApi, treeData?.children, onClose, t, emitTreeUpdate])
 
   const handleDeleteCancel = useCallback(() => {
     setShowDeleteConfirm(false)
@@ -101,7 +101,7 @@ export function useModifyOperations({
 
   return {
     showDeleteConfirm,
-    isDeleting: deleteNode.isPending,
+    isDeleting,
     handleRename,
     handleDeleteClick,
     handleDeleteConfirm,
