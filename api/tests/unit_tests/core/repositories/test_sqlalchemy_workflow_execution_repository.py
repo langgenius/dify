@@ -152,6 +152,10 @@ class TestSQLAlchemyWorkflowExecutionRepository:
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
 
+        # Make elapsed time deterministic to avoid flaky tests
+        sample_workflow_execution.started_at = datetime(2023, 1, 1, 0, 0, 0, tzinfo=UTC)
+        sample_workflow_execution.finished_at = datetime(2023, 1, 1, 0, 0, 10, tzinfo=UTC)
+
         db_model = repo._to_db_model(sample_workflow_execution)
 
         assert db_model.id == sample_workflow_execution.id_
@@ -160,7 +164,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         assert db_model.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING
         assert db_model.status == sample_workflow_execution.status.value
         assert db_model.total_tokens == sample_workflow_execution.total_tokens
-        assert db_model.elapsed_time > 0
+        assert db_model.elapsed_time == 10.0
 
     def test_to_db_model_edge_cases(self, mock_session_factory, mock_account, sample_workflow_execution):
         repo = SQLAlchemyWorkflowExecutionRepository(
