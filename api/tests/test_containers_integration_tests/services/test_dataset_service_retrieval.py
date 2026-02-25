@@ -39,15 +39,12 @@ class DatasetRetrievalTestDataFactory:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
-
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db.session.add_all([account, tenant])
+        db.session.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -172,7 +169,7 @@ class DatasetRetrievalTestDataFactory:
             created_by=created_by,
         )
         db.session.add(tag)
-        db.session.commit()
+        db.session.flush()
 
         binding = TagBinding(
             tenant_id=tenant_id,
