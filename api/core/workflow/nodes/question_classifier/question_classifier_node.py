@@ -101,6 +101,12 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             credentials_provider=self._credentials_provider,
             model_factory=self._model_factory,
         )
+        model_schema = model_instance.model_type_instance.get_model_schema(
+            model_instance.model_name,
+            model_instance.credentials,
+        )
+        if not model_schema:
+            raise ValueError(f"Model schema not found for {model_instance.model_name}")
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -143,7 +149,9 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             sys_query="",
             memory=memory,
             model_instance=model_instance,
-            model_config=model_config,
+            model_schema=model_schema,
+            model_parameters=node_data.model.completion_params,
+            stop=model_config.stop,
             sys_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,

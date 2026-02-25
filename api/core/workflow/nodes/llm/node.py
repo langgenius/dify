@@ -205,12 +205,18 @@ class LLMNode(Node[LLMNodeData]):
             model_instance, model_config = self._fetch_model_config(
                 node_data_model=self.node_data.model,
             )
+            model_name = getattr(model_instance, "model_name", None)
+            if not isinstance(model_name, str):
+                model_name = model_config.model
+            model_provider = getattr(model_instance, "provider", None)
+            if not isinstance(model_provider, str):
+                model_provider = model_config.provider
             model_schema = model_instance.model_type_instance.get_model_schema(
-                model_instance.model,
+                model_name,
                 model_instance.credentials,
             )
             if not model_schema:
-                raise ValueError(f"Model schema not found for {model_instance.model}")
+                raise ValueError(f"Model schema not found for {model_name}")
 
             # fetch memory
             memory = llm_utils.fetch_memory(
@@ -302,8 +308,8 @@ class LLMNode(Node[LLMNodeData]):
                 ),
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "model_provider": model_instance.provider,
-                "model_name": model_instance.model,
+                "model_provider": model_provider,
+                "model_name": model_name,
             }
 
             outputs = {

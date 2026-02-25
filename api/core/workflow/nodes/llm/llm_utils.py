@@ -130,7 +130,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
         if quota_unit == QuotaUnit.TOKENS:
             used_quota = usage.total_tokens
         elif quota_unit == QuotaUnit.CREDITS:
-            used_quota = dify_config.get_model_credits(model_instance.model)
+            used_quota = dify_config.get_model_credits(model_instance.model_name)
         else:
             used_quota = 1
 
