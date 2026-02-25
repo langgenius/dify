@@ -4,10 +4,8 @@
  * Uses the ImageGallery component to display images.
  */
 import * as React from 'react'
-import ImageGallery from '@/app/components/base/image-gallery'
 
-const Img = ({ src }: any) => {
-  return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
+export default function Img(props: any) {
+  const { src, alt, ...rest } = props
+  return <img src={src} alt={alt ?? ''} {...rest} />
 }
-
-export default Img
