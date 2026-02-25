@@ -11,7 +11,6 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 const isCI = !!process.env.CI
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const imageDimensionCache = new Map<string, { width: number, height: number }>()
 const vinextFontGoogleShimPath = fs.realpathSync(path.resolve(__dirname, 'node_modules/vinext/dist/shims/font-google.js'))
 const vinextConstantsShimPath = fs.realpathSync(path.resolve(__dirname, 'node_modules/vinext/dist/shims/constants.js'))
 
@@ -34,34 +33,6 @@ export { default } from ${JSON.stringify(shimWithQuery)}
 export * from ${JSON.stringify(shimWithQuery)}
 export const Instrument_Serif = (options = {}) => googleFonts.Instrument_Serif(options)
 `
-    },
-  }
-}
-
-function vinextImageMetaFallback(): Plugin {
-  return {
-    name: 'vinext:image-meta-fallback',
-    enforce: 'pre',
-    async load(id) {
-      if (!id.startsWith('\0vinext-image-meta:'))
-        return null
-
-      const imagePath = id.replace('\0vinext-image-meta:', '')
-      const cached = imageDimensionCache.get(imagePath)
-      if (cached)
-        return `export default ${JSON.stringify(cached)};`
-
-      try {
-        const { imageSize } = await import('image-size')
-        const buffer = fs.readFileSync(imagePath)
-        const result = imageSize(buffer)
-        const dimensions = { width: result.width ?? 0, height: result.height ?? 0 }
-        imageDimensionCache.set(imagePath, dimensions)
-        return `export default ${JSON.stringify(dimensions)};`
-      }
-      catch {
-        return 'export default {"width":0,"height":0};'
-      }
     },
   }
 }
@@ -108,7 +79,6 @@ export default defineConfig(({ mode }) => {
             mdx(),
             vinextGoogleFontExportPatch(),
             vinextConstantsExportPatch(),
-            vinextImageMetaFallback(),
             vinext(),
           ]),
       tsconfigPaths(),
