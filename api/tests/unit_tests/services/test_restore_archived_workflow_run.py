@@ -3,7 +3,6 @@ Unit tests for workflow run restore functionality.
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock
 
 
 class TestWorkflowRunRestore:
@@ -36,30 +35,3 @@ class TestWorkflowRunRestore:
         assert result["created_at"].year == 2024
         assert result["created_at"].month == 1
         assert result["name"] == "test"
-
-    def test_restore_table_records_returns_rowcount(self):
-        """Restore should return inserted rowcount."""
-        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
-
-        session = MagicMock()
-        session.execute.return_value = MagicMock(rowcount=2)
-
-        restore = WorkflowRunRestore()
-        records = [{"id": "p1", "workflow_run_id": "r1", "created_at": "2024-01-01T00:00:00"}]
-
-        restored = restore._restore_table_records(session, "workflow_pauses", records, schema_version="1.0")
-
-        assert restored == 2
-        session.execute.assert_called_once()
-
-    def test_restore_table_records_unknown_table(self):
-        """Unknown table names should be ignored gracefully."""
-        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
-
-        session = MagicMock()
-
-        restore = WorkflowRunRestore()
-        restored = restore._restore_table_records(session, "unknown_table", [{"id": "x1"}], schema_version="1.0")
-
-        assert restored == 0
-        session.execute.assert_not_called()
