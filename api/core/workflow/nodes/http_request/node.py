@@ -17,8 +17,9 @@ from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from factories import file_factory
 
-from .config import resolve_http_request_config
+from .config import build_http_request_config, resolve_http_request_config
 from .entities import (
+    HTTP_REQUEST_CONFIG_FILTER_KEY,
     HttpRequestNodeConfig,
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
@@ -61,7 +62,10 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
-        http_request_config = resolve_http_request_config(filters)
+        if not filters or HTTP_REQUEST_CONFIG_FILTER_KEY not in filters:
+            http_request_config = build_http_request_config()
+        else:
+            http_request_config = resolve_http_request_config(filters)
         default_timeout = http_request_config.default_timeout()
         return {
             "type": "http-request",

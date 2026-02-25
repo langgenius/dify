@@ -7,7 +7,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout, Response
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -22,6 +22,50 @@ HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     ssl_verify=True,
     ssrf_default_max_retries=3,
 )
+
+
+def test_get_default_config_without_filters_uses_literal_defaults():
+    default_config = HttpRequestNode.get_default_config()
+    timeout = default_config["config"]["timeout"]
+
+    assert default_config["type"] == "http-request"
+    assert timeout["connect"] == 10
+    assert timeout["read"] == 600
+    assert timeout["write"] == 600
+    assert timeout["max_connect_timeout"] == 10
+    assert timeout["max_read_timeout"] == 600
+    assert timeout["max_write_timeout"] == 600
+    assert default_config["config"]["ssl_verify"] is True
+    assert default_config["retry_config"]["max_retries"] == 3
+
+
+def test_get_default_config_uses_injected_http_request_config():
+    custom_config = HttpRequestNodeConfig(
+        max_connect_timeout=3,
+        max_read_timeout=4,
+        max_write_timeout=5,
+        max_binary_size=1024,
+        max_text_size=2048,
+        ssl_verify=False,
+        ssrf_default_max_retries=7,
+    )
+
+    default_config = HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: custom_config})
+    timeout = default_config["config"]["timeout"]
+
+    assert timeout["connect"] == 3
+    assert timeout["read"] == 4
+    assert timeout["write"] == 5
+    assert timeout["max_connect_timeout"] == 3
+    assert timeout["max_read_timeout"] == 4
+    assert timeout["max_write_timeout"] == 5
+    assert default_config["config"]["ssl_verify"] is False
+    assert default_config["retry_config"]["max_retries"] == 7
+
+
+def test_get_default_config_with_malformed_http_request_config_raises_value_error():
+    with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
+        HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"})
 
 
 def _build_http_node(
