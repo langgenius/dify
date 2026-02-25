@@ -12,7 +12,6 @@ const isCI = !!process.env.CI
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const vinextFontGoogleShimPath = fs.realpathSync(path.resolve(__dirname, 'node_modules/vinext/dist/shims/font-google.js'))
-const vinextConstantsShimPath = fs.realpathSync(path.resolve(__dirname, 'node_modules/vinext/dist/shims/constants.js'))
 
 function vinextGoogleFontExportPatch(): Plugin {
   return {
@@ -32,27 +31,6 @@ import googleFonts from ${JSON.stringify(shimWithQuery)}
 export { default } from ${JSON.stringify(shimWithQuery)}
 export * from ${JSON.stringify(shimWithQuery)}
 export const Instrument_Serif = (options = {}) => googleFonts.Instrument_Serif(options)
-`
-    },
-  }
-}
-
-function vinextConstantsExportPatch(): Plugin {
-  return {
-    name: 'vinext:constants-export-patch',
-    enforce: 'pre',
-    load(id) {
-      if (id.includes('?vinext-constants-proxy'))
-        return null
-
-      const [resolvedId] = id.split('?', 1)
-      if (resolvedId !== vinextConstantsShimPath)
-        return null
-
-      const shimWithQuery = `${vinextConstantsShimPath}?vinext-constants-proxy`
-      return `
-export * from ${JSON.stringify(shimWithQuery)}
-export const MODERN_BROWSERSLIST_TARGET = ['chrome 111', 'edge 111', 'firefox 111', 'safari 16.4']
 `
     },
   }
@@ -78,7 +56,6 @@ export default defineConfig(({ mode }) => {
         : [
             mdx(),
             vinextGoogleFontExportPatch(),
-            vinextConstantsExportPatch(),
             vinext(),
           ]),
       tsconfigPaths(),
