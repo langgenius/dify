@@ -1,7 +1,3 @@
-import {
-  RiCloseLine,
-  RiInformation2Fill,
-} from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import {
   memo,
@@ -35,13 +31,13 @@ const Alert: React.FC<Props> = ({
       <div
         className="relative flex space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg"
       >
-        <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-r  opacity-[0.4]', bgVariants({ type }))}>
+        <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-r opacity-[0.4]', bgVariants({ type }))} data-testid="alert-gradient">
         </div>
         <div className="flex h-6 w-6 items-center justify-center">
-          <RiInformation2Fill className="text-text-accent" />
+          <span className="i-ri-information-2-fill text-text-accent" data-testid="info-icon" />
         </div>
         <div className="p-1">
-          <div className="system-xs-regular text-text-secondary">
+          <div className="text-text-secondary system-xs-regular" data-testid="msg-container">
             {message}
           </div>
         </div>
@@ -49,7 +45,7 @@ const Alert: React.FC<Props> = ({
           className="pointer-events-auto flex h-6 w-6 cursor-pointer items-center justify-center"
           onClick={onHide}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" data-testid="close-icon" />
         </div>
       </div>
     </div>

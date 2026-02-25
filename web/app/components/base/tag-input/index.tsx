@@ -95,7 +95,7 @@ const TagInput: FC<TagInputProps> = ({
             {
               !disableRemove && (
                 <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
-                  <span className="i-ri-close-line ml-0.5 h-3.5 w-3.5 text-text-tertiary" data-testid="tag-remove-button" />
+                  <span className="i-ri-close-line ml-0.5 h-3.5 w-3.5 text-text-tertiary" data-testid="remove-tag" />
                 </div>
               )
             }

@@ -1,23 +1,25 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ToastContext } from '../toast'
 import TagInput from './index'
 
-const renderTagInput = (props?: Partial<React.ComponentProps<typeof TagInput>>) => {
-  const onChange = vi.fn()
-  const notify = vi.fn()
+const mockNotify = vi.fn()
 
-  render(
-    <ToastContext.Provider value={{ notify, close: vi.fn() }}>
-      <TagInput
-        items={[]}
-        onChange={onChange}
-        {...props}
-      />
-    </ToastContext.Provider>,
-  )
+vi.mock('@/app/components/base/toast', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
+}))
 
-  return { onChange, notify }
+type TagInputProps = ComponentProps<typeof TagInput>
+
+const renderTagInput = (props: Partial<TagInputProps> = {}) => {
+  const onChange = vi.fn<(items: string[]) => void>()
+  const items = props.items ?? []
+
+  render(<TagInput items={items} onChange={onChange} {...props} />)
+
+  return { onChange }
 }
 
 describe('TagInput', () => {
@@ -25,9 +27,8 @@ describe('TagInput', () => {
     vi.clearAllMocks()
   })
 
-  // Rendering and prop-driven input state.
   describe('Rendering', () => {
-    it('should render tags and default placeholder', () => {
+    it('should render existing tags and default placeholder', () => {
       renderTagInput({ items: ['alpha', 'beta'] })
 
       expect(screen.getByText('alpha')).toBeInTheDocument()
@@ -35,123 +36,152 @@ describe('TagInput', () => {
       expect(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord')).toBeInTheDocument()
     })
 
-    it('should hide input when disableAdd is true', () => {
-      renderTagInput({ items: ['alpha'], disableAdd: true })
+    it('should render special mode placeholder when confirm key is Tab', () => {
+      renderTagInput({ customizedConfirmKey: 'Tab' })
 
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-      expect(screen.getByText('alpha')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder')).toBeInTheDocument()
     })
 
-    it('should use custom placeholder when provided', () => {
+    it('should render custom placeholder when placeholder prop is provided', () => {
       renderTagInput({ placeholder: 'Custom placeholder' })
 
       expect(screen.getByPlaceholderText('Custom placeholder')).toBeInTheDocument()
     })
+
+    it('should hide input when add is disabled', () => {
+      renderTagInput({ disableAdd: true })
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('should hide remove controls when remove is disabled', () => {
+      renderTagInput({ items: ['alpha'], disableRemove: true })
+
+      expect(screen.queryByTestId('remove-tag')).not.toBeInTheDocument()
+    })
+
+    it('should apply focused style in special mode when input is focused', async () => {
+      renderTagInput({ customizedConfirmKey: 'Tab' })
+      const input = screen.getByRole('textbox')
+      const inputContainer = input.parentElement
+
+      expect(inputContainer).toHaveClass('border-transparent')
+
+      await userEvent.click(input)
+
+      expect(inputContainer).toHaveClass('border-dashed')
+    })
   })
 
-  // User interactions for add/remove flows.
   describe('User Interactions', () => {
-    it('should remove selected tag when clicking remove button', async () => {
-      const user = userEvent.setup()
+    it('should remove item when remove control is clicked', async () => {
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })
 
-      const removeButton = screen.getAllByTestId('tag-remove-button')[0]
-      expect(removeButton).toBeInTheDocument()
+      const removeControl = screen.getAllByTestId('remove-tag')[0]
 
-      await user.click(removeButton)
+      await userEvent.click(removeControl)
+
       expect(onChange).toHaveBeenCalledWith(['beta'])
     })
 
-    it('should add a new tag when pressing Enter', async () => {
-      const user = userEvent.setup()
-      const { onChange } = renderTagInput({ items: ['alpha'] })
-
+    it('should add trimmed tag on Enter and clear input', async () => {
+      const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
-      await user.type(input, 'gamma')
-      await user.keyboard('{Enter}')
 
-      expect(onChange).toHaveBeenCalledWith(['alpha', 'gamma'])
+      await userEvent.type(input, '  new-tag  ')
+      await userEvent.type(input, '{Enter}')
+
+      expect(onChange).toHaveBeenCalledWith(['new-tag'])
       await waitFor(() => {
         expect(input).toHaveValue('')
       })
     })
 
-    it('should add a new tag on blur', async () => {
-      const user = userEvent.setup()
-      const { onChange } = renderTagInput({ items: ['alpha'] })
-
+    it('should add tag on blur when input has valid value', async () => {
+      const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
-      await user.type(input, 'delta')
-      await user.click(document.body)
 
-      expect(onChange).toHaveBeenCalledWith(['alpha', 'delta'])
+      await userEvent.type(input, 'blur-tag')
+      await userEvent.click(document.body)
+
+      expect(onChange).toHaveBeenCalledWith(['blur-tag'])
+    })
+
+    it('should append return marker on Enter and confirm on Tab in special mode', async () => {
+      const user = userEvent.setup()
+      const { onChange } = renderTagInput({ customizedConfirmKey: 'Tab' })
+      const input = screen.getByRole('textbox')
+
+      // Type normally
+      await user.type(input, 'stop')
+      await user.keyboard('{Enter}')
+
+      expect(input).toHaveValue('stop↵')
+      expect(onChange).not.toHaveBeenCalled()
+
+      // Low-level test for preventDefault
+      const tabEvent = createEvent.keyDown(input, { key: 'Tab' })
+      tabEvent.preventDefault = vi.fn()
+
+      fireEvent(input, tabEvent)
+
+      expect(tabEvent.preventDefault).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledWith(['stop↵'])
     })
   })
 
-  // Validation errors surfaced through toast notifications.
   describe('Validation', () => {
-    it('should notify empty-keyword error when required and value is blank', async () => {
-      const user = userEvent.setup()
-      const { onChange, notify } = renderTagInput({ required: true })
-
+    it('should notify duplicate error when tag already exists', async () => {
+      const { onChange } = renderTagInput({ items: ['dup-tag'] })
       const input = screen.getByRole('textbox')
-      await user.type(input, '   ')
-      await user.keyboard('{Enter}')
+
+      await userEvent.type(input, 'dup-tag')
+      await userEvent.keyboard('{Enter}')
 
       expect(onChange).not.toHaveBeenCalled()
-      expect(notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'datasetDocuments.segment.keywordEmpty',
-      })
-    })
-
-    it('should notify duplicate error when value already exists', async () => {
-      const user = userEvent.setup()
-      const { onChange, notify } = renderTagInput({ items: ['alpha'] })
-
-      const input = screen.getByRole('textbox')
-      await user.type(input, 'alpha')
-      await user.keyboard('{Enter}')
-
-      expect(onChange).not.toHaveBeenCalled()
-      expect(notify).toHaveBeenCalledWith({
+      expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
         message: 'datasetDocuments.segment.keywordDuplicate',
       })
     })
 
-    it('should notify length error when value is longer than twenty characters', async () => {
-      const user = userEvent.setup()
-      const { onChange, notify } = renderTagInput()
-
+    it('should notify length error when tag is longer than 20 chars', async () => {
+      const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
-      await user.type(input, '123456789012345678901')
-      await user.keyboard('{Enter}')
+
+      await userEvent.type(input, 'a'.repeat(21))
+      await userEvent.keyboard('{Enter}')
 
       expect(onChange).not.toHaveBeenCalled()
-      expect(notify).toHaveBeenCalledWith({
+      expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
         message: 'datasetDocuments.segment.keywordError',
       })
     })
-  })
 
-  // Special confirm-key mode behavior for stop sequences.
-  describe('Special Confirm Key Mode', () => {
-    it('should append return marker on Enter and submit on Tab', async () => {
-      const user = userEvent.setup()
-      const { onChange } = renderTagInput({ customizedConfirmKey: 'Tab' })
-
+    it('should notify required error when value is empty and required is true', async () => {
+      const { onChange } = renderTagInput({ required: true })
       const input = screen.getByRole('textbox')
-      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder')).toBeInTheDocument()
 
-      await user.type(input, 'line1')
-      await user.keyboard('{Enter}')
+      await userEvent.type(input, '   ')
+      await userEvent.click(document.body)
+
       expect(onChange).not.toHaveBeenCalled()
-      expect(input).toHaveValue('line1↵')
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'datasetDocuments.segment.keywordEmpty',
+      })
+    })
 
-      await user.keyboard('{Tab}')
-      expect(onChange).toHaveBeenCalledWith(['line1↵'])
+    it('should ignore empty value when required is false', async () => {
+      const { onChange } = renderTagInput({ required: false })
+      const input = screen.getByRole('textbox')
+
+      await userEvent.type(input, '   ')
+      await userEvent.click(document.body)
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(mockNotify).not.toHaveBeenCalled()
     })
   })
 })
