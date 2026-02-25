@@ -1,9 +1,12 @@
 import json
 
+from pytest_mock import MockerFixture
+
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 
 
-def test_tool_parameter_cache_get_returns_decoded_dict() -> None:
+def test_tool_parameter_cache_get_returns_decoded_dict(mocker: MockerFixture) -> None:
+    redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
     cache = ToolParameterCache(
         tenant_id="tenant",
         provider="provider",
@@ -14,15 +17,14 @@ def test_tool_parameter_cache_get_returns_decoded_dict() -> None:
     payload = {"k": "v", "n": 1}
     cache_key = cache.cache_key
 
-    from extensions.ext_redis import redis_client
-
-    redis_client.get.return_value = json.dumps(payload).encode("utf-8")
+    redis_client_mock.get.return_value = json.dumps(payload).encode("utf-8")
 
     assert cache.get() == payload
-    redis_client.get.assert_called_once_with(cache_key)
+    redis_client_mock.get.assert_called_once_with(cache_key)
 
 
-def test_tool_parameter_cache_get_returns_none_for_invalid_json() -> None:
+def test_tool_parameter_cache_get_returns_none_for_invalid_json(mocker: MockerFixture) -> None:
+    redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
     cache = ToolParameterCache(
         tenant_id="tenant",
         provider="provider",
@@ -31,14 +33,13 @@ def test_tool_parameter_cache_get_returns_none_for_invalid_json() -> None:
         identity_id="identity",
     )
 
-    from extensions.ext_redis import redis_client
-
-    redis_client.get.return_value = b"{invalid-json"
+    redis_client_mock.get.return_value = b"{invalid-json"
 
     assert cache.get() is None
 
 
-def test_tool_parameter_cache_set_and_delete() -> None:
+def test_tool_parameter_cache_set_and_delete(mocker: MockerFixture) -> None:
+    redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
     cache = ToolParameterCache(
         tenant_id="tenant",
         provider="provider",
@@ -46,13 +47,10 @@ def test_tool_parameter_cache_set_and_delete() -> None:
         cache_type=ToolParameterCacheType.PARAMETER,
         identity_id="identity",
     )
-
-    from extensions.ext_redis import redis_client
 
     params = {"a": "b"}
     cache.set(params)
     cache.delete()
 
-    redis_client.setex.assert_called_once_with(cache.cache_key, 86400, json.dumps(params))
-    redis_client.delete.assert_called_once_with(cache.cache_key)
-
+    redis_client_mock.setex.assert_called_once_with(cache.cache_key, 86400, json.dumps(params))
+    redis_client_mock.delete.assert_called_once_with(cache.cache_key)
