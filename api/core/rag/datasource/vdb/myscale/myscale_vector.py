@@ -142,7 +142,12 @@ class MyScaleVector(BaseVector):
         )
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        return self._search(f"distance(vector, {str(query_vector)})", self._vec_order, **kwargs)
+        return self._search(
+            "distance(vector, %(query_vector)s)",
+            self._vec_order,
+            parameters={"query_vector": query_vector},
+            **kwargs,
+        )
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._search(
