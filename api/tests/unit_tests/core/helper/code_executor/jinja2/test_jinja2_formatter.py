@@ -1,5 +1,6 @@
-from core.helper.code_executor.jinja2.jinja2_formatter import Jinja2Formatter
 from pytest_mock import MockerFixture
+
+from core.helper.code_executor.jinja2.jinja2_formatter import Jinja2Formatter
 
 
 def test_format_returns_result_value_as_string(mocker: MockerFixture) -> None:
