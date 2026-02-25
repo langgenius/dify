@@ -1,8 +1,14 @@
 import type { NextConfig } from 'next'
+import type { env as Env } from './env'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
+import { createJiti } from 'jiti'
 
-const isDev = (process.env.NODE_ENV ?? 'development') === 'development'
+const jiti = createJiti(import.meta.url)
+
+const { env } = await jiti.import<{ env: typeof Env }>('./env')
+
+const isDev = env.NODE_ENV === 'development'
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
@@ -17,18 +23,13 @@ const withMDX = createMDX({
 })
 
 // the default url to prevent parse url error when running jest
-const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
-const port = process.env.PORT ?? '3000'
-const locImageURLs = !hasSetWebPrefix
-  ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)]
-  : []
-const remoteImageURLs = [
-  ...(hasSetWebPrefix ? [new URL(`${hasSetWebPrefix}/**`)] : []),
-  ...locImageURLs,
-]
+const hasSetWebPrefix = env.NEXT_PUBLIC_WEB_PREFIX
+const port = env.PORT
+const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
+const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
 
 const nextConfig: NextConfig = {
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '',
+  basePath: env.NEXT_PUBLIC_BASE_PATH,
   serverExternalPackages: ['esbuild'],
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
