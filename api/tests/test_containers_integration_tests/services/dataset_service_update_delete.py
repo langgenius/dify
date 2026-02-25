@@ -195,7 +195,7 @@ class TestDatasetServiceDeleteDataset:
 
 class TestDatasetServiceDatasetUseCheck:
     """
-    Comprehensive unit tests for DatasetService.dataset_use_check method.
+    Comprehensive integration tests for DatasetService.dataset_use_check method.
     """
 
     def test_dataset_use_check_in_use(self, db_session_with_containers):
