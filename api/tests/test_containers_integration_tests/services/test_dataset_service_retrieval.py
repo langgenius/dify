@@ -591,7 +591,7 @@ class TestDatasetServiceGetDatasetQueries:
 
 
 class TestDatasetServiceGetRelatedApps:
-    """Comprehensive unit tests for DatasetService.get_related_apps method."""
+    """Comprehensive integration tests for DatasetService.get_related_apps method."""
 
     def test_get_related_apps_success(self, db_session_with_containers):
         """Test successful retrieval of related apps."""
