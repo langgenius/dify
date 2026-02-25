@@ -18,6 +18,7 @@ from dify_app import DifyApp
 from libs.broadcast_channel.channel import BroadcastChannel as BroadcastChannelProtocol
 from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
+from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
 if TYPE_CHECKING:
     from redis.lock import Lock
@@ -269,6 +270,11 @@ def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
     assert _pubsub_redis_client is not None, "PubSub redis Client should be initialized here."
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "sharded":
         return ShardedRedisBroadcastChannel(_pubsub_redis_client)
+    if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
+        return StreamsBroadcastChannel(
+            _pubsub_redis_client,
+            retention_seconds=dify_config.PUBSUB_STREAMS_RETENTION_SECONDS,
+        )
     return RedisBroadcastChannel(_pubsub_redis_client)
 
 
