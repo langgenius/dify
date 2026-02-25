@@ -62,6 +62,32 @@ class DatasetRetrievalTestDataFactory:
         return account, tenant
 
     @staticmethod
+    def create_account_in_tenant(
+        tenant: Tenant, role: TenantAccountRole = TenantAccountRole.OWNER
+    ) -> Account:
+        """Create an account and add it to an existing tenant."""
+        account = Account(
+            email=f"{uuid4()}@example.com",
+            name=f"user-{uuid4()}",
+            interface_language="en-US",
+            status="active",
+        )
+        db.session.add(account)
+        db.session.flush()
+
+        join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=role,
+            current=True,
+        )
+        db.session.add(join)
+        db.session.commit()
+
+        account.current_tenant = tenant
+        return account
+
+    @staticmethod
     def create_dataset(
         tenant_id: str,
         created_by: str,
@@ -354,7 +380,7 @@ class TestDatasetServiceGetDatasets:
         """Test that normal user sees ALL_TEAM datasets."""
         # Arrange
         user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
-        owner, _ = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
 
         DatasetRetrievalTestDataFactory.create_dataset(
             tenant_id=tenant.id,
@@ -373,7 +399,7 @@ class TestDatasetServiceGetDatasets:
         """Test that normal user sees PARTIAL_TEAM datasets they have permission for."""
         # Arrange
         user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
-        owner, _ = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
 
         dataset = DatasetRetrievalTestDataFactory.create_dataset(
             tenant_id=tenant.id,
@@ -395,7 +421,7 @@ class TestDatasetServiceGetDatasets:
         operator, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
             role=TenantAccountRole.DATASET_OPERATOR
         )
-        owner, _ = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
 
         dataset = DatasetRetrievalTestDataFactory.create_dataset(
             tenant_id=tenant.id,
@@ -417,7 +443,7 @@ class TestDatasetServiceGetDatasets:
         operator, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
             role=TenantAccountRole.DATASET_OPERATOR
         )
-        owner, _ = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
         DatasetRetrievalTestDataFactory.create_dataset(
             tenant_id=tenant.id,
             created_by=owner.id,
