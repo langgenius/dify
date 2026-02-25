@@ -1,9 +1,9 @@
 import { ALLOW_UNSAFE_DATA_SCHEME, MARKETPLACE_API_PREFIX } from '@/config'
 
-interface MdastNode {
+type MdastNode = {
   tagName?: string
   children?: MdastNode[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**

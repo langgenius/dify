@@ -13,6 +13,7 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('../utils', () => ({
   getMarkdownImageURL: vi.fn(),
+  hasImageChild: vi.fn(() => false),
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
