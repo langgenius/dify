@@ -272,7 +272,7 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
 
 class TestDatasetPermissionServiceClearPartialMemberList:
     """
-    Comprehensive unit tests for DatasetPermissionService.clear_partial_member_list method.
+    Comprehensive integration tests for DatasetPermissionService.clear_partial_member_list method.
     """
 
     def test_clear_partial_member_list_success(self, db_session_with_containers):
