@@ -296,9 +296,6 @@ importers:
       react-pdf-highlighter:
         specifier: 8.0.0-rc.0
         version: 8.0.0-rc.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react-server-dom-webpack:
-        specifier: 19.2.4
-        version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3))
       react-slider:
         specifier: 2.0.6
         version: 2.0.6(react@19.2.4)
@@ -588,6 +585,9 @@ importers:
       react-scan:
         specifier: 0.4.3
         version: 0.4.3(@types/react@19.2.9)(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rollup@4.56.0)
+      react-server-dom-webpack:
+        specifier: 19.2.4
+        version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3))
       sass:
         specifier: 1.93.2
         version: 1.93.2
