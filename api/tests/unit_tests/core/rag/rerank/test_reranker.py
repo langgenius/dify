@@ -12,14 +12,18 @@ All tests use mocking to avoid external dependencies and ensure fast, reliable e
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
+from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
@@ -380,6 +384,206 @@ class TestRerankModelRunner:
         # Assert: User parameter is passed to model
         call_kwargs = mock_model_instance.invoke_rerank.call_args.kwargs
         assert call_kwargs["user"] == "user123"
+
+
+class _ForwardingBaseRerankRunner(BaseRerankRunner):
+    def run(
+        self,
+        query: str,
+        documents: list[Document],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
+    ) -> list[Document]:
+        return super().run(
+            query=query,
+            documents=documents,
+            score_threshold=score_threshold,
+            top_n=top_n,
+            user=user,
+            query_type=query_type,
+        )
+
+
+class TestBaseRerankRunner:
+    def test_run_raises_not_implemented(self):
+        runner = _ForwardingBaseRerankRunner()
+
+        with pytest.raises(NotImplementedError):
+            runner.run(query="python", documents=[])
+
+
+class TestRerankModelRunnerMultimodal:
+    @pytest.fixture
+    def mock_model_instance(self):
+        return create_mock_model_instance()
+
+    @pytest.fixture
+    def rerank_runner(self, mock_model_instance):
+        return RerankModelRunner(rerank_model_instance=mock_model_instance)
+
+    def test_run_returns_original_documents_for_non_text_query_without_vision_support(
+        self, rerank_runner, mock_model_instance
+    ):
+        documents = [
+            Document(page_content="doc", metadata={"doc_id": "doc1"}, provider="dify"),
+        ]
+
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            result = rerank_runner.run(query="image-file-id", documents=documents, query_type=QueryType.IMAGE_QUERY)
+
+        assert result == documents
+        mock_model_instance.invoke_rerank.assert_not_called()
+
+    def test_run_uses_multimodal_path_when_vision_support_is_enabled(self, rerank_runner):
+        documents = [
+            Document(page_content="doc", metadata={"doc_id": "doc1", "source": "wiki"}, provider="dify"),
+        ]
+        rerank_result = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="doc", score=0.88)],
+        )
+
+        with (
+            patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm,
+            patch.object(
+                rerank_runner,
+                "fetch_multimodal_rerank",
+                return_value=(rerank_result, documents),
+            ) as mock_multimodal,
+        ):
+            mock_mm.return_value.check_model_support_vision.return_value = True
+            result = rerank_runner.run(query="python", documents=documents, query_type=QueryType.TEXT_QUERY)
+
+        mock_multimodal.assert_called_once()
+        assert len(result) == 1
+        assert result[0].metadata["score"] == 0.88
+
+    def test_fetch_multimodal_rerank_builds_docs_and_calls_text_rerank(self, rerank_runner):
+        image_doc = Document(
+            page_content="image-content",
+            metadata={"doc_id": "img-1", "doc_type": DocType.IMAGE},
+            provider="dify",
+        )
+        text_doc = Document(
+            page_content="text-content",
+            metadata={"doc_id": "txt-1", "doc_type": DocType.TEXT},
+            provider="dify",
+        )
+        external_doc = Document(
+            page_content="external-content",
+            metadata={},
+            provider="external",
+        )
+        query = Mock()
+        query.where.return_value.first.return_value = SimpleNamespace(key="image-key")
+        rerank_result = RerankResult(model="rerank-model", docs=[])
+
+        with (
+            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query),
+            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"image-bytes") as mock_load_once,
+            patch.object(
+                rerank_runner,
+                "fetch_text_rerank",
+                return_value=(rerank_result, [image_doc, text_doc, external_doc]),
+            ) as mock_text_rerank,
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query="python",
+                documents=[image_doc, text_doc, external_doc, external_doc],
+                query_type=QueryType.TEXT_QUERY,
+            )
+
+        assert result == rerank_result
+        assert len(unique_documents) == 3
+        mock_load_once.assert_called_once_with("image-key")
+        text_rerank_call_args = mock_text_rerank.call_args.args
+        assert len(text_rerank_call_args[1]) == 3
+
+    def test_fetch_multimodal_rerank_skips_missing_image_upload(self, rerank_runner):
+        image_doc = Document(
+            page_content="image-content",
+            metadata={"doc_id": "img-missing", "doc_type": DocType.IMAGE},
+            provider="dify",
+        )
+        query = Mock()
+        query.where.return_value.first.return_value = None
+        rerank_result = RerankResult(model="rerank-model", docs=[])
+
+        with (
+            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query),
+            patch.object(
+                rerank_runner,
+                "fetch_text_rerank",
+                return_value=(rerank_result, [image_doc]),
+            ) as mock_text_rerank,
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query="python",
+                documents=[image_doc],
+                query_type=QueryType.TEXT_QUERY,
+            )
+
+        assert result == rerank_result
+        assert unique_documents == [image_doc]
+        docs_arg = mock_text_rerank.call_args.args[1]
+        assert len(docs_arg) == 1
+
+    def test_fetch_multimodal_rerank_image_query_invokes_multimodal_model(self, rerank_runner, mock_model_instance):
+        text_doc = Document(
+            page_content="text-content",
+            metadata={"doc_id": "txt-1", "doc_type": DocType.TEXT},
+            provider="dify",
+        )
+        query_chain = Mock()
+        query_chain.where.return_value.first.return_value = SimpleNamespace(key="query-image-key")
+        rerank_result = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="text-content", score=0.77)],
+        )
+        mock_model_instance.invoke_multimodal_rerank.return_value = rerank_result
+
+        with (
+            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query_chain),
+            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query="query-upload-id",
+                documents=[text_doc],
+                score_threshold=0.2,
+                top_n=2,
+                user="user-1",
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        assert result == rerank_result
+        assert unique_documents == [text_doc]
+        invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
+        assert invoke_kwargs["query"]["content_type"] == DocType.IMAGE
+        assert invoke_kwargs["docs"][0]["content"] == "text-content"
+        assert invoke_kwargs["user"] == "user-1"
+
+    def test_fetch_multimodal_rerank_raises_when_query_image_not_found(self, rerank_runner):
+        query_chain = Mock()
+        query_chain.where.return_value.first.return_value = None
+
+        with patch("core.rag.rerank.rerank_model.db.session.query", return_value=query_chain):
+            with pytest.raises(ValueError, match="Upload file not found for query"):
+                rerank_runner.fetch_multimodal_rerank(
+                    query="missing-upload-id",
+                    documents=[],
+                    query_type=QueryType.IMAGE_QUERY,
+                )
+
+    def test_fetch_multimodal_rerank_rejects_unsupported_query_type(self, rerank_runner):
+        with pytest.raises(ValueError, match="is not supported"):
+            rerank_runner.fetch_multimodal_rerank(
+                query="python",
+                documents=[],
+                query_type="unsupported_query_type",
+            )
 
 
 class TestWeightRerankRunner:
