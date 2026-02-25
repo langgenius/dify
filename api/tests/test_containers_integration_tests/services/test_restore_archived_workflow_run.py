@@ -34,7 +34,6 @@ class TestWorkflowRunRestore:
             records,
             schema_version="1.0",
         )
-        db_session_with_containers.commit()
 
         assert restored == 1
         restored_pause = db_session_with_containers.scalar(select(WorkflowPause).where(WorkflowPause.id == record_id))
