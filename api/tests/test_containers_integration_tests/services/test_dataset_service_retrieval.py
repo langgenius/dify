@@ -59,9 +59,7 @@ class DatasetRetrievalTestDataFactory:
         return account, tenant
 
     @staticmethod
-    def create_account_in_tenant(
-        tenant: Tenant, role: TenantAccountRole = TenantAccountRole.OWNER
-    ) -> Account:
+    def create_account_in_tenant(tenant: Tenant, role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
         """Create an account and add it to an existing tenant."""
         account = Account(
             email=f"{uuid4()}@example.com",
