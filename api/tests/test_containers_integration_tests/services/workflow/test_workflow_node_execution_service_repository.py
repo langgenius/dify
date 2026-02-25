@@ -373,38 +373,43 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
     def test_delete_executions_by_ids(self, db_session_with_containers):
         """Test deleting executions by IDs."""
         # Arrange
+        tenant_id = str(uuid4())
+        app_id = str(uuid4())
+        workflow_id = str(uuid4())
+        workflow_run_id = str(uuid4())
+        created_at = naive_utc_now()
         execution_1 = self._create_execution(
             db_session_with_containers,
-            tenant_id=str(uuid4()),
-            app_id=str(uuid4()),
-            workflow_id=str(uuid4()),
-            workflow_run_id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
             node_id="node-1",
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             index=1,
-            created_at=naive_utc_now(),
+            created_at=created_at,
         )
         execution_2 = self._create_execution(
             db_session_with_containers,
-            tenant_id=str(uuid4()),
-            app_id=str(uuid4()),
-            workflow_id=str(uuid4()),
-            workflow_run_id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
             node_id="node-2",
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             index=2,
-            created_at=naive_utc_now(),
+            created_at=created_at,
         )
         execution_3 = self._create_execution(
             db_session_with_containers,
-            tenant_id=str(uuid4()),
-            app_id=str(uuid4()),
-            workflow_id=str(uuid4()),
-            workflow_run_id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
             node_id="node-3",
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             index=3,
-            created_at=naive_utc_now(),
+            created_at=created_at,
         )
         repository = self._create_repository(db_session_with_containers)
         execution_ids = [execution_1.id, execution_2.id, execution_3.id]
