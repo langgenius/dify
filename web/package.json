@@ -248,6 +248,7 @@
     "uglify-js": "3.19.3",
     "vinext": "https://pkg.pr.new/hyoban/vinext@cff5802",
     "vite": "7.3.1",
+    "vite-plugin-mkcert": "1.17.10",
     "vite-tsconfig-paths": "6.0.4",
     "vitest": "4.0.17",
     "vitest-canvas-mock": "1.1.3"
