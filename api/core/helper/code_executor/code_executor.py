@@ -1,4 +1,5 @@
 import logging
+import sys
 from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock
@@ -16,6 +17,14 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
+
+# Keep a single module identity when this file is imported through both
+# `core...` and `api.core...` namespace-package paths.
+if __name__ == "core.helper.code_executor.code_executor":
+    sys.modules.setdefault("api.core.helper.code_executor.code_executor", sys.modules[__name__])
+elif __name__ == "api.core.helper.code_executor.code_executor":
+    sys.modules.setdefault("core.helper.code_executor.code_executor", sys.modules[__name__])
+
 code_execution_endpoint_url = URL(str(dify_config.CODE_EXECUTION_ENDPOINT))
 CODE_EXECUTION_SSL_VERIFY = dify_config.CODE_EXECUTION_SSL_VERIFY
 _CODE_EXECUTOR_CLIENT_LIMITS = httpx.Limits(
