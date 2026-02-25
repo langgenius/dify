@@ -1,5 +1,7 @@
+import type { LexicalComposerContextWithEditor } from '@lexical/react/LexicalComposerContext'
 import type { LexicalEditor } from 'lexical'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import type { ReactElement } from 'react'
+import { LexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { render } from '@testing-library/react'
 import { $insertNodes, COMMAND_PRIORITY_EDITOR } from 'lexical'
@@ -11,7 +13,6 @@ import {
 } from './index'
 import { $createErrorMessageBlockNode } from './node'
 
-vi.mock('@lexical/react/LexicalComposerContext')
 vi.mock('@lexical/utils')
 vi.mock('lexical', async () => {
   const actual = await vi.importActual('lexical')
@@ -32,15 +33,24 @@ const mockEditor = {
   registerCommand: mockRegisterCommand,
 } as unknown as LexicalEditor
 
+const lexicalContextValue: LexicalComposerContextWithEditor = [
+  mockEditor,
+  { getTheme: () => undefined },
+]
+
+const renderWithLexicalContext = (ui: ReactElement) => {
+  return render(
+    <LexicalComposerContext.Provider value={lexicalContextValue}>
+      {ui}
+    </LexicalComposerContext.Provider>,
+  )
+}
+
 describe('ErrorMessageBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasNodes.mockReturnValue(true)
     mockRegisterCommand.mockReturnValue(vi.fn())
-    vi.mocked(useLexicalComposerContext).mockReturnValue([
-      mockEditor,
-      {},
-    ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked(mergeRegister).mockImplementation((...cleanups) => {
       return () => cleanups.forEach(cleanup => cleanup())
     })
@@ -48,7 +58,7 @@ describe('ErrorMessageBlock', () => {
   })
 
   it('should render null and register insert and delete commands', () => {
-    const { container } = render(<ErrorMessageBlock />)
+    const { container } = renderWithLexicalContext(<ErrorMessageBlock />)
 
     expect(container.firstChild).toBeNull()
     expect(mockHasNodes).toHaveBeenCalledWith([ErrorMessageBlockNode])
@@ -71,14 +81,14 @@ describe('ErrorMessageBlock', () => {
   it('should throw when ErrorMessageBlockNode is not registered', () => {
     mockHasNodes.mockReturnValue(false)
 
-    expect(() => render(<ErrorMessageBlock />)).toThrow(
+    expect(() => renderWithLexicalContext(<ErrorMessageBlock />)).toThrow(
       'ERROR_MESSAGEBlockPlugin: ERROR_MESSAGEBlock not registered on editor',
     )
   })
 
   it('should insert created node and call onInsert when insert command handler runs', () => {
     const onInsert = vi.fn()
-    render(<ErrorMessageBlock onInsert={onInsert} />)
+    renderWithLexicalContext(<ErrorMessageBlock onInsert={onInsert} />)
 
     const insertHandler = mockRegisterCommand.mock.calls[0][1] as () => boolean
     const result = insertHandler()
@@ -90,7 +100,7 @@ describe('ErrorMessageBlock', () => {
   })
 
   it('should return true on insert command without onInsert callback', () => {
-    render(<ErrorMessageBlock />)
+    renderWithLexicalContext(<ErrorMessageBlock />)
 
     const insertHandler = mockRegisterCommand.mock.calls[0][1] as () => boolean
 
@@ -100,7 +110,7 @@ describe('ErrorMessageBlock', () => {
 
   it('should call onDelete and return true when delete command handler runs', () => {
     const onDelete = vi.fn()
-    render(<ErrorMessageBlock onDelete={onDelete} />)
+    renderWithLexicalContext(<ErrorMessageBlock onDelete={onDelete} />)
 
     const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
     const result = deleteHandler()
@@ -110,7 +120,7 @@ describe('ErrorMessageBlock', () => {
   })
 
   it('should return true on delete command without onDelete callback', () => {
-    render(<ErrorMessageBlock />)
+    renderWithLexicalContext(<ErrorMessageBlock />)
 
     const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
 
@@ -124,7 +134,7 @@ describe('ErrorMessageBlock', () => {
       .mockReturnValueOnce(insertCleanup)
       .mockReturnValueOnce(deleteCleanup)
 
-    const { unmount } = render(<ErrorMessageBlock />)
+    const { unmount } = renderWithLexicalContext(<ErrorMessageBlock />)
     unmount()
 
     expect(insertCleanup).toHaveBeenCalledTimes(1)

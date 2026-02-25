@@ -1,6 +1,8 @@
+import type { LexicalComposerContextWithEditor } from '@lexical/react/LexicalComposerContext'
 import type { LexicalEditor } from 'lexical'
+import type { ReactElement } from 'react'
 import type { WorkflowNodesMap } from './node'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { LexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { render } from '@testing-library/react'
 import { $insertNodes, COMMAND_PRIORITY_EDITOR } from 'lexical'
@@ -16,7 +18,6 @@ import {
 } from './index'
 import { $createWorkflowVariableBlockNode } from './node'
 
-vi.mock('@lexical/react/LexicalComposerContext')
 vi.mock('@lexical/utils')
 vi.mock('lexical', async () => {
   const actual = await vi.importActual('lexical')
@@ -41,6 +42,19 @@ const mockEditor = {
   update: mockUpdate,
 } as unknown as LexicalEditor
 
+const lexicalContextValue: LexicalComposerContextWithEditor = [
+  mockEditor,
+  { getTheme: () => undefined },
+]
+
+const renderWithLexicalContext = (ui: ReactElement) => {
+  return render(
+    <LexicalComposerContext.Provider value={lexicalContextValue}>
+      {ui}
+    </LexicalComposerContext.Provider>,
+  )
+}
+
 describe('WorkflowVariableBlock', () => {
   const workflowNodesMap: WorkflowNodesMap = {
     'node-1': {
@@ -56,16 +70,12 @@ describe('WorkflowVariableBlock', () => {
     vi.clearAllMocks()
     mockHasNodes.mockReturnValue(true)
     mockRegisterCommand.mockReturnValue(vi.fn())
-    vi.mocked(useLexicalComposerContext).mockReturnValue([
-      mockEditor,
-      {},
-    ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked(mergeRegister).mockImplementation((...cleanups) => () => cleanups.forEach(cleanup => cleanup()))
     vi.mocked($createWorkflowVariableBlockNode).mockReturnValue({ id: 'workflow-node' } as unknown as WorkflowVariableBlockNode)
   })
 
   it('should render null and register insert/delete commands', () => {
-    const { container } = render(
+    const { container } = renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -89,7 +99,7 @@ describe('WorkflowVariableBlock', () => {
   })
 
   it('should dispatch workflow node map update on mount', () => {
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -102,7 +112,7 @@ describe('WorkflowVariableBlock', () => {
   it('should throw when WorkflowVariableBlockNode is not registered', () => {
     mockHasNodes.mockReturnValue(false)
 
-    expect(() => render(
+    expect(() => renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -113,7 +123,7 @@ describe('WorkflowVariableBlock', () => {
     const onInsert = vi.fn()
     const getVarType = vi.fn(() => Type.string)
 
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
         onInsert={onInsert}
@@ -136,7 +146,7 @@ describe('WorkflowVariableBlock', () => {
   })
 
   it('should return true on insert when onInsert is omitted', () => {
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -149,7 +159,7 @@ describe('WorkflowVariableBlock', () => {
   it('should call onDelete and return true when delete handler runs', () => {
     const onDelete = vi.fn()
 
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
         onDelete={onDelete}
@@ -164,7 +174,7 @@ describe('WorkflowVariableBlock', () => {
   })
 
   it('should return true on delete when onDelete is omitted', () => {
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -181,7 +191,7 @@ describe('WorkflowVariableBlock', () => {
       .mockReturnValueOnce(insertCleanup)
       .mockReturnValueOnce(deleteCleanup)
 
-    const { unmount } = render(
+    const { unmount } = renderWithLexicalContext(
       <WorkflowVariableBlock
         workflowNodesMap={workflowNodesMap}
       />,

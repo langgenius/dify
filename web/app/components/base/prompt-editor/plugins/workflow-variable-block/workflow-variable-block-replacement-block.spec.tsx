@@ -1,8 +1,10 @@
+import type { LexicalComposerContextWithEditor } from '@lexical/react/LexicalComposerContext'
 import type { EntityMatch } from '@lexical/text'
 import type { LexicalEditor, LexicalNode } from 'lexical'
+import type { ReactElement } from 'react'
 import type { WorkflowNodesMap } from './node'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { LexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { render } from '@testing-library/react'
 import { $applyNodeReplacement } from 'lexical'
@@ -14,7 +16,6 @@ import { WorkflowVariableBlockNode } from './index'
 import { $createWorkflowVariableBlockNode } from './node'
 import WorkflowVariableBlockReplacementBlock from './workflow-variable-block-replacement-block'
 
-vi.mock('@lexical/react/LexicalComposerContext')
 vi.mock('@lexical/utils')
 vi.mock('lexical')
 vi.mock('../../utils')
@@ -27,6 +28,19 @@ const mockEditor = {
   hasNodes: mockHasNodes,
   registerNodeTransform: mockRegisterNodeTransform,
 } as unknown as LexicalEditor
+
+const lexicalContextValue: LexicalComposerContextWithEditor = [
+  mockEditor,
+  { getTheme: () => undefined },
+]
+
+const renderWithLexicalContext = (ui: ReactElement) => {
+  return render(
+    <LexicalComposerContext.Provider value={lexicalContextValue}>
+      {ui}
+    </LexicalComposerContext.Provider>,
+  )
+}
 
 describe('WorkflowVariableBlockReplacementBlock', () => {
   const variables: NodeOutPutVar[] = [
@@ -69,10 +83,6 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
     vi.clearAllMocks()
     mockHasNodes.mockReturnValue(true)
     mockRegisterNodeTransform.mockReturnValue(vi.fn())
-    vi.mocked(useLexicalComposerContext).mockReturnValue([
-      mockEditor,
-      {},
-    ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked(mergeRegister).mockImplementation((...cleanups) => () => cleanups.forEach(cleanup => cleanup()))
     vi.mocked($createWorkflowVariableBlockNode).mockReturnValue({ type: 'workflow-node' } as unknown as WorkflowVariableBlockNode)
     vi.mocked($applyNodeReplacement).mockImplementation((node: LexicalNode) => node)
@@ -82,7 +92,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
     const transformCleanup = vi.fn()
     mockRegisterNodeTransform.mockReturnValue(transformCleanup)
 
-    const { unmount, container } = render(
+    const { unmount, container } = renderWithLexicalContext(
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -99,7 +109,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
   it('should throw when WorkflowVariableBlockNode is not registered', () => {
     mockHasNodes.mockReturnValue(false)
 
-    expect(() => render(
+    expect(() => renderWithLexicalContext(
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -107,7 +117,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
   })
 
   it('should pass matcher and creator to decoratorTransform', () => {
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -125,7 +135,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
   })
 
   it('should match variable placeholders and return null for non-placeholder text', () => {
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={workflowNodesMap}
       />,
@@ -148,7 +158,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
     const onInsert = vi.fn()
     const getVarType = vi.fn(() => Type.string)
 
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={workflowNodesMap}
         onInsert={onInsert}
@@ -185,7 +195,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
   })
 
   it('should create replacement node without optional callbacks and variable groups', () => {
-    render(
+    renderWithLexicalContext(
       <WorkflowVariableBlockReplacementBlock
         workflowNodesMap={workflowNodesMap}
       />,

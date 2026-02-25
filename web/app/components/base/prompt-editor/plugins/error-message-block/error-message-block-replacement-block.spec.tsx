@@ -1,6 +1,8 @@
+import type { LexicalComposerContextWithEditor } from '@lexical/react/LexicalComposerContext'
 import type { EntityMatch } from '@lexical/text'
 import type { LexicalEditor, LexicalNode } from 'lexical'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import type { ReactElement } from 'react'
+import { LexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { render } from '@testing-library/react'
 import { $applyNodeReplacement } from 'lexical'
@@ -10,7 +12,6 @@ import { CustomTextNode } from '../custom-text/node'
 import ErrorMessageBlockReplacementBlock from './error-message-block-replacement-block'
 import { $createErrorMessageBlockNode, ErrorMessageBlockNode } from './node'
 
-vi.mock('@lexical/react/LexicalComposerContext')
 vi.mock('@lexical/utils')
 vi.mock('lexical')
 vi.mock('../../utils')
@@ -24,15 +25,24 @@ const mockEditor = {
   registerNodeTransform: mockRegisterNodeTransform,
 } as unknown as LexicalEditor
 
+const lexicalContextValue: LexicalComposerContextWithEditor = [
+  mockEditor,
+  { getTheme: () => undefined },
+]
+
+const renderWithLexicalContext = (ui: ReactElement) => {
+  return render(
+    <LexicalComposerContext.Provider value={lexicalContextValue}>
+      {ui}
+    </LexicalComposerContext.Provider>,
+  )
+}
+
 describe('ErrorMessageBlockReplacementBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasNodes.mockReturnValue(true)
     mockRegisterNodeTransform.mockReturnValue(vi.fn())
-    vi.mocked(useLexicalComposerContext).mockReturnValue([
-      mockEditor,
-      {},
-    ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked(mergeRegister).mockImplementation((...cleanups) => {
       return () => cleanups.forEach(cleanup => cleanup())
     })
@@ -44,7 +54,7 @@ describe('ErrorMessageBlockReplacementBlock', () => {
     const transformCleanup = vi.fn()
     mockRegisterNodeTransform.mockReturnValue(transformCleanup)
 
-    const { unmount, container } = render(<ErrorMessageBlockReplacementBlock />)
+    const { unmount, container } = renderWithLexicalContext(<ErrorMessageBlockReplacementBlock />)
 
     expect(container.firstChild).toBeNull()
     expect(mockHasNodes).toHaveBeenCalledWith([ErrorMessageBlockNode])
@@ -57,13 +67,13 @@ describe('ErrorMessageBlockReplacementBlock', () => {
   it('should throw when ErrorMessageBlockNode is not registered', () => {
     mockHasNodes.mockReturnValue(false)
 
-    expect(() => render(<ErrorMessageBlockReplacementBlock />)).toThrow(
+    expect(() => renderWithLexicalContext(<ErrorMessageBlockReplacementBlock />)).toThrow(
       'ErrorMessageBlockNodePlugin: ErrorMessageBlockNode not registered on editor',
     )
   })
 
   it('should pass matcher and creator to decoratorTransform and match placeholder text', () => {
-    render(<ErrorMessageBlockReplacementBlock />)
+    renderWithLexicalContext(<ErrorMessageBlockReplacementBlock />)
 
     const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     const textNode = { id: 't-1' } as unknown as LexicalNode
@@ -87,7 +97,7 @@ describe('ErrorMessageBlockReplacementBlock', () => {
 
   it('should create replacement node and call onInsert when creator runs', () => {
     const onInsert = vi.fn()
-    render(<ErrorMessageBlockReplacementBlock onInsert={onInsert} />)
+    renderWithLexicalContext(<ErrorMessageBlockReplacementBlock onInsert={onInsert} />)
 
     const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     transformCallback({ id: 't-1' } as unknown as LexicalNode)
@@ -102,7 +112,7 @@ describe('ErrorMessageBlockReplacementBlock', () => {
   })
 
   it('should create replacement node without onInsert callback', () => {
-    render(<ErrorMessageBlockReplacementBlock />)
+    renderWithLexicalContext(<ErrorMessageBlockReplacementBlock />)
 
     const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     transformCallback({ id: 't-1' } as unknown as LexicalNode)
