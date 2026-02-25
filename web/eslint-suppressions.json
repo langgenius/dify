@@ -2036,11 +2036,6 @@
       "count": 1
     }
   },
-  "app/components/base/input/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/input/index.stories.tsx": {
     "no-console": {
       "count": 2
