@@ -24,6 +24,16 @@ DEFAULT_CODE_LIMITS = CodeNodeLimits(
 )
 
 
+class _NoopCodeExecutor:
+    def execute(self, *, language: object, code: str, inputs: dict[str, object]) -> dict[str, object]:
+        _ = (language, code, inputs)
+        return {}
+
+    def is_execution_error(self, error: Exception) -> bool:
+        _ = error
+        return False
+
+
 class TestMockTemplateTransformNode:
     """Test cases for MockTemplateTransformNode."""
 
@@ -319,6 +329,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -384,6 +395,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 
@@ -453,6 +465,7 @@ class TestMockCodeNode:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            code_executor=_NoopCodeExecutor(),
             code_limits=DEFAULT_CODE_LIMITS,
         )
 

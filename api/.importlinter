@@ -110,7 +110,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> core.model_manager
     core.workflow.nodes.agent.agent_node -> core.provider_manager
     core.workflow.nodes.agent.agent_node -> core.tools.tool_manager
-    core.workflow.nodes.code.code_node -> core.helper.code_executor.code_executor
     core.workflow.nodes.datasource.datasource_node -> models.model
     core.workflow.nodes.datasource.datasource_node -> models.tools
     core.workflow.nodes.datasource.datasource_node -> services.datasource_provider_service
