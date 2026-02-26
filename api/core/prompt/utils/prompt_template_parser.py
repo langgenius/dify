@@ -3,7 +3,7 @@ from collections.abc import Mapping
 
 REGEX = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#histories#|#query#|#context#|#sys\.query#|#sys\.files#)\}\}")
 WITH_VARIABLE_TMPL_REGEX = re.compile(
-    r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#[a-zA-Z0-9_]{1,50}\.[a-zA-Z0-9_\.]{1,100}#|#histories#|#query#|#context#)\}\}"
+    r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#[a-zA-Z0-9_]{1,50}\.[a-zA-Z0-9_\.]{1,100}#|#histories#|#query#|#context#|#sys\.query#|#sys\.files#)\}\}"
 )
 
 

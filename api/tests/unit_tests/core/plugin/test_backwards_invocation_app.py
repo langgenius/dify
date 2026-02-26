@@ -295,7 +295,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"ok": 1}
         assert spy.call_count == 1
 
-    def test_get_user_prefers_end_user_then_account_then_raises(self, mocker):
+    def test_get_user_returns_end_user(self, mocker):
         session = MagicMock()
         session.scalar.side_effect = [MagicMock(id="end-user")]
         session_ctx = MagicMock()
@@ -307,15 +307,31 @@ class TestPluginAppBackwardsInvocation:
         user = PluginAppBackwardsInvocation._get_user("uid")
         assert user.id == "end-user"
 
+    def test_get_user_falls_back_to_account_user(self, mocker):
+        session = MagicMock()
         session.scalar.side_effect = [None, MagicMock(id="account-user")]
+        session_ctx = MagicMock()
+        session_ctx.__enter__.return_value = session
+        session_ctx.__exit__.return_value = None
+        mocker.patch("core.plugin.backwards_invocation.app.Session", return_value=session_ctx)
+        mocker.patch("core.plugin.backwards_invocation.app.db", SimpleNamespace(engine=MagicMock()))
+
         user = PluginAppBackwardsInvocation._get_user("uid")
         assert user.id == "account-user"
 
+    def test_get_user_raises_when_user_not_found(self, mocker):
+        session = MagicMock()
         session.scalar.side_effect = [None, None]
+        session_ctx = MagicMock()
+        session_ctx.__enter__.return_value = session
+        session_ctx.__exit__.return_value = None
+        mocker.patch("core.plugin.backwards_invocation.app.Session", return_value=session_ctx)
+        mocker.patch("core.plugin.backwards_invocation.app.db", SimpleNamespace(engine=MagicMock()))
+
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid")
 
-    def test_get_app_success_and_error(self, mocker):
+    def test_get_app_returns_app(self, mocker):
         query_chain = MagicMock()
         query_chain.where.return_value = query_chain
         app_obj = MagicMock(id="app")
@@ -325,10 +341,19 @@ class TestPluginAppBackwardsInvocation:
 
         assert PluginAppBackwardsInvocation._get_app("app", "tenant") is app_obj
 
+    def test_get_app_raises_when_missing(self, mocker):
+        query_chain = MagicMock()
+        query_chain.where.return_value = query_chain
         query_chain.first.return_value = None
+        db = SimpleNamespace(session=MagicMock(query=MagicMock(return_value=query_chain)))
+        mocker.patch("core.plugin.backwards_invocation.app.db", db)
+
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
 
-        db.session.query.side_effect = RuntimeError("db down")
+    def test_get_app_raises_when_query_fails(self, mocker):
+        db = SimpleNamespace(session=MagicMock(query=MagicMock(side_effect=RuntimeError("db down"))))
+        mocker.patch("core.plugin.backwards_invocation.app.db", db)
+
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")

@@ -113,11 +113,11 @@ class TestPluginDatasourceManager:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
 
-    def test_streaming_datasource_methods(self, mocker):
+    def test_get_website_crawl_streaming(self, mocker):
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
-
         stream_mock.return_value = iter(["crawl"])
+
         assert list(
             manager.get_website_crawl(
                 "tenant-1",
@@ -130,7 +130,13 @@ class TestPluginDatasourceManager:
             )
         ) == ["crawl"]
 
+        assert stream_mock.call_count == 1
+
+    def test_get_online_document_pages_streaming(self, mocker):
+        manager = PluginDatasourceManager()
+        stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["pages"])
+
         assert list(
             manager.get_online_document_pages(
                 "tenant-1",
@@ -143,7 +149,13 @@ class TestPluginDatasourceManager:
             )
         ) == ["pages"]
 
+        assert stream_mock.call_count == 1
+
+    def test_get_online_document_page_content_streaming(self, mocker):
+        manager = PluginDatasourceManager()
+        stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["content"])
+
         assert list(
             manager.get_online_document_page_content(
                 "tenant-1",
@@ -156,7 +168,13 @@ class TestPluginDatasourceManager:
             )
         ) == ["content"]
 
+        assert stream_mock.call_count == 1
+
+    def test_online_drive_browse_files_streaming(self, mocker):
+        manager = PluginDatasourceManager()
+        stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["browse"])
+
         assert list(
             manager.online_drive_browse_files(
                 "tenant-1",
@@ -169,7 +187,13 @@ class TestPluginDatasourceManager:
             )
         ) == ["browse"]
 
+        assert stream_mock.call_count == 1
+
+    def test_online_drive_download_file_streaming(self, mocker):
+        manager = PluginDatasourceManager()
+        stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["download"])
+
         assert list(
             manager.online_drive_download_file(
                 "tenant-1",
@@ -182,14 +206,20 @@ class TestPluginDatasourceManager:
             )
         ) == ["download"]
 
-    def test_validate_provider_credentials_paths(self, mocker):
+        assert stream_mock.call_count == 1
+
+    def test_validate_provider_credentials_returns_true_when_stream_yields_result(self, mocker):
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
-
         stream_mock.return_value = iter([SimpleNamespace(result=True)])
+
         assert manager.validate_provider_credentials("tenant-1", "user-1", "provider", "org/plugin", {"k": "v"}) is True
 
+    def test_validate_provider_credentials_returns_false_when_stream_empty(self, mocker):
+        manager = PluginDatasourceManager()
+        stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter([])
+
         assert (
             manager.validate_provider_credentials("tenant-1", "user-1", "provider", "org/plugin", {"k": "v"}) is False
         )

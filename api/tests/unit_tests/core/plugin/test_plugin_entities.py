@@ -180,28 +180,52 @@ class TestPluginParameterEntities:
         with pytest.raises(ValueError, match="only accepts one file"):
             cast_parameter_value(PluginParameterType.FILE, ["a", "b"])
 
-    def test_cast_parameter_value_selectors(self):
-        assert cast_parameter_value(PluginParameterType.MODEL_SELECTOR, {"m": "gpt"}) == {"m": "gpt"}
-        assert cast_parameter_value(PluginParameterType.APP_SELECTOR, {"app": "a"}) == {"app": "a"}
-        with pytest.raises(ValueError, match="selector must be a dictionary"):
-            cast_parameter_value(PluginParameterType.MODEL_SELECTOR, "bad")
+    @pytest.mark.parametrize(
+        ("parameter_type", "value", "expected"),
+        [
+            (PluginParameterType.MODEL_SELECTOR, {"m": "gpt"}, {"m": "gpt"}),
+            (PluginParameterType.APP_SELECTOR, {"app": "a"}, {"app": "a"}),
+            (PluginParameterType.TOOLS_SELECTOR, [], []),
+            (PluginParameterType.ANY, {"k": "v"}, {"k": "v"}),
+        ],
+    )
+    def test_cast_parameter_value_selectors_valid(self, parameter_type, value, expected):
+        assert cast_parameter_value(parameter_type, value) == expected
 
-        assert cast_parameter_value(PluginParameterType.TOOLS_SELECTOR, []) == []
-        with pytest.raises(ValueError, match="tools selector must be a list"):
-            cast_parameter_value(PluginParameterType.TOOLS_SELECTOR, "bad")
+    @pytest.mark.parametrize(
+        ("parameter_type", "value", "message"),
+        [
+            (PluginParameterType.MODEL_SELECTOR, "bad", "selector must be a dictionary"),
+            (PluginParameterType.APP_SELECTOR, "bad", "selector must be a dictionary"),
+            (PluginParameterType.TOOLS_SELECTOR, "bad", "tools selector must be a list"),
+            (PluginParameterType.ANY, object(), "var selector must be"),
+        ],
+    )
+    def test_cast_parameter_value_selectors_invalid(self, parameter_type, value, message):
+        with pytest.raises(ValueError, match=message):
+            cast_parameter_value(parameter_type, value)
 
-        assert cast_parameter_value(PluginParameterType.ANY, {"k": "v"}) == {"k": "v"}
-        with pytest.raises(ValueError, match="var selector must be"):
-            cast_parameter_value(PluginParameterType.ANY, object())
+    @pytest.mark.parametrize(
+        ("parameter_type", "value", "expected"),
+        [
+            (PluginParameterType.ARRAY, [1, 2], [1, 2]),
+            (PluginParameterType.ARRAY, "[1, 2]", [1, 2]),
+            (PluginParameterType.OBJECT, {"k": "v"}, {"k": "v"}),
+            (PluginParameterType.OBJECT, '{"a":1}', {"a": 1}),
+        ],
+    )
+    def test_cast_parameter_value_array_and_object_valid(self, parameter_type, value, expected):
+        assert cast_parameter_value(parameter_type, value) == expected
 
-    def test_cast_parameter_value_array_and_object(self):
-        assert cast_parameter_value(PluginParameterType.ARRAY, [1, 2]) == [1, 2]
-        assert cast_parameter_value(PluginParameterType.ARRAY, "[1, 2]") == [1, 2]
-        assert cast_parameter_value(PluginParameterType.ARRAY, "bad-json") == ["bad-json"]
-
-        assert cast_parameter_value(PluginParameterType.OBJECT, {"k": "v"}) == {"k": "v"}
-        assert cast_parameter_value(PluginParameterType.OBJECT, '{"a":1}') == {"a": 1}
-        assert cast_parameter_value(PluginParameterType.OBJECT, "bad-json") == {}
+    @pytest.mark.parametrize(
+        ("parameter_type", "value", "expected"),
+        [
+            (PluginParameterType.ARRAY, "bad-json", ["bad-json"]),
+            (PluginParameterType.OBJECT, "bad-json", {}),
+        ],
+    )
+    def test_cast_parameter_value_array_and_object_invalid_json_fallback(self, parameter_type, value, expected):
+        assert cast_parameter_value(parameter_type, value) == expected
 
     def test_cast_parameter_value_default_branch_and_wrapped_exception(self):
         class _Unknown(StrEnum):

@@ -18,7 +18,7 @@ def _build_request(body: bytes = b"payload") -> Request:
         "wsgi.url_scheme": "http",
         "CONTENT_LENGTH": str(len(body)),
         "HTTP_HOST": "localhost",
-        "HTTP_VERSION": "HTTP/1.1",
+        "SERVER_PROTOCOL": "HTTP/1.1",
         "HTTP_X_TEST": "yes",
     }
     return Request(environ)

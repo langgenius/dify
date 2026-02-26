@@ -387,6 +387,7 @@ class TestSegmentDumpAndLoad:
 
 class TestSegmentAdditionalProperties:
     def test_base_segment_text_log_markdown_size_and_to_object(self):
+        """Ensure StringSegment exposes text, log, markdown, size and to_object."""
         segment = StringSegment(value="hello")
 
         assert segment.text == "hello"
@@ -396,6 +397,7 @@ class TestSegmentAdditionalProperties:
         assert segment.to_object() == "hello"
 
     def test_none_segment_empty_outputs(self):
+        """Ensure NoneSegment renders empty text, log and markdown."""
         segment = NoneSegment()
 
         assert segment.text == ""
@@ -403,6 +405,7 @@ class TestSegmentAdditionalProperties:
         assert segment.markdown == ""
 
     def test_object_segment_json_outputs(self):
+        """Ensure ObjectSegment renders JSON output for text, log and markdown."""
         segment = ObjectSegment(value={"key": "值", "n": 1})
 
         assert segment.text == '{"key": "值", "n": 1}'
@@ -410,6 +413,7 @@ class TestSegmentAdditionalProperties:
         assert segment.markdown == '{\n  "key": "值",\n  "n": 1\n}'
 
     def test_array_segment_text_and_markdown(self):
+        """Ensure ArrayAnySegment handles empty/non-empty text and markdown rendering."""
         empty_segment = ArrayAnySegment(value=[])
         non_empty_segment = ArrayAnySegment(value=[1, "two"])
 
@@ -418,6 +422,7 @@ class TestSegmentAdditionalProperties:
         assert non_empty_segment.markdown == "- 1\n- two"
 
     def test_file_segment_properties(self):
+        """Ensure FileSegment markdown, text and log fields match expected behavior."""
         file = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="doc.txt")
         segment = FileSegment(value=file)
 
@@ -426,6 +431,7 @@ class TestSegmentAdditionalProperties:
         assert segment.text == ""
 
     def test_array_string_segment_text_branches(self):
+        """Ensure ArrayStringSegment text handling for empty and non-empty values."""
         empty_segment = ArrayStringSegment(value=[])
         non_empty_segment = ArrayStringSegment(value=["hello", "世界"])
 
@@ -433,6 +439,7 @@ class TestSegmentAdditionalProperties:
         assert non_empty_segment.text == '["hello", "世界"]'
 
     def test_array_file_segment_markdown_and_empty_text_log(self):
+        """Ensure ArrayFileSegment markdown renders links and text/log stay empty."""
         file1 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="a.txt")
         file2 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="b.txt")
         segment = ArrayFileSegment(value=[file1, file2])

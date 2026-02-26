@@ -40,7 +40,7 @@ def test_prompt_messages_to_prompt_for_saving_chat_mode():
                 ImagePromptMessageContent(
                     url="https://example.com/image1.jpg",
                     format="jpg",
-                    mime_type="image/jpg",
+                    mime_type="image/jpeg",
                     detail=ImagePromptMessageContent.DETAIL.HIGH,
                 ),
                 AudioPromptMessageContent(
@@ -87,7 +87,7 @@ def test_prompt_messages_to_prompt_for_saving_completion_mode_with_and_without_f
             ImagePromptMessageContent(
                 url="https://example.com/image2.jpg",
                 format="jpg",
-                mime_type="image/jpg",
+                mime_type="image/jpeg",
                 detail=ImagePromptMessageContent.DETAIL.LOW,
             ),
         ]

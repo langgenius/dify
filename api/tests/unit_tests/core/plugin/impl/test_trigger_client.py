@@ -39,6 +39,28 @@ def _trigger_provider(name: str = "provider") -> SimpleNamespace:
     )
 
 
+def _subscription_call_kwargs(method_name: str) -> dict:
+    if method_name == "subscribe":
+        return {
+            "tenant_id": "tenant-1",
+            "user_id": "user-1",
+            "provider": "org/plugin/provider",
+            "credentials": {"token": "x"},
+            "credential_type": CredentialType.API_KEY,
+            "endpoint": "https://example.com/hook",
+            "parameters": {"k": "v"},
+        }
+
+    return {
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "provider": "org/plugin/provider",
+        "subscription": _subscription(),
+        "credentials": {"token": "x"},
+        "credential_type": CredentialType.API_KEY,
+    }
+
+
 class TestPluginTriggerClient:
     def test_fetch_trigger_providers(self, mocker):
         client = PluginTriggerClient()
@@ -173,7 +195,7 @@ class TestPluginTriggerClient:
             )
 
     @pytest.mark.parametrize("method_name", ["subscribe", "unsubscribe", "refresh"])
-    def test_subscription_operations(self, mocker, method_name):
+    def test_subscription_operations_success(self, mocker, method_name):
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -182,55 +204,23 @@ class TestPluginTriggerClient:
         )
 
         method = getattr(client, method_name)
-        if method_name == "subscribe":
-            result = method(
-                tenant_id="tenant-1",
-                user_id="user-1",
-                provider="org/plugin/provider",
-                credentials={"token": "x"},
-                credential_type=CredentialType.API_KEY,
-                endpoint="https://example.com/hook",
-                parameters={"k": "v"},
-            )
-        else:
-            result = method(
-                tenant_id="tenant-1",
-                user_id="user-1",
-                provider="org/plugin/provider",
-                subscription=_subscription(),
-                credentials={"token": "x"},
-                credential_type=CredentialType.API_KEY,
-            )
+        result = method(**_subscription_call_kwargs(method_name))
 
         assert result.subscription == {"id": "sub"}
         assert stream_mock.call_count == 1
 
-        stream_mock.return_value = iter([])
-        expected = {
-            "subscribe": "No response received from plugin daemon for subscribe",
-            "unsubscribe": "No response received from plugin daemon for unsubscribe",
-            "refresh": "No response received from plugin daemon for refresh",
-        }[method_name]
-
-        if method_name == "subscribe":
-            kwargs = {
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-                "provider": "org/plugin/provider",
-                "credentials": {"token": "x"},
-                "credential_type": CredentialType.API_KEY,
-                "endpoint": "https://example.com/hook",
-                "parameters": {"k": "v"},
-            }
-        else:
-            kwargs = {
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-                "provider": "org/plugin/provider",
-                "subscription": _subscription(),
-                "credentials": {"token": "x"},
-                "credential_type": CredentialType.API_KEY,
-            }
+    @pytest.mark.parametrize(
+        ("method_name", "expected"),
+        [
+            ("subscribe", "No response received from plugin daemon for subscribe"),
+            ("unsubscribe", "No response received from plugin daemon for unsubscribe"),
+            ("refresh", "No response received from plugin daemon for refresh"),
+        ],
+    )
+    def test_subscription_operations_no_response(self, mocker, method_name, expected):
+        client = PluginTriggerClient()
+        mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
+        method = getattr(client, method_name)
 
         with pytest.raises(ValueError, match=expected):
-            method(**kwargs)
+            method(**_subscription_call_kwargs(method_name))

@@ -88,25 +88,34 @@ class TestBasePluginClientImpl:
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
 
-    def test_request_with_plugin_daemon_response_stream_parse_errors(self, mocker):
+    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker):
         client = BasePluginClient()
-
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"error":"bad-line"}']))
+
         with pytest.raises(ValueError, match="bad-line"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self, mocker):
+        client = BasePluginClient()
         mocker.patch.object(
             client, "_stream_request", return_value=iter(['{"code":-500,"message":"not-json","data":null}'])
         )
+
         with pytest.raises(PluginDaemonInnerError) as exc_info:
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
         assert exc_info.value.message == "not-json"
 
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self, mocker):
+        client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":-1,"message":"err","data":null}']))
+
         with pytest.raises(ValueError, match="plugin daemon: err, code: -1"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 
+    def test_request_with_plugin_daemon_response_stream_empty_data_error(self, mocker):
+        client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":0,"message":"","data":null}']))
+
         with pytest.raises(ValueError, match="got empty data"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
 

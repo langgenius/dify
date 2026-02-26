@@ -87,22 +87,36 @@ class TestSegmentTypeIsValidArrayValidation:
     """
 
     def test_array_validation_all_success(self):
+        # Arrange
         value = ["hello", "world", "foo"]
-        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Assert
+        assert is_valid
 
     def test_array_validation_all_fail(self):
+        # Arrange
         value = ["hello", 123, "world"]
-        # Should return False, since 123 is not a string
-        assert not SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+        # Assert
+        assert not is_valid
 
     def test_array_validation_first(self):
+        # Arrange
         value = ["hello", 123, None]
-        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.FIRST)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.FIRST)
+        # Assert
+        assert is_valid
 
     def test_array_validation_none(self):
+        # Arrange
         value = [1, 2, 3]
-        # validation is None, skip
-        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.NONE)
+        # Act
+        is_valid = SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.NONE)
+        # Assert
+        assert is_valid
 
 
 class TestSegmentTypeGetZeroValue:
