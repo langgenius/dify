@@ -16,6 +16,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.model_entities import ModelFeature
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities import GraphInitParams
@@ -41,6 +42,8 @@ from core.workflow.nodes.llm.exc import (
     LLMNodeError,
     MemoryRolePrefixRequiredError,
     ModelNotExistError,
+    NoPromptFoundError,
+    TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
@@ -49,6 +52,7 @@ from core.workflow.nodes.llm.node import (
     _calculate_rest_token,
     _combine_message_content_with_role,
     _handle_completion_template,
+    _handle_memory_chat_mode,
     _handle_memory_completion_mode,
     _render_jinja2_message,
 )
@@ -903,3 +907,401 @@ def test_extract_variable_selector_mapping(llm_node):
     assert mapping == {"1.#files#": ["sys", "files"]}
     assert "1.#context#" not in mapping
     assert "1.#sys.query#" not in mapping
+
+
+def test_transform_chat_messages_applies_jinja2_text(llm_node):
+    completion_template = LLMNodeCompletionModelPromptTemplate(
+        text="old",
+        edition_type="jinja2",
+        jinja2_text="new completion text",
+    )
+    transformed_completion = llm_node._transform_chat_messages(completion_template)
+    assert transformed_completion.text == "new completion text"
+
+    chat_messages = [
+        LLMNodeChatModelMessage(
+            text="old",
+            role=PromptMessageRole.USER,
+            edition_type="jinja2",
+            jinja2_text="new chat text",
+        )
+    ]
+    transformed_chat = llm_node._transform_chat_messages(chat_messages)
+    assert transformed_chat[0].text == "new chat text"
+
+
+def test_fetch_jinja_inputs_returns_empty_when_prompt_config_is_missing(llm_node):
+    llm_node.node_data.prompt_config = None
+
+    assert llm_node._fetch_jinja_inputs(llm_node.node_data) == {}
+
+
+def test_fetch_jinja_inputs_context_dict_uses_content_field(llm_node):
+    pool = llm_node.graph_runtime_state.variable_pool
+    pool.add(["node1", "ctx"], {"metadata": {"_source": "knowledge"}, "content": "resolved-content"})
+
+    llm_node.node_data.prompt_config = mock.MagicMock()
+    llm_node.node_data.prompt_config.jinja2_variables = [
+        mock.MagicMock(variable="ctx", value_selector=["node1", "ctx"]),
+    ]
+
+    result = llm_node._fetch_jinja_inputs(llm_node.node_data)
+
+    assert result["ctx"] == "resolved-content"
+
+
+def test_fetch_jinja_inputs_falls_back_to_str_when_json_dumps_fails(llm_node, monkeypatch):
+    pool = llm_node.graph_runtime_state.variable_pool
+    pool.add(["node1", "obj"], {"a": 1})
+
+    llm_node.node_data.prompt_config = mock.MagicMock()
+    llm_node.node_data.prompt_config.jinja2_variables = [
+        mock.MagicMock(variable="obj", value_selector=["node1", "obj"]),
+    ]
+
+    monkeypatch.setattr("core.workflow.nodes.llm.node.json.dumps", mock.MagicMock(side_effect=TypeError("x")))
+    result = llm_node._fetch_jinja_inputs(llm_node.node_data)
+
+    assert result["obj"] == "{'a': 1}"
+
+
+def test_fetch_inputs_handles_completion_template_and_memory_query(llm_node):
+    pool = llm_node.graph_runtime_state.variable_pool
+    pool.add(["start", "name"], NoneSegment())
+    pool.add(["start", "query"], "how are you")
+
+    llm_node.node_data.prompt_template = LLMNodeCompletionModelPromptTemplate(
+        text="Hello {{#start.name#}}",
+        edition_type="basic",
+    )
+    llm_node.node_data.memory = mock.MagicMock(query_prompt_template="{{#start.query#}}")
+
+    inputs = llm_node._fetch_inputs(llm_node.node_data)
+
+    assert "#start.name#" in inputs
+    assert "#start.query#" in inputs
+    assert inputs["#start.query#"] == "how are you"
+
+
+def test_fetch_context_returns_none_when_disabled_or_selector_missing(llm_node):
+    llm_node.node_data.context.enabled = False
+    assert list(llm_node._fetch_context(llm_node.node_data)) == []
+
+    llm_node.node_data.context.enabled = True
+    llm_node.node_data.context.variable_selector = []
+    assert list(llm_node._fetch_context(llm_node.node_data)) == []
+
+
+def test_fetch_context_array_builds_summary_and_content_text(llm_node):
+    llm_node.node_data.context.enabled = True
+    llm_node.node_data.context.variable_selector = ["node1", "ctx"]
+    llm_node.graph_runtime_state.variable_pool.add(
+        ["node1", "ctx"],
+        ["line-1", {"content": "body", "summary": "short", "metadata": {"_source": "other"}}],
+    )
+
+    events = list(llm_node._fetch_context(llm_node.node_data))
+
+    assert events
+    assert events[0].context == "line-1\nshort\nbody"
+
+
+def test_fetch_prompt_messages_rejects_unsupported_template_type(model_config):
+    with pytest.raises(TemplateTypeNotSupportError):
+        LLMNode.fetch_prompt_messages(
+            sys_query=None,
+            sys_files=[],
+            context=None,
+            memory=None,
+            model_config=model_config,
+            prompt_template=object(),
+            memory_config=None,
+            vision_enabled=False,
+            vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+            variable_pool=VariablePool.empty(),
+            jinja2_variables=[],
+            tenant_id="tenant",
+            context_files=None,
+        )
+
+
+def test_extract_variable_selector_mapping_includes_jinja_variables_when_enabled(llm_node):
+    node_data = llm_node.node_data.model_dump()
+    node_data["prompt_template"] = [
+        {
+            "text": "ignored",
+            "role": "user",
+            "edition_type": "jinja2",
+            "jinja2_text": "Hello {{ name }}",
+        }
+    ]
+    node_data["prompt_config"] = {"jinja2_variables": [{"variable": "name", "value_selector": ["start", "name"]}]}
+
+    mapping = LLMNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="n1",
+        node_data=node_data,
+    )
+
+    assert mapping["n1.name"] == ["start", "name"]
+
+
+def test_combine_message_content_with_role_supports_assistant_and_system():
+    assistant = _combine_message_content_with_role(contents="assistant", role=PromptMessageRole.ASSISTANT)
+    system = _combine_message_content_with_role(contents="system", role=PromptMessageRole.SYSTEM)
+
+    assert assistant.content == "assistant"
+    assert system.content == "system"
+
+
+def test_render_jinja2_message_empty_template_returns_empty_string():
+    assert _render_jinja2_message(template="", jinja2_variables=[], variable_pool=VariablePool.empty()) == ""
+
+
+def test_handle_memory_chat_mode_reads_history_messages(model_config):
+    memory = mock.MagicMock()
+    memory.get_history_prompt_messages.return_value = [UserPromptMessage(content="history")]
+    memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=True, size=1))
+
+    messages = _handle_memory_chat_mode(memory=memory, memory_config=memory_config, model_config=model_config)
+
+    assert len(messages) == 1
+
+
+def test_handle_completion_template_jinja2_branch(llm_node, monkeypatch):
+    monkeypatch.setattr("core.workflow.nodes.llm.node._render_jinja2_message", lambda **kwargs: "rendered")
+    template = LLMNodeCompletionModelPromptTemplate(
+        text="",
+        edition_type="jinja2",
+        jinja2_text="Hello {{name}}",
+    )
+
+    messages = _handle_completion_template(
+        template=template,
+        context=None,
+        jinja2_variables=[],
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+    )
+
+    assert messages[0].content[0].data == "rendered"
+
+
+def test_handle_blocking_result_tagged_sets_latency(llm_node):
+    usage = LLMUsage.empty_usage()
+    result = LLMResult(
+        model="gpt-3.5-turbo",
+        message=AssistantPromptMessage(content="answer"),
+        usage=usage,
+    )
+
+    event = LLMNode.handle_blocking_result(
+        invoke_result=result,
+        saver=mock.MagicMock(),
+        file_outputs=[],
+        reasoning_format="tagged",
+        request_latency=1.2345,
+    )
+
+    assert event.text == "answer"
+    assert event.reasoning_content == ""
+    assert event.usage.latency == 1.234
+
+
+def test_fetch_prompt_messages_completion_string_content_branch(model_config, monkeypatch):
+    completion_template = LLMNodeCompletionModelPromptTemplate(
+        text="unused",
+        edition_type="basic",
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node._handle_completion_template",
+        lambda **kwargs: [UserPromptMessage(content="prompt #histories# / #sys.query#")],
+    )
+    monkeypatch.setattr("core.workflow.nodes.llm.node._handle_memory_completion_mode", lambda **kwargs: "history")
+
+    model = mock.MagicMock()
+    model.model_type_instance.get_model_schema.return_value = {"ok": True}
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.ModelManager.get_model_instance",
+        lambda _self, **kwargs: model,
+    )
+
+    messages, _ = LLMNode.fetch_prompt_messages(
+        sys_query="query",
+        sys_files=[],
+        context=None,
+        memory=None,
+        model_config=model_config,
+        prompt_template=completion_template,
+        memory_config=None,
+        vision_enabled=False,
+        vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+        variable_pool=VariablePool.empty(),
+        jinja2_variables=[],
+        tenant_id="tenant",
+        context_files=None,
+    )
+
+    assert messages[0].content == "prompt history / query"
+
+
+def test_fetch_prompt_messages_completion_list_content_branch(model_config, monkeypatch):
+    completion_template = LLMNodeCompletionModelPromptTemplate(
+        text="unused",
+        edition_type="basic",
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node._handle_completion_template",
+        lambda **kwargs: [UserPromptMessage(content=[TextPromptMessageContent(data="prompt #histories#")])],
+    )
+    monkeypatch.setattr("core.workflow.nodes.llm.node._handle_memory_completion_mode", lambda **kwargs: "history")
+
+    model = mock.MagicMock()
+    model.model_type_instance.get_model_schema.return_value = {"ok": True}
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.ModelManager.get_model_instance",
+        lambda _self, **kwargs: model,
+    )
+
+    messages, _ = LLMNode.fetch_prompt_messages(
+        sys_query="query",
+        sys_files=[],
+        context=None,
+        memory=None,
+        model_config=model_config,
+        prompt_template=completion_template,
+        memory_config=None,
+        vision_enabled=False,
+        vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+        variable_pool=VariablePool.empty(),
+        jinja2_variables=[],
+        tenant_id="tenant",
+        context_files=None,
+    )
+
+    content = messages[0].content
+    assert isinstance(content, str)
+    assert content.startswith("query\n")
+
+
+def test_fetch_prompt_messages_adds_sys_and_context_files(model_config, monkeypatch):
+    prompt_template = [
+        LLMNodeChatModelMessage(text="hello", role=PromptMessageRole.USER, edition_type="basic"),
+    ]
+    model_config.model_schema.features = [ModelFeature.VISION]
+    file_prompt = TextPromptMessageContent(data="file")
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.file_manager.to_prompt_message_content", lambda *args, **kwargs: file_prompt
+    )
+
+    model = mock.MagicMock()
+    model.model_type_instance.get_model_schema.return_value = {"ok": True}
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.ModelManager.get_model_instance",
+        lambda _self, **kwargs: model,
+    )
+
+    file_obj = File(
+        id="f1",
+        tenant_id="t",
+        type=FileType.IMAGE,
+        filename="a.png",
+        extension=".png",
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="f1",
+        storage_key="k",
+    )
+
+    messages, _ = LLMNode.fetch_prompt_messages(
+        sys_query=None,
+        sys_files=[file_obj],
+        context=None,
+        memory=None,
+        model_config=model_config,
+        prompt_template=prompt_template,
+        memory_config=None,
+        vision_enabled=True,
+        vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+        variable_pool=VariablePool.empty(),
+        jinja2_variables=[],
+        tenant_id="tenant",
+        context_files=[file_obj],
+    )
+
+    assert isinstance(messages[-1], UserPromptMessage)
+    assert isinstance(messages[-1].content, list)
+    assert len(messages[-1].content) >= 2
+
+
+def test_fetch_prompt_messages_raises_when_all_contents_are_filtered(model_config, monkeypatch):
+    prompt_template = [
+        LLMNodeChatModelMessage(text="hello", role=PromptMessageRole.USER, edition_type="basic"),
+    ]
+    model_config.model_schema.features = []
+    image_content = ImagePromptMessageContent(format="png", url="https://example.com/a.png", mime_type="image/png")
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.LLMNode.handle_list_messages",
+        lambda **kwargs: [UserPromptMessage(content=[image_content])],
+    )
+
+    with pytest.raises(NoPromptFoundError):
+        LLMNode.fetch_prompt_messages(
+            sys_query=None,
+            sys_files=[],
+            context=None,
+            memory=None,
+            model_config=model_config,
+            prompt_template=prompt_template,
+            memory_config=None,
+            vision_enabled=False,
+            vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+            variable_pool=VariablePool.empty(),
+            jinja2_variables=[],
+            tenant_id="tenant",
+            context_files=None,
+        )
+
+
+def test_fetch_prompt_messages_raises_when_model_schema_missing(model_config, monkeypatch):
+    prompt_template = [
+        LLMNodeChatModelMessage(text="hello", role=PromptMessageRole.USER, edition_type="basic"),
+    ]
+    model = mock.MagicMock()
+    model.model_type_instance.get_model_schema.return_value = None
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.ModelManager.get_model_instance",
+        lambda _self, **kwargs: model,
+    )
+
+    with pytest.raises(ModelNotExistError):
+        LLMNode.fetch_prompt_messages(
+            sys_query=None,
+            sys_files=[],
+            context=None,
+            memory=None,
+            model_config=model_config,
+            prompt_template=prompt_template,
+            memory_config=None,
+            vision_enabled=False,
+            vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
+            variable_pool=VariablePool.empty(),
+            jinja2_variables=[],
+            tenant_id="tenant",
+            context_files=None,
+        )
+
+
+def test_fetch_model_config_updates_completion_params(monkeypatch, llm_node):
+    model = mock.MagicMock()
+    model.credentials = {}
+    model.model_type_instance.get_model_schema.return_value = {"schema": "ok"}
+    model_config_with_cred = mock.MagicMock(parameters={"temperature": 0.1})
+    monkeypatch.setattr(
+        "core.workflow.nodes.llm.node.llm_utils.fetch_model_config",
+        lambda tenant_id, node_data_model: (model, model_config_with_cred),
+    )
+
+    node_data_model = mock.MagicMock(name="gpt", completion_params={"old": 1})
+    _, config = LLMNode._fetch_model_config(node_data_model=node_data_model, tenant_id="tenant")
+
+    assert config.parameters == {"temperature": 0.1}
+    assert node_data_model.completion_params == {"temperature": 0.1}

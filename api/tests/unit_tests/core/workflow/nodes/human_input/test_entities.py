@@ -2,6 +2,7 @@
 Unit tests for human input node entities.
 """
 
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -19,10 +20,13 @@ from core.workflow.nodes.human_input.entities import (
     FormInput,
     FormInputDefault,
     HumanInputNodeData,
+    HumanInputSubmissionValidationError,
     MemberRecipient,
     UserAction,
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
+    apply_debug_email_recipient,
+    validate_human_input_submission,
 )
 from core.workflow.nodes.human_input.enums import (
     ButtonStyle,
@@ -595,3 +599,221 @@ class TestHumanInputNodeRenderedContent:
         assert isinstance(last_event, StreamCompletedEvent)
         node_run_result = last_event.node_run_result
         assert node_run_result.outputs["__rendered_content"] == "Name: Alice"
+
+
+class TestEmailDeliveryConfigHelpers:
+    def test_with_debug_recipient_uses_empty_recipients_without_user(self):
+        config = EmailDeliveryConfig(
+            recipients=EmailRecipients(whole_workspace=True),
+            subject="subject",
+            body="body",
+            debug_mode=True,
+        )
+
+        debug_config = config.with_debug_recipient("")
+
+        assert debug_config.recipients.whole_workspace is False
+        assert debug_config.recipients.items == []
+
+    def test_render_body_template_with_and_without_variable_pool(self):
+        body = "Visit {{#url#}} and greet {{#start.name#}}"
+
+        without_pool = EmailDeliveryConfig.render_body_template(
+            body=body, url="https://example.com", variable_pool=None
+        )
+        assert without_pool == "Visit https://example.com and greet {{#start.name#}}"
+
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.default(),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        variable_pool.add(("start", "name"), "Alice")
+        with_pool = EmailDeliveryConfig.render_body_template(
+            body=body, url="https://example.com", variable_pool=variable_pool
+        )
+        assert with_pool == "Visit https://example.com and greet Alice"
+
+
+class TestDebugRecipientApplication:
+    def test_apply_debug_email_recipient_is_noop_when_disabled(self):
+        method = EmailDeliveryMethod(
+            enabled=True,
+            config=EmailDeliveryConfig(
+                recipients=EmailRecipients(whole_workspace=True),
+                subject="subject",
+                body="body",
+                debug_mode=True,
+            ),
+        )
+
+        updated = apply_debug_email_recipient(method, enabled=False, user_id="u1")
+
+        assert updated is method
+
+    def test_apply_debug_email_recipient_skips_non_email_methods(self):
+        method = WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())
+
+        updated = apply_debug_email_recipient(method, enabled=True, user_id="u1")
+
+        assert updated is method
+
+    def test_apply_debug_email_recipient_skips_when_debug_mode_off(self):
+        method = EmailDeliveryMethod(
+            enabled=True,
+            config=EmailDeliveryConfig(
+                recipients=EmailRecipients(whole_workspace=True),
+                subject="subject",
+                body="body",
+                debug_mode=False,
+            ),
+        )
+
+        updated = apply_debug_email_recipient(method, enabled=True, user_id="u1")
+
+        assert updated is method
+
+    def test_apply_debug_email_recipient_overrides_recipients_when_debug_mode_on(self):
+        method = EmailDeliveryMethod(
+            enabled=True,
+            config=EmailDeliveryConfig(
+                recipients=EmailRecipients(whole_workspace=True),
+                subject="subject",
+                body="body",
+                debug_mode=True,
+            ),
+        )
+
+        updated = apply_debug_email_recipient(method, enabled=True, user_id="u1")
+
+        assert isinstance(updated, EmailDeliveryMethod)
+        assert updated is not method
+        assert updated.config.recipients.whole_workspace is False
+        assert len(updated.config.recipients.items) == 1
+        assert isinstance(updated.config.recipients.items[0], MemberRecipient)
+        assert updated.config.recipients.items[0].user_id == "u1"
+
+
+class TestAdditionalHumanInputNodeDataBehavior:
+    def test_form_input_default_variable_selector_validation(self):
+        with pytest.raises(ValidationError, match="the length of selector should be at least"):
+            FormInputDefault(type=PlaceholderType.VARIABLE, selector=["only-node"])
+
+    def test_user_action_id_must_be_valid_identifier(self):
+        with pytest.raises(ValidationError, match="is not a valid identifier"):
+            UserAction(id="1invalid", title="Submit")
+
+    def test_is_webapp_enabled_only_when_webapp_method_is_enabled(self):
+        node_data = HumanInputNodeData(
+            title="test",
+            delivery_methods=[
+                WebAppDeliveryMethod(enabled=False, config=_WebAppDeliveryConfig()),
+                EmailDeliveryMethod(
+                    enabled=True,
+                    config=EmailDeliveryConfig(
+                        recipients=EmailRecipients(whole_workspace=True),
+                        subject="subject",
+                        body="body",
+                    ),
+                ),
+            ],
+        )
+        assert node_data.is_webapp_enabled() is False
+
+        enabled_node_data = node_data.model_copy(
+            update={"delivery_methods": [WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())]}
+        )
+        assert enabled_node_data.is_webapp_enabled() is True
+
+    def test_expiration_time_day_and_invalid_unit(self):
+        node_data = HumanInputNodeData(title="test", timeout=2, timeout_unit=TimeoutUnit.DAY)
+        start_time = datetime(2025, 1, 1, 0, 0, 0)
+
+        assert node_data.expiration_time(start_time) == datetime(2025, 1, 3, 0, 0, 0)
+
+        invalid_node_data = node_data.model_copy(update={"timeout_unit": "invalid"})
+        with pytest.raises(AssertionError, match="unknown timeout unit"):
+            invalid_node_data.expiration_time(start_time)
+
+    def test_extract_variable_selector_to_variable_mapping_collects_form_delivery_and_defaults(self):
+        node_data = HumanInputNodeData(
+            title="test",
+            form_content="Form {{#start.name#}}",
+            delivery_methods=[
+                EmailDeliveryMethod(
+                    enabled=True,
+                    config=EmailDeliveryConfig(
+                        recipients=EmailRecipients(whole_workspace=True),
+                        subject="subject",
+                        body="Email {{#previous.result#}}",
+                    ),
+                ),
+                EmailDeliveryMethod(
+                    enabled=False,
+                    config=EmailDeliveryConfig(
+                        recipients=EmailRecipients(whole_workspace=True),
+                        subject="subject",
+                        body="Disabled {{#ignored.value#}}",
+                    ),
+                ),
+            ],
+            inputs=[
+                FormInput(
+                    type=FormInputType.TEXT_INPUT,
+                    output_variable_name="a",
+                    default=FormInputDefault(type=PlaceholderType.VARIABLE, selector=["start", "fallback"]),
+                ),
+                FormInput(
+                    type=FormInputType.TEXT_INPUT,
+                    output_variable_name="b",
+                    default=FormInputDefault(type=PlaceholderType.CONSTANT, value="keep"),
+                ),
+            ],
+        )
+
+        mapping = node_data.extract_variable_selector_to_variable_mapping("node-x")
+
+        assert mapping["node-x.#start.name#"] == ["start", "name"]
+        assert mapping["node-x.#previous.result#"] == ["previous", "result"]
+        assert mapping["node-x.#start.fallback#"] == ["start", "fallback"]
+        assert "node-x.#ignored.value#" not in mapping
+
+    def test_find_action_text_falls_back_to_action_id(self):
+        node_data = HumanInputNodeData(title="test", user_actions=[UserAction(id="approve", title="Approve")])
+
+        assert node_data.find_action_text("approve") == "Approve"
+        assert node_data.find_action_text("unknown") == "unknown"
+
+
+class TestHumanInputSubmissionValidation:
+    def test_validate_submission_rejects_invalid_action(self):
+        with pytest.raises(HumanInputSubmissionValidationError, match="Invalid action: reject"):
+            validate_human_input_submission(
+                inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+                user_actions=[UserAction(id="approve", title="Approve")],
+                selected_action_id="reject",
+                form_data={"name": "Alice"},
+            )
+
+    def test_validate_submission_rejects_missing_inputs(self):
+        with pytest.raises(HumanInputSubmissionValidationError, match="Missing required inputs: email"):
+            validate_human_input_submission(
+                inputs=[
+                    FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name"),
+                    FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="email"),
+                ],
+                user_actions=[UserAction(id="approve", title="Approve")],
+                selected_action_id="approve",
+                form_data={"name": "Alice"},
+            )
+
+    def test_validate_submission_accepts_complete_payload(self):
+        validate_human_input_submission(
+            inputs=[
+                FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name"),
+                FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="email"),
+            ],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            selected_action_id="approve",
+            form_data={"name": "Alice", "email": "alice@example.com"},
+        )

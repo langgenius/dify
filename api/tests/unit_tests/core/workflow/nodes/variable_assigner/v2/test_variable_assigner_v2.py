@@ -1,14 +1,20 @@
 import time
 import uuid
+from types import SimpleNamespace
 from uuid import uuid4
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.variables import ArrayStringVariable
+from core.variables import ArrayStringVariable, SegmentType
 from core.workflow.entities import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode
+from core.workflow.nodes.variable_assigner.v2.entities import VariableAssignerNodeData, VariableOperationItem
 from core.workflow.nodes.variable_assigner.v2.enums import InputType, Operation
+from core.workflow.nodes.variable_assigner.v2.exc import InvalidDataError
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
@@ -429,3 +435,123 @@ def test_node_factory_creates_variable_assigner_node():
     node = node_factory.create_node(graph_config["nodes"][0])
 
     assert isinstance(node, VariableAssignerNode)
+
+
+def test_blocks_variable_output_matches_target_selector():
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    node._node_data = SimpleNamespace(items=[SimpleNamespace(variable_selector=["conversation", "var_a"])])
+
+    assert node.blocks_variable_output({("conversation", "var_a")}) is True
+    assert node.blocks_variable_output({("conversation", "other")}) is False
+
+
+def test_extract_variable_selector_to_variable_mapping_includes_target_and_source():
+    mapping = VariableAssignerNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="node-x",
+        node_data={
+            "title": "assign",
+            "version": "2",
+            "items": [
+                {
+                    "variable_selector": ["conversation", "result"],
+                    "input_type": InputType.VARIABLE,
+                    "operation": Operation.OVER_WRITE,
+                    "value": ["start", "value"],
+                }
+            ],
+        },
+    )
+
+    assert mapping["node-x.#conversation.result#"] == ["conversation", "result"]
+    assert mapping["node-x.#start.value#"] == ["start", "value"]
+
+
+def test_extract_variable_selector_to_variable_mapping_raises_for_invalid_source_selector():
+    with pytest.raises(InvalidDataError, match="selector is not a list"):
+        VariableAssignerNode._extract_variable_selector_to_variable_mapping(
+            graph_config={},
+            node_id="node-x",
+            node_data={
+                "title": "assign",
+                "version": "2",
+                "items": [
+                    {
+                        "variable_selector": ["conversation", "result"],
+                        "input_type": InputType.VARIABLE,
+                        "operation": Operation.OVER_WRITE,
+                        "value": "not-a-selector",
+                    }
+                ],
+            },
+        )
+
+
+def test_handle_item_covers_all_arithmetic_and_collection_operations():
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    numeric_variable = SimpleNamespace(value=10, value_type=SegmentType.NUMBER)
+    array_variable = SimpleNamespace(value=[1, 2, 3], value_type=SegmentType.ARRAY_NUMBER)
+
+    assert node._handle_item(variable=numeric_variable, operation=Operation.OVER_WRITE, value=99) == 99
+    assert node._handle_item(variable=array_variable, operation=Operation.CLEAR, value=None) == []
+    assert node._handle_item(variable=array_variable, operation=Operation.APPEND, value=4) == [1, 2, 3, 4]
+    assert node._handle_item(variable=array_variable, operation=Operation.EXTEND, value=[4, 5]) == [1, 2, 3, 4, 5]
+    assert node._handle_item(variable=numeric_variable, operation=Operation.SET, value=8) == 8
+    assert node._handle_item(variable=numeric_variable, operation=Operation.ADD, value=5) == 15
+    assert node._handle_item(variable=numeric_variable, operation=Operation.SUBTRACT, value=3) == 7
+    assert node._handle_item(variable=numeric_variable, operation=Operation.MULTIPLY, value=2) == 20
+    assert node._handle_item(variable=numeric_variable, operation=Operation.DIVIDE, value=2) == 5
+
+
+def test_handle_item_remove_operations_keep_empty_array_unchanged():
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    variable = SimpleNamespace(value=[])
+
+    assert node._handle_item(variable=variable, operation=Operation.REMOVE_FIRST, value=None) == []
+    assert node._handle_item(variable=variable, operation=Operation.REMOVE_LAST, value=None) == []
+
+
+def test_run_returns_failed_when_target_variable_not_found():
+    variable_pool = VariablePool.empty()
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    node.graph_runtime_state = SimpleNamespace(variable_pool=variable_pool)
+    node._node_data = VariableAssignerNodeData(
+        title="assign",
+        items=[
+            VariableOperationItem(
+                variable_selector=["conversation", "missing"],
+                input_type=InputType.CONSTANT,
+                operation=Operation.OVER_WRITE,
+                value="value",
+            )
+        ],
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert "not found" in (result.error or "").lower()
+
+
+def test_run_returns_failed_when_json_input_is_invalid_for_object_set():
+    variable_pool = VariablePool.empty()
+    variable_pool.add(["conversation", "obj"], {})
+
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    node.graph_runtime_state = SimpleNamespace(variable_pool=variable_pool)
+    node._node_data = VariableAssignerNodeData(
+        title="assign",
+        items=[
+            VariableOperationItem(
+                variable_selector=["conversation", "obj"],
+                input_type=InputType.CONSTANT,
+                operation=Operation.SET,
+                value="{invalid-json}",
+            )
+        ],
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert "invalid input value" in (result.error or "").lower()

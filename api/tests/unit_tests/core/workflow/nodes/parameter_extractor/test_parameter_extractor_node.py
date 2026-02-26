@@ -2,16 +2,29 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageRole,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.variables.types import SegmentType
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base.node import NodeState
 from core.workflow.nodes.parameter_extractor.exc import (
+    InvalidModelModeError,
     InvalidModelTypeError,
     InvalidNumberOfParametersError,
+    InvalidSelectValueError,
     InvalidTextContentTypeError,
+    InvalidValueTypeError,
     ModelSchemaNotFoundError,
+    RequiredParameterMissingError,
 )
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import (
     ParameterExtractorNode,
@@ -699,3 +712,444 @@ def test_prompt_template_valid_mode(node):
     )
 
     assert result is not None
+
+
+def test_extract_json_mismatched_brackets_returns_prefix():
+    assert extract_json("{] trailing") == "{"
+
+
+def test_get_default_config_contains_completion_stop():
+    config = ParameterExtractorNode.get_default_config()
+
+    assert config["model"]["prompt_templates"]["completion_model"]["stop"] == ["Human:"]
+
+
+def test_validate_result_raises_when_required_parameter_is_missing_by_name(node):
+    parameter = MagicMock()
+    parameter.name = "age"
+    parameter.required = True
+    parameter.type = SegmentType.NUMBER
+    parameter.options = None
+
+    data = MagicMock()
+    data.parameters = [parameter]
+
+    with pytest.raises(RequiredParameterMissingError):
+        node._validate_result(data, {"other": 1})
+
+
+def test_validate_result_raises_for_invalid_value_type(node):
+    parameter = MagicMock()
+    parameter.name = "age"
+    parameter.required = False
+    parameter.type = SegmentType.NUMBER
+    parameter.options = None
+
+    data = MagicMock()
+    data.parameters = [parameter]
+
+    with pytest.raises(InvalidValueTypeError):
+        node._validate_result(data, {"age": "not-a-number"})
+
+
+def test_validate_result_raises_for_invalid_select_option(node):
+    parameter = MagicMock()
+    parameter.name = "color"
+    parameter.required = False
+    parameter.type = SegmentType.STRING
+    parameter.options = ["red", "blue"]
+
+    data = MagicMock()
+    data.parameters = [parameter]
+
+    with pytest.raises(InvalidSelectValueError):
+        node._validate_result(data, {"color": "green"})
+
+
+def test_transform_result_handles_array_nested_types(node):
+    number_param = MagicMock()
+    number_param.name = "numbers"
+    number_param.type = SegmentType.ARRAY_NUMBER
+    number_param.is_array_type.return_value = True
+    number_param.element_type.return_value = SegmentType.NUMBER
+
+    object_param = MagicMock()
+    object_param.name = "objects"
+    object_param.type = SegmentType.ARRAY_OBJECT
+    object_param.is_array_type.return_value = True
+    object_param.element_type.return_value = SegmentType.OBJECT
+
+    bool_param = MagicMock()
+    bool_param.name = "flags"
+    bool_param.type = SegmentType.ARRAY_BOOLEAN
+    bool_param.is_array_type.return_value = True
+    bool_param.element_type.return_value = SegmentType.BOOLEAN
+
+    string_param = MagicMock()
+    string_param.name = "title"
+    string_param.type = SegmentType.STRING
+    string_param.is_array_type.return_value = False
+
+    data = MagicMock()
+    data.parameters = [number_param, object_param, bool_param, string_param]
+
+    transformed = node._transform_result(
+        data,
+        {
+            "numbers": [1, "2", "x"],
+            "objects": [{"a": 1}, "x"],
+            "flags": [True, 1, False],
+            "title": 123,
+        },
+    )
+
+    assert transformed["numbers"].value == [1, 2]
+    assert transformed["objects"].value == [{"a": 1}]
+    assert transformed["flags"].value == [True, False]
+    assert transformed["title"] == ""
+
+
+def test_extract_complete_json_response_returns_none_when_json_not_found(node):
+    assert node._extract_complete_json_response("plain text only") is None
+
+
+def test_extract_json_from_tool_call_returns_none_for_empty_arguments(node):
+    tool_call = AssistantPromptMessage.ToolCall(
+        id="1",
+        type="function",
+        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="x", arguments=""),
+    )
+
+    assert node._extract_json_from_tool_call(tool_call) is None
+
+
+def test_extract_json_from_tool_call_returns_none_for_invalid_json(node):
+    tool_call = AssistantPromptMessage.ToolCall(
+        id="1",
+        type="function",
+        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="x", arguments="not json"),
+    )
+
+    assert node._extract_json_from_tool_call(tool_call) is None
+
+
+def test_get_function_calling_prompt_template_requires_chat_mode(node):
+    node_data = MagicMock()
+    node_data.model.mode = ModelMode.COMPLETION.value
+    node_data.instruction = ""
+    node_data.memory = None
+
+    variable_pool = MagicMock()
+    variable_pool.convert_template.return_value = MagicMock(text="")
+
+    with pytest.raises(InvalidModelModeError):
+        node._get_function_calling_prompt_template(
+            node_data=node_data,
+            query="q",
+            variable_pool=variable_pool,
+            memory=None,
+            max_token_limit=2000,
+        )
+
+
+def test_get_prompt_engineering_prompt_template_completion_mode(node):
+    node_data = MagicMock()
+    node_data.model.mode = ModelMode.COMPLETION.value
+    node_data.instruction = ""
+    node_data.memory = None
+
+    variable_pool = MagicMock()
+    variable_pool.convert_template.return_value = MagicMock(text="instruction")
+
+    result = node._get_prompt_engineering_prompt_template(
+        node_data=node_data,
+        query="question",
+        variable_pool=variable_pool,
+        memory=None,
+        max_token_limit=2000,
+    )
+
+    assert isinstance(result, CompletionModelPromptTemplate)
+    assert "question" in result.text
+
+
+def test_calculate_rest_token_uses_parameter_rule_template_name(node, mock_node_data):
+    class FakeLLM:
+        def get_model_schema(self, *args, **kwargs):
+            return MagicMock(features=[])
+
+    model_instance = MagicMock()
+    model_instance.model_type_instance = FakeLLM()
+
+    model_config = MagicMock()
+    model_config.model = "gpt"
+    model_config.credentials = {}
+    model_config.model_schema.model_properties = {ModelPropertyKey.CONTEXT_SIZE: 4000}
+    model_config.model_schema.parameter_rules = [MagicMock(name="temperature", use_template="max_tokens")]
+    model_config.parameters = {"max_tokens": 200}
+    model_config.provider_model_bundle.model_type_instance.get_num_tokens.return_value = 100
+
+    with (
+        patch("core.workflow.nodes.parameter_extractor.parameter_extractor_node.LargeLanguageModel", FakeLLM),
+        patch.object(node, "_fetch_model_config", return_value=(model_instance, model_config)),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.AdvancedPromptTransform.get_prompt",
+            return_value=[],
+        ),
+    ):
+        rest = node._calculate_rest_token(mock_node_data, "q", MagicMock(), model_config, "")
+
+    assert rest == 2700
+
+
+def test_extract_variable_selector_mapping_includes_instruction_selectors():
+    with patch(
+        "core.workflow.nodes.parameter_extractor.parameter_extractor_node.ParameterExtractorNodeData.model_validate"
+    ) as validate_mock:
+        validate_mock.return_value.query = ["start", "query"]
+        validate_mock.return_value.instruction = "Use {{#node_a.answer#}}"
+
+        mapping = ParameterExtractorNode._extract_variable_selector_to_variable_mapping(
+            graph_config={},
+            node_id="n1",
+            node_data={},
+        )
+
+    assert mapping["n1.query"] == ["start", "query"]
+    assert mapping["n1.#node_a.answer#"] == ["node_a", "answer"]
+
+
+def test_run_handles_parameter_extractor_errors(node, mock_node_data, mock_model_instance, mock_model_config):
+    node._node_data = mock_node_data
+
+    with (
+        patch.object(node, "_fetch_model_config", return_value=(mock_model_instance, mock_model_config)),
+        patch.object(node, "_invoke", side_effect=InvalidNumberOfParametersError("invalid")),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_memory", return_value=None
+        ),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_files", return_value=[]
+        ),
+    ):
+        result = node.run()
+
+    assert result is not None
+
+
+def test_generate_function_call_prompt_inserts_examples_and_tool(node):
+    node_data = MagicMock()
+    node_data.memory = None
+    node_data.get_parameter_json_schema.return_value = {"type": "object", "properties": {}}
+
+    model_config = MagicMock()
+    variable_pool = MagicMock()
+
+    with (
+        patch.object(node, "_calculate_rest_token", return_value=1000),
+        patch.object(node, "_get_function_calling_prompt_template", return_value=[]),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.AdvancedPromptTransform.get_prompt",
+            return_value=[SystemPromptMessage(content="sys"), UserPromptMessage(content="user")],
+        ),
+    ):
+        prompt_messages, tools = node._generate_function_call_prompt(
+            node_data=node_data,
+            query="extract this",
+            variable_pool=variable_pool,
+            model_config=model_config,
+            memory=None,
+            files=[],
+        )
+
+    assert len(prompt_messages) > 2
+    assert len(tools) == 1
+    assert tools[0].name == "extract_parameters"
+
+
+def test_generate_prompt_engineering_chat_prompt_inserts_examples(node):
+    node_data = MagicMock()
+    node_data.memory = None
+    node_data.get_parameter_json_schema.return_value = {"type": "object", "properties": {}}
+
+    with (
+        patch.object(node, "_calculate_rest_token", return_value=1000),
+        patch.object(node, "_get_prompt_engineering_prompt_template", return_value=[]),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.AdvancedPromptTransform.get_prompt",
+            return_value=[SystemPromptMessage(content="sys"), UserPromptMessage(content="user")],
+        ),
+    ):
+        prompt_messages = node._generate_prompt_engineering_chat_prompt(
+            node_data=node_data,
+            query="query",
+            variable_pool=MagicMock(),
+            model_config=MagicMock(),
+            memory=None,
+            files=[],
+        )
+
+    assert len(prompt_messages) > 2
+
+
+def test_generate_prompt_engineering_completion_prompt_returns_transformed_messages(node):
+    node_data = MagicMock()
+    node_data.memory = None
+    node_data.get_parameter_json_schema.return_value = {"type": "object", "properties": {}}
+    expected_prompt_messages = [UserPromptMessage(content="prompt")]
+
+    with (
+        patch.object(node, "_calculate_rest_token", return_value=1000),
+        patch.object(node, "_get_prompt_engineering_prompt_template", return_value=[]),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.AdvancedPromptTransform.get_prompt",
+            return_value=expected_prompt_messages,
+        ),
+    ):
+        prompt_messages = node._generate_prompt_engineering_completion_prompt(
+            node_data=node_data,
+            query="query",
+            variable_pool=MagicMock(),
+            model_config=MagicMock(),
+            memory=None,
+            files=[],
+        )
+
+    assert prompt_messages == expected_prompt_messages
+
+
+def test_get_function_calling_prompt_template_uses_memory_window(node):
+    node_data = MagicMock()
+    node_data.model.mode = ModelMode.CHAT.value
+    node_data.instruction = ""
+    node_data.memory.window.size = 2
+    node_data.memory = MagicMock(window=MagicMock(size=2))
+
+    variable_pool = MagicMock()
+    variable_pool.convert_template.return_value = MagicMock(text="instruction")
+
+    memory = MagicMock()
+    memory.get_history_prompt_text.return_value = "history"
+
+    messages = node._get_function_calling_prompt_template(
+        node_data=node_data,
+        query="query",
+        variable_pool=variable_pool,
+        memory=memory,
+        max_token_limit=100,
+    )
+
+    assert messages[0].role == PromptMessageRole.SYSTEM
+    assert "history" in messages[0].text
+
+
+def test_get_prompt_engineering_prompt_template_uses_memory_window(node):
+    node_data = MagicMock()
+    node_data.model.mode = ModelMode.CHAT.value
+    node_data.instruction = ""
+    node_data.memory = MagicMock(window=MagicMock(size=2))
+
+    variable_pool = MagicMock()
+    variable_pool.convert_template.return_value = MagicMock(text="instruction")
+
+    memory = MagicMock()
+    memory.get_history_prompt_text.return_value = "history"
+
+    messages = node._get_prompt_engineering_prompt_template(
+        node_data=node_data,
+        query="query",
+        variable_pool=variable_pool,
+        memory=memory,
+        max_token_limit=100,
+    )
+
+    assert messages[0].role == PromptMessageRole.SYSTEM
+    assert "history" in messages[0].text
+
+
+def test_extract_complete_json_response_parses_prefixed_payload(node):
+    result = node._extract_complete_json_response('prefix {"age": 18} trailing')
+
+    assert result == {"age": 18}
+
+
+def test_extract_json_from_tool_call_parses_prefixed_payload(node):
+    tool_call = AssistantPromptMessage.ToolCall(
+        id="1",
+        type="function",
+        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="extract", arguments='prefix {"a": 1} suffix'),
+    )
+
+    assert node._extract_json_from_tool_call(tool_call) == {"a": 1}
+
+
+def test_transform_result_handles_boolean_and_string_values(node):
+    bool_param = MagicMock()
+    bool_param.name = "enabled"
+    bool_param.type = SegmentType.BOOLEAN
+    bool_param.is_array_type.return_value = False
+
+    string_param = MagicMock()
+    string_param.name = "title"
+    string_param.type = SegmentType.STRING
+    string_param.is_array_type.return_value = False
+
+    array_string_param = MagicMock()
+    array_string_param.name = "tags"
+    array_string_param.type = SegmentType.ARRAY_STRING
+    array_string_param.is_array_type.return_value = True
+    array_string_param.element_type.return_value = SegmentType.STRING
+
+    data = MagicMock()
+    data.parameters = [bool_param, string_param, array_string_param]
+
+    transformed = node._transform_result(
+        data,
+        {"enabled": 1, "title": "hello", "tags": ["a", 1, "b"]},
+    )
+
+    assert transformed["enabled"] is True
+    assert transformed["title"] == "hello"
+    assert transformed["tags"].value == ["a", "b"]
+
+
+def test_run_success_path_with_prompt_engineering_branch(node, mock_node_data):
+    class FakeLLM:
+        def get_model_schema(self, *args, **kwargs):
+            schema = MagicMock()
+            schema.features = []
+            return schema
+
+    model_instance = MagicMock()
+    model_instance.model_type_instance = FakeLLM()
+
+    model_config = MagicMock()
+    model_config.model = "gpt"
+    model_config.credentials = {}
+    model_config.mode = "chat"
+    model_config.provider = "openai"
+    model_config.stop = []
+
+    usage = LLMUsage.empty_usage()
+    usage.total_tokens = 10
+    usage.total_price = 1
+    usage.currency = "USD"
+    node._node_data = mock_node_data
+    node.graph_runtime_state.variable_pool.get.return_value = None
+
+    with (
+        patch("core.workflow.nodes.parameter_extractor.parameter_extractor_node.LargeLanguageModel", FakeLLM),
+        patch.object(node, "_fetch_model_config", return_value=(model_instance, model_config)),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_memory", return_value=None
+        ),
+        patch(
+            "core.workflow.nodes.parameter_extractor.parameter_extractor_node.llm_utils.fetch_files", return_value=[]
+        ),
+        patch.object(node, "_generate_prompt_engineering_prompt", return_value=[]),
+        patch.object(node, "_invoke", return_value=('{"age": 10}', usage, None)),
+    ):
+        result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["__is_success"] == 1
