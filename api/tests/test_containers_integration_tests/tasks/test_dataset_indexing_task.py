@@ -446,35 +446,6 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         task_dispatch_spy.delay.assert_called_once()
 
-    def test_concurrent_task_limit_respected(self, db_session_with_containers, patched_external_dependencies):
-        """Pull and dispatch only up to configured tenant concurrency limit.
-
-        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
-        """
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
-        document_ids = [doc.id for doc in documents]
-        concurrency_limit = 2
-        pending_tasks = [
-            {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": [f"doc_{idx}"]}
-            for idx in range(5)
-        ]
-        task_dispatch_spy = MagicMock()
-
-        # Act
-        with (
-            patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit),
-            patch(
-                "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
-                return_value=pending_tasks[:concurrency_limit],
-            ),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
-        ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
-
-        # Assert
-        assert task_dispatch_spy.delay.call_count == concurrency_limit
-
     def test_task_key_deleted_when_queue_empty(self, db_session_with_containers, patched_external_dependencies):
         """Remove tenant running key when no follow-up tasks exist.
 
@@ -557,20 +528,21 @@ class TestDatasetIndexingTaskIntegration:
         assert len(run_args) == 2
         self._assert_documents_parsing(db_session_with_containers, existing_ids)
 
-    def test_tenant_queue_with_multiple_concurrent_tasks(
+    def test_tenant_queue_dispatches_up_to_concurrency_limit(
         self, db_session_with_containers, patched_external_dependencies
     ):
-        """Queue exactly the configured number of next tasks for a tenant.
+        """Dispatch only up to configured concurrency under queued backlog burst.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
-        concurrency_limit = 2
+        concurrency_limit = 3
+        backlog_size = 20
         pending_tasks = [
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": [f"doc_{idx}"]}
-            for idx in range(5)
+            for idx in range(backlog_size)
         ]
         task_dispatch_spy = MagicMock()
 
@@ -841,36 +813,6 @@ class TestDatasetIndexingTaskIntegration:
         run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == batch_limit
         self._assert_documents_parsing(db_session_with_containers, document_ids)
-
-    def test_tenant_queue_handles_burst_traffic(self, db_session_with_containers, patched_external_dependencies):
-        """Handle burst traffic by dispatching only up to concurrency limit.
-
-        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
-        """
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
-        document_ids = [doc.id for doc in documents]
-        num_tasks = 20
-        concurrency_limit = 3
-        pending_tasks = [
-            {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": [f"doc_{idx}"]}
-            for idx in range(num_tasks)
-        ]
-        task_dispatch_spy = MagicMock()
-
-        # Act
-        with (
-            patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit),
-            patch(
-                "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
-                return_value=pending_tasks[:concurrency_limit],
-            ),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
-        ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
-
-        # Assert
-        assert task_dispatch_spy.delay.call_count == concurrency_limit
 
     def test_indexing_runner_exception_does_not_crash_task(
         self, db_session_with_containers, patched_external_dependencies
