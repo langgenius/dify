@@ -1,0 +1,53 @@
+name: Pyrefly Diff Check
+
+on:
+  pull_request:
+    paths:
+      - 'api/**/*.py'
+
+permissions:
+  contents: read
+
+jobs:
+  pyrefly-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python & UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run pyrefly on PR branch
+        run: |
+          uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
+
+      - name: Checkout base branch
+        run: git checkout ${{ github.base_ref }}
+
+      - name: Run pyrefly on base branch
+        run: |
+          uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
+
+      - name: Compute diff
+        run: |
+          diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
+
+      - name: Save PR number
+        run: |
+          echo ${{ github.event.pull_request.number }} > pr_number.txt
+
+      - name: Upload pyrefly diff
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyrefly_diff
+          path: |
+            pyrefly_diff.txt
+            pr_number.txt
