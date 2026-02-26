@@ -5,6 +5,9 @@ on:
     paths:
       - 'api/**/*.py'
 
+permissions:
+  contents: read
+
 jobs:
   pyrefly-diff:
     runs-on: ubuntu-latest
@@ -34,24 +37,17 @@ jobs:
           uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
 
       - name: Compute diff
-        id: diff
         run: |
-          DIFF=$(diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt || true)
-          echo "diff<<EOF" >> $GITHUB_OUTPUT
-          echo "$DIFF" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
 
-      - name: Post diff as PR comment
-        uses: actions/github-script@v7
+      - name: Save PR number
+        run: |
+          echo ${{ github.event.pull_request.number }} > pr_number.txt
+
+      - name: Upload pyrefly diff
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const diff = `${{ steps.diff.outputs.diff }}`;
-            const body = diff 
-              ? `### Pyrefly Diff (base → PR)\n\`\`\`diff\n${diff}\n\`\`\``
-              : '### Pyrefly Diff\nNo changes detected.';
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
+          name: pyrefly_diff
+          path: |
+            pyrefly_diff.txt
+            pr_number.txt
