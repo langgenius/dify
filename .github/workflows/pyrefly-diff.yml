@@ -33,8 +33,13 @@ jobs:
         run: |
           uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
 
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+
       - name: Checkout base branch
-        run: git checkout ${{ github.base_ref }}
+        run: |
+          git checkout --detach FETCH_HEAD
 
       - name: Run pyrefly on base branch
         run: |

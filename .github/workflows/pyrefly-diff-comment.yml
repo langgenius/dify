@@ -18,7 +18,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].head.repo.full_name != github.repository }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download pyrefly diff artifact
         uses: actions/github-script@v8
@@ -56,17 +56,42 @@ jobs:
             const fs = require('fs');
             let diff = fs.readFileSync('pyrefly_diff.txt', { encoding: 'utf8' });
             let prNumber = null;
+            let prHeadRepo = null;
+            let prBaseRepo = null;
             try {
               prNumber = parseInt(fs.readFileSync('pr_number.txt', { encoding: 'utf8' }), 10);
             } catch (err) {
-              // Fallback to workflow_run payload if artifact is missing or incomplete.
-              const prs = context.payload.workflow_run.pull_requests || [];
-              if (prs.length > 0 && prs[0].number) {
-                prNumber = prs[0].number;
+              // Ignore and fallback to workflow_run payload or commit lookup.
+            }
+            const prs = context.payload.workflow_run.pull_requests || [];
+            if (!prNumber && prs.length > 0 && prs[0].number) {
+              prNumber = prs[0].number;
+            }
+            if (prs.length > 0) {
+              prHeadRepo = prs[0].head?.repo?.full_name || null;
+              prBaseRepo = prs[0].base?.repo?.full_name || null;
+            }
+            if (!prNumber) {
+              const headSha = context.payload.workflow_run.head_sha;
+              const associated = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: headSha,
+              });
+              const [pr] = associated.data || [];
+              if (pr?.number) {
+                prNumber = pr.number;
+                prHeadRepo = pr.head?.repo?.full_name || prHeadRepo;
+                prBaseRepo = pr.base?.repo?.full_name || prBaseRepo;
               }
             }
             if (!prNumber) {
               throw new Error('PR number not found in artifact or workflow_run payload');
+            }
+            // Avoid duplicate comments for same-repo PRs (handled in pyrefly-diff.yml).
+            if (prHeadRepo && prBaseRepo && prHeadRepo === prBaseRepo) {
+              console.log('Skipping comment for same-repo PR; handled in pyrefly-diff.yml');
+              return;
             }
 
             const MAX_CHARS = 65000;
