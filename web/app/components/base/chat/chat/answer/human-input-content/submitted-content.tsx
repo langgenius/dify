@@ -9,7 +9,9 @@ const SubmittedContent = ({
   content,
 }: SubmittedContentProps) => {
   return (
-    <Markdown content={content} />
+    <div data-testid="submitted-content">
+      <Markdown content={content} />
+    </div>
   )
 }
 
