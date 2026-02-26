@@ -11,6 +11,10 @@ permissions:
 jobs:
   pyrefly-diff:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
@@ -51,3 +55,31 @@ jobs:
           path: |
             pyrefly_diff.txt
             pr_number.txt
+
+      - name: Comment PR with pyrefly diff
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let diff = fs.readFileSync('pyrefly_diff.txt', { encoding: 'utf8' });
+            const prNumber = context.payload.pull_request.number;
+
+            const MAX_CHARS = 65000;
+            if (diff.length > MAX_CHARS) {
+              diff = diff.slice(0, MAX_CHARS);
+              diff = diff.slice(0, diff.lastIndexOf('\n'));
+              diff += '\n\n... (truncated) ...';
+            }
+
+            const body = diff.trim()
+              ? `### Pyrefly Diff (base → PR)\n\`\`\`diff\n${diff}\n\`\`\``
+              : '### Pyrefly Diff\nNo changes detected.';
+
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
