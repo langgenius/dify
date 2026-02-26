@@ -27,7 +27,7 @@ class VolcengineTosStorage(BaseStorage):
             region=dify_config.VOLCENGINE_TOS_REGION,
         )
 
-    def save(self, filename, data):
+    def save(self, filename: str, data):
         if not self.bucket_name:
             raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
         self.client.put_object(bucket=self.bucket_name, key=filename, content=data)
@@ -47,12 +47,12 @@ class VolcengineTosStorage(BaseStorage):
         while chunk := response.read(4096):
             yield chunk
 
-    def download(self, filename, target_filepath):
+    def download(self, filename: str, target_filepath):
         if not self.bucket_name:
             raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
         self.client.get_object_to_file(bucket=self.bucket_name, key=filename, file_path=target_filepath)
 
-    def exists(self, filename):
+    def exists(self, filename: str) -> bool:
         if not self.bucket_name:
             return False
         res = self.client.head_object(bucket=self.bucket_name, key=filename)
@@ -60,7 +60,7 @@ class VolcengineTosStorage(BaseStorage):
             return False
         return True
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         if not self.bucket_name:
             return
         self.client.delete_object(bucket=self.bucket_name, key=filename)
