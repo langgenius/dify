@@ -1671,8 +1671,7 @@ export const useNodesInteractions = () => {
               n.parentId === nodeToPaste.id
               && n.type === CUSTOM_LOOP_START_NODE,
           )
-          if (oldLoopStartNode)
-            idMapping[oldLoopStartNode.id] = newLoopStartNode!.id
+          idMapping[oldLoopStartNode!.id] = newLoopStartNode!.id
 
           const { copyChildren, newIdMapping }
             = handleNodeLoopChildrenCopy(
