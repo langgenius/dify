@@ -120,11 +120,11 @@ class TestDatasetIndexingTaskIntegration:
             status="active",
         )
         db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        db_session_with_containers.flush()
 
         tenant = Tenant(name=fake.company(), status="normal")
         db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        db_session_with_containers.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -133,7 +133,6 @@ class TestDatasetIndexingTaskIntegration:
             current=True,
         )
         db_session_with_containers.add(join)
-        db_session_with_containers.commit()
 
         dataset = Dataset(
             id=fake.uuid4(),
@@ -145,7 +144,6 @@ class TestDatasetIndexingTaskIntegration:
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
 
         if document_ids is None:
             document_ids = [str(uuid.uuid4()) for _ in range(document_count)]
@@ -514,8 +512,10 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         opened = session_close_tracker["opened_sessions"]
         closed = session_close_tracker["closed_sessions"]
+        opened_ids = {id(session) for session in opened}
+        closed_ids = {id(session) for session in closed}
         assert len(opened) >= 2
-        assert len(closed) >= len(opened)
+        assert opened_ids <= closed_ids
 
     def test_session_cleanup_on_error(
         self,
@@ -535,8 +535,10 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         opened = session_close_tracker["opened_sessions"]
         closed = session_close_tracker["closed_sessions"]
+        opened_ids = {id(session) for session in opened}
+        closed_ids = {id(session) for session in closed}
         assert len(opened) >= 2
-        assert len(closed) >= len(opened)
+        assert opened_ids <= closed_ids
 
     def test_multiple_documents_with_mixed_success_and_failure(
         self, db_session_with_containers, patched_external_dependencies
