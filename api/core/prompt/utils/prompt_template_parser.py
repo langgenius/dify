@@ -1,9 +1,9 @@
 import re
 from collections.abc import Mapping
 
-REGEX = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#histories#|#query#|#context#|#sys\.query#|#sys\.files#)\}\}")
+REGEX = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#histories#|#query#|#context#)\}\}")
 WITH_VARIABLE_TMPL_REGEX = re.compile(
-    r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#[a-zA-Z0-9_]{1,50}\.[a-zA-Z0-9_\.]{1,100}#|#histories#|#query#|#context#|#sys\.query#|#sys\.files#)\}\}"
+    r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#[a-zA-Z0-9_]{1,50}\.[a-zA-Z0-9_\.]{1,100}#|#histories#|#query#|#context#)\}\}"
 )
 
 
@@ -15,9 +15,8 @@ class PromptTemplateParser:
     2. The template variable Key can only be: letters + numbers + underscore, with a maximum length of 16 characters,
        and can only start with letters and underscores.
     3. The template variable Key cannot contain new lines or spaces, and must comply with rule 2.
-    4. In addition to the above, 5 special template variable Keys are accepted:
-       `{{#histories#}}` `{{#query#}}` `{{#context#}}` `{{#sys.query#}}` `{{#sys.files#}}`.
-       When `with_variable_tmpl=True`, variable selectors like `{{#node_id.var#}}` are also accepted.
+    4. In addition to the above, 3 types of special template variable Keys are accepted:
+       `{{#histories#}}` `{{#query#}}` `{{#context#}}`. No other `{{##}}` template variables are allowed.
     """
 
     def __init__(self, template: str, with_variable_tmpl: bool = False):

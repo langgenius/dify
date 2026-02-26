@@ -369,7 +369,7 @@ def test_chat_prompt_query_template_and_query_only_branch():
         memory=None,
         model_config=model_config_mock,
     )
-    assert messages[-1].content == "query=what ctx=ctx"
+    assert messages[-1].content == "query={{#sys.query#}} ctx=ctx"
 
 
 def test_chat_prompt_memory_with_files_and_query():
