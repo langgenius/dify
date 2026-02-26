@@ -376,8 +376,10 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== Embedding Model Update Tests ====================
 
-    def test_update_internal_dataset_keep_existing_embedding_model(self, db_session_with_containers):
-        """Test updating internal dataset without changing embedding model."""
+    def test_update_internal_dataset_keep_existing_embedding_model_when_indexing_technique_unchanged(
+        self, db_session_with_containers
+    ):
+        """Test preserving embedding settings when indexing technique remains unchanged."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant()
         existing_binding_id = str(uuid4())
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -400,6 +402,7 @@ class TestDatasetServiceUpdateDataset:
         db.session.refresh(dataset)
 
         assert dataset.name == "new_name"
+        assert dataset.indexing_technique == "high_quality"
         assert dataset.embedding_model_provider == "openai"
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.collection_binding_id == existing_binding_id
@@ -466,37 +469,6 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.embedding_model == "text-embedding-3-small"
         assert dataset.embedding_model_provider == "openai"
         assert dataset.collection_binding_id == binding.id
-        assert dataset.retrieval_model == "new_model"
-        assert result.id == dataset.id
-
-    def test_update_internal_dataset_no_indexing_technique_change(self, db_session_with_containers):
-        """Test updating internal dataset without changing indexing technique."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant()
-        existing_binding_id = str(uuid4())
-        dataset = DatasetUpdateTestDataFactory.create_dataset(
-            tenant_id=tenant.id,
-            created_by=user.id,
-            provider="vendor",
-            indexing_technique="high_quality",
-            embedding_model_provider="openai",
-            embedding_model="text-embedding-ada-002",
-            collection_binding_id=existing_binding_id,
-        )
-
-        update_data = {
-            "name": "new_name",
-            "indexing_technique": "high_quality",
-            "retrieval_model": "new_model",
-        }
-
-        result = DatasetService.update_dataset(dataset.id, update_data, user)
-        db.session.refresh(dataset)
-
-        assert dataset.name == "new_name"
-        assert dataset.indexing_technique == "high_quality"
-        assert dataset.embedding_model_provider == "openai"
-        assert dataset.embedding_model == "text-embedding-ada-002"
-        assert dataset.collection_binding_id == existing_binding_id
         assert dataset.retrieval_model == "new_model"
         assert result.id == dataset.id
 
