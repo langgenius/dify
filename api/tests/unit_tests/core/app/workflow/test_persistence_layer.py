@@ -21,6 +21,7 @@ from core.workflow.graph_events.graph import (
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunPausedEvent,
+    GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
 from core.workflow.graph_events.node import (
@@ -95,6 +96,20 @@ def _make_layer(
 
 
 class TestWorkflowPersistenceLayer:
+    def test_on_graph_start_resets_state(self):
+        layer, _, _, _ = _make_layer()
+        layer._workflow_execution = object()
+        layer._node_execution_cache["cached"] = object()
+        layer._node_snapshots["cached"] = object()
+        layer._node_sequence = 9
+
+        layer.on_graph_start()
+
+        assert layer._workflow_execution is None
+        assert layer._node_execution_cache == {}
+        assert layer._node_snapshots == {}
+        assert layer._node_sequence == 0
+
     def test_get_execution_id_requires_system_variable(self):
         system_variable = SystemVariable(workflow_execution_id=None)
         layer, _, _, _ = _make_layer(system_variable)
@@ -329,10 +344,151 @@ class TestWorkflowPersistenceLayer:
         with pytest.raises(ValueError, match="Node execution not found"):
             layer._get_node_execution("missing")
 
+    def test_get_workflow_execution_raises_when_uninitialized(self):
+        layer, _, _, _ = _make_layer()
+
+        with pytest.raises(ValueError, match="workflow execution not initialized"):
+            layer._get_workflow_execution()
+
     def test_next_node_sequence_increments(self):
         layer, _, _, _ = _make_layer()
         assert layer._next_node_sequence() == 1
         assert layer._next_node_sequence() == 2
+
+    def test_on_graph_end_is_noop(self):
+        layer, _, _, _ = _make_layer()
+
+        assert layer.on_graph_end(error=None) is None
+
+    def test_on_event_dispatches_to_all_known_handlers(self):
+        layer, _, _, _ = _make_layer()
+        called: list[str] = []
+
+        def _record(name: str):
+            def _handler(*_args, **_kwargs):
+                called.append(name)
+
+            return _handler
+
+        layer._handle_graph_run_started = _record("started")
+        layer._handle_graph_run_succeeded = _record("succeeded")
+        layer._handle_graph_run_partial_succeeded = _record("partial")
+        layer._handle_graph_run_failed = _record("failed")
+        layer._handle_graph_run_aborted = _record("aborted")
+        layer._handle_graph_run_paused = _record("paused")
+        layer._handle_node_started = _record("node_started")
+        layer._handle_node_retry = _record("node_retry")
+        layer._handle_node_succeeded = _record("node_succeeded")
+        layer._handle_node_failed = _record("node_failed")
+        layer._handle_node_exception = _record("node_exception")
+        layer._handle_node_pause_requested = _record("node_paused")
+
+        node_result = NodeRunResult()
+        now = datetime.now(UTC)
+        events = [
+            GraphRunStartedEvent(),
+            GraphRunSucceededEvent(outputs={"ok": True}),
+            GraphRunPartialSucceededEvent(outputs={"ok": True}, exceptions_count=1),
+            GraphRunFailedEvent(error="boom", exceptions_count=1),
+            GraphRunAbortedEvent(reason="stop", outputs={"x": 1}),
+            GraphRunPausedEvent(outputs={"pause": True}),
+            NodeRunStartedEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                node_title="Start",
+                start_at=now,
+            ),
+            NodeRunRetryEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                node_title="Start",
+                start_at=now,
+                error="retry",
+                retry_index=1,
+            ),
+            NodeRunSucceededEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                start_at=now,
+                node_run_result=node_result,
+            ),
+            NodeRunFailedEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                start_at=now,
+                error="failed",
+                node_run_result=node_result,
+            ),
+            NodeRunExceptionEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                start_at=now,
+                error="error",
+                node_run_result=node_result,
+            ),
+            NodeRunPauseRequestedEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                reason=SchedulingPause(message="pause"),
+                node_run_result=node_result,
+            ),
+        ]
+        expected_order = [
+            "started",
+            "succeeded",
+            "partial",
+            "failed",
+            "aborted",
+            "paused",
+            "node_started",
+            "node_started",
+            "node_succeeded",
+            "node_failed",
+            "node_exception",
+            "node_paused",
+        ]
+
+        for event in events:
+            layer.on_event(event)
+
+        assert called == expected_order
+
+    def test_on_event_dispatches_retry_when_started_type_check_is_bypassed(self, monkeypatch):
+        layer, _, _, _ = _make_layer()
+        called: list[str] = []
+
+        def _record(name: str):
+            def _handler(*_args, **_kwargs):
+                called.append(name)
+
+            return _handler
+
+        layer._handle_node_started = _record("node_started")
+        layer._handle_node_retry = _record("node_retry")
+        monkeypatch.setattr(
+            "core.app.workflow.layers.persistence.NodeRunStartedEvent",
+            type("FakeNodeRunStartedEvent", (), {}),
+        )
+
+        layer.on_event(
+            NodeRunRetryEvent(
+                id="exec",
+                node_id="node",
+                node_type=NodeType.START,
+                node_title="Start",
+                start_at=datetime.now(UTC),
+                error="retry",
+                retry_index=1,
+            )
+        )
+
+        assert called == ["node_retry"]
 
     def test_enqueue_trace_task_skips_when_disabled(self):
         trace_tasks: list[object] = []

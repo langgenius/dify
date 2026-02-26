@@ -21,6 +21,22 @@ class DummyCodeNode(DummyNode):
         return ()
 
 
+class DummyTemplateTransformNode(DummyNode):
+    pass
+
+
+class DummyHttpRequestNode(DummyNode):
+    pass
+
+
+class DummyKnowledgeRetrievalNode(DummyNode):
+    pass
+
+
+class DummyDocumentExtractorNode(DummyNode):
+    pass
+
+
 class TestDifyNodeFactory:
     def _factory(self, monkeypatch):
         monkeypatch.setattr("core.app.workflow.node_factory.dify_config.CODE_MAX_STRING_LENGTH", 10)
@@ -92,3 +108,59 @@ class TestDifyNodeFactory:
 
         assert isinstance(node, DummyCodeNode)
         assert node.id == "node-1"
+
+    def test_create_node_template_transform_branch(self, monkeypatch):
+        factory = self._factory(monkeypatch)
+        monkeypatch.setattr(
+            "core.app.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
+            {NodeType.TEMPLATE_TRANSFORM: {"1": DummyNode}},
+        )
+        monkeypatch.setattr("core.app.workflow.node_factory.LATEST_VERSION", "1")
+        monkeypatch.setattr("core.app.workflow.node_factory.TemplateTransformNode", DummyTemplateTransformNode)
+
+        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.TEMPLATE_TRANSFORM.value}})
+
+        assert isinstance(node, DummyTemplateTransformNode)
+        assert "template_renderer" in node.kwargs
+
+    def test_create_node_http_request_branch(self, monkeypatch):
+        factory = self._factory(monkeypatch)
+        monkeypatch.setattr(
+            "core.app.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
+            {NodeType.HTTP_REQUEST: {"1": DummyNode}},
+        )
+        monkeypatch.setattr("core.app.workflow.node_factory.LATEST_VERSION", "1")
+        monkeypatch.setattr("core.app.workflow.node_factory.HttpRequestNode", DummyHttpRequestNode)
+
+        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.HTTP_REQUEST.value}})
+
+        assert isinstance(node, DummyHttpRequestNode)
+        assert "http_request_config" in node.kwargs
+
+    def test_create_node_knowledge_retrieval_branch(self, monkeypatch):
+        factory = self._factory(monkeypatch)
+        monkeypatch.setattr(
+            "core.app.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
+            {NodeType.KNOWLEDGE_RETRIEVAL: {"1": DummyNode}},
+        )
+        monkeypatch.setattr("core.app.workflow.node_factory.LATEST_VERSION", "1")
+        monkeypatch.setattr("core.app.workflow.node_factory.KnowledgeRetrievalNode", DummyKnowledgeRetrievalNode)
+
+        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.KNOWLEDGE_RETRIEVAL.value}})
+
+        assert isinstance(node, DummyKnowledgeRetrievalNode)
+        assert "rag_retrieval" in node.kwargs
+
+    def test_create_node_document_extractor_branch(self, monkeypatch):
+        factory = self._factory(monkeypatch)
+        monkeypatch.setattr(
+            "core.app.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
+            {NodeType.DOCUMENT_EXTRACTOR: {"1": DummyNode}},
+        )
+        monkeypatch.setattr("core.app.workflow.node_factory.LATEST_VERSION", "1")
+        monkeypatch.setattr("core.app.workflow.node_factory.DocumentExtractorNode", DummyDocumentExtractorNode)
+
+        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.DOCUMENT_EXTRACTOR.value}})
+
+        assert isinstance(node, DummyDocumentExtractorNode)
+        assert "unstructured_api_config" in node.kwargs
