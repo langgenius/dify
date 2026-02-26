@@ -560,11 +560,6 @@
       "count": 3
     }
   },
-  "app/components/app/configuration/config-var/config-modal/field.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/config-var/config-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -1300,9 +1295,6 @@
     }
   },
   "app/components/base/audio-gallery/AudioPlayer.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1683,14 +1675,6 @@
   },
   "app/components/base/dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/divider/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -2116,9 +2100,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 11
     }
@@ -2270,11 +2251,6 @@
       "count": 2
     }
   },
-  "app/components/base/notion-page-selector/credential-selector/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/notion-page-selector/page-selector/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -2330,9 +2306,6 @@
     }
   },
   "app/components/base/prompt-editor/plugins/context-block/component.tsx": {
-    "tailwindcss/no-duplicate-classes": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2375,11 +2348,6 @@
   "app/components/base/prompt-editor/plugins/history-block/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    }
-  },
-  "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
@@ -2605,21 +2573,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/tag-management/index.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/base/tag-management/panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
-  "app/components/base/tag-management/trigger.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/text-generation/hooks.ts": {
