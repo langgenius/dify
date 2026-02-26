@@ -23,7 +23,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --directory api --dev
+        run: uv sync --project api --dev
 
       - name: Run pyrefly on PR branch
         run: |
