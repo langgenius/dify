@@ -304,7 +304,7 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_tenant_queue_processes_next_task_after_completion(
+    def test_tenant_queue_dispatches_next_task_after_completion(
         self, db_session_with_containers, patched_external_dependencies
     ):
         """Dispatch the next queued task after current tenant task completes.
@@ -624,33 +624,6 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
         delete_key_spy.assert_called_once()
-
-    def test_queue_chain_processing(self, db_session_with_containers, patched_external_dependencies):
-        """After one task finishes, enqueue the next queued task in the chain.
-
-        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
-        """
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
-        task_1_ids = [doc.id for doc in documents]
-        task_2_ids = [str(uuid.uuid4())]
-        next_task = {
-            "tenant_id": dataset.tenant_id,
-            "dataset_id": dataset.id,
-            "document_ids": task_2_ids,
-        }
-        task_dispatch_spy = MagicMock()
-
-        # Act
-        with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[next_task]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
-        ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, task_1_ids, task_dispatch_spy)
-
-        # Assert
-        task_dispatch_spy.delay.assert_called_once()
-        assert task_dispatch_spy.delay.call_args.kwargs["document_ids"] == task_2_ids
 
     def test_single_document_processing(self, db_session_with_containers, patched_external_dependencies):
         """Process the minimum batch size (single document)."""
