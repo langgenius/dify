@@ -49,6 +49,71 @@ class AsyncWorkflowServiceTestDataFactory:
 
 
 class TestAsyncWorkflowService:
+    @pytest.fixture
+    def async_workflow_trigger_mocks(self):
+        """Shared fixture for async workflow trigger tests.
+
+        Yields mocks for:
+            - repo: SQLAlchemyWorkflowTriggerLogRepository
+            - dispatcher_manager_class: QueueDispatcherManager class
+            - dispatcher: dispatcher instance
+            - quota_workflow: QuotaType.WORKFLOW
+            - get_workflow: AsyncWorkflowService._get_workflow method
+            - professional_task: execute_workflow_professional
+            - team_task: execute_workflow_team
+            - sandbox_task: execute_workflow_sandbox
+        """
+        mock_repo = MagicMock()
+
+        def _create_side_effect(new_log):
+            new_log.id = "trigger-log-123"
+            return new_log
+
+        mock_repo.create.side_effect = _create_side_effect
+
+        mock_dispatcher = MagicMock()
+        quota_workflow = MagicMock()
+        mock_get_workflow = MagicMock()
+
+        mock_professional_task = MagicMock()
+        mock_team_task = MagicMock()
+        mock_sandbox_task = MagicMock()
+
+        with (
+            patch.object(
+                async_workflow_service_module,
+                "SQLAlchemyWorkflowTriggerLogRepository",
+                return_value=mock_repo,
+            ),
+            patch.object(async_workflow_service_module, "QueueDispatcherManager") as mock_dispatcher_manager_class,
+            patch.object(async_workflow_service_module, "WorkflowService"),
+            patch.object(
+                async_workflow_service_module.AsyncWorkflowService,
+                "_get_workflow",
+            ) as mock_get_workflow,
+            patch.object(
+                async_workflow_service_module,
+                "QuotaType",
+                new=SimpleNamespace(WORKFLOW=quota_workflow),
+            ),
+            patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
+            patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
+            patch.object(async_workflow_service_module, "execute_workflow_sandbox") as mock_sandbox_task,
+        ):
+            # Configure dispatcher_manager to return our mock_dispatcher
+            mock_dispatcher_manager_class.return_value.get_dispatcher.return_value = mock_dispatcher
+
+            yield {
+                "repo": mock_repo,
+                "dispatcher_manager_class": mock_dispatcher_manager_class,
+                "dispatcher": mock_dispatcher,
+                "quota_workflow": quota_workflow,
+                "get_workflow": mock_get_workflow,
+                "professional_task": mock_professional_task,
+                "team_task": mock_team_task,
+                "sandbox_task": mock_sandbox_task,
+            }
+
     @pytest.mark.parametrize(
         ("queue_name", "selected_task_attr"),
         [
@@ -57,7 +122,9 @@ class TestAsyncWorkflowService:
             (QueuePriority.SANDBOX, "execute_workflow_sandbox"),
         ],
     )
-    def test_should_dispatch_to_matching_celery_task_when_triggering_workflow(self, queue_name, selected_task_attr):
+    def test_should_dispatch_to_matching_celery_task_when_triggering_workflow(
+        self, queue_name, selected_task_attr, async_workflow_trigger_mocks
+    ):
         """Test queue-based task routing and successful async trigger response."""
         # Arrange
         session = MagicMock()
@@ -69,52 +136,25 @@ class TestAsyncWorkflowService:
         workflow = MagicMock()
         workflow.id = "workflow-123"
 
-        trigger_log = MagicMock()
-        trigger_log.id = "trigger-log-123"
+        mocks = async_workflow_trigger_mocks
+        mocks["dispatcher"].get_queue_name.return_value = queue_name
+        mocks["get_workflow"].return_value = workflow
 
-        mock_repo = MagicMock()
-
-        def _create_side_effect(new_log):
-            new_log.id = "trigger-log-123"
-            return new_log
-
-        mock_repo.create.side_effect = _create_side_effect
-
-        dispatcher = MagicMock()
-        dispatcher.get_queue_name.return_value = queue_name
-
-        quota_workflow = MagicMock()
         task_result = MagicMock()
         task_result.id = "task-123"
+        mocks["professional_task"].delay.return_value = task_result
+        mocks["team_task"].delay.return_value = task_result
+        mocks["sandbox_task"].delay.return_value = task_result
 
-        with (
-            patch.object(
-                async_workflow_service_module, "SQLAlchemyWorkflowTriggerLogRepository", return_value=mock_repo
-            ),
-            patch.object(async_workflow_service_module, "QueueDispatcherManager") as mock_dispatcher_manager_class,
-            patch.object(async_workflow_service_module, "WorkflowService"),
-            patch.object(async_workflow_service_module.AsyncWorkflowService, "_get_workflow", return_value=workflow),
-            patch.object(async_workflow_service_module, "QuotaType", new=SimpleNamespace(WORKFLOW=quota_workflow)),
-            patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
-            patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
-            patch.object(async_workflow_service_module, "execute_workflow_sandbox") as mock_sandbox_task,
-        ):
-            mock_dispatcher_manager_class.return_value.get_dispatcher.return_value = dispatcher
-            mock_professional_task.delay.return_value = task_result
-            mock_team_task.delay.return_value = task_result
-            mock_sandbox_task.delay.return_value = task_result
+        class DummyAccount:
+            def __init__(self, user_id: str):
+                self.id = user_id
 
-            class DummyAccount:
-                def __init__(self, user_id: str):
-                    self.id = user_id
+        with patch.object(async_workflow_service_module, "Account", DummyAccount):
+            user = DummyAccount("account-123")
 
-            with patch.object(async_workflow_service_module, "Account", DummyAccount):
-                user = DummyAccount("account-123")
-
-                # Act
-                result = AsyncWorkflowService.trigger_workflow_async(
-                    session=session, user=user, trigger_data=trigger_data
-                )
+            # Act
+            result = AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
 
         # Assert
         assert isinstance(result, AsyncTriggerResponse)
@@ -123,10 +163,10 @@ class TestAsyncWorkflowService:
         assert result.status == "queued"
         assert result.queue == queue_name
 
-        quota_workflow.consume.assert_called_once_with("tenant-123")
+        mocks["quota_workflow"].consume.assert_called_once_with("tenant-123")
         assert session.commit.call_count == 2
 
-        created_log = mock_repo.create.call_args[0][0]
+        created_log = mocks["repo"].create.call_args[0][0]
         assert created_log.status == WorkflowTriggerStatus.QUEUED
         assert created_log.queue_name == queue_name
         assert created_log.created_by_role == CreatorUserRole.ACCOUNT
@@ -136,9 +176,9 @@ class TestAsyncWorkflowService:
         assert created_log.celery_task_id == "task-123"
 
         task_mocks = {
-            "execute_workflow_professional": mock_professional_task,
-            "execute_workflow_team": mock_team_task,
-            "execute_workflow_sandbox": mock_sandbox_task,
+            "execute_workflow_professional": mocks["professional_task"],
+            "execute_workflow_team": mocks["team_task"],
+            "execute_workflow_sandbox": mocks["sandbox_task"],
         }
         for task_attr, task_mock in task_mocks.items():
             if task_attr == selected_task_attr:
@@ -146,7 +186,7 @@ class TestAsyncWorkflowService:
             else:
                 task_mock.delay.assert_not_called()
 
-    def test_should_set_end_user_role_when_triggered_by_end_user(self):
+    def test_should_set_end_user_role_when_triggered_by_end_user(self, async_workflow_trigger_mocks):
         """Test that non-account users are tracked as END_USER in trigger logs."""
         # Arrange
         session = MagicMock()
@@ -158,38 +198,20 @@ class TestAsyncWorkflowService:
         workflow = MagicMock()
         workflow.id = "workflow-123"
 
-        mock_repo = MagicMock()
+        mocks = async_workflow_trigger_mocks
+        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.SANDBOX
+        mocks["get_workflow"].return_value = workflow
 
-        def _create_side_effect(new_log):
-            new_log.id = "trigger-log-123"
-            return new_log
-
-        mock_repo.create.side_effect = _create_side_effect
-
-        dispatcher = MagicMock()
-        dispatcher.get_queue_name.return_value = QueuePriority.SANDBOX
-        quota_workflow = MagicMock()
         task_result = MagicMock(id="task-123")
+        mocks["sandbox_task"].delay.return_value = task_result
 
-        with (
-            patch.object(
-                async_workflow_service_module, "SQLAlchemyWorkflowTriggerLogRepository", return_value=mock_repo
-            ),
-            patch.object(async_workflow_service_module, "QueueDispatcherManager") as mock_dispatcher_manager_class,
-            patch.object(async_workflow_service_module, "WorkflowService"),
-            patch.object(async_workflow_service_module.AsyncWorkflowService, "_get_workflow", return_value=workflow),
-            patch.object(async_workflow_service_module, "QuotaType", new=SimpleNamespace(WORKFLOW=quota_workflow)),
-            patch.object(async_workflow_service_module, "execute_workflow_sandbox") as mock_sandbox_task,
-        ):
-            mock_dispatcher_manager_class.return_value.get_dispatcher.return_value = dispatcher
-            mock_sandbox_task.delay.return_value = task_result
-            user = SimpleNamespace(id="end-user-123")
+        user = SimpleNamespace(id="end-user-123")
 
-            # Act
-            AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
+        # Act
+        AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
 
         # Assert
-        created_log = mock_repo.create.call_args[0][0]
+        created_log = mocks["repo"].create.call_args[0][0]
         assert created_log.created_by_role == CreatorUserRole.END_USER
         assert created_log.created_by == "end-user-123"
 
@@ -213,7 +235,7 @@ class TestAsyncWorkflowService:
                     trigger_data=trigger_data,
                 )
 
-    def test_should_mark_log_rate_limited_and_raise_when_quota_exceeded(self):
+    def test_should_mark_log_rate_limited_and_raise_when_quota_exceeded(self, async_workflow_trigger_mocks):
         """Test quota-exceeded path updates trigger log and raises WorkflowQuotaLimitError."""
         # Arrange
         session = MagicMock()
@@ -225,56 +247,33 @@ class TestAsyncWorkflowService:
         workflow = MagicMock()
         workflow.id = "workflow-123"
 
-        mock_repo = MagicMock()
-
-        def _create_side_effect(new_log):
-            new_log.id = "trigger-log-123"
-            return new_log
-
-        mock_repo.create.side_effect = _create_side_effect
-
-        dispatcher = MagicMock()
-        dispatcher.get_queue_name.return_value = QueuePriority.TEAM
-
-        quota_workflow = MagicMock()
-        quota_workflow.consume.side_effect = QuotaExceededError(
+        mocks = async_workflow_trigger_mocks
+        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
+        mocks["get_workflow"].return_value = workflow
+        mocks["quota_workflow"].consume.side_effect = QuotaExceededError(
             feature="workflow",
             tenant_id="tenant-123",
             required=1,
         )
 
-        with (
-            patch.object(
-                async_workflow_service_module, "SQLAlchemyWorkflowTriggerLogRepository", return_value=mock_repo
-            ),
-            patch.object(async_workflow_service_module, "QueueDispatcherManager") as mock_dispatcher_manager_class,
-            patch.object(async_workflow_service_module, "WorkflowService"),
-            patch.object(async_workflow_service_module.AsyncWorkflowService, "_get_workflow", return_value=workflow),
-            patch.object(async_workflow_service_module, "QuotaType", new=SimpleNamespace(WORKFLOW=quota_workflow)),
-            patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
-            patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
-            patch.object(async_workflow_service_module, "execute_workflow_sandbox") as mock_sandbox_task,
+        # Act / Assert
+        with pytest.raises(
+            WorkflowQuotaLimitError,
+            match="Workflow execution quota limit reached for tenant tenant-123",
         ):
-            mock_dispatcher_manager_class.return_value.get_dispatcher.return_value = dispatcher
-
-            # Act / Assert
-            with pytest.raises(
-                WorkflowQuotaLimitError,
-                match="Workflow execution quota limit reached for tenant tenant-123",
-            ):
-                AsyncWorkflowService.trigger_workflow_async(
-                    session=session,
-                    user=SimpleNamespace(id="user-123"),
-                    trigger_data=trigger_data,
-                )
+            AsyncWorkflowService.trigger_workflow_async(
+                session=session,
+                user=SimpleNamespace(id="user-123"),
+                trigger_data=trigger_data,
+            )
 
         assert session.commit.call_count == 2
-        updated_log = mock_repo.update.call_args[0][0]
+        updated_log = mocks["repo"].update.call_args[0][0]
         assert updated_log.status == WorkflowTriggerStatus.RATE_LIMITED
         assert "Quota limit reached" in updated_log.error
-        mock_professional_task.delay.assert_not_called()
-        mock_team_task.delay.assert_not_called()
-        mock_sandbox_task.delay.assert_not_called()
+        mocks["professional_task"].delay.assert_not_called()
+        mocks["team_task"].delay.assert_not_called()
+        mocks["sandbox_task"].delay.assert_not_called()
 
     def test_should_raise_when_reinvoke_target_log_does_not_exist(self):
         """Test reinvoke_trigger error path when original trigger log is missing."""

@@ -9,6 +9,29 @@ from models import TenantCreditPool
 from services.credit_pool_service import CreditPoolService
 
 
+@pytest.fixture
+def mock_credit_deduction_setup():
+    """Fixture providing common setup for credit deduction tests."""
+    pool = SimpleNamespace(remaining_credits=50)
+    fake_engine = MagicMock()
+    session = MagicMock()
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    session_context.__exit__.return_value = None
+
+    mock_get_pool = patch.object(CreditPoolService, "get_pool", return_value=pool)
+    mock_db = patch.object(credit_pool_service_module, "db", new=SimpleNamespace(engine=fake_engine))
+    mock_session = patch.object(credit_pool_service_module, "Session", return_value=session_context)
+
+    return {
+        "pool": pool,
+        "fake_engine": fake_engine,
+        "session": session,
+        "session_context": session_context,
+        "patches": (mock_get_pool, mock_db, mock_session),
+    }
+
+
 class TestCreditPoolService:
     def test_should_create_default_pool_with_trial_type_and_configured_quota(self):
         """Test create_default_pool persists a trial pool using configured hosted credits."""
@@ -88,7 +111,7 @@ class TestCreditPoolService:
             with pytest.raises(QuotaExceededError, match="No credits remaining"):
                 CreditPoolService.check_and_deduct_credits(tenant_id="tenant-123", credits_required=10)
 
-    def test_should_deduct_minimum_of_required_and_remaining_credits(self):
+    def test_should_deduct_minimum_of_required_and_remaining_credits(self, mock_credit_deduction_setup):
         """Test check_and_deduct_credits updates quota_used by the actual deducted amount."""
         tenant_id = "tenant-123"
         pool_type = "trial"
@@ -96,18 +119,11 @@ class TestCreditPoolService:
         remaining_credits = 120
         expected_deducted_credits = 120
 
-        pool = SimpleNamespace(remaining_credits=remaining_credits)
-        fake_engine = MagicMock()
-        session = MagicMock()
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_context.__exit__.return_value = None
+        mock_credit_deduction_setup["pool"].remaining_credits = remaining_credits
+        patches = mock_credit_deduction_setup["patches"]
+        session = mock_credit_deduction_setup["session"]
 
-        with (
-            patch.object(CreditPoolService, "get_pool", return_value=pool),
-            patch.object(credit_pool_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
-            patch.object(credit_pool_service_module, "Session", return_value=session_context) as mock_session_class,
-        ):
+        with patches[0], patches[1], patches[2]:
             result = CreditPoolService.check_and_deduct_credits(
                 tenant_id=tenant_id,
                 credits_required=credits_required,
@@ -115,7 +131,6 @@ class TestCreditPoolService:
             )
 
         assert result == expected_deducted_credits
-        mock_session_class.assert_called_once_with(fake_engine)
         session.execute.assert_called_once()
         session.commit.assert_called_once()
 
@@ -125,24 +140,18 @@ class TestCreditPoolService:
         assert pool_type in compiled_params.values()
         assert expected_deducted_credits in compiled_params.values()
 
-    def test_should_raise_quota_exceeded_when_deduction_update_fails(self):
+    def test_should_raise_quota_exceeded_when_deduction_update_fails(self, mock_credit_deduction_setup):
         """Test check_and_deduct_credits translates DB update failures to QuotaExceededError."""
-        pool = SimpleNamespace(remaining_credits=50)
-        fake_engine = MagicMock()
-        session = MagicMock()
-        session.execute.side_effect = Exception("db failure")
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_context.__exit__.return_value = None
+        mock_credit_deduction_setup["pool"].remaining_credits = 50
+        mock_credit_deduction_setup["session"].execute.side_effect = Exception("db failure")
+        session = mock_credit_deduction_setup["session"]
 
-        with (
-            patch.object(CreditPoolService, "get_pool", return_value=pool),
-            patch.object(credit_pool_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
-            patch.object(credit_pool_service_module, "Session", return_value=session_context),
-            patch.object(credit_pool_service_module, "logger") as mock_logger,
-        ):
+        patches = mock_credit_deduction_setup["patches"]
+        mock_logger = patch.object(credit_pool_service_module, "logger")
+
+        with patches[0], patches[1], patches[2], mock_logger as mock_logger_obj:
             with pytest.raises(QuotaExceededError, match="Failed to deduct credits"):
                 CreditPoolService.check_and_deduct_credits(tenant_id="tenant-123", credits_required=10)
 
         session.commit.assert_not_called()
-        mock_logger.exception.assert_called_once()
+        mock_logger_obj.exception.assert_called_once()

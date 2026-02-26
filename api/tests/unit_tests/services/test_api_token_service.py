@@ -9,61 +9,66 @@ import services.api_token_service as api_token_service_module
 from services.api_token_service import ApiTokenCache, CachedApiToken
 
 
+@pytest.fixture
+def mock_db_session():
+    """Fixture providing common DB session mocking for query_token_from_db tests."""
+    fake_engine = MagicMock()
+
+    session = MagicMock()
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    session_context.__exit__.return_value = None
+
+    with (
+        patch.object(api_token_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
+        patch.object(api_token_service_module, "Session", return_value=session_context) as mock_session_class,
+        patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
+        patch.object(api_token_service_module, "record_token_usage") as mock_record_usage,
+    ):
+        yield {
+            "session": session,
+            "mock_session_class": mock_session_class,
+            "mock_cache_set": mock_cache_set,
+            "mock_record_usage": mock_record_usage,
+            "fake_engine": fake_engine,
+        }
+
+
 class TestQueryTokenFromDb:
-    def test_should_return_api_token_and_cache_when_token_exists(self):
+    def test_should_return_api_token_and_cache_when_token_exists(self, mock_db_session):
         """Test DB lookup success path caches token and records usage."""
         # Arrange
-        fake_engine = MagicMock()
         auth_token = "token-123"
         scope = "app"
         api_token = MagicMock()
 
-        session = MagicMock()
-        session.scalar.return_value = api_token
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_context.__exit__.return_value = None
+        mock_db_session["session"].scalar.return_value = api_token
 
-        with (
-            patch.object(api_token_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
-            patch.object(api_token_service_module, "Session", return_value=session_context) as mock_session_class,
-            patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
-            patch.object(api_token_service_module, "record_token_usage") as mock_record_usage,
-        ):
-            # Act
-            result = api_token_service_module.query_token_from_db(auth_token, scope)
+        # Act
+        result = api_token_service_module.query_token_from_db(auth_token, scope)
 
         # Assert
         assert result == api_token
-        mock_session_class.assert_called_once_with(fake_engine, expire_on_commit=False)
-        mock_cache_set.assert_called_once_with(auth_token, scope, api_token)
-        mock_record_usage.assert_called_once_with(auth_token, scope)
+        mock_db_session["mock_session_class"].assert_called_once_with(
+            mock_db_session["fake_engine"], expire_on_commit=False
+        )
+        mock_db_session["mock_cache_set"].assert_called_once_with(auth_token, scope, api_token)
+        mock_db_session["mock_record_usage"].assert_called_once_with(auth_token, scope)
 
-    def test_should_cache_null_and_raise_unauthorized_when_token_not_found(self):
+    def test_should_cache_null_and_raise_unauthorized_when_token_not_found(self, mock_db_session):
         """Test DB lookup miss path caches null marker and raises Unauthorized."""
         # Arrange
-        fake_engine = MagicMock()
         auth_token = "missing-token"
         scope = "app"
 
-        session = MagicMock()
-        session.scalar.return_value = None
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_context.__exit__.return_value = None
+        mock_db_session["session"].scalar.return_value = None
 
-        with (
-            patch.object(api_token_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
-            patch.object(api_token_service_module, "Session", return_value=session_context),
-            patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
-            patch.object(api_token_service_module, "record_token_usage") as mock_record_usage,
-        ):
-            # Act / Assert
-            with pytest.raises(Unauthorized, match="Access token is invalid"):
-                api_token_service_module.query_token_from_db(auth_token, scope)
+        # Act / Assert
+        with pytest.raises(Unauthorized, match="Access token is invalid"):
+            api_token_service_module.query_token_from_db(auth_token, scope)
 
-        mock_cache_set.assert_called_once_with(auth_token, scope, None)
-        mock_record_usage.assert_not_called()
+        mock_db_session["mock_cache_set"].assert_called_once_with(auth_token, scope, None)
+        mock_db_session["mock_record_usage"].assert_not_called()
 
 
 class TestRecordTokenUsage:
