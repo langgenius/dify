@@ -1,4 +1,4 @@
-from unittest.mock import Mock, create_autospec, patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -12,7 +12,7 @@ from services.errors.account import NoPermissionError
 
 
 class DatasetUpdateTestDataFactory:
-    """Factory class for creating test data and mock objects for dataset update tests."""
+    """Factory class for creating real test data for dataset update integration tests."""
 
     @staticmethod
     def create_account_with_tenant(role: TenantAccountRole = TenantAccountRole.OWNER) -> tuple[Account, Tenant]:
@@ -345,16 +345,13 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch(
-                "services.dataset_service.current_user", create_autospec(Account, instance=True)
-            ) as mock_current_user,
+            patch("services.dataset_service.current_user", user),
             patch("services.dataset_service.ModelManager") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
         ):
-            mock_current_user.current_tenant_id = tenant.id
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
@@ -438,9 +435,7 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch(
-                "services.dataset_service.current_user", create_autospec(Account, instance=True)
-            ) as mock_current_user,
+            patch("services.dataset_service.current_user", user),
             patch("services.dataset_service.ModelManager") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
@@ -448,7 +443,6 @@ class TestDatasetServiceUpdateDataset:
             patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task,
             patch("services.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,
         ):
-            mock_current_user.current_tenant_id = tenant.id
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
@@ -552,12 +546,9 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with (
-            patch(
-                "services.dataset_service.current_user", create_autospec(Account, instance=True)
-            ) as mock_current_user,
+            patch("services.dataset_service.current_user", user),
             patch("services.dataset_service.ModelManager") as mock_model_manager,
         ):
-            mock_current_user.current_tenant_id = tenant.id
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
             with pytest.raises(Exception) as context:
