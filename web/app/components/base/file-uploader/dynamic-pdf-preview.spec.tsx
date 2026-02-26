@@ -77,7 +77,7 @@ describe('dynamic-pdf-preview', () => {
     const loaded = mockState.loader?.()
     expect(loaded).toBeInstanceOf(Promise)
 
-    const loadedModule = await loaded as { default: unknown }
+    const loadedModule = (await loaded) as { default: unknown }
     const pdfPreviewModule = await import('./pdf-preview')
     expect(loadedModule.default).toBe(pdfPreviewModule.default)
   })

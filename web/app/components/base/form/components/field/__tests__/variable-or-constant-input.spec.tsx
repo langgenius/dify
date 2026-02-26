@@ -46,12 +46,14 @@ describe('VariableOrConstantInputField', () => {
   })
 
   it('should handle variable picker changes', () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    render(<VariableOrConstantInputField label="Input source" />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Variable picker' }))
-
-    expect(logSpy).toHaveBeenCalledWith('Variable value changed')
-    logSpy.mockRestore()
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => { })
+    try {
+      render(<VariableOrConstantInputField label="Input source" />)
+      fireEvent.click(screen.getByRole('button', { name: 'Variable picker' }))
+      expect(logSpy).toHaveBeenCalledWith('Variable value changed')
+    }
+    finally {
+      logSpy.mockRestore()
+    }
   })
 })

@@ -38,7 +38,7 @@ const MockAudioPlayer = vi.hoisted(() => {
         sourceBuffer: { abort: vi.fn() },
       }
       mockState.instances.push(instance)
-      return instance as unknown as MockAudioPlayerClass
+      Object.assign(this, instance)
     }
   }
 })

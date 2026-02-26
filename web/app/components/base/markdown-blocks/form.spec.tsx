@@ -333,7 +333,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Click the DatePicker trigger to open the popup
-      const trigger = document.querySelector('.group.flex.cursor-pointer') as HTMLElement
+      const trigger = screen.getByTestId('date-picker-trigger')
       await user.click(trigger)
 
       // Click the "Now" button in the footer to select current date (calls onChange)
@@ -362,11 +362,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      // The clear icon (RiCloseCircleFill) is rendered but hidden via CSS.
-      // In jsdom, CSS classes don't actually hide elements, so we can query it.
-      const clearIcons = document.querySelectorAll('svg.remixicon')
-      // The second SVG is the close/clear icon (first is the calendar icon)
-      const clearIcon = clearIcons[1] as HTMLElement
+      const clearIcon = screen.getByTestId('date-picker-clear-button')
       await user.click(clearIcon)
 
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -388,7 +384,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // The real TimePicker renders a trigger with a readonly input showing the formatted time
-      const timeInput = document.querySelector('input[readonly]') as HTMLInputElement
+      const timeInput = screen.getByTestId('time-picker-trigger').querySelector('input[readonly]') as HTMLInputElement
       expect(timeInput).not.toBeNull()
       expect(timeInput.value).toBe('09:00 AM')
     })
@@ -405,7 +401,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Click the TimePicker trigger to open the popup
-      const trigger = document.querySelector('.group.flex.cursor-pointer') as HTMLElement
+      const trigger = screen.getByTestId('time-picker-trigger')
       await user.click(trigger)
 
       // Click the "Now" button in the footer to select current time (calls onChange)
@@ -454,7 +450,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      const label = document.querySelector('label')
+      const label = screen.getByTestId('label-field')
       expect(label).not.toBeNull()
       expect(label?.textContent).toBe('')
     })
@@ -477,7 +473,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       // Select renders with empty items list
-      expect(document.querySelector('form')).not.toBeNull()
+      expect(screen.getByTestId('markdown-form')).toBeInTheDocument()
     })
 
     it('should render button with empty text when children array is empty', () => {

@@ -1,16 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { InputNumber } from '../index'
-
-const getElementReactProps = (element: HTMLElement) => {
-  const reactPropsKey = Object.getOwnPropertyNames(element).find(key => key.startsWith('__reactProps$'))
-  if (!reactPropsKey)
-    throw new Error('Unable to find React props on element')
-
-  return (element as unknown as Record<string, unknown>)[reactPropsKey] as {
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
-    onClick?: () => void
-  }
-}
+import userEvent from '@testing-library/user-event'
+import { InputNumber } from './index'
 
 describe('InputNumber Component', () => {
   const defaultProps = {
@@ -86,12 +76,20 @@ describe('InputNumber Component', () => {
   it('does not call onChange when parsed value is NaN', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} />)
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
+    const input = screen.getByRole('spinbutton')
 
-    const changeEvent = { target: { value: 'not-a-number' } } as React.ChangeEvent<HTMLInputElement>
-    getElementReactProps(input).onChange?.(changeEvent)
+    const originalNumber = globalThis.Number
+    vi.spyOn(globalThis, 'Number').mockImplementation((val: unknown) => {
+      if (val === '123') {
+        return Number.NaN
+      }
+      return originalNumber(val)
+    })
+
+    fireEvent.change(input, { target: { value: '123' } })
 
     expect(onChange).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
   })
 
   it('does not call onChange when direct input exceeds range', () => {
@@ -143,15 +141,16 @@ describe('InputNumber Component', () => {
     expect(decrementBtn).toBeDisabled()
   })
 
-  it('does not change value when disabled handlers are triggered directly', () => {
+  it('does not change value when disabled handlers are triggered directly', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} disabled value={5} />)
 
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
 
-    getElementReactProps(incrementBtn).onClick?.()
-    getElementReactProps(decrementBtn).onClick?.()
+    await user.click(incrementBtn)
+    await user.click(decrementBtn)
 
     expect(onChange).not.toHaveBeenCalled()
   })

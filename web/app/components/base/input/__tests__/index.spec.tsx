@@ -1,23 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { createReactI18nextMock } from '@/test/i18n-mock'
-import Input, { inputVariants } from '../index'
-
-// Mock the i18n hook with custom translations for test assertions
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'operation.search': 'Search',
-  'placeholder.input': 'Please input',
-}))
-
-const getInputReactProps = (input: HTMLInputElement) => {
-  const reactPropsKey = Object.getOwnPropertyNames(input).find(key => key.startsWith('__reactProps$'))
-  if (!reactPropsKey)
-    throw new Error('Unable to find React props on input element')
-
-  return (input as unknown as Record<string, unknown>)[reactPropsKey] as {
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
-  }
-}
+import Input, { inputVariants } from './index'
 
 describe('Input component', () => {
   describe('Variants', () => {
@@ -131,8 +114,7 @@ describe('Input component', () => {
       render(<Input type="number" value={0} onChange={onChange} />)
 
       const input = screen.getByRole('spinbutton') as HTMLInputElement
-      const event = { target: { value: '00042' } } as React.ChangeEvent<HTMLInputElement>
-      getInputReactProps(input).onChange?.(event)
+      fireEvent.change(input, { target: { value: '00042' } })
 
       expect(onChange).toHaveBeenCalledTimes(1)
       expect(onChange.mock.calls[0][0].target.value).toBe('42')
@@ -143,9 +125,7 @@ describe('Input component', () => {
       render(<Input type="number" value={1} onChange={onChange} />)
 
       const input = screen.getByRole('spinbutton') as HTMLInputElement
-      const event = { target: { value: '00042' } } as React.ChangeEvent<HTMLInputElement>
-      getInputReactProps(input).onChange?.(event)
-
+      fireEvent.change(input, { target: { value: '00042' } })
       expect(onChange).toHaveBeenCalledTimes(1)
       expect(onChange.mock.calls[0][0].target.value).toBe('00042')
     })

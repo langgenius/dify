@@ -62,7 +62,9 @@ class MockMediaSource {
 
   emit(event: AudioEventName) {
     const listeners = this.listeners[event] || []
-    listeners.forEach(listener => listener())
+    listeners.forEach((listener) => {
+      listener()
+    })
   }
 }
 
@@ -428,7 +430,7 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
-        .mockImplementation(() => {})
+        .mockImplementation(() => { })
 
       await player.playAudioWithAudio('', true)
 
@@ -516,9 +518,9 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
-        .mockImplementation(() => {})
+        .mockImplementation(() => { })
 
-      ;(player as unknown as { receiveAudioData: (data: Uint8Array | undefined) => void }).receiveAudioData(undefined)
+        ; (player as unknown as { receiveAudioData: (data: Uint8Array | undefined) => void }).receiveAudioData(undefined)
 
       expect(finishStream).toHaveBeenCalledTimes(1)
     })
@@ -527,9 +529,9 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
-        .mockImplementation(() => {})
+        .mockImplementation(() => { })
 
-      ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array(0))
+        ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array(0))
 
       expect(finishStream).toHaveBeenCalledTimes(1)
     })
@@ -540,7 +542,7 @@ describe('AudioPlayer', () => {
       mediaSource.emit('sourceopen')
       mediaSource.sourceBuffer.updating = true
 
-      ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([1, 2, 3]))
+      ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([1, 2, 3]))
 
       expect(player.cacheBuffers.length).toBe(1)
     })
@@ -554,7 +556,7 @@ describe('AudioPlayer', () => {
       player.cacheBuffers = [existingBuffer]
       mediaSource.sourceBuffer.updating = false
 
-      ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([9]))
+      ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([9]))
 
       expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
       expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledWith(existingBuffer)
@@ -569,7 +571,7 @@ describe('AudioPlayer', () => {
       mediaSource.sourceBuffer.updating = false
       player.cacheBuffers = [new ArrayBuffer(3)]
 
-      ;(player as unknown as { finishStream: () => void }).finishStream()
+      ; (player as unknown as { finishStream: () => void }).finishStream()
       vi.advanceTimersByTime(50)
 
       expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)

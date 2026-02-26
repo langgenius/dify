@@ -8,18 +8,6 @@ describe('ImageLinkInput', () => {
     onUpload: vi.fn(),
   }
 
-  const triggerReactOnClick = (button: HTMLButtonElement) => {
-    const reactPropsKey = Object.getOwnPropertyNames(button).find(key => key.startsWith('__reactProps$'))
-    if (!reactPropsKey)
-      throw new Error('Unable to find React props on button element')
-
-    const reactProps = (button as unknown as Record<string, unknown>)[reactPropsKey] as {
-      onClick?: () => void
-    }
-
-    reactProps.onClick?.()
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -155,7 +143,7 @@ describe('ImageLinkInput', () => {
       const button = screen.getByRole('button')
       expect(button).toBeDisabled()
 
-      triggerReactOnClick(button as HTMLButtonElement)
+      await user.click(button)
 
       expect(onUpload).not.toHaveBeenCalled()
     })
