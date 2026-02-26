@@ -7,9 +7,7 @@ import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
 const hasImageChild = (children: any[]): boolean => {
-  return children.some(
-    (child: any) => child && 'tagName' in child && child.tagName === 'img',
-  )
+  return children.some((child: any) => child?.tagName === 'img')
 }
 
 const Paragraph = (paragraph: any) => {
