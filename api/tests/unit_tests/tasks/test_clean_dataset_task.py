@@ -143,8 +143,8 @@ def mock_upload_file():
 # ============================================================================
 # Test Basic Cleanup
 # ============================================================================
-
-
+# Note: Basic cleanup behavior is now covered by testcontainers-based
+# integration tests; no unit tests remain in this section.
 # ============================================================================
 # Test Error Handling
 # ============================================================================
