@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
+from core.workflow.file.enums import FileTransferMethod, FileType
+from core.workflow.file.models import File
 from core.workflow.system_variable import SystemVariable
 
 # Test data constants for SystemVariable serialization tests
