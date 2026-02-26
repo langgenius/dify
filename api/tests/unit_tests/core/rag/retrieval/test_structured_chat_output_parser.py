@@ -5,6 +5,21 @@ from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutpu
 
 
 class TestStructuredChatOutputParser:
+    def test_parse_action_without_action_input(self) -> None:
+        parser = StructuredChatOutputParser()
+        text = 'Action:\n```json\n{"action":"some_action"}\n```'
+        result = parser.parse(text)
+
+        assert isinstance(result, ReactAction)
+        assert result.tool == "some_action"
+        assert result.tool_input == {}
+
+    def test_parse_json_without_action_key(self) -> None:
+        parser = StructuredChatOutputParser()
+        text = 'Action:\n```json\n{"not_action":"search"}\n```'
+        with pytest.raises(ValueError, match="Could not parse LLM output"):
+            parser.parse(text)
+
     def test_parse_returns_action_for_tool_call(self) -> None:
         parser = StructuredChatOutputParser()
         text = (
@@ -28,14 +43,14 @@ class TestStructuredChatOutputParser:
         assert result.return_values == {"output": "final text"}
         assert result.log == text
 
-    def test_parse_handles_json_array_payload(self) -> None:
+    def test_parse_returns_finish_for_json_array_payload(self) -> None:
         parser = StructuredChatOutputParser()
         text = 'Action:\n```json\n[{"action":"search","action_input":"hello"}]\n```'
         result = parser.parse(text)
 
-        assert isinstance(result, ReactAction)
-        assert result.tool == "search"
-        assert result.tool_input == "hello"
+        assert isinstance(result, ReactFinish)
+        assert result.return_values == {"output": text}
+        assert result.log == text
 
     def test_parse_returns_finish_for_plain_text(self) -> None:
         parser = StructuredChatOutputParser()

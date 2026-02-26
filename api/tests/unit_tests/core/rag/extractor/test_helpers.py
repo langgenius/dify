@@ -18,6 +18,8 @@ class TestHelpers:
         assert len(encodings) == 1
         assert encodings[0].encoding in {"utf_8", "ascii"}
         assert encodings[0].confidence == 0.0
+        # Assert the language field for full coverage
+        assert encodings[0].language is not None
 
     def test_detect_file_encodings_timeout(self, monkeypatch):
         class FakeFuture:
