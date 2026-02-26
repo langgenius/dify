@@ -630,7 +630,7 @@ def test_dataset_retrieval_trace_none(trace_instance):
     trace_instance.add_span.assert_not_called()
 
 
-def test_langfuse_trace_list_dict_input():
+def test_langfuse_trace_entity_with_list_dict_input():
     # To cover lines 29-31 in langfuse_trace_entity.py
     # We need to mock replace_text_with_content or just check if it works
     # Actually replace_text_with_content is imported from core.ops.utils
@@ -639,7 +639,7 @@ def test_langfuse_trace_list_dict_input():
     assert data.input[0]["content"] == "hello"
 
 
-def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch, caplog):
+def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypatch, caplog):
     # Setup trace info to trigger LLM node usage extraction
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",

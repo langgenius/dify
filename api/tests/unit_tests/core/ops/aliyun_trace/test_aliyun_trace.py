@@ -229,9 +229,11 @@ def test_api_check_delegates(trace_instance: AliyunDataTrace):
     assert trace_instance.api_check() is False
 
 
-def test_get_project_url_success_and_error(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+def test_get_project_url_success(trace_instance: AliyunDataTrace):
     assert trace_instance.get_project_url() == "project-url"
 
+
+def test_get_project_url_error(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(trace_instance.trace_client, "get_project_url", MagicMock(side_effect=Exception("boom")))
     logger_mock = MagicMock()
     monkeypatch.setattr(aliyun_trace_module, "logger", logger_mock)
@@ -404,32 +406,62 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
     repo.get_by_workflow_run.assert_called_once_with(workflow_run_id=trace_info.workflow_run_id)
 
 
-def test_build_workflow_node_span_routes_by_type_and_handles_errors(
+def test_build_workflow_node_span_routes_llm_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    trace_info = _make_workflow_trace_info()
+    trace_metadata = MagicMock()
+
+    monkeypatch.setattr(trace_instance, "build_workflow_llm_span", MagicMock(return_value="llm"))
+
+    node_execution.node_type = NodeType.LLM
+    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "llm"
+
+
+def test_build_workflow_node_span_routes_knowledge_retrieval_type(
+    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch
+):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    trace_info = _make_workflow_trace_info()
+    trace_metadata = MagicMock()
+
+    monkeypatch.setattr(trace_instance, "build_workflow_retrieval_span", MagicMock(return_value="retrieval"))
+
+    node_execution.node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "retrieval"
+
+
+def test_build_workflow_node_span_routes_tool_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    trace_info = _make_workflow_trace_info()
+    trace_metadata = MagicMock()
+
+    monkeypatch.setattr(trace_instance, "build_workflow_tool_span", MagicMock(return_value="tool"))
+
+    node_execution.node_type = NodeType.TOOL
+    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "tool"
+
+
+def test_build_workflow_node_span_routes_code_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    trace_info = _make_workflow_trace_info()
+    trace_metadata = MagicMock()
+
+    monkeypatch.setattr(trace_instance, "build_workflow_task_span", MagicMock(return_value="task"))
+
+    node_execution.node_type = NodeType.CODE
+    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "task"
+
+
+def test_build_workflow_node_span_handles_errors(
     trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     trace_info = _make_workflow_trace_info()
     trace_metadata = MagicMock()
 
-    monkeypatch.setattr(trace_instance, "build_workflow_llm_span", MagicMock(return_value="llm"))
-    monkeypatch.setattr(trace_instance, "build_workflow_retrieval_span", MagicMock(return_value="retrieval"))
-    monkeypatch.setattr(trace_instance, "build_workflow_tool_span", MagicMock(return_value="tool"))
-    monkeypatch.setattr(trace_instance, "build_workflow_task_span", MagicMock(return_value="task"))
-
-    node_execution.node_type = NodeType.LLM
-    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "llm"
-
-    node_execution.node_type = NodeType.KNOWLEDGE_RETRIEVAL
-    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "retrieval"
-
-    node_execution.node_type = NodeType.TOOL
-    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "tool"
-
-    node_execution.node_type = NodeType.CODE
-    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "task"
-
     monkeypatch.setattr(trace_instance, "build_workflow_task_span", MagicMock(side_effect=RuntimeError("boom")))
     node_execution.node_type = NodeType.CODE
+    
     assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) is None
     assert "Error occurred in build_workflow_node_span" in caplog.text
 

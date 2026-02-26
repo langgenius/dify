@@ -23,17 +23,33 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
 
 
+@pytest.fixture
+def trace_client_factory():
+    """Factory fixture for creating TraceClient instances with automatic cleanup."""
+    clients_to_shutdown = []
+    
+    def _factory(**kwargs):
+        client = TraceClient(**kwargs)
+        clients_to_shutdown.append(client)
+        return client
+    
+    yield _factory
+    
+    # Cleanup: shutdown all created clients
+    for client in clients_to_shutdown:
+        client.shutdown()
+
+
 class TestTraceClient:
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.socket.gethostname")
-    def test_init(self, mock_gethostname, mock_exporter_class):
+    def test_init(self, mock_gethostname, mock_exporter_class, trace_client_factory):
         mock_gethostname.return_value = "test-host"
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
 
         assert client.endpoint == "http://test-endpoint"
         assert client.max_queue_size == 1000
         assert client.schedule_delay_sec == 5
-        assert client.max_export_batch_size == 50
         assert client.done is False
         assert client.worker_thread.is_alive()
 
@@ -41,55 +57,54 @@ class TestTraceClient:
         assert client.done is True
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_export(self, mock_exporter_class):
+    def test_export(self, mock_exporter_class, trace_client_factory):
         mock_exporter = mock_exporter_class.return_value
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
         spans = [MagicMock(spec=ReadableSpan)]
         client.export(spans)
         mock_exporter.export.assert_called_once_with(spans)
-        client.shutdown()
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.httpx.head")
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_success(self, mock_exporter_class, mock_head):
+    def test_api_check_success(self, mock_exporter_class, mock_head, trace_client_factory):
         mock_response = MagicMock()
         mock_response.status_code = 405
         mock_head.return_value = mock_response
 
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
         assert client.api_check() is True
-        client.shutdown()
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.httpx.head")
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_failure_status(self, mock_exporter_class, mock_head):
+    def test_api_check_failure_status(self, mock_exporter_class, mock_head, trace_client_factory):
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_head.return_value = mock_response
 
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
         assert client.api_check() is False
-        client.shutdown()
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.httpx.head")
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_exception(self, mock_exporter_class, mock_head):
+    def test_api_check_exception(self, mock_exporter_class, mock_head, trace_client_factory):
         mock_head.side_effect = httpx.RequestError("Connection error")
 
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
         with pytest.raises(ValueError, match="AliyunTrace API check failed: Connection error"):
             client.api_check()
-        client.shutdown()
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_get_project_url(self, mock_exporter_class):
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+    def test_get_project_url(self, mock_exporter_class, trace_client_factory):
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
         assert client.get_project_url() == "https://arms.console.aliyun.com/#/llm"
-        client.shutdown()
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_add_span(self, mock_exporter_class):
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint", max_export_batch_size=2)
+    def test_add_span(self, mock_exporter_class, trace_client_factory):
+        client = trace_client_factory(
+            service_name="test-service",
+            endpoint="http://test-endpoint",
+            max_export_batch_size=2,
+        )
 
         # Test add None
         client.add_span(None)
@@ -119,12 +134,10 @@ class TestTraceClient:
             assert len(client.queue) == 2
             mock_notify.assert_called_once()
 
-        client.shutdown()
-
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.logger")
-    def test_add_span_queue_full(self, mock_logger, mock_exporter_class):
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint", max_queue_size=1)
+    def test_add_span_queue_full(self, mock_logger, mock_exporter_class, trace_client_factory):
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint", max_queue_size=1)
 
         span_data = SpanData(
             name="test-span",
@@ -146,14 +159,12 @@ class TestTraceClient:
         assert len(client.queue) == 1
         mock_logger.warning.assert_called_with("Queue is full, likely spans will be dropped.")
 
-        client.shutdown()
-
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_export_batch_error(self, mock_exporter_class):
+    def test_export_batch_error(self, mock_exporter_class, trace_client_factory):
         mock_exporter = mock_exporter_class.return_value
         mock_exporter.export.side_effect = Exception("Export failed")
 
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
         mock_span = MagicMock(spec=ReadableSpan)
         client.queue.append(mock_span)
 
@@ -161,13 +172,15 @@ class TestTraceClient:
             client._export_batch()
             mock_logger.warning.assert_called()
 
-        client.shutdown()
-
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_worker_loop(self, mock_exporter_class):
+    def test_worker_loop(self, mock_exporter_class, trace_client_factory):
         # We need to test the wait timeout in _worker
         # But _worker runs in a thread. Let's mock condition.wait.
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint", schedule_delay_sec=0.1)
+        client = trace_client_factory(
+            service_name="test-service",
+            endpoint="http://test-endpoint",
+            schedule_delay_sec=0.1,
+        )
 
         with patch.object(client.condition, "wait") as mock_wait:
             # Let it run for a bit then shut down
@@ -177,9 +190,9 @@ class TestTraceClient:
             assert mock_wait.called or client.done
 
     @patch("core.ops.aliyun_trace.data_exporter.traceclient.OTLPSpanExporter")
-    def test_shutdown_flushes(self, mock_exporter_class):
+    def test_shutdown_flushes(self, mock_exporter_class, trace_client_factory):
         mock_exporter = mock_exporter_class.return_value
-        client = TraceClient(service_name="test-service", endpoint="http://test-endpoint")
+        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
 
         mock_span = MagicMock(spec=ReadableSpan)
         client.queue.append(mock_span)

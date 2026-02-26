@@ -272,7 +272,7 @@ def test_workflow_trace_no_app_id(mock_db, trace_instance):
 
 
 @patch("core.ops.arize_phoenix_trace.arize_phoenix_trace.db")
-def test_message_trace_variants(mock_db, trace_instance):
+def test_message_trace_success(mock_db, trace_instance):
     mock_db.engine = MagicMock()
     info = _make_message_info()
     info.message_data = MagicMock()
@@ -287,13 +287,31 @@ def test_message_trace_variants(mock_db, trace_instance):
     info.message_data.error = None
     info.error = None
 
-    # Hits line 480 and 487 (Status.OK)
     trace_instance.message_trace(info)
     assert trace_instance.tracer.start_span.call_count >= 1
 
 
-def test_no_data_returns(trace_instance):
-    # Cover missing lines where message_data is None
+@patch("core.ops.arize_phoenix_trace.arize_phoenix_trace.db")
+def test_message_trace_with_error(mock_db, trace_instance):
+    mock_db.engine = MagicMock()
+    info = _make_message_info()
+    info.message_data = MagicMock()
+    info.message_data.from_account_id = "acc1"
+    info.message_data.from_end_user_id = None
+    info.message_data.query = "q"
+    info.message_data.answer = "a"
+    info.message_data.status = "s"
+    info.message_data.model_id = "m"
+    info.message_data.model_provider = "p"
+    info.message_data.message_metadata = "{}"
+    info.message_data.error = "processing failed"
+    info.error = "message error"
+
+    trace_instance.message_trace(info)
+    assert trace_instance.tracer.start_span.call_count >= 1
+
+
+def test_trace_methods_return_early_with_no_message_data(trace_instance):
     info = MagicMock()
     info.message_data = None
 
@@ -355,29 +373,18 @@ def test_get_project_url_phoenix(trace_instance):
 
 
 def test_set_attribute_none_logic(trace_instance):
-    # To hit line 779 (return if value is None)
-    # Role can be None
+    # Test role can be None
     attrs = trace_instance._construct_llm_attributes([{"role": None, "content": "hi"}])
     assert "llm.input_messages.0.message.role" not in attrs
 
-    # Tool call id can be missing in safe_get
-    tool_call = {"function": {"name": "f1"}}  # missing 'id'
-    # Actually safe_get(tool_call, "id", "") defaults to ""
-    # I need to force safe_get to return None if I want to hit 779 via Tool attributes
-    # But safe_get implementation is:
-    # return obj.get(key, default) if isinstance(obj, dict) else getattr(obj, key, default)
-    # If key is missing, it returns default.
-    # To get None, I must pass default=None to safe_get OR have the key exist with value None.
-
+    # Test tool call id can be None
     tool_call_none_id = {"id": None, "function": {"name": "f1"}}
     attrs = trace_instance._construct_llm_attributes([{"role": "assistant", "tool_calls": [tool_call_none_id]}])
     assert "llm.input_messages.0.message.tool_calls.0.tool_call.id" not in attrs
 
 
 def test_construct_llm_attributes_dict_branch(trace_instance):
-    # Hit line 833 branch with a dict
     attrs = trace_instance._construct_llm_attributes({"prompt": "hi"})
-    # json.dumps uses double quotes by default
     assert '"prompt": "hi"' in attrs["llm.input_messages.0.message.content"]
     assert attrs["llm.input_messages.0.message.role"] == "user"
 
