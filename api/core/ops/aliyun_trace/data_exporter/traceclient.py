@@ -16,7 +16,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv import ResourceAttributes
 from opentelemetry.trace import Link, SpanContext, TraceFlags
 
 from configs import dify_config
