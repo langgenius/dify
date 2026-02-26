@@ -604,8 +604,8 @@ importers:
         specifier: 3.19.3
         version: 3.19.3
       vinext:
-        specifier: https://pkg.pr.new/hyoban/vinext@9d6bab2
-        version: https://pkg.pr.new/hyoban/vinext@9d6bab2(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.12)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3))
+        specifier: https://pkg.pr.new/hyoban/vinext@5be0ce0
+        version: https://pkg.pr.new/hyoban/vinext@5be0ce0(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.12)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3))
       vite:
         specifier: 7.3.1
         version: 7.3.1(@types/node@24.10.12)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
@@ -7562,9 +7562,10 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vinext@https://pkg.pr.new/hyoban/vinext@9d6bab2:
-    resolution: {integrity: sha512-IPHOqKXprAq2wDa+HLPjvTGry+l2yc7pnGdkTDlT0PLqYXThQ23+U5QyUTaGk0xUesEBaGF4aR32DVSjgAQ7fQ==, tarball: https://pkg.pr.new/hyoban/vinext@9d6bab2}
+  vinext@https://pkg.pr.new/hyoban/vinext@5be0ce0:
+    resolution: {integrity: sha512-Q3MxolgTLEU5z345unzhNqmf0VNEHNXJSKNhPRCANgRQKZa+a9tAictQag2pepN//grahZw0tOLe5paIBY8MEQ==, tarball: https://pkg.pr.new/hyoban/vinext@5be0ce0}
     version: 0.0.5
+    engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
       react: '>=19.2.0'
@@ -15951,12 +15952,11 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@https://pkg.pr.new/hyoban/vinext@9d6bab2(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.12)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3)):
+  vinext@https://pkg.pr.new/hyoban/vinext@5be0ce0(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.12)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3)):
     dependencies:
       '@unpic/react': 1.0.2(next@16.1.5(@babel/core@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.93.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@vercel/og': 0.8.6
       '@vitejs/plugin-rsc': 0.5.20(react-dom@19.2.4(react@19.2.4))(react-server-dom-webpack@19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.104.1(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.4)(vite@7.3.1(@types/node@24.10.12)(jiti@1.21.7)(sass@1.93.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
-      glob: 11.1.0
       magic-string: 0.30.21
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
