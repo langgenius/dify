@@ -3,7 +3,7 @@ from collections.abc import Generator, Mapping
 from typing import Union
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -209,7 +209,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         get the user by user id
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             stmt = select(EndUser).where(EndUser.id == user_id)
             user = session.scalar(stmt)
             if not user:

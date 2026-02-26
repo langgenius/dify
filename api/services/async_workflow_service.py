@@ -11,10 +11,9 @@ from typing import Any, Union
 
 from celery.result import AsyncResult
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from enums.quota_type import QuotaType
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser
@@ -129,7 +128,6 @@ class AsyncWorkflowService:
         )
 
         trigger_log = trigger_log_repo.create(trigger_log)
-        session.commit()
 
         # 7. Check and consume quota
         try:
@@ -139,7 +137,6 @@ class AsyncWorkflowService:
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
             trigger_log.error = f"Quota limit reached: {e}"
             trigger_log_repo.update(trigger_log)
-            session.commit()
 
             raise WorkflowQuotaLimitError(
                 f"Workflow execution quota limit reached for tenant {trigger_data.tenant_id}"
@@ -166,7 +163,6 @@ class AsyncWorkflowService:
         trigger_log.celery_task_id = task.id
         trigger_log.triggered_at = datetime.now(UTC)
         trigger_log_repo.update(trigger_log)
-        session.commit()
 
         return AsyncTriggerResponse(
             workflow_trigger_log_id=trigger_log.id,
@@ -218,7 +214,6 @@ class AsyncWorkflowService:
         trigger_log.error = None
         trigger_log.triggered_at = datetime.now(UTC)
         trigger_log_repo.update(trigger_log)
-        session.commit()
 
         # Re-trigger workflow (this will create a new trigger log)
         return cls.trigger_workflow_async(session, user, trigger_data)
@@ -235,7 +230,7 @@ class AsyncWorkflowService:
         Returns:
             Trigger log as dictionary or None if not found
         """
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             trigger_log = trigger_log_repo.get_by_id(workflow_trigger_log_id, tenant_id)
 
@@ -261,7 +256,7 @@ class AsyncWorkflowService:
         Returns:
             List of trigger logs as dictionaries
         """
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             logs = trigger_log_repo.get_recent_logs(
                 tenant_id=tenant_id, app_id=app_id, hours=hours, limit=limit, offset=offset
@@ -284,7 +279,7 @@ class AsyncWorkflowService:
         Returns:
             List of failed trigger logs as dictionaries
         """
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             logs = trigger_log_repo.get_failed_for_retry(
                 tenant_id=tenant_id, max_retry_count=max_retry_count, limit=limit

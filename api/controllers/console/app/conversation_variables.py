@@ -2,12 +2,11 @@ from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from fields.conversation_variable_fields import (
     conversation_variable_fields,
     paginated_conversation_variable_fields,
@@ -69,7 +68,7 @@ class ConversationVariablesApi(Resource):
         page_size = 100
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             rows = session.scalars(stmt).all()
 
         return {

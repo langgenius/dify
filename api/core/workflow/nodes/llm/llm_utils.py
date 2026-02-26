@@ -1,8 +1,8 @@
+from sqlalchemy.orm import sessionmaker
 from collections.abc import Sequence
 from typing import cast
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -18,7 +18,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.file.models import File
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType
@@ -97,7 +97,7 @@ def fetch_memory(
         return None
     conversation_id = conversation_id_variable.value
 
-    with Session(db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
         conversation = session.scalar(stmt)
         if not conversation:
@@ -152,7 +152,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                 pool_type="paid",
             )
         else:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 stmt = (
                     update(Provider)
                     .where(
@@ -169,4 +169,3 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                     )
                 )
                 session.execute(stmt)
-                session.commit()

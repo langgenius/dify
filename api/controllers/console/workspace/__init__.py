@@ -2,10 +2,9 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.login import current_account_with_tenant
 from models.account import TenantPluginPermission
 
@@ -24,7 +23,7 @@ def plugin_permission_required(
             user = current_user
             tenant_id = current_tenant_id
 
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 permission = (
                     session.query(TenantPluginPermission)
                     .where(

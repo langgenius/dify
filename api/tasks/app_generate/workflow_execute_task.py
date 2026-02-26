@@ -287,7 +287,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
 
     conversation = None
     message = None
-    with Session(db.engine, expire_on_commit=False) as session:
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
         workflow_run = session.get(WorkflowRun, workflow_run_id)
         if workflow_run is None:
             logger.warning("Workflow run %s not found during resume", workflow_run_id)

@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -18,7 +17,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
 from services.account_service import AccountService, TenantService
@@ -102,7 +101,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
 
         token = AccountService.send_reset_password_email(
@@ -201,7 +200,7 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:
@@ -215,7 +214,6 @@ class ForgotPasswordResetApi(Resource):
         # Update existing account credentials
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
-        session.commit()
 
         # Create workspace if needed
         if (

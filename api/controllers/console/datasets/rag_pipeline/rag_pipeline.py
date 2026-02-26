@@ -3,7 +3,6 @@ import logging
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -13,7 +12,7 @@ from controllers.console.wraps import (
     knowledge_pipeline_publish_enabled,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import SessionLocal, db
 from libs.login import login_required
 from models.dataset import PipelineCustomizedTemplate
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
@@ -83,7 +82,7 @@ class CustomizedPipelineTemplateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, template_id: str):
-        with Session(db.engine) as session:
+        with SessionLocal.begin() as session:
             template = (
                 session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
             )
