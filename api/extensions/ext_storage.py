@@ -110,10 +110,10 @@ class Storage:
     def load_stream(self, filename: str) -> Generator:
         return self.storage_runner.load_stream(filename)
 
-    def download(self, filename, target_filepath):
+    def download(self, filename: str, target_filepath):
         self.storage_runner.download(filename, target_filepath)
 
-    def exists(self, filename):
+    def exists(self, filename: str):
         return self.storage_runner.exists(filename)
 
     def delete(self, filename: str):
