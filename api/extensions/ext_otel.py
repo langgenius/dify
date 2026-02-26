@@ -26,7 +26,7 @@ def init_app(app: DifyApp):
         ConsoleSpanExporter,
     )
     from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-    from opentelemetry.semconv.resource import ResourceAttributes
+    from opentelemetry.semconv import ResourceAttributes
     from opentelemetry.trace import set_tracer_provider
 
     from extensions.otel.instrumentation import init_instruments

@@ -7,7 +7,7 @@ from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.metrics import get_meter, get_meter_provider
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv import SpanAttributes
 from opentelemetry.trace import Span, get_tracer_provider
 from opentelemetry.trace.status import StatusCode
 
