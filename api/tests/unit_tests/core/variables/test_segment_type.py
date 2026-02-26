@@ -1,6 +1,24 @@
 import pytest
 
+from core.variables.segment_group import SegmentGroup
+from core.variables.segments import StringSegment
 from core.variables.types import ArrayValidation, SegmentType
+from core.workflow.file import File, FileTransferMethod, FileType
+
+
+def _create_remote_file() -> File:
+    return File(
+        tenant_id="tenant-1",
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/doc.txt",
+        related_id=None,
+        filename="doc.txt",
+        extension=".txt",
+        mime_type="text/plain",
+        size=1,
+        storage_key="storage-key",
+    )
 
 
 class TestSegmentTypeIsArrayType:
@@ -163,3 +181,68 @@ class TestSegmentTypeGetZeroValue:
         for seg_type in unsupported_types:
             with pytest.raises(ValueError, match="unsupported variable type"):
                 SegmentType.get_zero_value(seg_type)
+
+
+class TestSegmentTypeInferSegmentType:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ([], SegmentType.ARRAY_NUMBER),
+            ([1, 2, 3], SegmentType.ARRAY_NUMBER),
+            ([1, 2.5], SegmentType.ARRAY_NUMBER),
+            (["a", "b"], SegmentType.ARRAY_STRING),
+            ([{"k": "v"}], SegmentType.ARRAY_OBJECT),
+            ([None], SegmentType.ARRAY_ANY),
+            ([True, False], SegmentType.ARRAY_BOOLEAN),
+            ([[1], [2]], SegmentType.ARRAY_ANY),
+            ([1, "a"], SegmentType.ARRAY_ANY),
+            (None, SegmentType.NONE),
+            (True, SegmentType.BOOLEAN),
+            (1, SegmentType.INTEGER),
+            (1.2, SegmentType.FLOAT),
+            ("abc", SegmentType.STRING),
+            ({"k": "v"}, SegmentType.OBJECT),
+        ],
+    )
+    def test_infer_segment_type_supported_values(self, value, expected):
+        assert SegmentType.infer_segment_type(value) == expected
+
+    def test_infer_segment_type_file_and_unknown(self):
+        file = _create_remote_file()
+        assert SegmentType.infer_segment_type(file) == SegmentType.FILE
+        assert SegmentType.infer_segment_type([object()]) is None
+        assert SegmentType.infer_segment_type(object()) is None
+
+
+class TestSegmentTypeAdditionalMethods:
+    def test_cast_value_for_bool_number_and_array_number(self):
+        assert SegmentType.cast_value(True, SegmentType.INTEGER) == 1
+        assert SegmentType.cast_value(False, SegmentType.NUMBER) == 0
+        assert SegmentType.cast_value([True, False], SegmentType.ARRAY_NUMBER) == [1, 0]
+
+        mixed = [True, 1]
+        assert SegmentType.cast_value(mixed, SegmentType.ARRAY_NUMBER) is mixed
+        assert SegmentType.cast_value("x", SegmentType.STRING) == "x"
+
+    def test_exposed_type_and_element_type(self):
+        assert SegmentType.INTEGER.exposed_type() == SegmentType.NUMBER
+        assert SegmentType.FLOAT.exposed_type() == SegmentType.NUMBER
+        assert SegmentType.STRING.exposed_type() == SegmentType.STRING
+
+        assert SegmentType.ARRAY_STRING.element_type() == SegmentType.STRING
+        assert SegmentType.ARRAY_ANY.element_type() is None
+
+        with pytest.raises(ValueError, match="element_type is only supported by array type"):
+            SegmentType.STRING.element_type()
+
+    def test_group_validation_for_segment_group_and_list(self):
+        valid_group = SegmentGroup(value=[StringSegment(value="a")])
+        assert SegmentType.GROUP.is_valid(valid_group) is True
+        assert SegmentType.GROUP.is_valid([StringSegment(value="b")]) is True
+        assert SegmentType.GROUP.is_valid(["not-segment"]) is False
+
+    def test_unreachable_assertion_branch(self, monkeypatch):
+        monkeypatch.setattr(SegmentType, "is_array_type", lambda self: False)
+
+        with pytest.raises(AssertionError, match="unreachable"):
+            SegmentType.ARRAY_STRING.is_valid(["a"])
