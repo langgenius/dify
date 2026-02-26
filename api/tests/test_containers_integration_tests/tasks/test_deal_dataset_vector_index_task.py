@@ -51,7 +51,7 @@ class TestDealDatasetVectorIndexTask:
             yield mock_factory
 
     @pytest.fixture
-    def account_and_tenant(self, db_session_with_containers, account_and_tenant):
+    def account_and_tenant(self, db_session_with_containers):
         """Create an account with an owner tenant for testing.
 
         Returns a tuple of (account, tenant) where tenant is guaranteed to be non-None.
