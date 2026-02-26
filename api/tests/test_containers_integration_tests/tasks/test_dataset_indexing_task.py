@@ -290,9 +290,7 @@ class TestDatasetIndexingTaskIntegration:
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
-        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError(
-            "paused"
-        )
+        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError("paused")
 
         # Act
         _document_indexing(dataset.id, document_ids)
