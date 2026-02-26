@@ -1,0 +1,85 @@
+name: Pyrefly Diff Check
+
+on:
+  pull_request:
+    paths:
+      - 'api/**/*.py'
+
+permissions:
+  contents: read
+
+jobs:
+  pyrefly-diff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python & UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run pyrefly on PR branch
+        run: |
+          uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
+
+      - name: Checkout base branch
+        run: git checkout ${{ github.base_ref }}
+
+      - name: Run pyrefly on base branch
+        run: |
+          uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
+
+      - name: Compute diff
+        run: |
+          diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
+
+      - name: Save PR number
+        run: |
+          echo ${{ github.event.pull_request.number }} > pr_number.txt
+
+      - name: Upload pyrefly diff
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyrefly_diff
+          path: |
+            pyrefly_diff.txt
+            pr_number.txt
+
+      - name: Comment PR with pyrefly diff
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let diff = fs.readFileSync('pyrefly_diff.txt', { encoding: 'utf8' });
+            const prNumber = context.payload.pull_request.number;
+
+            const MAX_CHARS = 65000;
+            if (diff.length > MAX_CHARS) {
+              diff = diff.slice(0, MAX_CHARS);
+              diff = diff.slice(0, diff.lastIndexOf('\n'));
+              diff += '\n\n... (truncated) ...';
+            }
+
+            const body = diff.trim()
+              ? `### Pyrefly Diff (base → PR)\n\`\`\`diff\n${diff}\n\`\`\``
+              : '### Pyrefly Diff\nNo changes detected.';
+
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
