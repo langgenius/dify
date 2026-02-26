@@ -114,6 +114,15 @@ class MockNodeFactory(DifyNodeFactory):
                     code_providers=self._code_providers,
                     code_limits=self._code_limits,
                 )
+            elif node_type == NodeType.HTTP_REQUEST:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    http_request_config=self._http_request_config,
+                )
             else:
                 mock_instance = mock_class(
                     id=node_id,

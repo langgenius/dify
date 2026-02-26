@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
+
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -119,7 +116,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
               <div className="leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary">{tag.binding_count}</div>
             </Tooltip>
             <div className="group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={() => setIsEditing(true)}>
-              <RiEditLine className="h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" />
+              <span className="i-ri-edit-line h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" data-testid="tag-item-editor-edit-button" />
             </div>
             <div
               className="group/remove shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
@@ -130,7 +127,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
                   handleRemove()
               }}
             >
-              <RiDeleteBinLine className="h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" />
+              <span className="i-ri-delete-bin-line h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" data-testid="tag-item-editor-remove-button" />
             </div>
           </>
         )}
