@@ -20,7 +20,7 @@ class BaseStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def download(self, filename: str, target_filepath: str):
+    def download(self, filename: str, target_filepath: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
