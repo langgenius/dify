@@ -116,10 +116,10 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
               className="flex min-w-[480px] max-w-[680px] flex-[1_0_0] flex-col pr-4"
               style={responsiveStyle}
             >
-              <p className="title-4xl-semi-bold line-clamp-1 text-dify-logo-dify-logo-blue">
+              <p className="title-4xl-semi-bold line-clamp-1 text-dify-logo-blue">
                 {category}
               </p>
-              <p className="title-4xl-semi-bold line-clamp-2 text-dify-logo-dify-logo-black">
+              <p className="title-4xl-semi-bold line-clamp-2 text-dify-logo-black">
                 {title}
               </p>
             </div>

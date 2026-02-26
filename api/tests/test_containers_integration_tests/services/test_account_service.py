@@ -1016,7 +1016,7 @@ class TestAccountService:
 
     def test_delete_account(self, db_session_with_containers, mock_external_service_dependencies):
         """
-        Test account deletion (should add task to queue).
+        Test account deletion (should add task to queue and sync to enterprise).
         """
         fake = Faker()
         email = fake.email()
@@ -1034,9 +1034,17 @@ class TestAccountService:
             password=password,
         )
 
-        with patch("services.account_service.delete_account_task") as mock_delete_task:
+        with (
+            patch("services.account_service.delete_account_task") as mock_delete_task,
+            patch("services.enterprise.account_deletion_sync.sync_account_deletion") as mock_sync,
+        ):
+            mock_sync.return_value = True
+
             # Delete account
             AccountService.delete_account(account)
+
+            # Verify sync was called
+            mock_sync.assert_called_once_with(account_id=account.id, source="account_deleted")
 
             # Verify task was added to queue
             mock_delete_task.delay.assert_called_once_with(account.id)
@@ -1716,7 +1724,7 @@ class TestTenantService:
 
     def test_remove_member_from_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
-        Test successful member removal from tenant.
+        Test successful member removal from tenant (should sync to enterprise).
         """
         fake = Faker()
         tenant_name = fake.company()
@@ -1751,7 +1759,15 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, role="normal")
 
         # Remove member
-        TenantService.remove_member_from_tenant(tenant, member_account, owner_account)
+        with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+            mock_sync.return_value = True
+
+            TenantService.remove_member_from_tenant(tenant, member_account, owner_account)
+
+            # Verify sync was called
+            mock_sync.assert_called_once_with(
+                workspace_id=tenant.id, member_id=member_account.id, source="workspace_member_removed"
+            )
 
         # Verify member was removed
         from extensions.ext_database import db
@@ -2293,6 +2309,12 @@ class TestRegisterService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
+        from extensions.ext_database import db
+        from models.model import DifySetup
+
+        db.session.query(DifySetup).delete()
+        db.session.commit()
+
         # Execute setup
         RegisterService.setup(
             email=admin_email,
@@ -2303,9 +2325,7 @@ class TestRegisterService:
         )
 
         # Verify account was created
-        from extensions.ext_database import db
         from models import Account
-        from models.model import DifySetup
 
         account = db.session.query(Account).filter_by(email=admin_email).first()
         assert account is not None

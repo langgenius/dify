@@ -9,7 +9,6 @@ from typing import Any, cast
 logger = logging.getLogger(__name__)
 
 from core.entities.knowledge_entities import PreviewDetail
-from core.file import File, FileTransferMethod, FileType, file_manager
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -35,6 +34,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.workflow.file import File, FileTransferMethod, FileType, file_manager
 from core.workflow.nodes.llm import llm_utils
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
@@ -275,7 +275,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("Chunks is not a list")
 
     def generate_summary_preview(
-        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
         For each segment, concurrently call generate_summary to generate a summary
@@ -298,11 +302,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                    summary, _ = self.generate_summary(
+                        tenant_id, preview.content, summary_index_setting, document_language=doc_language
+                    )
                     preview.summary = summary
             else:
                 # Fallback: try without app context (may fail)
-                summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                summary, _ = self.generate_summary(
+                    tenant_id, preview.content, summary_index_setting, document_language=doc_language
+                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor
@@ -356,6 +364,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         text: str,
         summary_index_setting: dict | None = None,
         segment_id: str | None = None,
+        document_language: str | None = None,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
@@ -366,6 +375,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             text: Text content to summarize
             summary_index_setting: Summary index configuration
             segment_id: Optional segment ID to fetch attachments from SegmentAttachmentBinding table
+            document_language: Optional document language (e.g., "Chinese", "English")
+                to ensure summary is generated in the correct language
 
         Returns:
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
@@ -381,8 +392,22 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("model_name and model_provider_name are required in summary_index_setting")
 
         # Import default summary prompt
+        is_default_prompt = False
         if not summary_prompt:
             summary_prompt = DEFAULT_GENERATOR_SUMMARY_PROMPT
+            is_default_prompt = True
+
+        # Format prompt with document language only for default prompt
+        # Custom prompts are used as-is to avoid interfering with user-defined templates
+        # If document_language is provided, use it; otherwise, use "the same language as the input content"
+        # This is especially important for image-only chunks where text is empty or minimal
+        if is_default_prompt:
+            language_for_prompt = document_language or "the same language as the input content"
+            try:
+                summary_prompt = summary_prompt.format(language=language_for_prompt)
+            except KeyError:
+                # If default prompt doesn't have {language} placeholder, use it as-is
+                pass
 
         provider_manager = ProviderManager()
         provider_model_bundle = provider_manager.get_provider_model_bundle(

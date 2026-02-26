@@ -4,7 +4,6 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
-import { RiClipboardLine, RiEditLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -16,7 +15,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
-import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
@@ -32,6 +30,7 @@ type QuestionProps = {
   theme: Theme | null | undefined
   enableEdit?: boolean
   switchSibling?: (siblingMessageId: string) => void
+  hideAvatar?: boolean
 }
 
 const Question: FC<QuestionProps> = ({
@@ -40,6 +39,7 @@ const Question: FC<QuestionProps> = ({
   theme,
   enableEdit = true,
   switchSibling,
+  hideAvatar,
 }) => {
   const { t } = useTranslation()
 
@@ -105,25 +105,29 @@ const Question: FC<QuestionProps> = ({
       <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
+            data-testid="action-container"
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
-            }}
+            <ActionButton
+              data-testid="copy-btn"
+              onClick={() => {
+                copy(content)
+                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              }}
             >
-              <RiClipboardLine className="h-4 w-4" />
+              <div className="i-ri-clipboard-line h-4 w-4" />
             </ActionButton>
             {enableEdit && (
-              <ActionButton onClick={handleEdit}>
-                <RiEditLine className="h-4 w-4" />
+              <ActionButton data-testid="edit-btn" onClick={handleEdit}>
+                <div className="i-ri-edit-line h-4 w-4" />
               </ActionButton>
             )}
           </div>
         </div>
         <div
           ref={contentRef}
+          data-testid="question-content"
           className="w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary"
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
@@ -148,7 +152,7 @@ const Question: FC<QuestionProps> = ({
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
                     <Textarea
                       className={cn(
-                        'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
+                        'w-full p-1 leading-6 text-text-tertiary outline-none body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}
@@ -174,15 +178,17 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className="mt-1 h-[18px]" />
       </div>
-      <div className="h-10 w-10 shrink-0">
-        {
-          questionIcon || (
-            <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-              <User className="h-full w-full" />
-            </div>
-          )
-        }
-      </div>
+      {!hideAvatar && (
+        <div className="h-10 w-10 shrink-0">
+          {
+            questionIcon || (
+              <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
+                <div className="i-custom-public-avatar-user h-full w-full" />
+              </div>
+            )
+          }
+        </div>
+      )}
     </div>
   )
 }

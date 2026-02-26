@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -11,21 +12,35 @@ from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.file import File
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories import DifyCoreRepositoryFactory
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.variables import VariableBase
 from core.variables.variables import Variable
-from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.file import File
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from core.workflow.nodes.human_input.entities import (
+    DeliveryChannelConfig,
+    HumanInputNodeData,
+    apply_debug_email_recipient,
+    validate_human_input_submission,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.runtime import VariablePool
+from core.workflow.repositories.human_input_form_repository import FormCreateParams
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variable_loader import load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -34,6 +49,8 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
+from models.enums import UserFrom
+from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
@@ -44,6 +61,13 @@ from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededEr
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from .human_input_delivery_test_service import (
+    DeliveryTestContext,
+    DeliveryTestEmailRecipient,
+    DeliveryTestError,
+    DeliveryTestUnsupportedError,
+    HumanInputDeliveryTestService,
+)
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 
 
@@ -595,9 +619,22 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs: list[Mapping[str, object]] = []
-        for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
+        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
             node_class = node_class_mapping[LATEST_VERSION]
-            default_config = node_class.get_default_config()
+            filters = None
+            if node_type is NodeType.HTTP_REQUEST:
+                filters = {
+                    HTTP_REQUEST_CONFIG_FILTER_KEY: build_http_request_config(
+                        max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+                        max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+                        max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                        max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+                        max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+                        ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                        ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                    )
+                }
+            default_config = node_class.get_default_config(filters=filters)
             if default_config:
                 default_block_configs.append(default_config)
 
@@ -619,7 +656,18 @@ class WorkflowService:
             return {}
 
         node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
-        default_config = node_class.get_default_config(filters=filters)
+        resolved_filters = dict(filters) if filters else {}
+        if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in resolved_filters:
+            resolved_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
+                max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+                max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+                max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+                max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+                ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+            )
+        default_config = node_class.get_default_config(filters=resolved_filters or None)
         if not default_config:
             return {}
 
@@ -743,6 +791,344 @@ class WorkflowService:
             session.commit()
 
         return workflow_node_execution
+
+    def get_human_input_form_preview(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        node_id: str,
+        inputs: Mapping[str, Any] | None = None,
+    ) -> Mapping[str, Any]:
+        """
+        Build a human input form preview for a draft workflow.
+
+        Args:
+            app_model: Target application model.
+            account: Current account.
+            node_id: Human input node ID.
+            inputs: Values used to fill missing upstream variables referenced in form_content.
+        """
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        if node_type is not NodeType.HUMAN_INPUT:
+            raise ValueError("Node type must be human-input.")
+
+        # inputs: values used to fill missing upstream variables referenced in form_content.
+        variable_pool = self._build_human_input_variable_pool(
+            app_model=app_model,
+            workflow=draft_workflow,
+            node_config=node_config,
+            manual_inputs=inputs or {},
+        )
+        node = self._build_human_input_node(
+            workflow=draft_workflow,
+            account=account,
+            node_config=node_config,
+            variable_pool=variable_pool,
+        )
+
+        rendered_content = node.render_form_content_before_submission()
+        resolved_default_values = node.resolve_default_values()
+        node_data = node.node_data
+        human_input_required = HumanInputRequired(
+            form_id=node_id,
+            form_content=rendered_content,
+            inputs=node_data.inputs,
+            actions=node_data.user_actions,
+            node_id=node_id,
+            node_title=node.title,
+            resolved_default_values=resolved_default_values,
+            form_token=None,
+        )
+        return human_input_required.model_dump(mode="json")
+
+    def submit_human_input_form_preview(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        node_id: str,
+        form_inputs: Mapping[str, Any],
+        inputs: Mapping[str, Any] | None = None,
+        action: str,
+    ) -> Mapping[str, Any]:
+        """
+        Submit a human input form preview for a draft workflow.
+
+        Args:
+            app_model: Target application model.
+            account: Current account.
+            node_id: Human input node ID.
+            form_inputs: Values the user provides for the form's own fields.
+            inputs: Values used to fill missing upstream variables referenced in form_content.
+            action: Selected action ID.
+        """
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        if node_type is not NodeType.HUMAN_INPUT:
+            raise ValueError("Node type must be human-input.")
+
+        # inputs: values used to fill missing upstream variables referenced in form_content.
+        # form_inputs: values the user provides for the form's own fields.
+        variable_pool = self._build_human_input_variable_pool(
+            app_model=app_model,
+            workflow=draft_workflow,
+            node_config=node_config,
+            manual_inputs=inputs or {},
+        )
+        node = self._build_human_input_node(
+            workflow=draft_workflow,
+            account=account,
+            node_config=node_config,
+            variable_pool=variable_pool,
+        )
+        node_data = node.node_data
+
+        validate_human_input_submission(
+            inputs=node_data.inputs,
+            user_actions=node_data.user_actions,
+            selected_action_id=action,
+            form_data=form_inputs,
+        )
+
+        rendered_content = node.render_form_content_before_submission()
+        outputs: dict[str, Any] = dict(form_inputs)
+        outputs["__action_id"] = action
+        outputs["__rendered_content"] = node.render_form_content_with_outputs(
+            rendered_content, outputs, node_data.outputs_field_names()
+        )
+
+        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        enclosing_node_id = enclosing_node_type_and_id[1] if enclosing_node_type_and_id else None
+        with Session(bind=db.engine) as session, session.begin():
+            draft_var_saver = DraftVariableSaver(
+                session=session,
+                app_id=app_model.id,
+                node_id=node_id,
+                node_type=NodeType.HUMAN_INPUT,
+                node_execution_id=str(uuid.uuid4()),
+                user=account,
+                enclosing_node_id=enclosing_node_id,
+            )
+            draft_var_saver.save(outputs=outputs, process_data={})
+            session.commit()
+
+        return outputs
+
+    def test_human_input_delivery(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        node_id: str,
+        delivery_method_id: str,
+        inputs: Mapping[str, Any] | None = None,
+    ) -> None:
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        if node_type is not NodeType.HUMAN_INPUT:
+            raise ValueError("Node type must be human-input.")
+
+        node_data = HumanInputNodeData.model_validate(node_config.get("data", {}))
+        delivery_method = self._resolve_human_input_delivery_method(
+            node_data=node_data,
+            delivery_method_id=delivery_method_id,
+        )
+        if delivery_method is None:
+            raise ValueError("Delivery method not found.")
+        delivery_method = apply_debug_email_recipient(
+            delivery_method,
+            enabled=True,
+            user_id=account.id or "",
+        )
+
+        variable_pool = self._build_human_input_variable_pool(
+            app_model=app_model,
+            workflow=draft_workflow,
+            node_config=node_config,
+            manual_inputs=inputs or {},
+        )
+        node = self._build_human_input_node(
+            workflow=draft_workflow,
+            account=account,
+            node_config=node_config,
+            variable_pool=variable_pool,
+        )
+        rendered_content = node.render_form_content_before_submission()
+        resolved_default_values = node.resolve_default_values()
+        form_id, recipients = self._create_human_input_delivery_test_form(
+            app_model=app_model,
+            node_id=node_id,
+            node_data=node_data,
+            delivery_method=delivery_method,
+            rendered_content=rendered_content,
+            resolved_default_values=resolved_default_values,
+        )
+        test_service = HumanInputDeliveryTestService()
+        context = DeliveryTestContext(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            node_id=node_id,
+            node_title=node_data.title,
+            rendered_content=rendered_content,
+            template_vars={"form_id": form_id},
+            recipients=recipients,
+            variable_pool=variable_pool,
+        )
+        try:
+            test_service.send_test(context=context, method=delivery_method)
+        except DeliveryTestUnsupportedError as exc:
+            raise ValueError("Delivery method does not support test send.") from exc
+        except DeliveryTestError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @staticmethod
+    def _resolve_human_input_delivery_method(
+        *,
+        node_data: HumanInputNodeData,
+        delivery_method_id: str,
+    ) -> DeliveryChannelConfig | None:
+        for method in node_data.delivery_methods:
+            if str(method.id) == delivery_method_id:
+                return method
+        return None
+
+    def _create_human_input_delivery_test_form(
+        self,
+        *,
+        app_model: App,
+        node_id: str,
+        node_data: HumanInputNodeData,
+        delivery_method: DeliveryChannelConfig,
+        rendered_content: str,
+        resolved_default_values: Mapping[str, Any],
+    ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
+        repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
+        params = FormCreateParams(
+            app_id=app_model.id,
+            workflow_execution_id=None,
+            node_id=node_id,
+            form_config=node_data,
+            rendered_content=rendered_content,
+            delivery_methods=[delivery_method],
+            display_in_ui=False,
+            resolved_default_values=resolved_default_values,
+            form_kind=HumanInputFormKind.DELIVERY_TEST,
+        )
+        form_entity = repo.create_form(params)
+        return form_entity.id, self._load_email_recipients(form_entity.id)
+
+    @staticmethod
+    def _load_email_recipients(form_id: str) -> list[DeliveryTestEmailRecipient]:
+        logger = logging.getLogger(__name__)
+
+        with Session(bind=db.engine) as session:
+            recipients = session.scalars(
+                select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_id)
+            ).all()
+        recipients_data: list[DeliveryTestEmailRecipient] = []
+        for recipient in recipients:
+            if recipient.recipient_type not in {RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL}:
+                continue
+            if not recipient.access_token:
+                continue
+            try:
+                payload = json.loads(recipient.recipient_payload)
+            except Exception:
+                logger.exception("Failed to parse human input recipient payload for delivery test.")
+                continue
+            email = payload.get("email")
+            if email:
+                recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
+        return recipients_data
+
+    def _build_human_input_node(
+        self,
+        *,
+        workflow: Workflow,
+        account: Account,
+        node_config: Mapping[str, Any],
+        variable_pool: VariablePool,
+    ) -> HumanInputNode:
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            graph_config=workflow.graph_dict,
+            user_id=account.id,
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.DEBUGGER.value,
+            call_depth=0,
+        )
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool,
+            start_at=time.perf_counter(),
+        )
+        node = HumanInputNode(
+            id=node_config.get("id", str(uuid.uuid4())),
+            config=node_config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        return node
+
+    def _build_human_input_variable_pool(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        node_config: Mapping[str, Any],
+        manual_inputs: Mapping[str, Any],
+    ) -> VariablePool:
+        with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
+            draft_var_srv = WorkflowDraftVariableService(session)
+            draft_var_srv.prefill_conversation_variable_default_values(workflow)
+
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.default(),
+            user_inputs={},
+            environment_variables=workflow.environment_variables,
+            conversation_variables=[],
+        )
+
+        variable_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=app_model.id,
+            tenant_id=app_model.tenant_id,
+        )
+        variable_mapping = HumanInputNode.extract_variable_selector_to_variable_mapping(
+            graph_config=workflow.graph_dict,
+            config=node_config,
+        )
+        normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
+
+        load_into_variable_pool(
+            variable_loader=variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=normalized_user_inputs,
+        )
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping=variable_mapping,
+            user_inputs=normalized_user_inputs,
+            variable_pool=variable_pool,
+            tenant_id=app_model.tenant_id,
+        )
+
+        return variable_pool
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
@@ -945,6 +1331,13 @@ class WorkflowService:
             if any(nt.is_trigger_node for nt in node_types):
                 raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
 
+        for node in node_configs:
+            node_data = node.get("data", {})
+            node_type = node_data.get("type")
+
+            if node_type == NodeType.HUMAN_INPUT:
+                self._validate_human_input_node_data(node_data)
+
     def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppConfigManager.config_validate(
@@ -956,6 +1349,23 @@ class WorkflowService:
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
+
+    def _validate_human_input_node_data(self, node_data: dict) -> None:
+        """
+        Validate HumanInput node data format.
+
+        Args:
+            node_data: The node data dictionary
+
+        Raises:
+            ValueError: If the node data format is invalid
+        """
+        from core.workflow.nodes.human_input.entities import HumanInputNodeData
+
+        try:
+            HumanInputNodeData.model_validate(node_data)
+        except Exception as e:
+            raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict

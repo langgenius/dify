@@ -80,7 +80,13 @@ def init_app(app: DifyApp) -> Celery:
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
+        task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
     )
+
+    if dify_config.CELERY_BACKEND == "redis":
+        celery_app.conf.update(
+            result_backend_transport_options=broker_transport_options,
+        )
 
     # Apply SSL configuration if enabled
     ssl_options = _get_celery_ssl_options()
@@ -151,6 +157,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.queue_monitor_task.queue_monitor_task",
             "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
         }
+    if dify_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK:
+        imports.append("tasks.human_input_timeout_tasks")
+        beat_schedule["human_input_form_timeout"] = {
+            "task": "human_input_form_timeout.check_and_resume",
+            "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
+        }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
@@ -184,6 +196,14 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
             "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
         }
+
+    if dify_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK:
+        imports.append("schedule.update_api_token_last_used_task")
+        beat_schedule["batch_update_api_token_last_used"] = {
+            "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
+            "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
+        }
+
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

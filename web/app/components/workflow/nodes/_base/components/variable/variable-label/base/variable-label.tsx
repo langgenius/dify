@@ -27,7 +27,7 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
-  const isHideNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
+  const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
   return (
     <div
       className={cn(
@@ -37,7 +37,7 @@ const VariableLabel = ({
       onClick={onClick}
       ref={ref}
     >
-      { isHideNodeLabel && (
+      {isShowNodeLabel && (
         <VariableNodeLabel
           nodeType={nodeType}
           nodeTitle={nodeTitle}

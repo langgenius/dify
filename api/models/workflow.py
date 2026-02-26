@@ -20,9 +20,8 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
+from typing_extensions import deprecated
 
-from core.file.constants import maybe_file_object
-from core.file.models import File
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import (
@@ -31,7 +30,9 @@ from core.workflow.constants import (
 )
 from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from core.workflow.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowExecutionStatus
+from core.workflow.file.constants import maybe_file_object
+from core.workflow.file.models import File
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -409,6 +410,11 @@ class Workflow(TypeBase):
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
     @property
+    @deprecated(
+        "This property is not accurate for determining if a workflow is published as a tool."
+        "It only checks if there's a WorkflowToolProvider for the app, "
+        "not if this specific workflow version is the one being used by the tool."
+    )
     def tool_published(self) -> bool:
         """
         DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
@@ -611,13 +617,16 @@ class WorkflowRun(TypeBase):
     version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[str | None] = mapped_column(LongText)
     inputs: Mapped[str | None] = mapped_column(LongText)
-    status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
+    status: Mapped[WorkflowExecutionStatus] = mapped_column(
+        EnumText(WorkflowExecutionStatus, length=255),
+        nullable=False,
+    )
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -633,11 +642,13 @@ class WorkflowRun(TypeBase):
     )
 
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def created_by_account(self):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def created_by_end_user(self):
         from .model import EndUser
 
@@ -657,6 +668,7 @@ class WorkflowRun(TypeBase):
         return json.loads(self.outputs) if self.outputs else {}
 
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def message(self):
         from .model import Message
 
@@ -665,6 +677,7 @@ class WorkflowRun(TypeBase):
         )
 
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def workflow(self):
         return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
@@ -1879,7 +1892,12 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
 
     def to_entity(self) -> PauseReason:
         if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
-            return HumanInputRequired(form_id=self.form_id, node_id=self.node_id)
+            return HumanInputRequired(
+                form_id=self.form_id,
+                form_content="",
+                node_id=self.node_id,
+                node_title="",
+            )
         elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
             return SchedulingPause(message=self.message)
         else:

@@ -20,7 +20,6 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginInvokeError
@@ -31,6 +30,7 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.workflow.enums import NodeType
+from core.workflow.file.models import File
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
@@ -505,6 +505,179 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
+
+
+class HumanInputFormPreviewPayload(BaseModel):
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Values used to fill missing upstream variables referenced in form_content",
+    )
+
+
+class HumanInputFormSubmitPayload(BaseModel):
+    form_inputs: dict[str, Any] = Field(..., description="Values the user provides for the form's own fields")
+    inputs: dict[str, Any] = Field(
+        ...,
+        description="Values used to fill missing upstream variables referenced in form_content",
+    )
+    action: str = Field(..., description="Selected action ID")
+
+
+class HumanInputDeliveryTestPayload(BaseModel):
+    delivery_method_id: str = Field(..., description="Delivery method ID")
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Values used to fill missing upstream variables referenced in form_content",
+    )
+
+
+reg(HumanInputFormPreviewPayload)
+reg(HumanInputFormSubmitPayload)
+reg(HumanInputDeliveryTestPayload)
+
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
+class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
+    @console_ns.doc("get_advanced_chat_draft_human_input_form")
+    @console_ns.doc(description="Get human input form preview for advanced chat workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Preview human input form content and placeholders
+        """
+        current_user, _ = current_account_with_tenant()
+        args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
+        inputs = args.inputs
+
+        workflow_service = WorkflowService()
+        preview = workflow_service.get_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            inputs=inputs,
+        )
+        return jsonable_encoder(preview)
+
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
+class AdvancedChatDraftHumanInputFormRunApi(Resource):
+    @console_ns.doc("submit_advanced_chat_draft_human_input_form")
+    @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Submit human input form preview
+        """
+        current_user, _ = current_account_with_tenant()
+        args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
+        workflow_service = WorkflowService()
+        result = workflow_service.submit_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            form_inputs=args.form_inputs,
+            inputs=args.inputs,
+            action=args.action,
+        )
+        return jsonable_encoder(result)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
+class WorkflowDraftHumanInputFormPreviewApi(Resource):
+    @console_ns.doc("get_workflow_draft_human_input_form")
+    @console_ns.doc(description="Get human input form preview for workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Preview human input form content and placeholders
+        """
+        current_user, _ = current_account_with_tenant()
+        args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
+        inputs = args.inputs
+
+        workflow_service = WorkflowService()
+        preview = workflow_service.get_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            inputs=inputs,
+        )
+        return jsonable_encoder(preview)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")
+class WorkflowDraftHumanInputFormRunApi(Resource):
+    @console_ns.doc("submit_workflow_draft_human_input_form")
+    @console_ns.doc(description="Submit human input form preview for workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Submit human input form preview
+        """
+        current_user, _ = current_account_with_tenant()
+        workflow_service = WorkflowService()
+        args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
+        result = workflow_service.submit_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            form_inputs=args.form_inputs,
+            inputs=args.inputs,
+            action=args.action,
+        )
+        return jsonable_encoder(result)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
+class WorkflowDraftHumanInputDeliveryTestApi(Resource):
+    @console_ns.doc("test_workflow_draft_human_input_delivery")
+    @console_ns.doc(description="Test human input delivery for workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Test human input delivery
+        """
+        current_user, _ = current_account_with_tenant()
+        workflow_service = WorkflowService()
+        args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
+        workflow_service.test_human_input_delivery(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            delivery_method_id=args.delivery_method_id,
+            inputs=args.inputs,
+        )
+        return jsonable_encoder({})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")

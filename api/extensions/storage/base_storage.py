@@ -28,7 +28,7 @@ class BaseStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, filename):
+    def delete(self, filename: str):
         raise NotImplementedError
 
     def scan(self, path, files=True, directories=False) -> list[str]:

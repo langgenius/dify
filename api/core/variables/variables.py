@@ -112,7 +112,7 @@ class ArrayBooleanVariable(ArrayBooleanSegment, ArrayVariable):
 
 class RAGPipelineVariable(BaseModel):
     belong_to_node_id: str = Field(description="belong to which node id, shared means public")
-    type: str = Field(description="variable type, text-input, paragraph, select, number,  file, file-list")
+    type: str = Field(description="variable type, text-input, paragraph, select, number, file, file-list")
     label: str = Field(description="label")
     description: str | None = Field(description="description", default="")
     variable: str = Field(description="variable key", default="")

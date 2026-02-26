@@ -58,5 +58,15 @@
   "generation.tabs.create": "Esegui una volta",
   "generation.tabs.saved": "Salvato",
   "generation.title": "Completamento AI",
+  "humanInput.completed": "Sembra che questa richiesta sia stata gestita altrove.",
+  "humanInput.expirationTimeNowOrFuture": "Questa azione scadrà {{relativeTime}}.",
+  "humanInput.expired": "Sembra che questa richiesta sia scaduta.",
+  "humanInput.expiredTip": "Questa azione è scaduta.",
+  "humanInput.formNotFound": "Modulo non trovato.",
+  "humanInput.rateLimitExceeded": "Troppe richieste, riprova più tardi.",
+  "humanInput.recorded": "Il tuo input è stato registrato.",
+  "humanInput.sorry": "Spiacente!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Grazie!",
   "login.backToHome": "Torna alla home"
 }
