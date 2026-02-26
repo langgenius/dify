@@ -209,9 +209,7 @@ class TestDatasetIndexingTaskIntegration:
         assert len(opened) >= 2
         assert opened_ids <= closed_ids
 
-    def test_legacy_document_indexing_task_still_works(
-        self, db_session_with_containers, patched_external_dependencies
-    ):
+    def test_legacy_document_indexing_task_still_works(self, db_session_with_containers, patched_external_dependencies):
         """Ensure the legacy task entrypoint still updates parsing status."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
@@ -654,9 +652,7 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         self._assert_documents_parsing(db_session_with_containers, [special_document_id])
 
-    def test_zero_vector_space_limit_allows_unlimited(
-        self, db_session_with_containers, patched_external_dependencies
-    ):
+    def test_zero_vector_space_limit_allows_unlimited(self, db_session_with_containers, patched_external_dependencies):
         """Treat vector limit 0 as unlimited and continue indexing."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
