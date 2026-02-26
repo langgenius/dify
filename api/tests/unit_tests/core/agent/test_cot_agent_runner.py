@@ -5,6 +5,7 @@ import pytest
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.nodes.agent.exc import AgentMaxIterationError
 
 
@@ -261,15 +262,6 @@ class TestRun:
         message.id = "msg-id"
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
-        scratchpad = AgentScratchpadUnit(
-            agent_response="",
-            thought="",
-            action_str="",
-            action=action,
-            observation=None,
-        )
-        # Ensure non-final state
-        scratchpad.action = None
 
         mocker.patch(
             "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
@@ -282,28 +274,59 @@ class TestRun:
     def test_run_increase_usage_aggregation(self, runner, mocker):
         message = MagicMock()
         message.id = "msg-id"
+        runner.app_config.agent.max_iteration = 2
 
-        usage = MagicMock()
-        usage.prompt_tokens = 1
-        usage.completion_tokens = 1
-        usage.total_tokens = 2
-        usage.prompt_price = 1
-        usage.completion_price = 1
-        usage.total_price = 2
+        usage_1 = LLMUsage.empty_usage()
+        usage_1.prompt_tokens = 1
+        usage_1.completion_tokens = 1
+        usage_1.total_tokens = 2
+        usage_1.prompt_price = 1
+        usage_1.completion_price = 1
+        usage_1.total_price = 2
 
-        mocker.patch(
+        usage_2 = LLMUsage.empty_usage()
+        usage_2.prompt_tokens = 1
+        usage_2.completion_tokens = 1
+        usage_2.total_tokens = 2
+        usage_2.prompt_price = 1
+        usage_2.completion_price = 1
+        usage_2.total_price = 2
+
+        action = AgentScratchpadUnit.Action(action_name="tool", action_input={})
+
+        handle_output = mocker.patch(
             "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
-            return_value=[],
+            side_effect=[
+                [action],
+                [],
+            ],
         )
 
-        # Simulate usage present
-        def fake_invoke(*args, **kwargs):
-            return []
+        def _handle_side_effect(chunks, usage_dict):
+            call_index = handle_output.call_count
+            usage_dict["usage"] = usage_1 if call_index == 1 else usage_2
+            return [action] if call_index == 1 else []
 
+        handle_output.side_effect = _handle_side_effect
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
+        mocker.patch(
+            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
+            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+        )
+
+        fake_prompt_tool = MagicMock()
+        fake_prompt_tool.name = "tool"
+        runner._init_prompt_tools = MagicMock(return_value=({"tool": MagicMock()}, [fake_prompt_tool]))
 
         results = list(runner.run(message, "query", {}))
-        assert results[-1].delta.message.content == ""
+        final_usage = results[-1].delta.usage
+        assert final_usage is not None
+        assert final_usage.prompt_tokens == 2
+        assert final_usage.completion_tokens == 2
+        assert final_usage.total_tokens == 4
+        assert final_usage.prompt_price == 2
+        assert final_usage.completion_price == 2
+        assert final_usage.total_price == 4
 
     def test_run_when_no_action_branch(self, runner, mocker):
         message = MagicMock()
@@ -434,7 +457,6 @@ class TestFillInputsEdgeCases:
 
 class TestOrganizeHistoricPromptMessagesExtended:
     def test_user_message_flushes_scratchpad(self, runner, mocker):
-        user_message = MagicMock()
         from core.model_runtime.entities.message_entities import UserPromptMessage
 
         user_message = UserPromptMessage(content="Hi")
@@ -512,7 +534,7 @@ class TestRunAdditionalBranches:
         results = list(runner.run(message, "query", {}))
         assert json.loads(results[-1].delta.message.content) == {"a": 1}
 
-    def test_run_with_non_serializable_final_answer(self, runner, mocker):
+    def test_run_with_string_final_answer(self, runner, mocker):
         message = MagicMock()
         message.id = "msg-id"
 

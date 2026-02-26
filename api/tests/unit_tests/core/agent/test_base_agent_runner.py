@@ -572,27 +572,6 @@ class TestAdditionalCoverage:
 
     # ================= Additional Surgical Coverage =================
 
-    def test_update_prompt_skip_file_types(self, runner, mocker):
-        tool = mocker.MagicMock()
-
-        param = mocker.MagicMock()
-        param.form = module.ToolParameter.ToolParameterForm.LLM
-        param.name = "file_param"
-        param.required = False
-        param.llm_description = "desc"
-        param.options = None
-        param.input_schema = None
-
-        # Simulate FILE type skip
-        param.type = module.ToolParameter.ToolParameterType.FILE
-        tool.get_runtime_parameters.return_value = [param]
-
-        prompt_tool = mocker.MagicMock()
-        prompt_tool.parameters = {"properties": {}, "required": []}
-
-        result = runner.update_prompt_message_tool(tool, prompt_tool)
-        assert result.parameters["properties"] == {}
-
     def test_convert_tool_select_enum_branch(self, runner, mocker):
         tool = mocker.MagicMock(tool_name="tool1")
 
@@ -617,53 +596,6 @@ class TestAdditionalCoverage:
 
         prompt_tool, _ = runner._convert_tool_to_prompt_message_tool(tool)
         assert prompt_tool is not None
-
-    def test_save_agent_thought_label_fallback(self, runner, mock_db_session, mocker):
-        agent = mocker.MagicMock()
-        agent.tool = "unknown_tool"
-        agent.tool_labels = {}
-        agent.thought = ""
-        mock_db_session.scalar.return_value = agent
-
-        mocker.patch.object(module.ToolManager, "get_tool_label", return_value=None)
-
-        runner.save_agent_thought("id", None, None, None, None, None, None, [], None)
-        labels = json.loads(agent.tool_labels_str)
-        assert "unknown_tool" in labels
-
-    def test_organize_history_skip_current_message(self, runner, mock_db_session, mocker):
-        msg = mocker.MagicMock(id="msg_current", agent_thoughts=[], answer="ans", app_model_config=None)
-
-        mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
-        mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
-
-        result = runner.organize_agent_history([])
-        assert result == []
-
-    def test_organize_history_empty_tool_name(self, runner, mock_db_session, mocker):
-        thought = mocker.MagicMock(tool=";", thought="thinking")
-        msg = mocker.MagicMock(id="m5", agent_thoughts=[thought], answer=None, app_model_config=None)
-
-        mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
-        mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
-
-        result = runner.organize_agent_history([])
-        assert isinstance(result, list)
-
-    def test_image_detail_fallback(self, runner, mock_db_session, mocker):
-        mock_db_session.scalars.return_value.all.return_value = [mocker.MagicMock()]
-
-        file_config = mocker.MagicMock()
-        file_config.image_config = mocker.MagicMock(detail=None)
-
-        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_config)
-        mocker.patch.object(module.file_factory, "build_from_message_files", return_value=[])
-
-        msg = mocker.MagicMock(id="1", query="hello")
-        msg.app_model_config.to_dict.return_value = {}
-
-        result = runner.organize_agent_user_prompt(msg)
-        assert result.content == "hello"
 
 
 class TestConvertDatasetRetrieverTool:

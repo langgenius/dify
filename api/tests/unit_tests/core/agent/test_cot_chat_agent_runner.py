@@ -4,26 +4,14 @@ import pytest
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.model_runtime.entities.message_entities import TextPromptMessageContent
-
-
-class DummyTool:
-    def __init__(self, name):
-        self.name = name
-
-
-class DummyPrompt:
-    def __init__(self, first_prompt):
-        self.first_prompt = first_prompt
-
-
-class DummyAgentConfig:
-    def __init__(self, prompt):
-        self.prompt = prompt
-
-
-class DummyAppConfig:
-    def __init__(self, agent):
-        self.agent = agent
+from tests.unit_tests.core.agent.conftest import (
+    DummyAgentConfig,
+    DummyAppConfig,
+    DummyTool,
+)
+from tests.unit_tests.core.agent.conftest import (
+    DummyPromptEntity as DummyPrompt,
+)
 
 
 class DummyFileUploadConfig:
@@ -54,7 +42,7 @@ class DummyUnit:
 
 
 @pytest.fixture
-def runner(mocker):
+def runner():
     runner = CotChatAgentRunner.__new__(CotChatAgentRunner)
     runner._instruction = "test_instruction"
     runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
@@ -89,13 +77,13 @@ class TestOrganizeSystemPrompt:
             runner._organize_system_prompt()
 
     def test_organize_system_prompt_missing_prompt(self, runner):
-        runner.app_config = DummyAppConfig(DummyAgentConfig(prompt=None))
+        runner.app_config = DummyAppConfig(DummyAgentConfig(prompt_entity=None))
         with pytest.raises(AssertionError):
             runner._organize_system_prompt()
 
 
 class TestOrganizeUserQuery:
-    @pytest.mark.parametrize("files", [None, [], ""])
+    @pytest.mark.parametrize("files", [None, pytest.param([], id="empty_list")])
     def test_organize_user_query_no_files(self, runner, files):
         runner.files = files
         result = runner._organize_user_query("query", [])

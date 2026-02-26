@@ -1,4 +1,5 @@
 import json
+from typing import Any, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -32,28 +33,33 @@ def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
 
 
 class DummyMessage:
-    def __init__(self, content=None, tool_calls=None):
-        self.content = content
-        self.tool_calls = tool_calls or []
+    def __init__(self, content: Optional[str] = None, tool_calls: Optional[list[Any]] = None):
+        self.content: Optional[str] = content
+        self.tool_calls: list[Any] = tool_calls or []
 
 
 class DummyDelta:
-    def __init__(self, message=None, usage=None):
-        self.message = message
-        self.usage = usage
+    def __init__(self, message: Optional[DummyMessage] = None, usage: Optional[LLMUsage] = None):
+        self.message: Optional[DummyMessage] = message
+        self.usage: Optional[LLMUsage] = usage
 
 
 class DummyChunk:
-    def __init__(self, message=None, usage=None):
-        self.delta = DummyDelta(message=message, usage=usage)
+    def __init__(self, message: Optional[DummyMessage] = None, usage: Optional[LLMUsage] = None):
+        self.delta: DummyDelta = DummyDelta(message=message, usage=usage)
 
 
 class DummyResult:
-    def __init__(self, message=None, usage=None, prompt_messages=None):
-        self.message = message
-        self.usage = usage
-        self.prompt_messages = prompt_messages or []
-        self.system_fingerprint = ""
+    def __init__(
+        self,
+        message: Optional[DummyMessage] = None,
+        usage: Optional[LLMUsage] = None,
+        prompt_messages: Optional[list[DummyMessage]] = None,
+    ):
+        self.message: Optional[DummyMessage] = message
+        self.usage: Optional[LLMUsage] = usage
+        self.prompt_messages: list[DummyMessage] = prompt_messages or []
+        self.system_fingerprint: str = ""
 
 
 # ==============================
