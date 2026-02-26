@@ -1667,20 +1667,21 @@ export const useNodesInteractions = () => {
           (newNode.data as LoopNodeType).start_node_id = newLoopStartNode!.id
 
           const oldLoopStartNode = nodes.find(
-            n => n.parentId === nodeToPaste.id && n.type === CUSTOM_LOOP_START_NODE,
+            n =>
+              n.parentId === nodeToPaste.id
+              && n.type === CUSTOM_LOOP_START_NODE,
           )
           if (oldLoopStartNode)
             idMapping[oldLoopStartNode.id] = newLoopStartNode!.id
 
-          const oldLoopChildren = nodes.filter(
-            n => n.parentId === nodeToPaste.id && n.type !== CUSTOM_LOOP_START_NODE,
-          )
-          newChildren = handleNodeLoopChildrenCopy(nodeToPaste.id, newNode.id)
-          oldLoopChildren.forEach((oldChild, childIndex) => {
-            const copiedChild = newChildren[childIndex]
-            if (copiedChild)
-              idMapping[oldChild.id] = copiedChild.id
-          })
+          const { copyChildren, newIdMapping }
+            = handleNodeLoopChildrenCopy(
+              nodeToPaste.id,
+              newNode.id,
+              idMapping,
+            )
+          newChildren = copyChildren
+          idMapping = newIdMapping
           newChildren.forEach((child) => {
             newNode.data._children?.push({
               nodeId: child.id,
