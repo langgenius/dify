@@ -33,31 +33,31 @@ def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
 
 
 class DummyMessage:
-    def __init__(self, content: Optional[str] = None, tool_calls: Optional[list[Any]] = None):
-        self.content: Optional[str] = content
+    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None):
+        self.content: str | None = content
         self.tool_calls: list[Any] = tool_calls or []
 
 
 class DummyDelta:
-    def __init__(self, message: Optional[DummyMessage] = None, usage: Optional[LLMUsage] = None):
-        self.message: Optional[DummyMessage] = message
-        self.usage: Optional[LLMUsage] = usage
+    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
+        self.message: DummyMessage | None = message
+        self.usage: LLMUsage | None = usage
 
 
 class DummyChunk:
-    def __init__(self, message: Optional[DummyMessage] = None, usage: Optional[LLMUsage] = None):
+    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
         self.delta: DummyDelta = DummyDelta(message=message, usage=usage)
 
 
 class DummyResult:
     def __init__(
         self,
-        message: Optional[DummyMessage] = None,
-        usage: Optional[LLMUsage] = None,
-        prompt_messages: Optional[list[DummyMessage]] = None,
+        message: DummyMessage | None = None,
+        usage: LLMUsage | None = None,
+        prompt_messages: list[DummyMessage] | None = None,
     ):
-        self.message: Optional[DummyMessage] = message
-        self.usage: Optional[LLMUsage] = usage
+        self.message: DummyMessage | None = message
+        self.usage: LLMUsage | None = usage
         self.prompt_messages: list[DummyMessage] = prompt_messages or []
         self.system_fingerprint: str = ""
 
