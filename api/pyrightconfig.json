@@ -17,6 +17,7 @@
     "opentelemetry.instrumentation.requests",
     "opentelemetry.instrumentation.sqlalchemy",
     "opentelemetry.instrumentation.redis",
+    "opentelemetry.semconv",
     "langfuse",
     "cloudscraper",
     "readabilipy",
