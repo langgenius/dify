@@ -10,15 +10,13 @@ This module tests the document indexing task functionality including:
 """
 
 import uuid
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from core.indexing_runner import IndexingRunner
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, Document
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 
 # ============================================================================
@@ -42,177 +40,6 @@ def dataset_id():
 def document_ids():
     """Generate a list of document IDs for testing."""
     return [str(uuid.uuid4()) for _ in range(3)]
-
-
-@pytest.fixture
-def mock_dataset(dataset_id, tenant_id):
-    """Create a mock Dataset object."""
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id
-    dataset.tenant_id = tenant_id
-    dataset.indexing_technique = "high_quality"
-    dataset.embedding_model_provider = "openai"
-    dataset.embedding_model = "text-embedding-ada-002"
-    return dataset
-
-
-@pytest.fixture
-def mock_documents(document_ids, dataset_id):
-    """Create mock Document objects."""
-    documents = []
-    for doc_id in document_ids:
-        doc = Mock(spec=Document)
-        doc.id = doc_id
-        doc.dataset_id = dataset_id
-        doc.indexing_status = "waiting"
-        doc.error = None
-        doc.stopped_at = None
-        doc.processing_started_at = None
-        documents.append(doc)
-    return documents
-
-
-@pytest.fixture
-def mock_db_session():
-    """Mock database session via session_factory.create_session()."""
-    with patch("tasks.document_indexing_task.session_factory") as mock_sf:
-        sessions = []  # Track all created sessions
-        # Shared mock data that all sessions will access
-        shared_mock_data = {"dataset": None, "documents": None, "doc_iter": None}
-
-        def create_session_side_effect():
-            session = MagicMock()
-            session.close = MagicMock()
-
-            # Track commit calls
-            commit_mock = MagicMock()
-            session.commit = commit_mock
-            cm = MagicMock()
-            cm.__enter__.return_value = session
-
-            def _exit_side_effect(*args, **kwargs):
-                session.close()
-
-            cm.__exit__.side_effect = _exit_side_effect
-
-            # Support session.begin() for transactions
-            begin_cm = MagicMock()
-            begin_cm.__enter__.return_value = session
-
-            def begin_exit_side_effect(*args, **kwargs):
-                # Auto-commit on transaction exit (like SQLAlchemy)
-                session.commit()
-                # Also mark wrapper's commit as called
-                if sessions:
-                    sessions[0].commit()
-
-            begin_cm.__exit__ = MagicMock(side_effect=begin_exit_side_effect)
-            session.begin = MagicMock(return_value=begin_cm)
-
-            sessions.append(session)
-
-            # Setup query with side_effect to handle both Dataset and Document queries
-            def query_side_effect(*args):
-                query = MagicMock()
-                if args and args[0] == Dataset and shared_mock_data["dataset"] is not None:
-                    where_result = MagicMock()
-                    where_result.first.return_value = shared_mock_data["dataset"]
-                    query.where = MagicMock(return_value=where_result)
-                elif args and args[0] == Document and shared_mock_data["documents"] is not None:
-                    # Support both .first() and .all() calls with chaining
-                    where_result = MagicMock()
-                    where_result.where = MagicMock(return_value=where_result)
-
-                    # Create an iterator for .first() calls if not exists
-                    if shared_mock_data["doc_iter"] is None:
-                        docs = shared_mock_data["documents"] or [None]
-                        shared_mock_data["doc_iter"] = iter(docs)
-
-                    where_result.first = lambda: next(shared_mock_data["doc_iter"], None)
-                    docs_or_empty = shared_mock_data["documents"] or []
-                    where_result.all = MagicMock(return_value=docs_or_empty)
-                    query.where = MagicMock(return_value=where_result)
-                else:
-                    query.where = MagicMock(return_value=query)
-                return query
-
-            session.query = MagicMock(side_effect=query_side_effect)
-            return cm
-
-        mock_sf.create_session.side_effect = create_session_side_effect
-
-        # Create a wrapper that behaves like the first session but has access to all sessions
-        class SessionWrapper:
-            def __init__(self):
-                self._sessions = sessions
-                self._shared_data = shared_mock_data
-                # Create a default session for setup phase
-                self._default_session = MagicMock()
-                self._default_session.close = MagicMock()
-                self._default_session.commit = MagicMock()
-
-                # Support session.begin() for default session too
-                begin_cm = MagicMock()
-                begin_cm.__enter__.return_value = self._default_session
-
-                def default_begin_exit_side_effect(*args, **kwargs):
-                    self._default_session.commit()
-
-                begin_cm.__exit__ = MagicMock(side_effect=default_begin_exit_side_effect)
-                self._default_session.begin = MagicMock(return_value=begin_cm)
-
-                def default_query_side_effect(*args):
-                    query = MagicMock()
-                    if args and args[0] == Dataset and shared_mock_data["dataset"] is not None:
-                        where_result = MagicMock()
-                        where_result.first.return_value = shared_mock_data["dataset"]
-                        query.where = MagicMock(return_value=where_result)
-                    elif args and args[0] == Document and shared_mock_data["documents"] is not None:
-                        where_result = MagicMock()
-                        where_result.where = MagicMock(return_value=where_result)
-
-                        if shared_mock_data["doc_iter"] is None:
-                            docs = shared_mock_data["documents"] or [None]
-                            shared_mock_data["doc_iter"] = iter(docs)
-
-                        where_result.first = lambda: next(shared_mock_data["doc_iter"], None)
-                        docs_or_empty = shared_mock_data["documents"] or []
-                        where_result.all = MagicMock(return_value=docs_or_empty)
-                        query.where = MagicMock(return_value=where_result)
-                    else:
-                        query.where = MagicMock(return_value=query)
-                    return query
-
-                self._default_session.query = MagicMock(side_effect=default_query_side_effect)
-
-            def __getattr__(self, name):
-                # Forward all attribute access to the first session, or default if none created yet
-                target_session = self._sessions[0] if self._sessions else self._default_session
-                return getattr(target_session, name)
-
-            @property
-            def all_sessions(self):
-                """Access all created sessions for testing."""
-                return self._sessions
-
-        wrapper = SessionWrapper()
-        yield wrapper
-
-
-@pytest.fixture
-def mock_indexing_runner():
-    """Mock IndexingRunner."""
-    with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner_class:
-        mock_runner = MagicMock(spec=IndexingRunner)
-        mock_runner_class.return_value = mock_runner
-        yield mock_runner
-
-
-@pytest.fixture
-def mock_feature_service():
-    """Mock FeatureService for billing and feature checks."""
-    with patch("tasks.document_indexing_task.FeatureService") as mock_service:
-        yield mock_service
 
 
 @pytest.fixture
