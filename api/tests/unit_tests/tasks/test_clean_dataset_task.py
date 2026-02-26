@@ -197,11 +197,6 @@ class TestErrorHandling:
 # ============================================================================
 
 
-# ============================================================================
-# Test Pipeline and Workflow Deletion
-# ============================================================================
-
-
 class TestPipelineAndWorkflowDeletion:
     """Test cases for pipeline and workflow deletion."""
 
