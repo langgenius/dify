@@ -200,6 +200,15 @@ class TestDatasetIndexingTaskIntegration:
             assert expected_error_substring in updated.error
             assert updated.stopped_at is not None
 
+    def _assert_all_opened_sessions_closed(self, session_close_tracker: dict) -> None:
+        """Assert that every opened session is eventually closed."""
+        opened = session_close_tracker["opened_sessions"]
+        closed = session_close_tracker["closed_sessions"]
+        opened_ids = {id(session) for session in opened}
+        closed_ids = {id(session) for session in closed}
+        assert len(opened) >= 2
+        assert opened_ids <= closed_ids
+
     def test_legacy_document_indexing_task_still_works(
         self, db_session_with_containers, patched_external_dependencies
     ):
@@ -450,7 +459,7 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         task_dispatch_spy.delay.assert_called_once()
 
-    def test_session_cleanup_on_success(
+    def test_sessions_close_on_successful_indexing(
         self,
         db_session_with_containers,
         patched_external_dependencies,
@@ -465,14 +474,9 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        opened = session_close_tracker["opened_sessions"]
-        closed = session_close_tracker["closed_sessions"]
-        opened_ids = {id(session) for session in opened}
-        closed_ids = {id(session) for session in closed}
-        assert len(opened) >= 2
-        assert opened_ids <= closed_ids
+        self._assert_all_opened_sessions_closed(session_close_tracker)
 
-    def test_session_cleanup_on_error(
+    def test_sessions_close_when_runner_raises(
         self,
         db_session_with_containers,
         patched_external_dependencies,
@@ -488,12 +492,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        opened = session_close_tracker["opened_sessions"]
-        closed = session_close_tracker["closed_sessions"]
-        opened_ids = {id(session) for session in opened}
-        closed_ids = {id(session) for session in closed}
-        assert len(opened) >= 2
-        assert opened_ids <= closed_ids
+        self._assert_all_opened_sessions_closed(session_close_tracker)
 
     def test_multiple_documents_with_mixed_success_and_failure(
         self, db_session_with_containers, patched_external_dependencies
@@ -775,23 +774,3 @@ class TestDatasetIndexingTaskIntegration:
         run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == batch_limit
         self._assert_documents_parsing(db_session_with_containers, document_ids)
-
-    def test_database_session_always_closed_on_success(
-        self,
-        db_session_with_containers,
-        patched_external_dependencies,
-        session_close_tracker,
-    ):
-        """Close every opened DB session in successful execution path."""
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
-        document_ids = [doc.id for doc in documents]
-
-        # Act
-        _document_indexing(dataset.id, document_ids)
-
-        # Assert
-        opened = session_close_tracker["opened_sessions"]
-        closed = session_close_tracker["closed_sessions"]
-        assert len(opened) >= 2
-        assert len(closed) >= len(opened)
