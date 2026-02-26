@@ -2,7 +2,13 @@ from services.rag_pipeline.pipeline_template.built_in.built_in_retrieval import 
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
-def test_get_pipeline_templates_and_detail(mocker) -> None:
+def test_get_type() -> None:
+    retrieval = BuiltInPipelineTemplateRetrieval()
+
+    assert retrieval.get_type() == PipelineTemplateType.BUILTIN
+
+
+def test_get_pipeline_templates(mocker) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -16,10 +22,24 @@ def test_get_pipeline_templates_and_detail(mocker) -> None:
     retrieval = BuiltInPipelineTemplateRetrieval()
 
     templates = retrieval.get_pipeline_templates("en-US")
+
+    assert templates == {"pipeline_templates": [{"id": "tpl-1"}]}
+
+
+def test_get_pipeline_template_detail(mocker) -> None:
+    mocker.patch.object(
+        BuiltInPipelineTemplateRetrieval,
+        "_get_builtin_data",
+        return_value={
+            "pipeline_templates": {
+                "tpl-1": {"id": "tpl-1", "name": "Template 1"},
+            }
+        },
+    )
+    retrieval = BuiltInPipelineTemplateRetrieval()
+
     detail = retrieval.get_pipeline_template_detail("tpl-1")
 
-    assert retrieval.get_type() == PipelineTemplateType.BUILTIN
-    assert templates == {"pipeline_templates": [{"id": "tpl-1"}]}
     assert detail == {"id": "tpl-1", "name": "Template 1"}
 
 
