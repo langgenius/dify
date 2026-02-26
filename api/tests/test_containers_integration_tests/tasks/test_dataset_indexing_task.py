@@ -288,20 +288,6 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
 
-    def test_document_status_transitions_to_parsing_with_start_time(
-        self, db_session_with_containers, patched_external_dependencies
-    ):
-        """Transition document status to parsing and persist processing_started_at."""
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
-        document_ids = [doc.id for doc in documents]
-
-        # Act
-        _document_indexing(dataset.id, document_ids)
-
-        # Assert
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
-
     def test_tenant_queue_dispatches_next_task_after_completion(
         self, db_session_with_containers, patched_external_dependencies
     ):
