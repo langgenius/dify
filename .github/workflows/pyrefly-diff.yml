@@ -1,0 +1,57 @@
+name: Pyrefly Diff Check
+
+on:
+  pull_request:
+    paths:
+      - 'api/**/*.py'
+
+jobs:
+  pyrefly-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python & UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --directory api --dev
+
+      - name: Run pyrefly on PR branch
+        run: |
+          uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
+
+      - name: Checkout base branch
+        run: git checkout ${{ github.base_ref }}
+
+      - name: Run pyrefly on base branch
+        run: |
+          uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
+
+      - name: Compute diff
+        id: diff
+        run: |
+          DIFF=$(diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt || true)
+          echo "diff<<EOF" >> $GITHUB_OUTPUT
+          echo "$DIFF" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post diff as PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const diff = `${{ steps.diff.outputs.diff }}`;
+            const body = diff 
+              ? `### Pyrefly Diff (base → PR)\n\`\`\`diff\n${diff}\n\`\`\``
+              : '### Pyrefly Diff\nNo changes detected.';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
