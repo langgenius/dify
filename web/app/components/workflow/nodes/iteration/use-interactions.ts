@@ -110,16 +110,22 @@ export const useNodeIterationInteractions = () => {
       handleNodeIterationRerender(parentId)
   }, [store, handleNodeIterationRerender])
 
-  const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
+  const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>, sourceNodes?: Node[]) => {
     const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const currentNodes = getNodes()
+    const nodes = sourceNodes ?? currentNodes
     const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
     const newIdMapping = { ...idMapping }
     const childNodeTypeCount: ChildNodeTypeCount = {}
+    const copyChildren: Node[] = []
 
-    const copyChildren = childrenNodes.map((child, index) => {
+    childrenNodes.forEach((child, index) => {
       const childNodeType = child.data.type as BlockEnum
-      const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
+      const nodesWithSameType = currentNodes.filter(node => node.data.type === childNodeType)
+      const childNodeMetaData = nodesMetaDataMap?.[childNodeType]
+
+      if (!childNodeMetaData)
+        return
 
       if (!childNodeTypeCount[childNodeType])
         childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
@@ -129,7 +135,7 @@ export const useNodeIterationInteractions = () => {
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
-          ...nodesMetaDataMap![childNodeType].defaultValue,
+          ...childNodeMetaData.defaultValue,
           ...child.data,
           selected: false,
           _isBundled: false,
@@ -147,14 +153,14 @@ export const useNodeIterationInteractions = () => {
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
       newIdMapping[child.id] = newNode.id
-      return newNode
+      copyChildren.push(newNode)
     })
 
     return {
       copyChildren,
       newIdMapping,
     }
-  }, [store, t])
+  }, [store, t, nodesMetaDataMap])
 
   return {
     handleNodeIterationRerender,
