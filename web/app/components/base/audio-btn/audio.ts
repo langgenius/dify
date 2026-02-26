@@ -1,5 +1,5 @@
 import Toast from '@/app/components/base/toast'
-import { textToAudioStream } from '@/service/share'
+import { AppSourceType, textToAudioStream } from '@/service/share'
 
 declare global {
   // eslint-disable-next-line ts/consistent-type-definitions
@@ -100,7 +100,7 @@ export default class AudioPlayer {
 
   private async loadAudio() {
     try {
-      const audioResponse: any = await textToAudioStream(this.url, this.isPublic, { content_type: 'audio/mpeg' }, {
+      const audioResponse: any = await textToAudioStream(this.url, this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp, { content_type: 'audio/mpeg' }, {
         message_id: this.msgId,
         streaming: true,
         voice: this.voice,
@@ -127,7 +127,7 @@ export default class AudioPlayer {
     }
     catch {
       this.isLoadData = false
-      this.callback && this.callback('error')
+      this.callback?.('error')
     }
   }
 
@@ -137,15 +137,14 @@ export default class AudioPlayer {
       if (this.audioContext.state === 'suspended') {
         this.audioContext.resume().then((_) => {
           this.audio.play()
-          this.callback && this.callback('play')
+          this.callback?.('play')
         })
       }
       else if (this.audio.ended) {
         this.audio.play()
-        this.callback && this.callback('play')
+        this.callback?.('play')
       }
-      if (this.callback)
-        this.callback('play')
+      this.callback?.('play')
     }
     else {
       this.isLoadData = true
@@ -189,24 +188,24 @@ export default class AudioPlayer {
       if (this.audio.paused) {
         this.audioContext.resume().then((_) => {
           this.audio.play()
-          this.callback && this.callback('play')
+          this.callback?.('play')
         })
       }
       else if (this.audio.ended) {
         this.audio.play()
-        this.callback && this.callback('play')
+        this.callback?.('play')
       }
       else if (this.audio.played) { /* empty */ }
 
       else {
         this.audio.play()
-        this.callback && this.callback('play')
+        this.callback?.('play')
       }
     }
   }
 
   public pauseAudio() {
-    this.callback && this.callback('paused')
+    this.callback?.('paused')
     this.audio.pause()
     this.audioContext.suspend()
   }

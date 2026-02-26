@@ -1,11 +1,3 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
-import { useAuthService } from './use-auth-service'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -15,20 +7,28 @@ import type {
   ModelProvider,
 } from '../../declarations'
 import {
+  useCallback,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
+import {
   useModelModalHandler,
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useDeleteModel } from '@/service/use-models'
+import { useAuthService } from './use-auth-service'
 
 export const useAuth = (
   provider: ModelProvider,
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   extra: {
-    isModelCredential?: boolean,
-    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void,
-    onRemove?: (credentialId: string) => void,
-    mode?: ModelModalModeEnum,
+    isModelCredential?: boolean
+    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onRemove?: (credentialId: string) => void
+    mode?: ModelModalModeEnum
   } = {},
 ) => {
   const {
@@ -88,9 +88,9 @@ export const useAuth = (
       })
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
-      handleRefreshModel(provider, configurationMethod, undefined)
+      handleRefreshModel(provider, undefined, true)
     }
     finally {
       handleSetDoingAction(false)
@@ -123,9 +123,9 @@ export const useAuth = (
       }
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
-      handleRefreshModel(provider, configurationMethod, undefined)
+      handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
     }
@@ -146,8 +146,8 @@ export const useAuth = (
         res = await getAddCredentialService(!!isModelCredential)(payload as any)
 
       if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        handleRefreshModel(provider, configurationMethod, undefined)
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        handleRefreshModel(provider, undefined, !payload.credential_id)
       }
     }
     finally {

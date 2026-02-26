@@ -129,8 +129,8 @@ class TestOpenSearchVector:
                 "hits": [
                     {
                         "_source": {
-                            Field.CONTENT_KEY.value: get_example_text(),
-                            Field.METADATA_KEY.value: {"document_id": self.example_doc_id},
+                            Field.CONTENT_KEY: get_example_text(),
+                            Field.METADATA_KEY: {"document_id": self.example_doc_id},
                         },
                         "_score": 1.0,
                     }
@@ -181,6 +181,28 @@ class TestOpenSearchVector:
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1
         assert ids[0] == "mock_id"
+
+    def test_delete_nonexistent_index(self):
+        """Test deleting a non-existent index."""
+        # Create a vector instance with a non-existent collection name
+        self.vector._client.indices.exists.return_value = False
+
+        # Should not raise an exception
+        self.vector.delete()
+
+        # Verify that exists was called but delete was not
+        self.vector._client.indices.exists.assert_called_once_with(index=self.collection_name.lower())
+        self.vector._client.indices.delete.assert_not_called()
+
+    def test_delete_existing_index(self):
+        """Test deleting an existing index."""
+        self.vector._client.indices.exists.return_value = True
+
+        self.vector.delete()
+
+        # Verify both exists and delete were called
+        self.vector._client.indices.exists.assert_called_once_with(index=self.collection_name.lower())
+        self.vector._client.indices.delete.assert_called_once_with(index=self.collection_name.lower())
 
 
 @pytest.mark.usefixtures("setup_mock_redis")

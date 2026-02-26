@@ -1,62 +1,62 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "Icon L"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "g",
-						"attributes": {
-							"id": "Vector"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M2.66602 11.3333H0.666016L3.33268 8.66667L5.99935 11.3333H3.99935L3.99935 14H2.66602L2.66602 11.3333Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M2.66602 4.66667L2.66602 2L3.99935 2L3.99935 4.66667L5.99935 4.66667L3.33268 7.33333L0.666016 4.66667L2.66602 4.66667Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M7.33268 2.66667H13.9993V4H7.33268V2.66667ZM7.33268 12H13.9993V13.3333H7.33268V12ZM5.99935 7.33333H13.9993V8.66667H5.99935V7.33333Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "Collapse"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "Icon L"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "id": "Vector"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M2.66602 11.3333H0.666016L3.33268 8.66667L5.99935 11.3333H3.99935L3.99935 14H2.66602L2.66602 11.3333Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M2.66602 4.66667L2.66602 2L3.99935 2L3.99935 4.66667L5.99935 4.66667L3.33268 7.33333L0.666016 4.66667L2.66602 4.66667Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M7.33268 2.66667H13.9993V4H7.33268V2.66667ZM7.33268 12H13.9993V13.3333H7.33268V12ZM5.99935 7.33333H13.9993V8.66667H5.99935V7.33333Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Collapse"
 }

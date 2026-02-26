@@ -26,6 +26,10 @@
         @apply p-0.5 w-6 h-6 rounded-lg
     }
 
+    .action-btn-s {
+        @apply w-5 h-5 rounded-[6px]
+    }
+
     .action-btn-xs {
         @apply p-0 w-4 h-4 rounded
     }

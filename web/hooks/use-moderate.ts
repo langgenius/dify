@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
 import type { ModerationService } from '@/models/common'
+import { useEffect, useRef, useState } from 'react'
 
 function splitStringByLength(inputString: string, chunkLength: number) {
   const resultArray = []

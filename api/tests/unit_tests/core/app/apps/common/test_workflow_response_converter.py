@@ -1,8 +1,8 @@
 from collections.abc import Mapping, Sequence
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.variables.segments import ArrayFileSegment, FileSegment
+from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:
@@ -43,7 +43,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         """Test with None input"""
         # The method signature expects Union[dict, list, Segment], but implementation handles None
         # We'll test the actual behavior by passing an empty dict instead
-        result = WorkflowResponseConverter._fetch_files_from_variable_value(None)  # type: ignore
+        result = WorkflowResponseConverter._fetch_files_from_variable_value(None)
         assert result == []
 
     def test_fetch_files_from_variable_value_with_empty_dict(self):

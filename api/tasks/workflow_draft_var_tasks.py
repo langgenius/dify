@@ -5,15 +5,9 @@ These tasks provide asynchronous storage capabilities for workflow execution dat
 improving performance by offloading storage operations to background workers.
 """
 
-import logging
-
 from celery import shared_task  # type: ignore[import-untyped]
-from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
-
-_logger = logging.getLogger(__name__)
-
+from core.db.session_factory import session_factory
 from services.workflow_draft_variable_service import DraftVarFileDeletion, WorkflowDraftVariableService
 
 
@@ -22,6 +16,6 @@ def save_workflow_execution_task(
     self,
     deletions: list[DraftVarFileDeletion],
 ):
-    with Session(bind=db.engine) as session, session.begin():
+    with session_factory.create_session() as session, session.begin():
         srv = WorkflowDraftVariableService(session=session)
         srv.delete_workflow_draft_variable_file(deletions=deletions)

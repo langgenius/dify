@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 from werkzeug.exceptions import NotFound
 
-from models.account import Account
+from models import Account
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
@@ -25,9 +25,7 @@ class TestAnnotationService:
             patch("services.annotation_service.enable_annotation_reply_task") as mock_enable_task,
             patch("services.annotation_service.disable_annotation_reply_task") as mock_disable_task,
             patch("services.annotation_service.batch_import_annotations_task") as mock_batch_import_task,
-            patch(
-                "services.annotation_service.current_user", create_autospec(Account, instance=True)
-            ) as mock_current_user,
+            patch("services.annotation_service.current_account_with_tenant") as mock_current_account_with_tenant,
         ):
             # Setup default mock returns
             mock_account_feature_service.get_features.return_value.billing.enabled = False
@@ -38,6 +36,9 @@ class TestAnnotationService:
             mock_disable_task.delay.return_value = None
             mock_batch_import_task.delay.return_value = None
 
+            # Create mock user that will be returned by current_account_with_tenant
+            mock_user = create_autospec(Account, instance=True)
+
             yield {
                 "account_feature_service": mock_account_feature_service,
                 "feature_service": mock_feature_service,
@@ -47,7 +48,8 @@ class TestAnnotationService:
                 "enable_task": mock_enable_task,
                 "disable_task": mock_disable_task,
                 "batch_import_task": mock_batch_import_task,
-                "current_user": mock_current_user,
+                "current_account_with_tenant": mock_current_account_with_tenant,
+                "current_user": mock_user,
             }
 
     def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
@@ -107,6 +109,11 @@ class TestAnnotationService:
         """
         mock_external_service_dependencies["current_user"].id = account_id
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant_id
+        # Configure current_account_with_tenant to return (user, tenant_id)
+        mock_external_service_dependencies["current_account_with_tenant"].return_value = (
+            mock_external_service_dependencies["current_user"],
+            tenant_id,
+        )
 
     def _create_test_conversation(self, app, account, fake):
         """
@@ -212,6 +219,23 @@ class TestAnnotationService:
         # Verify add_annotation_to_index_task was called (when annotation setting exists)
         # Note: In this test, no annotation setting exists, so task should not be called
         mock_external_service_dependencies["add_task"].delay.assert_not_called()
+
+    def test_insert_app_annotation_directly_requires_question(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Question must be provided when inserting annotations directly.
+        """
+        fake = Faker()
+        app, _ = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        annotation_args = {
+            "question": None,
+            "answer": fake.text(max_nb_chars=200),
+        }
+
+        with pytest.raises(ValueError):
+            AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
     def test_insert_app_annotation_directly_app_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -436,6 +460,78 @@ class TestAnnotationService:
         assert len(annotation_list) == 1
         assert total == 1
         assert unique_keyword in annotation_list[0].question or unique_keyword in annotation_list[0].content
+
+    def test_get_annotation_list_by_app_id_with_special_characters_in_keyword(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        r"""
+        Test retrieval of annotation list with special characters in keyword to verify SQL injection prevention.
+
+        This test verifies:
+        - Special characters (%, _, \) in keyword are properly escaped
+        - Search treats special characters as literal characters, not wildcards
+        - SQL injection via LIKE wildcards is prevented
+        """
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Create annotations with special characters in content
+        annotation_with_percent = {
+            "question": "Question with 50% discount",
+            "answer": "Answer about 50% discount offer",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_percent, app.id)
+
+        annotation_with_underscore = {
+            "question": "Question with test_data",
+            "answer": "Answer about test_data value",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_underscore, app.id)
+
+        annotation_with_backslash = {
+            "question": "Question with path\\to\\file",
+            "answer": "Answer about path\\to\\file location",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_backslash, app.id)
+
+        # Create annotation that should NOT match (contains % but as part of different text)
+        annotation_no_match = {
+            "question": "Question with 100% different",
+            "answer": "Answer about 100% different content",
+        }
+        AppAnnotationService.insert_app_annotation_directly(annotation_no_match, app.id)
+
+        # Test 1: Search with % character - should find exact match only
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="50%"
+        )
+        assert total == 1
+        assert len(annotation_list) == 1
+        assert "50%" in annotation_list[0].question or "50%" in annotation_list[0].content
+
+        # Test 2: Search with _ character - should find exact match only
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="test_data"
+        )
+        assert total == 1
+        assert len(annotation_list) == 1
+        assert "test_data" in annotation_list[0].question or "test_data" in annotation_list[0].content
+
+        # Test 3: Search with \ character - should find exact match only
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="path\\to\\file"
+        )
+        assert total == 1
+        assert len(annotation_list) == 1
+        assert "path\\to\\file" in annotation_list[0].question or "path\\to\\file" in annotation_list[0].content
+
+        # Test 4: Search with % should NOT match 100% (verifies escaping works)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            app.id, page=1, limit=10, keyword="50%"
+        )
+        # Should only find the 50% annotation, not the 100% one
+        assert total == 1
+        assert all("50%" in (item.question or "") or "50%" in (item.content or "") for item in annotation_list)
 
     def test_get_annotation_list_by_app_id_app_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -853,22 +949,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -912,22 +1010,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1013,22 +1113,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1073,22 +1175,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1144,22 +1248,25 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
+
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1204,22 +1311,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 

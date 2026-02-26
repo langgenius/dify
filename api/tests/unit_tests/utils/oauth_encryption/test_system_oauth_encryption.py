@@ -116,10 +116,10 @@ class TestSystemOAuthEncrypter:
         encrypter = SystemOAuthEncrypter("test_secret")
 
         with pytest.raises(Exception):  # noqa: B017
-            encrypter.encrypt_oauth_params(None)  # type: ignore
+            encrypter.encrypt_oauth_params(None)
 
         with pytest.raises(Exception):  # noqa: B017
-            encrypter.encrypt_oauth_params("not_a_dict")  # type: ignore
+            encrypter.encrypt_oauth_params("not_a_dict")
 
     def test_decrypt_oauth_params_basic(self):
         """Test basic OAuth parameters decryption"""
@@ -207,12 +207,12 @@ class TestSystemOAuthEncrypter:
         encrypter = SystemOAuthEncrypter("test_secret")
 
         with pytest.raises(ValueError) as exc_info:
-            encrypter.decrypt_oauth_params(123)  # type: ignore
+            encrypter.decrypt_oauth_params(123)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
         with pytest.raises(ValueError) as exc_info:
-            encrypter.decrypt_oauth_params(None)  # type: ignore
+            encrypter.decrypt_oauth_params(None)
 
         assert "encrypted_data must be a string" in str(exc_info.value)
 
@@ -461,14 +461,14 @@ class TestConvenienceFunctions:
         """Test convenience functions with error conditions"""
         # Test encryption with invalid input
         with pytest.raises(Exception):  # noqa: B017
-            encrypt_system_oauth_params(None)  # type: ignore
+            encrypt_system_oauth_params(None)
 
         # Test decryption with invalid input
         with pytest.raises(ValueError):
             decrypt_system_oauth_params("")
 
         with pytest.raises(ValueError):
-            decrypt_system_oauth_params(None)  # type: ignore
+            decrypt_system_oauth_params(None)
 
 
 class TestErrorHandling:
@@ -501,7 +501,7 @@ class TestErrorHandling:
 
         # Test non-string error
         with pytest.raises(ValueError) as exc_info:
-            encrypter.decrypt_oauth_params(123)  # type: ignore
+            encrypter.decrypt_oauth_params(123)
         assert "encrypted_data must be a string" in str(exc_info.value)
 
         # Test invalid format error

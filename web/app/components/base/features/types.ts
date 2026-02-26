@@ -1,5 +1,5 @@
-import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import type { FileUploadConfigResponse } from '@/models/common'
+import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 export type EnabledOrDisabled = {
   enabled?: boolean

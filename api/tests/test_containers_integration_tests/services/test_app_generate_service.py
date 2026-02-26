@@ -1,16 +1,14 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from faker import Faker
-from openai._exceptions import RateLimitError
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
-from services.errors.llm import InvokeRateLimitError
 
 
 class TestAppGenerateService:
@@ -20,36 +18,40 @@ class TestAppGenerateService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.app_generate_service.BillingService") as mock_billing_service,
+            patch("services.billing_service.BillingService") as mock_billing_service,
             patch("services.app_generate_service.WorkflowService") as mock_workflow_service,
             patch("services.app_generate_service.RateLimit") as mock_rate_limit,
-            patch("services.app_generate_service.RateLimiter") as mock_rate_limiter,
             patch("services.app_generate_service.CompletionAppGenerator") as mock_completion_generator,
             patch("services.app_generate_service.ChatAppGenerator") as mock_chat_generator,
             patch("services.app_generate_service.AgentChatAppGenerator") as mock_agent_chat_generator,
             patch("services.app_generate_service.AdvancedChatAppGenerator") as mock_advanced_chat_generator,
             patch("services.app_generate_service.WorkflowAppGenerator") as mock_workflow_generator,
+            patch("services.app_generate_service.MessageBasedAppGenerator") as mock_message_based_generator,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
             patch("services.app_generate_service.dify_config") as mock_dify_config,
+            patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
-            mock_billing_service.get_info.return_value = {"subscription": {"plan": "sandbox"}}
+            mock_billing_service.update_tenant_feature_plan_usage.return_value = {
+                "result": "success",
+                "history_id": "test_history_id",
+            }
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
-            mock_workflow_service_instance.get_published_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_draft_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_published_workflow_by_id.return_value = MagicMock(spec=Workflow)
+            mock_published_workflow = MagicMock(spec=Workflow)
+            mock_published_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_published_workflow.return_value = mock_published_workflow
+            mock_draft_workflow = MagicMock(spec=Workflow)
+            mock_draft_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_draft_workflow.return_value = mock_draft_workflow
+            mock_workflow_service_instance.get_published_workflow_by_id.return_value = mock_published_workflow
 
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value
             mock_rate_limit_instance.enter.return_value = "test_request_id"
             mock_rate_limit_instance.generate.return_value = ["test_response"]
             mock_rate_limit_instance.exit.return_value = None
-
-            mock_rate_limiter_instance = mock_rate_limiter.return_value
-            mock_rate_limiter_instance.is_rate_limited.return_value = False
-            mock_rate_limiter_instance.increment_rate_limit.return_value = None
 
             # Setup default mock returns for app generators
             mock_completion_generator_instance = mock_completion_generator.return_value
@@ -69,6 +71,8 @@ class TestAppGenerateService:
             mock_advanced_chat_generator_instance.generate.return_value = ["advanced_chat_response"]
             mock_advanced_chat_generator_instance.single_iteration_generate.return_value = ["single_iteration_response"]
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
+            mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
+            mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
             mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
             mock_workflow_generator_instance = mock_workflow_generator.return_value
@@ -79,26 +83,35 @@ class TestAppGenerateService:
             mock_workflow_generator_instance.single_loop_generate.return_value = ["workflow_single_loop_response"]
             mock_workflow_generator.convert_to_event_stream.return_value = ["workflow_stream"]
 
+            mock_message_based_generator.retrieve_events.return_value = ["workflow_events"]
+
             # Setup default mock returns for account service
             mock_account_feature_service.get_system_features.return_value.is_allow_register = True
 
             # Setup dify_config mock returns
             mock_dify_config.BILLING_ENABLED = False
             mock_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
+            mock_dify_config.APP_DEFAULT_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DAILY_RATE_LIMIT = 1000
+
+            mock_global_dify_config.BILLING_ENABLED = False
+            mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
+            mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
+            mock_global_dify_config.HOSTED_POOL_CREDITS = 1000
 
             yield {
                 "billing_service": mock_billing_service,
                 "workflow_service": mock_workflow_service,
                 "rate_limit": mock_rate_limit,
-                "rate_limiter": mock_rate_limiter,
                 "completion_generator": mock_completion_generator,
                 "chat_generator": mock_chat_generator,
                 "agent_chat_generator": mock_agent_chat_generator,
                 "advanced_chat_generator": mock_advanced_chat_generator,
                 "workflow_generator": mock_workflow_generator,
+                "message_based_generator": mock_message_based_generator,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
+                "global_dify_config": mock_global_dify_config,
             }
 
     def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies, mode="chat"):
@@ -278,8 +291,10 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify advanced chat generator was called
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["advanced_chat_generator"].convert_to_event_stream.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
+        mock_external_service_dependencies[
+            "advanced_chat_generator"
+        ].return_value.convert_to_event_stream.assert_called_once()
 
     def test_generate_workflow_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -302,7 +317,7 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify workflow generator was called
-        mock_external_service_dependencies["workflow_generator"].return_value.generate.assert_called_once()
+        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once()
         mock_external_service_dependencies["workflow_generator"].convert_to_event_stream.assert_called_once()
 
     def test_generate_with_specific_workflow_id(self, db_session_with_containers, mock_external_service_dependencies):
@@ -429,13 +444,9 @@ class TestAppGenerateService:
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
 
-        # Setup billing service mock for sandbox plan
-        mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "subscription": {"plan": "sandbox"}
-        }
-
         # Set BILLING_ENABLED to True for this test
         mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
+        mock_external_service_dependencies["global_dify_config"].BILLING_ENABLED = True
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
@@ -448,71 +459,8 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify billing service was called
-        mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(app.tenant_id)
-
-    def test_generate_with_rate_limit_exceeded(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test generation when rate limit is exceeded.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        # Setup billing service mock for sandbox plan
-        mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "subscription": {"plan": "sandbox"}
-        }
-
-        # Set BILLING_ENABLED to True for this test
-        mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
-
-        # Setup system rate limiter to return rate limited
-        with patch("services.app_generate_service.AppGenerateService.system_rate_limiter") as mock_system_rate_limiter:
-            mock_system_rate_limiter.is_rate_limited.return_value = True
-
-            # Setup test arguments
-            args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
-
-            # Execute the method under test and expect rate limit error
-            with pytest.raises(InvokeRateLimitError) as exc_info:
-                AppGenerateService.generate(
-                    app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-                )
-
-            # Verify error message
-            assert "Rate limit exceeded" in str(exc_info.value)
-
-    def test_generate_with_rate_limit_error_from_openai(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test generation when OpenAI rate limit error occurs.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        # Setup completion generator to raise RateLimitError
-        mock_response = MagicMock()
-        mock_response.request = MagicMock()
-        mock_external_service_dependencies["completion_generator"].return_value.generate.side_effect = RateLimitError(
-            "Rate limit exceeded", response=mock_response, body=None
-        )
-
-        # Setup test arguments
-        args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
-
-        # Execute the method under test and expect rate limit error
-        with pytest.raises(InvokeRateLimitError) as exc_info:
-            AppGenerateService.generate(
-                app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-            )
-
-        # Verify error message
-        assert "Rate limit exceeded" in str(exc_info.value)
+        # Verify billing service was called to consume quota
+        mock_external_service_dependencies["billing_service"].update_tenant_feature_plan_usage.assert_called_once()
 
     def test_generate_with_invalid_app_mode(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -1035,14 +983,27 @@ class TestAppGenerateService:
         }
 
         # Execute the method under test
-        result = AppGenerateService.generate(
-            app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-        )
+        with patch("services.app_generate_service.AppExecutionParams") as mock_exec_params:
+            mock_payload = MagicMock()
+            mock_payload.workflow_run_id = fake.uuid4()
+            mock_payload.model_dump_json.return_value = "{}"
+            mock_exec_params.new.return_value = mock_payload
+
+            result = AppGenerateService.generate(
+                app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
+            )
 
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify workflow generator was called with complex args
-        mock_external_service_dependencies["workflow_generator"].return_value.generate.assert_called_once()
-        call_args = mock_external_service_dependencies["workflow_generator"].return_value.generate.call_args
-        assert call_args[1]["args"] == args
+        # Verify payload was built with complex args
+        mock_exec_params.new.assert_called_once()
+        call_kwargs = mock_exec_params.new.call_args.kwargs
+        assert call_kwargs["args"] == args
+
+        # Verify workflow streaming event retrieval was used
+        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once_with(
+            ANY,
+            mock_payload.workflow_run_id,
+            on_subscribe=ANY,
+        )

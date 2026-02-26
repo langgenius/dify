@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
+import type { ChunkStructureEnum } from '../../types'
+import type { Option } from './type'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import type { ChunkStructureEnum } from '../../types'
 import OptionCard from '../option-card'
-import type { Option } from './type'
 
 type SelectorProps = {
   options: Option[]
@@ -35,7 +35,7 @@ const Selector = ({
 
   return (
     <PortalToFollowElem
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 0,
         crossAxis: -8,
@@ -54,20 +54,20 @@ const Selector = ({
         {
           trigger || (
             <Button
-              size='small'
-              variant='ghost-accent'
+              size="small"
+              variant="ghost-accent"
             >
-              {t('workflow.panel.change')}
+              {t('panel.change', { ns: 'workflow' })}
             </Button>
           )
         }
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]'>
-          <div className='system-sm-semibold px-3 pt-3.5 text-text-primary'>
-            {t('workflow.nodes.knowledgeBase.changeChunkStructure')}
+      <PortalToFollowElemContent className="z-10">
+        <div className="w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
+          <div className="system-sm-semibold px-3 pt-3.5 text-text-primary">
+            {t('nodes.knowledgeBase.changeChunkStructure', { ns: 'workflow' })}
           </div>
-          <div className='space-y-1 p-3 pt-2'>
+          <div className="space-y-1 p-3 pt-2">
             {
               options.map(option => (
                 <OptionCard
@@ -80,7 +80,8 @@ const Selector = ({
                   readonly={readonly}
                   onClick={handleSelect}
                   effectColor={option.effectColor}
-                ></OptionCard>
+                >
+                </OptionCard>
               ))
             }
           </div>

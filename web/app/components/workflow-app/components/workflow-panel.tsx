@@ -1,16 +1,16 @@
+import type { PanelProps } from '@/app/components/workflow/panel'
+import dynamic from 'next/dynamic'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
 import {
   useIsChatMode,
 } from '../hooks'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { PanelProps } from '@/app/components/workflow/panel'
-import Panel from '@/app/components/workflow/panel'
-import dynamic from 'next/dynamic'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,

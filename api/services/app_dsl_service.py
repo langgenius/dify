@@ -7,7 +7,7 @@ from enum import StrEnum
 from urllib.parse import urlparse
 from uuid import uuid4
 
-import yaml  # type: ignore
+import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging import version
@@ -26,11 +26,13 @@ from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig
+from models.model import AppModelConfig, IconType
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -42,7 +44,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.4.0"
+CURRENT_DSL_VERSION = "0.6.0"
 
 
 class ImportMode(StrEnum):
@@ -153,6 +155,7 @@ class AppDslService:
                     parsed_url.scheme == "https"
                     and parsed_url.netloc == "github.com"
                     and parsed_url.path.endswith((".yml", ".yaml"))
+                    and "/blob/" in parsed_url.path
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
@@ -425,10 +428,10 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in ["emoji", "link", "image"]:
+        if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
             icon_type = icon_type_value
         else:
-            icon_type = "emoji"
+            icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
@@ -439,6 +442,7 @@ class AppDslService:
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
+            app.updated_at = naive_utc_now()
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")
@@ -494,7 +498,7 @@ class AppDslService:
                 unique_hash = None
             graph = workflow_data.get("graph", {})
             for node in graph.get("nodes", []):
-                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
+                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
                     dataset_ids = node["data"].get("dataset_ids", [])
                     node["data"]["dataset_ids"] = [
                         decrypted_id
@@ -517,12 +521,10 @@ class AppDslService:
                 raise ValueError("Missing model_config for chat/agent-chat/completion app")
             # Initialize or update model config
             if not app.app_model_config:
-                app_model_config = AppModelConfig().from_model_config_dict(model_config)
+                app_model_config = AppModelConfig(
+                    app_id=app.id, created_by=account.id, updated_by=account.id
+                ).from_model_config_dict(model_config)
                 app_model_config.id = str(uuid4())
-                app_model_config.app_id = app.id
-                app_model_config.created_by = account.id
-                app_model_config.updated_by = account.id
-
                 app.app_model_config_id = app_model_config.id
 
                 self._session.add(app_model_config)
@@ -547,7 +549,7 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": "🤖" if app_model.icon_type == "image" else app_model.icon,
+                "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
                 "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
                 "description": app_model.description,
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
@@ -561,7 +563,7 @@ class AppDslService:
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
-        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
+        return yaml.dump(export_data, allow_unicode=True)
 
     @classmethod
     def _append_workflow_export_data(
@@ -584,19 +586,29 @@ class AppDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL.value:
+            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node_data["dataset_ids"] = [
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL.value:
+            if not include_secret and data_type == NodeType.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT.value:
+            if not include_secret and data_type == NodeType.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
+            if data_type == NodeType.TRIGGER_SCHEDULE.value:
+                # override the config with the default config
+                node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
+            if data_type == NodeType.TRIGGER_WEBHOOK.value:
+                # clear the webhook_url
+                node_data["webhook_url"] = ""
+                node_data["webhook_debug_url"] = ""
+            if data_type == NodeType.TRIGGER_PLUGIN.value:
+                # clear the subscription_id
+                node_data["subscription_id"] = ""
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
@@ -658,32 +670,32 @@ class AppDslService:
             try:
                 typ = node.get("data", {}).get("type")
                 match typ:
-                    case NodeType.TOOL.value:
-                        tool_entity = ToolNodeData(**node["data"])
+                    case NodeType.TOOL:
+                        tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
-                    case NodeType.LLM.value:
-                        llm_entity = LLMNodeData(**node["data"])
+                    case NodeType.LLM:
+                        llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER.value:
-                        question_classifier_entity = QuestionClassifierNodeData(**node["data"])
+                    case NodeType.QUESTION_CLASSIFIER:
+                        question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR.value:
-                        parameter_extractor_entity = ParameterExtractorNodeData(**node["data"])
+                    case NodeType.PARAMETER_EXTRACTOR:
+                        parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL.value:
-                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData(**node["data"])
+                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:
                                 if (
@@ -769,15 +781,16 @@ class AppDslService:
         return dependencies
 
     @classmethod
-    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
+    def get_leaked_dependencies(
+        cls, tenant_id: str, dsl_dependencies: list[PluginDependency]
+    ) -> list[PluginDependency]:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency(**dep) for dep in dsl_dependencies]
-        if not dependencies:
+        if not dsl_dependencies:
             return []
 
-        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dsl_dependencies)
 
     @staticmethod
     def _generate_aes_key(tenant_id: str) -> bytes:

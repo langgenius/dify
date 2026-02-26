@@ -1,22 +1,37 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 
+from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.web import web_ns
-from controllers.web.error import AppUnavailableError
-from controllers.web.wraps import WebApiResource
+from controllers.common.schema import register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
+from libs.token import extract_webapp_passport
 from models.model import App, AppMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
+from . import web_ns
+from .error import AppUnavailableError
+from .wraps import WebApiResource
+
 logger = logging.getLogger(__name__)
+
+
+class AppAccessModeQuery(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    app_id: str | None = Field(default=None, alias="appId", description="Application ID")
+    app_code: str | None = Field(default=None, alias="appCode", description="Application code")
+
+
+register_schema_models(web_ns, AppAccessModeQuery)
 
 
 @web_ns.route("/parameters")
@@ -35,7 +50,6 @@ class AppParameterApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(fields.parameters_fields)
     def get(self, app_model: App, end_user):
         """Retrieve app parameters."""
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
@@ -54,7 +68,8 @@ class AppParameterApi(WebApiResource):
 
             user_input_form = features_dict.get("user_input_form", [])
 
-        return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        return fields.Parameters.model_validate(parameters).model_dump(mode="json")
 
 
 @web_ns.route("/meta")
@@ -94,19 +109,16 @@ class AppAccessMode(Resource):
         }
     )
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=False, location="args")
-        parser.add_argument("appCode", type=str, required=False, location="args")
-        args = parser.parse_args()
+        raw_args = request.args.to_dict()
+        args = AppAccessModeQuery.model_validate(raw_args)
 
         features = FeatureService.get_system_features()
         if not features.webapp_auth.enabled:
             return {"accessMode": "public"}
 
-        app_id = args.get("appId")
-        if args.get("appCode"):
-            app_code = args["appCode"]
-            app_id = AppService.get_app_id_by_code(app_code)
+        app_id = args.app_id
+        if args.app_code:
+            app_id = AppService.get_app_id_by_code(args.app_code)
 
         if not app_id:
             raise ValueError("appId or appCode must be provided")
@@ -131,18 +143,19 @@ class AppWebAuthPermission(Resource):
     )
     def get(self):
         user_id = "visitor"
+        app_code = request.headers.get(HEADER_NAME_APP_CODE)
+        app_id = request.args.get("appId")
+        if not app_id or not app_code:
+            raise ValueError("appId must be provided")
+
+        require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
+        if not require_permission_check:
+            return {"result": True}
+
         try:
-            auth_header = request.headers.get("Authorization")
-            if auth_header is None:
-                raise Unauthorized("Authorization header is missing.")
-            if " " not in auth_header:
-                raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-            auth_scheme, tk = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != "bearer":
-                raise Unauthorized("Authorization scheme must be 'Bearer'")
-
+            tk = extract_webapp_passport(app_code, request)
+            if not tk:
+                raise Unauthorized("Access token is missing.")
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
@@ -155,14 +168,7 @@ class AppWebAuthPermission(Resource):
         if not features.webapp_auth.enabled:
             return {"result": True}
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=True, location="args")
-        args = parser.parse_args()
-
-        app_id = args["appId"]
-        app_code = AppService.get_app_code_by_id(app_id)
-
         res = True
         if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
-            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}

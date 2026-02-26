@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react'
-import { OnlineDriveFileType } from '@/models/pipeline'
-import { BucketsBlue, Folder } from '@/app/components/base/icons/src/public/knowledge/online-drive'
+import * as React from 'react'
+import { useMemo } from 'react'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
+import { BucketsBlue, Folder } from '@/app/components/base/icons/src/public/knowledge/online-drive'
+import { OnlineDriveFileType } from '@/models/pipeline'
+import { cn } from '@/utils/classnames'
 import { getFileType } from './utils'
-import cn from '@/utils/classnames'
 
 type FileIconProps = {
   type: OnlineDriveFileType

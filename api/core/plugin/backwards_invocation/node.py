@@ -52,7 +52,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             instruction=instruction,  # instruct with variables are not supported
         )
         node_data_dict = node_data.model_dump()
-        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR.value
+        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR
         execution = workflow_service.run_free_workflow_node(
             node_data_dict,
             tenant_id=tenant_id,

@@ -1,10 +1,10 @@
 from typing import Any
 
-from openai import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.entities.tool_entities import CredentialType, ToolInvokeFrom
+from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.entities.tool_entities import ToolInvokeFrom
 
 
 class ToolRuntime(BaseModel):

@@ -20,7 +20,7 @@ def import_module_from_source(*, module_name: str, py_file_path: AnyStr, use_laz
         else:
             # Refer to: https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
             # FIXME: mypy does not support the type of spec.loader
-            spec = importlib.util.spec_from_file_location(module_name, py_file_path)  # type: ignore
+            spec = importlib.util.spec_from_file_location(module_name, py_file_path)  # type: ignore[assignment]
             if not spec or not spec.loader:
                 raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
             if use_lazy_loader:

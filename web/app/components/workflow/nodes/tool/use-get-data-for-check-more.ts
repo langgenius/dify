@@ -3,7 +3,7 @@ import useConfig from './use-config'
 
 type Params = {
   id: string
-  payload: ToolNodeType,
+  payload: ToolNodeType
 }
 
 const useGetDataForCheckMore = ({

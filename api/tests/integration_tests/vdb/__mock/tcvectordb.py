@@ -1,18 +1,17 @@
 import os
-from typing import Union
+from typing import Any, Union
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from requests.adapters import HTTPAdapter
-from tcvectordb import RPCVectorDBClient  # type: ignore
+from tcvectordb import RPCVectorDBClient
 from tcvectordb.model import enum
 from tcvectordb.model.collection import FilterIndexConfig
-from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank  # type: ignore
-from tcvectordb.model.enum import ReadConsistency  # type: ignore
-from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex  # type: ignore
+from tcvectordb.model.document import AnnSearch, Document, Filter, KeywordSearch, Rerank
+from tcvectordb.model.enum import ReadConsistency
+from tcvectordb.model.index import FilterIndex, HNSWParams, Index, IndexField, VectorIndex
 from tcvectordb.rpc.model.collection import RPCCollection
 from tcvectordb.rpc.model.database import RPCDatabase
-from xinference_client.types import Embedding  # type: ignore
+from xinference_client.types import Embedding
 
 
 class MockTcvectordbClass:
@@ -23,7 +22,7 @@ class MockTcvectordbClass:
         key="",
         read_consistency: ReadConsistency = ReadConsistency.EVENTUAL_CONSISTENCY,
         timeout=10,
-        adapter: HTTPAdapter | None = None,
+        adapter: Any | None = None,
         pool_size: int = 2,
         proxies: dict | None = None,
         password: str | None = None,

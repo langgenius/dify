@@ -18,6 +18,10 @@ class DatasetRetrieverBaseTool(BaseModel, ABC):
     retriever_from: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def run(self, query: str) -> str:
+        """Use the tool."""
+        return self._run(query)
+
     @abstractmethod
     def _run(self, query: str) -> str:
         """Use the tool.

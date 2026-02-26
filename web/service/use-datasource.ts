@@ -1,13 +1,13 @@
+import type {
+  DataSourceAuth,
+  DataSourceCredential,
+} from '@/app/components/header/account-setting/data-source-page-new/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
 import { get } from './base'
 import { useInvalid } from './use-base'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from '@/app/components/header/account-setting/data-source-page-new/types'
 
 const NAME_SPACE = 'data-source-auth'
 
@@ -49,7 +49,8 @@ export const useGetDataSourceOAuthUrl = (
           authorization_url: string
           state: string
           context_id: string
-        }>(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
+        }
+      >(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
     },
   })
 }

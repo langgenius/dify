@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import React from 'react'
-import Button from '../../button'
 import type { YearAndMonthPickerFooterProps } from '../types'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '../../button'
 
 const Footer: FC<YearAndMonthPickerFooterProps> = ({
   handleYearMonthCancel,
@@ -11,12 +11,12 @@ const Footer: FC<YearAndMonthPickerFooterProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='grid grid-cols-2 gap-x-1 p-2'>
-      <Button size='small' onClick={handleYearMonthCancel}>
-        {t('time.operation.cancel')}
+    <div className="grid grid-cols-2 gap-x-1 p-2">
+      <Button size="small" onClick={handleYearMonthCancel}>
+        {t('operation.cancel', { ns: 'time' })}
       </Button>
-      <Button variant='primary' size='small' onClick={handleYearMonthConfirm}>
-        {t('time.operation.ok')}
+      <Button variant="primary" size="small" onClick={handleYearMonthConfirm}>
+        {t('operation.ok', { ns: 'time' })}
       </Button>
     </div>
   )

@@ -1,19 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
-import produce from 'immer'
-import { isEqual } from 'lodash-es'
-import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
-import { BlockEnum, VarType } from '../../types'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-} from '../../hooks'
 import type {
   HandleAddCondition,
   HandleRemoveCondition,
@@ -23,6 +8,31 @@ import type {
   MetadataFilteringModeEnum,
   MultipleRetrievalConfig,
 } from './types'
+import type { DataSet } from '@/models/datasets'
+import { isEqual } from 'es-toolkit/predicate'
+import { produce } from 'immer'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { v4 as uuid4 } from 'uuid'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { DATASET_DEFAULT } from '@/config'
+import { fetchDatasets } from '@/service/datasets'
+import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import {
+  useIsChatMode,
+  useNodesReadOnly,
+  useWorkflow,
+} from '../../hooks'
+import { BlockEnum, VarType } from '../../types'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -32,15 +42,6 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from './utils'
-import { RETRIEVE_TYPE } from '@/types/app'
-import { DATASET_DEFAULT } from '@/config'
-import type { DataSet } from '@/models/datasets'
-import { fetchDatasets } from '@/service/datasets'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -72,6 +73,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleQueryAttachmentChange = useCallback((newVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.query_attachment_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const {
     currentProvider,
     currentModel,
@@ -89,13 +97,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     rerankModelList,
     rerankDefaultModel
       ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
+          ...rerankDefaultModel,
+          provider: rerankDefaultModel.provider.provider,
+        }
       : undefined,
   )
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       if (!draft.single_retrieval_config) {
         draft.single_retrieval_config = {
@@ -204,10 +212,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, {
+      const newMultipleRetrievalConfig = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, {
         provider: currentRerankProvider?.provider,
         model: currentRerankModel?.model,
       })
+      draft.multiple_retrieval_config = newMultipleRetrievalConfig
     })
     setInputs(newInputs)
   }, [inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
@@ -249,16 +258,21 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       allInternal,
       allExternal,
     } = getSelectedDatasetsMode(newDatasets)
+    const noMultiModalDatasets = newDatasets.every(d => !d.is_multimodal)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, {
+        const newMultipleRetrievalConfig = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, {
           provider: currentRerankProvider?.provider,
           model: currentRerankModel?.model,
         })
+        draft.multiple_retrieval_config = newMultipleRetrievalConfig
       }
+
+      if (noMultiModalDatasets)
+        draft.query_attachment_selector = []
     })
     updateDatasetsDetail(newDatasets)
     setInputs(newInputs)
@@ -268,12 +282,21 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
-    )
+    ) {
       setRerankModelOpen(true)
+    }
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
-  const filterVar = useCallback((varPayload: Var) => {
+  const filterStringVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
+  }, [])
+
+  const filterNumberVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.number
+  }, [])
+
+  const filterFileVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
   }, [])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
@@ -282,7 +305,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     }))
   }, [setInputs])
 
-  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+  const handleAddCondition = useCallback<HandleAddCondition>(({ id, name, type }) => {
     let operator: ComparisonOperator = ComparisonOperator.is
 
     if (type === MetadataFilteringVariableType.number)
@@ -290,6 +313,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
     const newCondition = {
       id: uuid4(),
+      metadata_id: id, // Save metadata.id for reliable reference
       name,
       comparison_operator: operator,
     }
@@ -337,12 +361,12 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleMetadataModelChange = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.metadata_model_config = {
         provider: model.provider,
         name: model.modelId,
-        mode: model.mode || 'chat',
+        mode: model.mode || AppModeEnum.CHAT,
         completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
       }
     })
@@ -359,10 +383,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const filterStringVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
-  }, [])
-
   const {
     availableVars: availableStringVars,
     availableNodesWithParent: availableStringNodesWithParent,
@@ -370,10 +390,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     onlyLeafNodeVar: false,
     filterVar: filterStringVar,
   })
-
-  const filterNumberVar = useCallback((varPayload: Var) => {
-    return [VarType.number].includes(varPayload.type)
-  }, [])
 
   const {
     availableVars: availableNumberVars,
@@ -383,11 +399,17 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     filterVar: filterNumberVar,
   })
 
+  const showImageQueryVarSelector = useMemo(() => {
+    return selectedDatasets.some(d => d.is_multimodal)
+  }, [selectedDatasets])
+
   return {
     readOnly,
     inputs,
     handleQueryVarChange,
-    filterVar,
+    handleQueryAttachmentChange,
+    filterStringVar,
+    filterFileVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     handleModelChanged,
@@ -408,6 +430,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     availableStringNodesWithParent,
     availableNumberVars,
     availableNumberNodesWithParent,
+    showImageQueryVarSelector,
   }
 }
 

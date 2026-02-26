@@ -2,7 +2,7 @@ from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 
@@ -20,16 +20,18 @@ class TextEmbeddingModel(AIModel):
         self,
         model: str,
         credentials: dict,
-        texts: list[str],
+        texts: list[str] | None = None,
+        multimodel_documents: list[dict] | None = None,
         user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
-    ) -> TextEmbeddingResult:
+    ) -> EmbeddingResult:
         """
         Invoke text embedding model
 
         :param model: model name
         :param credentials: model credentials
         :param texts: texts to embed
+        :param files: files to embed
         :param user: unique user id
         :param input_type: input type
         :return: embeddings result
@@ -38,16 +40,29 @@ class TextEmbeddingModel(AIModel):
 
         try:
             plugin_model_manager = PluginModelClient()
-            return plugin_model_manager.invoke_text_embedding(
-                tenant_id=self.tenant_id,
-                user_id=user or "unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
-                model=model,
-                credentials=credentials,
-                texts=texts,
-                input_type=input_type,
-            )
+            if texts:
+                return plugin_model_manager.invoke_text_embedding(
+                    tenant_id=self.tenant_id,
+                    user_id=user or "unknown",
+                    plugin_id=self.plugin_id,
+                    provider=self.provider_name,
+                    model=model,
+                    credentials=credentials,
+                    texts=texts,
+                    input_type=input_type,
+                )
+            if multimodel_documents:
+                return plugin_model_manager.invoke_multimodal_embedding(
+                    tenant_id=self.tenant_id,
+                    user_id=user or "unknown",
+                    plugin_id=self.plugin_id,
+                    provider=self.provider_name,
+                    model=model,
+                    credentials=credentials,
+                    documents=multimodel_documents,
+                    input_type=input_type,
+                )
+            raise ValueError("No texts or files provided")
         except Exception as e:
             raise self._transform_invoke_error(e)
 

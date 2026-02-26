@@ -1,16 +1,17 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
-import cn from '@/utils/classnames'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 const textareaVariants = cva(
   '',
   {
     variants: {
       size: {
-        small: 'py-1 rounded-md system-xs-regular',
-        regular: 'px-3 rounded-md system-sm-regular',
-        large: 'px-4 rounded-lg system-md-regular',
+        small: 'rounded-md py-1 system-xs-regular',
+        regular: 'rounded-md px-3 system-sm-regular',
+        large: 'rounded-lg px-4 system-md-regular',
       },
     },
     defaultVariants: {
@@ -20,13 +21,13 @@ const textareaVariants = cva(
 )
 
 export type TextareaProps = {
-  value: string
+  value: string | number
   disabled?: boolean
   destructive?: boolean
   styleCss?: CSSProperties
   ref?: React.Ref<HTMLTextAreaElement>
-  onFocus?: () => void
-  onBlur?: () => void
+  onFocus?: React.FocusEventHandler<HTMLTextAreaElement>
+  onBlur?: React.FocusEventHandler<HTMLTextAreaElement>
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement> & VariantProps<typeof textareaVariants>
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
@@ -47,6 +48,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         value={value ?? ''}
         onChange={onChange}
         disabled={disabled}
+        data-testid="text-area"
         {...props}
       >
       </textarea>

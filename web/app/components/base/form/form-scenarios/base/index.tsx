@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import type { BaseFormProps } from './types'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useAppForm } from '../..'
 import BaseField from './field'
-import type { BaseFormProps } from './types'
 import { generateZodSchema } from './utils'
 
 const BaseForm = ({
@@ -35,14 +36,14 @@ const BaseForm = ({
 
   return (
     <form
-      className='w-full'
+      className="w-full"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
         baseForm.handleSubmit()
       }}
     >
-      <div className='flex flex-col gap-4 px-4 py-2'>
+      <div className="flex flex-col gap-4 px-4 py-2">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

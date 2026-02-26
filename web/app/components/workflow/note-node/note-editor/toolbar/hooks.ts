@@ -1,8 +1,15 @@
 import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
+  $isLinkNode,
+  TOGGLE_LINK_COMMAND,
+} from '@lexical/link'
+import { INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import {
+  $getSelectionStyleValueForProperty,
+  $patchStyleText,
+  $setBlocksType,
+} from '@lexical/selection'
+import { mergeRegister } from '@lexical/utils'
 import {
   $createParagraphNode,
   $getSelection,
@@ -13,17 +20,10 @@ import {
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
 import {
-  $getSelectionStyleValueForProperty,
-  $patchStyleText,
-  $setBlocksType,
-} from '@lexical/selection'
-import { INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
-import { mergeRegister } from '@lexical/utils'
-import {
-  $isLinkNode,
-  TOGGLE_LINK_COMMAND,
-} from '@lexical/link'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { useNoteEditorStore } from '../store'
 import { getSelectedNode } from '../utils'
 

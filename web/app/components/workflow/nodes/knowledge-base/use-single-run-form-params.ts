@@ -1,11 +1,11 @@
-import { useTranslation } from 'react-i18next'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InputVarType } from '@/app/components/workflow/types'
 
 type Params = {
-  id: string,
+  id: string
   payload: KnowledgeBaseNodeType
   runInputData: Record<string, any>
   getInputVars: (textList: string[]) => InputVar[]
@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
     return [
       {
         inputs: [{
-          label: t('workflow.nodes.common.inputVars'),
+          label: t('nodes.common.inputVars', { ns: 'workflow' }),
           variable: 'query',
           type: InputVarType.paragraph,
           required: true,
@@ -45,7 +45,7 @@ const useSingleRunFormParams = ({
     return [payload.index_chunk_variable_selector]
   }
   const getDependentVar = (variable: string) => {
-    if(variable === 'query')
+    if (variable === 'query')
       return payload.index_chunk_variable_selector
   }
 

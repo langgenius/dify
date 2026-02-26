@@ -99,6 +99,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
             workflow=mock_workflow,
             system_user_id=str(uuid4()),
             app=MagicMock(),
+            workflow_execution_repository=MagicMock(),
+            workflow_node_execution_repository=MagicMock(),
         )
 
         # Mock database session
@@ -237,6 +239,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
             workflow=mock_workflow,
             system_user_id=str(uuid4()),
             app=MagicMock(),
+            workflow_execution_repository=MagicMock(),
+            workflow_node_execution_repository=MagicMock(),
         )
 
         # Mock database session
@@ -390,6 +394,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
             workflow=mock_workflow,
             system_user_id=str(uuid4()),
             app=MagicMock(),
+            workflow_execution_repository=MagicMock(),
+            workflow_node_execution_repository=MagicMock(),
         )
 
         # Mock database session

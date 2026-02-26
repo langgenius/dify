@@ -1,30 +1,32 @@
+import logging
 import time
 from collections.abc import Callable
-from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
+from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
+from models.model import ApiToken, App
+from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 class WhereisUserArg(StrEnum):
@@ -66,16 +68,16 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             kwargs["app_model"] = app_model
 
+            # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
-                    user_id = request.args.get("user")
-                elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
-                    user_id = request.get_json().get("user")
-                elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
-                    user_id = request.form.get("user")
-                else:
-                    # use default-user
-                    user_id = None
+                user_id = None
+                match fetch_user_arg.fetch_from:
+                    case WhereisUserArg.QUERY:
+                        user_id = request.args.get("user")
+                    case WhereisUserArg.JSON:
+                        user_id = request.get_json().get("user")
+                    case WhereisUserArg.FORM:
+                        user_id = request.form.get("user")
 
                 if not user_id and fetch_user_arg.required:
                     raise ValueError("Arg user must be provided.")
@@ -83,12 +85,34 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = create_or_update_end_user_for_user_id(app_model, user_id)
+                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
                 current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+            else:
+                # For service API without end-user context, ensure an Account is logged in
+                # so services relying on current_account_with_tenant() work correctly.
+                tenant_owner_info = (
+                    db.session.query(Tenant, Account)
+                    .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                    .join(Account, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        Tenant.id == app_model.tenant_id,
+                        TenantAccountJoin.role == "owner",
+                        Tenant.status == TenantStatus.NORMAL,
+                    )
+                    .one_or_none()
+                )
+
+                if tenant_owner_info:
+                    tenant_model, account = tenant_owner_info
+                    account.current_tenant = tenant_model
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account not found or tenant is not active.")
 
             return view_func(*args, **kwargs)
 
@@ -138,7 +162,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise Forbidden(
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
                         )
@@ -193,6 +217,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
     def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
+            api_token = validate_and_get_api_token("dataset")
+
             # get url path dataset_id from positional args or kwargs
             # Flask passes URL path parameters as positional arguments
             dataset_id = None
@@ -214,8 +240,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         # Basic check: UUIDs are 36 chars with hyphens
                         if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from class method args")
                 elif len(args) > 0:
                     # Not a class method, check if args[0] looks like a UUID
                     potential_id = args[0]
@@ -223,18 +249,24 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         str_id = str(potential_id)
                         if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from positional args")
 
             # Validate dataset if dataset_id is provided
             if dataset_id:
                 dataset_id = str(dataset_id)
-                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+                dataset = (
+                    db.session.query(Dataset)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == api_token.tenant_id,
+                    )
+                    .first()
+                )
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
-            api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
@@ -269,7 +301,14 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
 
 def validate_and_get_api_token(scope: str | None = None):
     """
-    Validate and get API token.
+    Validate and get API token with Redis caching.
+
+    This function uses a two-tier approach:
+    1. First checks Redis cache for the token
+    2. If not cached, queries database and caches the result
+
+    The last_used_at field is updated asynchronously via Celery task
+    to avoid blocking the request.
     """
     auth_header = request.headers.get("Authorization")
     if auth_header is None or " " not in auth_header:
@@ -281,64 +320,18 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    current_time = naive_utc_now()
-    cutoff_time = current_time - timedelta(minutes=1)
-    with Session(db.engine, expire_on_commit=False) as session:
-        update_stmt = (
-            update(ApiToken)
-            .where(
-                ApiToken.token == auth_token,
-                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
-                ApiToken.type == scope,
-            )
-            .values(last_used_at=current_time)
-            .returning(ApiToken)
-        )
-        result = session.execute(update_stmt)
-        api_token = result.scalar_one_or_none()
+    # Try to get token from cache first
+    # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
+    cached_token = ApiTokenCache.get(auth_token, scope)
+    if cached_token is not None:
+        logger.debug("Token validation served from cache for scope: %s", scope)
+        # Record usage in Redis for later batch update (no Celery task per request)
+        record_token_usage(auth_token, scope)
+        return cast(ApiToken, cached_token)
 
-        if not api_token:
-            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-            api_token = session.scalar(stmt)
-            if not api_token:
-                raise Unauthorized("Access token is invalid")
-        else:
-            session.commit()
-
-    return api_token
-
-
-def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
-    """
-    Create or update session terminal based on user ID.
-    """
-    if not user_id:
-        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID.value
-
-    with Session(db.engine, expire_on_commit=False) as session:
-        end_user = (
-            session.query(EndUser)
-            .where(
-                EndUser.tenant_id == app_model.tenant_id,
-                EndUser.app_id == app_model.id,
-                EndUser.session_id == user_id,
-                EndUser.type == "service_api",
-            )
-            .first()
-        )
-
-        if end_user is None:
-            end_user = EndUser(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type="service_api",
-                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID.value,
-                session_id=user_id,
-            )
-            session.add(end_user)
-            session.commit()
-
-    return end_user
+    # Cache miss - use Redis lock for single-flight mode
+    # This ensures only one request queries DB for the same token concurrently
+    return fetch_token_with_single_flight(auth_token, scope)
 
 
 class DatasetApiResource(Resource):

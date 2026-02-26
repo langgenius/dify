@@ -130,7 +130,7 @@ class TestWorkflowRunService:
             elapsed_time=1.5,
             total_tokens=100,
             total_steps=3,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
             created_at=created_time,
             finished_at=created_time,
@@ -167,7 +167,7 @@ class TestWorkflowRunService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source=CreatorUserRole.ACCOUNT.value,
+            from_source=CreatorUserRole.ACCOUNT,
             from_account_id=account.id,
         )
         db.session.add(conversation)
@@ -188,7 +188,7 @@ class TestWorkflowRunService:
         message.answer_price_unit = 0.001
         message.currency = "USD"
         message.status = "normal"
-        message.from_source = CreatorUserRole.ACCOUNT.value
+        message.from_source = CreatorUserRole.ACCOUNT
         message.from_account_id = account.id
         message.workflow_run_id = workflow_run.id
         message.inputs = {"input": "test input"}
@@ -458,12 +458,33 @@ class TestWorkflowRunService:
                 status="succeeded",
                 elapsed_time=0.5,
                 execution_metadata=json.dumps({"tokens": 50}),
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
                 created_at=datetime.now(UTC),
             )
             db.session.add(node_execution)
             node_executions.append(node_execution)
+
+        paused_node_execution = WorkflowNodeExecutionModel(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow_run.workflow_id,
+            triggered_from="workflow-run",
+            workflow_run_id=workflow_run.id,
+            index=99,
+            node_id="node_paused",
+            node_type="human_input",
+            title="Paused Node",
+            inputs=json.dumps({"input": "paused"}),
+            process_data=json.dumps({"process": "paused"}),
+            status="paused",
+            elapsed_time=0.5,
+            execution_metadata=json.dumps({"tokens": 0}),
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+            created_at=datetime.now(UTC),
+        )
+        db.session.add(paused_node_execution)
 
         db.session.commit()
 
@@ -473,16 +494,19 @@ class TestWorkflowRunService:
 
         # Assert: Verify the expected outcomes
         assert result is not None
-        assert len(result) == 3
+        assert len(result) == 4
 
         # Verify node execution properties
+        statuses = [node_execution.status for node_execution in result]
+        assert "paused" in statuses
+        assert statuses.count("succeeded") == 3
+        assert statuses.count("paused") == 1
+
         for node_execution in result:
             assert node_execution.tenant_id == app.tenant_id
             assert node_execution.app_id == app.id
             assert node_execution.workflow_run_id == workflow_run.id
-            assert node_execution.index in [0, 1, 2]  # Check that index is one of the expected values
-            assert node_execution.node_id.startswith("node_")  # Check that node_id starts with "node_"
-            assert node_execution.status == "succeeded"
+            assert node_execution.node_id.startswith("node_")
 
     def test_get_workflow_run_node_executions_empty(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -689,7 +713,7 @@ class TestWorkflowRunService:
             status="succeeded",
             elapsed_time=0.5,
             execution_metadata=json.dumps({"tokens": 50}),
-            created_by_role=CreatorUserRole.END_USER.value,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=end_user.id,
             created_at=datetime.now(UTC),
         )
@@ -710,4 +734,4 @@ class TestWorkflowRunService:
         assert node_exec.app_id == app.id
         assert node_exec.workflow_run_id == workflow_run.id
         assert node_exec.created_by == end_user.id
-        assert node_exec.created_by_role == CreatorUserRole.END_USER.value
+        assert node_exec.created_by_role == CreatorUserRole.END_USER

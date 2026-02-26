@@ -17,7 +17,7 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "reranking_mode": "reranking_model",
@@ -130,7 +130,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search",
+                    retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
                     top_k=self.top_k,
@@ -169,20 +169,24 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 if records:
                     for record in records:
                         segment = record.segment
+                        # Build content: if summary exists, add it before the segment content
                         if segment.answer:
-                            document_context_list.append(
-                                DocumentContext(
-                                    content=f"question:{segment.get_sign_content()} answer:{segment.answer}",
-                                    score=record.score,
-                                )
-                            )
+                            segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
                         else:
-                            document_context_list.append(
-                                DocumentContext(
-                                    content=segment.get_sign_content(),
-                                    score=record.score,
-                                )
+                            segment_content = segment.get_sign_content()
+
+                        # If summary exists, prepend it to the content
+                        if record.summary:
+                            final_content = f"{record.summary}\n{segment_content}"
+                        else:
+                            final_content = segment_content
+
+                        document_context_list.append(
+                            DocumentContext(
+                                content=final_content,
+                                score=record.score,
                             )
+                        )
 
                     if self.return_resource:
                         for record in records:
@@ -193,18 +197,18 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
                             )
-                            document = db.session.scalar(dataset_document_stmt)  # type: ignore
+                            document = db.session.scalar(dataset_document_stmt)
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
                                     dataset_name=dataset.name,
-                                    document_id=document.id,  # type: ignore
-                                    document_name=document.name,  # type: ignore
-                                    data_source_type=document.data_source_type,  # type: ignore
+                                    document_id=document.id,
+                                    document_name=document.name,
+                                    data_source_type=document.data_source_type,
                                     segment_id=segment.id,
                                     retriever_from=self.retriever_from,
                                     score=record.score or 0.0,
-                                    doc_metadata=document.doc_metadata,  # type: ignore
+                                    doc_metadata=document.doc_metadata,
                                 )
 
                                 if self.retriever_from == "dev":
@@ -216,6 +220,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                                 else:
                                     source.content = segment.content
+                                # Add summary if this segment was retrieved via summary
+                                if hasattr(record, "summary") and record.summary:
+                                    source.summary = record.summary
                                 retrieval_resource_list.append(source)
 
             if self.return_resource and retrieval_resource_list:

@@ -14,19 +14,18 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.utils.message_transformer import DatasourceFileMessageTransformer
-from core.file import File
-from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
+from core.workflow.enums import NodeExecutionType, NodeType, SystemVariableKey
+from core.workflow.file import File
+from core.workflow.file.enums import FileTransferMethod, FileType
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
+from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import UploadFile
@@ -38,48 +37,26 @@ from .entities import DatasourceNodeData
 from .exc import DatasourceNodeError, DatasourceParameterError
 
 
-class DatasourceNode(Node):
+class DatasourceNode(Node[DatasourceNodeData]):
     """
     Datasource Node
     """
 
-    _node_data: DatasourceNodeData
     node_type = NodeType.DATASOURCE
     execution_type = NodeExecutionType.ROOT
-
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = DatasourceNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     def _run(self) -> Generator:
         """
         Run the datasource node
         """
 
-        node_data = self._node_data
+        node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
-        datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
+        datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
         if not datasource_type_segement:
             raise DatasourceNodeError("Datasource type is not set")
         datasource_type = str(datasource_type_segement.value) if datasource_type_segement.value else None
-        datasource_info_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
+        datasource_info_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO])
         if not datasource_info_segement:
             raise DatasourceNodeError("Datasource info is not set")
         datasource_info_value = datasource_info_segement.value
@@ -92,11 +69,13 @@ class DatasourceNode(Node):
         if datasource_type is None:
             raise DatasourceNodeError("Datasource type is not set")
 
+        datasource_type = DatasourceProviderType.value_of(datasource_type)
+
         datasource_runtime = DatasourceManager.get_datasource_runtime(
             provider_id=f"{node_data.plugin_id}/{node_data.provider_name}",
             datasource_name=node_data.datasource_name or "",
             tenant_id=self.tenant_id,
-            datasource_type=DatasourceProviderType.value_of(datasource_type),
+            datasource_type=datasource_type,
         )
         datasource_info["icon"] = datasource_runtime.get_icon_url(self.tenant_id)
 
@@ -267,7 +246,7 @@ class DatasourceNode(Node):
         return result
 
     def _fetch_files(self, variable_pool: VariablePool) -> list[File]:
-        variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
+        variable = variable_pool.get(["sys", SystemVariableKey.FILES])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
@@ -291,15 +270,18 @@ class DatasourceNode(Node):
         if typed_node_data.datasource_parameters:
             for parameter_name in typed_node_data.datasource_parameters:
                 input = typed_node_data.datasource_parameters[parameter_name]
-                if input.type == "mixed":
-                    assert isinstance(input.value, str)
-                    selectors = VariableTemplateParser(input.value).extract_variable_selectors()
-                    for selector in selectors:
-                        result[selector.variable] = selector.value_selector
-                elif input.type == "variable":
-                    result[parameter_name] = input.value
-                elif input.type == "constant":
-                    pass
+                match input.type:
+                    case "mixed":
+                        assert isinstance(input.value, str)
+                        selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                        for selector in selectors:
+                            result[selector.variable] = selector.value_selector
+                    case "variable":
+                        result[parameter_name] = input.value
+                    case "constant":
+                        pass
+                    case None:
+                        pass
 
             result = {node_id + "." + key: value for key, value in result.items()}
 
@@ -324,104 +306,112 @@ class DatasourceNode(Node):
 
         text = ""
         files: list[File] = []
-        json: list[dict] = []
+        json: list[dict | list] = []
 
         variables: dict[str, Any] = {}
 
         for message in message_stream:
-            if message.type in {
-                DatasourceMessage.MessageType.IMAGE_LINK,
-                DatasourceMessage.MessageType.BINARY_LINK,
-                DatasourceMessage.MessageType.IMAGE,
-            }:
-                assert isinstance(message.message, DatasourceMessage.TextMessage)
+            match message.type:
+                case (
+                    DatasourceMessage.MessageType.IMAGE_LINK
+                    | DatasourceMessage.MessageType.BINARY_LINK
+                    | DatasourceMessage.MessageType.IMAGE
+                ):
+                    assert isinstance(message.message, DatasourceMessage.TextMessage)
 
-                url = message.message.text
-                transfer_method = FileTransferMethod.TOOL_FILE
+                    url = message.message.text
+                    transfer_method = FileTransferMethod.TOOL_FILE
 
-                datasource_file_id = str(url).split("/")[-1].split(".")[0]
+                    datasource_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with Session(db.engine) as session:
-                    stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
-                    datasource_file = session.scalar(stmt)
-                    if datasource_file is None:
-                        raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
+                    with Session(db.engine) as session:
+                        stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
+                        datasource_file = session.scalar(stmt)
+                        if datasource_file is None:
+                            raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
 
-                mapping = {
-                    "tool_file_id": datasource_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(datasource_file.mimetype),
-                    "transfer_method": transfer_method,
-                    "url": url,
-                }
-                file = file_factory.build_from_mapping(
-                    mapping=mapping,
-                    tenant_id=self.tenant_id,
-                )
-                files.append(file)
-            elif message.type == DatasourceMessage.MessageType.BLOB:
-                # get tool file id
-                assert isinstance(message.message, DatasourceMessage.TextMessage)
-                assert message.meta
-
-                datasource_file_id = message.message.text.split("/")[-1].split(".")[0]
-                with Session(db.engine) as session:
-                    stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
-                    datasource_file = session.scalar(stmt)
-                    if datasource_file is None:
-                        raise ToolFileError(f"datasource file {datasource_file_id} not exists")
-
-                mapping = {
-                    "tool_file_id": datasource_file_id,
-                    "transfer_method": FileTransferMethod.TOOL_FILE,
-                }
-
-                files.append(
-                    file_factory.build_from_mapping(
+                    mapping = {
+                        "tool_file_id": datasource_file_id,
+                        "type": file_factory.get_file_type_by_mime_type(datasource_file.mimetype),
+                        "transfer_method": transfer_method,
+                        "url": url,
+                    }
+                    file = file_factory.build_from_mapping(
                         mapping=mapping,
                         tenant_id=self.tenant_id,
                     )
-                )
-            elif message.type == DatasourceMessage.MessageType.TEXT:
-                assert isinstance(message.message, DatasourceMessage.TextMessage)
-                text += message.message.text
-                yield StreamChunkEvent(
-                    selector=[self._node_id, "text"],
-                    chunk=message.message.text,
-                    is_final=False,
-                )
-            elif message.type == DatasourceMessage.MessageType.JSON:
-                assert isinstance(message.message, DatasourceMessage.JsonMessage)
-                json.append(message.message.json_object)
-            elif message.type == DatasourceMessage.MessageType.LINK:
-                assert isinstance(message.message, DatasourceMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
-                text += stream_text
-                yield StreamChunkEvent(
-                    selector=[self._node_id, "text"],
-                    chunk=stream_text,
-                    is_final=False,
-                )
-            elif message.type == DatasourceMessage.MessageType.VARIABLE:
-                assert isinstance(message.message, DatasourceMessage.VariableMessage)
-                variable_name = message.message.variable_name
-                variable_value = message.message.variable_value
-                if message.message.stream:
-                    if not isinstance(variable_value, str):
-                        raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
-                    if variable_name not in variables:
-                        variables[variable_name] = ""
-                    variables[variable_name] += variable_value
+                    files.append(file)
+                case DatasourceMessage.MessageType.BLOB:
+                    # get tool file id
+                    assert isinstance(message.message, DatasourceMessage.TextMessage)
+                    assert message.meta
 
+                    datasource_file_id = message.message.text.split("/")[-1].split(".")[0]
+                    with Session(db.engine) as session:
+                        stmt = select(ToolFile).where(ToolFile.id == datasource_file_id)
+                        datasource_file = session.scalar(stmt)
+                        if datasource_file is None:
+                            raise ToolFileError(f"datasource file {datasource_file_id} not exists")
+
+                    mapping = {
+                        "tool_file_id": datasource_file_id,
+                        "transfer_method": FileTransferMethod.TOOL_FILE,
+                    }
+
+                    files.append(
+                        file_factory.build_from_mapping(
+                            mapping=mapping,
+                            tenant_id=self.tenant_id,
+                        )
+                    )
+                case DatasourceMessage.MessageType.TEXT:
+                    assert isinstance(message.message, DatasourceMessage.TextMessage)
+                    text += message.message.text
                     yield StreamChunkEvent(
-                        selector=[self._node_id, variable_name],
-                        chunk=variable_value,
+                        selector=[self._node_id, "text"],
+                        chunk=message.message.text,
                         is_final=False,
                     )
-                else:
-                    variables[variable_name] = variable_value
-            elif message.type == DatasourceMessage.MessageType.FILE:
-                assert message.meta is not None
-                files.append(message.meta["file"])
+                case DatasourceMessage.MessageType.JSON:
+                    assert isinstance(message.message, DatasourceMessage.JsonMessage)
+                    json.append(message.message.json_object)
+                case DatasourceMessage.MessageType.LINK:
+                    assert isinstance(message.message, DatasourceMessage.TextMessage)
+                    stream_text = f"Link: {message.message.text}\n"
+                    text += stream_text
+                    yield StreamChunkEvent(
+                        selector=[self._node_id, "text"],
+                        chunk=stream_text,
+                        is_final=False,
+                    )
+                case DatasourceMessage.MessageType.VARIABLE:
+                    assert isinstance(message.message, DatasourceMessage.VariableMessage)
+                    variable_name = message.message.variable_name
+                    variable_value = message.message.variable_value
+                    if message.message.stream:
+                        if not isinstance(variable_value, str):
+                            raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+                        if variable_name not in variables:
+                            variables[variable_name] = ""
+                        variables[variable_name] += variable_value
+
+                        yield StreamChunkEvent(
+                            selector=[self._node_id, variable_name],
+                            chunk=variable_value,
+                            is_final=False,
+                        )
+                    else:
+                        variables[variable_name] = variable_value
+                case DatasourceMessage.MessageType.FILE:
+                    assert message.meta is not None
+                    files.append(message.meta["file"])
+                case (
+                    DatasourceMessage.MessageType.BLOB_CHUNK
+                    | DatasourceMessage.MessageType.LOG
+                    | DatasourceMessage.MessageType.RETRIEVER_RESOURCES
+                ):
+                    pass
+
         # mark the end of the stream
         yield StreamChunkEvent(
             selector=[self._node_id, "text"],

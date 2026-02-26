@@ -1,10 +1,17 @@
+import logging
 import os
+from collections.abc import Mapping
+from typing import Any
 
-import requests
+import httpx
+
+from core.helper.trace_id_helper import generate_traceparent_header
+
+logger = logging.getLogger(__name__)
 
 
 class BaseRequest:
-    proxies = {
+    proxies: Mapping[str, str] | None = {
         "http": "",
         "https": "",
     }
@@ -13,10 +20,40 @@ class BaseRequest:
     secret_key_header = ""
 
     @classmethod
-    def send_request(cls, method, endpoint, json=None, params=None):
+    def _build_mounts(cls) -> dict[str, httpx.BaseTransport] | None:
+        if not cls.proxies:
+            return None
+
+        mounts: dict[str, httpx.BaseTransport] = {}
+        for scheme, value in cls.proxies.items():
+            if not value:
+                continue
+            key = f"{scheme}://" if not scheme.endswith("://") else scheme
+            mounts[key] = httpx.HTTPTransport(proxy=value)
+        return mounts or None
+
+    @classmethod
+    def send_request(
+        cls,
+        method: str,
+        endpoint: str,
+        json: Any | None = None,
+        params: Mapping[str, Any] | None = None,
+    ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers, proxies=cls.proxies)
+        mounts = cls._build_mounts()
+
+        try:
+            # ensure traceparent even when OTEL is disabled
+            traceparent = generate_traceparent_header()
+            if traceparent:
+                headers["traceparent"] = traceparent
+        except Exception:
+            logger.debug("Failed to generate traceparent header", exc_info=True)
+
+        with httpx.Client(mounts=mounts) as client:
+            response = client.request(method, url, json=json, params=params, headers=headers)
         return response.json()
 
 

@@ -51,7 +51,7 @@ class ApiModeration(Moderation):
             params = ModerationInputParams(app_id=self.app_id, inputs=inputs, query=query)
 
             result = self._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, params.model_dump())
-            return ModerationInputsResult(**result)
+            return ModerationInputsResult.model_validate(result)
 
         return ModerationInputsResult(
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
@@ -67,7 +67,7 @@ class ApiModeration(Moderation):
             params = ModerationOutputParams(app_id=self.app_id, text=text)
 
             result = self._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_OUTPUT, params.model_dump())
-            return ModerationOutputsResult(**result)
+            return ModerationOutputsResult.model_validate(result)
 
         return ModerationOutputsResult(
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response

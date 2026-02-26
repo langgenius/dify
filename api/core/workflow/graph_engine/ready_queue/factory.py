@@ -2,6 +2,8 @@
 Factory for creating ReadyQueue instances from serialized state.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from .in_memory import InMemoryReadyQueue
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
     from .protocol import ReadyQueue
 
 
-def create_ready_queue_from_state(state: ReadyQueueState) -> "ReadyQueue":
+def create_ready_queue_from_state(state: ReadyQueueState) -> ReadyQueue:
     """
     Create a ReadyQueue instance from a serialized state.
 

@@ -1,24 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import type { ModelConfig, PromptVariable } from '@/models/debug'
+import { produce } from 'immer'
+import * as React from 'react'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
-import { useFormattingChangedDispatcher } from '../debug/hooks'
-import DatasetConfig from '../dataset-config'
-import HistoryPanel from '../config-prompt/conversation-history/history-panel'
-import ConfigVision from '../config-vision'
-import ConfigDocument from './config-document'
-import ConfigAudio from './config-audio'
-import AgentTools from './agent/agent-tools'
-import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { ModelConfig, PromptVariable } from '@/models/debug'
-import type { AppType } from '@/types/app'
-import { ModelModeType } from '@/types/app'
+import ConfigContext from '@/context/debug-configuration'
+import { AppModeEnum, ModelModeType } from '@/types/app'
+import HistoryPanel from '../config-prompt/conversation-history/history-panel'
+import ConfigVision from '../config-vision'
+import DatasetConfig from '../dataset-config'
+import { useFormattingChangedDispatcher } from '../debug/hooks'
+import AgentTools from './agent/agent-tools'
+import ConfigAudio from './config-audio'
+import ConfigDocument from './config-document'
 
 const Config: FC = () => {
   const {
+    readonly,
     mode,
     isAdvancedMode,
     modelModeType,
@@ -28,8 +28,9 @@ const Config: FC = () => {
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
+    dataSets,
   } = useContext(ConfigContext)
-  const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
+  const isChatApp = [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const promptTemplate = modelConfig.configs.prompt_template
@@ -62,23 +63,31 @@ const Config: FC = () => {
       >
         {/* Template */}
         <ConfigPrompt
-          mode={mode as AppType}
+          mode={mode}
           promptTemplate={promptTemplate}
           promptVariables={promptVariables}
           onChange={handlePromptChange}
+          readonly={readonly}
         />
 
         {/* Variables */}
-        <ConfigVar
-          promptVariables={promptVariables}
-          onPromptVariablesChange={handlePromptVariablesNameChange}
-        />
+        {!(readonly && promptVariables.length === 0) && (
+          <ConfigVar
+            promptVariables={promptVariables}
+            onPromptVariablesChange={handlePromptVariablesNameChange}
+            readonly={readonly}
+          />
+        )}
 
         {/* Dataset */}
-        <DatasetConfig />
-
+        {!(readonly && dataSets.length === 0) && (
+          <DatasetConfig
+            readonly={readonly}
+            hideMetadataFilter={readonly}
+          />
+        )}
         {/* Tools */}
-        {isAgent && (
+        {isAgent && !(readonly && modelConfig.agentConfig.tools.length === 0) && (
           <AgentTools />
         )}
 
@@ -89,7 +98,7 @@ const Config: FC = () => {
         <ConfigAudio />
 
         {/* Chat History */}
-        {isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
+        {!readonly && isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
           <HistoryPanel
             showWarning={!hasSetBlockStatus.history}
             onShowEditModal={showHistoryModal}

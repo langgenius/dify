@@ -1,9 +1,3 @@
-import {
-  del,
-  get,
-  post,
-  put,
-} from './base'
 import type {
   ModelCredential,
   ModelItem,
@@ -16,6 +10,12 @@ import {
   useQuery,
   // useQueryClient,
 } from '@tanstack/react-query'
+import {
+  del,
+  get,
+  post,
+  put,
+} from './base'
 
 const NAME_SPACE = 'models'
 
@@ -82,7 +82,7 @@ export const useGetModelCredential = (
 ) => {
   return useQuery({
     enabled,
-    queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId],
+    queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId, configFrom],
     queryFn: () => get<ModelCredential>(`/workspaces/current/model-providers/${provider}/models/credentials?model=${model}&model_type=${modelType}&config_from=${configFrom}${credentialId ? `&credential_id=${credentialId}` : ''}`),
     staleTime: 0,
     gcTime: 0,

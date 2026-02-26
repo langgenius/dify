@@ -5,7 +5,7 @@ from faker import Faker
 
 from core.entities.model_entities import ModelStatus
 from core.model_runtime.entities.model_entities import FetchFrom, ModelType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
 
@@ -67,7 +67,7 @@ class TestModelProviderService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -227,7 +227,7 @@ class TestModelProviderService:
         mock_provider_entity.label = {"en_US": "OpenAI", "zh_Hans": "OpenAI"}
         mock_provider_entity.description = {"en_US": "OpenAI provider", "zh_Hans": "OpenAI 提供商"}
         mock_provider_entity.icon_small = {"en_US": "icon_small.png", "zh_Hans": "icon_small.png"}
-        mock_provider_entity.icon_large = {"en_US": "icon_large.png", "zh_Hans": "icon_large.png"}
+        mock_provider_entity.icon_small_dark = None
         mock_provider_entity.background = "#FF6B6B"
         mock_provider_entity.help = None
         mock_provider_entity.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING]
@@ -300,7 +300,7 @@ class TestModelProviderService:
         mock_provider_entity_llm.label = {"en_US": "OpenAI", "zh_Hans": "OpenAI"}
         mock_provider_entity_llm.description = {"en_US": "OpenAI provider", "zh_Hans": "OpenAI 提供商"}
         mock_provider_entity_llm.icon_small = {"en_US": "icon_small.png", "zh_Hans": "icon_small.png"}
-        mock_provider_entity_llm.icon_large = {"en_US": "icon_large.png", "zh_Hans": "icon_large.png"}
+        mock_provider_entity_llm.icon_small_dark = None
         mock_provider_entity_llm.background = "#FF6B6B"
         mock_provider_entity_llm.help = None
         mock_provider_entity_llm.supported_model_types = [ModelType.LLM]
@@ -313,7 +313,7 @@ class TestModelProviderService:
         mock_provider_entity_embedding.label = {"en_US": "Cohere", "zh_Hans": "Cohere"}
         mock_provider_entity_embedding.description = {"en_US": "Cohere provider", "zh_Hans": "Cohere 提供商"}
         mock_provider_entity_embedding.icon_small = {"en_US": "icon_small.png", "zh_Hans": "icon_small.png"}
-        mock_provider_entity_embedding.icon_large = {"en_US": "icon_large.png", "zh_Hans": "icon_large.png"}
+        mock_provider_entity_embedding.icon_small_dark = None
         mock_provider_entity_embedding.background = "#4ECDC4"
         mock_provider_entity_embedding.help = None
         mock_provider_entity_embedding.supported_model_types = [ModelType.TEXT_EMBEDDING]
@@ -416,7 +416,6 @@ class TestModelProviderService:
                 provider="openai",
                 label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
                 icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-                icon_large=I18nObject(en_US="icon_large.png", zh_Hans="icon_large.png"),
                 supported_model_types=[ModelType.LLM],
                 configurate_methods=[],
                 models=[],
@@ -428,7 +427,6 @@ class TestModelProviderService:
                 provider="openai",
                 label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
                 icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-                icon_large=I18nObject(en_US="icon_large.png", zh_Hans="icon_large.png"),
                 supported_model_types=[ModelType.LLM],
                 configurate_methods=[],
                 models=[],
@@ -652,7 +650,6 @@ class TestModelProviderService:
                 provider="openai",
                 label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
                 icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-                icon_large=I18nObject(en_US="icon_large.png", zh_Hans="icon_large.png"),
                 supported_model_types=[ModelType.LLM],
             ),
         )
@@ -1023,7 +1020,7 @@ class TestModelProviderService:
                     provider="openai",
                     label={"en_US": "OpenAI", "zh_Hans": "OpenAI"},
                     icon_small={"en_US": "icon_small.png", "zh_Hans": "icon_small.png"},
-                    icon_large={"en_US": "icon_large.png", "zh_Hans": "icon_large.png"},
+                    icon_small_dark=None,
                 ),
                 model="gpt-3.5-turbo",
                 model_type=ModelType.LLM,
@@ -1040,7 +1037,7 @@ class TestModelProviderService:
                     provider="openai",
                     label={"en_US": "OpenAI", "zh_Hans": "OpenAI"},
                     icon_small={"en_US": "icon_small.png", "zh_Hans": "icon_small.png"},
-                    icon_large={"en_US": "icon_large.png", "zh_Hans": "icon_large.png"},
+                    icon_small_dark=None,
                 ),
                 model="gpt-4",
                 model_type=ModelType.LLM,

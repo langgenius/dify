@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useStore } from '@/app/components/workflow/store'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
+import { useStore } from '@/app/components/workflow/store'
 
 export const useFloatingRight = (targetElementWidth: number) => {
   const [floatingRight, setFloatingRight] = useState(false)
@@ -27,7 +27,8 @@ export const useFloatingRight = (targetElementWidth: number) => {
   }, [workflowCanvasWidth, nodePanelWidth, otherPanelWidth, selectedNodeId, targetElementWidth])
 
   const floatingRightWidth = useMemo(() => {
-    if (!floatingRight) return targetElementWidth
+    if (!floatingRight)
+      return targetElementWidth
     const width = Math.min(targetElementWidth, (selectedNodeId ? nodePanelWidth : 0) + otherPanelWidth)
     return width
   }, [floatingRight, selectedNodeId, nodePanelWidth, otherPanelWidth, targetElementWidth])

@@ -7,9 +7,9 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 
 from typing import TYPE_CHECKING, Any
 
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,
@@ -27,7 +27,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -102,16 +103,34 @@ class MockNodeFactory(DifyNodeFactory):
 
             # Create mock node instance
             mock_class = self._mock_node_types[node_type]
-            mock_instance = mock_class(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                mock_config=self.mock_config,
-            )
-
-            # Initialize node with provided data
-            mock_instance.init_node_data(node_data)
+            if node_type == NodeType.CODE:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    code_executor=self._code_executor,
+                    code_providers=self._code_providers,
+                    code_limits=self._code_limits,
+                )
+            elif node_type == NodeType.HTTP_REQUEST:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    http_request_config=self._http_request_config,
+                )
+            else:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                )
 
             return mock_instance
 

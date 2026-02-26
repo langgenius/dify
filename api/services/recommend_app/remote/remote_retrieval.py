@@ -1,6 +1,6 @@
 import logging
 
-import requests
+import httpx
 
 from configs import dify_config
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
@@ -43,7 +43,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps/{app_id}"
-        response = requests.get(url, timeout=(3, 10))
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             return None
         data: dict = response.json()
@@ -58,7 +58,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps?language={language}"
-        response = requests.get(url, timeout=(3, 10))
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 

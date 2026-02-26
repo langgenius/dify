@@ -263,3 +263,62 @@ class TestResponseUnmodified:
             )
         assert response.text == _RESPONSE_NEEDLE
         assert response.status_code == 200
+
+
+class TestRequestFinishedInfoAccessLine:
+    def test_info_access_log_includes_method_path_status_duration_trace_id(self, monkeypatch, caplog):
+        """Ensure INFO access line contains expected fields with computed duration and trace id."""
+        app = _get_test_app()
+        # Push a real request context so flask.request and g are available
+        with app.test_request_context("/foo", method="GET"):
+            # Seed start timestamp via the extension's own start hook and control perf_counter deterministically
+            seq = iter([100.0, 100.123456])
+            monkeypatch.setattr(ext_request_logging.time, "perf_counter", lambda: next(seq))
+            # Provide a deterministic trace id
+            monkeypatch.setattr(
+                ext_request_logging,
+                "get_trace_id_from_otel_context",
+                lambda: "trace-xyz",
+            )
+            # Simulate request_started to record start timestamp on g
+            ext_request_logging._log_request_started(app)
+
+            # Capture logs from the real logger at INFO level only (skip DEBUG branch)
+            caplog.set_level(logging.INFO, logger=ext_request_logging.__name__)
+            response = Response(json.dumps({"ok": True}), mimetype="application/json", status=200)
+            _log_request_finished(app, response)
+
+            # Verify a single INFO record with the five fields in order
+            info_records = [rec for rec in caplog.records if rec.levelno == logging.INFO]
+            assert len(info_records) == 1
+            msg = info_records[0].getMessage()
+            # Expected format: METHOD PATH STATUS DURATION_MS TRACE_ID
+            assert "GET" in msg
+            assert "/foo" in msg
+            assert "200" in msg
+            assert "123.456" in msg  # rounded to 3 decimals
+            assert "trace-xyz" in msg
+
+    def test_info_access_log_uses_dash_without_start_timestamp(self, monkeypatch, caplog):
+        app = _get_test_app()
+        with app.test_request_context("/bar", method="POST"):
+            # No g.__request_started_ts set -> duration should be '-'
+            monkeypatch.setattr(
+                ext_request_logging,
+                "get_trace_id_from_otel_context",
+                lambda: "tid-no-start",
+            )
+            caplog.set_level(logging.INFO, logger=ext_request_logging.__name__)
+            response = Response("OK", mimetype="text/plain", status=204)
+            _log_request_finished(app, response)
+
+            info_records = [rec for rec in caplog.records if rec.levelno == logging.INFO]
+            assert len(info_records) == 1
+            msg = info_records[0].getMessage()
+            assert "POST" in msg
+            assert "/bar" in msg
+            assert "204" in msg
+            # Duration placeholder
+            # The fields are space separated; ensure a standalone '-' appears
+            assert " - " in msg or msg.endswith(" -")
+            assert "tid-no-start" in msg

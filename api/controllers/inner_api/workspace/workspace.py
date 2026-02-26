@@ -1,14 +1,28 @@
 import json
 
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel
 
+from controllers.common.schema import register_schema_models
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from services.account_service import TenantService
+
+
+class WorkspaceCreatePayload(BaseModel):
+    name: str
+    owner_email: str
+
+
+class WorkspaceOwnerlessPayload(BaseModel):
+    name: str
+
+
+register_schema_models(inner_api_ns, WorkspaceCreatePayload, WorkspaceOwnerlessPayload)
 
 
 @inner_api_ns.route("/enterprise/workspace")
@@ -17,6 +31,7 @@ class EnterpriseWorkspace(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace")
     @inner_api_ns.doc(description="Create a new enterprise workspace with owner assignment")
+    @inner_api_ns.expect(inner_api_ns.models[WorkspaceCreatePayload.__name__])
     @inner_api_ns.doc(
         responses={
             200: "Workspace created successfully",
@@ -25,16 +40,13 @@ class EnterpriseWorkspace(Resource):
         }
     )
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("owner_email", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = WorkspaceCreatePayload.model_validate(inner_api_ns.payload or {})
 
-        account = db.session.query(Account).filter_by(email=args["owner_email"]).first()
+        account = db.session.query(Account).filter_by(email=args.owner_email).first()
         if account is None:
             return {"message": "owner account not found."}, 404
 
-        tenant = TenantService.create_tenant(args["name"], is_from_dashboard=True)
+        tenant = TenantService.create_tenant(args.name, is_from_dashboard=True)
         TenantService.create_tenant_member(tenant, account, role="owner")
 
         tenant_was_created.send(tenant)
@@ -60,6 +72,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace_ownerless")
     @inner_api_ns.doc(description="Create a new enterprise workspace without initial owner assignment")
+    @inner_api_ns.expect(inner_api_ns.models[WorkspaceOwnerlessPayload.__name__])
     @inner_api_ns.doc(
         responses={
             200: "Workspace created successfully",
@@ -68,11 +81,9 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
         }
     )
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = WorkspaceOwnerlessPayload.model_validate(inner_api_ns.payload or {})
 
-        tenant = TenantService.create_tenant(args["name"], is_from_dashboard=True)
+        tenant = TenantService.create_tenant(args.name, is_from_dashboard=True)
 
         tenant_was_created.send(tenant)
 

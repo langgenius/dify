@@ -5,6 +5,7 @@ Therefore, a model manager is needed to list/invoke/validate models.
 """
 
 import json
+from decimal import Decimal
 from typing import cast
 
 from core.model_manager import ModelManager
@@ -118,10 +119,10 @@ class ModelInvocationUtils:
             model_response="",
             prompt_tokens=prompt_tokens,
             answer_tokens=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
+            answer_unit_price=Decimal(),
+            answer_price_unit=Decimal(),
             provider_response_latency=0,
-            total_price=0,
+            total_price=Decimal(),
             currency="USD",
         )
 
@@ -152,7 +153,7 @@ class ModelInvocationUtils:
             raise InvokeModelError(f"Invoke error: {e}")
 
         # update tool model invoke
-        tool_model_invoke.model_response = response.message.content
+        tool_model_invoke.model_response = str(response.message.content)
         if response.usage:
             tool_model_invoke.answer_tokens = response.usage.completion_tokens
             tool_model_invoke.answer_unit_price = response.usage.completion_unit_price

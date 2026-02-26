@@ -13,7 +13,10 @@ from .loop import (
     LoopSucceededEvent,
 )
 from .node import (
+    HumanInputFormFilledEvent,
+    HumanInputFormTimeoutEvent,
     ModelInvokeCompletedEvent,
+    PauseRequestedEvent,
     RunRetrieverResourceEvent,
     RunRetryEvent,
     StreamChunkEvent,
@@ -22,6 +25,8 @@ from .node import (
 
 __all__ = [
     "AgentLogEvent",
+    "HumanInputFormFilledEvent",
+    "HumanInputFormTimeoutEvent",
     "IterationFailedEvent",
     "IterationNextEvent",
     "IterationStartedEvent",
@@ -33,6 +38,7 @@ __all__ = [
     "ModelInvokeCompletedEvent",
     "NodeEventBase",
     "NodeRunResult",
+    "PauseRequestedEvent",
     "RunRetrieverResourceEvent",
     "RunRetryEvent",
     "StreamChunkEvent",

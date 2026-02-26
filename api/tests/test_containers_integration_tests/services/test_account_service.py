@@ -8,7 +8,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
-from models.account import AccountStatus, TenantAccountJoin
+from models import AccountStatus, TenantAccountJoin
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -16,6 +16,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 
@@ -63,7 +64,7 @@ class TestAccountService:
             password=password,
         )
         assert account.email == email
-        assert account.status == AccountStatus.ACTIVE.value
+        assert account.status == AccountStatus.ACTIVE
 
         # Login with correct password
         logged_in = AccountService.authenticate(email, password)
@@ -184,7 +185,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -268,14 +269,14 @@ class TestAccountService:
             interface_language="en-US",
             password=password,
         )
-        account.status = AccountStatus.PENDING.value
+        account.status = AccountStatus.PENDING
         from extensions.ext_database import db
 
         db.session.commit()
 
         # Authenticate should activate the account
         authenticated_account = AccountService.authenticate(email, password)
-        assert authenticated_account.status == AccountStatus.ACTIVE.value
+        assert authenticated_account.status == AccountStatus.ACTIVE
         assert authenticated_account.initialized_at is not None
 
     def test_update_account_password_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -469,7 +470,7 @@ class TestAccountService:
 
         # Verify integration was created
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider="new-google").first()
         assert integration is not None
@@ -504,7 +505,7 @@ class TestAccountService:
 
         # Verify integration was updated
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = (
             db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider="exists-google").first()
@@ -538,7 +539,7 @@ class TestAccountService:
         from extensions.ext_database import db
 
         db.session.refresh(account)
-        assert account.status == AccountStatus.CLOSED.value
+        assert account.status == AccountStatus.CLOSED
 
     def test_update_account_fields(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -678,7 +679,7 @@ class TestAccountService:
             interface_language="en-US",
             password=password,
         )
-        account.status = AccountStatus.PENDING.value
+        account.status = AccountStatus.PENDING
         from extensions.ext_database import db
 
         db.session.commit()
@@ -687,7 +688,7 @@ class TestAccountService:
         token_pair = AccountService.login(account)
 
         db.session.refresh(account)
-        assert account.status == AccountStatus.ACTIVE.value
+        assert account.status == AccountStatus.ACTIVE
 
     def test_logout(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -859,7 +860,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -989,7 +990,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -1015,7 +1016,7 @@ class TestAccountService:
 
     def test_delete_account(self, db_session_with_containers, mock_external_service_dependencies):
         """
-        Test account deletion (should add task to queue).
+        Test account deletion (should add task to queue and sync to enterprise).
         """
         fake = Faker()
         email = fake.email()
@@ -1033,9 +1034,17 @@ class TestAccountService:
             password=password,
         )
 
-        with patch("services.account_service.delete_account_task") as mock_delete_task:
+        with (
+            patch("services.account_service.delete_account_task") as mock_delete_task,
+            patch("services.enterprise.account_deletion_sync.sync_account_deletion") as mock_sync,
+        ):
+            mock_sync.return_value = True
+
             # Delete account
             AccountService.delete_account(account)
+
+            # Verify sync was called
+            mock_sync.assert_called_once_with(account_id=account.id, source="account_deleted")
 
             # Verify task was added to queue
             mock_delete_task.delay.assert_called_once_with(account.id)
@@ -1414,7 +1423,7 @@ class TestTenantService:
         )
 
         # Try to get current tenant (should fail)
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, TenantNotFoundError)):
             TenantService.get_current_tenant_by_account(account)
 
     def test_switch_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1715,7 +1724,7 @@ class TestTenantService:
 
     def test_remove_member_from_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
-        Test successful member removal from tenant.
+        Test successful member removal from tenant (should sync to enterprise).
         """
         fake = Faker()
         tenant_name = fake.company()
@@ -1750,7 +1759,15 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, role="normal")
 
         # Remove member
-        TenantService.remove_member_from_tenant(tenant, member_account, owner_account)
+        with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+            mock_sync.return_value = True
+
+            TenantService.remove_member_from_tenant(tenant, member_account, owner_account)
+
+            # Verify sync was called
+            mock_sync.assert_called_once_with(
+                workspace_id=tenant.id, member_id=member_account.id, source="workspace_member_removed"
+            )
 
         # Verify member was removed
         from extensions.ext_database import db
@@ -2292,18 +2309,23 @@ class TestRegisterService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
+        from extensions.ext_database import db
+        from models.model import DifySetup
+
+        db.session.query(DifySetup).delete()
+        db.session.commit()
+
         # Execute setup
         RegisterService.setup(
             email=admin_email,
             name=admin_name,
             password=admin_password,
             ip_address=ip_address,
+            language="en-US",
         )
 
         # Verify account was created
-        from extensions.ext_database import db
-        from models.account import Account
-        from models.model import DifySetup
+        from models import Account
 
         account = db.session.query(Account).filter_by(email=admin_email).first()
         assert account is not None
@@ -2347,11 +2369,12 @@ class TestRegisterService:
                     name=admin_name,
                     password=admin_password,
                     ip_address=ip_address,
+                    language="en-US",
                 )
 
             # Verify no entities were created (rollback worked)
             from extensions.ext_database import db
-            from models.account import Account, Tenant, TenantAccountJoin
+            from models import Account, Tenant, TenantAccountJoin
             from models.model import DifySetup
 
             account = db.session.query(Account).filter_by(email=admin_email).first()
@@ -2445,7 +2468,7 @@ class TestRegisterService:
 
         # Verify OAuth integration was created
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
         assert integration is not None
@@ -2471,7 +2494,7 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with pending status
-        from models.account import AccountStatus
+        from models import AccountStatus
 
         account = RegisterService.register(
             email=email,
@@ -2660,7 +2683,7 @@ class TestRegisterService:
 
         # Verify new account was created with pending status
         from extensions.ext_database import db
-        from models.account import Account, TenantAccountJoin
+        from models import Account, TenantAccountJoin
 
         new_account = db.session.query(Account).filter_by(email=new_member_email).first()
         assert new_account is not None

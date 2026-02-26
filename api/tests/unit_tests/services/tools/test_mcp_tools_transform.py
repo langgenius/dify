@@ -180,6 +180,25 @@ class TestMCPToolTransform:
         # Set tools data with null description
         mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
 
+        # Mock the to_entity and to_api_response methods
+        mock_entity = Mock()
+        mock_entity.to_api_response.return_value = {
+            "name": "Test MCP Provider",
+            "type": ToolProviderType.MCP,
+            "is_team_authorization": True,
+            "server_url": "https://*****.com/mcp",
+            "provider_icon": "icon.png",
+            "masked_headers": {"Authorization": "Bearer *****"},
+            "updated_at": 1234567890,
+            "labels": [],
+            "author": "Test User",
+            "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
+            "icon": "icon.png",
+            "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
+            "masked_credentials": {},
+        }
+        mock_provider_full.to_entity.return_value = mock_entity
+
         # Call the method with for_list=True
         result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=True)
 
@@ -198,6 +217,27 @@ class TestMCPToolTransform:
         # Set tools data with description
         mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
 
+        # Mock the to_entity and to_api_response methods
+        mock_entity = Mock()
+        mock_entity.to_api_response.return_value = {
+            "name": "Test MCP Provider",
+            "type": ToolProviderType.MCP,
+            "is_team_authorization": True,
+            "server_url": "https://*****.com/mcp",
+            "provider_icon": "icon.png",
+            "masked_headers": {"Authorization": "Bearer *****"},
+            "updated_at": 1234567890,
+            "labels": [],
+            "configuration": {"timeout": "30", "sse_read_timeout": "300"},
+            "original_headers": {"Authorization": "Bearer secret-token"},
+            "author": "Test User",
+            "description": I18nObject(en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"),
+            "icon": "icon.png",
+            "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
+            "masked_credentials": {},
+        }
+        mock_provider_full.to_entity.return_value = mock_entity
+
         # Call the method with for_list=False
         result = ToolTransformService.mcp_provider_to_user_provider(mock_provider_full, for_list=False)
 
@@ -205,8 +245,9 @@ class TestMCPToolTransform:
         assert isinstance(result, ToolProviderApiEntity)
         assert result.id == "server-identifier-456"  # Should use server_identifier when for_list=False
         assert result.server_identifier == "server-identifier-456"
-        assert result.timeout == 30
-        assert result.sse_read_timeout == 300
+        assert result.configuration is not None
+        assert result.configuration.timeout == 30
+        assert result.configuration.sse_read_timeout == 300
         assert result.original_headers == {"Authorization": "Bearer secret-token"}
         assert len(result.tools) == 1
         assert result.tools[0].description.en_US == "Tool description"

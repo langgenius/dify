@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from collections.abc import Mapping
+
+from pydantic import BaseModel, Field
 
 from core.tools.entities.tool_entities import ToolParameter
 
@@ -25,3 +27,5 @@ class ApiToolBundle(BaseModel):
     icon: str | None = None
     # openapi operation
     openapi: dict
+    # output schema
+    output_schema: Mapping[str, object] = Field(default_factory=dict)

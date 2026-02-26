@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
@@ -17,7 +19,7 @@ class PromptMessageRole(StrEnum):
     TOOL = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "PromptMessageRole":
+    def value_of(cls, value: str) -> PromptMessageRole:
         """
         Get value of given mode.
 
@@ -74,7 +76,7 @@ class TextPromptMessageContent(PromptMessageContent):
     Model class for text prompt message content.
     """
 
-    type: Literal[PromptMessageContentType.TEXT] = PromptMessageContentType.TEXT
+    type: Literal[PromptMessageContentType.TEXT] = PromptMessageContentType.TEXT  # type: ignore
     data: str
 
 
@@ -95,11 +97,11 @@ class MultiModalPromptMessageContent(PromptMessageContent):
 
 
 class VideoPromptMessageContent(MultiModalPromptMessageContent):
-    type: Literal[PromptMessageContentType.VIDEO] = PromptMessageContentType.VIDEO
+    type: Literal[PromptMessageContentType.VIDEO] = PromptMessageContentType.VIDEO  # type: ignore
 
 
 class AudioPromptMessageContent(MultiModalPromptMessageContent):
-    type: Literal[PromptMessageContentType.AUDIO] = PromptMessageContentType.AUDIO
+    type: Literal[PromptMessageContentType.AUDIO] = PromptMessageContentType.AUDIO  # type: ignore
 
 
 class ImagePromptMessageContent(MultiModalPromptMessageContent):
@@ -111,12 +113,12 @@ class ImagePromptMessageContent(MultiModalPromptMessageContent):
         LOW = auto()
         HIGH = auto()
 
-    type: Literal[PromptMessageContentType.IMAGE] = PromptMessageContentType.IMAGE
+    type: Literal[PromptMessageContentType.IMAGE] = PromptMessageContentType.IMAGE  # type: ignore
     detail: DETAIL = DETAIL.LOW
 
 
 class DocumentPromptMessageContent(MultiModalPromptMessageContent):
-    type: Literal[PromptMessageContentType.DOCUMENT] = PromptMessageContentType.DOCUMENT
+    type: Literal[PromptMessageContentType.DOCUMENT] = PromptMessageContentType.DOCUMENT  # type: ignore
 
 
 PromptMessageContentUnionTypes = Annotated[
@@ -249,10 +251,7 @@ class AssistantPromptMessage(PromptMessage):
 
         :return: True if prompt message is empty, False otherwise
         """
-        if not super().is_empty() and not self.tool_calls:
-            return False
-
-        return True
+        return super().is_empty() and not self.tool_calls
 
 
 class SystemPromptMessage(PromptMessage):

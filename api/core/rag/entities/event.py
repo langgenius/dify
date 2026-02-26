@@ -1,11 +1,11 @@
 from collections.abc import Mapping
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class DatasourceStreamEvent(Enum):
+class DatasourceStreamEvent(StrEnum):
     """
     Datasource Stream event
     """
@@ -20,12 +20,12 @@ class BaseDatasourceEvent(BaseModel):
 
 
 class DatasourceErrorEvent(BaseDatasourceEvent):
-    event: str = DatasourceStreamEvent.ERROR.value
+    event: DatasourceStreamEvent = DatasourceStreamEvent.ERROR
     error: str = Field(..., description="error message")
 
 
 class DatasourceCompletedEvent(BaseDatasourceEvent):
-    event: str = DatasourceStreamEvent.COMPLETED.value
+    event: DatasourceStreamEvent = DatasourceStreamEvent.COMPLETED
     data: Mapping[str, Any] | list = Field(..., description="result")
     total: int | None = Field(default=0, description="total")
     completed: int | None = Field(default=0, description="completed")
@@ -33,6 +33,6 @@ class DatasourceCompletedEvent(BaseDatasourceEvent):
 
 
 class DatasourceProcessingEvent(BaseDatasourceEvent):
-    event: str = DatasourceStreamEvent.PROCESSING.value
+    event: DatasourceStreamEvent = DatasourceStreamEvent.PROCESSING
     total: int | None = Field(..., description="total")
     completed: int | None = Field(..., description="completed")

@@ -1,5 +1,9 @@
+import binascii
+import json
+from collections.abc import Mapping
 from typing import Any, Literal
 
+from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig
@@ -13,6 +17,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.utils.http_parser import deserialize_response
 from core.workflow.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
 )
@@ -83,16 +88,16 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
             raise ValueError("prompt_messages must be a list")
 
         for i in range(len(v)):
-            if v[i]["role"] == PromptMessageRole.USER.value:
-                v[i] = UserPromptMessage(**v[i])
-            elif v[i]["role"] == PromptMessageRole.ASSISTANT.value:
-                v[i] = AssistantPromptMessage(**v[i])
-            elif v[i]["role"] == PromptMessageRole.SYSTEM.value:
-                v[i] = SystemPromptMessage(**v[i])
-            elif v[i]["role"] == PromptMessageRole.TOOL.value:
-                v[i] = ToolPromptMessage(**v[i])
+            if v[i]["role"] == PromptMessageRole.USER:
+                v[i] = UserPromptMessage.model_validate(v[i])
+            elif v[i]["role"] == PromptMessageRole.ASSISTANT:
+                v[i] = AssistantPromptMessage.model_validate(v[i])
+            elif v[i]["role"] == PromptMessageRole.SYSTEM:
+                v[i] = SystemPromptMessage.model_validate(v[i])
+            elif v[i]["role"] == PromptMessageRole.TOOL:
+                v[i] = ToolPromptMessage.model_validate(v[i])
             else:
-                v[i] = PromptMessage(**v[i])
+                v[i] = PromptMessage.model_validate(v[i])
 
         return v
 
@@ -237,3 +242,43 @@ class RequestFetchAppInfo(BaseModel):
     """
 
     app_id: str
+
+
+class TriggerInvokeEventResponse(BaseModel):
+    variables: Mapping[str, Any] = Field(default_factory=dict)
+    cancelled: bool = Field(default=False)
+
+    model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
+
+    @field_validator("variables", mode="before")
+    @classmethod
+    def convert_variables(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        else:
+            return v
+
+
+class TriggerSubscriptionResponse(BaseModel):
+    subscription: dict[str, Any]
+
+
+class TriggerValidateProviderCredentialsResponse(BaseModel):
+    result: bool
+
+
+class TriggerDispatchResponse(BaseModel):
+    user_id: str
+    events: list[str]
+    response: Response
+    payload: Mapping[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
+
+    @field_validator("response", mode="before")
+    @classmethod
+    def convert_response(cls, v: str):
+        try:
+            return deserialize_response(binascii.unhexlify(v.encode()))
+        except Exception as e:
+            raise ValueError("Failed to deserialize response from hex string") from e

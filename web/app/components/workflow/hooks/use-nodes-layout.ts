@@ -1,16 +1,16 @@
-import { useCallback } from 'react'
-import ELK from 'elkjs/lib/elk.bundled.js'
-import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
-import { cloneDeep } from 'lodash-es'
 import type {
   Edge,
   Node,
 } from '../types'
-import { useWorkflowStore } from '../store'
+import ELK from 'elkjs/lib/elk.bundled.js'
+import { cloneDeep } from 'es-toolkit/object'
+import { useCallback } from 'react'
+import {
+  useReactFlow,
+  useStoreApi,
+} from 'reactflow'
 import { AUTO_LAYOUT_OFFSET } from '../constants'
+import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 const layoutOptions = {

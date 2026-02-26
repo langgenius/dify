@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-if TYPE_CHECKING:
-    from core.ops.ops_trace_manager import TraceQueueManager
-
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
+from core.workflow.file import File, FileUploadConfig
+
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
 
 
 class InvokeFrom(StrEnum):
@@ -32,13 +32,21 @@ class InvokeFrom(StrEnum):
     # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
     WEB_APP = "web-app"
 
+    # TRIGGER indicates that this invocation is from a trigger.
+    # this is used for plugin trigger and webhook trigger.
+    TRIGGER = "trigger"
+
     # EXPLORE indicates that this invocation is from
     # the workflow (or chatflow) explore page.
     EXPLORE = "explore"
     # DEBUGGER indicates that this invocation is from
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
-    PUBLISHED = "published"
+    # PUBLISHED_PIPELINE indicates that this invocation runs a published RAG pipeline workflow.
+    PUBLISHED_PIPELINE = "published"
+
+    # VALIDATION indicates that this invocation is from validation.
+    VALIDATION = "validation"
 
     @classmethod
     def value_of(cls, value: str):
@@ -65,6 +73,8 @@ class InvokeFrom(StrEnum):
             return "dev"
         elif self == InvokeFrom.EXPLORE:
             return "explore_app"
+        elif self == InvokeFrom.TRIGGER:
+            return "trigger"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
 
@@ -104,6 +114,11 @@ class AppGenerateEntity(BaseModel):
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
+
+    # Unique identifier of the user initiating the execution.
+    # This corresponds to `Account.id` for platform users or `EndUser.id` for end users.
+    #
+    # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
     # extras
@@ -117,7 +132,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional["TraceQueueManager"] = None
+    trace_manager: Optional["TraceQueueManager"] = Field(default=None, exclude=True, repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -129,7 +144,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: str | None = None
+    query: str = ""
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -141,6 +156,7 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     """
 
     conversation_id: str | None = None
+    is_new_conversation: bool = False
     parent_message_id: str | None = Field(
         default=None,
         description=(
@@ -261,10 +277,8 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-# Import TraceQueueManager at runtime to resolve forward references
 from core.ops.ops_trace_manager import TraceQueueManager
 
-# Rebuild models that use forward references
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()
 ConversationAppGenerateEntity.model_rebuild()

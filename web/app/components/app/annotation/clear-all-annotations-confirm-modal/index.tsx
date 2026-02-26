@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 
@@ -23,8 +23,8 @@ const ClearAllAnnotationsConfirmModal: FC<Props> = ({
       isShow={isShow}
       onCancel={onHide}
       onConfirm={onConfirm}
-      type='danger'
-      title={t('appAnnotation.table.header.clearAllConfirm')}
+      type="danger"
+      title={t('table.header.clearAllConfirm', { ns: 'appAnnotation' })}
     />
   )
 }

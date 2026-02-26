@@ -3,7 +3,7 @@ import re
 from collections.abc import Sequence
 from typing import Any
 
-from core.tools.entities.tool_entities import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,8 @@
  * Extracted from the main markdown renderer for modularity.
  * This is a simple wrapper around the HTML <pre> element.
  */
-import React, { useRef } from 'react'
+import * as React from 'react'
+import { useRef } from 'react'
 
 function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
@@ -12,7 +13,8 @@ function PreCode(props: { children: any }) {
     <pre ref={ref}>
       <span
         className="copy-code-button"
-      ></span>
+      >
+      </span>
       {props.children}
     </pre>
   )

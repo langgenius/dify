@@ -1,7 +1,7 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post } from './base'
-import { DatasourceType } from '@/models/pipeline'
+import type { ToolCredential } from '@/app/components/tools/types'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { IconInfo } from '@/models/datasets'
 import type {
   ConversionResponse,
   DatasourceNodeSingleRunRequest,
@@ -31,20 +31,21 @@ import type {
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
-import type { ToolCredential } from '@/app/components/tools/types'
-import type { IconInfo } from '@/models/datasets'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { DatasourceType } from '@/models/pipeline'
+import { del, get, patch, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
 
 export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
-export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
+export const usePipelineTemplateList = (params: PipelineTemplateListParams, enabled = true) => {
   return useQuery<PipelineTemplateListResponse>({
-    queryKey: [...PipelineTemplateListQueryKeyPrefix, params.type],
+    queryKey: [...PipelineTemplateListQueryKeyPrefix, params],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
+    enabled,
   })
 }
 
@@ -55,7 +56,7 @@ export const useInvalidCustomizedTemplateList = () => {
 export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, enabled: boolean) => {
   const { template_id, type } = params
   return useQuery<PipelineTemplateByIdResponse>({
-    queryKey: [NAME_SPACE, 'template', template_id],
+    queryKey: [NAME_SPACE, 'template', type, template_id],
     queryFn: () => {
       return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${template_id}`, {
         params: {
@@ -64,6 +65,7 @@ export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, ena
       })
     },
     enabled,
+    staleTime: 0,
   })
 }
 
@@ -245,7 +247,7 @@ export const useUpdateDataSourceCredentials = (
       pluginId,
       credentials,
       name,
-    }: { provider: string; pluginId: string; credentials: Record<string, any>; name: string; }) => {
+    }: { provider: string, pluginId: string, credentials: Record<string, any>, name: string }) => {
       return post('/auth/plugin/datasource', {
         body: {
           provider,
@@ -300,7 +302,7 @@ export const useExportPipelineDSL = () => {
     mutationFn: ({
       pipelineId,
       include = false,
-    }: { pipelineId: string; include?: boolean }) => {
+    }: { pipelineId: string, include?: boolean }) => {
       return get<ExportTemplateDSLResponse>(`/rag/pipelines/${pipelineId}/exports?include_secret=${include}`)
     },
   })
@@ -315,10 +317,10 @@ export const usePublishAsCustomizedPipeline = () => {
       icon_info,
       description,
     }: {
-      pipelineId: string,
-      name: string,
-      icon_info: IconInfo,
-      description?: string,
+      pipelineId: string
+      name: string
+      icon_info: IconInfo
+      description?: string
     }) => {
       return post(`/rag/pipelines/${pipelineId}/customized/publish`, {
         body: {

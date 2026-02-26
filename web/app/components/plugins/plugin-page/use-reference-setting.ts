@@ -1,10 +1,10 @@
-import { PermissionType } from '../types'
-import { useAppContext } from '@/context/app-context'
-import Toast from '../../base/toast'
-import { useTranslation } from 'react-i18next'
-import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
+import Toast from '../../base/toast'
+import { PermissionType } from '../types'
 
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
   if (!permission)
@@ -31,7 +31,7 @@ const useReferenceSetting = () => {
       invalidateReferenceSettings()
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
     },
   })

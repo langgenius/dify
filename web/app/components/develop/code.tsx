@@ -1,4 +1,6 @@
 'use client'
+import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import {
   Children,
   createContext,
@@ -7,22 +9,9 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
-import { Tag } from './tag'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { writeTextToClipboard } from '@/utils/clipboard'
-import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
-
-const languageNames = {
-  js: 'JavaScript',
-  ts: 'TypeScript',
-  javascript: 'JavaScript',
-  typescript: 'TypeScript',
-  php: 'PHP',
-  python: 'Python',
-  ruby: 'Ruby',
-  go: 'Go',
-} as { [key: string]: string }
+import { Tag } from './tag'
 
 type IChildrenProps = {
   children: React.ReactNode
@@ -61,12 +50,9 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       type="button"
-      className={classNames(
-        'group/button absolute right-4 top-1.5 overflow-hidden rounded-full py-1 pl-2 pr-3 text-2xs font-medium opacity-0 backdrop-blur transition focus:opacity-100 group-hover:opacity-100',
-        copied
-          ? 'bg-emerald-400/10 ring-1 ring-inset ring-emerald-400/20'
-          : 'hover:bg-white/7.5 dark:bg-white/2.5 bg-white/5 dark:hover:bg-white/5',
-      )}
+      className={cn('group/button absolute right-4 top-1.5 overflow-hidden rounded-full py-1 pl-2 pr-3 text-2xs font-medium opacity-0 backdrop-blur transition focus:opacity-100 group-hover:opacity-100', copied
+        ? 'bg-emerald-400/10 ring-1 ring-inset ring-emerald-400/20'
+        : 'hover:bg-white/7.5 dark:bg-white/2.5 bg-white/5 dark:hover:bg-white/5')}
       onClick={() => {
         writeTextToClipboard(code).then(() => {
           setCopyCount(count => count + 1)
@@ -75,20 +61,14 @@ function CopyButton({ code }: { code: string }) {
     >
       <span
         aria-hidden={copied}
-        className={classNames(
-          'pointer-events-none flex items-center gap-0.5 text-zinc-400 transition duration-300',
-          copied && '-translate-y-1.5 opacity-0',
-        )}
+        className={cn('pointer-events-none flex items-center gap-0.5 text-zinc-400 transition duration-300', copied && '-translate-y-1.5 opacity-0')}
       >
         <ClipboardIcon className="h-5 w-5 fill-zinc-500/20 stroke-zinc-500 transition-colors group-hover/button:stroke-zinc-400" />
         Copy
       </span>
       <span
         aria-hidden={!copied}
-        className={classNames(
-          'pointer-events-none absolute inset-0 flex items-center justify-center text-emerald-400 transition duration-300',
-          !copied && 'translate-y-1.5 opacity-0',
-        )}
+        className={cn('pointer-events-none absolute inset-0 flex items-center justify-center text-emerald-400 transition duration-300', !copied && 'translate-y-1.5 opacity-0')}
       >
         Copied!
       </span>
@@ -96,7 +76,7 @@ function CopyButton({ code }: { code: string }) {
   )
 }
 
-function CodePanelHeader({ tag, label }: { tag?: string; label?: string }) {
+function CodePanelHeader({ tag, label }: { tag?: string, label?: string }) {
   if (!tag && !label)
     return null
 
@@ -146,11 +126,13 @@ function CodePanel({ tag, label, children, targetCode }: ICodePanelProps) {
         {/* <CopyButton code={child.props.code ?? code} /> */}
         {/* <CopyButton code={child.props.children.props.children} /> */}
         <pre className="overflow-x-auto p-4 text-xs text-white">
-          {targetCode?.code ? (
-            <code>{targetCode?.code}</code>
-          ) : (
-            child
-          )}
+          {targetCode?.code
+            ? (
+                <code>{targetCode?.code}</code>
+              )
+            : (
+                child
+              )}
         </pre>
         <CopyButton code={targetCode?.code ?? child.props.children.props.children} />
       </div>
@@ -179,12 +161,9 @@ function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderPro
           {tabTitles!.map((tabTitle, tabIndex) => (
             <Tab
               key={tabIndex}
-              className={classNames(
-                'border-b py-3 transition focus:[&:not(:focus-visible)]:outline-none',
-                tabIndex === selectedIndex
-                  ? 'border-emerald-500 text-emerald-400'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-300',
-              )}
+              className={cn('border-b py-3 transition focus:[&:not(:focus-visible)]:outline-none', tabIndex === selectedIndex
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-zinc-400 hover:text-zinc-300')}
             >
               {tabTitle}
             </Tab>
@@ -204,8 +183,8 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
   if ((targetCode?.length ?? 0) > 1) {
     return (
       <TabPanels>
-        {targetCode!.map(code => (
-          <TabPanel>
+        {targetCode!.map((code, index) => (
+          <TabPanel key={code.title || code.tag || index}>
             <CodePanel {...props} targetCode={code} />
           </TabPanel>
         ))}
@@ -217,8 +196,8 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
 }
 
 function usePreventLayoutShift() {
-  const positionRef = useRef<any>()
-  const rafRef = useRef<any>()
+  const positionRef = useRef<any>(null)
+  const rafRef = useRef<any>(null)
 
   useEffect(() => {
     return () => {

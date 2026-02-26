@@ -9,6 +9,7 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
@@ -43,7 +44,7 @@ class RagPipelineTransformService:
         doc_form = dataset.doc_form
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset)
-        retrieval_model = dataset.retrieval_model
+        retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
         self._deal_dependencies(pipeline_yaml, dataset.tenant_id)
@@ -149,26 +150,33 @@ class RagPipelineTransformService:
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
-        file_extensions = [file_extension.lower() for file_extension in file_extensions]
-        node["data"]["fileExtensions"] = DOCUMENT_EXTENSIONS
+        node["data"]["fileExtensions"] = [ext.lower() for ext in file_extensions if ext in DOCUMENT_EXTENSIONS]
         return node
 
     def _deal_knowledge_index(
-        self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
+        self,
+        dataset: Dataset,
+        doc_form: str,
+        indexing_technique: str | None,
+        retrieval_model: RetrievalSetting | None,
+        node: dict,
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)
+        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            retrieval_setting = RetrievalSetting(**retrieval_model)
             if indexing_technique == "economy":
-                retrieval_setting.search_method = "keyword_search"
-            knowledge_configuration.retrieval_model = retrieval_setting
+                retrieval_model.search_method = RetrievalMethod.KEYWORD_SEARCH
+            knowledge_configuration.retrieval_model = retrieval_model
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
+
+        # Copy summary_index_setting from dataset to knowledge_index node configuration
+        if dataset.summary_index_setting:
+            knowledge_configuration.summary_index_setting = dataset.summary_index_setting
 
         knowledge_configuration_dict.update(knowledge_configuration.model_dump())
         node["data"] = knowledge_configuration_dict
@@ -198,15 +206,16 @@ class RagPipelineTransformService:
         graph = workflow_data.get("graph", {})
 
         # Create new app
-        pipeline = Pipeline()
+        pipeline = Pipeline(
+            tenant_id=current_user.current_tenant_id,
+            name=pipeline_data.get("name", ""),
+            description=pipeline_data.get("description", ""),
+            created_by=current_user.id,
+            updated_by=current_user.id,
+            is_published=True,
+            is_public=True,
+        )
         pipeline.id = str(uuid4())
-        pipeline.tenant_id = current_user.current_tenant_id
-        pipeline.name = pipeline_data.get("name", "")
-        pipeline.description = pipeline_data.get("description", "")
-        pipeline.created_by = current_user.id
-        pipeline.updated_by = current_user.id
-        pipeline.is_published = True
-        pipeline.is_public = True
 
         db.session.add(pipeline)
         db.session.flush()
@@ -215,7 +224,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=current_user.id,
@@ -227,7 +236,7 @@ class RagPipelineTransformService:
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             features="{}",
-            type=WorkflowType.RAG_PIPELINE.value,
+            type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=current_user.id,
@@ -322,9 +331,9 @@ class RagPipelineTransformService:
                             datasource_info=data_source_info,
                             input_data={},
                             created_by=document.created_by,
-                            created_at=document.created_at,
                             datasource_node_id=file_node_id,
                         )
+                        document_pipeline_execution_log.created_at = document.created_at
                         db.session.add(document)
                         db.session.add(document_pipeline_execution_log)
             elif document.data_source_type == "notion_import":
@@ -350,9 +359,9 @@ class RagPipelineTransformService:
                     datasource_info=data_source_info,
                     input_data={},
                     created_by=document.created_by,
-                    created_at=document.created_at,
                     datasource_node_id=notion_node_id,
                 )
+                document_pipeline_execution_log.created_at = document.created_at
                 db.session.add(document)
                 db.session.add(document_pipeline_execution_log)
             elif document.data_source_type == "website_crawl":
@@ -379,8 +388,8 @@ class RagPipelineTransformService:
                     datasource_info=data_source_info,
                     input_data={},
                     created_by=document.created_by,
-                    created_at=document.created_at,
                     datasource_node_id=datasource_node_id,
                 )
+                document_pipeline_execution_log.created_at = document.created_at
                 db.session.add(document)
                 db.session.add(document_pipeline_execution_log)

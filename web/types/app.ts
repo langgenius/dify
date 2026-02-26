@@ -1,13 +1,14 @@
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
-import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/i18n-config/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { CollectionType } from '@/app/components/tools/types'
+import type { UploadFileSetting } from '@/app/components/workflow/types'
+import type { LanguagesSupported } from '@/i18n-config/language'
+import type { AccessMode } from '@/models/access-control'
+import type { ExternalDataTool } from '@/models/common'
 import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { AccessMode } from '@/models/access-control'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
 export enum Theme {
   light = 'light',
@@ -59,8 +60,14 @@ export type VariableInput = {
 /**
  * App modes
  */
-export const AppModes = ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'] as const
-export type AppMode = typeof AppModes[number]
+export enum AppModeEnum {
+  COMPLETION = 'completion',
+  WORKFLOW = 'workflow',
+  CHAT = 'chat',
+  ADVANCED_CHAT = 'advanced-chat',
+  AGENT_CHAT = 'agent-chat',
+}
+export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
 
 /**
  * Variable type
@@ -206,12 +213,12 @@ export type ModelConfig = {
   suggested_questions?: string[]
   pre_prompt: string
   prompt_type: PromptMode
-  chat_prompt_config: ChatPromptConfig | {}
-  completion_prompt_config: CompletionPromptConfig | {}
+  chat_prompt_config?: ChatPromptConfig | null
+  completion_prompt_config?: CompletionPromptConfig | null
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {
-    enabled?: boolean
+    enabled: boolean
   }
   suggested_questions_after_answer: {
     enabled: boolean
@@ -237,12 +244,20 @@ export type ModelConfig = {
     strategy?: AgentStrategy
     tools: ToolItem[]
   }
+  external_data_tools?: ExternalDataTool[]
   model: Model
   dataset_configs: DatasetConfigs
   file_upload?: {
     image: VisionSettings
   } & UploadFileSetting
   files?: VisionFile[]
+  system_parameters: {
+    audio_file_size_limit: number
+    file_size_limit: number
+    image_file_size_limit: number
+    video_file_size_limit: number
+    workflow_file_upload_limit: number
+  }
   created_at?: number
   updated_at?: number
 }
@@ -259,9 +274,10 @@ export type SiteConfig = {
   title: string
   /** Application Description will be shown in the Client  */
   description: string
-  /** Define the color in hex for different elements of the chatbot, such as:
+  /**
+   * Define the color in hex for different elements of the chatbot, such as:
    * The header, the button , etc.
-    */
+   */
   chat_color_theme: string
   /** Invert the color of the theme set in chat_color_theme */
   chat_color_theme_inverted: boolean
@@ -300,7 +316,7 @@ export type SiteConfig = {
   use_icon_as_answer_icon: boolean
 }
 
-export type AppIconType = 'image' | 'emoji'
+export type AppIconType = 'image' | 'emoji' | 'link'
 
 /**
  * App
@@ -313,12 +329,12 @@ export type App = {
   /** Description */
   description: string
   /** Author Name */
-  author_name: string;
+  author_name: string
 
   /**
    * Icon Type
    * @default 'emoji'
-  */
+   */
   icon_type: AppIconType | null
   /** Icon, stores file ID if icon_type is 'image' */
   icon: string
@@ -330,7 +346,7 @@ export type App = {
   use_icon_as_answer_icon: boolean
 
   /** Mode */
-  mode: AppMode
+  mode: AppModeEnum
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
@@ -360,9 +376,12 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
+  deleted_tools?: Array<{ id: string, tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null
+  /** whether workflow trigger has un-published draft */
+  has_draft_trigger?: boolean
 }
 
 export type AppSSO = {
@@ -378,7 +397,7 @@ export type AppTemplate = {
   /** Description */
   description: string
   /** Mode */
-  mode: AppMode
+  mode: AppModeEnum
   /** Model */
   model_config: ModelConfig
 }

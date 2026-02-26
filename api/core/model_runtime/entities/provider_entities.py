@@ -1,13 +1,13 @@
 from collections.abc import Sequence
-from enum import Enum, StrEnum, auto
+from enum import StrEnum, auto
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
-class ConfigurateMethod(Enum):
+class ConfigurateMethod(StrEnum):
     """
     Enum class for configurate method of provider model.
     """
@@ -46,10 +46,11 @@ class FormOption(BaseModel):
     value: str
     show_on: list[FormShowOnObject] = []
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    @model_validator(mode="after")
+    def _(self):
         if not self.label:
             self.label = I18nObject(en_US=self.value)
+        return self
 
 
 class CredentialFormSchema(BaseModel):
@@ -98,7 +99,7 @@ class SimpleProviderEntity(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     supported_model_types: Sequence[ModelType]
     models: list[AIModelEntity] = []
 
@@ -121,9 +122,7 @@ class ProviderEntity(BaseModel):
     label: I18nObject
     description: I18nObject | None = None
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
-    icon_large_dark: I18nObject | None = None
     background: str | None = None
     help: ProviderHelpEntity | None = None
     supported_model_types: Sequence[ModelType]
@@ -156,7 +155,6 @@ class ProviderEntity(BaseModel):
             provider=self.provider,
             label=self.label,
             icon_small=self.icon_small,
-            icon_large=self.icon_large,
             supported_model_types=self.supported_model_types,
             models=self.models,
         )

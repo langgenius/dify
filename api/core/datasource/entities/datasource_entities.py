@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import enum
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -31,7 +33,7 @@ class DatasourceProviderType(enum.StrEnum):
     ONLINE_DRIVE = "online_drive"
 
     @classmethod
-    def value_of(cls, value: str) -> "DatasourceProviderType":
+    def value_of(cls, value: str) -> DatasourceProviderType:
         """
         Get value of given mode.
 
@@ -54,16 +56,16 @@ class DatasourceParameter(PluginParameter):
         removes TOOLS_SELECTOR from PluginParameterType
         """
 
-        STRING = PluginParameterType.STRING.value
-        NUMBER = PluginParameterType.NUMBER.value
-        BOOLEAN = PluginParameterType.BOOLEAN.value
-        SELECT = PluginParameterType.SELECT.value
-        SECRET_INPUT = PluginParameterType.SECRET_INPUT.value
-        FILE = PluginParameterType.FILE.value
-        FILES = PluginParameterType.FILES.value
+        STRING = PluginParameterType.STRING
+        NUMBER = PluginParameterType.NUMBER
+        BOOLEAN = PluginParameterType.BOOLEAN
+        SELECT = PluginParameterType.SELECT
+        SECRET_INPUT = PluginParameterType.SECRET_INPUT
+        FILE = PluginParameterType.FILE
+        FILES = PluginParameterType.FILES
 
         # deprecated, should not use.
-        SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value
+        SYSTEM_FILES = PluginParameterType.SYSTEM_FILES
 
         def as_normal_type(self):
             return as_normal_type(self)
@@ -81,7 +83,7 @@ class DatasourceParameter(PluginParameter):
         typ: DatasourceParameterType,
         required: bool,
         options: list[str] | None = None,
-    ) -> "DatasourceParameter":
+    ) -> DatasourceParameter:
         """
         get a simple datasource parameter
 
@@ -187,14 +189,14 @@ class DatasourceInvokeMeta(BaseModel):
     tool_config: dict | None = None
 
     @classmethod
-    def empty(cls) -> "DatasourceInvokeMeta":
+    def empty(cls) -> DatasourceInvokeMeta:
         """
         Get an empty instance of DatasourceInvokeMeta
         """
         return cls(time_cost=0.0, error=None, tool_config={})
 
     @classmethod
-    def error_instance(cls, error: str) -> "DatasourceInvokeMeta":
+    def error_instance(cls, error: str) -> DatasourceInvokeMeta:
         """
         Get an instance of DatasourceInvokeMeta with error
         """
@@ -218,7 +220,7 @@ class DatasourceLabel(BaseModel):
     icon: str = Field(..., description="The icon of the tool")
 
 
-class DatasourceInvokeFrom(Enum):
+class DatasourceInvokeFrom(StrEnum):
     """
     Enum class for datasource invoke
     """

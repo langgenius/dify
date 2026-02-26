@@ -2,7 +2,6 @@ import logging
 
 from flask_restx import Resource
 
-from controllers.console import api
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
@@ -10,9 +9,12 @@ from controllers.console.wraps import (
 from core.schemas.schema_manager import SchemaManager
 from libs.login import login_required
 
+from . import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/spec/schema-definitions")
 class SpecSchemaDefinitionsApi(Resource):
     @setup_required
     @login_required
@@ -30,6 +32,3 @@ class SpecSchemaDefinitionsApi(Resource):
             logger.exception("Failed to get schema definitions from local registry")
             # Return empty array as fallback
             return [], 200
-
-
-api.add_resource(SpecSchemaDefinitionsApi, "/spec/schema-definitions")

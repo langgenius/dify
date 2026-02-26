@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { uniqueId } from 'lodash-es'
 import type { KeyValue } from '../types'
+import { useBoolean } from 'ahooks'
+import { uniqueId } from 'es-toolkit/compat'
+import { useCallback, useEffect, useState } from 'react'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 const strToKeyValueList = (value: string) => {
@@ -16,7 +16,7 @@ const strToKeyValueList = (value: string) => {
 }
 
 const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
-  const [list, doSetList] = useState<KeyValue[]>(value ? strToKeyValueList(value) : [])
+  const [list, doSetList] = useState<KeyValue[]>(() => value ? strToKeyValueList(value) : [])
   const setList = (l: KeyValue[]) => {
     doSetList(l.map((item) => {
       return {

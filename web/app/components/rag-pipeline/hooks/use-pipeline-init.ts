@@ -1,3 +1,4 @@
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   useCallback,
   useEffect,
@@ -6,14 +7,13 @@ import {
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { usePipelineTemplate } from './use-pipeline-template'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePipelineConfig } from './use-pipeline-config'
+import { usePipelineTemplate } from './use-pipeline-template'
 
 export const usePipelineInit = () => {
   const workflowStore = useWorkflowStore()
@@ -60,7 +60,10 @@ export const usePipelineInit = () => {
       if (error && error.json && !error.bodyUsed && datasetId) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({ notInitialWorkflow: true })
+            workflowStore.setState({
+              notInitialWorkflow: true,
+              shouldAutoOpenStartNodeSelector: true,
+            })
             syncWorkflowDraft({
               url: `/rag/pipelines/${datasetId}/workflows/draft`,
               params: {

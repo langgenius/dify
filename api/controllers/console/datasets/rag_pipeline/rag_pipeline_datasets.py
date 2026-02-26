@@ -1,10 +1,11 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restx import Resource, marshal, reqparse  # type: ignore
+from flask_restx import Resource, marshal
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.console import api
+from controllers.common.schema import register_schema_model
+from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -13,43 +14,30 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.dataset_fields import dataset_detail_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
+class RagPipelineDatasetImportPayload(BaseModel):
+    yaml_content: str
 
 
-def _validate_description_length(description):
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
+register_schema_model(console_ns, RagPipelineDatasetImportPayload)
 
 
+@console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
-        parser = reqparse.RequestParser()
-
-        parser.add_argument(
-            "yaml_content",
-            type=str,
-            nullable=False,
-            required=True,
-            help="yaml_content is required.",
-        )
-
-        args = parser.parse_args()
-
+        payload = RagPipelineDatasetImportPayload.model_validate(console_ns.payload or {})
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -63,18 +51,18 @@ class CreateRagPipelineDatasetApi(Resource):
             ),
             permission=DatasetPermissionEnum.ONLY_ME,
             partial_member_list=None,
-            yaml_content=args["yaml_content"],
+            yaml_content=payload.yaml_content,
         )
         try:
             with Session(db.engine) as session:
                 rag_pipeline_dsl_service = RagPipelineDslService(session)
                 import_info = rag_pipeline_dsl_service.create_rag_pipeline_dataset(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
                 )
             if rag_pipeline_dataset_create_entity.permission == "partial_members":
                 DatasetPermissionService.update_partial_member_list(
-                    current_user.current_tenant_id,
+                    current_tenant_id,
                     import_info["dataset_id"],
                     rag_pipeline_dataset_create_entity.partial_member_list,
                 )
@@ -84,6 +72,7 @@ class CreateRagPipelineDatasetApi(Resource):
         return import_info, 201
 
 
+@console_ns.route("/rag/pipeline/empty-dataset")
 class CreateEmptyRagPipelineDatasetApi(Resource):
     @setup_required
     @login_required
@@ -91,10 +80,12 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        current_user, current_tenant_id = current_account_with_tenant()
+
         if not current_user.is_dataset_editor:
             raise Forbidden()
         dataset = DatasetService.create_empty_rag_pipeline_dataset(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(
                 name="",
                 description="",
@@ -108,7 +99,3 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
             ),
         )
         return marshal(dataset, dataset_detail_fields), 201
-
-
-api.add_resource(CreateRagPipelineDatasetApi, "/rag/pipeline/dataset")
-api.add_resource(CreateEmptyRagPipelineDatasetApi, "/rag/pipeline/empty-dataset")

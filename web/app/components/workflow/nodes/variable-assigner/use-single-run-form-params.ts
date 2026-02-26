@@ -1,11 +1,11 @@
 import type { RefObject } from 'react'
+import type { VariableAssignerNodeType } from './types'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import type { VariableAssignerNodeType } from './types'
 
 type Params = {
-  id: string,
-  payload: VariableAssignerNodeType,
+  id: string
+  payload: VariableAssignerNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -52,7 +52,7 @@ const useSingleRunFormParams = ({
     const existVarsKey: Record<string, boolean> = {}
     const uniqueVarInputs: InputVar[] = []
     varInputs.forEach((input) => {
-      if(!input)
+      if (!input)
         return
       if (!existVarsKey[input.variable]) {
         existVarsKey[input.variable] = true
@@ -72,10 +72,10 @@ const useSingleRunFormParams = ({
   })()
 
   const getDependentVars = () => {
-    if(payload.advanced_settings?.group_enabled) {
+    if (payload.advanced_settings?.group_enabled) {
       const vars: ValueSelector[][] = []
       payload.advanced_settings.groups.forEach((group) => {
-        if(group.variables)
+        if (group.variables)
           vars.push([...group.variables])
       })
       return vars

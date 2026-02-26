@@ -1,8 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import React, { createContext, useContext, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { isInWorkflowPage } from '../workflow/constants'
 
 /**
  * Interface for the GotoAnything context
@@ -50,7 +52,7 @@ export const GotoAnythingProvider: React.FC<GotoAnythingProviderProps> = ({ chil
     }
 
     // Workflow pages: /app/[appId]/workflow or /workflow/[token] (shared)
-    const isWorkflow = /^\/app\/[^/]+\/workflow$/.test(pathname) || /^\/workflow\/[^/]+$/.test(pathname)
+    const isWorkflow = isInWorkflowPage()
     // RAG Pipeline pages: /datasets/[datasetId]/pipeline
     const isRagPipeline = /^\/datasets\/[^/]+\/pipeline$/.test(pathname)
 

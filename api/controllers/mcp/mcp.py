@@ -1,10 +1,11 @@
-from typing import Union
+from typing import Any, Union
 
 from flask import Response
-from flask_restx import Resource, reqparse
-from pydantic import ValidationError
+from flask_restx import Resource
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_model
 from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import mcp_ns
 from core.app.app_config.entities import VariableEntity
@@ -24,29 +25,19 @@ class MCPRequestError(Exception):
         super().__init__(message)
 
 
-def int_or_str(value):
-    """Validate that a value is either an integer or string."""
-    if isinstance(value, (int, str)):
-        return value
-    else:
-        return None
+class MCPRequestPayload(BaseModel):
+    jsonrpc: str = Field(description="JSON-RPC version (should be '2.0')")
+    method: str = Field(description="The method to invoke")
+    params: dict[str, Any] | None = Field(default=None, description="Parameters for the method")
+    id: int | str | None = Field(default=None, description="Request ID for tracking responses")
 
 
-# Define parser for both documentation and validation
-mcp_request_parser = reqparse.RequestParser()
-mcp_request_parser.add_argument(
-    "jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')"
-)
-mcp_request_parser.add_argument("method", type=str, required=True, location="json", help="The method to invoke")
-mcp_request_parser.add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
-mcp_request_parser.add_argument(
-    "id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses"
-)
+register_schema_model(mcp_ns, MCPRequestPayload)
 
 
 @mcp_ns.route("/server/<string:server_code>/mcp")
 class MCPAppApi(Resource):
-    @mcp_ns.expect(mcp_request_parser)
+    @mcp_ns.expect(mcp_ns.models[MCPRequestPayload.__name__])
     @mcp_ns.doc("handle_mcp_request")
     @mcp_ns.doc(description="Handle Model Context Protocol (MCP) requests for a specific server")
     @mcp_ns.doc(params={"server_code": "Unique identifier for the MCP server"})
@@ -72,9 +63,9 @@ class MCPAppApi(Resource):
         Raises:
             ValidationError: Invalid request format or parameters
         """
-        args = mcp_request_parser.parse_args()
-        request_id: Union[int, str] | None = args.get("id")
-        mcp_request = self._parse_mcp_request(args)
+        args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
+        request_id: Union[int, str] | None = args.id
+        mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
 
         with Session(db.engine, expire_on_commit=False) as session:
             # Get MCP server and app
@@ -195,15 +186,16 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
 
-    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str, session: Session) -> EndUser | None:
-        """Get end user from existing session - optimized query"""
-        return (
-            session.query(EndUser)
-            .where(EndUser.tenant_id == tenant_id)
-            .where(EndUser.session_id == mcp_server_id)
-            .where(EndUser.type == "mcp")
-            .first()
-        )
+    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
+        """Get end user - manages its own database session"""
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            return (
+                session.query(EndUser)
+                .where(EndUser.tenant_id == tenant_id)
+                .where(EndUser.session_id == mcp_server_id)
+                .where(EndUser.type == "mcp")
+                .first()
+            )
 
     def _create_end_user(
         self, client_name: str, tenant_id: str, app_id: str, mcp_server_id: str, session: Session
@@ -231,7 +223,7 @@ class MCPAppApi(Resource):
         request_id: Union[int, str],
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""
-        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id, session)
+        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id)
 
         if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
             client_info = mcp_request.root.params.clientInfo

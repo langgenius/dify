@@ -172,73 +172,31 @@ class TestSupabaseStorage:
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
         mock_client.storage.from_().download.assert_called_with("test.txt")
 
-    def test_exists_with_list_containing_items(self, storage_with_mock_client):
-        """Test exists returns True when list() returns items (using len() > 0)."""
+    def test_exists_returns_true_when_file_found(self, storage_with_mock_client):
+        """Test exists returns True when list() returns items."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with special object that has count() method
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 1
-        mock_client.storage.from_().list.return_value = mock_list_result
+        mock_client.storage.from_().list.return_value = [{"name": "test.txt"}]
 
         result = storage.exists("test.txt")
 
         assert result is True
-        # from_ gets called during init too, so just check it was called with the right bucket
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
+        mock_client.storage.from_().list.assert_called_with(path="test.txt")
 
-    def test_exists_with_count_method_greater_than_zero(self, storage_with_mock_client):
-        """Test exists returns True when list result has count() > 0."""
+    def test_exists_returns_false_when_file_not_found(self, storage_with_mock_client):
+        """Test exists returns False when list() returns an empty list."""
         storage, mock_client = storage_with_mock_client
 
-        # Mock list return with count() method
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 1
-        mock_client.storage.from_().list.return_value = mock_list_result
-
-        result = storage.exists("test.txt")
-
-        assert result is True
-        # Verify the correct calls were made
-        assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
-        mock_list_result.count.assert_called()
-
-    def test_exists_with_count_method_zero(self, storage_with_mock_client):
-        """Test exists returns False when list result has count() == 0."""
-        storage, mock_client = storage_with_mock_client
-
-        # Mock list return with count() method returning 0
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 0
-        mock_client.storage.from_().list.return_value = mock_list_result
+        mock_client.storage.from_().list.return_value = []
 
         result = storage.exists("test.txt")
 
         assert result is False
-        # Verify the correct calls were made
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
-        mock_list_result.count.assert_called()
+        mock_client.storage.from_().list.assert_called_with(path="test.txt")
 
-    def test_exists_with_empty_list(self, storage_with_mock_client):
-        """Test exists returns False when list() returns empty list."""
-        storage, mock_client = storage_with_mock_client
-
-        # Mock list return with special object that has count() method returning 0
-        mock_list_result = Mock()
-        mock_list_result.count.return_value = 0
-        mock_client.storage.from_().list.return_value = mock_list_result
-
-        result = storage.exists("test.txt")
-
-        assert result is False
-        # Verify the correct calls were made
-        assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
-        mock_client.storage.from_().list.assert_called_with("test.txt")
-
-    def test_delete_calls_remove_with_filename(self, storage_with_mock_client):
+    def test_delete_calls_remove_with_filename_in_list(self, storage_with_mock_client):
         """Test delete calls remove([...]) (some client versions require a list)."""
         storage, mock_client = storage_with_mock_client
 
@@ -247,7 +205,7 @@ class TestSupabaseStorage:
         storage.delete(filename)
 
         mock_client.storage.from_.assert_called_once_with("test-bucket")
-        mock_client.storage.from_().remove.assert_called_once_with(filename)
+        mock_client.storage.from_().remove.assert_called_once_with([filename])
 
     def test_bucket_exists_returns_true_when_bucket_found(self):
         """Test bucket_exists returns True when bucket is found in list."""

@@ -1,1090 +1,1090 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "20",
-			"height": "19",
-			"viewBox": "0 0 20 19",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"filter": "url(#filter0_dg_9155_106307)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M11.8106 3.75L8.81065 6.75H2.5V15C2.5 15.4142 2.83579 15.75 3.25 15.75H16.75C17.1642 15.75 17.5 15.4142 17.5 15V4.5C17.5 4.08579 17.1642 3.75 16.75 3.75H11.8106Z",
-							"fill": "url(#paint0_linear_9155_106307)"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M16.75 4C17.0262 4 17.25 4.22386 17.25 4.5V15C17.25 15.2762 17.0262 15.5 16.75 15.5H3.25C2.97386 15.5 2.75 15.2762 2.75 15V7H8.91406L11.9141 4H16.75Z",
-							"stroke": "white",
-							"stroke-opacity": "0.01",
-							"stroke-width": "0.5"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"opacity": "0.6",
-					"filter": "url(#filter1_dg_9155_106307)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M3.25 2.25C2.83579 2.25 2.5 2.58579 2.5 3V5.25H8.18934L10 3.43934L8.81065 2.25H3.25Z",
-							"fill": "#296DFF"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M3.25 2.5H8.70703L9.64648 3.43945L8.08594 5H2.75V3C2.75 2.72386 2.97386 2.5 3.25 2.5Z",
-							"stroke": "white",
-							"stroke-opacity": "0.01",
-							"stroke-width": "0.5"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M17.5 15C17.5 15.4142 17.1642 15.75 16.75 15.75H3.25C2.83579 15.75 2.5 15.4142 2.5 15V14.25H17.5V15Z",
-					"fill": "#101828",
-					"fill-opacity": "0.14"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "filter",
-						"attributes": {
-							"id": "filter0_dg_9155_106307",
-							"x": "0.5",
-							"y": "2.55",
-							"width": "19",
-							"height": "16.2",
-							"filterUnits": "userSpaceOnUse",
-							"color-interpolation-filters": "sRGB"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "feFlood",
-								"attributes": {
-									"flood-opacity": "0",
-									"result": "BackgroundImageFix"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "SourceAlpha",
-									"type": "matrix",
-									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
-									"result": "hardAlpha"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feOffset",
-								"attributes": {
-									"dy": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feGaussianBlur",
-								"attributes": {
-									"stdDeviation": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "hardAlpha",
-									"operator": "out"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0.0352941 0 0 0 0 0.0352941 0 0 0 0 0.0431373 0 0 0 0.05 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in2": "BackgroundImageFix",
-									"result": "effect1_dropShadow_9155_106307"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in": "BackgroundImageFix",
-									"in2": "effect1_dropShadow_9155_106307",
-									"result": "BackgroundImageFix"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in": "SourceGraphic",
-									"in2": "BackgroundImageFix",
-									"result": "shape"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feTurbulence",
-								"attributes": {
-									"type": "fractalNoise",
-									"baseFrequency": "9.0909090042114258 9.0909090042114258",
-									"numOctaves": "3",
-									"seed": "8029",
-									"result": "displacementX"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feTurbulence",
-								"attributes": {
-									"type": "fractalNoise",
-									"baseFrequency": "9.0909090042114258 9.0909090042114258",
-									"numOctaves": "3",
-									"seed": "8030",
-									"result": "displacementY"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "displacementX",
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
-									"result": "displacementXRed"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "displacementY",
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementXRed",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feDisplacementMap",
-								"attributes": {
-									"in": "shape",
-									"scale": "2.4000000953674316",
-									"xChannelSelector": "R",
-									"yChannelSelector": "G",
-									"width": "100%",
-									"height": "100%"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComponentTransfer",
-								"attributes": {
-									"result": "sourceDisplacedAlpha"
-								},
-								"children": [
-									{
-										"type": "element",
-										"name": "feFuncA",
-										"attributes": {
-											"type": "gamma",
-											"exponent": "0.2"
-										},
-										"children": []
-									}
-								]
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "shape",
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComponentTransfer",
-								"attributes": {
-									"result": "inputSourceAlpha"
-								},
-								"children": [
-									{
-										"type": "element",
-										"name": "feFuncA",
-										"attributes": {
-											"type": "gamma",
-											"exponent": "0.2"
-										},
-										"children": []
-									}
-								]
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "sourceDisplacedAlpha",
-									"operator": "arithmetic",
-									"k1": "1",
-									"k2": "0",
-									"k3": "0",
-									"k4": "0",
-									"result": "displacementAlphasMultiplied"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementAlphasMultiplied",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "0",
-									"k3": "-0.5",
-									"k4": "0.5",
-									"result": "centeringAdjustment"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementX",
-									"in2": "displacementAlphasMultiplied",
-									"operator": "arithmetic",
-									"k1": "1",
-									"k2": "0",
-									"k3": "0",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "centeringAdjustment",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
-									"result": "displacementXFinal"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementY",
-									"in2": "displacementAlphasMultiplied",
-									"operator": "arithmetic",
-									"k1": "1",
-									"k2": "0",
-									"k3": "0",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "centeringAdjustment",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1",
-									"result": "displacementYFinal"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementXFinal",
-									"in2": "displacementYFinal",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "displacementAlphasMultiplied",
-									"operator": "in",
-									"result": "displacementMap"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feFlood",
-								"attributes": {
-									"flood-color": "rgb(127, 127, 127)",
-									"flood-opacity": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "displacementAlphasMultiplied",
-									"operator": "out"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "displacementMap",
-									"operator": "over",
-									"result": "displacementMapWithBg"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feDisplacementMap",
-								"attributes": {
-									"in": "shape",
-									"scale": "2.4000000953674316",
-									"xChannelSelector": "R",
-									"yChannelSelector": "G",
-									"width": "100%",
-									"height": "100%",
-									"result": "displacedImage"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "shape",
-									"type": "matrix",
-									"values": "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 127 0",
-									"result": "imageOpaque"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feDisplacementMap",
-								"attributes": {
-									"in": "imageOpaque",
-									"in2": "displacementMapWithBg",
-									"scale": "2.4000000953674316",
-									"xChannelSelector": "R",
-									"yChannelSelector": "G",
-									"width": "100%",
-									"height": "100%",
-									"result": "displacedImageOpaque"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "displacedImage",
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0",
-									"result": "displacedImageRed"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "shape",
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacedImageRed",
-									"operator": "atop",
-									"result": "transparencyRedMap"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "transparencyRedMap",
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0",
-									"result": "transparencyAlphaMap"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacedImageOpaque",
-									"in2": "imageOpaque",
-									"operator": "over"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "transparencyAlphaMap",
-									"operator": "in",
-									"result": "effect2_texture_9155_106307"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "filter",
-						"attributes": {
-							"id": "filter1_dg_9155_106307",
-							"x": "0.5",
-							"y": "1.05",
-							"width": "11.5",
-							"height": "7.2",
-							"filterUnits": "userSpaceOnUse",
-							"color-interpolation-filters": "sRGB"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "feFlood",
-								"attributes": {
-									"flood-opacity": "0",
-									"result": "BackgroundImageFix"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "SourceAlpha",
-									"type": "matrix",
-									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
-									"result": "hardAlpha"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feOffset",
-								"attributes": {
-									"dy": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feGaussianBlur",
-								"attributes": {
-									"stdDeviation": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "hardAlpha",
-									"operator": "out"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0.0352941 0 0 0 0 0.0352941 0 0 0 0 0.0431373 0 0 0 0.05 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in2": "BackgroundImageFix",
-									"result": "effect1_dropShadow_9155_106307"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in": "BackgroundImageFix",
-									"in2": "effect1_dropShadow_9155_106307",
-									"result": "BackgroundImageFix"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in": "SourceGraphic",
-									"in2": "BackgroundImageFix",
-									"result": "shape"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feTurbulence",
-								"attributes": {
-									"type": "fractalNoise",
-									"baseFrequency": "9.0909090042114258 9.0909090042114258",
-									"numOctaves": "3",
-									"seed": "8754",
-									"result": "displacementX"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feTurbulence",
-								"attributes": {
-									"type": "fractalNoise",
-									"baseFrequency": "9.0909090042114258 9.0909090042114258",
-									"numOctaves": "3",
-									"seed": "8755",
-									"result": "displacementY"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "displacementX",
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
-									"result": "displacementXRed"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "displacementY",
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementXRed",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feDisplacementMap",
-								"attributes": {
-									"in": "shape",
-									"scale": "2.4000000953674316",
-									"xChannelSelector": "R",
-									"yChannelSelector": "G",
-									"width": "100%",
-									"height": "100%"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComponentTransfer",
-								"attributes": {
-									"result": "sourceDisplacedAlpha"
-								},
-								"children": [
-									{
-										"type": "element",
-										"name": "feFuncA",
-										"attributes": {
-											"type": "gamma",
-											"exponent": "0.2"
-										},
-										"children": []
-									}
-								]
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "shape",
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComponentTransfer",
-								"attributes": {
-									"result": "inputSourceAlpha"
-								},
-								"children": [
-									{
-										"type": "element",
-										"name": "feFuncA",
-										"attributes": {
-											"type": "gamma",
-											"exponent": "0.2"
-										},
-										"children": []
-									}
-								]
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "sourceDisplacedAlpha",
-									"operator": "arithmetic",
-									"k1": "1",
-									"k2": "0",
-									"k3": "0",
-									"k4": "0",
-									"result": "displacementAlphasMultiplied"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementAlphasMultiplied",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "0",
-									"k3": "-0.5",
-									"k4": "0.5",
-									"result": "centeringAdjustment"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementX",
-									"in2": "displacementAlphasMultiplied",
-									"operator": "arithmetic",
-									"k1": "1",
-									"k2": "0",
-									"k3": "0",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "centeringAdjustment",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
-									"result": "displacementXFinal"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementY",
-									"in2": "displacementAlphasMultiplied",
-									"operator": "arithmetic",
-									"k1": "1",
-									"k2": "0",
-									"k3": "0",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "centeringAdjustment",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1",
-									"result": "displacementYFinal"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacementXFinal",
-									"in2": "displacementYFinal",
-									"operator": "arithmetic",
-									"k1": "0",
-									"k2": "1",
-									"k3": "1",
-									"k4": "0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "displacementAlphasMultiplied",
-									"operator": "in",
-									"result": "displacementMap"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feFlood",
-								"attributes": {
-									"flood-color": "rgb(127, 127, 127)",
-									"flood-opacity": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "displacementAlphasMultiplied",
-									"operator": "out"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "displacementMap",
-									"operator": "over",
-									"result": "displacementMapWithBg"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feDisplacementMap",
-								"attributes": {
-									"in": "shape",
-									"scale": "2.4000000953674316",
-									"xChannelSelector": "R",
-									"yChannelSelector": "G",
-									"width": "100%",
-									"height": "100%",
-									"result": "displacedImage"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "shape",
-									"type": "matrix",
-									"values": "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 127 0",
-									"result": "imageOpaque"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feDisplacementMap",
-								"attributes": {
-									"in": "imageOpaque",
-									"in2": "displacementMapWithBg",
-									"scale": "2.4000000953674316",
-									"xChannelSelector": "R",
-									"yChannelSelector": "G",
-									"width": "100%",
-									"height": "100%",
-									"result": "displacedImageOpaque"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "displacedImage",
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0",
-									"result": "displacedImageRed"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "shape",
-									"type": "matrix",
-									"values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacedImageRed",
-									"operator": "atop",
-									"result": "transparencyRedMap"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "transparencyRedMap",
-									"type": "matrix",
-									"values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0",
-									"result": "transparencyAlphaMap"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in": "displacedImageOpaque",
-									"in2": "imageOpaque",
-									"operator": "over"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feComposite",
-								"attributes": {
-									"in2": "transparencyAlphaMap",
-									"operator": "in",
-									"result": "effect2_texture_9155_106307"
-								},
-								"children": []
-							}
-						]
-					},
-					{
-						"type": "element",
-						"name": "linearGradient",
-						"attributes": {
-							"id": "paint0_linear_9155_106307",
-							"x1": "10",
-							"y1": "3.75",
-							"x2": "10",
-							"y2": "15.75",
-							"gradientUnits": "userSpaceOnUse"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"stop-color": "#296DFF"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "stop",
-								"attributes": {
-									"offset": "1",
-									"stop-color": "#155AEF"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "Folder"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "20",
+      "height": "19",
+      "viewBox": "0 0 20 19",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "filter": "url(#filter0_dg_9155_106307)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M11.8106 3.75L8.81065 6.75H2.5V15C2.5 15.4142 2.83579 15.75 3.25 15.75H16.75C17.1642 15.75 17.5 15.4142 17.5 15V4.5C17.5 4.08579 17.1642 3.75 16.75 3.75H11.8106Z",
+              "fill": "url(#paint0_linear_9155_106307)"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M16.75 4C17.0262 4 17.25 4.22386 17.25 4.5V15C17.25 15.2762 17.0262 15.5 16.75 15.5H3.25C2.97386 15.5 2.75 15.2762 2.75 15V7H8.91406L11.9141 4H16.75Z",
+              "stroke": "white",
+              "stroke-opacity": "0.01",
+              "stroke-width": "0.5"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "opacity": "0.6",
+          "filter": "url(#filter1_dg_9155_106307)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M3.25 2.25C2.83579 2.25 2.5 2.58579 2.5 3V5.25H8.18934L10 3.43934L8.81065 2.25H3.25Z",
+              "fill": "#296DFF"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M3.25 2.5H8.70703L9.64648 3.43945L8.08594 5H2.75V3C2.75 2.72386 2.97386 2.5 3.25 2.5Z",
+              "stroke": "white",
+              "stroke-opacity": "0.01",
+              "stroke-width": "0.5"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M17.5 15C17.5 15.4142 17.1642 15.75 16.75 15.75H3.25C2.83579 15.75 2.5 15.4142 2.5 15V14.25H17.5V15Z",
+          "fill": "#101828",
+          "fill-opacity": "0.14"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "filter",
+            "attributes": {
+              "id": "filter0_dg_9155_106307",
+              "x": "0.5",
+              "y": "2.55",
+              "width": "19",
+              "height": "16.2",
+              "filterUnits": "userSpaceOnUse",
+              "color-interpolation-filters": "sRGB"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-opacity": "0",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "SourceAlpha",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+                  "result": "hardAlpha"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feOffset",
+                "attributes": {
+                  "dy": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feGaussianBlur",
+                "attributes": {
+                  "stdDeviation": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "hardAlpha",
+                  "operator": "out"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0.0352941 0 0 0 0 0.0352941 0 0 0 0 0.0431373 0 0 0 0.05 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in2": "BackgroundImageFix",
+                  "result": "effect1_dropShadow_9155_106307"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "BackgroundImageFix",
+                  "in2": "effect1_dropShadow_9155_106307",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "SourceGraphic",
+                  "in2": "BackgroundImageFix",
+                  "result": "shape"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feTurbulence",
+                "attributes": {
+                  "type": "fractalNoise",
+                  "baseFrequency": "9.0909090042114258 9.0909090042114258",
+                  "numOctaves": "3",
+                  "seed": "8029",
+                  "result": "displacementX"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feTurbulence",
+                "attributes": {
+                  "type": "fractalNoise",
+                  "baseFrequency": "9.0909090042114258 9.0909090042114258",
+                  "numOctaves": "3",
+                  "seed": "8030",
+                  "result": "displacementY"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "displacementX",
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
+                  "result": "displacementXRed"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "displacementY",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementXRed",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feDisplacementMap",
+                "attributes": {
+                  "in": "shape",
+                  "scale": "2.4000000953674316",
+                  "xChannelSelector": "R",
+                  "yChannelSelector": "G",
+                  "width": "100%",
+                  "height": "100%"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComponentTransfer",
+                "attributes": {
+                  "result": "sourceDisplacedAlpha"
+                },
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "feFuncA",
+                    "attributes": {
+                      "type": "gamma",
+                      "exponent": "0.2"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "shape",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComponentTransfer",
+                "attributes": {
+                  "result": "inputSourceAlpha"
+                },
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "feFuncA",
+                    "attributes": {
+                      "type": "gamma",
+                      "exponent": "0.2"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "sourceDisplacedAlpha",
+                  "operator": "arithmetic",
+                  "k1": "1",
+                  "k2": "0",
+                  "k3": "0",
+                  "k4": "0",
+                  "result": "displacementAlphasMultiplied"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementAlphasMultiplied",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "0",
+                  "k3": "-0.5",
+                  "k4": "0.5",
+                  "result": "centeringAdjustment"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementX",
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "arithmetic",
+                  "k1": "1",
+                  "k2": "0",
+                  "k3": "0",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "centeringAdjustment",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
+                  "result": "displacementXFinal"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementY",
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "arithmetic",
+                  "k1": "1",
+                  "k2": "0",
+                  "k3": "0",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "centeringAdjustment",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1",
+                  "result": "displacementYFinal"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementXFinal",
+                  "in2": "displacementYFinal",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "in",
+                  "result": "displacementMap"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-color": "rgb(127, 127, 127)",
+                  "flood-opacity": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "out"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "displacementMap",
+                  "operator": "over",
+                  "result": "displacementMapWithBg"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feDisplacementMap",
+                "attributes": {
+                  "in": "shape",
+                  "scale": "2.4000000953674316",
+                  "xChannelSelector": "R",
+                  "yChannelSelector": "G",
+                  "width": "100%",
+                  "height": "100%",
+                  "result": "displacedImage"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "shape",
+                  "type": "matrix",
+                  "values": "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 127 0",
+                  "result": "imageOpaque"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feDisplacementMap",
+                "attributes": {
+                  "in": "imageOpaque",
+                  "in2": "displacementMapWithBg",
+                  "scale": "2.4000000953674316",
+                  "xChannelSelector": "R",
+                  "yChannelSelector": "G",
+                  "width": "100%",
+                  "height": "100%",
+                  "result": "displacedImageOpaque"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "displacedImage",
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0",
+                  "result": "displacedImageRed"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "shape",
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacedImageRed",
+                  "operator": "atop",
+                  "result": "transparencyRedMap"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "transparencyRedMap",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0",
+                  "result": "transparencyAlphaMap"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacedImageOpaque",
+                  "in2": "imageOpaque",
+                  "operator": "over"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "transparencyAlphaMap",
+                  "operator": "in",
+                  "result": "effect2_texture_9155_106307"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "filter",
+            "attributes": {
+              "id": "filter1_dg_9155_106307",
+              "x": "0.5",
+              "y": "1.05",
+              "width": "11.5",
+              "height": "7.2",
+              "filterUnits": "userSpaceOnUse",
+              "color-interpolation-filters": "sRGB"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-opacity": "0",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "SourceAlpha",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+                  "result": "hardAlpha"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feOffset",
+                "attributes": {
+                  "dy": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feGaussianBlur",
+                "attributes": {
+                  "stdDeviation": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "hardAlpha",
+                  "operator": "out"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0.0352941 0 0 0 0 0.0352941 0 0 0 0 0.0431373 0 0 0 0.05 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in2": "BackgroundImageFix",
+                  "result": "effect1_dropShadow_9155_106307"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "BackgroundImageFix",
+                  "in2": "effect1_dropShadow_9155_106307",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "SourceGraphic",
+                  "in2": "BackgroundImageFix",
+                  "result": "shape"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feTurbulence",
+                "attributes": {
+                  "type": "fractalNoise",
+                  "baseFrequency": "9.0909090042114258 9.0909090042114258",
+                  "numOctaves": "3",
+                  "seed": "8754",
+                  "result": "displacementX"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feTurbulence",
+                "attributes": {
+                  "type": "fractalNoise",
+                  "baseFrequency": "9.0909090042114258 9.0909090042114258",
+                  "numOctaves": "3",
+                  "seed": "8755",
+                  "result": "displacementY"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "displacementX",
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
+                  "result": "displacementXRed"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "displacementY",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementXRed",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feDisplacementMap",
+                "attributes": {
+                  "in": "shape",
+                  "scale": "2.4000000953674316",
+                  "xChannelSelector": "R",
+                  "yChannelSelector": "G",
+                  "width": "100%",
+                  "height": "100%"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComponentTransfer",
+                "attributes": {
+                  "result": "sourceDisplacedAlpha"
+                },
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "feFuncA",
+                    "attributes": {
+                      "type": "gamma",
+                      "exponent": "0.2"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "shape",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComponentTransfer",
+                "attributes": {
+                  "result": "inputSourceAlpha"
+                },
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "feFuncA",
+                    "attributes": {
+                      "type": "gamma",
+                      "exponent": "0.2"
+                    },
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "sourceDisplacedAlpha",
+                  "operator": "arithmetic",
+                  "k1": "1",
+                  "k2": "0",
+                  "k3": "0",
+                  "k4": "0",
+                  "result": "displacementAlphasMultiplied"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementAlphasMultiplied",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "0",
+                  "k3": "-0.5",
+                  "k4": "0.5",
+                  "result": "centeringAdjustment"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementX",
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "arithmetic",
+                  "k1": "1",
+                  "k2": "0",
+                  "k3": "0",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "centeringAdjustment",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0 1",
+                  "result": "displacementXFinal"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementY",
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "arithmetic",
+                  "k1": "1",
+                  "k2": "0",
+                  "k3": "0",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "centeringAdjustment",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 1 0  0 0 0 0 0  0 0 0 0 1",
+                  "result": "displacementYFinal"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacementXFinal",
+                  "in2": "displacementYFinal",
+                  "operator": "arithmetic",
+                  "k1": "0",
+                  "k2": "1",
+                  "k3": "1",
+                  "k4": "0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "in",
+                  "result": "displacementMap"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-color": "rgb(127, 127, 127)",
+                  "flood-opacity": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "displacementAlphasMultiplied",
+                  "operator": "out"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "displacementMap",
+                  "operator": "over",
+                  "result": "displacementMapWithBg"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feDisplacementMap",
+                "attributes": {
+                  "in": "shape",
+                  "scale": "2.4000000953674316",
+                  "xChannelSelector": "R",
+                  "yChannelSelector": "G",
+                  "width": "100%",
+                  "height": "100%",
+                  "result": "displacedImage"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "shape",
+                  "type": "matrix",
+                  "values": "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 127 0",
+                  "result": "imageOpaque"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feDisplacementMap",
+                "attributes": {
+                  "in": "imageOpaque",
+                  "in2": "displacementMapWithBg",
+                  "scale": "2.4000000953674316",
+                  "xChannelSelector": "R",
+                  "yChannelSelector": "G",
+                  "width": "100%",
+                  "height": "100%",
+                  "result": "displacedImageOpaque"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "displacedImage",
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0",
+                  "result": "displacedImageRed"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "shape",
+                  "type": "matrix",
+                  "values": "0 0 0 1 0  0 0 0 0 0  0 0 0 0 0  0 0 0 127 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacedImageRed",
+                  "operator": "atop",
+                  "result": "transparencyRedMap"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "transparencyRedMap",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0",
+                  "result": "transparencyAlphaMap"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in": "displacedImageOpaque",
+                  "in2": "imageOpaque",
+                  "operator": "over"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "transparencyAlphaMap",
+                  "operator": "in",
+                  "result": "effect2_texture_9155_106307"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "linearGradient",
+            "attributes": {
+              "id": "paint0_linear_9155_106307",
+              "x1": "10",
+              "y1": "3.75",
+              "x2": "10",
+              "y2": "15.75",
+              "gradientUnits": "userSpaceOnUse"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "stop-color": "#296DFF"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "stop",
+                "attributes": {
+                  "offset": "1",
+                  "stop-color": "#155AEF"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Folder"
 }

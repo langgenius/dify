@@ -15,6 +15,7 @@ from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
@@ -108,10 +109,8 @@ class DebugLoggingLayer(GraphEngineLayer):
         self.logger.info("=" * 80)
         self.logger.info("🚀 GRAPH EXECUTION STARTED")
         self.logger.info("=" * 80)
-
-        if self.graph_runtime_state:
-            # Log initial state
-            self.logger.info("Initial State:")
+        # Log initial state
+        self.logger.info("Initial State:")
 
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
@@ -127,6 +126,13 @@ class DebugLoggingLayer(GraphEngineLayer):
             if self.include_outputs and event.outputs:
                 self.logger.info("  Final outputs: %s", self._format_dict(event.outputs))
 
+        elif isinstance(event, GraphRunPartialSucceededEvent):
+            self.logger.warning("⚠️ Graph run partially succeeded")
+            if event.exceptions_count > 0:
+                self.logger.warning("  Total exceptions: %s", event.exceptions_count)
+            if self.include_outputs and event.outputs:
+                self.logger.info("  Final outputs: %s", self._format_dict(event.outputs))
+
         elif isinstance(event, GraphRunFailedEvent):
             self.logger.error("❌ Graph run failed: %s", event.error)
             if event.exceptions_count > 0:
@@ -138,6 +144,12 @@ class DebugLoggingLayer(GraphEngineLayer):
                 self.logger.info("  Partial outputs: %s", self._format_dict(event.outputs))
 
         # Node-level events
+        # Retry before Started because Retry subclasses Started;
+        elif isinstance(event, NodeRunRetryEvent):
+            self.retry_count += 1
+            self.logger.warning("🔄 Node retry: %s (attempt %s)", event.node_id, event.retry_index)
+            self.logger.warning("  Previous error: %s", event.error)
+
         elif isinstance(event, NodeRunStartedEvent):
             self.node_count += 1
             self.logger.info('▶️ Node started: %s - "%s" (type: %s)', event.node_id, event.node_title, event.node_type)
@@ -166,11 +178,6 @@ class DebugLoggingLayer(GraphEngineLayer):
         elif isinstance(event, NodeRunExceptionEvent):
             self.logger.warning("⚠️ Node exception handled: %s", event.node_id)
             self.logger.warning("  Error: %s", event.error)
-
-        elif isinstance(event, NodeRunRetryEvent):
-            self.retry_count += 1
-            self.logger.warning("🔄 Node retry: %s (attempt %s)", event.node_id, event.retry_index)
-            self.logger.warning("  Previous error: %s", event.error)
 
         elif isinstance(event, NodeRunStreamChunkEvent):
             # Log stream chunks at debug level to avoid spam
@@ -234,8 +241,7 @@ class DebugLoggingLayer(GraphEngineLayer):
         self.logger.info("  Node retries: %s", self.retry_count)
 
         # Log final state if available
-        if self.graph_runtime_state and self.include_outputs:
-            if self.graph_runtime_state.outputs:
-                self.logger.info("Final outputs: %s", self._format_dict(self.graph_runtime_state.outputs))
+        if self.include_outputs and self.graph_runtime_state.outputs:
+            self.logger.info("Final outputs: %s", self._format_dict(self.graph_runtime_state.outputs))
 
         self.logger.info("=" * 80)

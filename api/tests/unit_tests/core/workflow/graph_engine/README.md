@@ -20,9 +20,6 @@ The TableTestRunner (`test_table_runner.py`) provides a robust table-driven test
 - **Mock configuration** - Seamless integration with the auto-mock system
 - **Performance metrics** - Track execution times and bottlenecks
 - **Detailed error reporting** - Comprehensive failure diagnostics
-- **Test tagging** - Organize and filter tests by tags
-- **Retry mechanism** - Handle flaky tests gracefully
-- **Custom validators** - Define custom validation logic
 
 ### Basic Usage
 
@@ -66,49 +63,6 @@ suite_result = runner.run_table_tests(
 )
 
 print(f"Success rate: {suite_result.success_rate:.1f}%")
-```
-
-#### Test Tagging and Filtering
-
-```python
-test_case = WorkflowTestCase(
-    fixture_path="workflow",
-    inputs={},
-    expected_outputs={},
-    tags=["smoke", "critical"],
-)
-
-# Run only tests with specific tags
-suite_result = runner.run_table_tests(
-    test_cases,
-    tags_filter=["smoke"]
-)
-```
-
-#### Retry Mechanism
-
-```python
-test_case = WorkflowTestCase(
-    fixture_path="flaky_workflow",
-    inputs={},
-    expected_outputs={},
-    retry_count=2,  # Retry up to 2 times on failure
-)
-```
-
-#### Custom Validators
-
-```python
-def custom_validator(outputs: dict) -> bool:
-    # Custom validation logic
-    return "error" not in outputs.get("status", "")
-
-test_case = WorkflowTestCase(
-    fixture_path="workflow",
-    inputs={},
-    expected_outputs={"status": "success"},
-    custom_validator=custom_validator,
-)
 ```
 
 #### Event Sequence Validation

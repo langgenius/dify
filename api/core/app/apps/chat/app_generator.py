@@ -23,7 +23,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
-from models.account import Account
+from models import Account
 from models.model import App, EndUser
 from services.conversation_service import ConversationService
 

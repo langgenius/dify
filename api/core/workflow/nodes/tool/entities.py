@@ -54,8 +54,8 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 for val in value:
                     if not isinstance(val, str):
                         raise ValueError("value must be a list of strings")
-            elif typ == "constant" and not isinstance(value, str | int | float | bool | dict):
-                raise ValueError("value must be a string, int, float, bool or dict")
+            elif typ == "constant" and not isinstance(value, (allowed_types := (str, int, float, bool, dict, list))):
+                raise ValueError(f"value must be one of: {', '.join(t.__name__ for t in allowed_types)}")
             return typ
 
     tool_parameters: dict[str, ToolInput]
