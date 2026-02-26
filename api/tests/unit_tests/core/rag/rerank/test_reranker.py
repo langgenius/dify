@@ -12,6 +12,7 @@ All tests use mocking to avoid external dependencies and ensure fast, reliable e
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
+from operator import itemgetter
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -30,7 +31,7 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 
 
-def create_mock_model_instance():
+def create_mock_model_instance() -> ModelInstance:
     """Create a properly configured mock ModelInstance for reranking tests."""
     mock_instance = Mock(spec=ModelInstance)
     # Setup provider_model_bundle chain for check_model_support_vision
@@ -63,14 +64,7 @@ class TestRerankModelRunner:
     @pytest.fixture
     def mock_model_instance(self):
         """Create a mock ModelInstance for reranking."""
-        mock_instance = Mock(spec=ModelInstance)
-        # Setup provider_model_bundle chain for check_model_support_vision
-        mock_instance.provider_model_bundle = Mock()
-        mock_instance.provider_model_bundle.configuration = Mock()
-        mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
-        mock_instance.provider = "test-provider"
-        mock_instance.model = "test-model"
-        return mock_instance
+        return create_mock_model_instance()
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
@@ -716,34 +710,39 @@ class TestWeightRerankRunner:
         - TF-IDF scores are calculated correctly
         - Cosine similarity is computed for keyword vectors
         """
-        # Arrange: Create runner
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
-
-        # Mock keyword extraction with specific keywords
+        keyword_map = {
+            "python programming": ["python", "programming"],
+            "Python is a programming language": ["python", "programming", "language"],
+            "JavaScript for web development": ["javascript", "web"],
+            "Java object-oriented programming": ["java", "programming"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.side_effect = [
-            ["python", "programming"],  # query
-            ["python", "programming", "language"],  # doc1
-            ["javascript", "web"],  # doc2
-            ["java", "programming"],  # doc3
-        ]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
         mock_cache_instance = MagicMock()
         mock_cache_instance.embed_query.return_value = [0.1, 0.2, 0.3, 0.4]
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("python programming", sample_documents_with_vectors)
+        vector_scores = runner._calculate_cosine(
+            "tenant123", "python programming", sample_documents_with_vectors, weights_config.vector_setting
+        )
+        expected_scores = {
+            doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
+            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+        }
+
         result = runner.run(query="python programming", documents=sample_documents_with_vectors)
 
-        # Assert: Keywords are extracted and scores are calculated
-        assert len(result) == 3
-        # Document 1 should have highest keyword score (matches both query terms)
-        # Document 3 should have medium score (matches one term)
-        # Document 2 should have lowest score (matches no terms)
+        expected_order = [doc_id for doc_id, _ in sorted(expected_scores.items(), key=itemgetter(1), reverse=True)]
+        assert [doc.metadata["doc_id"] for doc in result] == expected_order
+        for doc in result:
+            doc_id = doc.metadata["doc_id"]
+            assert doc.metadata["score"] == pytest.approx(expected_scores[doc_id], rel=1e-6)
 
     def test_vector_score_calculation(
         self,
@@ -760,30 +759,42 @@ class TestWeightRerankRunner:
         - Cosine similarity is calculated with document vectors
         - Vector scores are properly normalized
         """
-        # Arrange: Create runner
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
+        keyword_map = {
+            "test query": ["test"],
+            "Python is a programming language": ["python"],
+            "JavaScript for web development": ["javascript"],
+            "Java object-oriented programming": ["java"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.return_value = ["test"]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding model
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
 
-        # Mock cache embedding with specific query vector
         mock_cache_instance = MagicMock()
         query_vector = [0.2, 0.3, 0.4, 0.5]
         mock_cache_instance.embed_query.return_value = query_vector
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("test query", sample_documents_with_vectors)
+        vector_scores = runner._calculate_cosine(
+            "tenant123", "test query", sample_documents_with_vectors, weights_config.vector_setting
+        )
+        expected_scores = {
+            doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
+            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+        }
+
         result = runner.run(query="test query", documents=sample_documents_with_vectors)
 
-        # Assert: Vector scores are calculated
-        assert len(result) == 3
-        # Verify cosine similarity was computed (doc2 vector is closest to query vector)
+        expected_order = [doc_id for doc_id, _ in sorted(expected_scores.items(), key=itemgetter(1), reverse=True)]
+        assert [doc.metadata["doc_id"] for doc in result] == expected_order
+        for doc in result:
+            doc_id = doc.metadata["doc_id"]
+            assert doc.metadata["score"] == pytest.approx(expected_scores[doc_id], rel=1e-6)
 
     def test_score_threshold_filtering_weighted(
         self,
@@ -946,28 +957,40 @@ class TestWeightRerankRunner:
         - Keyword weight (0.4) is applied to keyword scores
         - Combined score is the sum of weighted components
         """
-        # Arrange: Create runner with known weights
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
+        keyword_map = {
+            "test": ["test"],
+            "Python is a programming language": ["python", "language"],
+            "JavaScript for web development": ["javascript", "web"],
+            "Java object-oriented programming": ["java", "programming"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.return_value = ["test"]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
         mock_cache_instance = MagicMock()
         mock_cache_instance.embed_query.return_value = [0.1, 0.2, 0.3, 0.4]
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("test", sample_documents_with_vectors)
+        vector_scores = runner._calculate_cosine(
+            "tenant123", "test", sample_documents_with_vectors, weights_config.vector_setting
+        )
+        expected_scores = {
+            doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
+            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+        }
+
         result = runner.run(query="test", documents=sample_documents_with_vectors)
 
-        # Assert: Scores are combined with weights
-        # Score = 0.6 * vector_score + 0.4 * keyword_score
-        assert len(result) == 3
-        assert all("score" in doc.metadata for doc in result)
+        expected_order = [doc_id for doc_id, _ in sorted(expected_scores.items(), key=itemgetter(1), reverse=True)]
+        assert [doc.metadata["doc_id"] for doc in result] == expected_order
+        for doc in result:
+            doc_id = doc.metadata["doc_id"]
+            assert doc.metadata["score"] == pytest.approx(expected_scores[doc_id], rel=1e-6)
 
     def test_existing_vector_score_in_metadata(
         self,
@@ -982,7 +1005,6 @@ class TestWeightRerankRunner:
         - If document already has a score in metadata, it's used
         - Cosine similarity calculation is skipped for such documents
         """
-        # Arrange: Documents with pre-existing scores
         documents = [
             Document(
                 page_content="Content with existing score",
@@ -994,24 +1016,29 @@ class TestWeightRerankRunner:
 
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
+        keyword_map = {
+            "test": ["test"],
+            "Content with existing score": ["test"],
+        }
         mock_handler_instance = MagicMock()
-        mock_handler_instance.extract_keywords.return_value = ["test"]
+        mock_handler_instance.extract_keywords.side_effect = lambda text, _: keyword_map[text]
         mock_jieba_handler.return_value = mock_handler_instance
 
-        # Mock embedding
         mock_embedding_instance = MagicMock()
         mock_model_manager.return_value.get_model_instance.return_value = mock_embedding_instance
         mock_cache_instance = MagicMock()
         mock_cache_instance.embed_query.return_value = [0.1, 0.2]
         mock_cache_embedding.return_value = mock_cache_instance
 
-        # Act: Run reranking
+        query_scores = runner._calculate_keyword_score("test", documents)
+        vector_scores = runner._calculate_cosine("tenant123", "test", documents, weights_config.vector_setting)
+        expected_score = 0.6 * vector_scores[0] + 0.4 * query_scores[0]
+
         result = runner.run(query="test", documents=documents)
 
-        # Assert: Existing score is used in calculation
         assert len(result) == 1
-        # The final score should incorporate the existing score (0.95) with vector weight (0.6)
+        assert result[0].metadata["doc_id"] == "doc1"
+        assert result[0].metadata["score"] == pytest.approx(expected_score, rel=1e-6)
 
 
 class TestRerankRunnerFactory:

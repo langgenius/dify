@@ -1,3 +1,7 @@
+"""Unit tests for WaterCrawl client, provider, and extractor behavior."""
+
+import json
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,7 +17,13 @@ from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 
 
-def _response(status_code: int, json_data=None, content_type="application/json", content=b"", text=""):
+def _response(
+    status_code: int,
+    json_data: dict[str, Any] | None = None,
+    content_type: str = "application/json",
+    content: bytes = b"",
+    text: str = "",
+) -> MagicMock:
     response = MagicMock()
     response.status_code = status_code
     response.headers = {"Content-Type": content_type}
@@ -30,10 +40,12 @@ class TestWaterCrawlExceptions:
         response = _response(400, {"message": "bad request", "errors": {"url": ["invalid"]}})
 
         err = WaterCrawlBadRequestError(response)
+        parsed_errors = json.loads(err.flat_errors)
 
         assert err.status_code == 400
         assert err.message == "bad request"
-        assert '"url": ["invalid"]' in err.flat_errors
+        assert "url" in parsed_errors
+        assert any("invalid" in str(item) for item in parsed_errors["url"])
         assert "WaterCrawlBadRequestError" in str(err)
 
     def test_permission_and_authentication_error_strings(self):
@@ -46,7 +58,7 @@ class TestWaterCrawlExceptions:
         assert "API key is invalid or expired" in str(authentication)
 
 
-class TestBaseApiClient:
+class TestBaseAPIClient:
     def test_init_session_builds_expected_headers(self, monkeypatch):
         captured = {}
 
@@ -114,7 +126,7 @@ class TestBaseApiClient:
         assert [c[0] for c in calls] == ["GET", "POST", "PUT", "DELETE", "PATCH"]
 
 
-class TestWaterCrawlApiClient:
+class TestWaterCrawlAPIClient:
     def test_process_eventstream_and_download(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
 
@@ -133,29 +145,43 @@ class TestWaterCrawlApiClient:
         assert events[1]["type"] == "log"
         response.close.assert_called_once()
 
-    def test_process_response_status_and_content_types(self, monkeypatch):
+    @pytest.mark.parametrize(
+        ("status", "expected_exception"),
+        [
+            (401, WaterCrawlAuthenticationError),
+            (403, WaterCrawlPermissionError),
+            (422, WaterCrawlBadRequestError),
+        ],
+    )
+    def test_process_response_error_statuses(self, status: int, expected_exception: type[Exception]):
         client = WaterCrawlAPIClient(api_key="k")
 
-        with pytest.raises(WaterCrawlAuthenticationError):
-            client.process_response(_response(401, {"message": "unauth", "errors": {}}))
+        with pytest.raises(expected_exception):
+            client.process_response(_response(status, {"message": "bad", "errors": {"url": ["x"]}}))
 
-        with pytest.raises(WaterCrawlPermissionError):
-            client.process_response(_response(403, {"message": "forbidden", "errors": {}}))
-
-        with pytest.raises(WaterCrawlBadRequestError):
-            client.process_response(_response(422, {"message": "bad", "errors": {"url": ["x"]}}))
-
+    def test_process_response_204_returns_none(self):
+        client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(204, None)) is None
+
+    def test_process_response_json_payloads(self):
+        client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
+
+    def test_process_response_octet_stream_returns_bytes(self):
+        client = WaterCrawlAPIClient(api_key="k")
         assert (
             client.process_response(_response(200, content_type="application/octet-stream", content=b"bin")) == b"bin"
         )
 
+    def test_process_response_event_stream_returns_generator(self, monkeypatch):
+        client = WaterCrawlAPIClient(api_key="k")
         generator = (item for item in [{"type": "result", "data": {}}])
         monkeypatch.setattr(client, "process_eventstream", lambda response, download=False: generator)
         assert client.process_response(_response(200, content_type="text/event-stream")) is generator
 
+    def test_process_response_unknown_content_type_raises(self):
+        client = WaterCrawlAPIClient(api_key="k")
         with pytest.raises(Exception, match="Unknown response type"):
             client.process_response(_response(200, content_type="text/plain", text="x"))
 
@@ -227,7 +253,13 @@ class TestWaterCrawlApiClient:
 class TestWaterCrawlProvider:
     def test_crawl_url_builds_options_and_min_wait_time(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")
-        monkeypatch.setattr(provider.client, "create_crawl_request", lambda **kwargs: {"uuid": "job-1", **kwargs})
+        captured_kwargs = {}
+
+        def create_crawl_request_spy(**kwargs):
+            captured_kwargs.update(kwargs)
+            return {"uuid": "job-1"}
+
+        monkeypatch.setattr(provider.client, "create_crawl_request", create_crawl_request_spy)
 
         result = provider.crawl_url(
             "https://example.com",
@@ -245,6 +277,18 @@ class TestWaterCrawlProvider:
         )
 
         assert result == {"status": "active", "job_id": "job-1"}
+        assert captured_kwargs["url"] == "https://example.com"
+        assert captured_kwargs["spider_options"] == {
+            "max_depth": 2,
+            "page_limit": 5,
+            "allowed_domains": [],
+            "exclude_paths": ["x", "y"],
+            "include_paths": ["a", "b"],
+        }
+        assert captured_kwargs["page_options"]["exclude_tags"] == ["nav", "footer"]
+        assert captured_kwargs["page_options"]["include_tags"] == ["main"]
+        assert captured_kwargs["page_options"]["only_main_content"] is False
+        assert captured_kwargs["page_options"]["wait_time"] == 1000
 
     def test_get_crawl_status_active_and_completed(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")

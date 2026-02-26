@@ -1,5 +1,6 @@
+"""Unit tests for unstructured extractors and their local/API partitioning paths."""
+
 import base64
-import builtins
 import sys
 import types
 from types import SimpleNamespace
@@ -17,7 +18,7 @@ from core.rag.extractor.unstructured.unstructured_pptx_extractor import Unstruct
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
 
 
-def _register_module(monkeypatch, name: str, **attrs):
+def _register_module(monkeypatch: pytest.MonkeyPatch, name: str, **attrs: object) -> types.ModuleType:
     module = types.ModuleType(name)
     for k, v in attrs.items():
         setattr(module, k, v)
@@ -25,17 +26,19 @@ def _register_module(monkeypatch, name: str, **attrs):
     return module
 
 
-def _register_unstructured_packages(monkeypatch):
+def _register_unstructured_packages(monkeypatch: pytest.MonkeyPatch) -> None:
     _register_module(monkeypatch, "unstructured", __path__=[])
     _register_module(monkeypatch, "unstructured.partition", __path__=[])
     _register_module(monkeypatch, "unstructured.chunking", __path__=[])
     _register_module(monkeypatch, "unstructured.file_utils", __path__=[])
 
 
-def _install_chunk_by_title(monkeypatch, chunks):
+def _install_chunk_by_title(monkeypatch: pytest.MonkeyPatch, chunks: list[SimpleNamespace]) -> None:
     _register_unstructured_packages(monkeypatch)
 
-    def chunk_by_title(elements, max_characters, combine_text_under_n_chars):
+    def chunk_by_title(
+        elements: list[SimpleNamespace], max_characters: int, combine_text_under_n_chars: int
+    ) -> list[SimpleNamespace]:
         return chunks
 
     _register_module(monkeypatch, "unstructured.chunking.title", chunk_by_title=chunk_by_title)
@@ -67,7 +70,7 @@ class TestUnstructuredMarkdownMsgXml:
         assert docs[0].page_content == "via-api"
         assert calls == {"filename": "/tmp/file.md", "api_url": "https://u", "api_key": "k"}
 
-    def test_msg_extractor_local_and_api(self, monkeypatch):
+    def test_msg_extractor_local(self, monkeypatch):
         _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="msg-doc")])
         _register_module(
             monkeypatch, "unstructured.partition.msg", partition_msg=lambda filename: [SimpleNamespace(text="x")]
@@ -75,6 +78,8 @@ class TestUnstructuredMarkdownMsgXml:
 
         assert UnstructuredMsgExtractor("/tmp/file.msg").extract()[0].page_content == "msg-doc"
 
+    def test_msg_extractor_with_api(self, monkeypatch):
+        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="msg-doc")])
         calls = {}
 
         def partition_via_api(filename, api_url, api_key):
@@ -120,7 +125,16 @@ class TestUnstructuredMarkdownMsgXml:
 
 class TestUnstructuredEmailAndEpub:
     def test_email_extractor_local_decodes_html_and_suppresses_decode_errors(self, monkeypatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text=" chunked-email ")])
+        _register_unstructured_packages(monkeypatch)
+        captured = {}
+
+        def chunk_by_title(
+            elements: list[SimpleNamespace], max_characters: int, combine_text_under_n_chars: int
+        ) -> list[SimpleNamespace]:
+            captured["elements"] = list(elements)
+            return [SimpleNamespace(text=" chunked-email ")]
+
+        _register_module(monkeypatch, "unstructured.chunking.title", chunk_by_title=chunk_by_title)
 
         html = "<p>Hello Email</p>"
         encoded_html = base64.b64encode(html.encode("utf-8")).decode("utf-8")
@@ -132,8 +146,9 @@ class TestUnstructuredEmailAndEpub:
         docs = UnstructuredEmailExtractor("/tmp/file.eml").extract()
 
         assert docs[0].page_content == "chunked-email"
-        assert "Hello Email" in elements[0].text
-        assert elements[1].text == bad_base64
+        chunk_elements = captured["elements"]
+        assert "Hello Email" in chunk_elements[0].text
+        assert chunk_elements[1].text == bad_base64
 
     def test_email_extractor_with_api(self, monkeypatch):
         _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="api-email")])
@@ -279,15 +294,7 @@ class TestUnstructuredWord:
 
     def test_word_extractor_magic_import_error_fallback_to_extension(self, monkeypatch):
         self._install_doc_modules(monkeypatch, version="0.4.10", filetype_value="not-used")
-
-        real_import = builtins.__import__
-
-        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "magic":
-                raise ImportError("no magic")
-            return real_import(name, globals, locals, fromlist, level)
-
-        monkeypatch.setattr(builtins, "__import__", fake_import)
+        monkeypatch.setitem(sys.modules, "magic", None)
 
         with pytest.raises(ValueError, match="Partitioning .doc files is only supported"):
             UnstructuredWordExtractor("/tmp/file.doc", "https://u", "k").extract()

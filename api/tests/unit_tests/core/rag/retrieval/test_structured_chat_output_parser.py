@@ -1,5 +1,3 @@
-from unittest.mock import Mock, patch
-
 import pytest
 
 from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
@@ -32,12 +30,8 @@ class TestStructuredChatOutputParser:
 
     def test_parse_handles_json_array_payload(self) -> None:
         parser = StructuredChatOutputParser()
-        text = "Action block"
-        fake_match = Mock()
-        fake_match.group.return_value = '[{"action":"search","action_input":"hello"}]'
-
-        with patch("core.rag.retrieval.output_parser.structured_chat.re.search", return_value=fake_match):
-            result = parser.parse(text)
+        text = 'Action:\n```json\n[{"action":"search","action_input":"hello"}]\n```'
+        result = parser.parse(text)
 
         assert isinstance(result, ReactAction)
         assert result.tool == "search"

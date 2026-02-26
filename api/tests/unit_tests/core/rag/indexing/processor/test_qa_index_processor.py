@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -12,20 +11,16 @@ from core.rag.models.document import AttachmentDocument, Document
 
 
 class _ImmediateThread:
-    def __init__(self, *, target, kwargs):
+    def __init__(self, target, args=(), kwargs=None):
         self._target = target
-        self._kwargs = kwargs
+        self._args = args
+        self._kwargs = kwargs or {}
 
     def start(self) -> None:
-        self._target(**self._kwargs)
+        self._target(*self._args, **self._kwargs)
 
     def join(self) -> None:
         return None
-
-
-class _FakeFlaskApp:
-    def app_context(self):
-        return nullcontext()
 
 
 class TestQAIndexProcessor:
@@ -72,14 +67,17 @@ class TestQAIndexProcessor:
         assert docs == expected_docs
         mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True)
 
-    def test_transform_validates_process_rule(self, processor: QAIndexProcessor) -> None:
+    def test_transform_rejects_none_process_rule(self, processor: QAIndexProcessor) -> None:
         with pytest.raises(ValueError, match="No process rule found"):
             processor.transform([Document(page_content="text", metadata={})], process_rule=None)
 
+    def test_transform_rejects_missing_rules_key(self, processor: QAIndexProcessor) -> None:
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform([Document(page_content="text", metadata={})], process_rule={"mode": "custom"})
 
-    def test_transform_preview_calls_formatter_once(self, processor: QAIndexProcessor, process_rule: dict) -> None:
+    def test_transform_preview_calls_formatter_once(
+        self, processor: QAIndexProcessor, process_rule: dict, fake_flask_app
+    ) -> None:
         document = Document(page_content="raw text", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         split_node = Document(page_content=".question", metadata={})
         splitter = Mock()
@@ -106,7 +104,7 @@ class TestQAIndexProcessor:
             patch.object(processor, "_format_qa_document", side_effect=_append_document) as mock_format,
             patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
         ):
-            mock_current_app._get_current_object.return_value = _FakeFlaskApp()
+            mock_current_app._get_current_object.return_value = fake_flask_app
             result = processor.transform(
                 [document],
                 process_rule=process_rule,
@@ -119,7 +117,9 @@ class TestQAIndexProcessor:
         assert result[0].metadata["answer"] == "A1"
         mock_format.assert_called_once()
 
-    def test_transform_non_preview_uses_thread_batches(self, processor: QAIndexProcessor, process_rule: dict) -> None:
+    def test_transform_non_preview_uses_thread_batches(
+        self, processor: QAIndexProcessor, process_rule: dict, fake_flask_app
+    ) -> None:
         documents = [
             Document(page_content="doc-1", metadata={"document_id": "doc-1", "dataset_id": "dataset-1"}),
             Document(page_content="doc-2", metadata={"document_id": "doc-2", "dataset_id": "dataset-1"}),
@@ -153,7 +153,7 @@ class TestQAIndexProcessor:
                 "core.rag.index_processor.processor.qa_index_processor.threading.Thread", side_effect=_ImmediateThread
             ),
         ):
-            mock_current_app._get_current_object.return_value = _FakeFlaskApp()
+            mock_current_app._get_current_object.return_value = fake_flask_app
             result = processor.transform(documents, process_rule=process_rule, preview=False, tenant_id="tenant-1")
 
         assert len(result) == 2
@@ -177,13 +177,17 @@ class TestQAIndexProcessor:
         assert [doc.page_content for doc in docs] == ["Q1", "Q2"]
         assert [doc.metadata["answer"] for doc in docs] == ["A1", "A2"]
 
-    def test_format_by_template_handles_empty_or_invalid_csv(self, processor: QAIndexProcessor) -> None:
+    def test_format_by_template_raises_on_empty_csv(self, processor: QAIndexProcessor) -> None:
         csv_file = Mock(spec=FileStorage)
         csv_file.filename = "qa.csv"
 
         with patch("core.rag.index_processor.processor.qa_index_processor.pd.read_csv", return_value=pd.DataFrame()):
             with pytest.raises(ValueError, match="empty"):
                 processor.format_by_template(csv_file)
+
+    def test_format_by_template_raises_on_invalid_csv(self, processor: QAIndexProcessor) -> None:
+        csv_file = Mock(spec=FileStorage)
+        csv_file.filename = "qa.csv"
 
         with patch(
             "core.rag.index_processor.processor.qa_index_processor.pd.read_csv", side_effect=Exception("bad csv")
@@ -326,15 +330,17 @@ class TestQAIndexProcessor:
         preview_items = [PreviewDetail(content="Q1")]
         assert processor.generate_summary_preview("tenant-1", preview_items, {}) is preview_items
 
-    def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor) -> None:
+    def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app) -> None:
         all_qa_documents: list[Document] = []
         blank_document = Document(page_content="   ", metadata={})
 
-        processor._format_qa_document(_FakeFlaskApp(), "tenant-1", blank_document, all_qa_documents, "English")
+        processor._format_qa_document(fake_flask_app, "tenant-1", blank_document, all_qa_documents, "English")
 
         assert all_qa_documents == []
 
-    def test_format_qa_document_builds_question_answer_documents(self, processor: QAIndexProcessor) -> None:
+    def test_format_qa_document_builds_question_answer_documents(
+        self, processor: QAIndexProcessor, fake_flask_app
+    ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
 
@@ -347,14 +353,14 @@ class TestQAIndexProcessor:
                 "core.rag.index_processor.processor.qa_index_processor.helper.generate_text_hash", return_value="hash"
             ),
         ):
-            processor._format_qa_document(_FakeFlaskApp(), "tenant-1", source_document, all_qa_documents, "English")
+            processor._format_qa_document(fake_flask_app, "tenant-1", source_document, all_qa_documents, "English")
 
         assert len(all_qa_documents) == 2
         assert all_qa_documents[0].page_content == "What is this?"
         assert all_qa_documents[0].metadata["answer"] == "A test."
         assert all_qa_documents[1].metadata["answer"] == "Coverage."
 
-    def test_format_qa_document_logs_errors(self, processor: QAIndexProcessor) -> None:
+    def test_format_qa_document_logs_errors(self, processor: QAIndexProcessor, fake_flask_app) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
 
@@ -365,7 +371,7 @@ class TestQAIndexProcessor:
             ),
             patch("core.rag.index_processor.processor.qa_index_processor.logger") as mock_logger,
         ):
-            processor._format_qa_document(_FakeFlaskApp(), "tenant-1", source_document, all_qa_documents, "English")
+            processor._format_qa_document(fake_flask_app, "tenant-1", source_document, all_qa_documents, "English")
 
         assert all_qa_documents == []
         mock_logger.exception.assert_called_once_with("Failed to format qa document")

@@ -1,4 +1,8 @@
+"""Unit tests for Firecrawl app and extractor integration points."""
+
 import json
+from collections.abc import Mapping
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,7 +13,7 @@ from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 
 
-def _response(status_code: int, json_data=None, text: str = "") -> MagicMock:
+def _response(status_code: int, json_data: Mapping[str, Any] | None = None, text: str = "") -> MagicMock:
     response = MagicMock()
     response.status_code = status_code
     response.text = text
@@ -92,12 +96,14 @@ class TestFirecrawlApp:
 
         mock_handle.assert_called_once()
 
-    def test_map_success_and_known_error(self, mocker: MockerFixture):
+    def test_map_success(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mocker.patch("httpx.post", return_value=_response(200, {"success": True, "links": ["a", "b"]}))
 
         assert app.map("https://example.com") == {"success": True, "links": ["a", "b"]}
 
+    def test_map_known_error(self, mocker: MockerFixture):
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error")
         mocker.patch("httpx.post", return_value=_response(409, {"error": "conflict"}))
 
@@ -253,21 +259,26 @@ class TestFirecrawlApp:
         with pytest.raises(Exception, match="plain error"):
             app._handle_error(non_json, "run task")
 
-    def test_search_success_and_failures(self, mocker: MockerFixture):
+    def test_search_success(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-
         mocker.patch("httpx.post", return_value=_response(200, {"success": True, "data": [{"url": "x"}]}))
         assert app.search("python")["success"] is True
 
+    def test_search_warning_failure(self, mocker: MockerFixture):
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mocker.patch("httpx.post", return_value=_response(200, {"success": False, "warning": "bad search"}))
         with pytest.raises(Exception, match="bad search"):
             app.search("python")
 
+    def test_search_known_http_error(self, mocker: MockerFixture):
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error")
         mocker.patch("httpx.post", return_value=_response(408, {"error": "timeout"}))
         assert app.search("python") == {}
         mock_handle.assert_called_once()
 
+    def test_search_unknown_http_error(self, mocker: MockerFixture):
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mocker.patch("httpx.post", return_value=_response(418, text="teapot"))
         with pytest.raises(Exception, match="Failed to perform search. Status code: 418"):
             app.search("python")

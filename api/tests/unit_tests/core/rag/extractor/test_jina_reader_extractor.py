@@ -36,7 +36,12 @@ class TestJinaReaderWebExtractor:
 
         assert extractor.extract() == []
 
-    def test_extract_non_crawl_mode_returns_empty(self):
+    def test_extract_non_crawl_mode_returns_empty(self, mocker: MockerFixture):
+        mock_get_crawl = mocker.patch(
+            "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
+            return_value={"content": "unused"},
+        )
         extractor = JinaReaderWebExtractor("https://example.com", "job-1", "tenant-1", mode="scrape")
 
         assert extractor.extract() == []
+        mock_get_crawl.assert_not_called()

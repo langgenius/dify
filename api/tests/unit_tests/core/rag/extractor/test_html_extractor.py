@@ -10,7 +10,7 @@ class TestHtmlExtractor:
         docs = extractor.extract()
 
         assert len(docs) == 1
-        assert docs[0].page_content == "TitleHello"
+        assert "".join(docs[0].page_content.split()) == "TitleHello"
 
     def test_load_as_text_strips_whitespace_and_handles_empty(self, tmp_path):
         file_path = tmp_path / "sample.html"

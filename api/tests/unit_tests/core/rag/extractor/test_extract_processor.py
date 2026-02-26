@@ -10,10 +10,10 @@ from core.rag.models.document import Document
 
 
 class _ExtractorFactory:
-    def __init__(self):
+    def __init__(self) -> None:
         self.calls = []
 
-    def make(self, name: str):
+    def make(self, name: str) -> type[object]:
         calls = self.calls
 
         class DummyExtractor:
@@ -26,7 +26,7 @@ class _ExtractorFactory:
         return DummyExtractor
 
 
-def _patch_all_extractors(monkeypatch):
+def _patch_all_extractors(monkeypatch) -> _ExtractorFactory:
     factory = _ExtractorFactory()
 
     for cls_name in [
@@ -101,17 +101,20 @@ class TestExtractProcessorLoaders:
         captured = {}
 
         def fake_extract(extract_setting, is_automatic=False, file_path=None):
-            captured["file_path"] = file_path
+            key = "file_path_docs" if "file_path_docs" not in captured else "file_path_text"
+            captured[key] = file_path
             return [Document(page_content="u1"), Document(page_content="u2")]
 
         monkeypatch.setattr(ExtractProcessor, "extract", fake_extract)
 
         docs = ExtractProcessor.load_from_url(url, return_text=False)
+        assert captured["file_path_docs"].endswith(expected_suffix)
+
         text = ExtractProcessor.load_from_url(url, return_text=True)
+        assert captured["file_path_text"].endswith(expected_suffix)
 
         assert len(docs) == 2
         assert text == "u1\nu2"
-        assert captured["file_path"].endswith(expected_suffix)
 
 
 class TestExtractProcessorFileRouting:
@@ -217,34 +220,32 @@ class TestExtractProcessorDatasourceRouting:
         assert docs[0].page_content == "extracted-by-NotionExtractor"
         assert factory.calls[-1][0] == "NotionExtractor"
 
-    def test_extract_routes_website_datasource_providers(self, monkeypatch):
-        factory = _patch_all_extractors(monkeypatch)
-
-        for provider, expected in [
+    @pytest.mark.parametrize(
+        ("provider", "expected"),
+        [
             ("firecrawl", "FirecrawlWebExtractor"),
             ("watercrawl", "WaterCrawlWebExtractor"),
             ("jinareader", "JinaReaderWebExtractor"),
-        ]:
-            website_info = SimpleNamespace(
-                provider=provider,
-                url="https://example.com",
-                job_id="job",
-                tenant_id="tenant",
-                mode="crawl",
-                only_main_content=True,
-            )
-            setting = SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=website_info)
+        ],
+    )
+    def test_extract_routes_website_datasource_providers(self, monkeypatch, provider: str, expected: str):
+        factory = _patch_all_extractors(monkeypatch)
 
-            docs = ExtractProcessor.extract(setting)
-            assert docs[0].page_content == f"extracted-by-{expected}"
+        website_info = SimpleNamespace(
+            provider=provider,
+            url="https://example.com",
+            job_id="job",
+            tenant_id="tenant",
+            mode="crawl",
+            only_main_content=True,
+        )
+        setting = SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=website_info)
 
-        assert {call[0] for call in factory.calls if "Extractor" in call[0]} >= {
-            "FirecrawlWebExtractor",
-            "WaterCrawlWebExtractor",
-            "JinaReaderWebExtractor",
-        }
+        docs = ExtractProcessor.extract(setting)
+        assert docs[0].page_content == f"extracted-by-{expected}"
+        assert factory.calls[-1][0] == expected
 
-    def test_extract_website_provider_and_datasource_validation(self):
+    def test_extract_unsupported_website_provider(self):
         bad_provider = SimpleNamespace(
             provider="unknown",
             url="https://example.com",
@@ -258,12 +259,14 @@ class TestExtractProcessorDatasourceRouting:
         with pytest.raises(ValueError, match="Unsupported website provider"):
             ExtractProcessor.extract(setting)
 
+    def test_extract_unsupported_datasource_type(self):
         with pytest.raises(ValueError, match="Unsupported datasource type"):
             ExtractProcessor.extract(SimpleNamespace(datasource_type="unknown"))
 
-    def test_extract_requires_notion_and_website_info(self):
+    def test_extract_requires_notion_info(self):
         with pytest.raises(AssertionError, match="notion_info is required"):
             ExtractProcessor.extract(SimpleNamespace(datasource_type=DatasourceType.NOTION, notion_info=None))
 
+    def test_extract_requires_website_info(self):
         with pytest.raises(AssertionError, match="website_info is required"):
             ExtractProcessor.extract(SimpleNamespace(datasource_type=DatasourceType.WEBSITE, website_info=None))

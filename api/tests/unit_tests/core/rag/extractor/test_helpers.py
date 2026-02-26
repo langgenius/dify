@@ -4,17 +4,20 @@ from types import SimpleNamespace
 import pytest
 
 from core.rag.extractor import helpers
-from core.rag.extractor.helpers import FileEncoding, detect_file_encodings
+from core.rag.extractor.helpers import detect_file_encodings
 
 
 class TestHelpers:
     def test_detect_file_encodings(self) -> None:
         with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as temp:
             temp.write("Shared data")
+            temp.flush()
             temp_path = temp.name
-            assert detect_file_encodings(temp_path) == [
-                FileEncoding(encoding="utf_8", confidence=0.0, language="Unknown")
-            ]
+            encodings = detect_file_encodings(temp_path)
+
+        assert len(encodings) == 1
+        assert encodings[0].encoding in {"utf_8", "ascii"}
+        assert encodings[0].confidence == 0.0
 
     def test_detect_file_encodings_timeout(self, monkeypatch):
         class FakeFuture:

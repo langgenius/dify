@@ -42,7 +42,7 @@ class TestFunctionCallMultiDatasetRouter:
         usage = LLMUsage.empty_usage()
         response = Mock()
         response.usage = usage
-        response.message.tool_calls = [Mock(function=Mock(name="dataset-2"))]
+        response.message.tool_calls = [Mock(function=Mock())]
         response.message.tool_calls[0].function.name = "dataset-2"
         model_instance = Mock()
         model_instance.invoke_llm.return_value = response

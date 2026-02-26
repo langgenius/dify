@@ -8,7 +8,7 @@ from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFini
 class StructuredChatOutputParser:
     def parse(self, text: str) -> Union[ReactAction, ReactFinish]:
         try:
-            action_match = re.search(r"```(\w*)\n?({.*?)```", text, re.DOTALL)
+            action_match = re.search(r"```(\w*)\n?([\[{].*?)```", text, re.DOTALL)
             if action_match is not None:
                 response = json.loads(action_match.group(2).strip(), strict=False)
                 if isinstance(response, list):

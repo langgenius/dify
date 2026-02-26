@@ -11,20 +11,6 @@ from core.rag.index_processor.processor.paragraph_index_processor import Paragra
 from core.rag.models.document import AttachmentDocument, Document
 
 
-class _FakeExecutor:
-    def __init__(self, future):
-        self._future = future
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return False
-
-    def submit(self, func, preview):
-        return self._future
-
-
 class TestParagraphIndexProcessor:
     @pytest.fixture
     def processor(self) -> ParagraphIndexProcessor:
@@ -162,7 +148,7 @@ class TestParagraphIndexProcessor:
 
         assert mock_validate.call_count == 1
 
-    def test_load_handles_high_quality_and_keyword_modes(
+    def test_load_creates_vector_and_multimodal_when_high_quality(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
         docs = [Document(page_content="chunk", metadata={})]
@@ -173,22 +159,34 @@ class TestParagraphIndexProcessor:
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
             processor.load(dataset, docs, multimodal_documents=multimodal_docs)
-            vector = mock_vector_cls.return_value
-            vector.create.assert_called_once_with(docs)
-            vector.create_multimodal.assert_called_once_with(multimodal_docs)
-            mock_keyword_cls.assert_not_called()
+        vector = mock_vector_cls.return_value
+        vector.create.assert_called_once_with(docs)
+        vector.create_multimodal.assert_called_once_with(multimodal_docs)
+        mock_keyword_cls.assert_not_called()
 
-            dataset.indexing_technique = "economy"
-            processor.load(dataset, docs, keywords_list=["k1", "k2"])
-            mock_keyword_cls.return_value.add_texts.assert_called_with(docs, keywords_list=["k1", "k2"])
-
-            mock_keyword_cls.reset_mock()
-            processor.load(dataset, docs)
-            mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs)
-
-    def test_clean_handles_summary_vector_and_keyword_cleanup(
+    def test_load_uses_keyword_add_texts_with_keywords_when_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
+        dataset.indexing_technique = "economy"
+        docs = [Document(page_content="chunk", metadata={})]
+
+        with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
+            processor.load(dataset, docs, keywords_list=["k1", "k2"])
+
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, keywords_list=["k1", "k2"])
+
+    def test_load_uses_keyword_add_texts_without_keywords_when_economy(
+        self, processor: ParagraphIndexProcessor, dataset: Mock
+    ) -> None:
+        dataset.indexing_technique = "economy"
+        docs = [Document(page_content="chunk", metadata={})]
+
+        with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
+            processor.load(dataset, docs)
+
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs)
+
+    def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
         segment_query = Mock()
         segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
@@ -200,23 +198,35 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexService.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
-            patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(dataset, ["node-1"], delete_summaries=True)
-            mock_summary.assert_called_once_with(dataset, ["seg-1"])
-            vector.delete_by_ids.assert_called_once_with(["node-1"])
-            mock_keyword_cls.assert_not_called()
 
-            mock_summary.reset_mock()
-            dataset.indexing_technique = "economy"
+        mock_summary.assert_called_once_with(dataset, ["seg-1"])
+        vector.delete_by_ids.assert_called_once_with(["node-1"])
+
+    def test_clean_economy_deletes_summaries_and_keywords(
+        self, processor: ParagraphIndexProcessor, dataset: Mock
+    ) -> None:
+        dataset.indexing_technique = "economy"
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexService.delete_summaries_for_segments"
+            ) as mock_summary,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
+        ):
             processor.clean(dataset, None, delete_summaries=True)
-            mock_summary.assert_called_once_with(dataset, None)
-            mock_keyword_cls.return_value.delete.assert_called_once()
 
-            mock_keyword_cls.reset_mock()
+        mock_summary.assert_called_once_with(dataset, None)
+        mock_keyword_cls.return_value.delete.assert_called_once()
+
+    def test_clean_deletes_keywords_by_ids(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
+        dataset.indexing_technique = "economy"
+        with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
             processor.clean(dataset, ["node-2"], with_keywords=True)
-            mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"])
+
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"])
 
     def test_retrieve_filters_by_threshold(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
         accepted = SimpleNamespace(page_content="keep", metadata={"source": "a"}, score=0.9)
@@ -231,7 +241,7 @@ class TestParagraphIndexProcessor:
         assert len(docs) == 1
         assert docs[0].metadata["score"] == 0.9
 
-    def test_index_list_chunks_high_quality_and_economy(
+    def test_index_list_chunks_high_quality(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
         with (
@@ -246,17 +256,29 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"
             ) as mock_store_cls,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
-            patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
             processor.index(dataset, dataset_document, ["chunk-1", "chunk-2"])
-            mock_store_cls.return_value.add_documents.assert_called_once()
-            mock_vector_cls.return_value.create.assert_called_once()
-            mock_vector_cls.return_value.create_multimodal.assert_called_once()
 
-            dataset.indexing_technique = "economy"
-            mock_store_cls.reset_mock()
+        mock_store_cls.return_value.add_documents.assert_called_once()
+        mock_vector_cls.return_value.create.assert_called_once()
+        mock_vector_cls.return_value.create_multimodal.assert_called_once()
+
+    def test_index_list_chunks_economy(
+        self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
+    ) -> None:
+        dataset.indexing_technique = "economy"
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
+                return_value="hash",
+            ),
+            patch.object(processor, "_get_content_files", return_value=[]),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
+        ):
             processor.index(dataset, dataset_document, ["chunk-3"])
-            mock_keyword_cls.return_value.add_texts.assert_called_once()
+
+        mock_keyword_cls.return_value.add_texts.assert_called_once()
 
     def test_index_multimodal_structure_handles_files_and_account_lookup(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
@@ -346,10 +368,12 @@ class TestParagraphIndexProcessor:
 
         assert result[0].summary == "summary"
 
-    def test_generate_summary_preview_timeout(self, processor: ParagraphIndexProcessor) -> None:
+    def test_generate_summary_preview_timeout(
+        self, processor: ParagraphIndexProcessor, fake_executor_cls: type
+    ) -> None:
         preview_items = [PreviewDetail(content="chunk-1")]
         future = Mock()
-        executor = _FakeExecutor(future)
+        executor = fake_executor_cls(future)
 
         with (
             patch("concurrent.futures.ThreadPoolExecutor", return_value=executor),
@@ -508,7 +532,7 @@ class TestParagraphIndexProcessor:
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
-                side_effect=[SimpleNamespace(id="file-1"), RuntimeError("build failed")],
+                return_value=SimpleNamespace(id="file-1"),
             ) as mock_builder,
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
@@ -589,9 +613,17 @@ class TestParagraphIndexProcessor:
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
             files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
-            execute_result.all.return_value = []
-            empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
 
         assert len(files) == 1
         mock_logger.warning.assert_called_once()
+
+    def test_extract_images_from_segment_attachments_empty(self) -> None:
+        execute_result = Mock()
+        execute_result.all.return_value = []
+        session = Mock()
+        session.execute.return_value = execute_result
+
+        with patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session):
+            empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
+
         assert empty_files == []

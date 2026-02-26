@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -8,25 +7,6 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
-
-
-class _FakeFlaskApp:
-    def app_context(self):
-        return nullcontext()
-
-
-class _FakeExecutor:
-    def __init__(self, future):
-        self._future = future
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return False
-
-    def submit(self, func, preview):
-        return self._future
 
 
 class TestParentChildIndexProcessor:
@@ -526,10 +506,12 @@ class TestParentChildIndexProcessor:
 
         assert result[0].summary == "summary"
 
-    def test_generate_summary_preview_handles_timeout(self, processor: ParentChildIndexProcessor) -> None:
+    def test_generate_summary_preview_handles_timeout(
+        self, processor: ParentChildIndexProcessor, fake_executor_cls: type
+    ) -> None:
         preview_texts = [PreviewDetail(content="chunk-1")]
         future = Mock()
-        executor = _FakeExecutor(future)
+        executor = fake_executor_cls(future)
 
         with (
             patch("concurrent.futures.ThreadPoolExecutor", return_value=executor),

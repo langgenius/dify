@@ -139,7 +139,7 @@ def test_extract_images_from_docx(monkeypatch):
     monkeypatch.setattr(we, "UploadFile", FakeUploadFile)
 
     # Patch external image fetcher
-    def fake_get(url: str):
+    def fake_get(url: str, **kwargs):
         assert url == "https://example.com/image.png"
         return SimpleNamespace(status_code=200, headers={"Content-Type": "image/png"}, content=external_bytes)
 
@@ -206,10 +206,8 @@ def test_extract_images_from_docx_uses_internal_files_url():
 
     finally:
         # Restore original values
-        if original_files_url is not None:
-            dify_config.FILES_URL = original_files_url
-        if original_internal_files_url is not None:
-            dify_config.INTERNAL_FILES_URL = original_internal_files_url
+        dify_config.FILES_URL = original_files_url
+        dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 
 def test_extract_hyperlinks(monkeypatch):
@@ -329,7 +327,7 @@ def test_init_rejects_invalid_url_status(monkeypatch):
             self.closed = True
 
     fake_response = FakeResponse()
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=lambda url: fake_response))
+    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=lambda url, **kwargs: fake_response))
 
     with pytest.raises(ValueError, match="returned status code 404"):
         WordExtractor("https://example.com/missing.docx", "tenant", "user")
@@ -389,7 +387,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch):
         )
     )
 
-    def fake_get(url):
+    def fake_get(url, **kwargs):
         if "image-error" in url:
             raise RuntimeError("network")
         return SimpleNamespace(status_code=200, headers={"Content-Type": "application/unknown"}, content=b"x")

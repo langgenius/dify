@@ -52,8 +52,10 @@ class TestCSVExtractor:
 
     def test_extract_autodetect_encoding_success(self, monkeypatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
+        attempted_encodings: list[str | None] = []
 
         def fake_open(path, newline="", encoding=None):
+            attempted_encodings.append(encoding)
             if encoding is None:
                 raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
             if encoding == "bad":
@@ -71,6 +73,7 @@ class TestCSVExtractor:
 
         assert len(docs) == 1
         assert docs[0].page_content == "id: source-1;body: hello"
+        assert attempted_encodings == [None, "bad", "utf-8"]
 
     def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)

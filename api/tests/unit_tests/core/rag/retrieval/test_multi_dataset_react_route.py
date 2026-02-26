@@ -186,7 +186,7 @@ class TestReactMultiDatasetRouter:
         assert text == "part"
         assert usage == LLMUsage.empty_usage()
 
-    def test_create_chat_prompt_and_completion_prompt(self) -> None:
+    def test_create_chat_prompt(self) -> None:
         router = ReactMultiDatasetRouter()
         tool_1 = Mock()
         tool_1.name = "dataset-1"
@@ -201,6 +201,15 @@ class TestReactMultiDatasetRouter:
         assert chat_prompt[1].role == PromptMessageRole.USER
         assert "dataset-1" in chat_prompt[0].text
         assert "dataset-2" in chat_prompt[0].text
+
+    def test_create_completion_prompt(self) -> None:
+        router = ReactMultiDatasetRouter()
+        tool_1 = Mock()
+        tool_1.name = "dataset-1"
+        tool_1.description = "d1"
+        tool_2 = Mock()
+        tool_2.name = "dataset-2"
+        tool_2.description = "d2"
 
         completion_prompt = router.create_completion_prompt(tools=[tool_1, tool_2])
         assert "dataset-1: d1" in completion_prompt.text
