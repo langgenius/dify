@@ -361,8 +361,10 @@ class TestDatasetIndexingTaskIntegration:
         task_dispatch_spy.delay.assert_not_called()
         delete_key_spy.assert_called_once()
 
-    def test_error_handling_sets_document_error_status(self, db_session_with_containers, patched_external_dependencies):
-        """Set error status when validation fails before runner phase."""
+    def test_validation_failure_sets_error_status_when_vector_space_at_limit(
+        self, db_session_with_containers, patched_external_dependencies
+    ):
+        """Set error status when vector space validation fails before runner phase."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
@@ -533,25 +535,6 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         assert task_dispatch_spy.delay.call_count == concurrency_limit
         assert set_waiting_spy.call_count == concurrency_limit
-
-    def test_vector_space_limit_edge_case_at_exact_limit(
-        self, db_session_with_containers, patched_external_dependencies
-    ):
-        """Reject upload when vector space size is exactly at plan limit."""
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
-        document_ids = [doc.id for doc in documents]
-        features = patched_external_dependencies["features"]
-        features.billing.enabled = True
-        features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        features.vector_space.limit = 100
-        features.vector_space.size = 100
-
-        # Act
-        _document_indexing(dataset.id, document_ids)
-
-        # Assert
-        self._assert_documents_error_contains(db_session_with_containers, document_ids, "over the limit")
 
     def test_task_queue_fifo_ordering(self, db_session_with_containers, patched_external_dependencies):
         """Keep FIFO ordering when dispatching next queued tasks.
