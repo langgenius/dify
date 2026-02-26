@@ -113,7 +113,7 @@ class Storage:
     def download(self, filename, target_filepath):
         self.storage_runner.download(filename, target_filepath)
 
-    def exists(self, filename: str):
+    def exists(self, filename: str) -> bool:
         return self.storage_runner.exists(filename)
 
     def delete(self, filename: str):
