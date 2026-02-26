@@ -1,6 +1,9 @@
 import time
 import uuid
+from types import SimpleNamespace
 from uuid import uuid4
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
@@ -294,3 +297,77 @@ def test_clear_array():
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
     assert got.to_object() == []
+
+
+def test_extract_variable_selector_mapping_includes_conversation_selector() -> None:
+    mapping = VariableAssignerNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="assigner-node",
+        node_data={
+            "title": "Variable Assigner",
+            "assigned_variable_selector": ["conversation", "name"],
+            "write_mode": WriteMode.OVER_WRITE,
+            "input_variable_selector": ["start", "query"],
+        },
+    )
+
+    assert mapping["assigner-node.#conversation.name#"] == ["conversation", "name"]
+    assert mapping["assigner-node.#start.query#"] == ["start", "query"]
+
+
+def test_extract_variable_selector_mapping_omits_non_conversation_assignment() -> None:
+    mapping = VariableAssignerNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="assigner-node",
+        node_data={
+            "title": "Variable Assigner",
+            "assigned_variable_selector": ["node-a", "name"],
+            "write_mode": WriteMode.OVER_WRITE,
+            "input_variable_selector": ["start", "query"],
+        },
+    )
+
+    assert "assigner-node.#node-a.name#" not in mapping
+    assert mapping["assigner-node.#start.query#"] == ["start", "query"]
+
+
+def test_blocks_variable_output_and_version() -> None:
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    node._node_data = SimpleNamespace(assigned_variable_selector=["conversation", "name"])
+
+    assert node.blocks_variable_output({("conversation", "name")}) is True
+    assert node.blocks_variable_output({("conversation", "other")}) is False
+    assert VariableAssignerNode.version() == "1"
+
+
+def test_run_raises_when_assigned_variable_missing() -> None:
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    node._node_data = SimpleNamespace(
+        assigned_variable_selector=["conversation", "name"],
+        write_mode=WriteMode.OVER_WRITE,
+        input_variable_selector=["start", "query"],
+    )
+    node.graph_runtime_state = SimpleNamespace(variable_pool=SimpleNamespace(get=lambda *_: None))
+
+    with pytest.raises(Exception, match="assigned variable not found"):
+        node._run()
+
+
+@pytest.mark.parametrize("write_mode", [WriteMode.OVER_WRITE, WriteMode.APPEND])
+def test_run_raises_when_input_variable_missing(write_mode: WriteMode) -> None:
+    original_variable = StringVariable(id=str(uuid4()), name="name", value="old")
+    variable_pool = SimpleNamespace(
+        get=lambda selector: original_variable if selector == ["conversation", "name"] else None,
+        add=lambda selector, variable: None,
+    )
+
+    node = VariableAssignerNode.__new__(VariableAssignerNode)
+    node._node_data = SimpleNamespace(
+        assigned_variable_selector=["conversation", "name"],
+        write_mode=write_mode,
+        input_variable_selector=["start", "query"],
+    )
+    node.graph_runtime_state = SimpleNamespace(variable_pool=variable_pool)
+
+    with pytest.raises(Exception, match="input value not found"):
+        node._run()

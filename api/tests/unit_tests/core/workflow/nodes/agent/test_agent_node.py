@@ -707,6 +707,88 @@ class TestTransformMessage:
         completed = next(e for e in events if isinstance(e, StreamCompletedEvent))
         assert completed.node_run_result.outputs["files"].value == [file_obj]
 
+    @patch("core.workflow.nodes.agent.agent_node.ToolFileMessageTransformer.transform_tool_invoke_messages")
+    def test_transform_message_handles_non_dict_json_execution_metadata(self, mock_transform, mock_node):
+        json_message = ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.JSON,
+            message=ToolInvokeMessage.JsonMessage(json_object=["list-payload"]),
+        )
+        mock_transform.return_value = [json_message]
+
+        events = list(
+            mock_node._transform_message(
+                messages=iter([]),
+                tool_info={},
+                parameters_for_log={},
+                user_id="u",
+                tenant_id="t",
+                node_type=NodeType.AGENT,
+                node_id="node",
+                node_execution_id="exec",
+            )
+        )
+
+        completed = next(e for e in events if isinstance(e, StreamCompletedEvent))
+        assert completed.node_run_result.outputs["json"] == [["list-payload"]]
+        assert completed.node_run_result.outputs["usage"]["total_tokens"] == 0
+
+    @patch("core.workflow.nodes.agent.agent_node.BuiltinToolManageService.list_builtin_tools")
+    @patch("core.workflow.nodes.agent.agent_node.ToolFileMessageTransformer.transform_tool_invoke_messages")
+    @patch("core.plugin.impl.plugin.PluginInstaller")
+    def test_transform_message_updates_log_icons_and_merges_duplicate_logs(
+        self,
+        mock_installer,
+        mock_transform,
+        mock_list_builtin_tools,
+        mock_node,
+    ):
+        mock_installer.return_value.list_plugins.return_value = [
+            SimpleNamespace(plugin_id="p", name="n", declaration=SimpleNamespace(icon="plugin-icon"))
+        ]
+        mock_list_builtin_tools.return_value = [SimpleNamespace(name="p/n", icon="builtin-icon", icon_dark="dark-icon")]
+
+        first_log = ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LOG,
+            message=ToolInvokeMessage.LogMessage(
+                id="same-id",
+                label="step",
+                status=ToolInvokeMessage.LogMessage.LogStatus.START,
+                data={"x": 1},
+                metadata={"provider": "p/n"},
+            ),
+        )
+        second_log = ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LOG,
+            message=ToolInvokeMessage.LogMessage(
+                id="same-id",
+                label="step-final",
+                status=ToolInvokeMessage.LogMessage.LogStatus.SUCCESS,
+                data={"x": 2},
+                metadata={"provider": "p/n"},
+            ),
+        )
+        mock_transform.return_value = [first_log, second_log]
+
+        events = list(
+            mock_node._transform_message(
+                messages=iter([]),
+                tool_info={"icon": "fallback"},
+                parameters_for_log={},
+                user_id="u",
+                tenant_id="t",
+                node_type=NodeType.AGENT,
+                node_id="node",
+                node_execution_id="exec",
+            )
+        )
+
+        completed = next(e for e in events if isinstance(e, StreamCompletedEvent))
+        logs = completed.node_run_result.outputs["json"]
+        assert logs[0]["status"] == ToolInvokeMessage.LogMessage.LogStatus.SUCCESS.value
+        assert logs[0]["label"] == "step-final"
+        assert logs[0]["metadata"]["icon"] == "builtin-icon"
+        assert logs[0]["metadata"]["icon_dark"] == "dark-icon"
+
 
 class TestRunMethod:
     @patch("core.workflow.nodes.agent.agent_node.get_plugin_agent_strategy")

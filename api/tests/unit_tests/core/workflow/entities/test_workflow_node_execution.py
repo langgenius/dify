@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
-from core.workflow.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 
 
 class TestWorkflowNodeExecutionProcessDataTruncation:
@@ -223,3 +223,48 @@ class TestWorkflowNodeExecutionProcessDataScenarios:
 
         assert execution.process_data_truncated == scenario.expected_truncated_flag
         assert execution.get_response_process_data() == scenario.expected_response_data
+
+
+class TestWorkflowNodeExecutionResponseAndUpdateMapping:
+    def create_execution(self) -> WorkflowNodeExecution:
+        return WorkflowNodeExecution(
+            id="execution-id",
+            workflow_id="workflow-id",
+            index=1,
+            node_id="node-id",
+            node_type=NodeType.LLM,
+            title="Node",
+            inputs={"original": "input"},
+            outputs={"original": "output"},
+            process_data={"original": "process"},
+            created_at=datetime.now(),
+        )
+
+    def test_response_inputs_and_outputs_prefer_truncated_values(self):
+        execution = self.create_execution()
+        execution.set_truncated_inputs({"truncated": "input"})
+        execution.set_truncated_outputs({"truncated": "output"})
+
+        assert execution.get_response_inputs() == {"truncated": "input"}
+        assert execution.get_response_outputs() == {"truncated": "output"}
+
+        execution.set_truncated_inputs(None)
+        execution.set_truncated_outputs(None)
+        assert execution.get_response_inputs() == {"original": "input"}
+        assert execution.get_response_outputs() == {"original": "output"}
+
+    def test_update_from_mapping_overwrites_runtime_mappings(self):
+        execution = self.create_execution()
+        metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1}
+
+        execution.update_from_mapping(
+            inputs={"new": "input"},
+            process_data={"new": "process"},
+            outputs={"new": "output"},
+            metadata=metadata,
+        )
+
+        assert execution.inputs == {"new": "input"}
+        assert execution.process_data == {"new": "process"}
+        assert execution.outputs == {"new": "output"}
+        assert execution.metadata == metadata
