@@ -21,8 +21,9 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download pyrefly diff artifact
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
@@ -48,12 +49,25 @@ jobs:
         run: unzip -o pyrefly_diff.zip
 
       - name: Post comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             let diff = fs.readFileSync('pyrefly_diff.txt', { encoding: 'utf8' });
-            const prNumber = parseInt(fs.readFileSync('pr_number.txt', { encoding: 'utf8' }), 10);
+            let prNumber = null;
+            try {
+              prNumber = parseInt(fs.readFileSync('pr_number.txt', { encoding: 'utf8' }), 10);
+            } catch (err) {
+              // Fallback to workflow_run payload if artifact is missing or incomplete.
+              const prs = context.payload.workflow_run.pull_requests || [];
+              if (prs.length > 0 && prs[0].number) {
+                prNumber = prs[0].number;
+              }
+            }
+            if (!prNumber) {
+              throw new Error('PR number not found in artifact or workflow_run payload');
+            }
 
             const MAX_CHARS = 65000;
             if (diff.length > MAX_CHARS) {
