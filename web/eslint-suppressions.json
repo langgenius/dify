@@ -4212,9 +4212,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
