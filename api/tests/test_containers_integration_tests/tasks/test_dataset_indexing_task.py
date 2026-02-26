@@ -74,7 +74,7 @@ def session_close_tracker():
 
 
 @pytest.fixture
-def mock_external_service_dependencies():
+def patched_external_dependencies():
     """Patch non-DB collaborators while keeping database behavior real."""
     with (
         patch("tasks.document_indexing_task.IndexingRunner") as mock_indexing_runner,
@@ -203,7 +203,7 @@ class TestDatasetIndexingTaskIntegration:
             assert updated.stopped_at is not None
 
     def test_legacy_document_indexing_task_still_works(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Ensure the legacy task entrypoint still updates parsing status."""
         # Arrange
@@ -214,10 +214,10 @@ class TestDatasetIndexingTaskIntegration:
         document_indexing_task(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_batch_processing_multiple_documents(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_batch_processing_multiple_documents(self, db_session_with_containers, patched_external_dependencies):
         """Process multiple documents in one batch."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
@@ -227,17 +227,20 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
-        run_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_batch_processing_with_limit_check(self, db_session_with_containers, mock_external_service_dependencies):
-        """Reject batches larger than configured upload limit."""
+    def test_batch_processing_with_limit_check(self, db_session_with_containers, patched_external_dependencies):
+        """Reject batches larger than configured upload limit.
+
+        This test patches config only to force a deterministic limit branch while keeping SQL writes real.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 100
@@ -248,17 +251,17 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "batch upload limit")
 
     def test_batch_processing_sandbox_plan_single_document_only(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Reject multi-document upload under sandbox plan."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.SANDBOX
 
@@ -266,10 +269,10 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "does not support batch upload")
 
-    def test_batch_processing_empty_document_list(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_batch_processing_empty_document_list(self, db_session_with_containers, patched_external_dependencies):
         """Handle empty list input without failing."""
         # Arrange
         dataset, _ = self._create_test_dataset_and_documents(db_session_with_containers, document_count=0)
@@ -278,9 +281,9 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [])
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
 
-    def test_document_status_progression(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_document_status_progression(self, db_session_with_containers, patched_external_dependencies):
         """Transition document status from waiting to parsing before runner execution."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
@@ -292,7 +295,7 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_processing_started_timestamp_set(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_processing_started_timestamp_set(self, db_session_with_containers, patched_external_dependencies):
         """Persist processing_started_at for every document in the batch."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
@@ -305,9 +308,12 @@ class TestDatasetIndexingTaskIntegration:
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def test_tenant_queue_processes_next_task_after_completion(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
-        """Dispatch the next queued task after current tenant task completes."""
+        """Dispatch the next queued task after current tenant task completes.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
@@ -316,49 +322,52 @@ class TestDatasetIndexingTaskIntegration:
             "dataset_id": dataset.id,
             "document_ids": [str(uuid.uuid4())],
         }
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[next_task]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time") as mock_set_waiting,
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as mock_delete_key,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time") as set_waiting_spy,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        mock_task_func.delay.assert_called_once_with(
+        task_dispatch_spy.delay.assert_called_once_with(
             tenant_id=next_task["tenant_id"],
             dataset_id=next_task["dataset_id"],
             document_ids=next_task["document_ids"],
         )
-        mock_set_waiting.assert_called_once()
-        mock_delete_key.assert_not_called()
+        set_waiting_spy.assert_called_once()
+        delete_key_spy.assert_not_called()
 
-    def test_tenant_queue_clears_flag_when_no_more_tasks(self, db_session_with_containers, mock_external_service_dependencies):
-        """Delete tenant running flag when queue has no pending tasks."""
+    def test_tenant_queue_clears_flag_when_no_more_tasks(self, db_session_with_containers, patched_external_dependencies):
+        """Delete tenant running flag when queue has no pending tasks.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as mock_delete_key,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        mock_task_func.delay.assert_not_called()
-        mock_delete_key.assert_called_once()
+        task_dispatch_spy.delay.assert_not_called()
+        delete_key_spy.assert_called_once()
 
-    def test_error_handling_sets_document_error_status(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_error_handling_sets_document_error_status(self, db_session_with_containers, patched_external_dependencies):
         """Set error status when validation fails before runner phase."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 100
@@ -368,38 +377,38 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "over the limit")
 
-    def test_error_handling_during_indexing_runner(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_error_handling_during_indexing_runner(self, db_session_with_containers, patched_external_dependencies):
         """Catch generic runner exceptions without crashing the task."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
-        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception("runner failed")
+        patched_external_dependencies["indexing_runner_instance"].run.side_effect = Exception("runner failed")
 
         # Act
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_document_paused_error_handling(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_document_paused_error_handling(self, db_session_with_containers, patched_external_dependencies):
         """Handle DocumentIsPausedError and keep persisted state consistent."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
-        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError("paused")
+        patched_external_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError("paused")
 
         # Act
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_dataset_not_found_error_handling(self, mock_external_service_dependencies):
+    def test_dataset_not_found_error_handling(self, patched_external_dependencies):
         """Exit gracefully when dataset does not exist."""
         # Arrange
         missing_dataset_id = str(uuid.uuid4())
@@ -409,12 +418,15 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(missing_dataset_id, [missing_document_id])
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
 
     def test_tenant_queue_error_handling_still_processes_next_task(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
-        """Even on current task failure, enqueue the next waiting tenant task."""
+        """Even on current task failure, enqueue the next waiting tenant task.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
@@ -423,7 +435,7 @@ class TestDatasetIndexingTaskIntegration:
             "dataset_id": dataset.id,
             "document_ids": [str(uuid.uuid4())],
         }
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
@@ -431,13 +443,16 @@ class TestDatasetIndexingTaskIntegration:
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[next_task]),
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        mock_task_func.delay.assert_called_once()
+        task_dispatch_spy.delay.assert_called_once()
 
-    def test_concurrent_task_limit_respected(self, db_session_with_containers, mock_external_service_dependencies):
-        """Pull and dispatch only up to configured tenant concurrency limit."""
+    def test_concurrent_task_limit_respected(self, db_session_with_containers, patched_external_dependencies):
+        """Pull and dispatch only up to configured tenant concurrency limit.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
@@ -446,7 +461,7 @@ class TestDatasetIndexingTaskIntegration:
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": [f"doc_{idx}"]}
             for idx in range(5)
         ]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
@@ -457,32 +472,35 @@ class TestDatasetIndexingTaskIntegration:
             ),
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert mock_task_func.delay.call_count == concurrency_limit
+        assert task_dispatch_spy.delay.call_count == concurrency_limit
 
-    def test_task_key_deleted_when_queue_empty(self, db_session_with_containers, mock_external_service_dependencies):
-        """Remove tenant running key when no follow-up tasks exist."""
+    def test_task_key_deleted_when_queue_empty(self, db_session_with_containers, patched_external_dependencies):
+        """Remove tenant running key when no follow-up tasks exist.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as mock_delete_key,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        mock_delete_key.assert_called_once()
+        delete_key_spy.assert_called_once()
 
     def test_session_cleanup_on_success(
         self,
         db_session_with_containers,
-        mock_external_service_dependencies,
+        patched_external_dependencies,
         session_close_tracker,
     ):
         """Close all opened sessions in successful indexing path."""
@@ -502,14 +520,14 @@ class TestDatasetIndexingTaskIntegration:
     def test_session_cleanup_on_error(
         self,
         db_session_with_containers,
-        mock_external_service_dependencies,
+        patched_external_dependencies,
         session_close_tracker,
     ):
         """Close opened sessions even when runner fails."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
-        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception("boom")
+        patched_external_dependencies["indexing_runner_instance"].run.side_effect = Exception("boom")
 
         # Act
         _document_indexing(dataset.id, document_ids)
@@ -521,7 +539,7 @@ class TestDatasetIndexingTaskIntegration:
         assert len(closed) >= len(opened)
 
     def test_multiple_documents_with_mixed_success_and_failure(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Process only existing documents when request includes missing ids."""
         # Arrange
@@ -533,14 +551,17 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, mixed_ids)
 
         # Assert
-        run_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == 2
         self._assert_documents_parsing(db_session_with_containers, existing_ids)
 
     def test_tenant_queue_with_multiple_concurrent_tasks(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
-        """Queue exactly the configured number of next tasks for a tenant."""
+        """Queue exactly the configured number of next tasks for a tenant.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
@@ -549,7 +570,7 @@ class TestDatasetIndexingTaskIntegration:
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": [f"doc_{idx}"]}
             for idx in range(5)
         ]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
@@ -558,22 +579,22 @@ class TestDatasetIndexingTaskIntegration:
                 "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
                 return_value=pending_tasks[:concurrency_limit],
             ),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time") as mock_set_waiting,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time") as set_waiting_spy,
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert mock_task_func.delay.call_count == concurrency_limit
-        assert mock_set_waiting.call_count == concurrency_limit
+        assert task_dispatch_spy.delay.call_count == concurrency_limit
+        assert set_waiting_spy.call_count == concurrency_limit
 
     def test_vector_space_limit_edge_case_at_exact_limit(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Reject upload when vector space size is exactly at plan limit."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 100
@@ -585,8 +606,11 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "over the limit")
 
-    def test_task_queue_fifo_ordering(self, db_session_with_containers, mock_external_service_dependencies):
-        """Keep FIFO ordering when dispatching next queued tasks."""
+    def test_task_queue_fifo_ordering(self, db_session_with_containers, patched_external_dependencies):
+        """Keep FIFO ordering when dispatching next queued tasks.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
@@ -595,7 +619,7 @@ class TestDatasetIndexingTaskIntegration:
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": ["task_B"]},
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": ["task_C"]},
         ]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
@@ -603,33 +627,36 @@ class TestDatasetIndexingTaskIntegration:
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=ordered_tasks),
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert mock_task_func.delay.call_count == 3
+        assert task_dispatch_spy.delay.call_count == 3
         for index, expected_task in enumerate(ordered_tasks):
-            assert mock_task_func.delay.call_args_list[index].kwargs["document_ids"] == expected_task["document_ids"]
+            assert task_dispatch_spy.delay.call_args_list[index].kwargs["document_ids"] == expected_task["document_ids"]
 
     def test_empty_queue_after_task_completion_cleans_up(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
-        """Clean up task key when queue is empty right after completion."""
+        """Clean up task key when queue is empty right after completion.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as mock_delete_key,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        mock_delete_key.assert_called_once()
+        delete_key_spy.assert_called_once()
 
-    def test_billing_disabled_skips_limit_checks(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_billing_disabled_skips_limit_checks(self, db_session_with_containers, patched_external_dependencies):
         """Skip limit checks when billing feature is disabled."""
         # Arrange
         large_document_ids = [str(uuid.uuid4()) for _ in range(100)]
@@ -637,19 +664,22 @@ class TestDatasetIndexingTaskIntegration:
             db_session_with_containers,
             document_ids=large_document_ids,
         )
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = False
 
         # Act
         _document_indexing(dataset.id, large_document_ids)
 
         # Assert
-        run_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == 100
         self._assert_documents_parsing(db_session_with_containers, large_document_ids)
 
-    def test_complete_workflow_normal_task(self, db_session_with_containers, mock_external_service_dependencies):
-        """Run end-to-end normal queue workflow with tenant queue cleanup."""
+    def test_complete_workflow_normal_task(self, db_session_with_containers, patched_external_dependencies):
+        """Run end-to-end normal queue workflow with tenant queue cleanup.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
@@ -657,17 +687,20 @@ class TestDatasetIndexingTaskIntegration:
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as mock_delete_key,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
         ):
             normal_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
-        mock_delete_key.assert_called_once()
+        delete_key_spy.assert_called_once()
 
-    def test_complete_workflow_priority_task(self, db_session_with_containers, mock_external_service_dependencies):
-        """Run end-to-end priority queue workflow with tenant queue cleanup."""
+    def test_complete_workflow_priority_task(self, db_session_with_containers, patched_external_dependencies):
+        """Run end-to-end priority queue workflow with tenant queue cleanup.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
         document_ids = [doc.id for doc in documents]
@@ -675,17 +708,20 @@ class TestDatasetIndexingTaskIntegration:
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as mock_delete_key,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
         ):
             priority_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
-        mock_delete_key.assert_called_once()
+        delete_key_spy.assert_called_once()
 
-    def test_queue_chain_processing(self, db_session_with_containers, mock_external_service_dependencies):
-        """After one task finishes, enqueue the next queued task in the chain."""
+    def test_queue_chain_processing(self, db_session_with_containers, patched_external_dependencies):
+        """After one task finishes, enqueue the next queued task in the chain.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         task_1_ids = [doc.id for doc in documents]
@@ -695,20 +731,20 @@ class TestDatasetIndexingTaskIntegration:
             "dataset_id": dataset.id,
             "document_ids": task_2_ids,
         }
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[next_task]),
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, task_1_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, task_1_ids, task_dispatch_spy)
 
         # Assert
-        mock_task_func.delay.assert_called_once()
-        assert mock_task_func.delay.call_args.kwargs["document_ids"] == task_2_ids
+        task_dispatch_spy.delay.assert_called_once()
+        assert task_dispatch_spy.delay.call_args.kwargs["document_ids"] == task_2_ids
 
-    def test_single_document_processing(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_single_document_processing(self, db_session_with_containers, patched_external_dependencies):
         """Process the minimum batch size (single document)."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
@@ -718,11 +754,11 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [document_id])
 
         # Assert
-        run_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == 1
         self._assert_documents_parsing(db_session_with_containers, [document_id])
 
-    def test_document_with_special_characters_in_id(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_document_with_special_characters_in_id(self, db_session_with_containers, patched_external_dependencies):
         """Handle standard UUID ids with hyphen characters safely."""
         # Arrange
         special_document_id = str(uuid.uuid4())
@@ -738,13 +774,13 @@ class TestDatasetIndexingTaskIntegration:
         self._assert_documents_parsing(db_session_with_containers, [special_document_id])
 
     def test_zero_vector_space_limit_allows_unlimited(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Treat vector limit 0 as unlimited and continue indexing."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 0
@@ -754,17 +790,17 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def test_negative_vector_space_values_handled_gracefully(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Treat negative vector limits as non-blocking and continue indexing."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = -1
@@ -774,11 +810,14 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_large_document_batch_processing(self, db_session_with_containers, mock_external_service_dependencies):
-        """Process a batch exactly at configured upload limit."""
+    def test_large_document_batch_processing(self, db_session_with_containers, patched_external_dependencies):
+        """Process a batch exactly at configured upload limit.
+
+        This test patches config only to force a deterministic limit branch while keeping SQL writes real.
+        """
         # Arrange
         batch_limit = 50
         document_ids = [str(uuid.uuid4()) for _ in range(batch_limit)]
@@ -786,7 +825,7 @@ class TestDatasetIndexingTaskIntegration:
             db_session_with_containers,
             document_ids=document_ids,
         )
-        features = mock_external_service_dependencies["features"]
+        features = patched_external_dependencies["features"]
         features.billing.enabled = True
         features.billing.subscription.plan = CloudPlan.PROFESSIONAL
         features.vector_space.limit = 10000
@@ -797,12 +836,15 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing(dataset.id, document_ids)
 
         # Assert
-        run_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == batch_limit
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_tenant_queue_handles_burst_traffic(self, db_session_with_containers, mock_external_service_dependencies):
-        """Handle burst traffic by dispatching only up to concurrency limit."""
+    def test_tenant_queue_handles_burst_traffic(self, db_session_with_containers, patched_external_dependencies):
+        """Handle burst traffic by dispatching only up to concurrency limit.
+
+        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
+        """
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
         document_ids = [doc.id for doc in documents]
@@ -812,7 +854,7 @@ class TestDatasetIndexingTaskIntegration:
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": [f"doc_{idx}"]}
             for idx in range(num_tasks)
         ]
-        mock_task_func = MagicMock()
+        task_dispatch_spy = MagicMock()
 
         # Act
         with (
@@ -823,19 +865,19 @@ class TestDatasetIndexingTaskIntegration:
             ),
             patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
         ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, mock_task_func)
+            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert mock_task_func.delay.call_count == concurrency_limit
+        assert task_dispatch_spy.delay.call_count == concurrency_limit
 
     def test_indexing_runner_exception_does_not_crash_task(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers, patched_external_dependencies
     ):
         """Keep task flow resilient when runner raises unexpected runtime error."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
         document_ids = [doc.id for doc in documents]
-        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = RuntimeError(
+        patched_external_dependencies["indexing_runner_instance"].run.side_effect = RuntimeError(
             "Unexpected indexing error"
         )
 
@@ -843,13 +885,13 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def test_database_session_always_closed_on_success(
         self,
         db_session_with_containers,
-        mock_external_service_dependencies,
+        patched_external_dependencies,
         session_close_tracker,
     ):
         """Close every opened DB session in successful execution path."""
