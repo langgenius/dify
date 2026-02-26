@@ -341,33 +341,6 @@ class TestTaskEnqueuing:
 
 
 # ============================================================================
-# Test Batch Processing
-# ============================================================================
-
-
-class TestBatchProcessing:
-    """Test cases for batch processing of multiple documents."""
-
-
-# ============================================================================
-# Test Progress Tracking
-# ============================================================================
-
-
-class TestProgressTracking:
-    """Test cases for progress tracking through task lifecycle."""
-
-
-# ============================================================================
-# Test Error Handling and Retries
-# ============================================================================
-
-
-class TestErrorHandling:
-    """Test cases for error handling and retry mechanisms."""
-
-
-# ============================================================================
 # Test Task Cancellation
 # ============================================================================
 
@@ -396,19 +369,6 @@ class TestTaskCancellation:
         assert queue_1._task_key != queue_2._task_key
         assert tenant_1 in queue_1._queue
         assert tenant_2 in queue_2._queue
-
-
-# ============================================================================
-# Integration Tests
-# ============================================================================
-
-
-class TestAdvancedScenarios:
-    """Advanced test scenarios for edge cases and complex workflows."""
-
-
-class TestIntegration:
-    """Integration tests for complete task workflows."""
 
 
 # ============================================================================
