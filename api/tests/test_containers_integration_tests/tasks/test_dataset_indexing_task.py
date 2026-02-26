@@ -339,7 +339,9 @@ class TestDatasetIndexingTaskIntegration:
         set_waiting_spy.assert_called_once()
         delete_key_spy.assert_not_called()
 
-    def test_tenant_queue_clears_flag_when_no_more_tasks(self, db_session_with_containers, patched_external_dependencies):
+    def test_tenant_queue_deletes_running_key_when_no_follow_up_tasks(
+        self, db_session_with_containers, patched_external_dependencies
+    ):
         """Delete tenant running flag when queue has no pending tasks.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
@@ -445,26 +447,6 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         task_dispatch_spy.delay.assert_called_once()
-
-    def test_task_key_deleted_when_queue_empty(self, db_session_with_containers, patched_external_dependencies):
-        """Remove tenant running key when no follow-up tasks exist.
-
-        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
-        """
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
-        document_ids = [doc.id for doc in documents]
-        task_dispatch_spy = MagicMock()
-
-        # Act
-        with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
-        ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
-
-        # Assert
-        delete_key_spy.assert_called_once()
 
     def test_session_cleanup_on_success(
         self,
@@ -607,28 +589,6 @@ class TestDatasetIndexingTaskIntegration:
         assert task_dispatch_spy.delay.call_count == 3
         for index, expected_task in enumerate(ordered_tasks):
             assert task_dispatch_spy.delay.call_args_list[index].kwargs["document_ids"] == expected_task["document_ids"]
-
-    def test_empty_queue_after_task_completion_cleans_up(
-        self, db_session_with_containers, patched_external_dependencies
-    ):
-        """Clean up task key when queue is empty right after completion.
-
-        Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
-        """
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
-        document_ids = [doc.id for doc in documents]
-        task_dispatch_spy = MagicMock()
-
-        # Act
-        with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
-        ):
-            _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
-
-        # Assert
-        delete_key_spy.assert_called_once()
 
     def test_billing_disabled_skips_limit_checks(self, db_session_with_containers, patched_external_dependencies):
         """Skip limit checks when billing feature is disabled."""
