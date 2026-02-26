@@ -4,6 +4,7 @@ import pytest
 
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.nodes.http_request.config import build_http_request_config
 from core.workflow.nodes.http_request.entities import (
     HttpRequestNodeTimeout,
 )
@@ -12,7 +13,6 @@ from core.workflow.nodes.http_request.exc import (
     RequestBodyError,
 )
 from core.workflow.nodes.http_request.node import (
-    HTTP_REQUEST_DEFAULT_TIMEOUT,
     HttpRequestNode,
     default_file_manager,
     ssrf_proxy,
@@ -30,6 +30,7 @@ def node():
             config={},
             graph_init_params=MagicMock(),
             graph_runtime_state=MagicMock(),
+            http_request_config=build_http_request_config(),
         )
 
         node.user_id = "user1"
@@ -52,16 +53,16 @@ class TestMetadata:
 
 
 class TestTimeout:
-    def test_timeout_none(self):
+    def test_timeout_none(self, node):
         node_data = MagicMock(timeout=None)
-        result = HttpRequestNode._get_request_timeout(node_data)
-        assert result == HTTP_REQUEST_DEFAULT_TIMEOUT
+        result = node._get_request_timeout(node_data)
+        assert result == node._http_request_config.default_timeout()
 
-    def test_timeout_full(self):
+    def test_timeout_full(self, node):
         timeout = HttpRequestNodeTimeout(connect=1, read=2, write=3)
         node_data = MagicMock(timeout=timeout)
 
-        result = HttpRequestNode._get_request_timeout(node_data)
+        result = node._get_request_timeout(node_data)
 
         assert result.connect == 1
         assert result.read == 2
@@ -244,6 +245,7 @@ class TestInitCoverage:
                 config={},
                 graph_init_params=MagicMock(),
                 graph_runtime_state=MagicMock(),
+                http_request_config=build_http_request_config(),
             )
 
             assert node._http_client == ssrf_proxy
