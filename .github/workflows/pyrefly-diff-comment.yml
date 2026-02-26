@@ -1,0 +1,88 @@
+name: Comment with Pyrefly Diff
+
+on:
+  workflow_run:
+    workflows:
+      - Pyrefly Diff Check
+    types:
+      - completed
+
+permissions: {}
+
+jobs:
+  comment:
+    name: Comment PR with pyrefly diff
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].head.repo.full_name != github.repository }}
+    steps:
+      - name: Download pyrefly diff artifact
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }},
+            });
+            const match = artifacts.data.artifacts.find((artifact) =>
+              artifact.name === 'pyrefly_diff'
+            );
+            if (!match) {
+              throw new Error('pyrefly_diff artifact not found');
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: match.id,
+              archive_format: 'zip',
+            });
+            fs.writeFileSync('pyrefly_diff.zip', Buffer.from(download.data));
+
+      - name: Unzip artifact
+        run: unzip -o pyrefly_diff.zip
+
+      - name: Post comment
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let diff = fs.readFileSync('pyrefly_diff.txt', { encoding: 'utf8' });
+            let prNumber = null;
+            try {
+              prNumber = parseInt(fs.readFileSync('pr_number.txt', { encoding: 'utf8' }), 10);
+            } catch (err) {
+              // Fallback to workflow_run payload if artifact is missing or incomplete.
+              const prs = context.payload.workflow_run.pull_requests || [];
+              if (prs.length > 0 && prs[0].number) {
+                prNumber = prs[0].number;
+              }
+            }
+            if (!prNumber) {
+              throw new Error('PR number not found in artifact or workflow_run payload');
+            }
+
+            const MAX_CHARS = 65000;
+            if (diff.length > MAX_CHARS) {
+              diff = diff.slice(0, MAX_CHARS);
+              diff = diff.slice(0, diff.lastIndexOf('\\n'));
+              diff += '\\n\\n... (truncated) ...';
+            }
+
+            const body = diff.trim()
+              ? `### Pyrefly Diff (base → PR)\\n\\`\\`\\`diff\\n${diff}\\n\\`\\`\\``
+              : '### Pyrefly Diff\\nNo changes detected.';
+
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
