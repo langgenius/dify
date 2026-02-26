@@ -380,7 +380,9 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "over the limit")
 
-    def test_error_handling_during_indexing_runner(self, db_session_with_containers, patched_external_dependencies):
+    def test_runner_exception_does_not_crash_indexing_task(
+        self, db_session_with_containers, patched_external_dependencies
+    ):
         """Catch generic runner exceptions without crashing the task."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
@@ -772,24 +774,6 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
         assert len(run_args) == batch_limit
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
-
-    def test_indexing_runner_exception_does_not_crash_task(
-        self, db_session_with_containers, patched_external_dependencies
-    ):
-        """Keep task flow resilient when runner raises unexpected runtime error."""
-        # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
-        document_ids = [doc.id for doc in documents]
-        patched_external_dependencies["indexing_runner_instance"].run.side_effect = RuntimeError(
-            "Unexpected indexing error"
-        )
-
-        # Act
-        _document_indexing(dataset.id, document_ids)
-
-        # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def test_database_session_always_closed_on_success(
