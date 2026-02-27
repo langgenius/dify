@@ -1,24 +1,8 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import {
-  RiBrain2Fill,
-  RiBrain2Line,
-  RiCloseLine,
-  RiColorFilterFill,
-  RiColorFilterLine,
-  RiDatabase2Fill,
-  RiDatabase2Line,
-  RiGroup2Fill,
-  RiGroup2Line,
-  RiMoneyDollarCircleFill,
-  RiMoneyDollarCircleLine,
-  RiPuzzle2Fill,
-  RiPuzzle2Line,
-  RiTranslate2,
-} from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import SearchInput from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -76,14 +60,14 @@ export default function AccountSetting({
       {
         key: ACCOUNT_SETTING_TAB.PROVIDER,
         name: t('settings.provider', { ns: 'common' }),
-        icon: <RiBrain2Line className={iconClassName} />,
-        activeIcon: <RiBrain2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.MEMBERS,
         name: t('settings.members', { ns: 'common' }),
-        icon: <RiGroup2Line className={iconClassName} />,
-        activeIcon: <RiGroup2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
       },
     ]
 
@@ -92,8 +76,8 @@ export default function AccountSetting({
         key: ACCOUNT_SETTING_TAB.BILLING,
         name: t('settings.billing', { ns: 'common' }),
         description: t('plansCommon.receiptInfo', { ns: 'billing' }),
-        icon: <RiMoneyDollarCircleLine className={iconClassName} />,
-        activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
+        icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
       })
     }
 
@@ -101,14 +85,14 @@ export default function AccountSetting({
       {
         key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
         name: t('settings.dataSource', { ns: 'common' }),
-        icon: <RiDatabase2Line className={iconClassName} />,
-        activeIcon: <RiDatabase2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
       },
       {
         key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
         name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <RiPuzzle2Line className={iconClassName} />,
-        activeIcon: <RiPuzzle2Fill className={iconClassName} />,
+        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
       },
     )
 
@@ -116,8 +100,8 @@ export default function AccountSetting({
       items.push({
         key: ACCOUNT_SETTING_TAB.CUSTOM,
         name: t('custom', { ns: 'custom' }),
-        icon: <RiColorFilterLine className={iconClassName} />,
-        activeIcon: <RiColorFilterFill className={iconClassName} />,
+        icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
       })
     }
 
@@ -140,8 +124,8 @@ export default function AccountSetting({
         {
           key: ACCOUNT_SETTING_TAB.LANGUAGE,
           name: t('settings.language', { ns: 'common' }),
-          icon: <RiTranslate2 className={iconClassName} />,
-          activeIcon: <RiTranslate2 className={iconClassName} />,
+          icon: <span className={cn('i-ri-translate-2', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-translate-2', iconClassName)} />,
         },
       ],
     },
@@ -171,13 +155,13 @@ export default function AccountSetting({
     >
       <div className="mx-auto flex h-[100vh] max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
-          <div className="title-2xl-semi-bold mb-8 mt-6 px-3 py-2 text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
+          <div className="mb-8 mt-6 px-3 py-2 text-text-primary title-2xl-semi-bold">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="system-xs-medium-uppercase mb-0.5 py-2 pb-1 pl-3 text-text-tertiary">{menuItem.name}</div>
+                    <div className="mb-0.5 py-2 pb-1 pl-3 text-text-tertiary system-xs-medium-uppercase">{menuItem.name}</div>
                   )}
                   <div>
                     {
@@ -186,7 +170,7 @@ export default function AccountSetting({
                           key={item.key}
                           className={cn(
                             'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
-                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
+                            activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium',
                           )}
                           title={item.name}
                           onClick={() => {
@@ -213,25 +197,23 @@ export default function AccountSetting({
               className="px-2"
               onClick={onCancel}
             >
-              <RiCloseLine className="h-5 w-5" />
+              <span className="i-ri-close-line h-5 w-5" />
             </Button>
-            <div className="system-2xs-medium-uppercase mt-1 text-text-tertiary">ESC</div>
+            <div className="mt-1 text-text-tertiary system-2xs-medium-uppercase">ESC</div>
           </div>
           <div ref={scrollRef} className="w-full overflow-y-auto bg-components-panel-bg pb-4">
             <div className={cn('sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
-              <div className="title-2xl-semi-bold shrink-0 text-text-primary">
+              <div className="shrink-0 text-text-primary title-2xl-semi-bold">
                 {activeItem?.name}
                 {activeItem?.description && (
-                  <div className="system-sm-regular mt-1 text-text-tertiary">{activeItem?.description}</div>
+                  <div className="mt-1 text-text-tertiary system-sm-regular">{activeItem?.description}</div>
                 )}
               </div>
               {activeItem?.key === 'provider' && (
                 <div className="flex grow justify-end">
-                  <Input
-                    showLeftIcon
-                    wrapperClassName="!w-[200px]"
-                    className="!h-8 !text-[13px]"
-                    onChange={e => setSearchValue(e.target.value)}
+                  <SearchInput
+                    className="w-[200px]"
+                    onChange={setSearchValue}
                     value={searchValue}
                   />
                 </div>
