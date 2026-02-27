@@ -56,8 +56,6 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
-    core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
-    core.workflow.graph_engine.manager -> extensions.ext_redis
     # TODO(QuantumGhost): use DI to avoid depending on global DB.
     core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
 
@@ -105,7 +103,6 @@ forbidden_modules =
     core.variables
 ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
-    core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.workflow_entry -> core.app.workflow.layers.observability
     core.workflow.nodes.agent.agent_node -> core.model_manager
     core.workflow.nodes.agent.agent_node -> core.provider_manager
@@ -242,7 +239,6 @@ ignore_imports =
     core.workflow.variable_loader -> core.variables
     core.workflow.variable_loader -> core.variables.consts
     core.workflow.workflow_type_encoder -> core.variables
-    core.workflow.graph_engine.manager -> extensions.ext_redis
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
