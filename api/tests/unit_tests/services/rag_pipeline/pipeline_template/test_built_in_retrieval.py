@@ -54,3 +54,57 @@ def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker) -> N
     result = retrieval.get_pipeline_templates("fr-FR")
 
     assert result == {}
+
+
+def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker) -> None:
+    mocker.patch.object(
+        BuiltInPipelineTemplateRetrieval,
+        "_get_builtin_data",
+        return_value={"pipeline_templates": {"tpl-1": {"id": "tpl-1"}}},
+    )
+    retrieval = BuiltInPipelineTemplateRetrieval()
+
+    result = retrieval.get_pipeline_template_detail("nonexistent-id")
+
+    assert result is None
+
+
+def test_get_builtin_data_reads_from_file_and_caches(mocker) -> None:
+    import json
+
+    # Ensure no cached data
+    BuiltInPipelineTemplateRetrieval.builtin_data = None
+
+    mock_app = mocker.Mock()
+    mock_app.root_path = "/fake/root"
+
+    mocker.patch(
+        "services.rag_pipeline.pipeline_template.built_in.built_in_retrieval.current_app",
+        mock_app,
+    )
+
+    test_data = {"pipeline_templates": {"en-US": {"templates": []}}}
+    mocker.patch(
+        "services.rag_pipeline.pipeline_template.built_in.built_in_retrieval.Path.read_text",
+        return_value=json.dumps(test_data),
+    )
+
+    result = BuiltInPipelineTemplateRetrieval._get_builtin_data()
+
+    assert result == test_data
+    assert BuiltInPipelineTemplateRetrieval.builtin_data == test_data
+
+    # Reset class state
+    BuiltInPipelineTemplateRetrieval.builtin_data = None
+
+
+def test_get_builtin_data_returns_cache_on_second_call(mocker) -> None:
+    cached_data = {"pipeline_templates": {"en-US": {}}}
+    BuiltInPipelineTemplateRetrieval.builtin_data = cached_data
+
+    result = BuiltInPipelineTemplateRetrieval._get_builtin_data()
+
+    assert result == cached_data
+
+    # Reset class state
+    BuiltInPipelineTemplateRetrieval.builtin_data = None

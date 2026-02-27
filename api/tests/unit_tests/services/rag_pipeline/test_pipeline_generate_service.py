@@ -104,3 +104,43 @@ def test_update_document_status_skips_when_document_missing(mocker) -> None:
 
     add_mock.assert_not_called()
     commit_mock.assert_not_called()
+
+
+# --- generate_single_iteration ---
+
+
+def test_generate_single_iteration_delegates(mocker) -> None:
+    mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
+
+    generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
+    generator_instance = generator_cls.return_value
+    generator_instance.single_iteration_generate.return_value = "raw-iter"
+    generator_cls.convert_to_event_stream.return_value = "stream-iter"
+
+    pipeline = SimpleNamespace(id="p1")
+    user = SimpleNamespace(id="u1")
+
+    result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"})
+
+    assert result == "stream-iter"
+    generator_instance.single_iteration_generate.assert_called_once()
+
+
+# --- generate_single_loop ---
+
+
+def test_generate_single_loop_delegates(mocker) -> None:
+    mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
+
+    generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
+    generator_instance = generator_cls.return_value
+    generator_instance.single_loop_generate.return_value = "raw-loop"
+    generator_cls.convert_to_event_stream.return_value = "stream-loop"
+
+    pipeline = SimpleNamespace(id="p1")
+    user = SimpleNamespace(id="u1")
+
+    result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"})
+
+    assert result == "stream-loop"
+    generator_instance.single_loop_generate.assert_called_once()
