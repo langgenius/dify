@@ -33,6 +33,7 @@ def _mock_model_instance(*, schema: dict | None = None) -> SimpleNamespace:
     return SimpleNamespace(
         provider="provider",
         model="model-a",
+        model_name="model-a",
         credentials={"api_key": "x"},
         model_type_instance=model_type_instance,
         get_llm_num_tokens=lambda prompt_messages: 5,
