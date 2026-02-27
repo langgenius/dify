@@ -249,6 +249,7 @@
     "overrides": {
       "@monaco-editor/loader": "1.5.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
+      "@stylistic/eslint-plugin": "https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8",
       "array-includes": "npm:@nolyfill/array-includes@^1",
       "array.prototype.findlast": "npm:@nolyfill/array.prototype.findlast@^1",
       "array.prototype.findlastindex": "npm:@nolyfill/array.prototype.findlastindex@^1",
