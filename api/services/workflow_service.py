@@ -26,6 +26,7 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, N
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
     HumanInputNodeData,
@@ -618,9 +619,22 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs: list[Mapping[str, object]] = []
-        for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
+        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
             node_class = node_class_mapping[LATEST_VERSION]
-            default_config = node_class.get_default_config()
+            filters = None
+            if node_type is NodeType.HTTP_REQUEST:
+                filters = {
+                    HTTP_REQUEST_CONFIG_FILTER_KEY: build_http_request_config(
+                        max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+                        max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+                        max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                        max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+                        max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+                        ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                        ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                    )
+                }
+            default_config = node_class.get_default_config(filters=filters)
             if default_config:
                 default_block_configs.append(default_config)
 
@@ -642,7 +656,18 @@ class WorkflowService:
             return {}
 
         node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
-        default_config = node_class.get_default_config(filters=filters)
+        resolved_filters = dict(filters) if filters else {}
+        if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in resolved_filters:
+            resolved_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
+                max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+                max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+                max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+                max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+                ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+            )
+        default_config = node_class.get_default_config(filters=resolved_filters or None)
         if not default_config:
             return {}
 

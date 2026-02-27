@@ -1,8 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -63,24 +60,28 @@ const MemberSelector: FC<Props> = ({
         className="w-full"
         onClick={() => setOpen(v => !v)}
       >
-        <div className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>
+        <div
+          data-testid="member-selector-trigger"
+          className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}
+        >
           {!currentValue && (
-            <div className="system-sm-regular grow p-1 text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
+            <div className="grow p-1 text-components-input-text-placeholder system-sm-regular">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
           )}
           {currentValue && (
             <>
               <Avatar avatar={currentValue.avatar_url} size={24} name={currentValue.name} />
-              <div className="system-sm-medium grow truncate text-text-secondary">{currentValue.name}</div>
-              <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
+              <div className="grow truncate text-text-secondary system-sm-medium">{currentValue.name}</div>
+              <div className="text-text-quaternary system-xs-regular">{currentValue.email}</div>
             </>
           )}
-          <RiArrowDownSLine className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+          <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">
         <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
           <div className="p-2 pb-1">
             <Input
+              data-testid="member-selector-search"
               showLeftIcon
               value={searchValue}
               onChange={e => setSearchValue(e.target.value)}
@@ -90,6 +91,7 @@ const MemberSelector: FC<Props> = ({
             {filteredList.map(account => (
               <div
                 key={account.id}
+                data-testid="member-selector-item"
                 className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
                 onClick={() => {
                   onSelect(account.id)
@@ -97,8 +99,8 @@ const MemberSelector: FC<Props> = ({
                 }}
               >
                 <Avatar avatar={account.avatar_url} size={24} name={account.name} />
-                <div className="system-sm-medium grow truncate text-text-secondary">{account.name}</div>
-                <div className="system-xs-regular text-text-quaternary">{account.email}</div>
+                <div className="grow truncate text-text-secondary system-sm-medium">{account.name}</div>
+                <div className="text-text-quaternary system-xs-regular">{account.email}</div>
               </div>
             ))}
           </div>
