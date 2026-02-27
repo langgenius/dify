@@ -2811,7 +2811,7 @@ packages:
         optional: true
 
   '@stylistic/eslint-plugin@https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8':
-    resolution: {integrity: sha512-Yisv+b7hdYyFLAc3/nR4eAqcdhS+UKNwNxPedEL3+CaBEKOIN0kZPmSc6uQsXyMxb7IlhfujbYqu6eBm7KVbWw==, tarball: https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8}
+    resolution: {tarball: https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8}
     version: 5.9.0
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -11419,13 +11419,16 @@ snapshots:
   acorn-import-phases@1.0.4(acorn@8.16.0):
     dependencies:
       acorn: 8.16.0
-    optional: true
 
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
       acorn: 8.15.0
 
   acorn-jsx@5.3.2(acorn@8.16.0):
+    dependencies:
+      acorn: 8.16.0
+
+  acorn-loose@8.5.2:
     dependencies:
       acorn: 8.16.0
 
@@ -12943,8 +12946,7 @@ snapshots:
     dependencies:
       fast-string-truncated-width: 3.0.3
 
-  fast-uri@3.1.0:
-    optional: true
+  fast-uri@3.1.0: {}
 
   fastq@1.20.1:
     dependencies:
