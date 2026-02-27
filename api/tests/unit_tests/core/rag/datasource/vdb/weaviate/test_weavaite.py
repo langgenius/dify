@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
 
 
-def test_init_client_with_valid_config(self):
+def test_init_client_with_valid_config():
     """Test successful client initialization with valid configuration."""
     config = WeaviateConfig(
         endpoint="http://localhost:8080",
