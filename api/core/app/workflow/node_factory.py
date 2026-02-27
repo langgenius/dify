@@ -1,9 +1,10 @@
-from typing import TYPE_CHECKING, final
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeExecutor
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -13,7 +14,8 @@ from core.workflow.enums import NodeType
 from core.workflow.file.file_manager import file_manager
 from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.code_node import CodeNode
+from core.workflow.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
+from core.workflow.nodes.code.entities import CodeLanguage
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
@@ -25,6 +27,24 @@ from core.workflow.nodes.template_transform.template_transform_node import Templ
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
+
+
+class DefaultWorkflowCodeExecutor:
+    def execute(
+        self,
+        *,
+        language: CodeLanguage,
+        code: str,
+        inputs: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        return CodeExecutor.execute_workflow_code_template(
+            language=language,
+            code=code,
+            inputs=inputs,
+        )
+
+    def is_execution_error(self, error: Exception) -> bool:
+        return isinstance(error, CodeExecutionError)
 
 
 @final
@@ -43,7 +63,7 @@ class DifyNodeFactory(NodeFactory):
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
-        self._code_executor: type[CodeExecutor] = CodeExecutor
+        self._code_executor: WorkflowCodeExecutor = DefaultWorkflowCodeExecutor()
         self._code_providers: tuple[type[CodeNodeProvider], ...] = CodeNode.default_code_providers()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
