@@ -3,7 +3,6 @@ import logging
 
 import flask
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
-from opentelemetry.semconv._incubating.attributes.http_attributes import HTTP_METHOD, HTTP_TARGET
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
