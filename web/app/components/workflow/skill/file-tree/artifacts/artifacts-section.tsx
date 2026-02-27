@@ -1,12 +1,13 @@
 'use client'
 
 import type { SandboxFileTreeNode } from '@/types/sandbox-file'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FolderSpark from '@/app/components/base/icons/src/vender/workflow/FolderSpark'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
+import { buildTreeFromFlatList, sandboxFilesTreeOptions, useDownloadSandboxFile } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import ArtifactsTree from './artifacts-tree'
@@ -21,7 +22,9 @@ const ArtifactsSection = ({ className }: ArtifactsSectionProps) => {
 
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const { data: treeData, hasFiles, isLoading } = useSandboxFilesTree(appId)
+  const { data: flatData, isLoading } = useQuery(sandboxFilesTreeOptions(appId))
+  const treeData = useMemo(() => flatData ? buildTreeFromFlatList(flatData) : undefined, [flatData])
+  const hasFiles = (flatData?.length ?? 0) > 0
 
   const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(appId)
   const storeApi = useWorkflowStore()

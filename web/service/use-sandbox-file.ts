@@ -2,8 +2,8 @@ import type {
   SandboxFileNode,
   SandboxFileTreeNode,
 } from '@/types/sandbox-file'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { skipToken, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { consoleClient, consoleQuery } from '@/service/client'
 
 export function sandboxFileDownloadUrlOptions(appId: string | undefined, path: string | undefined) {
@@ -92,22 +92,4 @@ export function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTree
   }
 
   return roots
-}
-
-export function useSandboxFilesTree(appId: string | undefined) {
-  const { data, isLoading, error } = useQuery(sandboxFilesTreeOptions(appId))
-
-  const treeData = useMemo(() => {
-    if (!data)
-      return undefined
-    return buildTreeFromFlatList(data)
-  }, [data])
-
-  return {
-    data: treeData,
-    flatData: data,
-    hasFiles: (data?.length ?? 0) > 0,
-    isLoading,
-    error,
-  }
 }

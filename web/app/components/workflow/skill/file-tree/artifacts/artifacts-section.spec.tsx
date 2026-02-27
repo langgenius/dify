@@ -1,4 +1,4 @@
-import type { SandboxFileDownloadTicket, SandboxFileTreeNode } from '@/types/sandbox-file'
+import type { SandboxFileDownloadTicket, SandboxFileNode } from '@/types/sandbox-file'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ArtifactsSection from './artifacts-section'
 
@@ -12,13 +12,17 @@ const mocks = vi.hoisted(() => ({
     appId: 'app-1',
     selectedArtifactPath: null,
   } as MockStoreState,
-  treeData: undefined as SandboxFileTreeNode[] | undefined,
-  hasFiles: false,
+  flatData: [] as SandboxFileNode[],
   isLoading: false,
   isDownloading: false,
   selectArtifact: vi.fn(),
   fetchDownloadUrl: vi.fn<(path: string) => Promise<SandboxFileDownloadTicket>>(),
   downloadUrl: vi.fn(),
+  mockUseQuery: vi.fn(),
+  mockTreeOptions: vi.fn().mockReturnValue({
+    queryKey: ['sandboxFile', 'listFiles'],
+    queryFn: vi.fn(),
+  }),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -30,12 +34,14 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/service/use-sandbox-file', () => ({
-  useSandboxFilesTree: () => ({
-    data: mocks.treeData,
-    hasFiles: mocks.hasFiles,
-    isLoading: mocks.isLoading,
-  }),
+vi.mock('@tanstack/react-query', async importOriginal => ({
+  ...await importOriginal<typeof import('@tanstack/react-query')>(),
+  useQuery: (options: unknown) => mocks.mockUseQuery(options),
+}))
+
+vi.mock('@/service/use-sandbox-file', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/service/use-sandbox-file')>()),
+  sandboxFilesTreeOptions: (...args: unknown[]) => mocks.mockTreeOptions(...args),
   useDownloadSandboxFile: () => ({
     mutateAsync: mocks.fetchDownloadUrl,
     isPending: mocks.isDownloading,
@@ -46,15 +52,12 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: (...args: unknown[]) => mocks.downloadUrl(...args),
 }))
 
-const createNode = (overrides: Partial<SandboxFileTreeNode> = {}): SandboxFileTreeNode => ({
-  id: 'node-1',
-  name: 'report.txt',
+const createFlatFileNode = (overrides: Partial<SandboxFileNode> = {}): SandboxFileNode => ({
   path: 'report.txt',
-  node_type: 'file',
+  is_dir: false,
   size: 1,
   mtime: 1700000000,
   extension: 'txt',
-  children: [],
   ...overrides,
 })
 
@@ -63,14 +66,26 @@ describe('ArtifactsSection', () => {
     vi.clearAllMocks()
     mocks.storeState.appId = 'app-1'
     mocks.storeState.selectedArtifactPath = null
-    mocks.treeData = undefined
-    mocks.hasFiles = false
+    mocks.flatData = []
     mocks.isLoading = false
     mocks.isDownloading = false
     mocks.fetchDownloadUrl.mockResolvedValue({
       download_url: 'https://example.com/download/report.txt',
       expires_in: 3600,
       export_id: 'abc123def4567890',
+    })
+    mocks.mockUseQuery.mockImplementation((options: { queryKey?: unknown }) => {
+      const treeKey = mocks.mockTreeOptions.mock.results.at(-1)?.value?.queryKey
+      if (treeKey && options.queryKey === treeKey) {
+        return {
+          data: mocks.flatData,
+          isLoading: mocks.isLoading,
+        }
+      }
+      return {
+        data: undefined,
+        isLoading: false,
+      }
     })
   })
 
@@ -85,8 +100,7 @@ describe('ArtifactsSection', () => {
     })
 
     it('should show blue dot when collapsed and files exist', () => {
-      mocks.hasFiles = true
-      mocks.treeData = [createNode()]
+      mocks.flatData = [createFlatFileNode()]
 
       const { container } = render(<ArtifactsSection />)
 
@@ -125,10 +139,9 @@ describe('ArtifactsSection', () => {
   // Covers real tree integration for selecting and downloading artifacts.
   describe('Artifacts tree interactions', () => {
     it('should render file rows and select artifact path when a file is clicked', () => {
-      const selectedFile = createNode({ id: 'selected', name: 'a.txt', path: 'a.txt' })
-      const otherFile = createNode({ id: 'other', name: 'b.txt', path: 'b.txt' })
-      mocks.hasFiles = true
-      mocks.treeData = [selectedFile, otherFile]
+      const selectedFile = createFlatFileNode({ path: 'a.txt', extension: 'txt' })
+      const otherFile = createFlatFileNode({ path: 'b.txt', extension: 'txt' })
+      mocks.flatData = [selectedFile, otherFile]
       mocks.storeState.selectedArtifactPath = 'a.txt'
 
       render(<ArtifactsSection />)
@@ -143,9 +156,8 @@ describe('ArtifactsSection', () => {
     })
 
     it('should request download URL and trigger browser download when file download succeeds', async () => {
-      const file = createNode({ name: 'export.csv', path: 'export.csv', extension: 'csv' })
-      mocks.hasFiles = true
-      mocks.treeData = [file]
+      const file = createFlatFileNode({ path: 'export.csv', extension: 'csv' })
+      mocks.flatData = [file]
       mocks.fetchDownloadUrl.mockResolvedValue({
         download_url: 'https://example.com/download/export.csv',
         expires_in: 3600,
@@ -168,11 +180,10 @@ describe('ArtifactsSection', () => {
     })
 
     it('should log error and skip browser download when download request fails', async () => {
-      const file = createNode({ name: 'broken.bin', path: 'broken.bin', extension: 'bin' })
+      const file = createFlatFileNode({ path: 'broken.bin', extension: 'bin' })
       const error = new Error('request failed')
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mocks.hasFiles = true
-      mocks.treeData = [file]
+      mocks.flatData = [file]
       mocks.fetchDownloadUrl.mockRejectedValue(error)
 
       render(<ArtifactsSection />)
@@ -188,9 +199,8 @@ describe('ArtifactsSection', () => {
     })
 
     it('should disable download buttons when a download request is pending', () => {
-      const file = createNode({ name: 'asset.png', path: 'asset.png', extension: 'png' })
-      mocks.hasFiles = true
-      mocks.treeData = [file]
+      const file = createFlatFileNode({ path: 'asset.png', extension: 'png' })
+      mocks.flatData = [file]
       mocks.isDownloading = true
 
       render(<ArtifactsSection />)
