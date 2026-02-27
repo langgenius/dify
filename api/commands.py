@@ -310,6 +310,7 @@ def migrate_knowledge_vector_database():
         VectorType.OPENGAUSS,
         VectorType.TABLESTORE,
         VectorType.MATRIXONE,
+        VectorType.HOLOGRES,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,

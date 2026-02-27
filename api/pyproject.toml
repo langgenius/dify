@@ -230,6 +230,7 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
     "mysql-connector-python>=9.3.0",
+    "holo-search-sdk>=0.4.1",
 ]
 
 [tool.mypy]
