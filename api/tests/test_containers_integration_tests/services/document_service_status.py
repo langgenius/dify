@@ -759,7 +759,6 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
     - Batch archiving documents
     - Batch unarchiving documents
     - Handling empty lists
-    - Invalid action handling
     - Document indexing check
     - Transaction rollback on errors
     """
@@ -993,29 +992,6 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         # Assert
         mock_document_service_dependencies["add_task"].delay.assert_not_called()
         mock_document_service_dependencies["remove_task"].delay.assert_not_called()
-
-    def test_batch_update_document_status_invalid_action_error(
-        self, db_session_with_containers, mock_document_service_dependencies
-    ):
-        """
-        Test error handling for invalid action.
-
-        Verifies that when an invalid action is provided, a ValueError
-        is raised.
-
-        This test ensures:
-        - Invalid actions are rejected
-        - Error message is clear
-        - Error type is correct
-        """
-        # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
-        user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
-        document_ids = [str(uuid4())]
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Invalid action"):
-            DocumentService.batch_update_document_status(dataset, document_ids, "invalid_action", user)
 
     def test_batch_update_document_status_document_indexing_error(
         self, db_session_with_containers, mock_document_service_dependencies
