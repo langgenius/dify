@@ -112,11 +112,11 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "is_truncated": fields.Boolean(attribute=lambda model: model.file_id is not None),
 }
 
-_WORKFLOW_DRAFT_VARIABLE_FIELDS = dict(
-    _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
-    value=fields.Raw(attribute=_serialize_var_value),
-    full_content=fields.Raw(attribute=_serialize_full_content),
-)
+_WORKFLOW_DRAFT_VARIABLE_FIELDS = {
+    **_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
+    "value": fields.Raw(attribute=_serialize_var_value),
+    "full_content": fields.Raw(attribute=_serialize_full_content),
+}
 
 _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
     "id": fields.String,
