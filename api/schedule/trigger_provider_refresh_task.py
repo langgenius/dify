@@ -3,6 +3,7 @@ import math
 import time
 from collections.abc import Iterable, Sequence
 
+from celery import current_app
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
@@ -86,11 +87,17 @@ def trigger_provider_refresh() -> None:
             acquired: list[bool] = _acquire_locks(keys=lock_keys, ttl_seconds=lock_ttl)
 
             enqueued: int = 0
-            for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired):
-                if not is_locked:
-                    continue
-                trigger_subscription_refresh.delay(tenant_id=tenant_id, subscription_id=subscription_id)
-                enqueued += 1
+            # Reuse a single Celery connection for this page to reduce Redis connection churn
+            if any(acquired):
+                with current_app.producer_or_acquire() as producer:  # type: ignore
+                    for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired):
+                        if not is_locked:
+                            continue
+                        trigger_subscription_refresh.apply_async(
+                            kwargs={"tenant_id": tenant_id, "subscription_id": subscription_id},
+                            producer=producer,
+                        )
+                        enqueued += 1
 
             logger.info(
                 "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d",
