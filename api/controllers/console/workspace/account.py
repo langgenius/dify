@@ -547,12 +547,16 @@ class ChangeEmailSendEmailApi(Resource):
         account = None
         user_email = None
         email_for_sending = args.email.lower()
-        if args.phase is not None and args.phase == "new_email":
+        if args.phase is not None and args.phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
             if args.token is None:
                 raise InvalidTokenError()
 
             reset_data = AccountService.get_change_email_data(args.token)
             if reset_data is None:
+                raise InvalidTokenError()
+
+            token_phase = reset_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+            if token_phase != AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED:
                 raise InvalidTokenError()
             user_email = reset_data.get("email", "")
 
@@ -608,12 +612,23 @@ class ChangeEmailCheckApi(Resource):
             AccountService.add_change_email_error_rate_limit(user_email)
             raise EmailCodeError()
 
+        token_phase = token_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+        if token_phase == AccountService.CHANGE_EMAIL_PHASE_OLD:
+            refreshed_phase = AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED
+        elif token_phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
+            refreshed_phase = AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED
+        else:
+            raise InvalidTokenError()
+
         # Verified, revoke the first token
         AccountService.revoke_change_email_token(args.token)
 
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_change_email_token(
-            user_email, code=args.code, old_email=token_data.get("old_email"), additional_data={}
+            user_email,
+            code=args.code,
+            old_email=token_data.get("old_email"),
+            additional_data={AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: refreshed_phase},
         )
 
         AccountService.reset_change_email_error_rate_limit(user_email)
@@ -643,12 +658,21 @@ class ChangeEmailResetApi(Resource):
         if not reset_data:
             raise InvalidTokenError()
 
-        AccountService.revoke_change_email_token(args.token)
+        token_phase = reset_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+        if token_phase != AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED:
+            raise InvalidTokenError()
+
+        token_email = reset_data.get("email")
+        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+        if normalized_token_email != normalized_new_email:
+            raise InvalidTokenError()
 
         old_email = reset_data.get("old_email", "")
         current_user, _ = current_account_with_tenant()
         if current_user.email.lower() != old_email.lower():
             raise AccountNotFound()
+
+        AccountService.revoke_change_email_token(args.token)
 
         updated_account = AccountService.update_account_email(current_user, email=normalized_new_email)
 
