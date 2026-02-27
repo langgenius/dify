@@ -8,12 +8,12 @@ This module validates SQL-backed behavior for document sync flows:
 """
 
 import json
-from uuid import uuid4
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import pytest
-from psycopg2.extras import Json
 from psycopg2.extensions import register_adapter
+from psycopg2.extras import Json
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -229,7 +229,11 @@ class TestDocumentIndexingSyncTask:
         # Arrange
         context = self._create_notion_sync_context(
             db_session_with_containers,
-            data_source_info={"notion_page_id": str(uuid4()), "type": "page", "last_edited_time": "2024-01-01T00:00:00Z"},
+            data_source_info={
+                "notion_page_id": str(uuid4()),
+                "type": "page",
+                "last_edited_time": "2024-01-01T00:00:00Z",
+            },
         )
 
         # Act & Assert
@@ -276,7 +280,9 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         assert updated_document is not None
         assert updated_document.indexing_status == "error"
         assert "Datasource credential not found" in updated_document.error
@@ -294,7 +300,9 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         remaining_segments = (
             db_session_with_containers.query(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
@@ -317,7 +325,9 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         remaining_segments = (
             db_session_with_containers.query(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
@@ -354,14 +364,18 @@ class TestDocumentIndexingSyncTask:
             db_session_with_containers.commit()
             return "2024-01-02T00:00:00Z"
 
-        mock_external_dependencies["notion_extractor"].get_notion_last_edited_time.side_effect = _delete_dataset_before_clean
+        mock_external_dependencies[
+            "notion_extractor"
+        ].get_notion_last_edited_time.side_effect = _delete_dataset_before_clean
 
         # Act
         document_indexing_sync_task(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         assert updated_document is not None
         assert updated_document.indexing_status == "parsing"
         mock_external_dependencies["index_processor"].clean.assert_not_called()
@@ -378,7 +392,9 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         remaining_segments = (
             db_session_with_containers.query(DocumentSegment)
             .where(DocumentSegment.document_id == context["document"].id)
@@ -400,7 +416,9 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         assert updated_document is not None
         assert updated_document.indexing_status == "parsing"
         assert updated_document.error is None
@@ -416,7 +434,9 @@ class TestDocumentIndexingSyncTask:
 
         # Assert
         db_session_with_containers.expire_all()
-        updated_document = db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        updated_document = (
+            db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
+        )
         assert updated_document is not None
         assert updated_document.indexing_status == "error"
         assert "Indexing error" in updated_document.error
