@@ -95,7 +95,7 @@ jobs:
           merge-multiple: true
 
       - name: Merge reports
-        run: pnpm vitest --merge-reports --coverage
+        run: pnpm vitest --merge-reports --coverage --silent=passed-only
 
       - name: Coverage Summary
         if: always()
