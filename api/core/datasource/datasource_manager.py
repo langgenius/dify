@@ -128,16 +128,12 @@ class DatasourceManager:
         ).get_datasource(datasource_name)
 
     @classmethod
-    def get_icon_url(cls,
-                     provider_id: str,
-                     tenant_id: str,
-                     datasource_name: str,
-                     datasource_type: str) -> str:
+    def get_icon_url(cls, provider_id: str, tenant_id: str, datasource_name: str, datasource_type: str) -> str:
         datasource_runtime = cls.get_datasource_runtime(
             provider_id=provider_id,
             datasource_name=datasource_name,
             tenant_id=tenant_id,
-            datasource_type=DatasourceProviderType.value_of(datasource_type)
+            datasource_type=DatasourceProviderType.value_of(datasource_type),
         )
         return datasource_runtime.get_icon_url(tenant_id)
 
@@ -263,18 +259,22 @@ class DatasourceManager:
                 DatasourceMessage.MessageType.IMAGE,
             }:
                 wanted_ds_type = ds_type in {
-                    DatasourceProviderType.ONLINE_DRIVE, DatasourceProviderType.ONLINE_DOCUMENT}
+                    DatasourceProviderType.ONLINE_DRIVE,
+                    DatasourceProviderType.ONLINE_DOCUMENT,
+                }
                 if wanted_ds_type and isinstance(message.message, DatasourceMessage.TextMessage):
                     url = message.message.text
 
                     datasource_file_id = str(url).split("/")[-1].split(".")[0]
                     with session_factory.create_session() as session:
-                        stmt = select(ToolFile).where(ToolFile.id == datasource_file_id,
-                                                      ToolFile.tenant_id == tenant_id)
+                        stmt = select(ToolFile).where(
+                            ToolFile.id == datasource_file_id, ToolFile.tenant_id == tenant_id
+                        )
                         datasource_file = session.scalar(stmt)
                         if not datasource_file:
                             raise ValueError(
-                                f"ToolFile not found for file_id={datasource_file_id}, tenant_id={tenant_id}")
+                                f"ToolFile not found for file_id={datasource_file_id}, tenant_id={tenant_id}"
+                            )
                         mime_type = datasource_file.mimetype
                     if datasource_file is not None:
                         mapping = {
@@ -340,8 +340,9 @@ class DatasourceManager:
     @classmethod
     def get_upload_file_by_id(cls, file_id: str, tenant_id: str) -> File:
         with session_factory.create_session() as session:
-            upload_file = session.query(UploadFile).where(
-                UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).first()
+            upload_file = (
+                session.query(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).first()
+            )
             if not upload_file:
                 raise ValueError(f"UploadFile not found for file_id={file_id}, tenant_id={tenant_id}")
 

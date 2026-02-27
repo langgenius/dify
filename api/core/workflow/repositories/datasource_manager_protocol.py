@@ -23,14 +23,8 @@ class DatasourceFinal(BaseModel):
 
 
 class DatasourceManagerProtocol(Protocol):
-
     @classmethod
-    def get_icon_url(cls,
-                     provider_id: str,
-                     tenant_id: str,
-                     datasource_name: str,
-                     datasource_type: str) -> str:
-        ...
+    def get_icon_url(cls, provider_id: str, tenant_id: str, datasource_name: str, datasource_type: str) -> str: ...
 
     @classmethod
     def stream_node_events(
@@ -50,9 +44,7 @@ class DatasourceManagerProtocol(Protocol):
         variable_pool: Any,
         datasource_param: DatasourceParameter | None = None,
         online_drive_request: OnlineDriveDownloadFileParam | None = None,
-    ) -> Generator[StreamChunkEvent | StreamCompletedEvent, None, None]:
-        ...
+    ) -> Generator[StreamChunkEvent | StreamCompletedEvent, None, None]: ...
 
     @classmethod
-    def get_upload_file_by_id(cls, file_id: str, tenant_id: str) -> File:
-        ...
+    def get_upload_file_by_id(cls, file_id: str, tenant_id: str) -> File: ...

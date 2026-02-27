@@ -1,4 +1,3 @@
-
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
@@ -64,9 +63,7 @@ def test_datasource_node_delegates_to_manager_stream(mocker):
         @classmethod
         def stream_node_events(cls, **_):
             yield StreamChunkEvent(selector=["n", "text"], chunk="hi", is_final=False)
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED)
-            )
+            yield StreamCompletedEvent(node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED))
 
         @classmethod
         def get_upload_file_by_id(cls, **_):

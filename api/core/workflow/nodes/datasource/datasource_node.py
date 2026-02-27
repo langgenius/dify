@@ -135,8 +135,9 @@ class DatasourceNode(Node[DatasourceNodeData]):
                     if not related_id:
                         raise DatasourceNodeError("File is not exist")
 
-                    file_info = self.datasource_manager.get_upload_file_by_id(file_id=related_id,
-                                                                              tenant_id=self.tenant_id)
+                    file_info = self.datasource_manager.get_upload_file_by_id(
+                        file_id=related_id, tenant_id=self.tenant_id
+                    )
                     variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())
                     yield StreamCompletedEvent(
@@ -213,4 +214,3 @@ class DatasourceNode(Node[DatasourceNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
-
