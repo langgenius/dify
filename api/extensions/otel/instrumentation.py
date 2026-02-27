@@ -3,6 +3,7 @@ import logging
 
 import flask
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from opentelemetry.semconv._incubating.attributes.http_attributes import HTTP_METHOD, HTTP_TARGET
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -84,9 +85,9 @@ def init_flask_instrumentor(app: DifyApp) -> None:
                 attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
                 request = flask.request
                 if request and request.url_rule:
-                    attributes["http.target"] = str(request.url_rule.rule)
+                    attributes[HTTP_TARGET] = str(request.url_rule.rule)
                 if request and request.method:
-                    attributes["http.method"] = str(request.method)
+                    attributes[HTTP_METHOD] = str(request.method)
                 _http_response_counter.add(1, attributes)
             except Exception:
                 logger.exception("Error setting status and attributes")
