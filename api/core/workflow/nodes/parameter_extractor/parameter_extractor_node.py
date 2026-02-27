@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -60,6 +60,11 @@ from .prompts import (
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
+    from core.workflow.runtime import GraphRuntimeState
+
 
 def extract_json(text):
     """
@@ -92,6 +97,27 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     _model_instance: ModelInstance | None = None
     _model_config: ModelConfigWithCredentialsEntity | None = None
+    _credentials_provider: "CredentialsProvider"
+    _model_factory: "ModelFactory"
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        credentials_provider: "CredentialsProvider",
+        model_factory: "ModelFactory",
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._credentials_provider = credentials_provider
+        self._model_factory = model_factory
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -806,7 +832,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         """
         if not self._model_instance or not self._model_config:
             self._model_instance, self._model_config = llm_utils.fetch_model_config(
-                tenant_id=self.tenant_id, node_data_model=node_data_model
+                node_data_model=node_data_model,
+                credentials_provider=self._credentials_provider,
+                model_factory=self._model_factory,
             )
 
         return self._model_instance, self._model_config

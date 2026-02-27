@@ -82,7 +82,7 @@ class TestCacheEmbeddingDocuments:
             Mock: Configured ModelInstance with text embedding capabilities
         """
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -597,7 +597,7 @@ class TestCacheEmbeddingQuery:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
@@ -830,7 +830,7 @@ class TestEmbeddingModelSwitching:
         """
         # Arrange
         model_instance_ada = Mock()
-        model_instance_ada.model = "text-embedding-ada-002"
+        model_instance_ada.model_name = "text-embedding-ada-002"
         model_instance_ada.provider = "openai"
 
         # Mock model type instance for ada
@@ -841,7 +841,7 @@ class TestEmbeddingModelSwitching:
         model_type_instance_ada.get_model_schema.return_value = model_schema_ada
 
         model_instance_3_small = Mock()
-        model_instance_3_small.model = "text-embedding-3-small"
+        model_instance_3_small.model_name = "text-embedding-3-small"
         model_instance_3_small.provider = "openai"
 
         # Mock model type instance for 3-small
@@ -914,11 +914,11 @@ class TestEmbeddingModelSwitching:
         """
         # Arrange
         model_instance_openai = Mock()
-        model_instance_openai.model = "text-embedding-ada-002"
+        model_instance_openai.model_name = "text-embedding-ada-002"
         model_instance_openai.provider = "openai"
 
         model_instance_cohere = Mock()
-        model_instance_cohere.model = "embed-english-v3.0"
+        model_instance_cohere.model_name = "embed-english-v3.0"
         model_instance_cohere.provider = "cohere"
 
         cache_openai = CacheEmbedding(model_instance_openai)
@@ -1001,7 +1001,7 @@ class TestEmbeddingDimensionValidation:
     def mock_model_instance(self):
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -1123,7 +1123,7 @@ class TestEmbeddingDimensionValidation:
         """
         # Arrange - OpenAI ada-002 (1536 dimensions)
         model_instance_ada = Mock()
-        model_instance_ada.model = "text-embedding-ada-002"
+        model_instance_ada.model_name = "text-embedding-ada-002"
         model_instance_ada.provider = "openai"
 
         # Mock model type instance for ada
@@ -1156,7 +1156,7 @@ class TestEmbeddingDimensionValidation:
 
         # Arrange - Cohere embed-english-v3.0 (1024 dimensions)
         model_instance_cohere = Mock()
-        model_instance_cohere.model = "embed-english-v3.0"
+        model_instance_cohere.model_name = "embed-english-v3.0"
         model_instance_cohere.provider = "cohere"
 
         # Mock model type instance for cohere
@@ -1225,7 +1225,7 @@ class TestEmbeddingEdgeCases:
                   - MAX_CHUNKS: 10
         """
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
 
         model_type_instance = Mock()
@@ -1702,7 +1702,7 @@ class TestEmbeddingCachePerformance:
                   - MAX_CHUNKS: 10
         """
         model_instance = Mock()
-        model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
 
         model_type_instance = Mock()
