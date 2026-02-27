@@ -2,7 +2,6 @@
 
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { SandboxProvider } from '@/types/sandbox-provider'
-import { RiExternalLinkLine, RiLock2Fill } from '@remixicon/react'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -220,7 +219,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
               className="inline-flex items-center gap-1 text-text-accent system-xs-regular hover:underline"
             >
               {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: providerLabel })}
-              <RiExternalLinkLine className="h-3 w-3" />
+              <span className="i-ri-external-link-line h-3 w-3" />
             </a>
           )}
         </div>
@@ -241,7 +240,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
 
       {/* Security tip */}
       <div className="-mx-6 -mb-6 mt-4 flex items-start justify-center gap-1 rounded-b-2xl border-t border-divider-subtle bg-background-soft px-2 py-3">
-        <RiLock2Fill className="h-3 w-3 shrink-0 text-text-primary" />
+        <span className="i-ri-lock-2-fill h-3 w-3 shrink-0 text-text-primary" />
         <p className="text-text-tertiary system-xs-regular">
           {t('sandboxProvider.configModal.securityTip', { ns: 'common' })}
           {' '}
