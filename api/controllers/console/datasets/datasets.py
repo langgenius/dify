@@ -263,6 +263,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
         VectorType.IRIS,
+        VectorType.HOLOGRES,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
