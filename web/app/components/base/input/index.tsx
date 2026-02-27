@@ -26,6 +26,7 @@ export const inputVariants = cva(
 export type InputProps = {
   showLeftIcon?: boolean
   showClearIcon?: boolean
+  showClearIconOnHover?: boolean
   showCopyIcon?: boolean
   onClear?: () => void
   disabled?: boolean
@@ -43,6 +44,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   destructive,
   showLeftIcon,
   showClearIcon,
+  showClearIconOnHover,
   showCopyIcon,
   onClear,
   wrapperClassName,
@@ -82,7 +84,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
     onBlur(e)
   }
   return (
-    <div className={cn('relative w-full', wrapperClassName)}>
+    <div className={cn('relative w-full', showClearIconOnHover && 'group/input', wrapperClassName)}>
       {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
         ref={ref}
@@ -111,7 +113,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       />
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <div
-          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
+          className={cn(
+            'group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]',
+            showClearIconOnHover && 'pointer-events-none opacity-0 transition-opacity group-hover/input:pointer-events-auto group-hover/input:opacity-100 group-focus-within/input:pointer-events-auto group-focus-within/input:opacity-100',
+          )}
           onClick={onClear}
           data-testid="input-clear"
         >

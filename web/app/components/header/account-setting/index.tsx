@@ -229,9 +229,12 @@ export default function AccountSetting({
                 <div className="flex grow justify-end">
                   <Input
                     showLeftIcon
+                    showClearIcon
+                    showClearIconOnHover
                     wrapperClassName="!w-[200px]"
                     className="!h-8 !text-[13px]"
                     onChange={e => setSearchValue(e.target.value)}
+                    onClear={() => setSearchValue('')}
                     value={searchValue}
                   />
                 </div>
