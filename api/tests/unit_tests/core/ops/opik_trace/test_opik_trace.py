@@ -143,7 +143,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     WORKFLOW_APP_LOG_ID = "ca0e018e-edd4-43fb-a05a-ea001ca8ef4b"
     LLM_NODE_ID = "80d7dfa8-08f4-4ab7-aa37-0ca7d27207e3"
     CODE_NODE_ID = "b9cd9a7b-c534-4aa9-b5da-efd454140900"
-    
+
     trace_info = WorkflowTraceInfo(
         workflow_id=WORKFLOW_ID,
         tenant_id="tenant-1",
@@ -228,7 +228,7 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     WORKFLOW_RUN_ID = "d42ec285-c2fd-4248-8866-5c9386b101ac"
     CONVERSATION_ID = "88a17f2e-9436-4472-bab9-4b1601d5af3c"
     WORKFLOW_APP_LOG_ID = "41780d0d-ffba-4220-bc0c-401e4c89cdfb"
-    
+
     trace_info = WorkflowTraceInfo(
         workflow_id=WORKFLOW_ID,
         tenant_id="tenant-1",
@@ -300,7 +300,7 @@ def test_message_trace_basic(trace_instance, monkeypatch):
     CONVERSATION_ID = "9d3f3751-7521-4c19-9307-20e3cf6789a3"
     MESSAGE_TRACE_ID = "710ace2f-bca8-41be-858c-54da42742a77"
     OPIT_TRACE_ID = "f7dfd978-0d10-4549-8abf-00f2cbc49d2c"
-    
+
     message_data = MagicMock()
     message_data.id = MESSAGE_DATA_ID
     message_data.from_account_id = "acc-1"

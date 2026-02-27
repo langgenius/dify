@@ -27,14 +27,14 @@ from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
 def trace_client_factory():
     """Factory fixture for creating TraceClient instances with automatic cleanup."""
     clients_to_shutdown = []
-    
+
     def _factory(**kwargs):
         client = TraceClient(**kwargs)
         clients_to_shutdown.append(client)
         return client
-    
+
     yield _factory
-    
+
     # Cleanup: shutdown all created clients
     for client in clients_to_shutdown:
         client.shutdown()

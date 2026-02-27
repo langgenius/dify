@@ -461,7 +461,7 @@ def test_build_workflow_node_span_handles_errors(
 
     monkeypatch.setattr(trace_instance, "build_workflow_task_span", MagicMock(side_effect=RuntimeError("boom")))
     node_execution.node_type = NodeType.CODE
-    
+
     assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) is None
     assert "Error occurred in build_workflow_node_span" in caplog.text
 
