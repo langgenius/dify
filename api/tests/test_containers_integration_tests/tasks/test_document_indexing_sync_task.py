@@ -39,11 +39,11 @@ class DocumentIndexingSyncTaskTestDataFactory:
             status="active",
         )
         db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        db_session_with_containers.flush()
 
         tenant = Tenant(name=f"tenant-{account.id}", status="normal")
         db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        db_session_with_containers.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
