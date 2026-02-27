@@ -1,7 +1,6 @@
 import type { Plugin } from 'vite'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import mdx from '@mdx-js/rollup'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import { defineConfig } from 'vite'
@@ -12,26 +11,23 @@ const isCI = !!process.env.CI
 
 export default defineConfig(({ mode }) => {
   return {
-    plugins: [
-      ...(mode === 'test'
-        ? [
-            react(),
-            {
-              // Stub .mdx files so components importing them can be unit-tested
-              name: 'mdx-stub',
-              enforce: 'pre',
-              transform(_, id) {
-                if (id.endsWith('.mdx'))
-                  return { code: 'export default () => null', map: null }
-              },
-            } as Plugin,
-          ]
-        : [
-            mdx(),
-            vinext(),
-          ]),
-      tsconfigPaths(),
-    ],
+    plugins: mode === 'test'
+      ? [
+          tsconfigPaths(),
+          react(),
+          {
+            // Stub .mdx files so components importing them can be unit-tested
+            name: 'mdx-stub',
+            enforce: 'pre',
+            transform(_, id) {
+              if (id.endsWith('.mdx'))
+                return { code: 'export default () => null', map: null }
+            },
+          } as Plugin,
+        ]
+      : [
+          vinext(),
+        ],
     resolve: {
       alias: {
         '~@': __dirname,
