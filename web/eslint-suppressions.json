@@ -4004,17 +4004,9 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/members-page/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 12
-    }
-  },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/members-page/operation/index.tsx": {
@@ -4028,17 +4020,11 @@
     }
   },
   "app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 16
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4046,11 +4032,6 @@
   "app/components/header/account-setting/model-provider-page/declarations.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/hooks.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
@@ -4231,9 +4212,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
