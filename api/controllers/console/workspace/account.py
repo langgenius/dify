@@ -614,11 +614,13 @@ class ChangeEmailCheckApi(Resource):
             AccountService.add_change_email_error_rate_limit(user_email)
             raise EmailCodeError()
 
-        phase_transitions = {
+        phase_transitions: dict[str, str] = {
             AccountService.CHANGE_EMAIL_PHASE_OLD: AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
             AccountService.CHANGE_EMAIL_PHASE_NEW: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
         }
         token_phase = token_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+        if not isinstance(token_phase, str):
+            raise InvalidTokenError()
         refreshed_phase = phase_transitions.get(token_phase)
         if refreshed_phase is None:
             raise InvalidTokenError()
