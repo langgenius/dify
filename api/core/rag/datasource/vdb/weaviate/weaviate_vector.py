@@ -10,7 +10,7 @@ import json
 import logging
 import threading
 import uuid as _uuid
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import weaviate
