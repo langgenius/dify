@@ -9,6 +9,7 @@ from core.model_runtime.entities import AssistantPromptMessage
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -84,6 +85,8 @@ def init_parameter_extractor_node(config: dict):
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        credentials_provider=MagicMock(spec=CredentialsProvider),
+        model_factory=MagicMock(spec=ModelFactory),
     )
     return node
 

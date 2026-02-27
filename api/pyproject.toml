@@ -65,16 +65,16 @@ dependencies = [
     "psycogreen~=1.0.2",
     "psycopg2-binary~=2.9.6",
     "pycryptodome==3.23.0",
-    "pydantic~=2.11.4",
+    "pydantic~=2.12.5",
     "pydantic-extra-types~=2.10.3",
     "pydantic-settings~=2.12.0",
     "pyjwt~=2.10.1",
     "pypdfium2==5.2.0",
-    "python-docx~=1.1.0",
+    "python-docx~=1.2.0",
     "python-dotenv==1.0.1",
     "pyyaml~=6.0.1",
     "readabilipy~=0.3.0",
-    "redis[hiredis]~=6.1.0",
+    "redis[hiredis]~=7.2.0",
     "resend~=2.9.0",
     "sentry-sdk[flask]~=2.28.0",
     "sqlalchemy~=2.0.29",
@@ -176,6 +176,7 @@ dev = [
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
+    "pyrefly>=0.54.0",
 ]
 
 ############################################################
