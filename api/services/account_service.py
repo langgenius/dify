@@ -4,6 +4,7 @@ import logging
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from hashlib import sha256
 from typing import Any, cast
 
@@ -80,6 +81,13 @@ class TokenPair(BaseModel):
     csrf_token: str
 
 
+class ChangeEmailPhase(StrEnum):
+    OLD = "old_email"
+    OLD_VERIFIED = "old_email_verified"
+    NEW = "new_email"
+    NEW_VERIFIED = "new_email_verified"
+
+
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
 REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -87,10 +95,10 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 class AccountService:
     CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
-    CHANGE_EMAIL_PHASE_OLD = "old_email"
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = "old_email_verified"
-    CHANGE_EMAIL_PHASE_NEW = "new_email"
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = "new_email_verified"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
