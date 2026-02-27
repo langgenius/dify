@@ -1,8 +1,7 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
@@ -11,7 +10,7 @@ from core.variables.types import SegmentType
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.nodes.code.entities import CodeLanguage, CodeNodeData
 from core.workflow.nodes.code.limits import CodeNodeLimits
 
 from .exc import (
@@ -23,6 +22,18 @@ from .exc import (
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
+
+
+class WorkflowCodeExecutor(Protocol):
+    def execute(
+        self,
+        *,
+        language: CodeLanguage,
+        code: str,
+        inputs: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def is_execution_error(self, error: Exception) -> bool: ...
 
 
 class CodeNode(Node[CodeNodeData]):
@@ -40,7 +51,7 @@ class CodeNode(Node[CodeNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
-        code_executor: type[CodeExecutor] | None = None,
+        code_executor: WorkflowCodeExecutor,
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits,
     ) -> None:
@@ -50,7 +61,7 @@ class CodeNode(Node[CodeNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._code_executor: type[CodeExecutor] = code_executor or CodeExecutor
+        self._code_executor: WorkflowCodeExecutor = code_executor
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
             tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
         )
@@ -98,7 +109,7 @@ class CodeNode(Node[CodeNodeData]):
         # Run code
         try:
             _ = self._select_code_provider(code_language)
-            result = self._code_executor.execute_workflow_code_template(
+            result = self._code_executor.execute(
                 language=code_language,
                 code=code,
                 inputs=variables,
@@ -106,7 +117,13 @@ class CodeNode(Node[CodeNodeData]):
 
             # Transform result
             result = self._transform_result(result=result, output_schema=self.node_data.outputs)
-        except (CodeExecutionError, CodeNodeError) as e:
+        except CodeNodeError as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+            )
+        except Exception as e:
+            if not self._code_executor.is_execution_error(e):
+                raise
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
             )
