@@ -39,12 +39,16 @@ export default defineConfig(({ mode }) => {
     },
 
     // vinext related config
-    optimizeDeps: {
-      exclude: ['nuqs'],
-    },
-    server: {
-      port: 3000,
-    },
+    ...(mode !== 'test'
+      ? {
+          optimizeDeps: {
+            exclude: ['nuqs'],
+          },
+          server: {
+            port: 3000,
+          },
+        }
+      : {}),
 
     // Vitest config
     test: {
