@@ -214,9 +214,9 @@
     "@types/uuid": "10.0.0",
     "@typescript-eslint/parser": "8.56.1",
     "@typescript/native-preview": "7.0.0-dev.20251209.1",
-    "@vitejs/plugin-react": "5.1.2",
-    "@vitejs/plugin-rsc": "0.5.20",
-    "@vitest/coverage-v8": "4.0.17",
+    "@vitejs/plugin-react": "5.1.4",
+    "@vitejs/plugin-rsc": "0.5.21",
+    "@vitest/coverage-v8": "4.0.18",
     "autoprefixer": "10.4.21",
     "code-inspector-plugin": "1.3.6",
     "cross-env": "10.1.0",
@@ -248,8 +248,8 @@
     "uglify-js": "3.19.3",
     "vinext": "https://pkg.pr.new/hyoban/vinext@c165a1f",
     "vite": "7.3.1",
-    "vite-tsconfig-paths": "6.0.4",
-    "vitest": "4.0.17",
+    "vite-tsconfig-paths": "6.1.1",
+    "vitest": "4.0.18",
     "vitest-canvas-mock": "1.1.3"
   },
   "pnpm": {
