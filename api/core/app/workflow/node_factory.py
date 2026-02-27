@@ -5,6 +5,7 @@ from typing_extensions import override
 
 from configs import dify_config
 from core.app.llm.model_access import build_dify_model_access
+from core.datasource.datasource_manager import DatasourceManager
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
@@ -18,6 +19,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
 from core.workflow.nodes.code.entities import CodeLanguage
 from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.nodes.datasource import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
@@ -176,6 +178,15 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+            )
+
+        if node_type == NodeType.DATASOURCE:
+            return DatasourceNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                datasource_manager=DatasourceManager,
             )
 
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
