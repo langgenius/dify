@@ -1,6 +1,5 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
-import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -26,7 +25,6 @@ export const inputVariants = cva(
 export type InputProps = {
   showLeftIcon?: boolean
   showClearIcon?: boolean
-  showClearIconOnHover?: boolean
   showCopyIcon?: boolean
   onClear?: () => void
   disabled?: boolean
@@ -44,7 +42,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   destructive,
   showLeftIcon,
   showClearIcon,
-  showClearIconOnHover,
   showCopyIcon,
   onClear,
   wrapperClassName,
@@ -84,8 +81,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
     onBlur(e)
   }
   return (
-    <div className={cn('relative w-full', showClearIconOnHover && 'group/input', wrapperClassName)}>
-      {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+    <div className={cn('relative w-full', wrapperClassName)}>
+      {showLeftIcon && <span className={cn('i-ri-search-line absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
         ref={ref}
         style={styleCss}
@@ -113,18 +110,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       />
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <div
-          className={cn(
-            'group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]',
-            showClearIconOnHover && 'pointer-events-none opacity-0 transition-opacity group-focus-within/input:pointer-events-auto group-focus-within/input:opacity-100 group-hover/input:pointer-events-auto group-hover/input:opacity-100',
-          )}
+          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
           onClick={onClear}
           data-testid="input-clear"
         >
-          <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
+          <span className="i-ri-close-circle-fill h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
+        <span className="i-ri-error-warning-line absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
         <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
