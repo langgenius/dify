@@ -25,21 +25,17 @@ FIXED_TIME = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
 class DocumentStatusTestDataFactory:
     """
-    Factory class for creating test data and mock objects for document status tests.
+    Factory class for creating real test data and helper doubles for document status tests.
 
-    This factory provides static methods to create mock objects for:
-    - Document instances with various status configurations
-    - Dataset instances
-    - User/Account instances
-    - UploadFile instances
-    - Redis cache keys and values
+    This factory provides static methods to create persisted entities for SQL
+    assertions and lightweight doubles for collaborator patches.
 
     The factory methods help maintain consistency across tests and reduce
     code duplication when setting up test scenarios.
     """
 
     @staticmethod
-    def create_document_mock(
+    def create_document(
         db_session_with_containers,
         document_id: str | None = None,
         dataset_id: str | None = None,
@@ -57,7 +53,7 @@ class DocumentStatusTestDataFactory:
         **kwargs,
     ) -> Document:
         """
-        Create a mock Document with specified attributes.
+        Create a persisted Document with specified attributes.
 
         Args:
             document_id: Unique identifier for the document
@@ -73,10 +69,10 @@ class DocumentStatusTestDataFactory:
             data_source_type: Type of data source
             data_source_info: Data source information dictionary
             doc_metadata: Document metadata dictionary
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional attributes to set on the entity
 
         Returns:
-            Mock object configured as a Document instance
+            Persisted Document instance
         """
         tenant_id = tenant_id or str(uuid4())
         dataset_id = dataset_id or str(uuid4())
@@ -115,7 +111,7 @@ class DocumentStatusTestDataFactory:
         return document
 
     @staticmethod
-    def create_dataset_mock(
+    def create_dataset(
         db_session_with_containers,
         dataset_id: str | None = None,
         tenant_id: str | None = None,
@@ -124,17 +120,17 @@ class DocumentStatusTestDataFactory:
         **kwargs,
     ) -> Dataset:
         """
-        Create a mock Dataset with specified attributes.
+        Create a persisted Dataset with specified attributes.
 
         Args:
             dataset_id: Unique identifier for the dataset
             tenant_id: Tenant identifier
             name: Dataset name
             built_in_field_enabled: Whether built-in fields are enabled
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional attributes to set on the entity
 
         Returns:
-            Mock object configured as a Dataset instance
+            Persisted Dataset instance
         """
         tenant_id = tenant_id or str(uuid4())
         dataset_id = dataset_id or str(uuid4())
@@ -181,7 +177,7 @@ class DocumentStatusTestDataFactory:
         return user
 
     @staticmethod
-    def create_upload_file_mock(
+    def create_upload_file(
         db_session_with_containers,
         tenant_id: str,
         created_by: str,
@@ -190,15 +186,15 @@ class DocumentStatusTestDataFactory:
         **kwargs,
     ) -> UploadFile:
         """
-        Create a mock UploadFile with specified attributes.
+        Create a persisted UploadFile with specified attributes.
 
         Args:
             file_id: Unique identifier for the file
             name: File name
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional attributes to set on the entity
 
         Returns:
-            Mock object configured as an UploadFile instance
+            Persisted UploadFile instance
         """
         upload_file = UploadFile(
             tenant_id=tenant_id,
@@ -224,7 +220,7 @@ class DocumentStatusTestDataFactory:
 
 class TestDocumentServicePauseDocument:
     """
-    Comprehensive unit tests for DocumentService.pause_document method.
+    Comprehensive integration tests for DocumentService.pause_document method.
 
     This test class covers the document pause functionality, which allows
     users to pause the indexing process for documents that are currently
@@ -290,8 +286,8 @@ class TestDocumentServicePauseDocument:
         - Redis cache flag is set
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -325,8 +321,8 @@ class TestDocumentServicePauseDocument:
         - All pause operations complete correctly
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -353,8 +349,8 @@ class TestDocumentServicePauseDocument:
         - Pause operations work for all valid states
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -382,8 +378,8 @@ class TestDocumentServicePauseDocument:
         - No database operations are performed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -411,8 +407,8 @@ class TestDocumentServicePauseDocument:
         - No database operations are performed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -430,7 +426,7 @@ class TestDocumentServicePauseDocument:
 
 class TestDocumentServiceRecoverDocument:
     """
-    Comprehensive unit tests for DocumentService.recover_document method.
+    Comprehensive integration tests for DocumentService.recover_document method.
 
     This test class covers the document recovery functionality, which allows
     users to resume indexing for documents that were previously paused.
@@ -485,9 +481,9 @@ class TestDocumentServiceRecoverDocument:
         - Recovery task is triggered
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         paused_time = FIXED_TIME
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -525,8 +521,8 @@ class TestDocumentServiceRecoverDocument:
         - No database operations are performed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -544,7 +540,7 @@ class TestDocumentServiceRecoverDocument:
 
 class TestDocumentServiceRetryDocument:
     """
-    Comprehensive unit tests for DocumentService.retry_document method.
+    Comprehensive integration tests for DocumentService.retry_document method.
 
     This test class covers the document retry functionality, which allows
     users to retry failed document indexing operations.
@@ -607,8 +603,8 @@ class TestDocumentServiceRetryDocument:
         - Retry task is triggered
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -644,15 +640,15 @@ class TestDocumentServiceRetryDocument:
         - Retry task is triggered with all document IDs
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document1 = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document1 = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
             indexing_status="error",
         )
-        document2 = DocumentStatusTestDataFactory.create_document_mock(
+        document2 = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -691,8 +687,8 @@ class TestDocumentServiceRetryDocument:
         - Error type is correct
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -724,8 +720,8 @@ class TestDocumentServiceRetryDocument:
         - Error type is correct
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -743,7 +739,7 @@ class TestDocumentServiceRetryDocument:
 
 class TestDocumentServiceBatchUpdateDocumentStatus:
     """
-    Comprehensive unit tests for DocumentService.batch_update_document_status method.
+    Comprehensive integration tests for DocumentService.batch_update_document_status method.
 
     This test class covers the batch document status update functionality,
     which allows users to update the status of multiple documents at once.
@@ -813,9 +809,9 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Transaction is committed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
-        document1 = DocumentStatusTestDataFactory.create_document_mock(
+        document1 = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -823,7 +819,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             enabled=False,
             indexing_status="completed",
         )
-        document2 = DocumentStatusTestDataFactory.create_document_mock(
+        document2 = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -863,9 +859,9 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Transaction is committed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -905,9 +901,9 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Transaction is committed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -947,9 +943,9 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Transaction is committed
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -987,7 +983,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - No errors are raised
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
         document_ids = []
 
@@ -1013,7 +1009,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Error type is correct
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
         document_ids = [str(uuid4())]
 
@@ -1036,9 +1032,9 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Error type is correct
         """
         # Arrange
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
         user = DocumentStatusTestDataFactory.create_user_mock(tenant_id=dataset.tenant_id)
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
@@ -1056,7 +1052,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
 
 class TestDocumentServiceRenameDocument:
     """
-    Comprehensive unit tests for DocumentService.rename_document method.
+    Comprehensive integration tests for DocumentService.rename_document method.
 
     This test class covers the document renaming functionality, which allows
     users to rename documents for better organization.
@@ -1118,10 +1114,10 @@ class TestDocumentServiceRenameDocument:
         new_name = "New Document Name"
         tenant_id = mock_document_service_dependencies["current_user"].current_tenant_id
 
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(
             db_session_with_containers, dataset_id=dataset_id, tenant_id=tenant_id
         )
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             document_id=document_id,
             dataset_id=dataset.id,
@@ -1155,13 +1151,13 @@ class TestDocumentServiceRenameDocument:
         new_name = "New Document Name"
         tenant_id = mock_document_service_dependencies["current_user"].current_tenant_id
 
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(
             db_session_with_containers,
             dataset_id=dataset_id,
             tenant_id=tenant_id,
             built_in_field_enabled=True,
         )
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             document_id=document_id,
             dataset_id=dataset.id,
@@ -1199,17 +1195,17 @@ class TestDocumentServiceRenameDocument:
         file_id = str(uuid4())
         tenant_id = mock_document_service_dependencies["current_user"].current_tenant_id
 
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(
             db_session_with_containers, dataset_id=dataset_id, tenant_id=tenant_id
         )
-        upload_file = DocumentStatusTestDataFactory.create_upload_file_mock(
+        upload_file = DocumentStatusTestDataFactory.create_upload_file(
             db_session_with_containers,
             tenant_id=tenant_id,
             created_by=str(uuid4()),
             file_id=file_id,
             name="old_name.pdf",
         )
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             document_id=document_id,
             dataset_id=dataset.id,
@@ -1267,7 +1263,7 @@ class TestDocumentServiceRenameDocument:
         document_id = str(uuid4())
         new_name = "New Document Name"
 
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(
             db_session_with_containers,
             dataset_id=dataset_id,
             tenant_id=mock_document_service_dependencies["current_user"].current_tenant_id,
@@ -1295,12 +1291,12 @@ class TestDocumentServiceRenameDocument:
         new_name = "New Document Name"
         current_tenant_id = mock_document_service_dependencies["current_user"].current_tenant_id
 
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(
+        dataset = DocumentStatusTestDataFactory.create_dataset(
             db_session_with_containers,
             dataset_id=dataset_id,
             tenant_id=current_tenant_id,
         )
-        document = DocumentStatusTestDataFactory.create_document_mock(
+        document = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             document_id=document_id,
             dataset_id=dataset.id,
