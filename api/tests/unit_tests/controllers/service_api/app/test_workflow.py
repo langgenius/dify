@@ -596,7 +596,8 @@ class TestWorkflowTaskStopApiPost:
 
         assert result == {"result": "success"}
         mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-        mock_graph_mgr.send_stop_command.assert_called_once_with("task-1")
+        mock_graph_mgr.assert_called_once()
+        mock_graph_mgr.return_value.send_stop_command.assert_called_once_with("task-1")
 
     def test_stop_workflow_task_wrong_app_mode(self, app):
         """Test NotWorkflowAppError when app mode is not workflow."""
