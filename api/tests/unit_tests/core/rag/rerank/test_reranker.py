@@ -34,7 +34,7 @@ def create_mock_model_instance():
     mock_instance.provider_model_bundle.configuration = Mock()
     mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
     mock_instance.provider = "test-provider"
-    mock_instance.model = "test-model"
+    mock_instance.model_name = "test-model"
     return mock_instance
 
 
@@ -65,7 +65,7 @@ class TestRerankModelRunner:
         mock_instance.provider_model_bundle.configuration = Mock()
         mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
         mock_instance.provider = "test-provider"
-        mock_instance.model = "test-model"
+        mock_instance.model_name = "test-model"
         return mock_instance
 
     @pytest.fixture

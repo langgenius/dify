@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, final
 from typing_extensions import override
 
 from configs import dify_config
+from core.app.llm.model_access import build_dify_model_access
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
@@ -20,8 +21,13 @@ from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.nodes.template_transform.template_renderer import CodeExecutorJinja2TemplateRenderer
+from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
+from core.workflow.nodes.template_transform.template_renderer import (
+    CodeExecutorJinja2TemplateRenderer,
+)
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 
 if TYPE_CHECKING:
@@ -95,6 +101,8 @@ class DifyNodeFactory(NodeFactory):
             ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
         )
 
+        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(graph_init_params.tenant_id)
+
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:
         """
@@ -160,6 +168,16 @@ class DifyNodeFactory(NodeFactory):
                 file_manager=self._http_request_file_manager,
             )
 
+        if node_type == NodeType.LLM:
+            return LLMNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                credentials_provider=self._llm_credentials_provider,
+                model_factory=self._llm_model_factory,
+            )
+
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
             return KnowledgeRetrievalNode(
                 id=node_id,
@@ -176,6 +194,26 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
+            )
+
+        if node_type == NodeType.QUESTION_CLASSIFIER:
+            return QuestionClassifierNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                credentials_provider=self._llm_credentials_provider,
+                model_factory=self._llm_model_factory,
+            )
+
+        if node_type == NodeType.PARAMETER_EXTRACTOR:
+            return ParameterExtractorNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                credentials_provider=self._llm_credentials_provider,
+                model_factory=self._llm_model_factory,
             )
 
         return node_class(

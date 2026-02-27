@@ -89,7 +89,6 @@ forbidden_modules =
     core.logging
     core.mcp
     core.memory
-    core.model_manager
     core.moderation
     core.ops
     core.plugin
@@ -117,6 +116,7 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> configs
     core.workflow.nodes.llm.llm_utils -> core.app.entities.app_invoke_entities
     core.workflow.nodes.llm.llm_utils -> core.model_manager
+    core.workflow.nodes.llm.protocols -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
     core.workflow.nodes.llm.llm_utils -> models.model
     core.workflow.nodes.llm.llm_utils -> models.provider
