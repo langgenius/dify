@@ -20,6 +20,8 @@ from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
 
+FIXED_TIME = datetime.datetime(2023, 1, 1, 12, 0, 0)
+
 
 class DocumentStatusTestDataFactory:
     """
@@ -103,7 +105,7 @@ class DocumentStatusTestDataFactory:
         document.paused_at = paused_at
         document.doc_metadata = doc_metadata or {}
         if indexing_status == "completed" and "completed_at" not in kwargs:
-            document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            document.completed_at = FIXED_TIME
 
         for key, value in kwargs.items():
             setattr(document, key, value)
@@ -208,7 +210,7 @@ class DocumentStatusTestDataFactory:
             mime_type="application/pdf",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=created_by,
-            created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            created_at=FIXED_TIME,
             used=False,
         )
         upload_file.id = file_id or str(uuid4())
@@ -484,7 +486,7 @@ class TestDocumentServiceRecoverDocument:
         """
         # Arrange
         dataset = DocumentStatusTestDataFactory.create_dataset_mock(db_session_with_containers)
-        paused_time = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        paused_time = FIXED_TIME
         document = DocumentStatusTestDataFactory.create_document_mock(
             db_session_with_containers,
             dataset_id=dataset.id,
@@ -870,7 +872,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             document_id=str(uuid4()),
             enabled=True,
             indexing_status="completed",
-            completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            completed_at=FIXED_TIME,
         )
         document_ids = [document.id]
 
