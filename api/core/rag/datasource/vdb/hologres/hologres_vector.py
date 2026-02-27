@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Any
 
 import holo_search_sdk as holo  # type: ignore
@@ -62,7 +63,7 @@ class HologresVector(BaseVector):
         super().__init__(collection_name)
         self._config = config
         self._client = self._init_client(config)
-        self.table_name = f"embedding_{collection_name}"
+        self.table_name = f"embedding_{collection_name}".lower()
 
     def _init_client(self, config: HologresVectorConfig):
         """Initialize and return a holo-search-sdk client."""
@@ -263,16 +264,21 @@ class HologresVector(BaseVector):
                 return
 
             if not self._client.check_table_exist(self.table_name):
-                # Create table via SQL
+                # Create table via SQL with CHECK constraint for vector dimension
                 create_table_sql = f"""
                     CREATE TABLE IF NOT EXISTS {self.table_name} (
                         id TEXT PRIMARY KEY,
                         text TEXT NOT NULL,
                         meta JSONB NOT NULL,
-                        embedding float4[{dimension}] NOT NULL
+                        embedding float4[] NOT NULL
+                            CHECK (array_ndims(embedding) = 1
+                                   AND array_length(embedding, 1) = {dimension})
                     );
                 """
                 self._client.execute(create_table_sql)
+
+                # Wait for table to be fully ready before creating indexes
+                time.sleep(15)
 
                 # Open table and set vector index
                 table = self._client.open_table(self.table_name)
@@ -282,6 +288,7 @@ class HologresVector(BaseVector):
                     base_quantization_type=self._config.base_quantization_type,
                     max_degree=self._config.max_degree,
                     ef_construction=self._config.ef_construction,
+                    use_reorder=self._config.base_quantization_type == "rabitq",
                 )
 
                 # Create full-text search index
