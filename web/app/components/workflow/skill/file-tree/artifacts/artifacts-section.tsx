@@ -7,10 +7,11 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FolderSpark from '@/app/components/base/icons/src/vender/workflow/FolderSpark'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { buildTreeFromFlatList, sandboxFilesTreeOptions, useDownloadSandboxFile } from '@/service/use-sandbox-file'
+import { sandboxFilesTreeOptions, useDownloadSandboxFile } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import ArtifactsTree from './artifacts-tree'
+import { buildTreeFromFlatList } from './utils'
 
 type ArtifactsSectionProps = {
   className?: string
