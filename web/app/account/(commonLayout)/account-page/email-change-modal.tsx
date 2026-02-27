@@ -58,11 +58,10 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
     }, 1000)
   }
 
-  const sendEmail = async (email: string, isOrigin: boolean, token?: string) => {
+  const sendEmail = async (email: string, token?: string) => {
     try {
       const res = await sendVerifyCode({
         email,
-        phase: isOrigin ? 'old_email' : 'new_email',
         token,
       })
       startCount()
@@ -106,7 +105,6 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const sendCodeToOriginEmail = async () => {
     await sendEmail(
       email,
-      true,
     )
     setStep(STEP.verifyOrigin)
   }
@@ -162,7 +160,6 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
     }
     await sendEmail(
       mail,
-      false,
       stepToken,
     )
     setStep(STEP.verifyNew)

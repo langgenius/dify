@@ -53,7 +53,7 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     @patch("libs.login.check_csrf_token", return_value=None)
     @patch("controllers.console.wraps.FeatureService.get_system_features")
-    def test_should_normalize_new_email_phase(
+    def test_should_infer_new_email_phase_from_token(
         self,
         mock_features,
         mock_csrf,
@@ -78,7 +78,7 @@ class TestChangeEmailSend:
         with app.test_request_context(
             "/account/change-email",
             method="POST",
-            json={"email": "New@Example.com", "language": "en-US", "phase": "new_email", "token": "token-123"},
+            json={"email": "New@Example.com", "language": "en-US", "token": "token-123"},
         ):
             _set_logged_in_user(_build_account("tester@example.com", "tester"))
             response = ChangeEmailSendEmailApi().post()
@@ -105,7 +105,7 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     @patch("libs.login.check_csrf_token", return_value=None)
     @patch("controllers.console.wraps.FeatureService.get_system_features")
-    def test_should_force_old_email_phase_for_legacy_or_unexpected_phase_input(
+    def test_should_ignore_client_phase_and_use_old_phase_when_token_missing(
         self,
         mock_features,
         mock_csrf,
@@ -135,7 +135,7 @@ class TestChangeEmailSend:
         with app.test_request_context(
             "/account/change-email",
             method="POST",
-            json={"email": "old@example.com", "language": "en-US", "phase": "old_email_verified"},
+            json={"email": "old@example.com", "language": "en-US", "phase": "new_email"},
         ):
             _set_logged_in_user(_build_account("tester@example.com", "tester"))
             response = ChangeEmailSendEmailApi().post()
@@ -185,7 +185,7 @@ class TestChangeEmailSend:
         with app.test_request_context(
             "/account/change-email",
             method="POST",
-            json={"email": "New@Example.com", "language": "en-US", "phase": "new_email", "token": "token-123"},
+            json={"email": "New@Example.com", "language": "en-US", "token": "token-123"},
         ):
             _set_logged_in_user(_build_account("tester@example.com", "tester"))
             with pytest.raises(InvalidTokenError):

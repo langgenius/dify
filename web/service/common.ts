@@ -372,7 +372,7 @@ export const submitDeleteAccountFeedback = (body: { feedback: string, email: str
 export const getDocDownloadUrl = (doc_name: string): Promise<{ url: string }> =>
   get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
 
-export const sendVerifyCode = (body: { email: string, phase: string, token?: string }): Promise<CommonResponse & { data: string }> =>
+export const sendVerifyCode = (body: { email: string, token?: string }): Promise<CommonResponse & { data: string }> =>
   post<CommonResponse & { data: string }>('/account/change-email', { body })
 
 export const verifyEmail = (body: { email: string, code: string, token: string }): Promise<CommonResponse & { is_valid: boolean, email: string, token: string }> =>

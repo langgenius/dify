@@ -133,7 +133,6 @@ class EducationAutocompleteQuery(BaseModel):
 class ChangeEmailSendPayload(BaseModel):
     email: EmailStr
     language: str | None = None
-    phase: str | None = None
     token: str | None = None
 
 
@@ -548,10 +547,8 @@ class ChangeEmailSendEmailApi(Resource):
         user_email = None
         email_for_sending = args.email.lower()
         send_phase = AccountService.CHANGE_EMAIL_PHASE_OLD
-        if args.phase is not None and args.phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
+        if args.token is not None:
             send_phase = AccountService.CHANGE_EMAIL_PHASE_NEW
-            if args.token is None:
-                raise InvalidTokenError()
 
             reset_data = AccountService.get_change_email_data(args.token)
             if reset_data is None:
