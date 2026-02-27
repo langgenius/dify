@@ -5,6 +5,7 @@ This module provides a MockNodeFactory that automatically detects and mocks node
 requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request).
 """
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from core.app.workflow.node_factory import DifyNodeFactory
@@ -74,7 +75,7 @@ class MockNodeFactory(DifyNodeFactory):
             NodeType.CODE: MockCodeNode,
         }
 
-    def create_node(self, node_config: dict[str, Any]) -> Node:
+    def create_node(self, node_config: Mapping[str, Any]) -> Node:
         """
         Create a node instance, using mock implementations for third-party service nodes.
 
@@ -122,6 +123,16 @@ class MockNodeFactory(DifyNodeFactory):
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
                     http_request_config=self._http_request_config,
+                )
+            elif node_type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER, NodeType.PARAMETER_EXTRACTOR}:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
                 )
             else:
                 mock_instance = mock_class(
