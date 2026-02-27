@@ -43,9 +43,11 @@ class DatasetServiceIntegrationDataFactory:
             current=True,
         )
         db.session.add(join)
-        db.session.commit()
+        db.session.flush()
 
-        account.current_tenant = tenant
+        # Keep tenant context on the in-memory user without opening a separate session.
+        account.role = role
+        account._current_tenant = tenant
         return account, tenant
 
     @staticmethod
@@ -80,7 +82,7 @@ class DatasetServiceIntegrationDataFactory:
             chunk_structure=chunk_structure,
         )
         db.session.add(dataset)
-        db.session.commit()
+        db.session.flush()
         return dataset
 
     @staticmethod
@@ -100,7 +102,7 @@ class DatasetServiceIntegrationDataFactory:
             doc_form="text_model",
         )
         db.session.add(document)
-        db.session.commit()
+        db.session.flush()
         return document
 
     @staticmethod
