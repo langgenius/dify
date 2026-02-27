@@ -73,7 +73,7 @@ def login_required(func: Callable[P, R]):
     """
 
     @wraps(func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:
