@@ -209,7 +209,7 @@ export default function AccountSetting({
                   <div className="mt-1 text-text-tertiary system-sm-regular">{activeItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === 'provider' && (
+              {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex grow justify-end">
                   <SearchInput
                     className="w-[200px]"
@@ -220,13 +220,13 @@ export default function AccountSetting({
               )}
             </div>
             <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
-              {activeMenu === 'members' && <MembersPage />}
-              {activeMenu === 'billing' && <BillingPage />}
-              {activeMenu === 'data-source' && <DataSourcePage />}
-              {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
-              {activeMenu === 'custom' && <CustomPage />}
-              {activeMenu === 'language' && <LanguagePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>
           </div>
         </div>
