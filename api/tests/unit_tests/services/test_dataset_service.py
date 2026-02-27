@@ -174,7 +174,7 @@ class DatasetServiceTestDataFactory:
             Mock: Embedding model mock with model and provider attributes
         """
         embedding_model = Mock()
-        embedding_model.model = model
+        embedding_model.model_name = model
         embedding_model.provider = provider
         return embedding_model
 
@@ -434,7 +434,7 @@ class TestDatasetServiceCreateDataset:
         # Assert
         assert result.indexing_technique == "high_quality"
         assert result.embedding_model_provider == embedding_model.provider
-        assert result.embedding_model == embedding_model.model
+        assert result.embedding_model == embedding_model.model_name
         mock_model_manager_instance.get_default_model_instance.assert_called_once_with(
             tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
         )
