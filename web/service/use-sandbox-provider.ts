@@ -15,7 +15,7 @@ export const useSaveSandboxProviderConfig = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.queryKey() })
+      queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.key({ type: 'query' }) })
     },
   })
 }
@@ -30,7 +30,7 @@ export const useDeleteSandboxProviderConfig = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.queryKey() })
+      queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.key({ type: 'query' }) })
     },
   })
 }
@@ -46,7 +46,7 @@ export const useActivateSandboxProvider = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.queryKey() })
+      queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.key({ type: 'query' }) })
     },
   })
 }

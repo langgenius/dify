@@ -55,7 +55,7 @@ export const useCreateAppAssetFolder = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
@@ -117,7 +117,8 @@ export const useUpdateAppAssetFileByUpload = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.getFileContent.queryKey({
+        queryKey: consoleQuery.appAsset.getFileContent.key({
+          type: 'query',
           input: { params: { appId: variables.appId, nodeId: variables.nodeId } },
         }),
       })
@@ -136,7 +137,7 @@ export const useDeleteAppAssetNode = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
@@ -162,7 +163,7 @@ export const useRenameAppAssetNode = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
@@ -188,7 +189,7 @@ export const useMoveAppAssetNode = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
@@ -214,7 +215,7 @@ export const useReorderAppAssetNode = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
@@ -231,7 +232,7 @@ export const usePublishAppAssets = () => {
     },
     onSuccess: (_, appId) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId } } }),
       })
     },
   })
@@ -273,7 +274,7 @@ export const useUploadFileWithPresignedUrl = () => {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
@@ -336,7 +337,7 @@ export const useBatchUpload = () => {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
-        queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
+        queryKey: consoleQuery.appAsset.tree.key({ type: 'query', input: { params: { appId: variables.appId } } }),
       })
     },
   })
