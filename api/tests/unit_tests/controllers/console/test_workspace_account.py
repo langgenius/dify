@@ -97,6 +97,64 @@ class TestChangeEmailSend:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.db")
+    @patch("controllers.console.workspace.account.Session")
+    @patch("controllers.console.workspace.account.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
+    @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_force_old_email_phase_for_legacy_or_unexpected_phase_input(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_extract_ip,
+        mock_is_ip_limit,
+        mock_send_email,
+        mock_get_account_by_email,
+        mock_session_cls,
+        mock_account_db,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        mock_current_account.return_value = (_build_account("current@example.com", "current"), None)
+        existing_account = _build_account("old@example.com", "acc-old")
+        mock_get_account_by_email.return_value = existing_account
+        mock_send_email.return_value = "token-legacy"
+        mock_session = MagicMock()
+        mock_session_cm = MagicMock()
+        mock_session_cm.__enter__.return_value = mock_session
+        mock_session_cm.__exit__.return_value = None
+        mock_session_cls.return_value = mock_session_cm
+        mock_account_db.engine = MagicMock()
+
+        with app.test_request_context(
+            "/account/change-email",
+            method="POST",
+            json={"email": "old@example.com", "language": "en-US", "phase": "old_email_verified"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            response = ChangeEmailSendEmailApi().post()
+
+        assert response == {"result": "success", "data": "token-legacy"}
+        mock_get_account_by_email.assert_called_once_with("old@example.com", session=mock_session)
+        mock_send_email.assert_called_once_with(
+            account=existing_account,
+            email="old@example.com",
+            old_email="old@example.com",
+            language="en-US",
+            phase=AccountService.CHANGE_EMAIL_PHASE_OLD,
+        )
+        mock_extract_ip.assert_called_once()
+        mock_is_ip_limit.assert_called_once_with("127.0.0.1")
+        mock_csrf.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
     @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)

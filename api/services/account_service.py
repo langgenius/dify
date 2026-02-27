@@ -547,6 +547,8 @@ class AccountService:
             raise ValueError("Email must be provided.")
         if not phase:
             raise ValueError("phase must be provided.")
+        if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
+            raise ValueError("phase must be one of old_email or new_email.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError

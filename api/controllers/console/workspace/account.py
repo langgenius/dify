@@ -547,7 +547,9 @@ class ChangeEmailSendEmailApi(Resource):
         account = None
         user_email = None
         email_for_sending = args.email.lower()
+        send_phase = AccountService.CHANGE_EMAIL_PHASE_OLD
         if args.phase is not None and args.phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
+            send_phase = AccountService.CHANGE_EMAIL_PHASE_NEW
             if args.token is None:
                 raise InvalidTokenError()
 
@@ -555,8 +557,8 @@ class ChangeEmailSendEmailApi(Resource):
             if reset_data is None:
                 raise InvalidTokenError()
 
-            token_phase = reset_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
-            if token_phase != AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED:
+            reset_token_phase = reset_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+            if reset_token_phase != AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED:
                 raise InvalidTokenError()
             user_email = reset_data.get("email", "")
 
@@ -577,7 +579,7 @@ class ChangeEmailSendEmailApi(Resource):
             email=email_for_sending,
             old_email=user_email,
             language=language,
-            phase=args.phase,
+            phase=send_phase,
         )
         return {"result": "success", "data": token}
 
@@ -612,12 +614,13 @@ class ChangeEmailCheckApi(Resource):
             AccountService.add_change_email_error_rate_limit(user_email)
             raise EmailCodeError()
 
+        phase_transitions = {
+            AccountService.CHANGE_EMAIL_PHASE_OLD: AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+            AccountService.CHANGE_EMAIL_PHASE_NEW: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+        }
         token_phase = token_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
-        if token_phase == AccountService.CHANGE_EMAIL_PHASE_OLD:
-            refreshed_phase = AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED
-        elif token_phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
-            refreshed_phase = AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED
-        else:
+        refreshed_phase = phase_transitions.get(token_phase)
+        if refreshed_phase is None:
             raise InvalidTokenError()
 
         # Verified, revoke the first token
