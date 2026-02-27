@@ -4,7 +4,6 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, model_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
@@ -15,7 +14,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
-from extensions.ext_database import db
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID
@@ -375,7 +373,7 @@ class TriggerSubscriptionDeleteApi(Resource):
         assert user.current_tenant_id is not None
 
         try:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 # Delete trigger provider subscription
                 TriggerProviderService.delete_trigger_provider(
                     session=session,
@@ -388,7 +386,7 @@ class TriggerSubscriptionDeleteApi(Resource):
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,
                 )
-                session.commit()
+
             return {"result": "success"}
         except ValueError as e:
             raise BadRequest(str(e))

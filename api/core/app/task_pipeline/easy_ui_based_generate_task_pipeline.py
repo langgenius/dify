@@ -5,7 +5,6 @@ from threading import Thread
 from typing import Union, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -269,9 +268,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     err = self.handle_error(event=event, session=session, message_id=self._message_id)
-                    session.commit()
+
                 yield self.error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
@@ -291,10 +290,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                         answer=output_moderation_answer
                     )
 
-                with Session(db.engine) as session:
+                with SessionLocal.begin() as session:
                     # Save message
                     self._save_message(session=session, trace_manager=trace_manager)
-                    session.commit()
+
                 message_end_resp = self._message_end_to_stream_response()
                 yield message_end_resp
             elif isinstance(event, QueueRetrieverResourcesEvent):
@@ -467,7 +466,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         )
 
     def _record_files(self):
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
             if not message_files:
                 return None
@@ -562,7 +561,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :param event: agent thought event
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             agent_thought: MessageAgentThought | None = (
                 session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
             )

@@ -2,12 +2,17 @@ import logging
 
 import gevent
 from sqlalchemy import event
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
 from models.engine import db
 
 logger = logging.getLogger(__name__)
+
+# Single sessionmaker factory for the entire application to avoid overhead.
+# Usage: with SessionLocal.begin() as session:
+SessionLocal = sessionmaker()
 
 # Global flag to avoid duplicate registration of event listener
 _gevent_compatibility_setup: bool = False
@@ -53,6 +58,9 @@ def _setup_gevent_compatibility():
 def init_app(app: DifyApp):
     db.init_app(app)
     _setup_gevent_compatibility()
+
+    # Configure the global session factory with the engine
+    SessionLocal.configure(bind=db.engine)
 
     # Eagerly build the engine so pool_size/max_overflow/etc. come from config
     try:

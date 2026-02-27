@@ -246,14 +246,14 @@ class MCPTool(Tool):
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
 
-        from sqlalchemy.orm import Session
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
         from services.tools.mcp_tools_manage_service import MCPToolManageService
 
         # Step 1: Load provider entity and credentials in a short-lived session
         # This minimizes database connection hold time
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             mcp_service = MCPToolManageService(session=session)
             provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
 

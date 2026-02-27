@@ -6,7 +6,7 @@ from typing import Concatenate, ParamSpec, TypeVar
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
@@ -49,7 +49,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
             if not app_model:

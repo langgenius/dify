@@ -3,7 +3,6 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -12,7 +11,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationDelete,
     ConversationInfiniteScrollPagination,
@@ -117,7 +115,7 @@ class ConversationApi(Resource):
         last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

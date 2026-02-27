@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -252,7 +252,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             try:
                 yield session
                 session.commit()

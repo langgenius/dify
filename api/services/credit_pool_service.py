@@ -1,7 +1,6 @@
 import logging
 
 from sqlalchemy import update
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
@@ -67,7 +66,7 @@ class CreditPoolService:
         actual_credits = min(credits_required, pool.remaining_credits)
 
         try:
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 stmt = (
                     update(TenantCreditPool)
                     .where(
@@ -77,7 +76,7 @@ class CreditPoolService:
                     .values(quota_used=TenantCreditPool.quota_used + actual_credits)
                 )
                 session.execute(stmt)
-                session.commit()
+
         except Exception:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
             raise QuotaExceededError("Failed to deduct credits")

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.entities.trace_entity import BaseTraceInfo
@@ -43,7 +43,7 @@ class BaseTraceInstance(ABC):
         Raises:
             ValueError: If app, creator account or tenant cannot be found
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get the app to find its creator
             app_stmt = select(App).where(App.id == app_id)
             app = session.scalar(app_stmt)

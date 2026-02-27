@@ -2,14 +2,12 @@ from typing import Any
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, model_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
     ResultResponse,
@@ -74,7 +72,7 @@ class ConversationListApi(InstalledAppResource):
         try:
             if not isinstance(current_user, Account):
                 raise ValueError("current_user must be an Account instance")
-            with Session(db.engine) as session:
+            with SessionLocal.begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

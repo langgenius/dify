@@ -2,7 +2,6 @@ import flask_restx
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -33,16 +32,10 @@ api_key_list_model = console_ns.model(
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
-    if resource_model == App:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
-    else:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
+    with SessionLocal.begin() as session:
+        resource = session.execute(
+            select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+        ).scalar_one_or_none()
 
     if resource is None:
         flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
@@ -99,8 +92,10 @@ class BaseApiKeyListResource(Resource):
         api_token.tenant_id = current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
-        db.session.add(api_token)
-        db.session.commit()
+
+        with SessionLocal.begin() as session:
+            session.add(api_token)
+
         return api_token, 201
 
 
@@ -137,8 +132,8 @@ class BaseApiKeyResource(Resource):
         assert key is not None  # nosec - for type checker only
         ApiTokenCache.delete(key.token, key.type)
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
-        db.session.commit()
+        with SessionLocal.begin() as session:
+            session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
 
         return {"result": "success"}, 204
 

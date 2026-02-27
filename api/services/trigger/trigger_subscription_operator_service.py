@@ -1,5 +1,5 @@
 from sqlalchemy import and_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.enums import AppTriggerStatus
@@ -19,7 +19,7 @@ class TriggerSubscriptionOperatorService:
             subscription_id: Subscription ID
             event_name: Event name
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             subscribers = session.scalars(
                 select(WorkflowPluginTrigger)
                 .join(
