@@ -13,8 +13,8 @@ export const inputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 radius-md system-sm-regular',
-        large: 'px-4 radius-lg system-md-regular',
+        regular: 'px-3 system-sm-regular radius-md',
+        large: 'px-4 system-md-regular radius-lg',
       },
     },
     defaultVariants: {
@@ -115,7 +115,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         <div
           className={cn(
             'group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]',
-            showClearIconOnHover && 'pointer-events-none opacity-0 transition-opacity group-hover/input:pointer-events-auto group-hover/input:opacity-100 group-focus-within/input:pointer-events-auto group-focus-within/input:opacity-100',
+            showClearIconOnHover && 'pointer-events-none opacity-0 transition-opacity group-focus-within/input:pointer-events-auto group-focus-within/input:opacity-100 group-hover/input:pointer-events-auto group-hover/input:opacity-100',
           )}
           onClick={onClear}
           data-testid="input-clear"
@@ -136,7 +136,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       )}
       {
         unit && (
-          <div className="system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary system-sm-regular">
             {unit}
           </div>
         )
