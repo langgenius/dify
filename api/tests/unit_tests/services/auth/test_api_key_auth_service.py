@@ -1,10 +1,24 @@
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
+
+
+def _setup_session_cm(mock_create_session: Mock) -> Mock:
+    """
+    ApiKeyAuthService uses `with session_factory.create_session() as session`.
+    Tests patch `session_factory.create_session` and pull the session mock from the context manager.
+    """
+    session = MagicMock()
+    mock_create_session.return_value.__enter__.return_value = session
+    mock_create_session.return_value.__exit__.return_value = None
+
+    tx = MagicMock()
+    session.begin.return_value = tx
+    return session
 
 
 class TestApiKeyAuthService:
@@ -19,9 +33,10 @@ class TestApiKeyAuthService:
         self.mock_credentials = {"auth_type": "api_key", "config": {"api_key": "test_secret_key_123"}}
         self.mock_args = {"category": self.category, "provider": self.provider, "credentials": self.mock_credentials}
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_provider_auth_list_success(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_provider_auth_list_success(self, mock_create_session):
         """Test get provider auth list - success scenario"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock database query result
         mock_binding = Mock()
         mock_binding.tenant_id = self.tenant_id
@@ -38,18 +53,20 @@ class TestApiKeyAuthService:
         select_arg = mock_session.scalars.call_args[0][0]
         assert "data_source_api_key_auth_binding" in str(select_arg).lower()
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_provider_auth_list_empty(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_provider_auth_list_empty(self, mock_create_session):
         """Test get provider auth list - empty result"""
+        mock_session = _setup_session_cm(mock_create_session)
         mock_session.scalars.return_value.all.return_value = []
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
         assert result == []
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_provider_auth_list_filters_disabled(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_provider_auth_list_filters_disabled(self, mock_create_session):
         """Test get provider auth list - filters disabled items"""
+        mock_session = _setup_session_cm(mock_create_session)
         mock_session.scalars.return_value.all.return_value = []
 
         ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
@@ -60,11 +77,12 @@ class TestApiKeyAuthService:
         assert any("tenant_id" in s for s in where_strs)
         assert any("disabled" in s for s in where_strs)
 
-    @patch("services.auth.api_key_auth_service.db.session")
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
-    def test_create_provider_auth_success(self, mock_encrypter, mock_factory, mock_session):
+    def test_create_provider_auth_success(self, mock_encrypter, mock_factory, mock_create_session):
         """Test create provider auth - success scenario"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock successful auth validation
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -73,10 +91,6 @@ class TestApiKeyAuthService:
         # Mock encryption
         encrypted_key = "encrypted_test_key_123"
         mock_encrypter.encrypt_token.return_value = encrypted_key
-
-        # Mock database operations
-        mock_session.add = Mock()
-        mock_session.commit = Mock()
 
         ApiKeyAuthService.create_provider_auth(self.tenant_id, self.mock_args)
 
@@ -89,11 +103,11 @@ class TestApiKeyAuthService:
 
         # Verify database operations
         mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
+        mock_session.begin.assert_called_once()
 
-    @patch("services.auth.api_key_auth_service.db.session")
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
-    def test_create_provider_auth_validation_failed(self, mock_factory, mock_session):
+    def test_create_provider_auth_validation_failed(self, mock_factory, mock_create_session):
         """Test create provider auth - validation failed"""
         # Mock failed auth validation
         mock_auth_instance = Mock()
@@ -103,14 +117,14 @@ class TestApiKeyAuthService:
         ApiKeyAuthService.create_provider_auth(self.tenant_id, self.mock_args)
 
         # Verify no database operations when validation fails
-        mock_session.add.assert_not_called()
-        mock_session.commit.assert_not_called()
+        mock_create_session.assert_not_called()
 
-    @patch("services.auth.api_key_auth_service.db.session")
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
-    def test_create_provider_auth_encrypts_api_key(self, mock_encrypter, mock_factory, mock_session):
+    def test_create_provider_auth_encrypts_api_key(self, mock_encrypter, mock_factory, mock_create_session):
         """Test create provider auth - ensures API key is encrypted"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock successful auth validation
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -119,10 +133,6 @@ class TestApiKeyAuthService:
         # Mock encryption
         encrypted_key = "encrypted_test_key_123"
         mock_encrypter.encrypt_token.return_value = encrypted_key
-
-        # Mock database operations
-        mock_session.add = Mock()
-        mock_session.commit = Mock()
 
         args_copy = self.mock_args.copy()
         original_key = args_copy["credentials"]["config"]["api_key"]
@@ -136,9 +146,10 @@ class TestApiKeyAuthService:
         # Verify encryption function is called correctly
         mock_encrypter.encrypt_token.assert_called_once_with(self.tenant_id, original_key)
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_auth_credentials_success(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_auth_credentials_success(self, mock_create_session):
         """Test get auth credentials - success scenario"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock database query result
         mock_binding = Mock()
         mock_binding.credentials = json.dumps(self.mock_credentials)
@@ -150,18 +161,20 @@ class TestApiKeyAuthService:
         assert result == self.mock_credentials
         mock_session.query.assert_called_once_with(DataSourceApiKeyAuthBinding)
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_auth_credentials_not_found(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_auth_credentials_not_found(self, mock_create_session):
         """Test get auth credentials - not found"""
+        mock_session = _setup_session_cm(mock_create_session)
         mock_session.query.return_value.where.return_value.first.return_value = None
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
         assert result is None
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_auth_credentials_filters_correctly(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_auth_credentials_filters_correctly(self, mock_create_session):
         """Test get auth credentials - applies correct filters"""
+        mock_session = _setup_session_cm(mock_create_session)
         mock_session.query.return_value.where.return_value.first.return_value = None
 
         ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
@@ -170,9 +183,10 @@ class TestApiKeyAuthService:
         where_call = mock_session.query.return_value.where.call_args[0]
         assert len(where_call) == 4  # tenant_id, category, provider, disabled
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_auth_credentials_json_parsing(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_auth_credentials_json_parsing(self, mock_create_session):
         """Test get auth credentials - JSON parsing"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock credentials with special characters
         special_credentials = {"auth_type": "api_key", "config": {"api_key": "key_with_中文_and_special_chars_!@#$%"}}
 
@@ -185,9 +199,10 @@ class TestApiKeyAuthService:
         assert result == special_credentials
         assert result["config"]["api_key"] == "key_with_中文_and_special_chars_!@#$%"
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_delete_provider_auth_success(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_delete_provider_auth_success(self, mock_create_session):
         """Test delete provider auth - success scenario"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock database query result
         mock_binding = Mock()
         mock_session.query.return_value.where.return_value.first.return_value = mock_binding
@@ -196,22 +211,23 @@ class TestApiKeyAuthService:
 
         # Verify delete operations
         mock_session.delete.assert_called_once_with(mock_binding)
-        mock_session.commit.assert_called_once()
+        mock_session.begin.assert_called_once()
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_delete_provider_auth_not_found(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_delete_provider_auth_not_found(self, mock_create_session):
         """Test delete provider auth - not found"""
+        mock_session = _setup_session_cm(mock_create_session)
         mock_session.query.return_value.where.return_value.first.return_value = None
 
         ApiKeyAuthService.delete_provider_auth(self.tenant_id, self.binding_id)
 
         # Verify no delete operations when not found
         mock_session.delete.assert_not_called()
-        mock_session.commit.assert_not_called()
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_delete_provider_auth_filters_by_tenant(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_delete_provider_auth_filters_by_tenant(self, mock_create_session):
         """Test delete provider auth - filters by tenant"""
+        mock_session = _setup_session_cm(mock_create_session)
         mock_session.query.return_value.where.return_value.first.return_value = None
 
         ApiKeyAuthService.delete_provider_auth(self.tenant_id, self.binding_id)
@@ -316,11 +332,12 @@ class TestApiKeyAuthService:
         # Should validate normally rather than raising security-related exceptions
         ApiKeyAuthService.validate_api_key_auth_args(args)
 
-    @patch("services.auth.api_key_auth_service.db.session")
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
-    def test_create_provider_auth_database_error_handling(self, mock_encrypter, mock_factory, mock_session):
+    def test_create_provider_auth_database_error_handling(self, mock_encrypter, mock_factory, mock_create_session):
         """Test create provider auth - database error handling"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock successful auth validation
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -329,15 +346,17 @@ class TestApiKeyAuthService:
         # Mock encryption
         mock_encrypter.encrypt_token.return_value = "encrypted_key"
 
-        # Mock database error
-        mock_session.commit.side_effect = Exception("Database error")
+        # Simulate commit failure at transaction close
+        tx = mock_session.begin.return_value
+        tx.__exit__.side_effect = Exception("Database error")
 
         with pytest.raises(Exception, match="Database error"):
             ApiKeyAuthService.create_provider_auth(self.tenant_id, self.mock_args)
 
-    @patch("services.auth.api_key_auth_service.db.session")
-    def test_get_auth_credentials_invalid_json(self, mock_session):
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
+    def test_get_auth_credentials_invalid_json(self, mock_create_session):
         """Test get auth credentials - invalid JSON"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock database returning invalid JSON
         mock_binding = Mock()
         mock_binding.credentials = "invalid json content"
@@ -346,21 +365,23 @@ class TestApiKeyAuthService:
         with pytest.raises(json.JSONDecodeError):
             ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
-    @patch("services.auth.api_key_auth_service.db.session")
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
-    def test_create_provider_auth_factory_exception(self, mock_factory, mock_session):
+    def test_create_provider_auth_factory_exception(self, mock_factory, mock_create_session):
         """Test create provider auth - factory exception"""
         # Mock factory raising exception
         mock_factory.side_effect = Exception("Factory error")
 
         with pytest.raises(Exception, match="Factory error"):
             ApiKeyAuthService.create_provider_auth(self.tenant_id, self.mock_args)
+        mock_create_session.assert_not_called()
 
-    @patch("services.auth.api_key_auth_service.db.session")
+    @patch("services.auth.api_key_auth_service.session_factory.create_session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
-    def test_create_provider_auth_encryption_exception(self, mock_encrypter, mock_factory, mock_session):
+    def test_create_provider_auth_encryption_exception(self, mock_encrypter, mock_factory, mock_create_session):
         """Test create provider auth - encryption exception"""
+        mock_session = _setup_session_cm(mock_create_session)
         # Mock successful auth validation
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -371,6 +392,8 @@ class TestApiKeyAuthService:
 
         with pytest.raises(Exception, match="Encryption error"):
             ApiKeyAuthService.create_provider_auth(self.tenant_id, self.mock_args)
+        mock_create_session.assert_called_once()
+        mock_session.add.assert_not_called()
 
     def test_validate_api_key_auth_args_none_input(self):
         """Test API key auth args validation - None input"""
