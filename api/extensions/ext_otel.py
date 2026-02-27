@@ -26,11 +26,26 @@ def init_app(app: DifyApp):
         ConsoleSpanExporter,
     )
     from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-    from opentelemetry.semconv._incubating.attributes.deployment_attributes import DEPLOYMENT_ENVIRONMENT
-    from opentelemetry.semconv._incubating.attributes.host_attributes import HOST_ARCH, HOST_ID, HOST_NAME
-    from opentelemetry.semconv._incubating.attributes.os_attributes import OS_DESCRIPTION, OS_TYPE, OS_VERSION
-    from opentelemetry.semconv._incubating.attributes.process_attributes import PROCESS_PID
-    from opentelemetry.semconv.attributes.service_attributes import SERVICE_NAME, SERVICE_VERSION
+    from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+        DEPLOYMENT_ENVIRONMENT_NAME,
+    )
+    from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+        HOST_ARCH,
+        HOST_ID,
+        HOST_NAME,
+    )
+    from opentelemetry.semconv._incubating.attributes.os_attributes import (  # type: ignore[import-untyped]
+        OS_DESCRIPTION,
+        OS_TYPE,
+        OS_VERSION,
+    )
+    from opentelemetry.semconv._incubating.attributes.process_attributes import (  # type: ignore[import-untyped]
+        PROCESS_PID,
+    )
+    from opentelemetry.semconv.attributes.service_attributes import (  # type: ignore[import-untyped]
+        SERVICE_NAME,
+        SERVICE_VERSION,
+    )
     from opentelemetry.trace import set_tracer_provider
 
     from extensions.otel.instrumentation import init_instruments
@@ -44,7 +59,7 @@ def init_app(app: DifyApp):
             SERVICE_NAME: dify_config.APPLICATION_NAME,
             SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
             PROCESS_PID: os.getpid(),
-            DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+            DEPLOYMENT_ENVIRONMENT_NAME: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
             HOST_NAME: socket.gethostname(),
             HOST_ARCH: platform.machine(),
             "custom.deployment.git_commit": dify_config.COMMIT_SHA,
