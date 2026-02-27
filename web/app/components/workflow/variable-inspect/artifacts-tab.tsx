@@ -11,7 +11,7 @@ import Loading from '@/app/components/base/loading'
 import ArtifactsTree from '@/app/components/workflow/skill/file-tree/artifacts/artifacts-tree'
 import ReadOnlyFilePreview from '@/app/components/workflow/skill/viewer/read-only-file-preview'
 import { useDocLink } from '@/context/i18n'
-import { sandboxFileDownloadUrlOptions, useDownloadSandboxFile, useSandboxFilesTree } from '@/service/use-sandbox-file'
+import { buildTreeFromFlatList, sandboxFileDownloadUrlOptions, sandboxFilesTreeOptions, useDownloadSandboxFile } from '@/service/use-sandbox-file'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { useStore } from '../store'
@@ -67,10 +67,12 @@ const ArtifactsTab = (headerProps: InspectHeaderProps) => {
   )
   const isResponding = useStore(s => s.isResponding)
 
-  const { data: treeData, flatData, hasFiles, isLoading } = useSandboxFilesTree(appId, {
-    enabled: !!appId,
+  const { data: flatData, isLoading } = useQuery({
+    ...sandboxFilesTreeOptions(appId),
     refetchInterval: (isWorkflowRunning || isResponding) ? 5000 : false,
   })
+  const treeData = useMemo(() => flatData ? buildTreeFromFlatList(flatData) : undefined, [flatData])
+  const hasFiles = (flatData?.length ?? 0) > 0
   const { mutateAsync: fetchDownloadUrl, isPending: isDownloading } = useDownloadSandboxFile(appId)
   const [selectedFile, setSelectedFile] = useState<SandboxFileTreeNode | null>(null)
   const selectedFilePath = useMemo(() => {

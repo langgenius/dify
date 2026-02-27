@@ -1,4 +1,4 @@
-import type { SandboxFileNode, SandboxFileTreeNode } from '@/types/sandbox-file'
+import type { SandboxFileNode } from '@/types/sandbox-file'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ArtifactsTab from './artifacts-tab'
 import { InspectTab } from './types'
@@ -21,14 +21,16 @@ const mocks = vi.hoisted(() => ({
     isResponding: false,
     bottomPanelWidth: 640,
   } as MockStoreState,
-  treeData: undefined as SandboxFileTreeNode[] | undefined,
   flatData: [] as SandboxFileNode[],
-  hasFiles: false,
   isLoading: false,
   fetchDownloadUrl: vi.fn(),
   mockUseQuery: vi.fn(),
   mockDownloadUrlOptions: vi.fn().mockReturnValue({
     queryKey: ['sandboxFile', 'downloadFile'],
+    queryFn: vi.fn(),
+  }),
+  mockTreeOptions: vi.fn().mockReturnValue({
+    queryKey: ['sandboxFile', 'listFiles'],
     queryFn: vi.fn(),
   }),
 }))
@@ -42,14 +44,10 @@ vi.mock('@tanstack/react-query', async importOriginal => ({
   useQuery: (options: unknown) => mocks.mockUseQuery(options),
 }))
 
-vi.mock('@/service/use-sandbox-file', () => ({
+vi.mock('@/service/use-sandbox-file', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/service/use-sandbox-file')>()),
   sandboxFileDownloadUrlOptions: (...args: unknown[]) => mocks.mockDownloadUrlOptions(...args),
-  useSandboxFilesTree: () => ({
-    data: mocks.treeData,
-    flatData: mocks.flatData,
-    hasFiles: mocks.hasFiles,
-    isLoading: mocks.isLoading,
-  }),
+  sandboxFilesTreeOptions: (...args: unknown[]) => mocks.mockTreeOptions(...args),
   useDownloadSandboxFile: () => ({
     mutateAsync: mocks.fetchDownloadUrl,
     isPending: false,
@@ -74,18 +72,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-const createTreeFileNode = (overrides: Partial<SandboxFileTreeNode> = {}): SandboxFileTreeNode => ({
-  id: 'a.txt',
-  name: 'a.txt',
-  path: 'a.txt',
-  node_type: 'file',
-  size: 128,
-  mtime: 1700000000,
-  extension: 'txt',
-  children: [],
-  ...overrides,
-})
-
 const createFlatFileNode = (overrides: Partial<SandboxFileNode> = {}): SandboxFileNode => ({
   path: 'a.txt',
   is_dir: false,
@@ -103,13 +89,20 @@ describe('ArtifactsTab', () => {
     mocks.storeState.isResponding = false
     mocks.storeState.bottomPanelWidth = 640
 
-    mocks.treeData = [createTreeFileNode()]
     mocks.flatData = [createFlatFileNode()]
-    mocks.hasFiles = true
     mocks.isLoading = false
-    mocks.mockUseQuery.mockReturnValue({
-      data: undefined,
-      isLoading: false,
+    mocks.mockUseQuery.mockImplementation((options: { queryKey?: unknown }) => {
+      const treeKey = mocks.mockTreeOptions.mock.results.at(-1)?.value?.queryKey
+      if (treeKey && options.queryKey === treeKey) {
+        return {
+          data: mocks.flatData,
+          isLoading: mocks.isLoading,
+        }
+      }
+      return {
+        data: undefined,
+        isLoading: false,
+      }
     })
   })
 
@@ -128,9 +121,7 @@ describe('ArtifactsTab', () => {
       expect(mocks.mockDownloadUrlOptions).toHaveBeenCalledWith('app-1', 'a.txt')
     })
 
-    mocks.treeData = undefined
     mocks.flatData = []
-    mocks.hasFiles = false
 
     rerender(<ArtifactsTab {...headerProps} />)
 

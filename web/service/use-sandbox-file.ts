@@ -14,6 +14,14 @@ export function sandboxFileDownloadUrlOptions(appId: string | undefined, path: s
   })
 }
 
+export function sandboxFilesTreeOptions(appId: string | undefined) {
+  return consoleQuery.sandboxFile.listFiles.queryOptions({
+    input: appId
+      ? { params: { appId }, query: { recursive: true } }
+      : skipToken,
+  })
+}
+
 type InvalidateSandboxFilesOptions = {
   refetchDownloadFile?: boolean
 }
@@ -47,7 +55,7 @@ export function useDownloadSandboxFile(appId: string | undefined) {
   })
 }
 
-function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] {
+export function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] {
   const nodeMap = new Map<string, SandboxFileTreeNode>()
   const roots: SandboxFileTreeNode[] = []
 
@@ -86,25 +94,8 @@ function buildTreeFromFlatList(nodes: SandboxFileNode[]): SandboxFileTreeNode[] 
   return roots
 }
 
-type UseSandboxFilesTreeOptions = {
-  enabled?: boolean
-  refetchInterval?: number | false
-}
-
-export function useSandboxFilesTree(
-  appId: string | undefined,
-  options?: UseSandboxFilesTreeOptions,
-) {
-  const input = appId && (options?.enabled ?? true)
-    ? { params: { appId }, query: { recursive: true } }
-    : skipToken
-
-  const { data, isLoading, error } = useQuery({
-    ...consoleQuery.sandboxFile.listFiles.queryOptions({
-      input,
-    }),
-    refetchInterval: options?.refetchInterval,
-  })
+export function useSandboxFilesTree(appId: string | undefined) {
+  const { data, isLoading, error } = useQuery(sandboxFilesTreeOptions(appId))
 
   const treeData = useMemo(() => {
     if (!data)
@@ -112,14 +103,10 @@ export function useSandboxFilesTree(
     return buildTreeFromFlatList(data)
   }, [data])
 
-  const hasFiles = useMemo(() => {
-    return (data?.length ?? 0) > 0
-  }, [data])
-
   return {
     data: treeData,
     flatData: data,
-    hasFiles,
+    hasFiles: (data?.length ?? 0) > 0,
     isLoading,
     error,
   }

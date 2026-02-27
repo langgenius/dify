@@ -1,11 +1,12 @@
 'use client'
 
 import type { SandboxProvider } from '@/types/sandbox-provider'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import { useGetSandboxProviderList } from '@/service/use-sandbox-provider'
+import { consoleQuery } from '@/service/client'
 import ConfigModal from './config-modal'
 import ProviderCard from './provider-card'
 import SwitchModal from './switch-modal'
@@ -13,7 +14,7 @@ import SwitchModal from './switch-modal'
 const SandboxProviderPage = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager, isLoadingCurrentWorkspace } = useAppContext()
-  const { data: providers, isLoading } = useGetSandboxProviderList()
+  const { data: providers, isLoading } = useQuery(consoleQuery.sandboxProvider.getSandboxProviderList.queryOptions())
 
   const [configModalProvider, setConfigModalProvider] = useState<SandboxProvider | null>(null)
   const [switchModalProvider, setSwitchModalProvider] = useState<SandboxProvider | null>(null)

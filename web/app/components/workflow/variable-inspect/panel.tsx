@@ -1,9 +1,10 @@
 import type { FC } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useSandboxFilesTree } from '@/service/use-sandbox-file'
+import { sandboxFilesTreeOptions } from '@/service/use-sandbox-file'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useStore } from '../store'
 import ArtifactsTab from './artifacts-tab'
@@ -28,9 +29,8 @@ const VariablesPanel: FC<{ onClose: () => void }> = ({ onClose }) => {
     return [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars].length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
-  const { hasFiles: hasArtifacts } = useSandboxFilesTree(appId, {
-    enabled: !!appId && sandboxEnabled,
-  })
+  const { data: sandboxFiles } = useQuery(sandboxFilesTreeOptions(sandboxEnabled ? appId : undefined))
+  const hasArtifacts = (sandboxFiles?.length ?? 0) > 0
 
   const handleClear = useCallback(() => {
     deleteAllInspectorVars()

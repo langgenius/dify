@@ -6,7 +6,6 @@ export const invoicesContract = base
     path: '/billing/invoices',
     method: 'GET',
   })
-  .input(type<unknown>())
   .output(type<{ url: string }>())
 
 export const bindPartnerStackContract = base

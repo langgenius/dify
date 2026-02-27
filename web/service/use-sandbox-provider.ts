@@ -1,16 +1,8 @@
 import {
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
-
-export const useGetSandboxProviderList = () => {
-  return useQuery({
-    queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.queryKey(),
-    queryFn: () => consoleClient.sandboxProvider.getSandboxProviderList(),
-  })
-}
 
 export const useSaveSandboxProviderConfig = () => {
   const queryClient = useQueryClient()

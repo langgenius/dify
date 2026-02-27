@@ -7,7 +7,6 @@ export const getSandboxProviderListContract = base
     path: '/workspaces/current/sandbox-providers',
     method: 'GET',
   })
-  .input(type<unknown>())
   .output(type<SandboxProvider[]>())
 
 export const saveSandboxProviderConfigContract = base
