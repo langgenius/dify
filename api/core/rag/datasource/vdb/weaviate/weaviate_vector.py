@@ -33,8 +33,9 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-_weaviate_client: Optional[weaviate.WeaviateClient] = None
+_weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
 
 class WeaviateConfig(BaseModel):
     """
