@@ -7,7 +7,7 @@ import time
 import uuid
 from typing import Any
 
-from flask import current_app
+from flask import Flask, current_app
 from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
@@ -21,7 +21,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
@@ -36,6 +36,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
+from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
@@ -89,8 +90,17 @@ class IndexingRunner:
                 text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
                 # transform
+                current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+                if not current_user:
+                    raise ValueError("no current user found")
+                current_user.set_tenant_id(dataset.tenant_id)
                 documents = self._transform(
-                    index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict()
+                    index_processor,
+                    dataset,
+                    text_docs,
+                    requeried_document.doc_language,
+                    processing_rule.to_dict(),
+                    current_user=current_user,
                 )
                 # save segment
                 self._load_segments(dataset, requeried_document, documents)
@@ -136,7 +146,7 @@ class IndexingRunner:
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
-                if requeried_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     # delete child chunks
                     db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
@@ -152,8 +162,17 @@ class IndexingRunner:
             text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
             # transform
+            current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+            if not current_user:
+                raise ValueError("no current user found")
+            current_user.set_tenant_id(dataset.tenant_id)
             documents = self._transform(
-                index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict()
+                index_processor,
+                dataset,
+                text_docs,
+                requeried_document.doc_language,
+                processing_rule.to_dict(),
+                current_user=current_user,
             )
             # save segment
             self._load_segments(dataset, requeried_document, documents)
@@ -209,7 +228,7 @@ class IndexingRunner:
                                 "dataset_id": document_segment.dataset_id,
                             },
                         )
-                        if requeried_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                        if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                             child_chunks = document_segment.get_child_chunks()
                             if child_chunks:
                                 child_documents = []
@@ -292,16 +311,21 @@ class IndexingRunner:
         qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
+        # doc_form represents the segmentation method (general, parent-child, QA)
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        # one extract_setting is one source document
         for extract_setting in extract_settings:
             # extract
             processing_rule = DatasetProcessRule(
                 mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
             )
+            # Extract document content
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
+            # Cleaning and segmentation
             documents = index_processor.transform(
                 text_docs,
+                current_user=None,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
                 tenant_id=tenant_id,
@@ -341,75 +365,82 @@ class IndexingRunner:
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+
+        # Generate summary preview
+        summary_index_setting = tmp_processing_rule.get("summary_index_setting")
+        if summary_index_setting and summary_index_setting.get("enable") and preview_texts:
+            preview_texts = index_processor.generate_summary_preview(
+                tenant_id, preview_texts, summary_index_setting, doc_language
+            )
+
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
-        # load file
-        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
-            return []
-
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
-        if dataset_document.data_source_type == "upload_file":
-            if not data_source_info or "upload_file_id" not in data_source_info:
-                raise ValueError("no upload file found")
-            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
-            file_detail = db.session.scalars(stmt).one_or_none()
+        match dataset_document.data_source_type:
+            case "upload_file":
+                if not data_source_info or "upload_file_id" not in data_source_info:
+                    raise ValueError("no upload file found")
+                stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+                file_detail = db.session.scalars(stmt).one_or_none()
 
-            if file_detail:
+                if file_detail:
+                    extract_setting = ExtractSetting(
+                        datasource_type=DatasourceType.FILE,
+                        upload_file=file_detail,
+                        document_model=dataset_document.doc_form,
+                    )
+                    text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case "notion_import":
+                if (
+                    not data_source_info
+                    or "notion_workspace_id" not in data_source_info
+                    or "notion_page_id" not in data_source_info
+                ):
+                    raise ValueError("no notion import info found")
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE,
-                    upload_file=file_detail,
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": data_source_info.get("credential_id"),
+                            "notion_workspace_id": data_source_info["notion_workspace_id"],
+                            "notion_obj_id": data_source_info["notion_page_id"],
+                            "notion_page_type": data_source_info["type"],
+                            "document": dataset_document,
+                            "tenant_id": dataset_document.tenant_id,
+                        }
+                    ),
                     document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-        elif dataset_document.data_source_type == "notion_import":
-            if (
-                not data_source_info
-                or "notion_workspace_id" not in data_source_info
-                or "notion_page_id" not in data_source_info
-            ):
-                raise ValueError("no notion import info found")
-            extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.NOTION,
-                notion_info=NotionInfo.model_validate(
-                    {
-                        "credential_id": data_source_info["credential_id"],
-                        "notion_workspace_id": data_source_info["notion_workspace_id"],
-                        "notion_obj_id": data_source_info["notion_page_id"],
-                        "notion_page_type": data_source_info["type"],
-                        "document": dataset_document,
-                        "tenant_id": dataset_document.tenant_id,
-                    }
-                ),
-                document_model=dataset_document.doc_form,
-            )
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-        elif dataset_document.data_source_type == "website_crawl":
-            if (
-                not data_source_info
-                or "provider" not in data_source_info
-                or "url" not in data_source_info
-                or "job_id" not in data_source_info
-            ):
-                raise ValueError("no website import info found")
-            extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.WEBSITE,
-                website_info=WebsiteInfo.model_validate(
-                    {
-                        "provider": data_source_info["provider"],
-                        "job_id": data_source_info["job_id"],
-                        "tenant_id": dataset_document.tenant_id,
-                        "url": data_source_info["url"],
-                        "mode": data_source_info["mode"],
-                        "only_main_content": data_source_info["only_main_content"],
-                    }
-                ),
-                document_model=dataset_document.doc_form,
-            )
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case "website_crawl":
+                if (
+                    not data_source_info
+                    or "provider" not in data_source_info
+                    or "url" not in data_source_info
+                    or "job_id" not in data_source_info
+                ):
+                    raise ValueError("no website import info found")
+                extract_setting = ExtractSetting(
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": data_source_info["provider"],
+                            "job_id": data_source_info["job_id"],
+                            "tenant_id": dataset_document.tenant_id,
+                            "url": data_source_info["url"],
+                            "mode": data_source_info["mode"],
+                            "only_main_content": data_source_info["only_main_content"],
+                        }
+                    ),
+                    document_model=dataset_document.doc_form,
+                )
+                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case _:
+                return []
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,
@@ -551,7 +582,10 @@ class IndexingRunner:
         indexing_start_at = time.perf_counter()
         tokens = 0
         create_keyword_thread = None
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+        if (
+            dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"
+        ):
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
@@ -590,7 +624,7 @@ class IndexingRunner:
                 for future in futures:
                     tokens += future.result()
         if (
-            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
+            dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
             and dataset.indexing_technique == "economy"
             and create_keyword_thread is not None
         ):
@@ -635,7 +669,13 @@ class IndexingRunner:
                 db.session.commit()
 
     def _process_chunk(
-        self, flask_app, index_processor, chunk_documents, dataset, dataset_document, embedding_model_instance
+        self,
+        flask_app: Flask,
+        index_processor: BaseIndexProcessor,
+        chunk_documents: list[Document],
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
+        embedding_model_instance: ModelInstance | None,
     ):
         with flask_app.app_context():
             # check document is paused
@@ -646,8 +686,15 @@ class IndexingRunner:
                 page_content_list = [document.page_content for document in chunk_documents]
                 tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
 
+            multimodal_documents = []
+            for document in chunk_documents:
+                if document.attachments and dataset.is_multimodal:
+                    multimodal_documents.extend(document.attachments)
+
             # load index
-            index_processor.load(dataset, chunk_documents, with_keywords=False)
+            index_processor.load(
+                dataset, chunk_documents, multimodal_documents=multimodal_documents, with_keywords=False
+            )
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
             db.session.query(DocumentSegment).where(
@@ -710,6 +757,7 @@ class IndexingRunner:
         text_docs: list[Document],
         doc_language: str,
         process_rule: dict,
+        current_user: Account | None = None,
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
@@ -729,6 +777,7 @@ class IndexingRunner:
 
         documents = index_processor.transform(
             text_docs,
+            current_user,
             embedding_model_instance=embedding_model_instance,
             process_rule=process_rule,
             tenant_id=dataset.tenant_id,
@@ -737,14 +786,16 @@ class IndexingRunner:
 
         return documents
 
-    def _load_segments(self, dataset, dataset_document, documents):
+    def _load_segments(self, dataset: Dataset, dataset_document: DatasetDocument, documents: list[Document]):
         # save node to document segment
         doc_store = DatasetDocumentStore(
             dataset=dataset, user_id=dataset_document.created_by, document_id=dataset_document.id
         )
 
         # add document segments
-        doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX)
+        doc_store.add_documents(
+            docs=documents, save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX
+        )
 
         # update document status to indexing
         cur_time = naive_utc_now()

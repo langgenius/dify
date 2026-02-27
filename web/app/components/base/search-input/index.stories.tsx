@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import SearchInput from '.'
 
@@ -62,7 +62,9 @@ const SearchInputDemo = (args: any) => {
       />
       {value && (
         <div className="mt-3 text-sm text-gray-600">
-          Searching for: <span className="font-semibold">{value}</span>
+          Searching for:
+          {' '}
+          <span className="font-semibold">{value}</span>
         </div>
       )}
     </div>
@@ -139,31 +141,43 @@ const UserListSearchDemo = () => {
         placeholder="Search by name, email, or role..."
       />
       <div className="mt-4 space-y-2">
-        {filteredUsers.length > 0 ? (
-          filteredUsers.map(user => (
-            <div
-              key={user.id}
-              className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{user.name}</div>
-                  <div className="text-xs text-gray-500">{user.email}</div>
+        {filteredUsers.length > 0
+          ? (
+              filteredUsers.map(user => (
+                <div
+                  key={user.id}
+                  className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">{user.name}</div>
+                      <div className="text-xs text-gray-500">{user.email}</div>
+                    </div>
+                    <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
+                      {user.role}
+                    </span>
+                  </div>
                 </div>
-                <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
-                  {user.role}
-                </span>
+              ))
+            )
+          : (
+              <div className="py-8 text-center text-sm text-gray-500">
+                No users found matching "
+                {searchQuery}
+                "
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="py-8 text-center text-sm text-gray-500">
-            No users found matching "{searchQuery}"
-          </div>
-        )}
+            )}
       </div>
       <div className="mt-4 text-xs text-gray-500">
-        Showing {filteredUsers.length} of {users.length} members
+        Showing
+        {' '}
+        {filteredUsers.length}
+        {' '}
+        of
+        {' '}
+        {users.length}
+        {' '}
+        members
       </div>
     </div>
   )
@@ -202,22 +216,27 @@ const ProductSearchDemo = () => {
         white
       />
       <div className="mt-4 grid grid-cols-2 gap-3">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map(product => (
-            <div
-              key={product.id}
-              className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
-            >
-              <div className="mb-1 text-sm font-medium">{product.name}</div>
-              <div className="mb-2 text-xs text-gray-500">{product.category}</div>
-              <div className="text-lg font-semibold text-blue-600">${product.price}</div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-2 py-8 text-center text-sm text-gray-500">
-            No products found
-          </div>
-        )}
+        {filteredProducts.length > 0
+          ? (
+              filteredProducts.map(product => (
+                <div
+                  key={product.id}
+                  className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
+                >
+                  <div className="mb-1 text-sm font-medium">{product.name}</div>
+                  <div className="mb-2 text-xs text-gray-500">{product.category}</div>
+                  <div className="text-lg font-semibold text-blue-600">
+                    $
+                    {product.price}
+                  </div>
+                </div>
+              ))
+            )
+          : (
+              <div className="col-span-2 py-8 text-center text-sm text-gray-500">
+                No products found
+              </div>
+            )}
       </div>
     </div>
   )
@@ -258,29 +277,33 @@ const DocumentationSearchDemo = () => {
         className="!h-10"
       />
       <div className="mt-4 space-y-3">
-        {filteredDocs.length > 0 ? (
-          filteredDocs.map(doc => (
-            <div
-              key={doc.id}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-blue-300"
-            >
-              <div className="mb-2 flex items-start justify-between">
-                <h4 className="text-base font-semibold">{doc.title}</h4>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                  {doc.category}
-                </span>
+        {filteredDocs.length > 0
+          ? (
+              filteredDocs.map(doc => (
+                <div
+                  key={doc.id}
+                  className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-blue-300"
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <h4 className="text-base font-semibold">{doc.title}</h4>
+                    <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                      {doc.category}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">{doc.excerpt}</p>
+                </div>
+              ))
+            )
+          : (
+              <div className="py-12 text-center">
+                <div className="mb-2 text-4xl">🔍</div>
+                <div className="text-sm text-gray-500">
+                  No documentation found for "
+                  {searchQuery}
+                  "
+                </div>
               </div>
-              <p className="text-sm text-gray-600">{doc.excerpt}</p>
-            </div>
-          ))
-        ) : (
-          <div className="py-12 text-center">
-            <div className="mb-2 text-4xl">🔍</div>
-            <div className="text-sm text-gray-500">
-              No documentation found for "{searchQuery}"
-            </div>
-          </div>
-        )}
+            )}
       </div>
     </div>
   )
@@ -321,26 +344,28 @@ const CommandPaletteDemo = () => {
         />
       </div>
       <div className="max-h-[400px] overflow-y-auto">
-        {filteredCommands.length > 0 ? (
-          filteredCommands.map(cmd => (
-            <div
-              key={cmd.id}
-              className="flex cursor-pointer items-center justify-between border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-100"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{cmd.icon}</span>
-                <span className="text-sm">{cmd.name}</span>
+        {filteredCommands.length > 0
+          ? (
+              filteredCommands.map(cmd => (
+                <div
+                  key={cmd.id}
+                  className="flex cursor-pointer items-center justify-between border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{cmd.icon}</span>
+                    <span className="text-sm">{cmd.name}</span>
+                  </div>
+                  <kbd className="rounded bg-gray-200 px-2 py-1 font-mono text-xs">
+                    {cmd.shortcut}
+                  </kbd>
+                </div>
+              ))
+            )
+          : (
+              <div className="py-8 text-center text-sm text-gray-500">
+                No commands found
               </div>
-              <kbd className="rounded bg-gray-200 px-2 py-1 font-mono text-xs">
-                {cmd.shortcut}
-              </kbd>
-            </div>
-          ))
-        ) : (
-          <div className="py-8 text-center text-sm text-gray-500">
-            No commands found
-          </div>
-        )}
+            )}
       </div>
     </div>
   )
@@ -378,7 +403,10 @@ const LiveSearchWithCountDemo = () => {
         <h3 className="text-lg font-semibold">Learning Resources</h3>
         {searchQuery && (
           <span className="text-sm text-gray-500">
-            {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}
+            {filteredItems.length}
+            {' '}
+            result
+            {filteredItems.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>

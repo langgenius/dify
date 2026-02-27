@@ -1,16 +1,39 @@
+import logging
 from collections.abc import Mapping
 
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from models.model import App, DefaultEndUserSessionID, EndUser
 
+logger = logging.getLogger(__name__)
+
 
 class EndUserService:
     """
     Service for managing end users.
     """
+
+    @classmethod
+    def get_end_user_by_id(cls, *, tenant_id: str, app_id: str, end_user_id: str) -> EndUser | None:
+        """Get an end user by primary key.
+
+        This is scoped to the provided tenant and app to prevent cross-tenant/app access
+        when an end-user ID is known.
+        """
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            return (
+                session.query(EndUser)
+                .where(
+                    EndUser.id == end_user_id,
+                    EndUser.tenant_id == tenant_id,
+                    EndUser.app_id == app_id,
+                )
+                .first()
+            )
 
     @classmethod
     def get_or_create_end_user(cls, app_model: App, user_id: str | None = None) -> EndUser:
@@ -32,18 +55,36 @@ class EndUserService:
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
         with Session(db.engine, expire_on_commit=False) as session:
+            # Query with ORDER BY to prioritize exact type matches while maintaining backward compatibility
+            # This single query approach is more efficient than separate queries
             end_user = (
                 session.query(EndUser)
                 .where(
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.session_id == user_id,
-                    EndUser.type == type,
+                )
+                .order_by(
+                    # Prioritize records with matching type (0 = match, 1 = no match)
+                    case((EndUser.type == type, 0), else_=1)
                 )
                 .first()
             )
 
-            if end_user is None:
+            if end_user:
+                # If found a legacy end user with different type, update it for future consistency
+                if end_user.type != type:
+                    logger.info(
+                        "Upgrading legacy EndUser %s from type=%s to %s for session_id=%s",
+                        end_user.id,
+                        end_user.type,
+                        type,
+                        user_id,
+                    )
+                    end_user.type = type
+                    session.commit()
+            else:
+                # Create new end user if none exists
                 end_user = EndUser(
                     tenant_id=tenant_id,
                     app_id=app_id,

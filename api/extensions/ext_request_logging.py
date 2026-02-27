@@ -1,12 +1,14 @@
 import json
 import logging
+import time
 
 import flask
 import werkzeug.http
-from flask import Flask
+from flask import Flask, g
 from flask.signals import request_finished, request_started
 
 from configs import dify_config
+from core.helper.trace_id_helper import get_trace_id_from_otel_context
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,9 @@ def _is_content_type_json(content_type: str) -> bool:
 
 def _log_request_started(_sender, **_extra):
     """Log the start of a request."""
+    # Record start time for access logging
+    g.__request_started_ts = time.perf_counter()
+
     if not logger.isEnabledFor(logging.DEBUG):
         return
 
@@ -42,8 +47,39 @@ def _log_request_started(_sender, **_extra):
 
 
 def _log_request_finished(_sender, response, **_extra):
-    """Log the end of a request."""
-    if not logger.isEnabledFor(logging.DEBUG) or response is None:
+    """Log the end of a request.
+
+    Safe to call with or without an active Flask request context.
+    """
+    if response is None:
+        return
+
+    # Always emit a compact access line at INFO with trace_id so it can be grepped
+    has_ctx = flask.has_request_context()
+    start_ts = getattr(g, "__request_started_ts", None) if has_ctx else None
+    duration_ms = None
+    if start_ts is not None:
+        duration_ms = round((time.perf_counter() - start_ts) * 1000, 3)
+
+    # Request attributes are available only when a request context exists
+    if has_ctx:
+        req_method = flask.request.method
+        req_path = flask.request.path
+    else:
+        req_method = "-"
+        req_path = "-"
+
+    trace_id = get_trace_id_from_otel_context() or response.headers.get("X-Trace-Id") or ""
+    logger.info(
+        "%s %s %s %s %s",
+        req_method,
+        req_path,
+        getattr(response, "status_code", "-"),
+        duration_ms if duration_ms is not None else "-",
+        trace_id,
+    )
+
+    if not logger.isEnabledFor(logging.DEBUG):
         return
 
     if not _is_content_type_json(response.content_type):

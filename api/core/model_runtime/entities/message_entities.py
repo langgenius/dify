@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
@@ -17,7 +19,7 @@ class PromptMessageRole(StrEnum):
     TOOL = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "PromptMessageRole":
+    def value_of(cls, value: str) -> PromptMessageRole:
         """
         Get value of given mode.
 
@@ -249,10 +251,7 @@ class AssistantPromptMessage(PromptMessage):
 
         :return: True if prompt message is empty, False otherwise
         """
-        if not super().is_empty() and not self.tool_calls:
-            return False
-
-        return True
+        return super().is_empty() and not self.tool_calls
 
 
 class SystemPromptMessage(PromptMessage):

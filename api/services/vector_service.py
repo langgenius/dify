@@ -4,11 +4,14 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models import UploadFile
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
@@ -21,9 +24,10 @@ class VectorService:
         cls, keywords_list: list[list[str]] | None, segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
         documents: list[Document] = []
+        multimodal_documents: list[AttachmentDocument] = []
 
         for segment in segments:
-            if doc_form == IndexType.PARENT_CHILD_INDEX:
+            if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                 dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
                 if not dataset_document:
                     logger.warning(
@@ -70,12 +74,29 @@ class VectorService:
                         "doc_hash": segment.index_node_hash,
                         "document_id": segment.document_id,
                         "dataset_id": segment.dataset_id,
+                        "doc_type": DocType.TEXT,
                     },
                 )
                 documents.append(rag_document)
+            if dataset.is_multimodal:
+                for attachment in segment.attachments:
+                    multimodal_document: AttachmentDocument = AttachmentDocument(
+                        page_content=attachment["name"],
+                        metadata={
+                            "doc_id": attachment["id"],
+                            "doc_hash": "",
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                            "doc_type": DocType.IMAGE,
+                        },
+                    )
+                    multimodal_documents.append(multimodal_document)
+        index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
+
         if len(documents) > 0:
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.load(dataset, documents, with_keywords=True, keywords_list=keywords_list)
+            index_processor.load(dataset, documents, None, with_keywords=True, keywords_list=keywords_list)
+        if len(multimodal_documents) > 0:
+            index_processor.load(dataset, [], multimodal_documents, with_keywords=False)
 
     @classmethod
     def update_segment_vector(cls, keywords: list[str] | None, segment: DocumentSegment, dataset: Dataset):
@@ -130,6 +151,7 @@ class VectorService:
                 "doc_hash": segment.index_node_hash,
                 "document_id": segment.document_id,
                 "dataset_id": segment.dataset_id,
+                "doc_type": DocType.TEXT,
             },
         )
         # use full doc mode to generate segment's child chunk
@@ -226,3 +248,92 @@ class VectorService:
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
         vector.delete_by_ids([child_chunk.index_node_id])
+
+    @classmethod
+    def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
+        if dataset.indexing_technique != "high_quality":
+            return
+
+        attachments = segment.attachments
+        old_attachment_ids = [attachment["id"] for attachment in attachments] if attachments else []
+
+        # Check if there's any actual change needed
+        if set(attachment_ids) == set(old_attachment_ids):
+            return
+
+        try:
+            vector = Vector(dataset=dataset)
+            if dataset.is_multimodal:
+                # Delete old vectors if they exist
+                if old_attachment_ids:
+                    vector.delete_by_ids(old_attachment_ids)
+
+            # Delete existing segment attachment bindings in one operation
+            db.session.query(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id).delete(
+                synchronize_session=False
+            )
+
+            if not attachment_ids:
+                db.session.commit()
+                return
+
+            # Bulk fetch upload files - only fetch needed fields
+            upload_file_list = db.session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).all()
+
+            if not upload_file_list:
+                db.session.commit()
+                return
+
+            # Create a mapping for quick lookup
+            upload_file_map = {upload_file.id: upload_file for upload_file in upload_file_list}
+
+            # Prepare batch operations
+            bindings = []
+            documents = []
+
+            # Create common metadata base to avoid repetition
+            base_metadata = {
+                "doc_hash": "",
+                "document_id": segment.document_id,
+                "dataset_id": segment.dataset_id,
+                "doc_type": DocType.IMAGE,
+            }
+
+            # Process attachments in the order specified by attachment_ids
+            for attachment_id in attachment_ids:
+                upload_file = upload_file_map.get(attachment_id)
+                if not upload_file:
+                    logger.warning("Upload file not found for attachment_id: %s", attachment_id)
+                    continue
+
+                # Create segment attachment binding
+                bindings.append(
+                    SegmentAttachmentBinding(
+                        tenant_id=segment.tenant_id,
+                        dataset_id=segment.dataset_id,
+                        document_id=segment.document_id,
+                        segment_id=segment.id,
+                        attachment_id=upload_file.id,
+                    )
+                )
+
+                # Create document for vector indexing
+                documents.append(
+                    Document(page_content=upload_file.name, metadata={**base_metadata, "doc_id": upload_file.id})
+                )
+
+            # Bulk insert all bindings at once
+            if bindings:
+                db.session.add_all(bindings)
+
+            # Add documents to vector store if any
+            if documents and dataset.is_multimodal:
+                vector.add_texts(documents, duplicate_check=True)
+
+            # Single commit for all operations
+            db.session.commit()
+
+        except Exception:
+            logger.exception("Failed to update multimodal vector for segment %s", segment.id)
+            db.session.rollback()
+            raise

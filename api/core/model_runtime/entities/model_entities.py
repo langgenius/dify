@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from decimal import Decimal
 from enum import StrEnum, auto
 from typing import Any
@@ -20,7 +22,7 @@ class ModelType(StrEnum):
     TTS = auto()
 
     @classmethod
-    def value_of(cls, origin_model_type: str) -> "ModelType":
+    def value_of(cls, origin_model_type: str) -> ModelType:
         """
         Get model type from origin model type.
 
@@ -103,7 +105,7 @@ class DefaultParameterName(StrEnum):
     JSON_SCHEMA = auto()
 
     @classmethod
-    def value_of(cls, value: Any) -> "DefaultParameterName":
+    def value_of(cls, value: Any) -> DefaultParameterName:
         """
         Get parameter name from value.
 

@@ -1308,18 +1308,17 @@ class TestMCPToolManageService:
             type("MockTool", (), {"model_dump": lambda self: {"name": "test_tool_2", "description": "Test tool 2"}})(),
         ]
 
-        with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+        with patch("core.mcp.mcp_client.MCPClient") as mock_mcp_client:
             # Setup mock client
             mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
             mock_client_instance.list_tools.return_value = mock_tools
 
             # Act: Execute the method under test
-            from extensions.ext_database import db
-
-            service = MCPToolManageService(db.session())
-            result = service._reconnect_provider(
+            result = MCPToolManageService._reconnect_with_url(
                 server_url="https://example.com/mcp",
-                provider=mcp_provider,
+                headers={"X-Test": "1"},
+                timeout=mcp_provider.timeout,
+                sse_read_timeout=mcp_provider.sse_read_timeout,
             )
 
         # Assert: Verify the expected outcomes
@@ -1337,8 +1336,12 @@ class TestMCPToolManageService:
         assert tools_data[1]["name"] == "test_tool_2"
 
         # Verify mock interactions
-        provider_entity = mcp_provider.to_entity()
-        mock_mcp_client.assert_called_once()
+        mock_mcp_client.assert_called_once_with(
+            server_url="https://example.com/mcp",
+            headers={"X-Test": "1"},
+            timeout=mcp_provider.timeout,
+            sse_read_timeout=mcp_provider.sse_read_timeout,
+        )
 
     def test_re_connect_mcp_provider_auth_error(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -1361,19 +1364,18 @@ class TestMCPToolManageService:
         )
 
         # Mock MCPClient to raise authentication error
-        with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+        with patch("core.mcp.mcp_client.MCPClient") as mock_mcp_client:
             from core.mcp.error import MCPAuthError
 
             mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
             mock_client_instance.list_tools.side_effect = MCPAuthError("Authentication required")
 
             # Act: Execute the method under test
-            from extensions.ext_database import db
-
-            service = MCPToolManageService(db.session())
-            result = service._reconnect_provider(
+            result = MCPToolManageService._reconnect_with_url(
                 server_url="https://example.com/mcp",
-                provider=mcp_provider,
+                headers={},
+                timeout=mcp_provider.timeout,
+                sse_read_timeout=mcp_provider.sse_read_timeout,
             )
 
         # Assert: Verify the expected outcomes
@@ -1404,18 +1406,17 @@ class TestMCPToolManageService:
         )
 
         # Mock MCPClient to raise connection error
-        with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+        with patch("core.mcp.mcp_client.MCPClient") as mock_mcp_client:
             from core.mcp.error import MCPError
 
             mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
             mock_client_instance.list_tools.side_effect = MCPError("Connection failed")
 
             # Act & Assert: Verify proper error handling
-            from extensions.ext_database import db
-
-            service = MCPToolManageService(db.session())
             with pytest.raises(ValueError, match="Failed to re-connect MCP server: Connection failed"):
-                service._reconnect_provider(
+                MCPToolManageService._reconnect_with_url(
                     server_url="https://example.com/mcp",
-                    provider=mcp_provider,
+                    headers={"X-Test": "1"},
+                    timeout=mcp_provider.timeout,
+                    sse_read_timeout=mcp_provider.sse_read_timeout,
                 )

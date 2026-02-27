@@ -1,8 +1,8 @@
 'use client'
-import { useCallback } from 'react'
-import MailForm from './components/input-mail'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import MailForm from './components/input-mail'
 
 const Signup = () => {
   const router = useRouter()
@@ -19,8 +19,8 @@ const Signup = () => {
   return (
     <div className="mx-auto mt-8 w-full">
       <div className="mx-auto mb-10 w-full">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.signup.createAccount')}</h2>
-        <p className='body-md-regular mt-2 text-text-tertiary'>{t('login.signup.welcome')}</p>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('signup.createAccount', { ns: 'login' })}</h2>
+        <p className="body-md-regular mt-2 text-text-tertiary">{t('signup.welcome', { ns: 'login' })}</p>
       </div>
       <MailForm onSuccess={handleInputMailSubmitted} />
     </div>

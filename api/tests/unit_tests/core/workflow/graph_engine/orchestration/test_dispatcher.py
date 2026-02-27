@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import queue
-from datetime import datetime
+import threading
 from unittest import mock
 
 from core.workflow.entities.pause_reason import SchedulingPause
@@ -18,6 +18,7 @@ from core.workflow.graph_events import (
     NodeRunSucceededEvent,
 )
 from core.workflow.node_events import NodeRunResult
+from libs.datetime_utils import naive_utc_now
 
 
 def test_dispatcher_should_consume_remains_events_after_pause():
@@ -36,6 +37,7 @@ def test_dispatcher_should_consume_remains_events_after_pause():
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=execution_coordinator,
+        stop_event=threading.Event(),
     )
     dispatcher._dispatcher_loop()
     assert event_queue.empty()
@@ -96,6 +98,7 @@ def _run_dispatcher_for_event(event) -> int:
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=coordinator,
+        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()
@@ -109,7 +112,7 @@ def _make_started_event() -> NodeRunStartedEvent:
         node_id="node-1",
         node_type=NodeType.CODE,
         node_title="Test Node",
-        start_at=datetime.utcnow(),
+        start_at=naive_utc_now(),
     )
 
 
@@ -119,7 +122,7 @@ def _make_succeeded_event() -> NodeRunSucceededEvent:
         node_id="node-1",
         node_type=NodeType.CODE,
         node_title="Test Node",
-        start_at=datetime.utcnow(),
+        start_at=naive_utc_now(),
         node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
     )
 
@@ -153,7 +156,7 @@ def test_dispatcher_drain_event_queue():
             node_id="node-1",
             node_type=NodeType.CODE,
             node_title="Code",
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
         ),
         NodeRunPauseRequestedEvent(
             id="pause-event",
@@ -165,7 +168,7 @@ def test_dispatcher_drain_event_queue():
             id="success-event",
             node_id="node-1",
             node_type=NodeType.CODE,
-            start_at=datetime.utcnow(),
+            start_at=naive_utc_now(),
             node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
         ),
     ]
@@ -181,6 +184,7 @@ def test_dispatcher_drain_event_queue():
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=coordinator,
+        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 
 // Mock component since VoiceInput requires browser APIs and service dependencies
@@ -200,35 +200,37 @@ const ChatInputWithVoiceDemo = () => {
 
       {/* Input area */}
       <div className="space-y-3">
-        {!isRecording ? (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm"
-              placeholder="Type a message..."
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-            />
-            <button
-              className="rounded-lg bg-gray-100 px-4 py-3 hover:bg-gray-200"
-              onClick={() => setIsRecording(true)}
-              title="Voice input"
-            >
-              🎤
-            </button>
-            <button className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700">
-              Send
-            </button>
-          </div>
-        ) : (
-          <VoiceInputMock
-            onConverted={(text: string) => {
-              setMessage(text)
-              setIsRecording(false)
-            }}
-            onCancel={() => setIsRecording(false)}
-          />
-        )}
+        {!isRecording
+          ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm"
+                  placeholder="Type a message..."
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                />
+                <button
+                  className="rounded-lg bg-gray-100 px-4 py-3 hover:bg-gray-200"
+                  onClick={() => setIsRecording(true)}
+                  title="Voice input"
+                >
+                  🎤
+                </button>
+                <button className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700">
+                  Send
+                </button>
+              </div>
+            )
+          : (
+              <VoiceInputMock
+                onConverted={(text: string) => {
+                  setMessage(text)
+                  setIsRecording(false)
+                }}
+                onCancel={() => setIsRecording(false)}
+              />
+            )}
       </div>
     </div>
   )
@@ -247,41 +249,45 @@ const SearchWithVoiceDemo = () => {
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <h3 className="mb-4 text-lg font-semibold">Voice Search</h3>
 
-      {!isRecording ? (
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-10 text-sm"
-              placeholder="Search or use voice..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+      {!isRecording
+        ? (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 pl-10 text-sm"
+                  placeholder="Search or use voice..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  🔍
+                </span>
+              </div>
+              <button
+                className="rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700"
+                onClick={() => setIsRecording(true)}
+              >
+                🎤 Voice Search
+              </button>
+            </div>
+          )
+        : (
+            <VoiceInputMock
+              onConverted={(text: string) => {
+                setSearchQuery(text)
+                setIsRecording(false)
+              }}
+              onCancel={() => setIsRecording(false)}
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              🔍
-            </span>
-          </div>
-          <button
-            className="rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700"
-            onClick={() => setIsRecording(true)}
-          >
-            🎤 Voice Search
-          </button>
-        </div>
-      ) : (
-        <VoiceInputMock
-          onConverted={(text: string) => {
-            setSearchQuery(text)
-            setIsRecording(false)
-          }}
-          onCancel={() => setIsRecording(false)}
-        />
-      )}
+          )}
 
       {searchQuery && !isRecording && (
         <div className="mt-4 rounded-lg bg-blue-50 p-4">
           <div className="mb-2 text-xs font-medium text-blue-900">
-            Searching for: <strong>{searchQuery}</strong>
+            Searching for:
+            {' '}
+            <strong>{searchQuery}</strong>
           </div>
         </div>
       )}
@@ -302,52 +308,63 @@ const NoteTakingDemo = () => {
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Voice Notes</h3>
-        <span className="text-sm text-gray-500">{notes.length} notes</span>
+        <span className="text-sm text-gray-500">
+          {notes.length}
+          {' '}
+          notes
+        </span>
       </div>
 
       <div className="mb-4">
-        {!isRecording ? (
-          <button
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-3 font-medium text-white hover:bg-red-600"
-            onClick={() => setIsRecording(true)}
-          >
-            <span className="text-xl">🎤</span>
-            Record Voice Note
-          </button>
-        ) : (
-          <VoiceInputMock
-            onConverted={(text: string) => {
-              setNotes([...notes, text])
-              setIsRecording(false)
-            }}
-            onCancel={() => setIsRecording(false)}
-          />
-        )}
+        {!isRecording
+          ? (
+              <button
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-3 font-medium text-white hover:bg-red-600"
+                onClick={() => setIsRecording(true)}
+              >
+                <span className="text-xl">🎤</span>
+                Record Voice Note
+              </button>
+            )
+          : (
+              <VoiceInputMock
+                onConverted={(text: string) => {
+                  setNotes([...notes, text])
+                  setIsRecording(false)
+                }}
+                onCancel={() => setIsRecording(false)}
+              />
+            )}
       </div>
 
       <div className="max-h-80 space-y-2 overflow-y-auto">
-        {notes.length === 0 ? (
-          <div className="py-12 text-center text-gray-400">
-            No notes yet. Click the button above to start recording.
-          </div>
-        ) : (
-          notes.map((note, index) => (
-            <div key={index} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="mb-1 text-xs text-gray-500">Note {index + 1}</div>
-                  <div className="text-sm text-gray-800">{note}</div>
-                </div>
-                <button
-                  className="text-gray-400 hover:text-red-500"
-                  onClick={() => setNotes(notes.filter((_, i) => i !== index))}
-                >
-                  ×
-                </button>
+        {notes.length === 0
+          ? (
+              <div className="py-12 text-center text-gray-400">
+                No notes yet. Click the button above to start recording.
               </div>
-            </div>
-          ))
-        )}
+            )
+          : (
+              notes.map((note, index) => (
+                <div key={index} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="mb-1 text-xs text-gray-500">
+                        Note
+                        {index + 1}
+                      </div>
+                      <div className="text-sm text-gray-800">{note}</div>
+                    </div>
+                    <button
+                      className="text-gray-400 hover:text-red-500"
+                      onClick={() => setNotes(notes.filter((_, i) => i !== index))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
       </div>
     </div>
   )
@@ -374,62 +391,66 @@ const FormWithVoiceDemo = () => {
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Product Name
           </label>
-          {activeField === 'name' ? (
-            <VoiceInputMock
-              onConverted={(text: string) => {
-                setFormData({ ...formData, name: text })
-                setActiveField(null)
-              }}
-              onCancel={() => setActiveField(null)}
-            />
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                placeholder="Enter product name..."
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-              />
-              <button
-                className="rounded-lg bg-gray-100 px-3 py-2 hover:bg-gray-200"
-                onClick={() => setActiveField('name')}
-              >
-                🎤
-              </button>
-            </div>
-          )}
+          {activeField === 'name'
+            ? (
+                <VoiceInputMock
+                  onConverted={(text: string) => {
+                    setFormData({ ...formData, name: text })
+                    setActiveField(null)
+                  }}
+                  onCancel={() => setActiveField(null)}
+                />
+              )
+            : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="Enter product name..."
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  />
+                  <button
+                    className="rounded-lg bg-gray-100 px-3 py-2 hover:bg-gray-200"
+                    onClick={() => setActiveField('name')}
+                  >
+                    🎤
+                  </button>
+                </div>
+              )}
         </div>
 
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Description
           </label>
-          {activeField === 'description' ? (
-            <VoiceInputMock
-              onConverted={(text: string) => {
-                setFormData({ ...formData, description: text })
-                setActiveField(null)
-              }}
-              onCancel={() => setActiveField(null)}
-            />
-          ) : (
-            <div className="space-y-2">
-              <textarea
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                rows={4}
-                placeholder="Enter product description..."
-                value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
-              />
-              <button
-                className="w-full rounded-lg bg-gray-100 px-3 py-2 text-sm hover:bg-gray-200"
-                onClick={() => setActiveField('description')}
-              >
-                🎤 Use Voice Input
-              </button>
-            </div>
-          )}
+          {activeField === 'description'
+            ? (
+                <VoiceInputMock
+                  onConverted={(text: string) => {
+                    setFormData({ ...formData, description: text })
+                    setActiveField(null)
+                  }}
+                  onCancel={() => setActiveField(null)}
+                />
+              )
+            : (
+                <div className="space-y-2">
+                  <textarea
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    rows={4}
+                    placeholder="Enter product description..."
+                    value={formData.description}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  />
+                  <button
+                    className="w-full rounded-lg bg-gray-100 px-3 py-2 text-sm hover:bg-gray-200"
+                    onClick={() => setActiveField('description')}
+                  >
+                    🎤 Use Voice Input
+                  </button>
+                </div>
+              )}
         </div>
 
         <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">

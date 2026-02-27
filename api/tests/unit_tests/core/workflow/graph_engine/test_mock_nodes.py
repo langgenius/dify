@@ -8,6 +8,7 @@ allowing tests to run without external dependencies.
 import time
 from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
+from unittest.mock import MagicMock
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -18,6 +19,7 @@ from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.http_request import HttpRequestNode
 from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from core.workflow.nodes.llm import LLMNode
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
 from core.workflow.nodes.question_classifier import QuestionClassifierNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
@@ -40,12 +42,18 @@ class MockNodeMixin:
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
+        **kwargs: Any,
     ):
+        if isinstance(self, (LLMNode, QuestionClassifierNode)):
+            kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
+            kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
+
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            **kwargs,
         )
         self.mock_config = mock_config
 
@@ -92,7 +100,7 @@ class MockLLMNode(MockNodeMixin, LLMNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock LLM node."""
@@ -189,7 +197,7 @@ class MockAgentNode(MockNodeMixin, AgentNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock agent node."""
@@ -241,7 +249,7 @@ class MockToolNode(MockNodeMixin, ToolNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock tool node."""
@@ -294,7 +302,7 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock knowledge retrieval node."""
@@ -351,7 +359,7 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock HTTP request node."""
@@ -404,7 +412,7 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock question classifier node."""
@@ -452,7 +460,7 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock parameter extractor node."""
@@ -502,7 +510,7 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock document extractor node."""
@@ -557,14 +565,14 @@ class MockIterationNode(MockNodeMixin, IterationNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _create_graph_engine(self, index: int, item: Any):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.runtime import GraphRuntimeState
 
@@ -621,6 +629,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
             graph=iteration_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine
@@ -632,14 +641,14 @@ class MockLoopNode(MockNodeMixin, LoopNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _create_graph_engine(self, start_at, root_node_id: str):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
+        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.runtime import GraphRuntimeState
 
@@ -683,6 +692,7 @@ class MockLoopNode(MockNodeMixin, LoopNode):
             graph=loop_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine
@@ -694,7 +704,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """Execute mock template transform node."""
@@ -780,7 +790,7 @@ class MockCodeNode(MockNodeMixin, CodeNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """Execute mock code node."""

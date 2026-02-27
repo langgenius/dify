@@ -1,20 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { NodeTracing } from '@/types/workflow'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import Loading from '@/app/components/base/loading'
+import { ToastContext } from '@/app/components/base/toast'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { fetchRunDetail, fetchTracingList } from '@/service/log'
+import { cn } from '@/utils/classnames'
+import { useStore } from '../store'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import StatusPanel from './status'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import TracingPanel from './tracing-panel'
-import cn from '@/utils/classnames'
-import { ToastContext } from '@/app/components/base/toast'
-import Loading from '@/app/components/base/loading'
-import { fetchRunDetail, fetchTracingList } from '@/service/log'
-import type { NodeTracing } from '@/types/workflow'
-import type { WorkflowRunDetailResponse } from '@/models/log'
-import { useStore } from '../store'
 
 export type RunProps = {
   hideResult?: boolean
@@ -118,9 +118,9 @@ const RunPanel: FC<RunProps> = ({
   }, [loading])
 
   return (
-    <div className='relative flex grow flex-col'>
+    <div className="relative flex grow flex-col">
       {/* tab */}
-      <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4'>
+      <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
         {!hideResult && (
           <div
             className={cn(
@@ -128,7 +128,9 @@ const RunPanel: FC<RunProps> = ({
               currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
-          >{t('runLog.result')}</div>
+          >
+            {t('result', { ns: 'runLog' })}
+          </div>
         )}
         <div
           className={cn(
@@ -136,19 +138,23 @@ const RunPanel: FC<RunProps> = ({
             currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
-        >{t('runLog.detail')}</div>
+        >
+          {t('detail', { ns: 'runLog' })}
+        </div>
         <div
           className={cn(
             'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
             currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
-        >{t('runLog.tracing')}</div>
+        >
+          {t('tracing', { ns: 'runLog' })}
+        </div>
       </div>
       {/* panel detail */}
       <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg')}>
         {loading && (
-          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
+          <div className="flex h-full items-center justify-center bg-components-panel-bg">
             <Loading />
           </div>
         )}
@@ -175,6 +181,7 @@ const RunPanel: FC<RunProps> = ({
             steps={runDetail.total_steps}
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
+            workflowRunId={runDetail.id}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (
@@ -185,7 +192,7 @@ const RunPanel: FC<RunProps> = ({
         )}
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
-            className='bg-background-section-burn'
+            className="bg-background-section-burn"
             list={list}
           />
         )}

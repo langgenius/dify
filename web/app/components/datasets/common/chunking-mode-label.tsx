@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
@@ -20,9 +20,9 @@ const ChunkingModeLabel: FC<Props> = ({
 
   return (
     <Badge>
-      <div className='flex h-full items-center space-x-0.5 text-text-tertiary'>
-        <TypeIcon className='h-3 w-3' />
-        <span className='system-2xs-medium-uppercase'>{isGeneralMode ? `${t('dataset.chunkingMode.general')}${generalSuffix}` : t('dataset.chunkingMode.parentChild')}</span>
+      <div className="flex h-full items-center space-x-0.5 text-text-tertiary">
+        <TypeIcon className="h-3 w-3" />
+        <span className="system-2xs-medium-uppercase">{isGeneralMode ? `${t('chunkingMode.general', { ns: 'dataset' })}${generalSuffix}` : t('chunkingMode.parentChild', { ns: 'dataset' })}</span>
       </div>
     </Badge>
   )

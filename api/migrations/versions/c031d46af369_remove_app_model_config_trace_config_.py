@@ -7,7 +7,6 @@ Create Date: 2024-06-17 10:01:00.255189
 """
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 import models.types
 

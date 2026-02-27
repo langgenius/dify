@@ -6,8 +6,8 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.datetime_utils import naive_utc_now
-from models.base import TypeBase
 
+from .base import TypeBase
 from .types import BinaryData, LongText
 
 
@@ -24,7 +24,8 @@ class CeleryTask(TypeBase):
     result: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
     date_done: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=naive_utc_now,
+        insert_default=naive_utc_now,
+        default=None,
         onupdate=naive_utc_now,
         nullable=True,
     )
@@ -47,4 +48,6 @@ class CeleryTaskSet(TypeBase):
     )
     taskset_id: Mapped[str] = mapped_column(String(155), unique=True)
     result: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
-    date_done: Mapped[datetime | None] = mapped_column(DateTime, default=naive_utc_now, nullable=True)
+    date_done: Mapped[datetime | None] = mapped_column(
+        DateTime, insert_default=naive_utc_now, default=None, nullable=True
+    )

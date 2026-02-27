@@ -38,21 +38,24 @@ class RagPipelineTaskProxy:
         upload_file = FileService(db.engine).upload_text(
             json_text, self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME, self._user_id, self._dataset_tenant_id
         )
+        logger.info(
+            "tenant %s upload %d invoke entities", self._dataset_tenant_id, len(self._rag_pipeline_invoke_entities)
+        )
         return upload_file.id
 
     def _send_to_direct_queue(self, upload_file_id: str, task_func: Callable[[str, str], None]):
-        logger.info("send file %s to direct queue", upload_file_id)
+        logger.info("tenant %s send file %s to direct queue", self._dataset_tenant_id, upload_file_id)
         task_func.delay(  # type: ignore
             rag_pipeline_invoke_entities_file_id=upload_file_id,
             tenant_id=self._dataset_tenant_id,
         )
 
     def _send_to_tenant_queue(self, upload_file_id: str, task_func: Callable[[str, str], None]):
-        logger.info("send file %s to tenant queue", upload_file_id)
+        logger.info("tenant %s send file %s to tenant queue", self._dataset_tenant_id, upload_file_id)
         if self._tenant_isolated_task_queue.get_task_key():
             # Add to waiting queue using List operations (lpush)
             self._tenant_isolated_task_queue.push_tasks([upload_file_id])
-            logger.info("push tasks: %s", upload_file_id)
+            logger.info("tenant %s push tasks: %s", self._dataset_tenant_id, upload_file_id)
         else:
             # Set flag and execute task
             self._tenant_isolated_task_queue.set_task_waiting_time()
@@ -60,7 +63,7 @@ class RagPipelineTaskProxy:
                 rag_pipeline_invoke_entities_file_id=upload_file_id,
                 tenant_id=self._dataset_tenant_id,
             )
-            logger.info("init tasks: %s", upload_file_id)
+            logger.info("tenant %s init tasks: %s", self._dataset_tenant_id, upload_file_id)
 
     def _send_to_default_tenant_queue(self, upload_file_id: str):
         self._send_to_tenant_queue(upload_file_id, rag_pipeline_run_task)

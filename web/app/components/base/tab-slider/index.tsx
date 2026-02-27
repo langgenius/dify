@@ -1,8 +1,9 @@
 import type { FC, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import cn from '@/utils/classnames'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
+
 type Option = {
   value: string
   text: ReactNode
@@ -45,8 +46,12 @@ const TabSlider: FC<TabSliderProps> = ({
   }, [value, options, pluginList?.total])
 
   return (
-    <div className={cn(className, 'relative inline-flex items-center justify-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5')}>
+    <div
+      data-testid="tab-slider-container"
+      className={cn(className, 'relative inline-flex items-center justify-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5')}
+    >
       <div
+        data-testid="tab-slider-bg"
         className="shadows-shadow-xs absolute bottom-0.5 left-0 right-0 top-0.5 rounded-[10px] bg-components-panel-bg transition-transform duration-300 ease-in-out"
         style={sliderStyle}
       />
@@ -54,6 +59,7 @@ const TabSlider: FC<TabSliderProps> = ({
         <div
           id={`tab-${index}`}
           key={option.value}
+          data-testid={`tab-item-${option.value}`}
           className={cn(
             'relative z-10 flex cursor-pointer items-center justify-center gap-1 rounded-[10px] px-2.5 py-1.5 transition-colors duration-300 ease-in-out',
             'system-md-semibold',
@@ -73,14 +79,15 @@ const TabSlider: FC<TabSliderProps> = ({
           {/* if no plugin installed, the badge won't show */}
           {option.value === 'plugins'
             && (pluginList?.total ?? 0) > 0
-            && <Badge
-              size='s'
-              uppercase={true}
-              state={BadgeState.Default}
-            >
-              {pluginList?.total}
-            </Badge>
-          }
+            && (
+              <Badge
+                size="s"
+                uppercase={true}
+                state={BadgeState.Default}
+              >
+                {pluginList?.total}
+              </Badge>
+            )}
         </div>
       ))}
     </div>

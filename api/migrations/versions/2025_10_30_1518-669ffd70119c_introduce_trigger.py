@@ -105,6 +105,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id', name='trigger_oauth_tenant_client_pkey'),
         sa.UniqueConstraint('tenant_id', 'plugin_id', 'provider', name='unique_trigger_oauth_tenant_client')
         )
+
     if _is_pg(conn):
         op.create_table('trigger_subscriptions',
         sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
@@ -143,6 +144,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id', name='trigger_provider_pkey'),
         sa.UniqueConstraint('tenant_id', 'provider_id', 'name', name='unique_trigger_provider')
         )
+
     with op.batch_alter_table('trigger_subscriptions', schema=None) as batch_op:
         batch_op.create_index('idx_trigger_providers_endpoint', ['endpoint_id'], unique=True)
         batch_op.create_index('idx_trigger_providers_tenant_endpoint', ['tenant_id', 'endpoint_id'], unique=False)
@@ -176,6 +178,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id', name='workflow_plugin_trigger_pkey'),
         sa.UniqueConstraint('app_id', 'node_id', name='uniq_app_node_subscription')
         )
+
     with op.batch_alter_table('workflow_plugin_triggers', schema=None) as batch_op:
         batch_op.create_index('workflow_plugin_trigger_tenant_subscription_idx', ['tenant_id', 'subscription_id', 'event_name'], unique=False)
 
@@ -207,6 +210,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id', name='workflow_schedule_plan_pkey'),
         sa.UniqueConstraint('app_id', 'node_id', name='uniq_app_node')
         )
+
     with op.batch_alter_table('workflow_schedule_plans', schema=None) as batch_op:
         batch_op.create_index('workflow_schedule_plan_next_idx', ['next_run_at'], unique=False)
 
@@ -264,6 +268,7 @@ def upgrade():
         sa.Column('finished_at', sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint('id', name='workflow_trigger_log_pkey')
         )
+
     with op.batch_alter_table('workflow_trigger_logs', schema=None) as batch_op:
         batch_op.create_index('workflow_trigger_log_created_at_idx', ['created_at'], unique=False)
         batch_op.create_index('workflow_trigger_log_status_idx', ['status'], unique=False)
@@ -299,6 +304,7 @@ def upgrade():
         sa.UniqueConstraint('app_id', 'node_id', name='uniq_node'),
         sa.UniqueConstraint('webhook_id', name='uniq_webhook_id')
         )
+        
     with op.batch_alter_table('workflow_webhook_triggers', schema=None) as batch_op:
         batch_op.create_index('workflow_webhook_trigger_tenant_idx', ['tenant_id'], unique=False)
 

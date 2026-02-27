@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Slider from '@/app/components/base/slider'
 
@@ -13,7 +13,7 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
   return (
     <div>
       <label className="mb-2 block text-xs font-medium text-gray-500">
-        {t('workflow.nodes.triggerSchedule.onMinute')}
+        {t('nodes.triggerSchedule.onMinute', { ns: 'workflow' })}
       </label>
       <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">
         <div className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled">

@@ -1,26 +1,26 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"xmlns": "http://www.w3.org/2000/svg",
-			"width": "12",
-			"height": "12",
-			"viewBox": "0 0 12 12",
-			"fill": "none"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M10.5 4V10.4966C10.5 10.7751 10.2776 11 10.0033 11H1.9967C1.72248 11 1.5 10.778 1.5 10.5041V1.4959C1.5 1.22766 1.72435 1 2.00111 1H7.4984L10.5 4ZM9.5 4.5H7V2H2.5V10H9.5V4.5ZM4 3.5H5.5V4.5H4V3.5ZM4 5.5H8V6.5H4V5.5ZM4 7.5H8V8.5H4V7.5Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "DocumentSupportIcon"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "xmlns": "http://www.w3.org/2000/svg",
+      "width": "12",
+      "height": "12",
+      "viewBox": "0 0 12 12",
+      "fill": "none"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M10.5 4V10.4966C10.5 10.7751 10.2776 11 10.0033 11H1.9967C1.72248 11 1.5 10.778 1.5 10.5041V1.4959C1.5 1.22766 1.72435 1 2.00111 1H7.4984L10.5 4ZM9.5 4.5H7V2H2.5V10H9.5V4.5ZM4 3.5H5.5V4.5H4V3.5ZM4 5.5H8V6.5H4V5.5ZM4 7.5H8V8.5H4V7.5Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "DocumentSupportIcon"
 }

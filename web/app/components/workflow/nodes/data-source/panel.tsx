@@ -1,29 +1,29 @@
 import type { FC } from 'react'
+import type { DataSourceNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
+  memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { memo } from 'react'
-import type { DataSourceNodeType } from './types'
-import { DataSourceClassification } from './types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import TagInput from '@/app/components/base/tag-input'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroupField,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import TagInput from '@/app/components/base/tag-input'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { useConfig } from './hooks/use-config'
+import { useStore } from '@/app/components/workflow/store'
+import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
+import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import ToolForm from '../tool/components/tool-form'
 import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
 } from './constants'
-import { useStore } from '@/app/components/workflow/store'
-import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import ToolForm from '../tool/components/tool-form'
-import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
-import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import { useConfig } from './hooks/use-config'
+import { DataSourceClassification } from './types'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -52,7 +52,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
   return (
-    <div >
+    <div>
       {
         currentDataSource?.is_authorized && !isLocalFile && !!formSchemas?.length && (
           <BoxGroupField
@@ -61,7 +61,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             }}
             fieldProps={{
               fieldTitleProps: {
-                title: t('workflow.nodes.tool.inputVars'),
+                title: t('nodes.tool.inputVars', { ns: 'workflow' }),
               },
               supportCollapse: true,
             }}
@@ -90,16 +90,16 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             }}
             fieldProps={{
               fieldTitleProps: {
-                title: t('workflow.nodes.dataSource.supportedFileFormats'),
+                title: t('nodes.dataSource.supportedFileFormats', { ns: 'workflow' }),
               },
             }}
           >
-            <div className='rounded-lg bg-components-input-bg-normal p-1 pt-0'>
+            <div className="rounded-lg bg-components-input-bg-normal p-1 pt-0">
               <TagInput
                 items={fileExtensions}
                 onChange={handleFileExtensionsChange}
-                placeholder={t('workflow.nodes.dataSource.supportedFileFormatsPlaceholder')}
-                inputClassName='bg-transparent'
+                placeholder={t('nodes.dataSource.supportedFileFormatsPlaceholder', { ns: 'workflow' })}
+                inputClassName="bg-transparent"
                 disableAdd={nodesReadOnly}
                 disableRemove={nodesReadOnly}
               />
@@ -139,20 +139,22 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
 
           return (
             <div key={outputItem.name}>
-              {outputItem.value?.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName='code-sm-semibold text-text-secondary'
-                  payload={wrapStructuredVarItem(outputItem, schemaType)}
-                />
-              ) : (
-                <VarItem
-                  name={outputItem.name}
-                  // eslint-disable-next-line sonarjs/no-nested-template-literals
-                  type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                  description={outputItem.description}
-                  isIndent={hasObjectOutput}
-                />
-              )}
+              {outputItem.value?.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={wrapStructuredVarItem(outputItem, schemaType)}
+                    />
+                  )
+                : (
+                    <VarItem
+                      name={outputItem.name}
+
+                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                      description={outputItem.description}
+                      isIndent={hasObjectOutput}
+                    />
+                  )}
             </div>
           )
         })}

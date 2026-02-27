@@ -105,3 +105,49 @@ class PluginParameterService:
             )
             .options
         )
+
+    @staticmethod
+    def get_dynamic_select_options_with_credentials(
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        action: str,
+        parameter: str,
+        credential_id: str,
+        credentials: Mapping[str, Any],
+    ) -> Sequence[PluginParameterOption]:
+        """
+        Get dynamic select options using provided credentials directly.
+        Used for edit mode when credentials have been modified but not yet saved.
+
+        Security: credential_id is validated against tenant_id to ensure
+        users can only access their own credentials.
+        """
+        from constants import HIDDEN_VALUE
+
+        # Get original subscription to replace hidden values (with tenant_id check for security)
+        original_subscription = TriggerProviderService.get_subscription_by_id(tenant_id, credential_id)
+        if not original_subscription:
+            raise ValueError(f"Subscription {credential_id} not found")
+
+        # Replace [__HIDDEN__] with original values
+        resolved_credentials: dict[str, Any] = {
+            key: (original_subscription.credentials.get(key) if value == HIDDEN_VALUE else value)
+            for key, value in credentials.items()
+        }
+
+        return (
+            DynamicSelectClient()
+            .fetch_dynamic_select_options(
+                tenant_id,
+                user_id,
+                plugin_id,
+                provider,
+                action,
+                resolved_credentials,
+                original_subscription.credential_type or CredentialType.UNAUTHORIZED.value,
+                parameter,
+            )
+            .options
+        )

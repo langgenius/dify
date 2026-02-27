@@ -1,5 +1,3 @@
-from flask_restx import marshal_with
-
 from controllers.common import fields
 from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
@@ -13,7 +11,6 @@ from services.app_service import AppService
 class AppParameterApi(InstalledAppResource):
     """Resource for app variables."""
 
-    @marshal_with(fields.parameters_fields)
     def get(self, installed_app: InstalledApp):
         """Retrieve app parameters."""
         app_model = installed_app.app
@@ -37,7 +34,8 @@ class AppParameterApi(InstalledAppResource):
 
             user_input_form = features_dict.get("user_input_form", [])
 
-        return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        return fields.Parameters.model_validate(parameters).model_dump(mode="json")
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/meta", endpoint="installed_app_meta")

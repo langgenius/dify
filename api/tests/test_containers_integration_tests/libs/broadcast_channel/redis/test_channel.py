@@ -107,7 +107,11 @@ class TestRedisBroadcastChannelIntegration:
         assert received_messages[0] == message
 
     def test_multiple_subscribers_same_topic(self, broadcast_channel: BroadcastChannel):
-        """Test message broadcasting to multiple subscribers."""
+        """Test message broadcasting to multiple subscribers.
+
+        This test ensures the publisher only sends after all subscribers have actually started
+        their Redis Pub/Sub subscriptions to avoid race conditions/flakiness.
+        """
         topic_name = "broadcast-topic"
         message = b"broadcast message"
         subscriber_count = 5
@@ -116,16 +120,33 @@ class TestRedisBroadcastChannelIntegration:
         topic = broadcast_channel.topic(topic_name)
         producer = topic.as_producer()
         subscriptions = [topic.subscribe() for _ in range(subscriber_count)]
+        ready_events = [threading.Event() for _ in range(subscriber_count)]
 
         def producer_thread():
-            time.sleep(0.2)  # Allow all subscribers to connect
+            # Wait for all subscribers to start (with a reasonable timeout)
+            deadline = time.time() + 5.0
+            for ev in ready_events:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    break
+                ev.wait(timeout=max(0.0, remaining))
+            # Now publish the message
             producer.publish(message)
             time.sleep(0.2)
             for sub in subscriptions:
                 sub.close()
 
-        def consumer_thread(subscription: Subscription) -> list[bytes]:
+        def consumer_thread(subscription: Subscription, ready_event: threading.Event) -> list[bytes]:
             received_msgs = []
+            # Prime the subscription to ensure the underlying Pub/Sub is started
+            try:
+                _ = subscription.receive(0.01)
+            except SubscriptionClosedError:
+                ready_event.set()
+                return received_msgs
+            # Signal readiness after first receive returns (subscription started)
+            ready_event.set()
+
             while True:
                 try:
                     msg = subscription.receive(0.1)
@@ -141,7 +162,10 @@ class TestRedisBroadcastChannelIntegration:
         # Run producer and consumers
         with ThreadPoolExecutor(max_workers=subscriber_count + 1) as executor:
             producer_future = executor.submit(producer_thread)
-            consumer_futures = [executor.submit(consumer_thread, subscription) for subscription in subscriptions]
+            consumer_futures = [
+                executor.submit(consumer_thread, subscription, ready_events[idx])
+                for idx, subscription in enumerate(subscriptions)
+            ]
 
             # Wait for completion
             producer_future.result(timeout=10.0)

@@ -119,11 +119,20 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
+    summary_index_setting: dict | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     name: str | None = None
+    is_multimodal: bool = False
+
+
+class SegmentCreateArgs(BaseModel):
+    content: str | None = None
+    answer: str | None = None
+    keywords: list[str] | None = None
+    attachment_ids: list[str] | None = None
 
 
 class SegmentUpdateArgs(BaseModel):
@@ -132,6 +141,8 @@ class SegmentUpdateArgs(BaseModel):
     keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
     enabled: bool | None = None
+    attachment_ids: list[str] | None = None
+    summary: str | None = None  # Summary content for summary index
 
 
 class ChildChunkUpdateArgs(BaseModel):
@@ -158,6 +169,7 @@ class MetadataDetail(BaseModel):
 class DocumentMetadataOperation(BaseModel):
     document_id: str
     metadata_list: list[MetadataDetail]
+    partial_update: bool = False
 
 
 class MetadataOperationData(BaseModel):

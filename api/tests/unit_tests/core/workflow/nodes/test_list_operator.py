@@ -3,9 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.list_operator.entities import (
     ExtractConfig,
     FilterBy,
@@ -57,8 +57,6 @@ def list_operator_node():
         graph_init_params=graph_init_params,
         graph_runtime_state=MagicMock(),
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node

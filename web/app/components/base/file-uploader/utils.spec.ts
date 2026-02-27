@@ -1,50 +1,66 @@
-import mime from 'mime'
+import type { FileEntity } from './types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { upload } from '@/service/base'
+import { TransferMethod } from '@/types/app'
+import { FILE_EXTS } from '../prompt-editor/constants'
+import { FileAppearanceTypeEnum } from './types'
 import {
-  downloadFile,
   fileIsUploaded,
   fileUpload,
   getFileAppearanceType,
   getFileExtension,
   getFileNameFromUrl,
   getFilesInLogs,
+  getFileUploadErrorMessage,
   getProcessedFiles,
   getProcessedFilesFromResponse,
   getSupportFileExtensionList,
   getSupportFileType,
   isAllowedFileExtension,
 } from './utils'
-import { FileAppearanceTypeEnum } from './types'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
-import { FILE_EXTS } from '../prompt-editor/constants'
 
-jest.mock('mime', () => ({
-  __esModule: true,
-  default: {
-    getAllExtensions: jest.fn(),
-  },
-}))
-
-jest.mock('@/service/base', () => ({
-  upload: jest.fn(),
+vi.mock('@/service/base', () => ({
+  upload: vi.fn(),
 }))
 
 describe('file-uploader utils', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.resetAllMocks()
+  })
+
+  describe('getFileUploadErrorMessage', () => {
+    const createMockT = () => vi.fn().mockImplementation((key: string) => key) as unknown as import('i18next').TFunction
+
+    it('should return forbidden message when error code is forbidden', () => {
+      const error = { response: { code: 'forbidden', message: 'Access denied' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('Access denied')
+    })
+
+    it('should return file_extension_blocked translation when error code matches', () => {
+      const error = { response: { code: 'file_extension_blocked' } }
+      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('fileUploader.fileExtensionBlocked')
+    })
+
+    it('should return default message for other errors', () => {
+      const error = { response: { code: 'unknown_error' } }
+      expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe('Upload failed')
+    })
+
+    it('should return default message when error has no response', () => {
+      expect(getFileUploadErrorMessage(null, 'Upload failed', createMockT())).toBe('Upload failed')
+    })
   })
 
   describe('fileUpload', () => {
-    it('should handle successful file upload', () => {
+    it('should handle successful file upload', async () => {
       const mockFile = new File(['test'], 'test.txt')
       const mockCallbacks = {
-        onProgressCallback: jest.fn(),
-        onSuccessCallback: jest.fn(),
-        onErrorCallback: jest.fn(),
+        onProgressCallback: vi.fn(),
+        onSuccessCallback: vi.fn(),
+        onErrorCallback: vi.fn(),
       }
 
-      jest.mocked(upload).mockResolvedValue({ id: '123' })
+      vi.mocked(upload).mockResolvedValue({ id: '123' })
 
       fileUpload({
         file: mockFile,
@@ -52,32 +68,102 @@ describe('file-uploader utils', () => {
       })
 
       expect(upload).toHaveBeenCalled()
+
+      // Wait for the promise to resolve and call onSuccessCallback
+      await vi.waitFor(() => {
+        expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledWith({ id: '123' })
+      })
+    })
+
+    it('should call onErrorCallback when upload fails', async () => {
+      const mockFile = new File(['test'], 'test.txt')
+      const mockCallbacks = {
+        onProgressCallback: vi.fn(),
+        onSuccessCallback: vi.fn(),
+        onErrorCallback: vi.fn(),
+      }
+
+      const uploadError = new Error('Upload failed')
+      vi.mocked(upload).mockRejectedValue(uploadError)
+
+      fileUpload({
+        file: mockFile,
+        ...mockCallbacks,
+      })
+
+      await vi.waitFor(() => {
+        expect(mockCallbacks.onErrorCallback).toHaveBeenCalledWith(uploadError)
+      })
+    })
+
+    it('should call onProgressCallback when progress event is computable', () => {
+      const mockFile = new File(['test'], 'test.txt')
+      const mockCallbacks = {
+        onProgressCallback: vi.fn(),
+        onSuccessCallback: vi.fn(),
+        onErrorCallback: vi.fn(),
+      }
+
+      vi.mocked(upload).mockImplementation(({ onprogress }) => {
+        // Simulate a progress event
+        if (onprogress)
+          onprogress.call({} as XMLHttpRequest, { lengthComputable: true, loaded: 50, total: 100 } as ProgressEvent)
+
+        return Promise.resolve({ id: '123' })
+      })
+
+      fileUpload({
+        file: mockFile,
+        ...mockCallbacks,
+      })
+
+      expect(mockCallbacks.onProgressCallback).toHaveBeenCalledWith(50)
+    })
+
+    it('should not call onProgressCallback when progress event is not computable', () => {
+      const mockFile = new File(['test'], 'test.txt')
+      const mockCallbacks = {
+        onProgressCallback: vi.fn(),
+        onSuccessCallback: vi.fn(),
+        onErrorCallback: vi.fn(),
+      }
+
+      vi.mocked(upload).mockImplementation(({ onprogress }) => {
+        if (onprogress)
+          onprogress.call({} as XMLHttpRequest, { lengthComputable: false, loaded: 0, total: 0 } as ProgressEvent)
+
+        return Promise.resolve({ id: '123' })
+      })
+
+      fileUpload({
+        file: mockFile,
+        ...mockCallbacks,
+      })
+
+      expect(mockCallbacks.onProgressCallback).not.toHaveBeenCalled()
     })
   })
 
   describe('getFileExtension', () => {
     it('should get extension from mimetype', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['pdf']))
       expect(getFileExtension('file', 'application/pdf')).toBe('pdf')
     })
 
-    it('should get extension from mimetype and file name 1', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['pdf']))
+    it('should get extension from mimetype and file name', () => {
       expect(getFileExtension('file.pdf', 'application/pdf')).toBe('pdf')
     })
 
     it('should get extension from mimetype with multiple ext candidates with filename hint', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['der', 'crt', 'pem']))
       expect(getFileExtension('file.pem', 'application/x-x509-ca-cert')).toBe('pem')
     })
 
     it('should get extension from mimetype with multiple ext candidates without filename hint', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['der', 'crt', 'pem']))
-      expect(getFileExtension('file', 'application/x-x509-ca-cert')).toBe('der')
+      const ext = getFileExtension('file', 'application/x-x509-ca-cert')
+      // mime returns Set(['der', 'crt', 'pem']), first value is used when no filename hint
+      expect(['der', 'crt', 'pem']).toContain(ext)
     })
 
-    it('should get extension from filename if mimetype fails', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(null)
+    it('should get extension from filename when mimetype is empty', () => {
       expect(getFileExtension('file.txt', '')).toBe('txt')
       expect(getFileExtension('file.txt.docx', '')).toBe('docx')
       expect(getFileExtension('file', '')).toBe('')
@@ -86,163 +172,122 @@ describe('file-uploader utils', () => {
     it('should return empty string for remote files', () => {
       expect(getFileExtension('file.txt', '', true)).toBe('')
     })
+
+    it('should fall back to filename extension for unknown mimetype', () => {
+      expect(getFileExtension('file.txt', 'application/unknown')).toBe('txt')
+    })
+
+    it('should return empty string for unknown mimetype without filename extension', () => {
+      expect(getFileExtension('file', 'application/unknown')).toBe('')
+    })
   })
 
   describe('getFileAppearanceType', () => {
     it('should identify gif files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['gif']))
       expect(getFileAppearanceType('image.gif', 'image/gif'))
         .toBe(FileAppearanceTypeEnum.gif)
     })
 
     it('should identify image files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['jpg']))
       expect(getFileAppearanceType('image.jpg', 'image/jpeg'))
         .toBe(FileAppearanceTypeEnum.image)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['jpeg']))
       expect(getFileAppearanceType('image.jpeg', 'image/jpeg'))
         .toBe(FileAppearanceTypeEnum.image)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['png']))
       expect(getFileAppearanceType('image.png', 'image/png'))
         .toBe(FileAppearanceTypeEnum.image)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['webp']))
       expect(getFileAppearanceType('image.webp', 'image/webp'))
         .toBe(FileAppearanceTypeEnum.image)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['svg']))
-      expect(getFileAppearanceType('image.svg', 'image/svgxml'))
+      expect(getFileAppearanceType('image.svg', 'image/svg+xml'))
         .toBe(FileAppearanceTypeEnum.image)
     })
 
     it('should identify video files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['mp4']))
       expect(getFileAppearanceType('video.mp4', 'video/mp4'))
         .toBe(FileAppearanceTypeEnum.video)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['mov']))
       expect(getFileAppearanceType('video.mov', 'video/quicktime'))
         .toBe(FileAppearanceTypeEnum.video)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['mpeg']))
       expect(getFileAppearanceType('video.mpeg', 'video/mpeg'))
         .toBe(FileAppearanceTypeEnum.video)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['webm']))
-      expect(getFileAppearanceType('video.web', 'video/webm'))
+      expect(getFileAppearanceType('video.webm', 'video/webm'))
         .toBe(FileAppearanceTypeEnum.video)
     })
 
     it('should identify audio files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['mp3']))
       expect(getFileAppearanceType('audio.mp3', 'audio/mpeg'))
         .toBe(FileAppearanceTypeEnum.audio)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['m4a']))
       expect(getFileAppearanceType('audio.m4a', 'audio/mp4'))
         .toBe(FileAppearanceTypeEnum.audio)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['wav']))
-      expect(getFileAppearanceType('audio.wav', 'audio/vnd.wav'))
+      expect(getFileAppearanceType('audio.wav', 'audio/wav'))
         .toBe(FileAppearanceTypeEnum.audio)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['amr']))
       expect(getFileAppearanceType('audio.amr', 'audio/AMR'))
         .toBe(FileAppearanceTypeEnum.audio)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['mpga']))
       expect(getFileAppearanceType('audio.mpga', 'audio/mpeg'))
         .toBe(FileAppearanceTypeEnum.audio)
     })
 
     it('should identify code files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['html']))
       expect(getFileAppearanceType('index.html', 'text/html'))
         .toBe(FileAppearanceTypeEnum.code)
     })
 
     it('should identify PDF files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['pdf']))
       expect(getFileAppearanceType('doc.pdf', 'application/pdf'))
         .toBe(FileAppearanceTypeEnum.pdf)
     })
 
     it('should identify markdown files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['md']))
       expect(getFileAppearanceType('file.md', 'text/markdown'))
         .toBe(FileAppearanceTypeEnum.markdown)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['markdown']))
       expect(getFileAppearanceType('file.markdown', 'text/markdown'))
         .toBe(FileAppearanceTypeEnum.markdown)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['mdx']))
       expect(getFileAppearanceType('file.mdx', 'text/mdx'))
         .toBe(FileAppearanceTypeEnum.markdown)
     })
 
     it('should identify excel files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['xlsx']))
       expect(getFileAppearanceType('doc.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))
         .toBe(FileAppearanceTypeEnum.excel)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['xls']))
       expect(getFileAppearanceType('doc.xls', 'application/vnd.ms-excel'))
         .toBe(FileAppearanceTypeEnum.excel)
     })
 
     it('should identify word files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['doc']))
       expect(getFileAppearanceType('doc.doc', 'application/msword'))
         .toBe(FileAppearanceTypeEnum.word)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['docx']))
       expect(getFileAppearanceType('doc.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))
         .toBe(FileAppearanceTypeEnum.word)
     })
 
-    it('should identify word files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['ppt']))
+    it('should identify ppt files', () => {
       expect(getFileAppearanceType('doc.ppt', 'application/vnd.ms-powerpoint'))
         .toBe(FileAppearanceTypeEnum.ppt)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['pptx']))
       expect(getFileAppearanceType('doc.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'))
         .toBe(FileAppearanceTypeEnum.ppt)
     })
 
     it('should identify document files', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['txt']))
       expect(getFileAppearanceType('file.txt', 'text/plain'))
         .toBe(FileAppearanceTypeEnum.document)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['csv']))
       expect(getFileAppearanceType('file.csv', 'text/csv'))
         .toBe(FileAppearanceTypeEnum.document)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['msg']))
       expect(getFileAppearanceType('file.msg', 'application/vnd.ms-outlook'))
         .toBe(FileAppearanceTypeEnum.document)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['eml']))
       expect(getFileAppearanceType('file.eml', 'message/rfc822'))
         .toBe(FileAppearanceTypeEnum.document)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['xml']))
-      expect(getFileAppearanceType('file.xml', 'application/rssxml'))
+      expect(getFileAppearanceType('file.xml', 'application/xml'))
         .toBe(FileAppearanceTypeEnum.document)
-
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['epub']))
-      expect(getFileAppearanceType('file.epub', 'application/epubzip'))
+      expect(getFileAppearanceType('file.epub', 'application/epub+zip'))
         .toBe(FileAppearanceTypeEnum.document)
     })
 
-    it('should handle null mime extension', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(null)
-      expect(getFileAppearanceType('file.txt', 'text/plain'))
+    it('should fall back to filename extension for unknown mimetype', () => {
+      expect(getFileAppearanceType('file.txt', 'application/unknown'))
         .toBe(FileAppearanceTypeEnum.document)
+    })
+
+    it('should return custom type for unrecognized extensions', () => {
+      expect(getFileAppearanceType('file.xyz', 'application/xyz'))
+        .toBe(FileAppearanceTypeEnum.custom)
     })
   })
 
@@ -280,25 +325,70 @@ describe('file-uploader utils', () => {
         upload_file_id: '123',
       })
     })
+
+    it('should fallback to empty string when url is missing', () => {
+      const files = [{
+        id: '123',
+        name: 'test.txt',
+        size: 1024,
+        type: 'text/plain',
+        progress: 100,
+        supportFileType: 'document',
+        transferMethod: TransferMethod.local_file,
+        url: undefined,
+        uploadedId: '123',
+      }] as unknown as FileEntity[]
+
+      const result = getProcessedFiles(files)
+      expect(result[0].url).toBe('')
+    })
+
+    it('should fallback to empty string when uploadedId is missing', () => {
+      const files = [{
+        id: '123',
+        name: 'test.txt',
+        size: 1024,
+        type: 'text/plain',
+        progress: 100,
+        supportFileType: 'document',
+        transferMethod: TransferMethod.local_file,
+        url: 'http://example.com',
+        uploadedId: undefined,
+      }] as unknown as FileEntity[]
+
+      const result = getProcessedFiles(files)
+      expect(result[0].upload_file_id).toBe('')
+    })
+
+    it('should filter out files with progress -1', () => {
+      const files = [
+        {
+          id: '1',
+          name: 'good.txt',
+          progress: 100,
+          supportFileType: 'document',
+          transferMethod: TransferMethod.local_file,
+          url: 'http://example.com',
+          uploadedId: '1',
+        },
+        {
+          id: '2',
+          name: 'bad.txt',
+          progress: -1,
+          supportFileType: 'document',
+          transferMethod: TransferMethod.local_file,
+          url: 'http://example.com',
+          uploadedId: '2',
+        },
+      ] as unknown as FileEntity[]
+
+      const result = getProcessedFiles(files)
+      expect(result).toHaveLength(1)
+      expect(result[0].upload_file_id).toBe('1')
+    })
   })
 
   describe('getProcessedFilesFromResponse', () => {
-    beforeEach(() => {
-      jest.mocked(mime.getAllExtensions).mockImplementation((mimeType: string) => {
-        const mimeMap: Record<string, Set<string>> = {
-          'image/jpeg': new Set(['jpg', 'jpeg']),
-          'image/png': new Set(['png']),
-          'image/gif': new Set(['gif']),
-          'video/mp4': new Set(['mp4']),
-          'audio/mp3': new Set(['mp3']),
-          'application/pdf': new Set(['pdf']),
-          'text/plain': new Set(['txt']),
-          'application/json': new Set(['json']),
-        }
-        return mimeMap[mimeType] || new Set()
-      })
-    })
-
     it('should process files correctly without type correction', () => {
       const files = [{
         related_id: '2a38e2ca-1295-415d-a51d-65d4ff9912d9',
@@ -369,7 +459,7 @@ describe('file-uploader utils', () => {
         extension: '.mp3',
         filename: 'audio.mp3',
         size: 1024,
-        mime_type: 'audio/mp3',
+        mime_type: 'audio/mpeg',
         transfer_method: TransferMethod.local_file,
         type: 'document',
         url: 'https://example.com/audio.mp3',
@@ -417,7 +507,7 @@ describe('file-uploader utils', () => {
       expect(result[0].supportFileType).toBe('document')
     })
 
-    it('should NOT correct when filename and MIME type both point to wrong type', () => {
+    it('should NOT correct when filename and MIME type both point to same type', () => {
       const files = [{
         related_id: '123',
         extension: '.jpg',
@@ -542,6 +632,11 @@ describe('file-uploader utils', () => {
       expect(getFileNameFromUrl('http://example.com/path/file.txt'))
         .toBe('file.txt')
     })
+
+    it('should return empty string for URL ending with slash', () => {
+      expect(getFileNameFromUrl('http://example.com/path/'))
+        .toBe('')
+    })
   })
 
   describe('getSupportFileExtensionList', () => {
@@ -601,7 +696,6 @@ describe('file-uploader utils', () => {
 
   describe('isAllowedFileExtension', () => {
     it('should validate allowed file extensions', () => {
-      jest.mocked(mime.getAllExtensions).mockReturnValue(new Set(['pdf']))
       expect(isAllowedFileExtension(
         'test.pdf',
         'application/pdf',
@@ -780,76 +874,6 @@ describe('file-uploader utils', () => {
         transferMethod: TransferMethod.remote_url,
         progress: 100,
       } as any)).toBe(true)
-    })
-  })
-
-  describe('downloadFile', () => {
-    let mockAnchor: HTMLAnchorElement
-    let createElementMock: jest.SpyInstance
-    let appendChildMock: jest.SpyInstance
-    let removeChildMock: jest.SpyInstance
-
-    beforeEach(() => {
-      // Mock createElement and appendChild
-      mockAnchor = {
-        href: '',
-        download: '',
-        style: { display: '' },
-        target: '',
-        title: '',
-        click: jest.fn(),
-      } as unknown as HTMLAnchorElement
-
-      createElementMock = jest.spyOn(document, 'createElement').mockReturnValue(mockAnchor as any)
-      appendChildMock = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
-        return node
-      })
-      removeChildMock = jest.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => {
-        return node
-      })
-    })
-
-    afterEach(() => {
-      jest.resetAllMocks()
-    })
-
-    it('should create and trigger download with correct attributes', () => {
-      const url = 'https://example.com/test.pdf'
-      const filename = 'test.pdf'
-
-      downloadFile(url, filename)
-
-      // Verify anchor element was created with correct properties
-      expect(createElementMock).toHaveBeenCalledWith('a')
-      expect(mockAnchor.href).toBe(url)
-      expect(mockAnchor.download).toBe(filename)
-      expect(mockAnchor.style.display).toBe('none')
-      expect(mockAnchor.target).toBe('_blank')
-      expect(mockAnchor.title).toBe(filename)
-
-      // Verify DOM operations
-      expect(appendChildMock).toHaveBeenCalledWith(mockAnchor)
-      expect(mockAnchor.click).toHaveBeenCalled()
-      expect(removeChildMock).toHaveBeenCalledWith(mockAnchor)
-    })
-
-    it('should handle empty filename', () => {
-      const url = 'https://example.com/test.pdf'
-      const filename = ''
-
-      downloadFile(url, filename)
-
-      expect(mockAnchor.download).toBe('')
-      expect(mockAnchor.title).toBe('')
-    })
-
-    it('should handle empty url', () => {
-      const url = ''
-      const filename = 'test.pdf'
-
-      downloadFile(url, filename)
-
-      expect(mockAnchor.href).toBe('')
     })
   })
 })

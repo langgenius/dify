@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react'
+import type { PluginDetail } from '@/app/components/plugins/types'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import StrategyItem from '@/app/components/plugins/plugin-detail-panel/strategy-item'
 import {
   useStrategyProviderDetail,
 } from '@/service/use-strategy'
-import type { PluginDetail } from '@/app/components/plugins/types'
 
 type Props = {
   detail: PluginDetail
@@ -36,13 +37,13 @@ const AgentStrategyList = ({
     return null
 
   return (
-    <div className='px-4 pb-4 pt-2'>
-      <div className='mb-1 py-1'>
-        <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary'>
-          {t('plugin.detailPanel.strategyNum', { num: strategyList.length, strategy: strategyList.length > 1 ? 'strategies' : 'strategy' })}
+    <div className="px-4 pb-4 pt-2">
+      <div className="mb-1 py-1">
+        <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+          {t('detailPanel.strategyNum', { ns: 'plugin', num: strategyList.length, strategy: strategyList.length > 1 ? 'strategies' : 'strategy' })}
         </div>
       </div>
-      <div className='flex flex-col gap-2'>
+      <div className="flex flex-col gap-2">
         {strategyList.map(strategyDetail => (
           <StrategyItem
             key={`${strategyDetail.identity.provider}${strategyDetail.identity.name}`}

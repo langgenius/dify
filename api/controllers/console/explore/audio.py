@@ -1,9 +1,11 @@
 import logging
 
 from flask import request
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -29,6 +31,16 @@ from services.errors.audio import (
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
+
+
+class TextToAudioPayload(BaseModel):
+    message_id: str | None = None
+    voice: str | None = None
+    text: str | None = None
+    streaming: bool | None = Field(default=None, description="Enable streaming response")
+
+
+register_schema_model(console_ns, TextToAudioPayload)
 
 
 @console_ns.route(
@@ -76,23 +88,15 @@ class ChatAudioApi(InstalledAppResource):
     endpoint="installed_app_text",
 )
 class ChatTextApi(InstalledAppResource):
+    @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
     def post(self, installed_app):
-        from flask_restx import reqparse
-
         app_model = installed_app.app
         try:
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("message_id", type=str, required=False, location="json")
-                .add_argument("voice", type=str, location="json")
-                .add_argument("text", type=str, location="json")
-                .add_argument("streaming", type=bool, location="json")
-            )
-            args = parser.parse_args()
+            payload = TextToAudioPayload.model_validate(console_ns.payload or {})
 
-            message_id = args.get("message_id", None)
-            text = args.get("text", None)
-            voice = args.get("voice", None)
+            message_id = payload.message_id
+            text = payload.text
+            voice = payload.voice
 
             response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             return response

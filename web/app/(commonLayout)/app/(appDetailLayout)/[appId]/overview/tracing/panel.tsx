@@ -1,28 +1,29 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { TracingStatus } from '@/models/app'
 import {
   RiArrowDownDoubleLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
-import { TracingProvider } from './type'
-import TracingIcon from './tracing-icon'
-import ConfigButton from './config-button'
-import cn from '@/utils/classnames'
-import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
-import Indicator from '@/app/components/header/indicator'
-import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import type { TracingStatus } from '@/models/app'
-import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
-import Loading from '@/app/components/base/loading'
+import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import Indicator from '@/app/components/header/indicator'
+import { useAppContext } from '@/context/app-context'
+import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import { cn } from '@/utils/classnames'
+import ConfigButton from './config-button'
+import TracingIcon from './tracing-icon'
+import { TracingProvider } from './type'
 
-const I18N_PREFIX = 'app.tracing'
+const I18N_PREFIX = 'tracing'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
@@ -44,7 +45,7 @@ const Panel: FC = () => {
     if (!noToast) {
       Toast.notify({
         type: 'success',
-        message: t('common.api.success'),
+        message: t('api.success', { ns: 'common' }),
       })
     }
   }
@@ -71,6 +72,8 @@ const Panel: FC = () => {
     [TracingProvider.opik]: OpikIcon,
     [TracingProvider.weave]: WeaveIcon,
     [TracingProvider.aliyun]: AliyunIcon,
+    [TracingProvider.mlflow]: MlflowIcon,
+    [TracingProvider.databricks]: DatabricksIcon,
     [TracingProvider.tencent]: TencentIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
@@ -82,8 +85,10 @@ const Panel: FC = () => {
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
   const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
+  const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
+  const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
   const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || tencentConfig)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
@@ -121,6 +126,16 @@ const Panel: FC = () => {
       if (!aliyunHasNotConfig)
         setAliyunConfig(aliyunConfig as AliyunConfig)
     }
+    const getMLflowConfig = async () => {
+      const { tracing_config: mlflowConfig, has_not_configured: mlflowHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.mlflow })
+      if (!mlflowHasNotConfig)
+        setMLflowConfig(mlflowConfig as MLflowConfig)
+    }
+    const getDatabricksConfig = async () => {
+      const { tracing_config: databricksConfig, has_not_configured: databricksHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.databricks })
+      if (!databricksHasNotConfig)
+        setDatabricksConfig(databricksConfig as DatabricksConfig)
+    }
     const getTencentConfig = async () => {
       const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
       if (!tencentHasNotConfig)
@@ -134,6 +149,8 @@ const Panel: FC = () => {
       getOpikConfig(),
       getWeaveConfig(),
       getAliyunConfig(),
+      getMLflowConfig(),
+      getDatabricksConfig(),
       getTencentConfig(),
     ])
   }
@@ -174,6 +191,10 @@ const Panel: FC = () => {
       setWeaveConfig(null)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(null)
+    else if (provider === TracingProvider.mlflow)
+      setMLflowConfig(null)
+    else if (provider === TracingProvider.databricks)
+      setDatabricksConfig(null)
     else if (provider === TracingProvider.tencent)
       setTencentConfig(null)
     if (provider === inUseTracingProvider) {
@@ -195,8 +216,8 @@ const Panel: FC = () => {
 
   if (!isLoaded) {
     return (
-      <div className='mb-3 flex items-center justify-between'>
-        <div className='w-[200px]'>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="w-[200px]">
           <Loading />
         </div>
       </div>
@@ -221,6 +242,8 @@ const Panel: FC = () => {
           opikConfig={opikConfig}
           weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
+          mlflowConfig={mlflowConfig}
+          databricksConfig={databricksConfig}
           tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
@@ -230,14 +253,14 @@ const Panel: FC = () => {
               'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
             )}
           >
-            <TracingIcon size='md' />
-            <div className='system-sm-semibold mx-2 text-text-secondary'>{t(`${I18N_PREFIX}.title`)}</div>
-            <div className='rounded-md p-1'>
-              <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+            <TracingIcon size="md" />
+            <div className="system-sm-semibold mx-2 text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
+            <div className="rounded-md p-1">
+              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
-            <Divider type='vertical' className='h-3.5' />
-            <div className='rounded-md p-1'>
-              <RiArrowDownDoubleLine className='h-4 w-4 text-text-tertiary' />
+            <Divider type="vertical" className="h-3.5" />
+            <div className="rounded-md p-1">
+              <RiArrowDownDoubleLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </div>
         </ConfigButton>
@@ -258,6 +281,8 @@ const Panel: FC = () => {
           opikConfig={opikConfig}
           weaveConfig={weaveConfig}
           aliyunConfig={aliyunConfig}
+          mlflowConfig={mlflowConfig}
+          databricksConfig={databricksConfig}
           tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
@@ -267,17 +292,17 @@ const Panel: FC = () => {
               'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
             )}
           >
-            <div className='ml-4 mr-1 flex items-center'>
+            <div className="ml-4 mr-1 flex items-center">
               <Indicator color={enabled ? 'green' : 'gray'} />
-              <div className='system-xs-semibold-uppercase ml-1.5 text-text-tertiary'>
-                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+              <div className="system-xs-semibold-uppercase ml-1.5 text-text-tertiary">
+                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
               </div>
             </div>
-            {InUseProviderIcon && <InUseProviderIcon className='ml-1 h-4' />}
-            <div className='ml-2 rounded-md p-1'>
-              <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+            {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}
+            <div className="ml-2 rounded-md p-1">
+              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
-            <Divider type='vertical' className='h-3.5' />
+            <Divider type="vertical" className="h-3.5" />
           </div>
         </ConfigButton>
       )}

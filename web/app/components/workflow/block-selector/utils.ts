@@ -1,5 +1,5 @@
-import type { Tool } from '@/app/components/tools/types'
 import type { DataSourceItem } from './types'
+import type { Tool } from '@/app/components/tools/types'
 
 export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
   return {

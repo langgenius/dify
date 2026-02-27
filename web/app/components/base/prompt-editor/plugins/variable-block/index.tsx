@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useEffect } from 'react'
 import { CustomTextNode } from '../custom-text/node'
 
 export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_VARIABLE_BLOCK_COMMAND')

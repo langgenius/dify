@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import { clone } from 'lodash-es'
-import { produce } from 'immer'
-import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
-import { PromptMode } from '@/models/debug'
-import { AppModeEnum, ModelModeType } from '@/types/app'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { PRE_PROMPT_PLACEHOLDER_TEXT, checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
-import { fetchPromptTemplate } from '@/service/debug'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
+import { clone } from 'es-toolkit/object'
+import { produce } from 'immer'
+import { useState } from 'react'
+import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock, PRE_PROMPT_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { PromptMode } from '@/models/debug'
+import { fetchPromptTemplate } from '@/service/debug'
+import { AppModeEnum, ModelModeType } from '@/types/app'
 
 type Param = {
   appMode?: AppModeEnum

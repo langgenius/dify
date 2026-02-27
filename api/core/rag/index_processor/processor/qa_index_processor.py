@@ -11,6 +11,8 @@ import pandas as pd
 from flask import Flask, current_app
 from werkzeug.datastructures import FileStorage
 
+from core.db.session_factory import session_factory
+from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -18,15 +20,17 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document, QAStructureChunk
+from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
-from models.dataset import Dataset
+from models.account import Account
+from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
+from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +45,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         )
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -116,7 +120,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file)  # type: ignore
             text_docs = []
             for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
@@ -128,12 +132,46 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
+        **kwargs,
+    ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
+            if multimodal_documents and dataset.is_multimodal:
+                vector.create_multimodal(multimodal_documents)
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+        # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
+        # This method is called for actual deletion scenarios (e.g., when segment is deleted).
+        # For disable operations, disable_summaries_for_segments is called directly in the task.
+        # Note: qa_model doesn't generate summaries, but we clean them for completeness
+        # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
+        delete_summaries = kwargs.get("delete_summaries", False)
+        if delete_summaries:
+            if node_ids:
+                # Find segments by index_node_id
+                with session_factory.create_session() as session:
+                    segments = (
+                        session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset.id,
+                            DocumentSegment.index_node_id.in_(node_ids),
+                        )
+                        .all()
+                    )
+                    segment_ids = [segment.id for segment in segments]
+                    if segment_ids:
+                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+            else:
+                # Delete all summaries for the dataset
+                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)
@@ -197,10 +235,25 @@ class QAIndexProcessor(BaseIndexProcessor):
         for qa_chunk in qa_chunks.qa_chunks:
             preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
         return {
-            "chunk_structure": IndexType.QA_INDEX,
+            "chunk_structure": IndexStructureType.QA_INDEX,
             "qa_preview": preview,
             "total_segments": len(qa_chunks.qa_chunks),
         }
+
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
+    ) -> list[PreviewDetail]:
+        """
+        QA model doesn't generate summaries, so this method returns preview_texts unchanged.
+
+        Note: QA model uses question-answer pairs, which don't require summary generation.
+        """
+        # QA model doesn't generate summaries, return as-is
+        return preview_texts
 
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []

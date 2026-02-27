@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Annotated, Literal, Self, TypeAlias
 
 from pydantic import BaseModel, Field
@@ -52,6 +53,14 @@ class WorkflowResumptionContext(BaseModel):
         return self.generate_entity.entity
 
 
+@dataclass(frozen=True)
+class PauseStateLayerConfig:
+    """Configuration container for instantiating pause persistence layers."""
+
+    session_factory: Engine | sessionmaker[Session]
+    state_owner_user_id: str
+
+
 class PauseStatePersistenceLayer(GraphEngineLayer):
     def __init__(
         self,
@@ -66,6 +75,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         """
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(session_factory)
+        super().__init__()
         self._session_maker = session_factory
         self._state_owner_user_id = state_owner_user_id
         self._generate_entity = generate_entity
@@ -98,8 +108,6 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         if not isinstance(event, GraphRunPausedEvent):
             return
 
-        assert self.graph_runtime_state is not None
-
         entity_wrapper: _GenerateEntityUnion
         if isinstance(self._generate_entity, WorkflowAppGenerateEntity):
             entity_wrapper = _WorkflowGenerateEntityWrapper(entity=self._generate_entity)
@@ -118,6 +126,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             workflow_run_id=workflow_run_id,
             state_owner_user_id=self._state_owner_user_id,
             state=state.dumps(),
+            pause_reasons=event.reasons,
         )
 
     def on_graph_end(self, error: Exception | None) -> None:

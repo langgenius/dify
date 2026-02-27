@@ -7,7 +7,7 @@ const SyncingDataModal = () => {
     return null
 
   return (
-    <div className='absolute inset-0 z-[9999]'>
+    <div className="absolute inset-0 z-[9999]">
     </div>
   )
 }

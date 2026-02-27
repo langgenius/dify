@@ -50,10 +50,13 @@ def create_clusters(batch_size):
         )
         for new_cluster in new_clusters:
             tidb_auth_binding = TidbAuthBinding(
+                tenant_id=None,
                 cluster_id=new_cluster["cluster_id"],
                 cluster_name=new_cluster["cluster_name"],
                 account=new_cluster["account"],
                 password=new_cluster["password"],
+                active=False,
+                status="CREATING",
             )
             db.session.add(tidb_auth_binding)
         db.session.commit()

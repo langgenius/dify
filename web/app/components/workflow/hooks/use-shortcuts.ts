@@ -1,12 +1,7 @@
-import { useReactFlow } from 'reactflow'
 import { useKeyPress } from 'ahooks'
-import { useCallback } from 'react'
-import {
-  getKeyboardKeyCodeBySystem,
-  isEventTargetInputArea,
-} from '../utils'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
-import { useWorkflowStore } from '../store'
+import { useCallback, useEffect } from 'react'
+import { useReactFlow } from 'reactflow'
+import { ZEN_TOGGLE_EVENT } from '@/app/components/goto-anything/actions/commands/zen'
 import {
   useEdgesInteractions,
   useNodesInteractions,
@@ -15,6 +10,12 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '.'
+import { useWorkflowStore } from '../store'
+import {
+  getKeyboardKeyCodeBySystem,
+  isEventTargetInputArea,
+} from '../utils'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 export const useShortcuts = (): void => {
   const {
@@ -62,6 +63,11 @@ export const useShortcuts = (): void => {
     return !isEventTargetInputArea(e.target as HTMLElement)
   }, [])
 
+  const shouldHandleCopy = useCallback(() => {
+    const selection = document.getSelection()
+    return !selection || selection.isCollapsed
+  }, [])
+
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
@@ -72,7 +78,7 @@ export const useShortcuts = (): void => {
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     const { showDebugAndPreviewPanel } = workflowStore.getState()
-    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
+    if (shouldHandleShortcut(e) && shouldHandleCopy() && !showDebugAndPreviewPanel) {
       e.preventDefault()
       handleNodesCopy()
     }
@@ -246,4 +252,16 @@ export const useShortcuts = (): void => {
       events: ['keyup'],
     },
   )
+
+  // Listen for zen toggle event from /zen command
+  useEffect(() => {
+    const handleZenToggle = () => {
+      handleToggleMaximizeCanvas()
+    }
+
+    window.addEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
+    return () => {
+      window.removeEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
+    }
+  }, [handleToggleMaximizeCanvas])
 }

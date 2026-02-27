@@ -1,28 +1,28 @@
 import type { FC } from 'react'
+import {
+  RiFileTextLine,
+  RiFilmAiLine,
+  RiImageCircleAiLine,
+  RiVoiceAiFill,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import ModelBadge from '../model-badge'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 import {
   ModelFeatureEnum,
   ModelFeatureTextEnum,
 } from '../declarations'
-import {
-  AudioSupportIcon,
-  DocumentSupportIcon,
-  // MagicBox,
-  MagicEyes,
-  // MagicWand,
-  // Robot,
-  VideoSupportIcon,
-} from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
+import ModelBadge from '../model-badge'
 
 type FeatureIconProps = {
   feature: ModelFeatureEnum
   className?: string
+  showFeaturesLabel?: boolean
 }
 const FeatureIcon: FC<FeatureIconProps> = ({
   className,
   feature,
+  showFeaturesLabel,
 }) => {
   const { t } = useTranslation()
 
@@ -63,13 +63,29 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   // }
 
   if (feature === ModelFeatureEnum.vision) {
+    if (showFeaturesLabel) {
+      return (
+        <ModelBadge
+          className={cn('gap-x-0.5', className)}
+        >
+          <RiImageCircleAiLine className="size-3" />
+          <span>{ModelFeatureTextEnum.vision}</span>
+        </ModelBadge>
+      )
+    }
+
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.vision })}
       >
-        <div className='inline-block cursor-help'>
-          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
-            <MagicEyes className='h-3 w-3' />
+        <div className="inline-block cursor-help">
+          <ModelBadge
+            className={cn(
+              'w-[18px] justify-center !px-0',
+              className,
+            )}
+          >
+            <RiImageCircleAiLine className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -77,13 +93,29 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   }
 
   if (feature === ModelFeatureEnum.document) {
+    if (showFeaturesLabel) {
+      return (
+        <ModelBadge
+          className={cn('gap-x-0.5', className)}
+        >
+          <RiFileTextLine className="size-3" />
+          <span>{ModelFeatureTextEnum.document}</span>
+        </ModelBadge>
+      )
+    }
+
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.document })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.document })}
       >
-        <div className='inline-block cursor-help'>
-          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
-            <DocumentSupportIcon className='h-3 w-3' />
+        <div className="inline-block cursor-help">
+          <ModelBadge
+            className={cn(
+              'w-[18px] justify-center !px-0',
+              className,
+            )}
+          >
+            <RiFileTextLine className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -91,13 +123,29 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   }
 
   if (feature === ModelFeatureEnum.audio) {
+    if (showFeaturesLabel) {
+      return (
+        <ModelBadge
+          className={cn('gap-x-0.5', className)}
+        >
+          <RiVoiceAiFill className="size-3" />
+          <span>{ModelFeatureTextEnum.audio}</span>
+        </ModelBadge>
+      )
+    }
+
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.audio })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.audio })}
       >
-        <div className='inline-block cursor-help'>
-          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
-            <AudioSupportIcon className='h-3 w-3' />
+        <div className="inline-block cursor-help">
+          <ModelBadge
+            className={cn(
+              'w-[18px] justify-center !px-0',
+              className,
+            )}
+          >
+            <RiVoiceAiFill className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>
@@ -105,13 +153,29 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   }
 
   if (feature === ModelFeatureEnum.video) {
+    if (showFeaturesLabel) {
+      return (
+        <ModelBadge
+          className={cn('gap-x-0.5', className)}
+        >
+          <RiFilmAiLine className="size-3" />
+          <span>{ModelFeatureTextEnum.video}</span>
+        </ModelBadge>
+      )
+    }
+
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.video })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.video })}
       >
-        <div className='inline-block cursor-help'>
-          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
-            <VideoSupportIcon className='h-3 w-3' />
+        <div className="inline-block cursor-help">
+          <ModelBadge
+            className={cn(
+              'w-[18px] justify-center !px-0',
+              className,
+            )}
+          >
+            <RiFilmAiLine className="size-3" />
           </ModelBadge>
         </div>
       </Tooltip>

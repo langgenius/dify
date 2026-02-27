@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from enum import StrEnum
@@ -8,12 +10,12 @@ from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
-from core.file import helpers as file_helpers
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from core.workflow.file import helpers as file_helpers
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider
@@ -75,7 +77,7 @@ class MCPProviderEntity(BaseModel):
     updated_at: datetime
 
     @classmethod
-    def from_db_model(cls, db_provider: "MCPToolProvider") -> "MCPProviderEntity":
+    def from_db_model(cls, db_provider: MCPToolProvider) -> MCPProviderEntity:
         """Create entity from database model with decryption"""
 
         return cls(
@@ -213,12 +215,23 @@ class MCPProviderEntity(BaseModel):
         return None
 
     def retrieve_tokens(self) -> OAuthTokens | None:
-        """OAuth tokens if available"""
+        """Retrieve OAuth tokens if authentication is complete.
+
+        Returns:
+            OAuthTokens if the provider has been authenticated, None otherwise.
+        """
         if not self.credentials:
             return None
         credentials = self.decrypt_credentials()
+        access_token = credentials.get("access_token", "")
+        # Return None if access_token is empty to avoid generating invalid "Authorization: Bearer " header.
+        # Note: We don't check for whitespace-only strings here because:
+        # 1. OAuth servers don't return whitespace-only access tokens in practice
+        # 2. Even if they did, the server would return 401, triggering the OAuth flow correctly
+        if not access_token:
+            return None
         return OAuthTokens(
-            access_token=credentials.get("access_token", ""),
+            access_token=access_token,
             token_type=credentials.get("token_type", DEFAULT_TOKEN_TYPE),
             expires_in=int(credentials.get("expires_in", str(DEFAULT_EXPIRES_IN)) or DEFAULT_EXPIRES_IN),
             refresh_token=credentials.get("refresh_token", ""),

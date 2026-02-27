@@ -7,18 +7,25 @@ export const jsonObjectWrap = {
 
 export const jsonConfigPlaceHolder = JSON.stringify(
   {
-    foo: {
-      type: 'string',
-    },
-    bar: {
-      type: 'object',
-      properties: {
-        sub: {
-          type: 'number',
-        },
+    type: 'object',
+    properties: {
+      foo: {
+        type: 'string',
       },
-      required: [],
-      additionalProperties: true,
+      bar: {
+        type: 'object',
+        properties: {
+          sub: {
+            type: 'number',
+          },
+        },
+        required: [],
+        additionalProperties: true,
+      },
     },
-  }, null, 2,
+    required: [],
+    additionalProperties: true,
+  },
+  null,
+  2,
 )

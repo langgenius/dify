@@ -2,8 +2,8 @@ import {
   memo,
 } from 'react'
 import { useStore } from '../../store'
-import { useOpenLink } from './hooks'
 import LinkEditorComponent from './component'
+import { useOpenLink } from './hooks'
 
 type LinkEditorPluginProps = {
   containerElement: HTMLDivElement | null

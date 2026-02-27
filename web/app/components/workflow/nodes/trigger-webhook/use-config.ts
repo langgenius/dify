@@ -1,15 +1,15 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
+import type { Variable } from '@/app/components/workflow/types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 
+import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Toast from '@/app/components/base/toast'
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { fetchWebhookUrl } from '@/service/apps'
-import type { Variable } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
-import Toast from '@/app/components/base/toast'
+import { fetchWebhookUrl } from '@/service/apps'
 import { checkKeys, hasDuplicateStr } from '@/utils/var'
 import { WEBHOOK_RAW_VARIABLE_NAME } from './utils/raw-variable'
 
@@ -65,8 +65,9 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (hasReservedConflict) {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', {
-          key: t('appDebug.variableConfig.varName'),
+        message: t('varKeyError.keyAlreadyExists', {
+          ns: 'appDebug',
+          key: t('variableConfig.varName', { ns: 'appDebug' }),
         }),
       })
       return false
@@ -81,18 +82,20 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (crossScopeConflict) {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', {
+        message: t('varKeyError.keyAlreadyExists', {
+          ns: 'appDebug',
           key: crossScopeConflict.sanitizedName,
         }),
       })
       return false
     }
 
-    if(hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
+    if (hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', {
-          key: t('appDebug.variableConfig.varName'),
+        message: t('varKeyError.keyAlreadyExists', {
+          ns: 'appDebug',
+          key: t('variableConfig.varName', { ns: 'appDebug' }),
         }),
       })
       return false
@@ -103,8 +106,9 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       if (!isValid) {
         Toast.notify({
           type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, {
-            key: t('appDebug.variableConfig.varName'),
+          message: t(`varKeyError.${errorMessageKey}`, {
+            ns: 'appDebug',
+            key: t('variableConfig.varName', { ns: 'appDebug' }),
           }),
         })
         return false
@@ -126,7 +130,8 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     // Remove variables that no longer exist in newData for this specific source type
     draft.variables = draft.variables.filter((v) => {
       // Keep variables from other sources
-      if (v.label !== sourceType) return true
+      if (v.label !== sourceType)
+        return true
       return newVarNames.has(v.variable)
     })
 

@@ -1,0 +1,19 @@
+{
+  "connect": "Kết nối với",
+  "continue": "Tiếp tục",
+  "error.authAppInfoFetchFailed": "Không thể lấy thông tin ứng dụng để xác thực",
+  "error.authorizeFailed": "Ủy quyền không thành công",
+  "error.invalidParams": "Tham số không hợp lệ",
+  "login": "Đăng nhập",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Sở thích ngôn ngữ",
+  "scopes.name": "Tên",
+  "scopes.timezone": "Múi giờ",
+  "switchAccount": "Chuyển tài khoản",
+  "tips.common": "Chúng tôi tôn trọng quyền riêng tư của bạn và sẽ chỉ sử dụng thông tin này để cải thiện trải nghiệm của bạn với các công cụ phát triển của chúng tôi.",
+  "tips.loggedIn": "Ứng dụng này muốn truy cập thông tin sau từ tài khoản Dify Cloud của bạn.",
+  "tips.needLogin": "Vui lòng đăng nhập để xác thực",
+  "tips.notLoggedIn": "Ứng dụng này muốn truy cập vào tài khoản Dify Cloud của bạn",
+  "unknownApp": "Ứng dụng không xác định"
+}

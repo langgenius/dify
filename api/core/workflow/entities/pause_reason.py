@@ -1,49 +1,50 @@
+from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Annotated, Any, ClassVar, TypeAlias
+from typing import Annotated, Any, Literal, TypeAlias
 
-from pydantic import BaseModel, Discriminator, Tag
+from pydantic import BaseModel, Field
+
+from core.workflow.nodes.human_input.entities import FormInput, UserAction
 
 
-class _PauseReasonType(StrEnum):
+class PauseReasonType(StrEnum):
     HUMAN_INPUT_REQUIRED = auto()
     SCHEDULED_PAUSE = auto()
 
 
-class _PauseReasonBase(BaseModel):
-    TYPE: ClassVar[_PauseReasonType]
+class HumanInputRequired(BaseModel):
+    TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
+    form_id: str
+    form_content: str
+    inputs: list[FormInput] = Field(default_factory=list)
+    actions: list[UserAction] = Field(default_factory=list)
+    display_in_ui: bool = False
+    node_id: str
+    node_title: str
+
+    # The `resolved_default_values` stores the resolved values of variable defaults. It's a mapping from
+    # `output_variable_name` to their resolved values.
+    #
+    # For example, The form contains a input with output variable name `name` and placeholder type `VARIABLE`, its
+    # selector is ["start", "name"]. While the HumanInputNode is executed, the correspond value of variable
+    # `start.name` in variable pool is `John`. Thus, the resolved value of the output variable `name` is `John`. The
+    # `resolved_default_values` is `{"name": "John"}`.
+    #
+    # Only form inputs with default value type `VARIABLE` will be resolved and stored in `resolved_default_values`.
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+
+    # The `form_token` is the token used to submit the form via UI surfaces. It corresponds to
+    # `HumanInputFormRecipient.access_token`.
+    #
+    # This field is `None` if webapp delivery is not set and not
+    # in orchestrating mode.
+    form_token: str | None = None
 
 
-class HumanInputRequired(_PauseReasonBase):
-    TYPE = _PauseReasonType.HUMAN_INPUT_REQUIRED
-
-
-class SchedulingPause(_PauseReasonBase):
-    TYPE = _PauseReasonType.SCHEDULED_PAUSE
+class SchedulingPause(BaseModel):
+    TYPE: Literal[PauseReasonType.SCHEDULED_PAUSE] = PauseReasonType.SCHEDULED_PAUSE
 
     message: str
 
 
-def _get_pause_reason_discriminator(v: Any) -> _PauseReasonType | None:
-    if isinstance(v, _PauseReasonBase):
-        return v.TYPE
-    elif isinstance(v, dict):
-        reason_type_str = v.get("TYPE")
-        if reason_type_str is None:
-            return None
-        try:
-            reason_type = _PauseReasonType(reason_type_str)
-        except ValueError:
-            return None
-        return reason_type
-    else:
-        # return None if the discriminator value isn't found
-        return None
-
-
-PauseReason: TypeAlias = Annotated[
-    (
-        Annotated[HumanInputRequired, Tag(_PauseReasonType.HUMAN_INPUT_REQUIRED)]
-        | Annotated[SchedulingPause, Tag(_PauseReasonType.SCHEDULED_PAUSE)]
-    ),
-    Discriminator(_get_pause_reason_discriminator),
-]
+PauseReason: TypeAlias = Annotated[HumanInputRequired | SchedulingPause, Field(discriminator="TYPE")]

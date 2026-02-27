@@ -1,13 +1,16 @@
 import mimetypes
 from collections.abc import Sequence
+from dataclasses import dataclass
 from email.message import Message
 from typing import Any, Literal
 
+import charset_normalizer
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-from configs import dify_config
 from core.workflow.nodes.base import BaseNodeData
+
+HTTP_REQUEST_CONFIG_FILTER_KEY = "http_request_config"
 
 
 class HttpRequestNodeAuthorizationConfig(BaseModel):
@@ -58,9 +61,27 @@ class HttpRequestNodeBody(BaseModel):
 
 
 class HttpRequestNodeTimeout(BaseModel):
-    connect: int = dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT
-    read: int = dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT
-    write: int = dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT
+    connect: int | None = None
+    read: int | None = None
+    write: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class HttpRequestNodeConfig:
+    max_connect_timeout: int
+    max_read_timeout: int
+    max_write_timeout: int
+    max_binary_size: int
+    max_text_size: int
+    ssl_verify: bool
+    ssrf_default_max_retries: int
+
+    def default_timeout(self) -> "HttpRequestNodeTimeout":
+        return HttpRequestNodeTimeout(
+            connect=self.max_connect_timeout,
+            read=self.max_read_timeout,
+            write=self.max_write_timeout,
+        )
 
 
 class HttpRequestNodeData(BaseNodeData):
@@ -90,16 +111,18 @@ class HttpRequestNodeData(BaseNodeData):
     params: str
     body: HttpRequestNodeBody | None = None
     timeout: HttpRequestNodeTimeout | None = None
-    ssl_verify: bool | None = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
+    ssl_verify: bool | None = None
 
 
 class Response:
     headers: dict[str, str]
     response: httpx.Response
+    _cached_text: str | None
 
     def __init__(self, response: httpx.Response):
         self.response = response
         self.headers = dict(response.headers)
+        self._cached_text = None
 
     @property
     def is_file(self):
@@ -159,7 +182,31 @@ class Response:
 
     @property
     def text(self) -> str:
-        return self.response.text
+        """
+        Get response text with robust encoding detection.
+
+        Uses charset_normalizer for better encoding detection than httpx's default,
+        which helps handle Chinese and other non-ASCII characters properly.
+        """
+        # Check cache first
+        if hasattr(self, "_cached_text") and self._cached_text is not None:
+            return self._cached_text
+
+        # Try charset_normalizer for robust encoding detection first
+        detected_encoding = charset_normalizer.from_bytes(self.response.content).best()
+        if detected_encoding and detected_encoding.encoding:
+            try:
+                text = self.response.content.decode(detected_encoding.encoding)
+                self._cached_text = text
+                return text
+            except (UnicodeDecodeError, TypeError, LookupError):
+                # Fallback to httpx's encoding detection if charset_normalizer fails
+                pass
+
+        # Fallback to httpx's built-in encoding detection
+        text = self.response.text
+        self._cached_text = text
+        return text
 
     @property
     def content(self) -> bytes:

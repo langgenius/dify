@@ -48,10 +48,6 @@ class MockModelClass(PluginModelClient):
                         en_US="https://example.com/icon_small.png",
                         zh_Hans="https://example.com/icon_small.png",
                     ),
-                    icon_large=I18nObject(
-                        en_US="https://example.com/icon_large.png",
-                        zh_Hans="https://example.com/icon_large.png",
-                    ),
                     supported_model_types=[ModelType.LLM],
                     configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
                     models=[

@@ -1,3 +1,6 @@
+import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 /**
  * @fileoverview Paragraph component for rendering <p> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
@@ -5,8 +8,6 @@
  */
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
-import React, { useEffect, useMemo, useState } from 'react'
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
 import { getMarkdownImageURL } from './utils'
 
 type PluginParagraphProps = {
@@ -57,13 +58,13 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
     const remainingChildren = Array.isArray(children) && children.length > 1 ? children.slice(1) : undefined
 
     return (
-      <div className="markdown-img-wrapper">
+      <div className="markdown-img-wrapper" data-testid="image-paragraph-wrapper">
         <ImageGallery srcs={[imageUrl]} />
         {remainingChildren && (
-          <div className="mt-2">{remainingChildren}</div>
+          <div className="mt-2" data-testid="remaining-children">{remainingChildren}</div>
         )}
       </div>
     )
   }
-  return <p>{children}</p>
+  return <p data-testid="standard-paragraph">{children}</p>
 }

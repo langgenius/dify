@@ -1,9 +1,3 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
-import { useBoolean } from 'ahooks'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
@@ -11,6 +5,12 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { useBoolean } from 'ahooks'
+import {
+  useCallback,
+  useRef,
+  useState,
+} from 'react'
 
 export const useLogs = () => {
   const [showRetryDetail, {

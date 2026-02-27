@@ -1,11 +1,16 @@
 from pydantic import Field
 
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph_events import BaseGraphEvent
 
 
 class GraphRunStartedEvent(BaseGraphEvent):
-    pass
+    # Reason is emitted for workflow start events and is always set.
+    reason: WorkflowStartReason = Field(
+        default=WorkflowStartReason.INITIAL,
+        description="reason for workflow start",
+    )
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):
@@ -45,8 +50,7 @@ class GraphRunAbortedEvent(BaseGraphEvent):
 class GraphRunPausedEvent(BaseGraphEvent):
     """Event emitted when a graph run is paused by user command."""
 
-    # reason: str | None = Field(default=None, description="reason for pause")
-    reason: PauseReason = Field(..., description="reason for pause")
+    reasons: list[PauseReason] = Field(description="reason for pause", default_factory=list)
     outputs: dict[str, object] = Field(
         default_factory=dict,
         description="Outputs available to the client while the run is paused.",

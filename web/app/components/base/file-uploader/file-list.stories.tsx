@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useState } from 'react'
-import { FileList } from './file-uploader-in-chat-input/file-list'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { FileEntity } from './types'
+import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
+import { FileList } from './file-uploader-in-chat-input/file-list'
 
 const SAMPLE_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'><rect width=\'160\' height=\'160\' rx=\'16\' fill=\'#D1E9FF\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'20\' fill=\'#1F2937\'>IMG</text></svg>'
 

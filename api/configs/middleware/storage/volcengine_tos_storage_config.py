@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class VolcengineTOSStorageConfig(BaseSettings):
     """
-    Configuration settings for Volcengine Tinder Object Storage (TOS)
+    Configuration settings for Volcengine Torch Object Storage (TOS)
     """
 
     VOLCENGINE_TOS_BUCKET_NAME: str | None = Field(

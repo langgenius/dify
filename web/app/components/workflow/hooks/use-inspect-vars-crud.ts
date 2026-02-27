@@ -1,11 +1,11 @@
-import { useStore } from '../store'
+import { produce } from 'immer'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useConversationVarValues,
   useSysVarValues,
 } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
-import { produce } from 'immer'
+import { useStore } from '../store'
 import { BlockEnum } from '../types'
 
 const varsAppendStartNodeKeys = ['query', 'files']
@@ -16,19 +16,19 @@ const useInspectVarsCrud = () => {
   const { data: conversationVars } = useConversationVarValues(configsMap?.flowType, !isRagPipeline ? configsMap?.flowId : '')
   const { data: allSystemVars } = useSysVarValues(configsMap?.flowType, !isRagPipeline ? configsMap?.flowId : '')
   const { varsAppendStartNode, systemVars } = (() => {
-    if(allSystemVars?.length === 0)
+    if (allSystemVars?.length === 0)
       return { varsAppendStartNode: [], systemVars: [] }
     const varsAppendStartNode = allSystemVars?.filter(({ name }) => varsAppendStartNodeKeys.includes(name)) || []
     const systemVars = allSystemVars?.filter(({ name }) => !varsAppendStartNodeKeys.includes(name)) || []
     return { varsAppendStartNode, systemVars }
   })()
   const nodesWithInspectVars = (() => {
-    if(!partOfNodesWithInspectVars || partOfNodesWithInspectVars.length === 0)
+    if (!partOfNodesWithInspectVars || partOfNodesWithInspectVars.length === 0)
       return []
 
     const nodesWithInspectVars = produce(partOfNodesWithInspectVars, (draft) => {
       draft.forEach((nodeWithVars) => {
-        if(nodeWithVars.nodeType === BlockEnum.Start)
+        if (nodeWithVars.nodeType === BlockEnum.Start)
           nodeWithVars.vars = [...nodeWithVars.vars, ...varsAppendStartNode]
       })
     })

@@ -3,7 +3,7 @@
  * Extracted from the main markdown renderer for modularity.
  * Handles special rendering for paragraphs that directly contain an image.
  */
-import React from 'react'
+import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
 const Paragraph = (paragraph: any) => {

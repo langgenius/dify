@@ -6,10 +6,10 @@ import httpx
 import pytest
 from sqlalchemy import Engine
 
-from core.file import FileTransferMethod, FileType, models
 from core.helper import ssrf_proxy
 from core.tools import signature
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.file import FileTransferMethod, FileType, models
 from core.workflow.nodes.llm.file_saver import (
     FileSaverImpl,
     _extract_content_type_and_extension,
@@ -78,7 +78,7 @@ class TestFileSaverImpl:
             file_binary=_PNG_DATA,
             mimetype=mime_type,
         )
-        mocked_sign_file.assert_called_once_with(mock_tool_file.id, ".png")
+        mocked_sign_file.assert_called_once_with(tool_file_id=mock_tool_file.id, extension=".png", for_external=True)
 
     def test_save_remote_url_request_failed(self, monkeypatch: pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"

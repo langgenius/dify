@@ -1,169 +1,169 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "32",
-			"height": "34",
-			"viewBox": "0 0 32 34",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"filter": "url(#filter0_d_3055_14420)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M4 7.73349C4 5.49329 4 4.37318 4.43597 3.51753C4.81947 2.76489 5.43139 2.15296 6.18404 1.76947C7.03969 1.3335 8.15979 1.3335 10.4 1.3335H18.6667L28 10.6668V24.2668C28 26.507 28 27.6271 27.564 28.4828C27.1805 29.2354 26.5686 29.8474 25.816 30.2309C24.9603 30.6668 23.8402 30.6668 21.6 30.6668H10.4C8.15979 30.6668 7.03969 30.6668 6.18404 30.2309C5.43139 29.8474 4.81947 29.2354 4.43597 28.4828C4 27.6271 4 26.507 4 24.2668V7.73349Z",
-							"fill": "#DD3633"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"opacity": "0.96"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M13.2801 20.1362C13.2801 19.2002 12.6001 18.3042 11.3361 18.3042H9.08008V24.0002H10.4801V21.9682H11.3361C12.6001 21.9682 13.2801 21.0722 13.2801 20.1362ZM11.8801 20.1362C11.8801 20.4322 11.6561 20.7122 11.2721 20.7122H10.4801V19.5602H11.2721C11.6561 19.5602 11.8801 19.8402 11.8801 20.1362Z",
-							"fill": "white"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M18.3357 21.1522C18.3357 20.2562 18.4077 19.5282 17.7437 18.8642C17.3517 18.4722 16.7997 18.3042 16.2077 18.3042H14.0957V24.0002H16.2077C16.7997 24.0002 17.3517 23.8322 17.7437 23.4402C18.4077 22.7762 18.3357 22.0482 18.3357 21.1522ZM16.9357 21.1522C16.9357 22.1202 16.8957 22.2722 16.7837 22.4322C16.6557 22.6242 16.4637 22.7522 16.1117 22.7522H15.4957V19.5522H16.1117C16.4637 19.5522 16.6557 19.6802 16.7837 19.8722C16.8957 20.0322 16.9357 20.1922 16.9357 21.1522Z",
-							"fill": "white"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M23.1786 19.5522V18.3042H19.3066V24.0002H20.7066V21.8002H22.8186V20.5522H20.7066V19.5522H23.1786Z",
-							"fill": "white"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"opacity": "0.5",
-					"d": "M18.6665 1.3335L27.9998 10.6668H21.3332C19.8604 10.6668 18.6665 9.47292 18.6665 8.00016V1.3335Z",
-					"fill": "white"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "filter",
-						"attributes": {
-							"id": "filter0_d_3055_14420",
-							"x": "2",
-							"y": "0.333496",
-							"width": "28",
-							"height": "33.3335",
-							"filterUnits": "userSpaceOnUse",
-							"color-interpolation-filters": "sRGB"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "feFlood",
-								"attributes": {
-									"flood-opacity": "0",
-									"result": "BackgroundImageFix"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"in": "SourceAlpha",
-									"type": "matrix",
-									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
-									"result": "hardAlpha"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feOffset",
-								"attributes": {
-									"dy": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feGaussianBlur",
-								"attributes": {
-									"stdDeviation": "1"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feColorMatrix",
-								"attributes": {
-									"type": "matrix",
-									"values": "0 0 0 0 0.0627451 0 0 0 0 0.0941176 0 0 0 0 0.156863 0 0 0 0.05 0"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in2": "BackgroundImageFix",
-									"result": "effect1_dropShadow_3055_14420"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in": "SourceGraphic",
-									"in2": "effect1_dropShadow_3055_14420",
-									"result": "shape"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "Pdf"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "32",
+      "height": "34",
+      "viewBox": "0 0 32 34",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "filter": "url(#filter0_d_3055_14420)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M4 7.73349C4 5.49329 4 4.37318 4.43597 3.51753C4.81947 2.76489 5.43139 2.15296 6.18404 1.76947C7.03969 1.3335 8.15979 1.3335 10.4 1.3335H18.6667L28 10.6668V24.2668C28 26.507 28 27.6271 27.564 28.4828C27.1805 29.2354 26.5686 29.8474 25.816 30.2309C24.9603 30.6668 23.8402 30.6668 21.6 30.6668H10.4C8.15979 30.6668 7.03969 30.6668 6.18404 30.2309C5.43139 29.8474 4.81947 29.2354 4.43597 28.4828C4 27.6271 4 26.507 4 24.2668V7.73349Z",
+              "fill": "#DD3633"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "opacity": "0.96"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M13.2801 20.1362C13.2801 19.2002 12.6001 18.3042 11.3361 18.3042H9.08008V24.0002H10.4801V21.9682H11.3361C12.6001 21.9682 13.2801 21.0722 13.2801 20.1362ZM11.8801 20.1362C11.8801 20.4322 11.6561 20.7122 11.2721 20.7122H10.4801V19.5602H11.2721C11.6561 19.5602 11.8801 19.8402 11.8801 20.1362Z",
+              "fill": "white"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M18.3357 21.1522C18.3357 20.2562 18.4077 19.5282 17.7437 18.8642C17.3517 18.4722 16.7997 18.3042 16.2077 18.3042H14.0957V24.0002H16.2077C16.7997 24.0002 17.3517 23.8322 17.7437 23.4402C18.4077 22.7762 18.3357 22.0482 18.3357 21.1522ZM16.9357 21.1522C16.9357 22.1202 16.8957 22.2722 16.7837 22.4322C16.6557 22.6242 16.4637 22.7522 16.1117 22.7522H15.4957V19.5522H16.1117C16.4637 19.5522 16.6557 19.6802 16.7837 19.8722C16.8957 20.0322 16.9357 20.1922 16.9357 21.1522Z",
+              "fill": "white"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M23.1786 19.5522V18.3042H19.3066V24.0002H20.7066V21.8002H22.8186V20.5522H20.7066V19.5522H23.1786Z",
+              "fill": "white"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "opacity": "0.5",
+          "d": "M18.6665 1.3335L27.9998 10.6668H21.3332C19.8604 10.6668 18.6665 9.47292 18.6665 8.00016V1.3335Z",
+          "fill": "white"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "filter",
+            "attributes": {
+              "id": "filter0_d_3055_14420",
+              "x": "2",
+              "y": "0.333496",
+              "width": "28",
+              "height": "33.3335",
+              "filterUnits": "userSpaceOnUse",
+              "color-interpolation-filters": "sRGB"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-opacity": "0",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "SourceAlpha",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+                  "result": "hardAlpha"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feOffset",
+                "attributes": {
+                  "dy": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feGaussianBlur",
+                "attributes": {
+                  "stdDeviation": "1"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0.0627451 0 0 0 0 0.0941176 0 0 0 0 0.156863 0 0 0 0.05 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in2": "BackgroundImageFix",
+                  "result": "effect1_dropShadow_3055_14420"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "SourceGraphic",
+                  "in2": "effect1_dropShadow_3055_14420",
+                  "result": "shape"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Pdf"
 }

@@ -55,8 +55,11 @@ class AppService:
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
+            from libs.helper import escape_like_pattern
+
             name = args["name"][:30]
-            filters.append(App.name.ilike(f"%{name}%"))
+            escaped_name = escape_like_pattern(name)
+            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         # Check if tag_ids is not empty to avoid WHERE false condition
         if args.get("tag_ids") and len(args["tag_ids"]) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
@@ -104,19 +107,19 @@ class AppService:
 
             if model_instance:
                 if (
-                    model_instance.model == default_model_config["model"]["name"]
+                    model_instance.model_name == default_model_config["model"]["name"]
                     and model_instance.provider == default_model_config["model"]["provider"]
                 ):
                     default_model_dict = default_model_config["model"]
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
                     if model_schema is None:
-                        raise ValueError(f"model schema not found for model {model_instance.model}")
+                        raise ValueError(f"model schema not found for model {model_instance.model_name}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
-                        "name": model_instance.model,
+                        "name": model_instance.model_name,
                         "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
                         "completion_params": {},
                     }
@@ -147,10 +150,9 @@ class AppService:
         db.session.flush()
 
         if default_model_config:
-            app_model_config = AppModelConfig(**default_model_config)
-            app_model_config.app_id = app.id
-            app_model_config.created_by = account.id
-            app_model_config.updated_by = account.id
+            app_model_config = AppModelConfig(
+                **default_model_config, app_id=app.id, created_by=account.id, updated_by=account.id
+            )
             db.session.add(app_model_config)
             db.session.flush()
 
@@ -211,7 +213,7 @@ class AppService:
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
                 except Exception:
-                    pass
+                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
 
             # override agent mode
             if model_config:

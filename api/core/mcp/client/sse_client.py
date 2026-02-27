@@ -61,6 +61,7 @@ class SSETransport:
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
         self.endpoint_url: str | None = None
+        self.event_source: EventSource | None = None
 
     def _validate_endpoint_url(self, endpoint_url: str) -> bool:
         """Validate that the endpoint URL matches the connection origin.
@@ -237,6 +238,9 @@ class SSETransport:
         write_queue: WriteQueue = queue.Queue()
         status_queue: StatusQueue = queue.Queue()
 
+        # Store event_source for graceful shutdown
+        self.event_source = event_source
+
         # Start SSE reader thread
         executor.submit(self.sse_reader, event_source, read_queue, status_queue)
 
@@ -296,6 +300,13 @@ def sse_client(
         logger.exception("Error connecting to SSE endpoint")
         raise
     finally:
+        # Close the SSE connection to unblock the reader thread
+        if transport.event_source is not None:
+            try:
+                transport.event_source.response.close()
+            except RuntimeError:
+                pass
+
         # Clean up queues
         if read_queue:
             read_queue.put(None)

@@ -60,19 +60,28 @@ check:
 	@echo "✅ Code check complete"
 
 lint:
-	@echo "🔧 Running ruff format, check with fixes, and import linter..."
-	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@echo "🔧 Running ruff format, check with fixes, import linter, and dotenv-linter..."
+	@uv run --project api --dev ruff format ./api
+	@uv run --project api --dev ruff check --fix ./api
 	@uv run --directory api --dev lint-imports
+	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
 
 type-check:
-	@echo "📝 Running type check with basedpyright..."
-	@uv run --directory api --dev basedpyright
-	@echo "✅ Type check complete"
+	@echo "📝 Running type checks (basedpyright + mypy + ty)..."
+	@./dev/basedpyright-check $(PATH_TO_CHECK)
+	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@cd api && uv run ty check
+	@echo "✅ Type checks complete"
 
 test:
 	@echo "🧪 Running backend unit tests..."
-	@uv run --project api --dev dev/pytest/pytest_unit_tests.sh
+	@if [ -n "$(TARGET_TESTS)" ]; then \
+		echo "Target: $(TARGET_TESTS)"; \
+		uv run --project api --dev pytest $(TARGET_TESTS); \
+	else \
+		PYTEST_XDIST_ARGS="-n auto" uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
+	fi
 	@echo "✅ Tests complete"
 
 # Build Docker images
@@ -122,9 +131,9 @@ help:
 	@echo "Backend Code Quality:"
 	@echo "  make format         - Format code with ruff"
 	@echo "  make check          - Check code with ruff"
-	@echo "  make lint           - Format and fix code with ruff"
-	@echo "  make type-check     - Run type checking with basedpyright"
-	@echo "  make test           - Run backend unit tests"
+	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
+	@echo "  make type-check     - Run type checks (basedpyright, mypy, ty)"
+	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"

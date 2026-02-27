@@ -36,7 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.variables.variables import Variable
+from core.variables.variables import VariableBase
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -47,6 +47,7 @@ from core.workflow.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from core.workflow.graph_events.base import GraphNodeEventBase
 from core.workflow.node_events.base import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from core.workflow.runtime import VariablePool
@@ -270,8 +271,8 @@ class RagPipelineService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list,
     ) -> Workflow:
         """
@@ -380,9 +381,22 @@ class RagPipelineService:
         """
         # return default block config
         default_block_configs: list[dict[str, Any]] = []
-        for node_class_mapping in NODE_TYPE_CLASSES_MAPPING.values():
+        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
             node_class = node_class_mapping[LATEST_VERSION]
-            default_config = node_class.get_default_config()
+            filters = None
+            if node_type is NodeType.HTTP_REQUEST:
+                filters = {
+                    HTTP_REQUEST_CONFIG_FILTER_KEY: build_http_request_config(
+                        max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+                        max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+                        max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                        max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+                        max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+                        ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                        ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                    )
+                }
+            default_config = node_class.get_default_config(filters=filters)
             if default_config:
                 default_block_configs.append(dict(default_config))
 
@@ -402,7 +416,18 @@ class RagPipelineService:
             return None
 
         node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
-        default_config = node_class.get_default_config(filters=filters)
+        final_filters = dict(filters) if filters else {}
+        if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in final_filters:
+            final_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
+                max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+                max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+                max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+                max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+                max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+                ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+                ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+            )
+        default_config = node_class.get_default_config(filters=final_filters or None)
         if not default_config:
             return None
 
@@ -436,7 +461,7 @@ class RagPipelineService:
                 user_inputs=user_inputs,
                 user_id=account.id,
                 variable_pool=VariablePool(
-                    system_variables=SystemVariable.empty(),
+                    system_variables=SystemVariable.default(),
                     user_inputs=user_inputs,
                     environment_variables=[],
                     conversation_variables=[],
@@ -874,7 +899,7 @@ class RagPipelineService:
             variable_pool = node_instance.graph_runtime_state.variable_pool
             invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
             if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED:
+                if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
                     document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
@@ -1119,13 +1144,19 @@ class RagPipelineService:
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
-
+        if args.get("icon_info") is None:
+            args["icon_info"] = {}
+        if args.get("description") is None:
+            raise ValueError("Description is required")
+        if args.get("name") is None:
+            raise ValueError("Name is required")
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name"),
-            description=args.get("description"),
-            icon=args.get("icon_info"),
+            name=args.get("name") or "",
+            description=args.get("description") or "",
+            icon=args.get("icon_info") or {},
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
+            install_count=0,
             position=max_position + 1 if max_position else 1,
             chunk_structure=dataset.chunk_structure,
             language="en-US",
@@ -1242,14 +1273,13 @@ class RagPipelineService:
             session.commit()
         return workflow_node_execution_db_model
 
-    def get_recommended_plugins(self) -> dict:
+    def get_recommended_plugins(self, type: str) -> dict:
         # Query active recommended plugins
-        pipeline_recommended_plugins = (
-            db.session.query(PipelineRecommendedPlugin)
-            .where(PipelineRecommendedPlugin.active == True)
-            .order_by(PipelineRecommendedPlugin.position.asc())
-            .all()
-        )
+        query = db.session.query(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
+        if type and type != "all":
+            query = query.where(PipelineRecommendedPlugin.type == type)
+
+        pipeline_recommended_plugins = query.order_by(PipelineRecommendedPlugin.position.asc()).all()
 
         if not pipeline_recommended_plugins:
             return {
@@ -1313,7 +1343,7 @@ class RagPipelineService:
                 "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
                 "original_document_id": document.id,
             },
-            invoke_from=InvokeFrom.PUBLISHED,
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
             streaming=False,
             call_depth=0,
             workflow_thread_pool_id=None,
@@ -1324,10 +1354,24 @@ class RagPipelineService:
         """
         Get datasource plugins
         """
-        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = (
+            db.session.query(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = (
+            db.session.query(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -1408,10 +1452,24 @@ class RagPipelineService:
         """
         Get pipeline
         """
-        dataset: Dataset | None = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset: Dataset | None = (
+            db.session.query(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = db.session.query(Pipeline).where(Pipeline.id == dataset.pipeline_id).first()
+        pipeline: Pipeline | None = (
+            db.session.query(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
+            )
+            .first()
+        )
         if not pipeline:
             raise ValueError("Pipeline not found")
         return pipeline

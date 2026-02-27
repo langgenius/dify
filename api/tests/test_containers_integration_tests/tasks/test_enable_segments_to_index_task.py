@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -95,7 +95,7 @@ class TestEnableSegmentsToIndexTask:
             created_by=account.id,
             indexing_status="completed",
             enabled=True,
-            doc_form=IndexType.PARAGRAPH_INDEX,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         db.session.add(document)
         db.session.commit()
@@ -166,7 +166,7 @@ class TestEnableSegmentsToIndexTask:
         )
 
         # Update document to use different index type
-        document.doc_form = IndexType.QA_INDEX
+        document.doc_form = IndexStructureType.QA_INDEX
         db.session.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
@@ -185,7 +185,9 @@ class TestEnableSegmentsToIndexTask:
         enable_segments_to_index_task(segment_ids, dataset.id, document.id)
 
         # Assert: Verify different index type handling
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexType.QA_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.QA_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify the load method was called with correct parameters
@@ -328,7 +330,9 @@ class TestEnableSegmentsToIndexTask:
         enable_segments_to_index_task(non_existent_segment_ids, dataset.id, document.id)
 
         # Assert: Verify index processor was created but load was not called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexType.PARAGRAPH_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
     def test_enable_segments_to_index_with_parent_child_structure(
@@ -350,7 +354,7 @@ class TestEnableSegmentsToIndexTask:
         )
 
         # Update document to use parent-child index type
-        document.doc_form = IndexType.PARENT_CHILD_INDEX
+        document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
         db.session.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
@@ -383,7 +387,7 @@ class TestEnableSegmentsToIndexTask:
 
             # Assert: Verify parent-child index processing
             mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-                IndexType.PARENT_CHILD_INDEX
+                IndexStructureType.PARENT_CHILD_INDEX
             )
             mock_external_service_dependencies["index_processor"].load.assert_called_once()
 

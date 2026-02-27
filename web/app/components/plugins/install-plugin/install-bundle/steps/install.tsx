@@ -1,27 +1,26 @@
 'use client'
 import type { FC } from 'react'
-import { useRef } from 'react'
-import React, { useCallback, useState } from 'react'
-import {
-  type Dependency,
-  type InstallStatus,
-  type InstallStatusResponse,
-  type Plugin,
-  TaskStatus,
-  type VersionInfo,
-} from '../../../types'
-import Button from '@/app/components/base/button'
-import { RiLoader2Line } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import type { ExposeRefs } from './install-multi'
-import InstallMulti from './install-multi'
-import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
-import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import { RiLoader2Line } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
-import Checkbox from '@/app/components/base/checkbox'
+import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
+import {
+
+  TaskStatus,
+
+} from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
-const i18nPrefix = 'plugin.installModal'
+import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import InstallMulti from './install-multi'
+
+const i18nPrefix = 'installModal'
 
 type Props = {
   allPlugins: Dependency[]
@@ -172,11 +171,11 @@ const Install: FC<Props> = ({
   const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <div className='system-md-regular text-text-secondary'>
-          <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { num: selectedPluginsNum })}</p>
+      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+        <div className="system-md-regular text-text-secondary">
+          <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { ns: 'plugin', num: selectedPluginsNum })}</p>
         </div>
-        <div className='w-full space-y-1 rounded-2xl bg-background-section-burn p-2'>
+        <div className="w-full space-y-1 rounded-2xl bg-background-section-burn p-2">
           <InstallMulti
             ref={installMultiRef}
             allPlugins={allPlugins}
@@ -191,27 +190,29 @@ const Install: FC<Props> = ({
       </div>
       {/* Action Buttons */}
       {!isHideButton && (
-        <div className='flex items-center justify-between gap-2 self-stretch p-6 pt-5'>
-          <div className='px-2'>
-            {canInstall && <div className='flex items-center gap-x-2' onClick={handleClickSelectAll}>
-              <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-              <p className='system-sm-medium cursor-pointer text-text-secondary'>{isSelectAll ? t('common.operation.deSelectAll') : t('common.operation.selectAll')}</p>
-            </div>}
+        <div className="flex items-center justify-between gap-2 self-stretch p-6 pt-5">
+          <div className="px-2">
+            {canInstall && (
+              <div className="flex items-center gap-x-2" onClick={handleClickSelectAll}>
+                <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
+                <p className="system-sm-medium cursor-pointer text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
+              </div>
+            )}
           </div>
-          <div className='flex items-center justify-end gap-2 self-stretch'>
+          <div className="flex items-center justify-end gap-2 self-stretch">
             {!canInstall && (
-              <Button variant='secondary' className='min-w-[72px]' onClick={handleCancel}>
-                {t('common.operation.cancel')}
+              <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+                {t('operation.cancel', { ns: 'common' })}
               </Button>
             )}
             <Button
-              variant='primary'
-              className='flex min-w-[72px] space-x-0.5'
+              variant="primary"
+              className="flex min-w-[72px] space-x-0.5"
               disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
               onClick={handleInstall}
             >
-              {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
-              <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+              {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+              <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
             </Button>
           </div>
         </div>

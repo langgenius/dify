@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import { SVG } from '@svgdotjs/svg.js'
 import DOMPurify from 'dompurify'
+import { useEffect, useRef, useState } from 'react'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {
@@ -60,17 +60,20 @@ const SVGRenderer = ({ content }: { content: string }) => {
 
   return (
     <>
-      <div ref={svgRef} style={{
-        maxHeight: '80vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        cursor: 'pointer',
-        wordBreak: 'break-word',
-        whiteSpace: 'normal',
-        margin: '0 auto',
-      }} />
-      {imagePreview && (<ImagePreview url={imagePreview} title='Preview' onCancel={() => setImagePreview('')} />)}
+      <div
+        ref={svgRef}
+        style={{
+          maxHeight: '80vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          cursor: 'pointer',
+          wordBreak: 'break-word',
+          whiteSpace: 'normal',
+          margin: '0 auto',
+        }}
+      />
+      {imagePreview && (<ImagePreview url={imagePreview} title="Preview" onCancel={() => setImagePreview('')} />)}
     </>
   )
 }

@@ -13,18 +13,18 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
-    ErrorStrategy,
     NodeExecutionType,
     NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.llm import LLMNode, LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, llm_utils
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -40,18 +40,18 @@ from .template_prompts import (
 )
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from core.workflow.file.models import File
     from core.workflow.runtime import GraphRuntimeState
 
 
-class QuestionClassifierNode(Node):
+class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     node_type = NodeType.QUESTION_CLASSIFIER
     execution_type = NodeExecutionType.BRANCH
 
-    _node_data: QuestionClassifierNodeData
-
     _file_outputs: list["File"]
     _llm_file_saver: LLMFileSaver
+    _credentials_provider: "CredentialsProvider"
+    _model_factory: "ModelFactory"
 
     def __init__(
         self,
@@ -60,6 +60,8 @@ class QuestionClassifierNode(Node):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
+        credentials_provider: "CredentialsProvider",
+        model_factory: "ModelFactory",
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -71,6 +73,9 @@ class QuestionClassifierNode(Node):
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
 
+        self._credentials_provider = credentials_provider
+        self._model_factory = model_factory
+
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
                 user_id=graph_init_params.user_id,
@@ -78,33 +83,12 @@ class QuestionClassifierNode(Node):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = QuestionClassifierNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
-
     @classmethod
     def version(cls):
         return "1"
 
     def _run(self):
-        node_data = self._node_data
+        node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
 
         # extract variables
@@ -113,9 +97,16 @@ class QuestionClassifierNode(Node):
         variables = {"query": query}
         # fetch model config
         model_instance, model_config = llm_utils.fetch_model_config(
-            tenant_id=self.tenant_id,
             node_data_model=node_data.model,
+            credentials_provider=self._credentials_provider,
+            model_factory=self._model_factory,
         )
+        model_schema = model_instance.model_type_instance.get_model_schema(
+            model_instance.model_name,
+            model_instance.credentials,
+        )
+        if not model_schema:
+            raise ValueError(f"Model schema not found for {model_instance.model_name}")
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -157,13 +148,15 @@ class QuestionClassifierNode(Node):
             prompt_template=prompt_template,
             sys_query="",
             memory=memory,
-            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=node_data.model.completion_params,
+            stop=model_config.stop,
             sys_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
             variable_pool=variable_pool,
             jinja2_variables=[],
-            tenant_id=self.tenant_id,
         )
 
         result_text = ""
@@ -245,6 +238,7 @@ class QuestionClassifierNode(Node):
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
                 error=str(e),
+                error_type=type(e).__name__,
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,

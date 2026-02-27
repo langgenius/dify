@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 /**
  * Document Detail Navigation Fix Verification Test
  *
@@ -10,36 +11,36 @@ import { useRouter } from 'next/navigation'
 import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
 
 // Mock Next.js router
-const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(() => ({
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(() => ({
     push: mockPush,
   })),
 }))
 
 // Mock the document service hooks
-jest.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDetail: jest.fn(),
-  useDocumentMetadata: jest.fn(),
-  useInvalidDocumentList: jest.fn(() => jest.fn()),
+vi.mock('@/service/knowledge/use-document', () => ({
+  useDocumentDetail: vi.fn(),
+  useDocumentMetadata: vi.fn(),
+  useInvalidDocumentList: vi.fn(() => vi.fn()),
 }))
 
 // Mock other dependencies
-jest.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContext: jest.fn(() => [null]),
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContext: vi.fn(() => [null]),
 }))
 
-jest.mock('@/service/use-base', () => ({
-  useInvalid: jest.fn(() => jest.fn()),
+vi.mock('@/service/use-base', () => ({
+  useInvalid: vi.fn(() => vi.fn()),
 }))
 
-jest.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentListKey: jest.fn(),
-  useChildSegmentListKey: jest.fn(),
+vi.mock('@/service/knowledge/use-segment', () => ({
+  useSegmentListKey: vi.fn(),
+  useChildSegmentListKey: vi.fn(),
 }))
 
 // Create a minimal version of the DocumentDetail component that includes our fix
-const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; documentId: string }) => {
+const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string, documentId: string }) => {
   const router = useRouter()
 
   // This is the FIXED implementation from detail/index.tsx
@@ -58,7 +59,12 @@ const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; d
         Back to Documents
       </button>
       <div data-testid="document-info">
-        Dataset: {datasetId}, Document: {documentId}
+        Dataset:
+        {' '}
+        {datasetId}
+        , Document:
+        {' '}
+        {documentId}
       </div>
     </div>
   )
@@ -66,10 +72,10 @@ const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; d
 
 describe('Document Detail Navigation Fix Verification', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Mock successful API responses
-    ;(useDocumentDetail as jest.Mock).mockReturnValue({
+    ;(useDocumentDetail as Mock).mockReturnValue({
       data: {
         id: 'doc-123',
         name: 'Test Document',
@@ -80,14 +86,14 @@ describe('Document Detail Navigation Fix Verification', () => {
       error: null,
     })
 
-    ;(useDocumentMetadata as jest.Mock).mockReturnValue({
+    ;(useDocumentMetadata as Mock).mockReturnValue({
       data: null,
       error: null,
     })
   })
 
   describe('Query Parameter Preservation', () => {
-    test('preserves pagination state (page 3, limit 25)', () => {
+    it('preserves pagination state (page 3, limit 25)', () => {
       // Simulate user coming from page 3 with 25 items per page
       Object.defineProperty(window, 'location', {
         value: {
@@ -107,7 +113,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       console.log('✅ Pagination state preserved: page=3&limit=25')
     })
 
-    test('preserves search keyword and filters', () => {
+    it('preserves search keyword and filters', () => {
       // Simulate user with search and filters applied
       Object.defineProperty(window, 'location', {
         value: {
@@ -126,7 +132,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       console.log('✅ Search and filters preserved')
     })
 
-    test('handles complex query parameters with special characters', () => {
+    it('handles complex query parameters with special characters', () => {
       // Test with complex query string including encoded characters
       Object.defineProperty(window, 'location', {
         value: {
@@ -151,7 +157,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       console.log('✅ Complex query parameters handled:', expectedCall)
     })
 
-    test('handles empty query parameters gracefully', () => {
+    it('handles empty query parameters gracefully', () => {
       // No query parameters in URL
       Object.defineProperty(window, 'location', {
         value: {
@@ -172,7 +178,7 @@ describe('Document Detail Navigation Fix Verification', () => {
   })
 
   describe('Different Dataset IDs', () => {
-    test('works with different dataset identifiers', () => {
+    it('works with different dataset identifiers', () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?page=5&limit=10',
@@ -192,7 +198,7 @@ describe('Document Detail Navigation Fix Verification', () => {
   })
 
   describe('Real User Scenarios', () => {
-    test('scenario: user searches, goes to page 3, views document, clicks back', () => {
+    it('scenario: user searches, goes to page 3, views document, clicks back', () => {
       // User searched for "API" and navigated to page 3
       Object.defineProperty(window, 'location', {
         value: {
@@ -212,7 +218,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       console.log('✅ Real user scenario: search + pagination preserved')
     })
 
-    test('scenario: user applies multiple filters, goes to document, returns', () => {
+    it('scenario: user applies multiple filters, goes to document, returns', () => {
       // User has applied multiple filters and is on page 2
       Object.defineProperty(window, 'location', {
         value: {
@@ -233,7 +239,7 @@ describe('Document Detail Navigation Fix Verification', () => {
   })
 
   describe('Error Handling and Edge Cases', () => {
-    test('handles malformed query parameters gracefully', () => {
+    it('handles malformed query parameters gracefully', () => {
       // Test with potentially problematic query string
       Object.defineProperty(window, 'location', {
         value: {
@@ -257,7 +263,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       console.log('✅ Malformed parameters handled gracefully:', navigationPath)
     })
 
-    test('handles very long query strings', () => {
+    it('handles very long query strings', () => {
       // Test with a very long query string
       const longKeyword = 'a'.repeat(1000)
       Object.defineProperty(window, 'location', {
@@ -280,7 +286,7 @@ describe('Document Detail Navigation Fix Verification', () => {
   })
 
   describe('Performance Verification', () => {
-    test('navigation function executes quickly', () => {
+    it('navigation function executes quickly', () => {
       Object.defineProperty(window, 'location', {
         value: {
           search: '?page=1&limit=10&keyword=test',

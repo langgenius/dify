@@ -8,7 +8,7 @@ Pluggable middleware for engine extensions.
 
 Abstract base class for layers.
 
-- `initialize()` - Receive runtime context
+- `initialize()` - Receive runtime context (runtime state is bound here and always available to hooks)
 - `on_graph_start()` - Execution start hook
 - `on_event()` - Process all events
 - `on_graph_end()` - Execution end hook
@@ -33,6 +33,9 @@ engine = GraphEngine(graph)
 engine.layer(debug_layer)
 engine.run()
 ```
+
+`engine.layer()` binds the read-only runtime state before execution, so
+`graph_runtime_state` is always available inside layer hooks.
 
 ## Custom Layers
 

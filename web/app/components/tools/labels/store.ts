@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import type { Label } from './constant'
+import { create } from 'zustand'
 
 type State = {
   labelList: Label[]

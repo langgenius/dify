@@ -6,7 +6,6 @@ from celery import shared_task
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -58,5 +57,3 @@ def add_annotation_to_index_task(
         )
     except Exception:
         logger.exception("Build index for annotation failed")
-    finally:
-        db.session.close()

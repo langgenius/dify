@@ -5,13 +5,13 @@ from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
@@ -80,11 +80,9 @@ def init_llm_node(config: dict) -> LLMNode:
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        credentials_provider=MagicMock(),
+        model_factory=MagicMock(),
     )
-
-    # Initialize node data
-    if "data" in config:
-        node.init_node_data(config["data"])
 
     return node
 
@@ -119,7 +117,7 @@ def test_execute_llm():
     db.session.close = MagicMock()
 
     # Mock the _fetch_model_config to avoid database calls
-    def mock_fetch_model_config(**_kwargs):
+    def mock_fetch_model_config(*_args, **_kwargs):
         from decimal import Decimal
         from unittest.mock import MagicMock
 
@@ -231,7 +229,7 @@ def test_execute_llm_with_jinja2():
     db.session.close = MagicMock()
 
     # Mock the _fetch_model_config method
-    def mock_fetch_model_config(**_kwargs):
+    def mock_fetch_model_config(*_args, **_kwargs):
         from decimal import Decimal
         from unittest.mock import MagicMock
 

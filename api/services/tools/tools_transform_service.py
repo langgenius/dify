@@ -201,7 +201,9 @@ class ToolTransformService:
 
     @staticmethod
     def workflow_provider_to_user_provider(
-        provider_controller: WorkflowToolProviderController, labels: list[str] | None = None
+        provider_controller: WorkflowToolProviderController,
+        labels: list[str] | None = None,
+        workflow_app_id: str | None = None,
     ):
         """
         convert provider controller to user provider
@@ -221,6 +223,7 @@ class ToolTransformService:
             plugin_unique_identifier=None,
             tools=[],
             labels=labels or [],
+            workflow_app_id=workflow_app_id,
         )
 
     @staticmethod
@@ -405,6 +408,7 @@ class ToolTransformService:
                 name=tool.operation_id or "",
                 label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
                 description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
+                output_schema=tool.output_schema,
                 parameters=tool.parameters,
                 labels=labels or [],
             )

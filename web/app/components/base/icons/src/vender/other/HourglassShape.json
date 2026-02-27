@@ -1,27 +1,27 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "8",
-			"height": "14",
-			"viewBox": "0 0 8 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M8 14C8 11.7909 6.20914 10 4 10C1.79086 10 0 11.7909 0 14V0C8.05332e-08 2.20914 1.79086 4 4 4C6.20914 4 8 2.20914 8 0V14Z",
-					"fill": "currentColor",
-					"fill-opacity": "1"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "HourglassShape"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "8",
+      "height": "14",
+      "viewBox": "0 0 8 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M8 14C8 11.7909 6.20914 10 4 10C1.79086 10 0 11.7909 0 14V0C8.05332e-08 2.20914 1.79086 4 4 4C6.20914 4 8 2.20914 8 0V14Z",
+          "fill": "currentColor",
+          "fill-opacity": "1"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "HourglassShape"
 }

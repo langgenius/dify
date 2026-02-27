@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Mapping
 from typing import Any
 
+import orjson
 from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -14,10 +15,10 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
 from core.workflow.enums import NodeType
+from core.workflow.file.models import FileTransferMethod
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -31,6 +32,11 @@ from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
+
+try:
+    import magic
+except ImportError:
+    magic = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +175,7 @@ class WebhookService:
                 - method: HTTP method
                 - headers: Request headers
                 - query_params: Query parameters as strings
-                - body: Request body (varies by content type)
+                - body: Request body (varies by content type; JSON parsing errors raise ValueError)
                 - files: Uploaded files (if any)
         """
         cls._validate_content_length()
@@ -255,14 +261,21 @@ class WebhookService:
 
         Returns:
             tuple: (body_data, files_data) where:
-                - body_data: Parsed JSON content or empty dict if parsing fails
+                - body_data: Parsed JSON content
                 - files_data: Empty dict (JSON requests don't contain files)
+
+        Raises:
+            ValueError: If JSON parsing fails
         """
+        raw_body = request.get_data(cache=True)
+        if not raw_body or raw_body.strip() == b"":
+            return {}, {}
+
         try:
-            body = request.get_json() or {}
-        except Exception:
-            logger.warning("Failed to parse JSON body")
-            body = {}
+            body = orjson.loads(raw_body)
+        except orjson.JSONDecodeError as exc:
+            logger.warning("Failed to parse JSON body: %s", exc)
+            raise ValueError(f"Invalid JSON body: {exc}") from exc
         return body, {}
 
     @classmethod
@@ -309,7 +322,8 @@ class WebhookService:
         try:
             file_content = request.get_data()
             if file_content:
-                file_obj = cls._create_file_from_binary(file_content, "application/octet-stream", webhook_trigger)
+                mimetype = cls._detect_binary_mimetype(file_content)
+                file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
@@ -332,6 +346,18 @@ class WebhookService:
             logger.warning("Failed to extract text body")
             body = {"raw": ""}
         return body, {}
+
+    @staticmethod
+    def _detect_binary_mimetype(file_content: bytes) -> str:
+        """Guess MIME type for binary payloads using python-magic when available."""
+        if magic is not None:
+            try:
+                detected = magic.from_buffer(file_content[:1024], mime=True)
+                if detected:
+                    return detected
+            except Exception:
+                logger.debug("python-magic detection failed for octet-stream payload")
+        return "application/octet-stream"
 
     @classmethod
     def _process_file_uploads(
@@ -833,14 +859,22 @@ class WebhookService:
         not_found_in_cache: list[str] = []
         for node_id in nodes_id_in_graph:
             # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}"):
+            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
                 not_found_in_cache.append(node_id)
                 continue
 
-        with Session(db.engine) as session:
-            try:
-                # lock the concurrent webhook trigger creation
-                redis_client.lock(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
+        lock_key = f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock"
+        lock = redis_client.lock(lock_key, timeout=10)
+        lock_acquired = False
+
+        try:
+            # acquire the lock with blocking and timeout
+            lock_acquired = lock.acquire(blocking=True, blocking_timeout=10)
+            if not lock_acquired:
+                logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
+                raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
+
+            with Session(db.engine) as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
@@ -866,20 +900,27 @@ class WebhookService:
                     session.add(webhook_record)
                     session.flush()
                     cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
-                    redis_client.set(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}", cache.model_dump_json(), ex=60 * 60)
+                    redis_client.set(
+                        f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
+                    )
                 session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
-                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}")
+                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
-            except Exception:
-                logger.exception("Failed to sync webhook relationships for app %s", app.id)
-                raise
-            finally:
-                redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock")
+        except Exception:
+            logger.exception("Failed to sync webhook relationships for app %s", app.id)
+            raise
+        finally:
+            # release the lock only if it was acquired
+            if lock_acquired:
+                try:
+                    lock.release()
+                except Exception:
+                    logger.exception("Failed to release lock for webhook sync, app %s", app.id)
 
     @classmethod
     def generate_webhook_id(cls) -> str:

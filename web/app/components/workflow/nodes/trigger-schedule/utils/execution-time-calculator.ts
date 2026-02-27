@@ -1,6 +1,6 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { isValidCronExpression, parseCronExpression } from './cron-parser'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import { isValidCronExpression, parseCronExpression } from './cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'
 
@@ -107,8 +107,10 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time.split(':')
     let displayHour = Number.parseInt(hour)
-    if (period === 'PM' && displayHour !== 12) displayHour += 12
-    if (period === 'AM' && displayHour === 12) displayHour = 0
+    if (period === 'PM' && displayHour !== 12)
+      displayHour += 12
+    if (period === 'AM' && displayHour === 12)
+      displayHour = 0
 
     // Check if today's configured time has already passed
     const todayExecution = new Date(userToday)
@@ -132,8 +134,10 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time.split(':')
     let displayHour = Number.parseInt(hour)
-    if (period === 'PM' && displayHour !== 12) displayHour += 12
-    if (period === 'AM' && displayHour === 12) displayHour = 0
+    if (period === 'PM' && displayHour !== 12)
+      displayHour += 12
+    if (period === 'AM' && displayHour === 12)
+      displayHour = 0
 
     // Get current time completely in user timezone
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
@@ -145,10 +149,12 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       let hasValidDays = false
 
       for (const selectedDay of selectedDays) {
-        if (executionCount >= count) break
+        if (executionCount >= count)
+          break
 
         const targetDay = dayMap[selectedDay as keyof typeof dayMap]
-        if (targetDay === undefined) continue
+        if (targetDay === undefined)
+          continue
 
         hasValidDays = true
 
@@ -174,7 +180,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
         }
       }
 
-      if (!hasValidDays) break
+      if (!hasValidDays)
+        break
       weekOffset++
     }
 
@@ -192,8 +199,10 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
     const [time, period] = defaultTime.split(' ')
     const [hour, minute] = time.split(':')
     let displayHour = Number.parseInt(hour)
-    if (period === 'PM' && displayHour !== 12) displayHour += 12
-    if (period === 'AM' && displayHour === 12) displayHour = 0
+    if (period === 'PM' && displayHour !== 12)
+      displayHour += 12
+    if (period === 'AM' && displayHour === 12)
+      displayHour = 0
 
     // Get current time completely in user timezone
     const userCurrentTime = getUserTimezoneCurrentTime(timezone)
@@ -237,7 +246,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
       monthlyExecutions.sort((a, b) => a.getTime() - b.getTime())
 
       for (const execution of monthlyExecutions) {
-        if (executionCount >= count) break
+        if (executionCount >= count)
+          break
         times.push(execution)
         executionCount++
       }

@@ -19,7 +19,7 @@ class StringUUID(TypeDecorator[uuid.UUID | str | None]):
     def process_bind_param(self, value: uuid.UUID | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return value
-        elif dialect.name == "postgresql":
+        elif dialect.name in ["postgresql", "mysql"]:
             return str(value)
         else:
             if isinstance(value, uuid.UUID):

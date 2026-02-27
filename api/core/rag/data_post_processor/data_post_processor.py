@@ -2,6 +2,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.reorder import ReorderRunner
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
@@ -30,9 +31,10 @@ class DataPostProcessor:
         score_threshold: float | None = None,
         top_n: int | None = None,
         user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         if self.rerank_runner:
-            documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user)
+            documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user, query_type)
 
         if self.reorder_runner:
             documents = self.reorder_runner.run(documents)

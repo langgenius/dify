@@ -1,7 +1,10 @@
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask import request
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field
 
 from constants.languages import languages
-from controllers.console import api, console_ns
+from controllers.common.schema import get_or_create_model
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
 from libs.login import current_user, login_required
@@ -17,8 +20,10 @@ app_fields = {
     "icon_background": fields.String,
 }
 
+app_model = get_or_create_model("RecommendedAppInfo", app_fields)
+
 recommended_app_fields = {
-    "app": fields.Nested(app_fields, attribute="app"),
+    "app": fields.Nested(app_model, attribute="app"),
     "app_id": fields.String,
     "description": fields.String(attribute="description"),
     "copyright": fields.String,
@@ -27,28 +32,39 @@ recommended_app_fields = {
     "category": fields.String,
     "position": fields.Integer,
     "is_listed": fields.Boolean,
+    "can_trial": fields.Boolean,
 }
 
+recommended_app_model = get_or_create_model("RecommendedApp", recommended_app_fields)
+
 recommended_app_list_fields = {
-    "recommended_apps": fields.List(fields.Nested(recommended_app_fields)),
+    "recommended_apps": fields.List(fields.Nested(recommended_app_model)),
     "categories": fields.List(fields.String),
 }
 
+recommended_app_list_model = get_or_create_model("RecommendedAppList", recommended_app_list_fields)
 
-parser_apps = reqparse.RequestParser().add_argument("language", type=str, location="args")
+
+class RecommendedAppsQuery(BaseModel):
+    language: str | None = Field(default=None)
+
+
+console_ns.schema_model(
+    RecommendedAppsQuery.__name__,
+    RecommendedAppsQuery.model_json_schema(ref_template="#/definitions/{model}"),
+)
 
 
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
-    @api.expect(parser_apps)
+    @console_ns.expect(console_ns.models[RecommendedAppsQuery.__name__])
     @login_required
     @account_initialization_required
-    @marshal_with(recommended_app_list_fields)
+    @marshal_with(recommended_app_list_model)
     def get(self):
         # language args
-        args = parser_apps.parse_args()
-
-        language = args.get("language")
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        language = args.language
         if language and language in languages:
             language_prefix = language
         elif current_user and current_user.interface_language:

@@ -1,26 +1,26 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-} from '../../hooks'
-import { VarType } from '../../types'
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
-import useNodeCrud from '../_base/hooks/use-node-crud'
 import type { IterationNodeType } from './types'
-import { toNodeOutputVars } from '../_base/components/variable/utils'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { Item } from '@/app/components/base/select'
-import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { isEqual } from 'lodash-es'
-import { useStore } from '../../store'
+import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { isEqual } from 'es-toolkit/predicate'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import {
+  useIsChatMode,
+  useNodesReadOnly,
+  useWorkflow,
+} from '../../hooks'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useStore } from '../../store'
+import { VarType } from '../../types'
+import { toNodeOutputVars } from '../_base/components/variable/utils'
+import useNodeCrud from '../_base/hooks/use-node-crud'
 
 const useConfig = (id: string, payload: IterationNodeType) => {
   const {

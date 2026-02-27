@@ -112,7 +112,7 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        extractor = PdfExtractor(file_path)
+                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -148,7 +148,7 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        extractor = PdfExtractor(file_path)
+                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
@@ -166,7 +166,7 @@ class ExtractProcessor:
         elif extract_setting.datasource_type == DatasourceType.NOTION:
             assert extract_setting.notion_info is not None, "notion_info is required"
             extractor = NotionExtractor(
-                notion_workspace_id=extract_setting.notion_info.notion_workspace_id,
+                notion_workspace_id=extract_setting.notion_info.notion_workspace_id or "",
                 notion_obj_id=extract_setting.notion_info.notion_obj_id,
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,

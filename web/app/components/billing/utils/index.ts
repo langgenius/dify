@@ -1,9 +1,42 @@
+import type { BasicPlan, BillingQuota, CurrentPlanInfoBackend } from '../type'
 import dayjs from 'dayjs'
-import type { BillingQuota, CurrentPlanInfoBackend } from '../type'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
+
+/**
+ * Parse vectorSpace string from ALL_PLANS config and convert to MB
+ * @example "50MB" -> 50, "5GB" -> 5120, "20GB" -> 20480
+ */
+export const parseVectorSpaceToMB = (vectorSpace: string): number => {
+  const match = /^(\d+)(MB|GB)$/i.exec(vectorSpace)
+  if (!match)
+    return 0
+
+  const value = Number.parseInt(match[1], 10)
+  const unit = match[2].toUpperCase()
+
+  return unit === 'GB' ? value * 1024 : value
+}
+
+/**
+ * Get the vector space limit in MB for a given plan type from ALL_PLANS config
+ */
+export const getPlanVectorSpaceLimitMB = (planType: BasicPlan): number => {
+  const planInfo = ALL_PLANS[planType]
+  if (!planInfo)
+    return 0
+
+  return parseVectorSpaceToMB(planInfo.vectorSpace)
+}
 
 const parseLimit = (limit: number) => {
   if (limit === 0)
+    return NUM_INFINITE
+
+  return limit
+}
+
+const parseRateLimit = (limit: number) => {
+  if (limit === 0 || limit === -1)
     return NUM_INFINITE
 
   return limit
@@ -46,9 +79,9 @@ const getResetInDaysFromDate = (resetDate?: number | null) => {
 export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
   const planType = data.billing.subscription.plan
   const planPreset = ALL_PLANS[planType]
-  const resolveLimit = (limit?: number, fallback?: number) => {
+  const resolveRateLimit = (limit?: number, fallback?: number) => {
     const value = limit ?? fallback ?? 0
-    return parseLimit(value)
+    return parseRateLimit(value)
   }
   const getQuotaUsage = (quota?: BillingQuota) => quota?.usage ?? 0
   const getQuotaResetInDays = (quota?: BillingQuota) => {
@@ -74,8 +107,8 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       teamMembers: parseLimit(data.members.limit),
       annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
       documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
-      apiRateLimit: resolveLimit(data.api_rate_limit?.limit, planPreset?.apiRateLimit ?? NUM_INFINITE),
-      triggerEvents: resolveLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
+      apiRateLimit: resolveRateLimit(data.api_rate_limit?.limit, planPreset?.apiRateLimit ?? NUM_INFINITE),
+      triggerEvents: resolveRateLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
     },
     reset: {
       apiRateLimit: getQuotaResetInDays(data.api_rate_limit),
