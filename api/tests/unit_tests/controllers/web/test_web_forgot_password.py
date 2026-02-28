@@ -24,20 +24,22 @@ def _patch_wraps():
     wraps_features = SimpleNamespace(enable_email_password_login=True)
     dify_settings = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
     with (
-        patch("controllers.console.wraps.db") as mock_db,
+        patch("controllers.console.wraps.db", autospec=True) as mock_db,
         patch("controllers.console.wraps.dify_config", dify_settings),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        patch(
+            "controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features, autospec=True
+        ),
     ):
         mock_db.session.query.return_value.first.return_value = MagicMock()
         yield
 
 
 class TestForgotPasswordSendEmailApi:
-    @patch("controllers.web.forgot_password.AccountService.send_reset_password_email")
-    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.web.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
-    @patch("controllers.web.forgot_password.extract_remote_ip", return_value="127.0.0.1")
-    @patch("controllers.web.forgot_password.Session")
+    @patch("controllers.web.forgot_password.AccountService.send_reset_password_email", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.is_email_send_ip_limit", return_value=False, autospec=True)
+    @patch("controllers.web.forgot_password.extract_remote_ip", return_value="127.0.0.1", autospec=True)
+    @patch("controllers.web.forgot_password.Session", autospec=True)
     def test_should_normalize_email_before_sending(
         self,
         mock_session_cls,
@@ -47,8 +49,7 @@ class TestForgotPasswordSendEmailApi:
         mock_send_mail,
         app,
     ):
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+        mock_account = mock_get_account.return_value
         mock_send_mail.return_value = "token-123"
         mock_session = MagicMock()
         mock_session_cls.return_value.__enter__.return_value = mock_session
@@ -69,12 +70,12 @@ class TestForgotPasswordSendEmailApi:
 
 
 class TestForgotPasswordCheckApi:
-    @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
-    @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token")
-    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.web.forgot_password.AccountService.add_forgot_password_error_rate_limit")
-    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.web.forgot_password.AccountService.is_forgot_password_error_rate_limit")
+    @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.add_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
     def test_should_normalize_email_for_validity_checks(
         self,
         mock_is_rate_limit,
@@ -107,11 +108,11 @@ class TestForgotPasswordCheckApi:
         )
         mock_reset_rate.assert_called_once_with("user@example.com")
 
-    @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
-    @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token")
-    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.web.forgot_password.AccountService.is_forgot_password_error_rate_limit")
+    @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
     def test_should_preserve_token_email_case(
         self,
         mock_is_rate_limit,
@@ -143,11 +144,11 @@ class TestForgotPasswordCheckApi:
 
 
 class TestForgotPasswordResetApi:
-    @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account")
-    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.web.forgot_password.Session")
-    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True)
+    @patch("controllers.web.forgot_password.Session", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data", autospec=True)
     def test_should_fetch_account_with_fallback(
         self,
         mock_get_reset_data,
@@ -158,8 +159,7 @@ class TestForgotPasswordResetApi:
         app,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com", "code": "1234"}
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+        mock_account = mock_get_account.return_value
         mock_session = MagicMock()
         mock_session_cls.return_value.__enter__.return_value = mock_session
 
@@ -180,12 +180,12 @@ class TestForgotPasswordResetApi:
         mock_update_account.assert_called_once()
         mock_revoke_token.assert_called_once_with("token-123")
 
-    @patch("controllers.web.forgot_password.hash_password", return_value=b"hashed-value")
-    @patch("controllers.web.forgot_password.secrets.token_bytes", return_value=b"0123456789abcdef")
-    @patch("controllers.web.forgot_password.Session")
-    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.web.forgot_password.hash_password", return_value=b"hashed-value", autospec=True)
+    @patch("controllers.web.forgot_password.secrets.token_bytes", return_value=b"0123456789abcdef", autospec=True)
+    @patch("controllers.web.forgot_password.Session", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True)
     def test_should_update_password_and_commit(
         self,
         mock_get_account,
@@ -197,8 +197,7 @@ class TestForgotPasswordResetApi:
         app,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "user@example.com"}
-        account = MagicMock()
-        mock_get_account.return_value = account
+        account = mock_get_account.return_value
         mock_session = MagicMock()
         mock_session_cls.return_value.__enter__.return_value = mock_session
 

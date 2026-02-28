@@ -21,13 +21,13 @@ class TestAnnotationImportRateLimiting:
     @pytest.fixture
     def mock_redis(self):
         """Mock Redis client for testing."""
-        with patch("controllers.console.wraps.redis_client") as mock:
+        with patch("controllers.console.wraps.redis_client", autospec=True) as mock:
             yield mock
 
     @pytest.fixture
     def mock_current_account(self):
         """Mock current account with tenant."""
-        with patch("controllers.console.wraps.current_account_with_tenant") as mock:
+        with patch("controllers.console.wraps.current_account_with_tenant", autospec=True) as mock:
             mock.return_value = (MagicMock(id="user_id"), "test_tenant_id")
             yield mock
 
@@ -98,13 +98,13 @@ class TestAnnotationImportConcurrencyControl:
     @pytest.fixture
     def mock_redis(self):
         """Mock Redis client for testing."""
-        with patch("controllers.console.wraps.redis_client") as mock:
+        with patch("controllers.console.wraps.redis_client", autospec=True) as mock:
             yield mock
 
     @pytest.fixture
     def mock_current_account(self):
         """Mock current account with tenant."""
-        with patch("controllers.console.wraps.current_account_with_tenant") as mock:
+        with patch("controllers.console.wraps.current_account_with_tenant", autospec=True) as mock:
             mock.return_value = (MagicMock(id="user_id"), "test_tenant_id")
             yield mock
 
@@ -198,7 +198,7 @@ class TestAnnotationImportServiceValidation:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.annotation_service.db.session") as mock:
+        with patch("services.annotation_service.db.session", autospec=True) as mock:
             yield mock
 
     def test_max_records_limit_enforced(self, mock_app, mock_db_session):
@@ -215,10 +215,10 @@ class TestAnnotationImportServiceValidation:
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
-        with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
+        with patch("services.annotation_service.current_account_with_tenant", autospec=True) as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
+            with patch("services.annotation_service.FeatureService", autospec=True) as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
                 result = AppAnnotationService.batch_import_app_annotations("app_id", file)
@@ -238,7 +238,7 @@ class TestAnnotationImportServiceValidation:
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
-        with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
+        with patch("services.annotation_service.current_account_with_tenant", autospec=True) as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
             result = AppAnnotationService.batch_import_app_annotations("app_id", file)
@@ -258,8 +258,8 @@ class TestAnnotationImportServiceValidation:
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
         with (
-            patch("services.annotation_service.current_account_with_tenant") as mock_auth,
-            patch("services.annotation_service.pd.read_csv", side_effect=ParserError("malformed CSV")),
+            patch("services.annotation_service.current_account_with_tenant", autospec=True) as mock_auth,
+            patch("services.annotation_service.pd.read_csv", side_effect=ParserError("malformed CSV"), autospec=True),
         ):
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
@@ -279,14 +279,14 @@ class TestAnnotationImportServiceValidation:
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
-        with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
+        with patch("services.annotation_service.current_account_with_tenant", autospec=True) as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
+            with patch("services.annotation_service.FeatureService", autospec=True) as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
-                with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
-                    with patch("services.annotation_service.redis_client"):
+                with patch("services.annotation_service.batch_import_annotations_task", autospec=True) as mock_task:
+                    with patch("services.annotation_service.redis_client", autospec=True):
                         result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
                         # Should return success response

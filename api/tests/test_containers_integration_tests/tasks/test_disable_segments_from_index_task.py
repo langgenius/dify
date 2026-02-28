@@ -265,12 +265,12 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor to avoid external dependencies
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
             mock_processor = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Mock Redis client
-            with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+            with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                 mock_redis.delete.return_value = True
 
                 # Act
@@ -312,7 +312,7 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [fake.uuid4()]
 
         # Mock Redis client
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(segment_ids, non_existent_dataset_id, non_existent_document_id)
 
@@ -336,7 +336,7 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [fake.uuid4()]
 
         # Mock Redis client
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(segment_ids, dataset.id, non_existent_document_id)
 
@@ -368,7 +368,7 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock Redis client
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
@@ -382,7 +382,7 @@ class TestDisableSegmentsFromIndexTask:
         document.archived = True
         db.session.commit()
 
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
@@ -396,7 +396,7 @@ class TestDisableSegmentsFromIndexTask:
         document.indexing_status = "indexing"
         db.session.commit()
 
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
@@ -422,7 +422,7 @@ class TestDisableSegmentsFromIndexTask:
         non_existent_segment_ids = [fake.uuid4() for _ in range(3)]
 
         # Mock Redis client
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(non_existent_segment_ids, dataset.id, document.id)
 
@@ -449,13 +449,13 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor to raise an exception
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
             mock_processor = MagicMock()
             mock_processor.clean.side_effect = Exception("Index processor error")
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Mock Redis client
-            with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+            with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                 mock_redis.delete.return_value = True
 
                 # Act
@@ -509,12 +509,12 @@ class TestDisableSegmentsFromIndexTask:
             db.session.commit()
 
             # Mock the index processor factory
-            with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+            with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
                 mock_processor = MagicMock()
                 mock_factory.return_value.init_index_processor.return_value = mock_processor
 
                 # Mock Redis client
-                with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+                with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                     mock_redis.delete.return_value = True
 
                     # Act
@@ -542,20 +542,22 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
             mock_processor = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Mock Redis client
-            with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+            with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                 mock_redis.delete.return_value = True
 
                 # Mock time.perf_counter to control timing
-                with patch("tasks.disable_segments_from_index_task.time.perf_counter") as mock_perf_counter:
+                with patch(
+                    "tasks.disable_segments_from_index_task.time.perf_counter", autospec=True
+                ) as mock_perf_counter:
                     mock_perf_counter.side_effect = [1000.0, 1000.5]  # 0.5 seconds execution time
 
                     # Mock logger to capture log messages
-                    with patch("tasks.disable_segments_from_index_task.logger") as mock_logger:
+                    with patch("tasks.disable_segments_from_index_task.logger", autospec=True) as mock_logger:
                         # Act
                         result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
@@ -587,12 +589,12 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
             mock_processor = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Mock Redis client to track delete calls
-            with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+            with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                 mock_redis.delete.return_value = True
 
                 # Act
@@ -629,12 +631,12 @@ class TestDisableSegmentsFromIndexTask:
         segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
             mock_processor = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Mock Redis client
-            with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+            with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                 mock_redis.delete.return_value = True
 
                 # Act
@@ -661,7 +663,7 @@ class TestDisableSegmentsFromIndexTask:
         empty_segment_ids = []
 
         # Mock Redis client
-        with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+        with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
             # Act
             result = disable_segments_from_index_task(empty_segment_ids, dataset.id, document.id)
 
@@ -691,12 +693,12 @@ class TestDisableSegmentsFromIndexTask:
         mixed_segment_ids = valid_segment_ids + invalid_segment_ids
 
         # Mock the index processor
-        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
+        with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory", autospec=True) as mock_factory:
             mock_processor = MagicMock()
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Mock Redis client
-            with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
+            with patch("tasks.disable_segments_from_index_task.redis_client", autospec=True) as mock_redis:
                 mock_redis.delete.return_value = True
 
                 # Act

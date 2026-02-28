@@ -92,7 +92,7 @@ class TestTenantIsolatedTaskQueue:
         assert sample_queue._queue == "tenant_self_test-key_task_queue:tenant-123"
         assert sample_queue._task_key == "tenant_test-key_task:tenant-123"
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_get_task_key_exists(self, mock_redis, sample_queue):
         """Test getting task key when it exists."""
         mock_redis.get.return_value = "1"
@@ -102,7 +102,7 @@ class TestTenantIsolatedTaskQueue:
         assert result == "1"
         mock_redis.get.assert_called_once_with("tenant_test-key_task:tenant-123")
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_get_task_key_not_exists(self, mock_redis, sample_queue):
         """Test getting task key when it doesn't exist."""
         mock_redis.get.return_value = None
@@ -112,7 +112,7 @@ class TestTenantIsolatedTaskQueue:
         assert result is None
         mock_redis.get.assert_called_once_with("tenant_test-key_task:tenant-123")
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_set_task_waiting_time_default_ttl(self, mock_redis, sample_queue):
         """Test setting task waiting flag with default TTL."""
         sample_queue.set_task_waiting_time()
@@ -123,7 +123,7 @@ class TestTenantIsolatedTaskQueue:
             1,
         )
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_set_task_waiting_time_custom_ttl(self, mock_redis, sample_queue):
         """Test setting task waiting flag with custom TTL."""
         custom_ttl = 1800
@@ -131,14 +131,14 @@ class TestTenantIsolatedTaskQueue:
 
         mock_redis.setex.assert_called_once_with("tenant_test-key_task:tenant-123", custom_ttl, 1)
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_delete_task_key(self, mock_redis, sample_queue):
         """Test deleting task key."""
         sample_queue.delete_task_key()
 
         mock_redis.delete.assert_called_once_with("tenant_test-key_task:tenant-123")
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_push_tasks_string_list(self, mock_redis, sample_queue):
         """Test pushing string tasks directly."""
         tasks = ["task1", "task2", "task3"]
@@ -149,7 +149,7 @@ class TestTenantIsolatedTaskQueue:
             "tenant_self_test-key_task_queue:tenant-123", "task1", "task2", "task3"
         )
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_push_tasks_mixed_types(self, mock_redis, sample_queue):
         """Test pushing mixed string and object tasks."""
         tasks = ["string_task", {"object_task": "data", "id": 123}, "another_string"]
@@ -174,14 +174,14 @@ class TestTenantIsolatedTaskQueue:
         wrapper = TaskWrapper.deserialize(serialized_tasks[1])
         assert wrapper.data == {"object_task": "data", "id": 123}
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_push_tasks_empty_list(self, mock_redis, sample_queue):
         """Test pushing empty task list."""
         sample_queue.push_tasks([])
 
         mock_redis.lpush.assert_not_called()
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_default_count(self, mock_redis, sample_queue):
         """Test pulling tasks with default count (1)."""
         mock_redis.rpop.side_effect = ["task1", None]
@@ -191,7 +191,7 @@ class TestTenantIsolatedTaskQueue:
         assert result == ["task1"]
         assert mock_redis.rpop.call_count == 1
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_custom_count(self, mock_redis, sample_queue):
         """Test pulling tasks with custom count."""
         # First test: pull 3 tasks
@@ -211,7 +211,7 @@ class TestTenantIsolatedTaskQueue:
         assert result == ["task1", "task2"]
         assert mock_redis.rpop.call_count == 3
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_zero_count(self, mock_redis, sample_queue):
         """Test pulling tasks with zero count returns empty list."""
         result = sample_queue.pull_tasks(0)
@@ -219,7 +219,7 @@ class TestTenantIsolatedTaskQueue:
         assert result == []
         mock_redis.rpop.assert_not_called()
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_negative_count(self, mock_redis, sample_queue):
         """Test pulling tasks with negative count returns empty list."""
         result = sample_queue.pull_tasks(-1)
@@ -227,7 +227,7 @@ class TestTenantIsolatedTaskQueue:
         assert result == []
         mock_redis.rpop.assert_not_called()
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_with_wrapped_objects(self, mock_redis, sample_queue):
         """Test pulling tasks that include wrapped objects."""
         # Create a wrapped task
@@ -247,7 +247,7 @@ class TestTenantIsolatedTaskQueue:
         assert result[0] == "string_task"
         assert result[1] == {"task_id": 123, "data": "test"}
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_with_invalid_wrapped_data(self, mock_redis, sample_queue):
         """Test pulling tasks with invalid JSON falls back to string."""
         # Invalid JSON string that cannot be deserialized
@@ -258,7 +258,7 @@ class TestTenantIsolatedTaskQueue:
 
         assert result == [invalid_json]
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_pull_tasks_bytes_decoding(self, mock_redis, sample_queue):
         """Test pulling tasks handles bytes from Redis correctly."""
         mock_redis.rpop.side_effect = [
@@ -271,7 +271,7 @@ class TestTenantIsolatedTaskQueue:
 
         assert result == ["task1", "task2"]
 
-    @patch("core.rag.pipeline.queue.redis_client")
+    @patch("core.rag.pipeline.queue.redis_client", autospec=True)
     def test_complex_object_serialization_roundtrip(self, mock_redis, sample_queue):
         """Test complex object serialization and deserialization roundtrip."""
         complex_task = {

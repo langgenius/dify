@@ -28,13 +28,13 @@ class TestAuthenticationSecurity:
         self.client = self.app.test_client()
         self.app.config["TESTING"] = True
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit", autospec=True)
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
     def test_login_invalid_email_with_registration_allowed(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_features, mock_db
     ):
@@ -62,12 +62,12 @@ class TestAuthenticationSecurity:
         assert exc_info.value.description == "Invalid email or password."
         mock_add_rate_limit.assert_called_once_with("nonexistent@example.com")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit", autospec=True)
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
     def test_login_wrong_password_returns_error(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_db
     ):
@@ -94,13 +94,13 @@ class TestAuthenticationSecurity:
         assert exc_info.value.description == "Invalid email or password."
         mock_add_rate_limit.assert_called_once_with("existing@example.com")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.AccountService.authenticate")
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit", autospec=True)
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
     def test_login_invalid_email_with_registration_disabled(
         self, mock_get_invitation, mock_add_rate_limit, mock_authenticate, mock_is_rate_limit, mock_features, mock_db
     ):
@@ -128,10 +128,10 @@ class TestAuthenticationSecurity:
         assert exc_info.value.description == "Invalid email or password."
         mock_add_rate_limit.assert_called_once_with("nonexistent@example.com")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    @patch("controllers.console.auth.login.AccountService.send_reset_password_email")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.send_reset_password_email", autospec=True)
     def test_reset_password_with_existing_account(self, mock_send_email, mock_get_user, mock_features, mock_db):
         """Test that reset password returns success with token for existing accounts."""
         # Mock the setup check

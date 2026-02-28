@@ -100,7 +100,7 @@ class TestAccountService:
     @pytest.fixture
     def mock_db_dependencies(self):
         """Common mock setup for database dependencies."""
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             mock_db.session.add = MagicMock()
             mock_db.session.commit = MagicMock()
             yield {
@@ -111,9 +111,9 @@ class TestAccountService:
     def mock_password_dependencies(self):
         """Mock setup for password-related functions."""
         with (
-            patch("services.account_service.compare_password") as mock_compare_password,
-            patch("services.account_service.hash_password") as mock_hash_password,
-            patch("services.account_service.valid_password") as mock_valid_password,
+            patch("services.account_service.compare_password", autospec=True) as mock_compare_password,
+            patch("services.account_service.hash_password", autospec=True) as mock_hash_password,
+            patch("services.account_service.valid_password", autospec=True) as mock_valid_password,
         ):
             yield {
                 "compare_password": mock_compare_password,
@@ -125,9 +125,9 @@ class TestAccountService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
-            patch("services.account_service.BillingService") as mock_billing_service,
-            patch("services.account_service.PassportService") as mock_passport_service,
+            patch("services.account_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.account_service.BillingService", autospec=True) as mock_billing_service,
+            patch("services.account_service.PassportService", autospec=True) as mock_passport_service,
         ):
             yield {
                 "feature_service": mock_feature_service,
@@ -430,7 +430,7 @@ class TestAccountService:
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with patch("services.account_service.datetime", autospec=True) as mock_datetime:
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
@@ -485,7 +485,7 @@ class TestAccountService:
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with patch("services.account_service.datetime", autospec=True) as mock_datetime:
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
@@ -512,7 +512,7 @@ class TestAccountService:
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with patch("services.account_service.datetime", autospec=True) as mock_datetime:
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
@@ -539,7 +539,7 @@ class TestTenantService:
     @pytest.fixture
     def mock_db_dependencies(self):
         """Common mock setup for database dependencies."""
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             mock_db.session.add = MagicMock()
             mock_db.session.commit = MagicMock()
             yield {
@@ -549,15 +549,15 @@ class TestTenantService:
     @pytest.fixture
     def mock_rsa_dependencies(self):
         """Mock setup for RSA-related functions."""
-        with patch("services.account_service.generate_key_pair") as mock_generate_key_pair:
+        with patch("services.account_service.generate_key_pair", autospec=True) as mock_generate_key_pair:
             yield mock_generate_key_pair
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
-            patch("services.account_service.BillingService") as mock_billing_service,
+            patch("services.account_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.account_service.BillingService", autospec=True) as mock_billing_service,
         ):
             yield {
                 "feature_service": mock_feature_service,
@@ -609,18 +609,18 @@ class TestTenantService:
         mock_rsa_dependencies.return_value = "mock_public_key"
 
         # Mock has_roles method to return False (no existing owner)
-        with patch("services.account_service.TenantService.has_roles") as mock_has_roles:
+        with patch("services.account_service.TenantService.has_roles", autospec=True) as mock_has_roles:
             mock_has_roles.return_value = False
 
             # Mock Tenant creation to set proper ID
-            with patch("services.account_service.Tenant") as mock_tenant_class:
+            with patch("services.account_service.Tenant", autospec=True) as mock_tenant_class:
                 mock_tenant_instance = MagicMock()
                 mock_tenant_instance.id = "tenant-456"
                 mock_tenant_instance.name = "Test User's Workspace"
                 mock_tenant_class.return_value = mock_tenant_instance
 
                 # Mock the db import in CreditPoolService to avoid database connection
-                with patch("services.credit_pool_service.db") as mock_credit_pool_db:
+                with patch("services.credit_pool_service.db", autospec=True) as mock_credit_pool_db:
                     mock_credit_pool_db.session.add = MagicMock()
                     mock_credit_pool_db.session.commit = MagicMock()
 
@@ -714,7 +714,7 @@ class TestTenantService:
             tenant_id="tenant-456", account_id="pending-user-789", role="normal"
         )
 
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
@@ -730,7 +730,9 @@ class TestTenantService:
 
             mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
 
-            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+            with patch(
+                "services.enterprise.account_deletion_sync.sync_workspace_member_removal", autospec=True
+            ) as mock_sync:
                 mock_sync.return_value = True
 
                 # Act
@@ -762,7 +764,7 @@ class TestTenantService:
             tenant_id="tenant-456", account_id="pending-user-789", role="normal"
         )
 
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
@@ -779,7 +781,9 @@ class TestTenantService:
 
             mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
 
-            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+            with patch(
+                "services.enterprise.account_deletion_sync.sync_workspace_member_removal", autospec=True
+            ) as mock_sync:
                 mock_sync.return_value = True
 
                 # Act
@@ -802,7 +806,7 @@ class TestTenantService:
             tenant_id="tenant-456", account_id="active-user-789", role="normal"
         )
 
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
@@ -815,7 +819,9 @@ class TestTenantService:
 
             mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta]
 
-            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+            with patch(
+                "services.enterprise.account_deletion_sync.sync_workspace_member_removal", autospec=True
+            ) as mock_sync:
                 mock_sync.return_value = True
 
                 # Act
@@ -835,7 +841,7 @@ class TestTenantService:
         )
 
         # Mock the complex query in switch_tenant method
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             # Mock the join query that returns the tenant_account_join
             mock_query = MagicMock()
             mock_where = MagicMock()
@@ -876,7 +882,7 @@ class TestTenantService:
         )
 
         # Mock the database queries in update_member_role method
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             # Mock the first query for operator permission check
             mock_query1 = MagicMock()
             mock_filter1 = MagicMock()
@@ -955,7 +961,7 @@ class TestRegisterService:
     @pytest.fixture
     def mock_db_dependencies(self):
         """Common mock setup for database dependencies."""
-        with patch("services.account_service.db") as mock_db:
+        with patch("services.account_service.db", autospec=True) as mock_db:
             mock_db.session.add = MagicMock()
             mock_db.session.commit = MagicMock()
             mock_db.session.begin_nested = MagicMock()
@@ -967,16 +973,16 @@ class TestRegisterService:
     @pytest.fixture
     def mock_redis_dependencies(self):
         """Mock setup for Redis-related functions."""
-        with patch("services.account_service.redis_client") as mock_redis:
+        with patch("services.account_service.redis_client", autospec=True) as mock_redis:
             yield mock_redis
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_feature_service,
-            patch("services.account_service.BillingService") as mock_billing_service,
-            patch("services.account_service.PassportService") as mock_passport_service,
+            patch("services.account_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.account_service.BillingService", autospec=True) as mock_billing_service,
+            patch("services.account_service.PassportService", autospec=True) as mock_passport_service,
         ):
             yield {
                 "feature_service": mock_feature_service,
@@ -987,7 +993,7 @@ class TestRegisterService:
     @pytest.fixture
     def mock_task_dependencies(self):
         """Mock setup for task dependencies."""
-        with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
+        with patch("services.account_service.send_invite_member_mail_task", autospec=True) as mock_send_mail:
             yield mock_send_mail
 
     def _assert_database_operations_called(self, mock_db):
@@ -1013,17 +1019,16 @@ class TestRegisterService:
 
         # Mock AccountService.create_account
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account:
             mock_create_account.return_value = mock_account
 
             # Mock TenantService.create_owner_tenant_if_not_exist
-            with patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant:
+            with patch(
+                "services.account_service.TenantService.create_owner_tenant_if_not_exist", autospec=True
+            ) as mock_create_tenant:
                 # Mock DifySetup
-                with patch("services.account_service.DifySetup") as mock_dify_setup:
-                    mock_dify_setup_instance = MagicMock()
-                    mock_dify_setup.return_value = mock_dify_setup_instance
-
-                    # Execute test
+                with patch("services.account_service.DifySetup", autospec=True) as mock_dify_setup:
+                    mock_dify_setup_instance = mock_dify_setup.return_value  # Execute test
                     RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1", "en-US")
 
                     # Verify results
@@ -1045,7 +1050,7 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account to raise exception
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account:
             mock_create_account.side_effect = Exception("Database error")
 
             # Execute test and verify exception
@@ -1078,14 +1083,16 @@ class TestRegisterService:
 
         # Mock AccountService.create_account
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account:
             mock_create_account.return_value = mock_account
 
             # Mock TenantService.create_tenant and create_tenant_member
             with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
+                patch("services.account_service.TenantService.create_tenant", autospec=True) as mock_create_tenant,
+                patch(
+                    "services.account_service.TenantService.create_tenant_member", autospec=True
+                ) as mock_create_member,
+                patch("services.account_service.tenant_was_created", autospec=True) as mock_event,
             ):
                 mock_tenant = MagicMock()
                 mock_tenant.id = "tenant-456"
@@ -1130,21 +1137,20 @@ class TestRegisterService:
         # Mock AccountService.create_account and link_account_integrate
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
         with (
-            patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch("services.account_service.AccountService.link_account_integrate") as mock_link_account,
+            patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account,
+            patch("services.account_service.AccountService.link_account_integrate", autospec=True) as mock_link_account,
         ):
             mock_create_account.return_value = mock_account
 
             # Mock TenantService methods
             with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
+                patch("services.account_service.TenantService.create_tenant", autospec=True) as mock_create_tenant,
+                patch(
+                    "services.account_service.TenantService.create_tenant_member", autospec=True
+                ) as mock_create_member,
+                patch("services.account_service.tenant_was_created", autospec=True) as mock_event,
             ):
-                mock_tenant = MagicMock()
-                mock_create_tenant.return_value = mock_tenant
-
-                # Execute test
+                mock_tenant = mock_create_tenant.return_value  # Execute test
                 result = RegisterService.register(
                     email="test@example.com",
                     name="Test User",
@@ -1173,19 +1179,18 @@ class TestRegisterService:
 
         # Mock AccountService.create_account
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account:
             mock_create_account.return_value = mock_account
 
             # Mock TenantService methods
             with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
+                patch("services.account_service.TenantService.create_tenant", autospec=True) as mock_create_tenant,
+                patch(
+                    "services.account_service.TenantService.create_tenant_member", autospec=True
+                ) as mock_create_member,
+                patch("services.account_service.tenant_was_created", autospec=True) as mock_event,
             ):
-                mock_tenant = MagicMock()
-                mock_create_tenant.return_value = mock_tenant
-
-                # Execute test with pending status
+                mock_tenant = mock_create_tenant.return_value  # Execute test with pending status
                 from models.account import AccountStatus
 
                 result = RegisterService.register(
@@ -1215,13 +1220,13 @@ class TestRegisterService:
 
         # Mock AccountService.create_account
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account:
             mock_create_account.return_value = mock_account
 
             # Execute test and verify exception
             from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
-            with patch("services.account_service.TenantService.create_tenant") as mock_create_tenant:
+            with patch("services.account_service.TenantService.create_tenant", autospec=True) as mock_create_tenant:
                 mock_create_tenant.side_effect = WorkSpaceNotAllowedCreateError()
 
                 self._assert_exception_raised(
@@ -1243,7 +1248,7 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account to raise exception
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with patch("services.account_service.AccountService.create_account", autospec=True) as mock_create_account:
             mock_create_account.side_effect = Exception("Unexpected error")
 
             # Execute test and verify exception
@@ -1274,8 +1279,10 @@ class TestRegisterService:
         mock_session.query.return_value.filter_by.return_value.first.return_value = None  # No existing account
 
         with (
-            patch("services.account_service.Session") as mock_session_class,
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.Session", autospec=True) as mock_session_class,
+            patch(
+                "services.account_service.AccountService.get_account_by_email_with_case_fallback", autospec=True
+            ) as mock_lookup,
         ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
@@ -1285,15 +1292,21 @@ class TestRegisterService:
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-456", email="newuser@example.com", name="newuser", status="pending"
             )
-            with patch("services.account_service.RegisterService.register") as mock_register:
+            with patch("services.account_service.RegisterService.register", autospec=True) as mock_register:
                 mock_register.return_value = mock_new_account
 
                 # Mock TenantService methods
                 with (
-                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
-                    patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+                    patch(
+                        "services.account_service.TenantService.check_member_permission", autospec=True
+                    ) as mock_check_permission,
+                    patch(
+                        "services.account_service.TenantService.create_tenant_member", autospec=True
+                    ) as mock_create_member,
+                    patch("services.account_service.TenantService.switch_tenant", autospec=True) as mock_switch_tenant,
+                    patch(
+                        "services.account_service.RegisterService.generate_invite_token", autospec=True
+                    ) as mock_generate_token,
                 ):
                     mock_generate_token.return_value = "invite-token-123"
 
@@ -1328,8 +1341,10 @@ class TestRegisterService:
 
         mock_session = MagicMock()
         with (
-            patch("services.account_service.Session") as mock_session_class,
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.Session", autospec=True) as mock_session_class,
+            patch(
+                "services.account_service.AccountService.get_account_by_email_with_case_fallback", autospec=True
+            ) as mock_lookup,
         ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
@@ -1338,13 +1353,19 @@ class TestRegisterService:
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-789", email="invitee@example.com", name="invitee", status="pending"
             )
-            with patch("services.account_service.RegisterService.register") as mock_register:
+            with patch("services.account_service.RegisterService.register", autospec=True) as mock_register:
                 mock_register.return_value = mock_new_account
                 with (
-                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
-                    patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+                    patch(
+                        "services.account_service.TenantService.check_member_permission", autospec=True
+                    ) as mock_check_permission,
+                    patch(
+                        "services.account_service.TenantService.create_tenant_member", autospec=True
+                    ) as mock_create_member,
+                    patch("services.account_service.TenantService.switch_tenant", autospec=True) as mock_switch_tenant,
+                    patch(
+                        "services.account_service.RegisterService.generate_invite_token", autospec=True
+                    ) as mock_generate_token,
                 ):
                     mock_generate_token.return_value = "invite-token-abc"
 
@@ -1388,8 +1409,10 @@ class TestRegisterService:
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
 
         with (
-            patch("services.account_service.Session") as mock_session_class,
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.Session", autospec=True) as mock_session_class,
+            patch(
+                "services.account_service.AccountService.get_account_by_email_with_case_fallback", autospec=True
+            ) as mock_lookup,
         ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
@@ -1402,9 +1425,15 @@ class TestRegisterService:
 
             # Mock TenantService methods
             with (
-                patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+                patch(
+                    "services.account_service.TenantService.check_member_permission", autospec=True
+                ) as mock_check_permission,
+                patch(
+                    "services.account_service.TenantService.create_tenant_member", autospec=True
+                ) as mock_create_member,
+                patch(
+                    "services.account_service.RegisterService.generate_invite_token", autospec=True
+                ) as mock_generate_token,
             ):
                 mock_generate_token.return_value = "invite-token-123"
 
@@ -1446,8 +1475,12 @@ class TestRegisterService:
 
         # Mock TenantService methods
         with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+            patch(
+                "services.account_service.AccountService.get_account_by_email_with_case_fallback", autospec=True
+            ) as mock_lookup,
+            patch(
+                "services.account_service.TenantService.check_member_permission", autospec=True
+            ) as mock_check_permission,
         ):
             mock_lookup.return_value = mock_existing_account
             # Execute test and verify exception
@@ -1490,7 +1523,7 @@ class TestRegisterService:
         )
 
         # Mock uuid generation
-        with patch("services.account_service.uuid.uuid4") as mock_uuid:
+        with patch("services.account_service.uuid.uuid4", autospec=True) as mock_uuid:
             mock_uuid.return_value = "test-uuid-123"
 
             # Execute test
@@ -1564,7 +1597,9 @@ class TestRegisterService:
             account_id="user-123", email="test@example.com"
         )
 
-        with patch("services.account_service.RegisterService.get_invitation_by_token") as mock_get_invitation_by_token:
+        with patch(
+            "services.account_service.RegisterService.get_invitation_by_token", autospec=True
+        ) as mock_get_invitation_by_token:
             # Mock the invitation data returned by get_invitation_by_token
             invitation_data = {
                 "account_id": "user-123",
@@ -1690,7 +1725,9 @@ class TestRegisterService:
         """Fallback helper should return the initial invitation when present."""
         invitation = {"workspace_id": "tenant-456"}
         with patch(
-            "services.account_service.RegisterService.get_invitation_if_token_valid", return_value=invitation
+            "services.account_service.RegisterService.get_invitation_if_token_valid",
+            return_value=invitation,
+            autospec=True,
         ) as mock_get:
             result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
 
@@ -1700,7 +1737,7 @@ class TestRegisterService:
     def test_get_invitation_with_case_fallback_retries_with_lowercase(self):
         """Fallback helper should retry with lowercase email when needed."""
         invitation = {"workspace_id": "tenant-456"}
-        with patch("services.account_service.RegisterService.get_invitation_if_token_valid") as mock_get:
+        with patch("services.account_service.RegisterService.get_invitation_if_token_valid", autospec=True) as mock_get:
             mock_get.side_effect = [None, invitation]
             result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
 

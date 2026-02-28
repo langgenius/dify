@@ -38,8 +38,8 @@ class TestObfuscatedToken:
 
 
 class TestEncryptToken:
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
     def test_successful_encryption(self, mock_encrypt, mock_query):
         """Test successful token encryption"""
         mock_tenant = MagicMock()
@@ -52,7 +52,7 @@ class TestEncryptToken:
         assert result == base64.b64encode(b"encrypted_data").decode()
         mock_encrypt.assert_called_with("test_token", "mock_public_key")
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.query", autospec=True)
     def test_tenant_not_found(self, mock_query):
         """Test error when tenant doesn't exist"""
         mock_query.return_value.where.return_value.first.return_value = None
@@ -64,7 +64,7 @@ class TestEncryptToken:
 
 
 class TestDecryptToken:
-    @patch("libs.rsa.decrypt")
+    @patch("libs.rsa.decrypt", autospec=True)
     def test_successful_decryption(self, mock_decrypt):
         """Test successful token decryption"""
         mock_decrypt.return_value = "decrypted_token"
@@ -82,8 +82,8 @@ class TestDecryptToken:
 
 
 class TestBatchDecryptToken:
-    @patch("libs.rsa.get_decrypt_decoding")
-    @patch("libs.rsa.decrypt_token_with_decoding")
+    @patch("libs.rsa.get_decrypt_decoding", autospec=True)
+    @patch("libs.rsa.decrypt_token_with_decoding", autospec=True)
     def test_batch_decryption(self, mock_decrypt_with_decoding, mock_get_decoding):
         """Test batch decryption functionality"""
         mock_rsa_key = MagicMock()
@@ -105,8 +105,8 @@ class TestBatchDecryptToken:
 
 
 class TestGetDecryptDecoding:
-    @patch("extensions.ext_redis.redis_client.get")
-    @patch("extensions.ext_storage.storage.load")
+    @patch("extensions.ext_redis.redis_client.get", autospec=True)
+    @patch("extensions.ext_storage.storage.load", autospec=True)
     def test_private_key_not_found(self, mock_storage_load, mock_redis_get):
         """Test error when private key file doesn't exist"""
         mock_redis_get.return_value = None
@@ -119,9 +119,9 @@ class TestGetDecryptDecoding:
 
 
 class TestEncryptDecryptIntegration:
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
-    @patch("libs.rsa.decrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
+    @patch("libs.rsa.decrypt", autospec=True)
     def test_should_encrypt_and_decrypt_consistently(self, mock_decrypt, mock_encrypt, mock_query):
         """Test that encryption and decryption are consistent"""
         # Setup mock tenant
@@ -146,8 +146,8 @@ class TestEncryptDecryptIntegration:
 class TestSecurity:
     """Critical security tests for encryption system"""
 
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
     def test_cross_tenant_isolation(self, mock_encrypt, mock_query):
         """Ensure tokens encrypted for one tenant cannot be used by another"""
         # Setup mock tenant
@@ -160,13 +160,13 @@ class TestSecurity:
         encrypted = encrypt_token("tenant-123", "sensitive_data")
 
         # Attempt to decrypt with different tenant should fail
-        with patch("libs.rsa.decrypt") as mock_decrypt:
+        with patch("libs.rsa.decrypt", autospec=True) as mock_decrypt:
             mock_decrypt.side_effect = Exception("Invalid tenant key")
 
             with pytest.raises(Exception, match="Invalid tenant key"):
                 decrypt_token("different-tenant", encrypted)
 
-    @patch("libs.rsa.decrypt")
+    @patch("libs.rsa.decrypt", autospec=True)
     def test_tampered_ciphertext_rejection(self, mock_decrypt):
         """Detect and reject tampered ciphertext"""
         valid_encrypted = base64.b64encode(b"valid_data").decode()
@@ -181,8 +181,8 @@ class TestSecurity:
         with pytest.raises(Exception, match="Decryption error"):
             decrypt_token("tenant-123", tampered)
 
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
     def test_encryption_randomness(self, mock_encrypt, mock_query):
         """Ensure same plaintext produces different ciphertext"""
         mock_tenant = MagicMock(encrypt_public_key="key")
@@ -205,8 +205,8 @@ class TestEdgeCases:
         # Test empty string (which is a valid str type)
         assert obfuscated_token("") == ""
 
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
     def test_should_handle_empty_token_encryption(self, mock_encrypt, mock_query):
         """Test encryption of empty token"""
         mock_tenant = MagicMock()
@@ -219,8 +219,8 @@ class TestEdgeCases:
         assert result == base64.b64encode(b"encrypted_empty").decode()
         mock_encrypt.assert_called_with("", "mock_public_key")
 
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
     def test_should_handle_special_characters_in_token(self, mock_encrypt, mock_query):
         """Test tokens containing special/unicode characters"""
         mock_tenant = MagicMock()
@@ -242,8 +242,8 @@ class TestEdgeCases:
             assert result == base64.b64encode(b"encrypted_special").decode()
             mock_encrypt.assert_called_with(token, "mock_public_key")
 
-    @patch("models.engine.db.session.query")
-    @patch("libs.rsa.encrypt")
+    @patch("models.engine.db.session.query", autospec=True)
+    @patch("libs.rsa.encrypt", autospec=True)
     def test_should_handle_rsa_size_limits(self, mock_encrypt, mock_query):
         """Test behavior when token exceeds RSA encryption limits"""
         mock_tenant = MagicMock()
@@ -260,8 +260,8 @@ class TestEdgeCases:
         with pytest.raises(ValueError, match="Message too long for RSA key size"):
             encrypt_token("tenant-123", long_token)
 
-    @patch("libs.rsa.get_decrypt_decoding")
-    @patch("libs.rsa.decrypt_token_with_decoding")
+    @patch("libs.rsa.get_decrypt_decoding", autospec=True)
+    @patch("libs.rsa.decrypt_token_with_decoding", autospec=True)
     def test_batch_decrypt_loads_key_only_once(self, mock_decrypt_with_decoding, mock_get_decoding):
         """Verify batch decryption optimization - loads key only once"""
         mock_rsa_key = MagicMock()

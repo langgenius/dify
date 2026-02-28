@@ -62,9 +62,9 @@ def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LB
         return start_index
 
     with (
-        patch.object(redis_client, "incr", side_effect=incr),
-        patch.object(redis_client, "set", return_value=None),
-        patch.object(redis_client, "expire", return_value=None),
+        patch.object(redis_client, "incr", side_effect=incr, autospec=True),
+        patch.object(redis_client, "set", return_value=None, autospec=True),
+        patch.object(redis_client, "expire", return_value=None, autospec=True),
     ):
         config = lb_model_manager.fetch_next()
         assert config == config2

@@ -38,7 +38,7 @@ class TestBillingServiceSendRequest:
     @pytest.fixture
     def mock_httpx_request(self):
         """Mock httpx.request for testing."""
-        with patch("services.billing_service.httpx.request") as mock_request:
+        with patch("services.billing_service.httpx.request", autospec=True) as mock_request:
             yield mock_request
 
     @pytest.fixture
@@ -184,7 +184,7 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with patch("services.billing_service.logger") as mock_logger:
+        with patch("services.billing_service.logger", autospec=True) as mock_logger:
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
@@ -227,7 +227,7 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with patch("services.billing_service.logger") as mock_logger:
+        with patch("services.billing_service.logger", autospec=True) as mock_logger:
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
@@ -282,7 +282,7 @@ class TestBillingServiceSubscriptionInfo:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_get_info_success(self, mock_send_request):
@@ -411,7 +411,7 @@ class TestBillingServiceUsageCalculation:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_get_tenant_feature_plan_usage_info(self, mock_send_request):
@@ -519,7 +519,7 @@ class TestBillingServiceRateLimitEnforcement:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_compliance_download_rate_limiter_not_limited(self, mock_send_request):
@@ -535,9 +535,11 @@ class TestBillingServiceRateLimitEnforcement:
         # Mock the rate limiter to return False (not limited)
         with (
             patch.object(
-                BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=False
+                BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=False, autospec=True
             ) as mock_is_limited,
-            patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as mock_increment,
+            patch.object(
+                BillingService.compliance_download_rate_limiter, "increment_rate_limit", autospec=True
+            ) as mock_increment,
         ):
             mock_send_request.return_value = expected_response
 
@@ -575,7 +577,7 @@ class TestBillingServiceRateLimitEnforcement:
 
         # Mock the rate limiter to return True (rate limited)
         with patch.object(
-            BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=True
+            BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=True, autospec=True
         ) as mock_is_limited:
             # Act & Assert
             with pytest.raises(ComplianceRateLimitError):
@@ -594,10 +596,13 @@ class TestBillingServiceRateLimitEnforcement:
         # Mock the rate limiter to return False (not limited)
         with (
             patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
+                BillingService.EducationIdentity.verification_rate_limit,
+                "is_rate_limited",
+                return_value=False,
+                autospec=True,
             ) as mock_is_limited,
             patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"
+                BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit", autospec=True
             ) as mock_increment,
         ):
             mock_send_request.return_value = expected_response
@@ -622,7 +627,10 @@ class TestBillingServiceRateLimitEnforcement:
 
         # Mock the rate limiter to return True (rate limited)
         with patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=True
+            BillingService.EducationIdentity.verification_rate_limit,
+            "is_rate_limited",
+            return_value=True,
+            autospec=True,
         ) as mock_is_limited:
             # Act & Assert
             with pytest.raises(EducationVerifyLimitError):
@@ -646,10 +654,13 @@ class TestBillingServiceRateLimitEnforcement:
         # Mock the rate limiter to return False (not limited)
         with (
             patch.object(
-                BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False
+                BillingService.EducationIdentity.activation_rate_limit,
+                "is_rate_limited",
+                return_value=False,
+                autospec=True,
             ) as mock_is_limited,
             patch.object(
-                BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"
+                BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit", autospec=True
             ) as mock_increment,
         ):
             mock_send_request.return_value = expected_response
@@ -684,7 +695,7 @@ class TestBillingServiceRateLimitEnforcement:
 
         # Mock the rate limiter to return True (rate limited)
         with patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=True
+            BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=True, autospec=True
         ) as mock_is_limited:
             # Act & Assert
             with pytest.raises(EducationActivateLimitError):
@@ -706,7 +717,7 @@ class TestBillingServiceEducationIdentity:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_education_status(self, mock_send_request):
@@ -777,13 +788,13 @@ class TestBillingServiceAccountManagement:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.billing_service.db.session") as mock_session:
+        with patch("services.billing_service.db.session", autospec=True) as mock_session:
             yield mock_session
 
     def test_delete_account(self, mock_send_request):
@@ -942,7 +953,7 @@ class TestBillingServiceCacheManagement:
     @pytest.fixture
     def mock_redis_client(self):
         """Mock Redis client."""
-        with patch("services.billing_service.redis_client") as mock_redis:
+        with patch("services.billing_service.redis_client", autospec=True) as mock_redis:
             yield mock_redis
 
     def test_clean_billing_info_cache(self, mock_redis_client):
@@ -969,7 +980,7 @@ class TestBillingServicePartnerIntegration:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_sync_partner_tenants_bindings(self, mock_send_request):
@@ -1005,7 +1016,7 @@ class TestBillingServiceEdgeCases:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_get_info_empty_response(self, mock_send_request):
@@ -1134,7 +1145,7 @@ class TestBillingServiceEdgeCases:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.EDITOR  # Editor is not privileged
 
-        with patch("services.billing_service.db.session") as mock_session:
+        with patch("services.billing_service.db.session", autospec=True) as mock_session:
             mock_query = MagicMock()
             mock_query.where.return_value.first.return_value = mock_join
             mock_session.query.return_value = mock_query
@@ -1154,7 +1165,7 @@ class TestBillingServiceEdgeCases:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.DATASET_OPERATOR  # Dataset operator is not privileged
 
-        with patch("services.billing_service.db.session") as mock_session:
+        with patch("services.billing_service.db.session", autospec=True) as mock_session:
             mock_query = MagicMock()
             mock_query.where.return_value.first.return_value = mock_join
             mock_session.query.return_value = mock_query
@@ -1176,7 +1187,7 @@ class TestBillingServiceSubscriptionOperations:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_get_plan_bulk_with_empty_list(self, mock_send_request):
@@ -1318,7 +1329,7 @@ class TestBillingServiceSubscriptionOperations:
         }
 
         # Act
-        with patch("services.billing_service.logger") as mock_logger:
+        with patch("services.billing_service.logger", autospec=True) as mock_logger:
             result = BillingService.get_plan_bulk(tenant_ids)
 
         # Assert - should only contain valid tenants
@@ -1406,7 +1417,7 @@ class TestBillingServiceIntegrationScenarios:
     @pytest.fixture
     def mock_send_request(self):
         """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_request", autospec=True) as mock:
             yield mock
 
     def test_subscription_upgrade_workflow(self, mock_send_request):
@@ -1475,9 +1486,14 @@ class TestBillingServiceIntegrationScenarios:
         # Mock rate limiter to allow 3 requests (under limit of 4)
         with (
             patch.object(
-                BillingService.compliance_download_rate_limiter, "is_rate_limited", side_effect=[False, False, False]
+                BillingService.compliance_download_rate_limiter,
+                "is_rate_limited",
+                side_effect=[False, False, False],
+                autospec=True,
             ) as mock_is_limited,
-            patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as mock_increment,
+            patch.object(
+                BillingService.compliance_download_rate_limiter, "increment_rate_limit", autospec=True
+            ) as mock_increment,
         ):
             mock_send_request.return_value = {"download_link": "https://example.com/download"}
 
@@ -1501,9 +1517,14 @@ class TestBillingServiceIntegrationScenarios:
         # Step 1: Search for institution
         with (
             patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
+                BillingService.EducationIdentity.verification_rate_limit,
+                "is_rate_limited",
+                return_value=False,
+                autospec=True,
             ),
-            patch.object(BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"),
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit", autospec=True
+            ),
         ):
             mock_send_request.return_value = {
                 "institutions": [{"name": "Massachusetts Institute of Technology", "domain": "mit.edu"}]
@@ -1514,9 +1535,14 @@ class TestBillingServiceIntegrationScenarios:
         # Step 2: Verify email
         with (
             patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
+                BillingService.EducationIdentity.verification_rate_limit,
+                "is_rate_limited",
+                return_value=False,
+                autospec=True,
             ),
-            patch.object(BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"),
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit", autospec=True
+            ),
         ):
             mock_send_request.return_value = {"verified": True, "institution": "MIT"}
             verify_result = BillingService.EducationIdentity.verify(account.id, account.email)
@@ -1529,8 +1555,13 @@ class TestBillingServiceIntegrationScenarios:
 
         # Step 4: Activate education benefits
         with (
-            patch.object(BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False),
-            patch.object(BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"),
+            patch.object(
+                BillingService.EducationIdentity.activation_rate_limit,
+                "is_rate_limited",
+                return_value=False,
+                autospec=True,
+            ),
+            patch.object(BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit", autospec=True),
         ):
             mock_send_request.return_value = {"result": "success", "activated": True}
             activate_result = BillingService.EducationIdentity.activate(account, "token-123", "MIT", "student")

@@ -237,7 +237,7 @@ class TestWorkflowService:
         This fixture patches the database to avoid real database connections
         during testing. Each test gets a fresh service instance.
         """
-        with patch("services.workflow_service.db"):
+        with patch("services.workflow_service.db", autospec=True):
             service = WorkflowService()
             return service
 
@@ -252,7 +252,7 @@ class TestWorkflowService:
         - session.query(): Querying database
         - session.execute(): Executing SQL statements
         """
-        with patch("services.workflow_service.db") as mock_db:
+        with patch("services.workflow_service.db", autospec=True) as mock_db:
             mock_session = MagicMock()
             mock_db.session = mock_session
             mock_session.add = MagicMock()
@@ -454,9 +454,9 @@ class TestWorkflowService:
         mock_query.where.return_value.first.return_value = None
 
         with (
-            patch.object(workflow_service, "validate_features_structure"),
-            patch.object(workflow_service, "validate_graph_structure"),
-            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch.object(workflow_service, "validate_features_structure", autospec=True),
+            patch.object(workflow_service, "validate_graph_structure", autospec=True),
+            patch("services.workflow_service.app_draft_workflow_was_synced", autospec=True),
         ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
@@ -493,9 +493,9 @@ class TestWorkflowService:
         mock_query.where.return_value.first.return_value = mock_workflow
 
         with (
-            patch.object(workflow_service, "validate_features_structure"),
-            patch.object(workflow_service, "validate_graph_structure"),
-            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch.object(workflow_service, "validate_features_structure", autospec=True),
+            patch.object(workflow_service, "validate_graph_structure", autospec=True),
+            patch("services.workflow_service.app_draft_workflow_was_synced", autospec=True),
         ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
@@ -606,7 +606,9 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.WORKFLOW.value)
         features = {"file_upload": {"enabled": False}}
 
-        with patch("services.workflow_service.WorkflowAppConfigManager.config_validate") as mock_validate:
+        with patch(
+            "services.workflow_service.WorkflowAppConfigManager.config_validate", autospec=True
+        ) as mock_validate:
             workflow_service.validate_features_structure(app, features)
             mock_validate.assert_called_once_with(
                 tenant_id=app.tenant_id, config=features, only_structure_validate=True
@@ -617,7 +619,9 @@ class TestWorkflowService:
         app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.ADVANCED_CHAT.value)
         features = {"opening_statement": "Hello"}
 
-        with patch("services.workflow_service.AdvancedChatAppConfigManager.config_validate") as mock_validate:
+        with patch(
+            "services.workflow_service.AdvancedChatAppConfigManager.config_validate", autospec=True
+        ) as mock_validate:
             workflow_service.validate_features_structure(app, features)
             mock_validate.assert_called_once_with(
                 tenant_id=app.tenant_id, config=features, only_structure_validate=True
@@ -653,10 +657,10 @@ class TestWorkflowService:
         mock_sqlalchemy_session.scalar.return_value = mock_draft
 
         with (
-            patch.object(workflow_service, "validate_graph_structure"),
-            patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch("services.workflow_service.dify_config") as mock_config,
-            patch("services.workflow_service.Workflow.new") as mock_workflow_new,
+            patch.object(workflow_service, "validate_graph_structure", autospec=True),
+            patch("services.workflow_service.app_published_workflow_was_updated", autospec=True),
+            patch("services.workflow_service.dify_config", autospec=True) as mock_config,
+            patch("services.workflow_service.Workflow.new", autospec=True) as mock_workflow_new,
         ):
             # Disable billing
             mock_config.BILLING_ENABLED = False
@@ -718,10 +722,10 @@ class TestWorkflowService:
         mock_sqlalchemy_session.scalar.return_value = mock_draft
 
         with (
-            patch.object(workflow_service, "validate_graph_structure"),
-            patch("services.workflow_service.dify_config") as mock_config,
-            patch("services.workflow_service.BillingService") as MockBillingService,
-            patch("services.workflow_service.app_published_workflow_was_updated"),
+            patch.object(workflow_service, "validate_graph_structure", autospec=True),
+            patch("services.workflow_service.dify_config", autospec=True) as mock_config,
+            patch("services.workflow_service.BillingService", autospec=True) as MockBillingService,
+            patch("services.workflow_service.app_published_workflow_was_updated", autospec=True),
         ):
             # Enable billing and set SANDBOX plan
             mock_config.BILLING_ENABLED = True
@@ -751,9 +755,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalars.return_value.all.return_value = mock_workflows
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
             mock_stmt.order_by.return_value = mock_stmt
             mock_stmt.limit.return_value = mock_stmt
@@ -784,9 +787,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalars.return_value.all.return_value = mock_workflows
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
             mock_stmt.order_by.return_value = mock_stmt
             mock_stmt.limit.return_value = mock_stmt
@@ -830,9 +832,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalar.return_value = mock_workflow
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             result = workflow_service.update_workflow(
@@ -853,9 +854,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             result = workflow_service.update_workflow(
@@ -890,9 +890,8 @@ class TestWorkflowService:
         mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
         mock_session.query.return_value.where.return_value.first.return_value = None  # no tool provider
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             result = workflow_service.delete_workflow(
@@ -918,9 +917,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalar.return_value = mock_workflow
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow"):
@@ -941,9 +939,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalar.side_effect = [mock_workflow, mock_app]
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="currently in use by app"):
@@ -966,9 +963,8 @@ class TestWorkflowService:
         mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
         mock_session.query.return_value.where.return_value.first.return_value = mock_tool_provider
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="published as a tool"):
@@ -982,9 +978,8 @@ class TestWorkflowService:
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
 
-        with patch("services.workflow_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
+        with patch("services.workflow_service.select", autospec=True) as mock_select:
+            mock_stmt = mock_select.return_value
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(ValueError, match="not found"):
@@ -1001,7 +996,7 @@ class TestWorkflowService:
         Used by the UI to populate the node palette and provide sensible defaults
         when users add new nodes to their workflow.
         """
-        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping:
+        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING", autospec=True) as mock_mapping:
             # Mock node class with default config
             mock_node_class = MagicMock()
             mock_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
@@ -1025,11 +1020,10 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING", autospec=True) as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch(
-                "services.workflow_service.build_http_request_config",
-                return_value=injected_config,
+                "services.workflow_service.build_http_request_config", return_value=injected_config, autospec=True
             ) as mock_build_config,
         ):
             mock_http_node_class = MagicMock()
@@ -1060,7 +1054,7 @@ class TestWorkflowService:
         This includes default values for all required and optional parameters.
         """
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING", autospec=True) as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
         ):
             # Mock node class with default config
@@ -1079,7 +1073,7 @@ class TestWorkflowService:
 
     def test_get_default_block_config_invalid_node_type(self, workflow_service):
         """Test get_default_block_config returns empty dict for invalid node type."""
-        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping:
+        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING", autospec=True) as mock_mapping:
             # Mock mapping to not contain the node type
             mock_mapping.__contains__.return_value = False
 
@@ -1100,11 +1094,10 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING", autospec=True) as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch(
-                "services.workflow_service.build_http_request_config",
-                return_value=injected_config,
+                "services.workflow_service.build_http_request_config", return_value=injected_config, autospec=True
             ) as mock_build_config,
         ):
             mock_node_class = MagicMock()
@@ -1132,9 +1125,9 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING", autospec=True) as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
-            patch("services.workflow_service.build_http_request_config") as mock_build_config,
+            patch("services.workflow_service.build_http_request_config", autospec=True) as mock_build_config,
         ):
             mock_node_class = MagicMock()
             expected = {"type": "http-request", "config": {}}
@@ -1186,7 +1179,7 @@ class TestWorkflowService:
             "icon_background": "#FFEAD5",
         }
 
-        with patch("services.workflow_service.WorkflowConverter") as MockConverter:
+        with patch("services.workflow_service.WorkflowConverter", autospec=True) as MockConverter:
             mock_converter = MockConverter.return_value
             mock_new_app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.WORKFLOW.value)
             mock_converter.convert_to_workflow.return_value = mock_new_app
@@ -1208,7 +1201,7 @@ class TestWorkflowService:
         account = TestWorkflowAssociatedDataFactory.create_account_mock()
         args = {"name": "Converted Workflow"}
 
-        with patch("services.workflow_service.WorkflowConverter") as MockConverter:
+        with patch("services.workflow_service.WorkflowConverter", autospec=True) as MockConverter:
             mock_converter = MockConverter.return_value
             mock_new_app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.WORKFLOW.value)
             mock_converter.convert_to_workflow.return_value = mock_new_app

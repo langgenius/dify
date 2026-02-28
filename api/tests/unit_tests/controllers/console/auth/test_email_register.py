@@ -20,12 +20,18 @@ def app():
 
 
 class TestEmailRegisterSendEmailApi:
-    @patch("controllers.console.auth.email_register.Session")
-    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.email_register.AccountService.send_email_register_email")
-    @patch("controllers.console.auth.email_register.BillingService.is_email_in_freeze")
-    @patch("controllers.console.auth.email_register.AccountService.is_email_send_ip_limit", return_value=False)
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
+    @patch("controllers.console.auth.email_register.Session", autospec=True)
+    @patch(
+        "controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback", autospec=True
+    )
+    @patch("controllers.console.auth.email_register.AccountService.send_email_register_email", autospec=True)
+    @patch("controllers.console.auth.email_register.BillingService.is_email_in_freeze", autospec=True)
+    @patch(
+        "controllers.console.auth.email_register.AccountService.is_email_send_ip_limit",
+        return_value=False,
+        autospec=True,
+    )
+    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1", autospec=True)
     def test_send_email_normalizes_and_falls_back(
         self,
         mock_extract_ip,
@@ -49,7 +55,11 @@ class TestEmailRegisterSendEmailApi:
             patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")),
             patch("controllers.console.auth.email_register.dify_config", SimpleNamespace(BILLING_ENABLED=True)),
             patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.FeatureService.get_system_features",
+                return_value=feature_flags,
+                autospec=True,
+            ),
         ):
             with app.test_request_context(
                 "/email-register/send-email",
@@ -67,12 +77,14 @@ class TestEmailRegisterSendEmailApi:
 
 
 class TestEmailRegisterCheckApi:
-    @patch("controllers.console.auth.email_register.AccountService.reset_email_register_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.generate_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.add_email_register_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
-    @patch("controllers.console.auth.email_register.AccountService.is_email_register_error_rate_limit")
+    @patch(
+        "controllers.console.auth.email_register.AccountService.reset_email_register_error_rate_limit", autospec=True
+    )
+    @patch("controllers.console.auth.email_register.AccountService.generate_email_register_token", autospec=True)
+    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token", autospec=True)
+    @patch("controllers.console.auth.email_register.AccountService.add_email_register_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data", autospec=True)
+    @patch("controllers.console.auth.email_register.AccountService.is_email_register_error_rate_limit", autospec=True)
     def test_validity_normalizes_email_before_checks(
         self,
         mock_rate_limit_check,
@@ -91,7 +103,11 @@ class TestEmailRegisterCheckApi:
         with (
             patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")),
             patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.FeatureService.get_system_features",
+                return_value=feature_flags,
+                autospec=True,
+            ),
         ):
             with app.test_request_context(
                 "/email-register/validity",
@@ -111,14 +127,16 @@ class TestEmailRegisterCheckApi:
 
 
 class TestEmailRegisterResetApi:
-    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.login")
-    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
-    @patch("controllers.console.auth.email_register.Session")
-    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
+    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.email_register.AccountService.login", autospec=True)
+    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account", autospec=True)
+    @patch("controllers.console.auth.email_register.Session", autospec=True)
+    @patch(
+        "controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback", autospec=True
+    )
+    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token", autospec=True)
+    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data", autospec=True)
+    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1", autospec=True)
     def test_reset_creates_account_with_normalized_email(
         self,
         mock_extract_ip,
@@ -145,7 +163,11 @@ class TestEmailRegisterResetApi:
         with (
             patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")),
             patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.FeatureService.get_system_features",
+                return_value=feature_flags,
+                autospec=True,
+            ),
         ):
             with app.test_request_context(
                 "/email-register",

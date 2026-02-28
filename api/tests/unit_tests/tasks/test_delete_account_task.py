@@ -19,7 +19,7 @@ from tasks.delete_account_task import delete_account_task
 @pytest.fixture
 def mock_db_session():
     """Mock session via session_factory.create_session()."""
-    with patch("tasks.delete_account_task.session_factory") as mock_sf:
+    with patch("tasks.delete_account_task.session_factory", autospec=True) as mock_sf:
         session = MagicMock()
         cm = MagicMock()
         cm.__enter__.return_value = session
@@ -36,8 +36,8 @@ def mock_db_session():
 def mock_deps():
     """Patch external dependencies: BillingService and send_deletion_success_task."""
     with (
-        patch("tasks.delete_account_task.BillingService") as mock_billing,
-        patch("tasks.delete_account_task.send_deletion_success_task") as mock_mail_task,
+        patch("tasks.delete_account_task.BillingService", autospec=True) as mock_billing,
+        patch("tasks.delete_account_task.send_deletion_success_task", autospec=True) as mock_mail_task,
     ):
         # ensure .delay exists on the mail task
         mock_mail_task.delay = MagicMock()

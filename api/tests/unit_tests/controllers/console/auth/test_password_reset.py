@@ -30,7 +30,7 @@ from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 
 @pytest.fixture(autouse=True)
 def _mock_forgot_password_session():
-    with patch("controllers.console.auth.forgot_password.Session") as mock_session_cls:
+    with patch("controllers.console.auth.forgot_password.Session", autospec=True) as mock_session_cls:
         mock_session = MagicMock()
         mock_session_cls.return_value.__enter__.return_value = mock_session
         mock_session_cls.return_value.__exit__.return_value = None
@@ -39,7 +39,7 @@ def _mock_forgot_password_session():
 
 @pytest.fixture(autouse=True)
 def _mock_forgot_password_db():
-    with patch("controllers.console.auth.forgot_password.db") as mock_db:
+    with patch("controllers.console.auth.forgot_password.db", autospec=True) as mock_db:
         mock_db.engine = MagicMock()
         yield mock_db
 
@@ -62,11 +62,13 @@ class TestForgotPasswordSendEmailApi:
         account.name = "Test User"
         return account
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
-    @patch("controllers.console.auth.forgot_password.FeatureService.get_system_features")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True
+    )
+    @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email", autospec=True)
+    @patch("controllers.console.auth.forgot_password.FeatureService.get_system_features", autospec=True)
     def test_send_reset_email_success(
         self,
         mock_get_features,
@@ -104,8 +106,8 @@ class TestForgotPasswordSendEmailApi:
         assert response["data"] == "reset_token_123"
         mock_send_email.assert_called_once()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", autospec=True)
     def test_send_reset_email_ip_rate_limited(self, mock_is_ip_limit, mock_db, app):
         """
         Test password reset email blocked by IP rate limit.
@@ -133,11 +135,13 @@ class TestForgotPasswordSendEmailApi:
             (None, "en-US"),  # Defaults to en-US when not provided
         ],
     )
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
-    @patch("controllers.console.auth.forgot_password.FeatureService.get_system_features")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True
+    )
+    @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email", autospec=True)
+    @patch("controllers.console.auth.forgot_password.FeatureService.get_system_features", autospec=True)
     def test_send_reset_email_language_handling(
         self,
         mock_get_features,
@@ -186,12 +190,14 @@ class TestForgotPasswordCheckApi:
         app.config["TESTING"] = True
         return app
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.generate_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.generate_reset_password_token", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.reset_forgot_password_error_rate_limit", autospec=True
+    )
     def test_verify_code_success(
         self,
         mock_reset_rate_limit,
@@ -236,12 +242,14 @@ class TestForgotPasswordCheckApi:
         )
         mock_reset_rate_limit.assert_called_once_with("test@example.com")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.generate_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.generate_reset_password_token", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.reset_forgot_password_error_rate_limit", autospec=True
+    )
     def test_verify_code_preserves_token_email_case(
         self,
         mock_reset_rate_limit,
@@ -271,8 +279,8 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token.assert_called_once_with("upper_token")
         mock_reset_rate_limit.assert_called_once_with("user@example.com")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
     def test_verify_code_rate_limited(self, mock_is_rate_limit, mock_db, app):
         """
         Test code verification blocked by rate limit.
@@ -295,9 +303,9 @@ class TestForgotPasswordCheckApi:
             with pytest.raises(EmailPasswordResetLimitError):
                 api.post()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
     def test_verify_code_invalid_token(self, mock_get_data, mock_is_rate_limit, mock_db, app):
         """
         Test code verification with invalid token.
@@ -320,9 +328,9 @@ class TestForgotPasswordCheckApi:
             with pytest.raises(InvalidTokenError):
                 api.post()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
     def test_verify_code_email_mismatch(self, mock_get_data, mock_is_rate_limit, mock_db, app):
         """
         Test code verification with mismatched email.
@@ -346,10 +354,12 @@ class TestForgotPasswordCheckApi:
             with pytest.raises(InvalidEmailError):
                 api.post()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.console.auth.forgot_password.AccountService.add_forgot_password_error_rate_limit")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.add_forgot_password_error_rate_limit", autospec=True
+    )
     def test_verify_code_wrong_code(self, mock_add_rate_limit, mock_get_data, mock_is_rate_limit, mock_db, app):
         """
         Test code verification with incorrect code.
@@ -394,11 +404,13 @@ class TestForgotPasswordResetApi:
         account.name = "Test User"
         return account
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.TenantService.get_join_tenants")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True
+    )
+    @patch("controllers.console.auth.forgot_password.TenantService.get_join_tenants", autospec=True)
     def test_reset_password_success(
         self,
         mock_get_tenants,
@@ -436,8 +448,8 @@ class TestForgotPasswordResetApi:
         assert response["result"] == "success"
         mock_revoke_token.assert_called_once_with("valid_token")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
     def test_reset_password_mismatch(self, mock_get_data, mock_db, app):
         """
         Test password reset with mismatched passwords.
@@ -460,8 +472,8 @@ class TestForgotPasswordResetApi:
             with pytest.raises(PasswordMismatchError):
                 api.post()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
     def test_reset_password_invalid_token(self, mock_get_data, mock_db, app):
         """
         Test password reset with invalid token.
@@ -483,8 +495,8 @@ class TestForgotPasswordResetApi:
             with pytest.raises(InvalidTokenError):
                 api.post()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
     def test_reset_password_wrong_phase(self, mock_get_data, mock_db, app):
         """
         Test password reset with token not in reset phase.
@@ -507,10 +519,12 @@ class TestForgotPasswordResetApi:
             with pytest.raises(InvalidTokenError):
                 api.post()
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
-    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data", autospec=True)
+    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token", autospec=True)
+    @patch(
+        "controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback", autospec=True
+    )
     def test_reset_password_account_not_found(
         self, mock_get_account, mock_revoke_token, mock_get_data, mock_wraps_db, app
     ):

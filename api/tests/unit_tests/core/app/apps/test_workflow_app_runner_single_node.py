@@ -78,9 +78,11 @@ def test_run_uses_single_node_execution_branch(
     mock_workflow_entry.run.return_value = iter([])
 
     with (
-        patch("core.app.apps.workflow.app_runner.RedisChannel"),
-        patch("core.app.apps.workflow.app_runner.redis_client"),
-        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry) as entry_class,
+        patch("core.app.apps.workflow.app_runner.RedisChannel", autospec=True),
+        patch("core.app.apps.workflow.app_runner.redis_client", autospec=True),
+        patch(
+            "core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry, autospec=True
+        ) as entry_class,
         patch.object(
             runner,
             "_prepare_single_node_execution",
@@ -89,8 +91,9 @@ def test_run_uses_single_node_execution_branch(
                 variable_pool,
                 graph_runtime_state,
             ),
+            autospec=True,
         ) as prepare_single,
-        patch.object(runner, "_init_graph") as init_graph,
+        patch.object(runner, "_init_graph", autospec=True) as init_graph,
     ):
         runner.run()
 

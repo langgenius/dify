@@ -23,10 +23,10 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         self.document.doc_metadata = {"existing_key": "existing_value"}
         self.document.data_source_type = "upload_file"
 
-    @patch("services.metadata_service.db")
-    @patch("services.metadata_service.DocumentService")
-    @patch("services.metadata_service.current_account_with_tenant")
-    @patch("services.metadata_service.redis_client")
+    @patch("services.metadata_service.db", autospec=True)
+    @patch("services.metadata_service.DocumentService", autospec=True)
+    @patch("services.metadata_service.current_account_with_tenant", autospec=True)
+    @patch("services.metadata_service.redis_client", autospec=True)
     def test_partial_update_merges_metadata(self, mock_redis, mock_current_account, mock_document_service, mock_db):
         # Setup mocks
         mock_redis.get.return_value = None
@@ -59,10 +59,10 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         # In partial update, this should NOT be called.
         mock_db.session.query.return_value.filter_by.return_value.delete.assert_not_called()
 
-    @patch("services.metadata_service.db")
-    @patch("services.metadata_service.DocumentService")
-    @patch("services.metadata_service.current_account_with_tenant")
-    @patch("services.metadata_service.redis_client")
+    @patch("services.metadata_service.db", autospec=True)
+    @patch("services.metadata_service.DocumentService", autospec=True)
+    @patch("services.metadata_service.current_account_with_tenant", autospec=True)
+    @patch("services.metadata_service.redis_client", autospec=True)
     def test_full_update_replaces_metadata(self, mock_redis, mock_current_account, mock_document_service, mock_db):
         # Setup mocks
         mock_redis.get.return_value = None
@@ -89,10 +89,10 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         # In full update (default), we expect the existing bindings to be cleared.
         mock_db.session.query.return_value.filter_by.return_value.delete.assert_called()
 
-    @patch("services.metadata_service.db")
-    @patch("services.metadata_service.DocumentService")
-    @patch("services.metadata_service.current_account_with_tenant")
-    @patch("services.metadata_service.redis_client")
+    @patch("services.metadata_service.db", autospec=True)
+    @patch("services.metadata_service.DocumentService", autospec=True)
+    @patch("services.metadata_service.current_account_with_tenant", autospec=True)
+    @patch("services.metadata_service.redis_client", autospec=True)
     def test_partial_update_skips_existing_binding(
         self, mock_redis, mock_current_account, mock_document_service, mock_db
     ):
@@ -150,10 +150,10 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         # If it were added, there would be 2 calls. If skipped, 1 call.
         assert mock_db.session.add.call_count == 1
 
-    @patch("services.metadata_service.db")
-    @patch("services.metadata_service.DocumentService")
-    @patch("services.metadata_service.current_account_with_tenant")
-    @patch("services.metadata_service.redis_client")
+    @patch("services.metadata_service.db", autospec=True)
+    @patch("services.metadata_service.DocumentService", autospec=True)
+    @patch("services.metadata_service.current_account_with_tenant", autospec=True)
+    @patch("services.metadata_service.redis_client", autospec=True)
     def test_rollback_called_on_commit_failure(self, mock_redis, mock_current_account, mock_document_service, mock_db):
         """When db.session.commit() raises, rollback must be called and the exception must propagate."""
         # Setup mocks

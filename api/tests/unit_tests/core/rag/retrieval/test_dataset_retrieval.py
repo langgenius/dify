@@ -376,7 +376,7 @@ class TestRetrievalService:
         Returns:
             Mock: Mocked ThreadPoolExecutor that executes tasks synchronously
         """
-        with patch("core.rag.datasource.retrieval_service.ThreadPoolExecutor") as mock_executor:
+        with patch("core.rag.datasource.retrieval_service.ThreadPoolExecutor", autospec=True) as mock_executor:
             # Store futures to track submitted tasks (for debugging if needed)
             futures_list = []
 
@@ -421,7 +421,7 @@ class TestRetrievalService:
             # Mock concurrent.futures.wait to do nothing since tasks are already done
             # In real code, this waits for all futures to complete
             # In tests, futures complete immediately, so wait is a no-op
-            with patch("core.rag.datasource.retrieval_service.concurrent.futures.wait"):
+            with patch("core.rag.datasource.retrieval_service.concurrent.futures.wait", autospec=True):
                 # Mock concurrent.futures.as_completed for early error propagation
                 # In real code, this yields futures as they complete
                 # In tests, we yield all futures immediately since they're already done
@@ -432,13 +432,14 @@ class TestRetrievalService:
                 with patch(
                     "core.rag.datasource.retrieval_service.concurrent.futures.as_completed",
                     side_effect=mock_as_completed,
+                    autospec=True,
                 ):
                     yield mock_executor
 
     # ==================== Vector Search Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_vector_search_basic(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test basic vector/semantic search functionality.
@@ -518,8 +519,8 @@ class TestRetrievalService:
         # This confirms the search method was invoked by ThreadPoolExecutor
         mock_retrieve.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_vector_search_with_document_filter(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test vector search with document ID filtering.
@@ -569,8 +570,8 @@ class TestRetrievalService:
         call_kwargs = mock_retrieve.call_args.kwargs
         assert call_kwargs["document_ids_filter"] == document_ids_filter
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_vector_search_empty_results(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test vector search when no results match the query.
@@ -597,8 +598,8 @@ class TestRetrievalService:
 
     # ==================== Keyword Search Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_keyword_search_basic(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test basic keyword search functionality.
@@ -647,8 +648,8 @@ class TestRetrievalService:
         assert all(isinstance(doc, Document) for doc in results)
         mock_retrieve.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_keyword_search_with_special_characters(self, mock_get_dataset, mock_keyword_search, mock_dataset):
         """
         Test keyword search with special characters in query.
@@ -678,8 +679,8 @@ class TestRetrievalService:
         call_args = mock_keyword_search.call_args
         assert call_args is not None
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_keyword_search_with_document_filter(
         self, mock_get_dataset, mock_keyword_search, mock_dataset, sample_documents
     ):
@@ -717,10 +718,10 @@ class TestRetrievalService:
 
     # ==================== Hybrid Search Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_hybrid_search_basic(
         self,
         mock_get_dataset,
@@ -795,10 +796,10 @@ class TestRetrievalService:
         mock_fulltext_search.assert_called_once()
         mock_processor_instance.invoke.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_hybrid_search_deduplication(
         self, mock_get_dataset, mock_embedding_search, mock_fulltext_search, mock_data_processor_class, mock_dataset
     ):
@@ -929,10 +930,10 @@ class TestRetrievalService:
         # Implicitly verifies that doc1_low (score 0.6) was discarded
         # in favor of doc1_high (score 0.9)
 
-    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_hybrid_search_with_weights(
         self,
         mock_get_dataset,
@@ -1021,8 +1022,8 @@ class TestRetrievalService:
 
     # ==================== Full-Text Search Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_fulltext_search_basic(self, mock_get_dataset, mock_fulltext_search, mock_dataset, sample_documents):
         """
         Test basic full-text search functionality.
@@ -1174,8 +1175,8 @@ class TestRetrievalService:
 
     # ==================== Metadata Filtering Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_vector_search_with_metadata_filter(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test vector search with metadata-based document filtering.
@@ -1226,7 +1227,7 @@ class TestRetrievalService:
 
     # ==================== Error Handling Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_retrieve_with_empty_query(self, mock_get_dataset, mock_dataset):
         """
         Test retrieval with empty query string.
@@ -1249,7 +1250,7 @@ class TestRetrievalService:
         # Assert
         assert results == []
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_retrieve_with_nonexistent_dataset(self, mock_get_dataset):
         """
         Test retrieval with non-existent dataset ID.
@@ -1272,8 +1273,8 @@ class TestRetrievalService:
         # Assert
         assert results == []
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_retrieve_with_exception_handling(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test that exceptions during retrieval are properly handled.
@@ -1319,8 +1320,8 @@ class TestRetrievalService:
 
     # ==================== Score Threshold Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_vector_search_with_score_threshold(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test vector search with score threshold filtering.
@@ -1376,8 +1377,8 @@ class TestRetrievalService:
 
     # ==================== Top-K Limiting Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_retrieve_respects_top_k_limit(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test that retrieval respects top_k parameter.
@@ -1462,8 +1463,8 @@ class TestRetrievalService:
 
     # ==================== Reranking Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
-    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve", autospec=True)
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", autospec=True)
     def test_semantic_search_with_reranking(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test semantic search with reranking model.
@@ -1521,8 +1522,8 @@ class TestRetrievalService:
 
     # ==================== Multiple Retrieve Thread Tests ====================
 
-    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever")
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever", autospec=True)
     def test_multiple_retrieve_thread_skips_second_reranking_with_single_dataset(
         self, mock_retriever, mock_data_processor_class, mock_flask_app, mock_dataset
     ):
@@ -1596,9 +1597,9 @@ class TestRetrievalService:
         assert all_documents[0].page_content == "Test content 1"
         assert all_documents[1].page_content == "Test content 2"
 
-    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.calculate_vector_score")
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.calculate_vector_score", autospec=True)
     def test_multiple_retrieve_thread_performs_second_reranking_with_multiple_datasets(
         self, mock_calculate_vector_score, mock_retriever, mock_data_processor_class, mock_flask_app, mock_dataset
     ):
@@ -1705,9 +1706,9 @@ class TestRetrievalService:
         assert all_documents[0].page_content == "Test content 2"
         assert all_documents[1].page_content == "Test content 1"
 
-    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.calculate_vector_score")
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.calculate_vector_score", autospec=True)
     def test_multiple_retrieve_thread_single_dataset_uses_standard_scoring(
         self, mock_calculate_vector_score, mock_retriever, mock_data_processor_class, mock_flask_app, mock_dataset
     ):

@@ -84,7 +84,7 @@ def mock_time():
         mock_time_val += seconds
         return mock_time_val
 
-    with patch("time.time", return_value=mock_time_val) as mock:
+    with patch("time.time", return_value=mock_time_val, autospec=True) as mock:
         mock.increment = increment_time
         yield mock
 
@@ -120,5 +120,5 @@ def reset_rate_limit_instances():
 @pytest.fixture
 def redis_patch():
     """Patch redis_client globally for rate limit tests."""
-    with patch("core.app.features.rate_limiting.rate_limit.redis_client") as mock:
+    with patch("core.app.features.rate_limiting.rate_limit.redis_client", autospec=True) as mock:
         yield mock

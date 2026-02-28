@@ -141,7 +141,7 @@ class TestDraftVariableSaver:
 
     def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
         with patch(
-            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable"
+            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             _mock_try_offload.return_value = None
             mock_segment = StringSegment(value="small value")
@@ -153,7 +153,7 @@ class TestDraftVariableSaver:
 
     def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
         with patch(
-            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable"
+            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
@@ -170,7 +170,7 @@ class TestDraftVariableSaver:
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
 
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable")
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
         """Test complete save workflow."""
         outputs = {"result": {"data": "test_output"}, "metadata": {"type": "llm_response"}}
@@ -222,7 +222,7 @@ class TestWorkflowDraftVariableService:
             name="test_var",
             value=StringSegment(value="reset_value"),
         )
-        with patch.object(service, "_reset_conv_var", return_value=expected_result) as mock_reset_conv:
+        with patch.object(service, "_reset_conv_var", return_value=expected_result, autospec=True) as mock_reset_conv:
             result = service.reset_variable(workflow, variable)
 
             mock_reset_conv.assert_called_once_with(workflow, variable)
@@ -330,8 +330,8 @@ class TestWorkflowDraftVariableService:
         # Mock workflow methods
         mock_node_config = {"type": "test_node"}
         with (
-            patch.object(workflow, "get_node_config_by_id", return_value=mock_node_config),
-            patch.object(workflow, "get_node_type_from_node_config", return_value=NodeType.LLM),
+            patch.object(workflow, "get_node_config_by_id", return_value=mock_node_config, autospec=True),
+            patch.object(workflow, "get_node_type_from_node_config", return_value=NodeType.LLM, autospec=True),
         ):
             result = service._reset_node_var_or_sys_var(workflow, variable)
 

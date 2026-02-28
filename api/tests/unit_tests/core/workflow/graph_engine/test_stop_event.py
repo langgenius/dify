@@ -378,7 +378,7 @@ class TestStopEventIntegration:
 class TestStopEventTimeoutBehavior:
     """Test stop_event behavior with join timeouts."""
 
-    @patch("core.workflow.graph_engine.orchestration.dispatcher.threading.Thread")
+    @patch("core.workflow.graph_engine.orchestration.dispatcher.threading.Thread", autospec=True)
     def test_dispatcher_uses_shorter_timeout(self, mock_thread_cls: MagicMock):
         """Test that Dispatcher uses 2s timeout instead of 10s."""
         runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
@@ -405,7 +405,7 @@ class TestStopEventTimeoutBehavior:
 
         mock_thread_instance.join.assert_called_once_with(timeout=2.0)
 
-    @patch("core.workflow.graph_engine.worker_management.worker_pool.Worker")
+    @patch("core.workflow.graph_engine.worker_management.worker_pool.Worker", autospec=True)
     def test_worker_pool_uses_shorter_timeout(self, mock_worker_cls: MagicMock):
         """Test that WorkerPool uses 2s timeout instead of 10s."""
         runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())

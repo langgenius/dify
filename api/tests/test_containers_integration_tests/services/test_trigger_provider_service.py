@@ -19,10 +19,12 @@ class TestTriggerProviderService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.trigger.trigger_provider_service.TriggerManager") as mock_trigger_manager,
-            patch("services.trigger.trigger_provider_service.redis_client") as mock_redis_client,
-            patch("services.trigger.trigger_provider_service.delete_cache_for_subscription") as mock_delete_cache,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.trigger.trigger_provider_service.TriggerManager", autospec=True) as mock_trigger_manager,
+            patch("services.trigger.trigger_provider_service.redis_client", autospec=True) as mock_redis_client,
+            patch(
+                "services.trigger.trigger_provider_service.delete_cache_for_subscription", autospec=True
+            ) as mock_delete_cache,
+            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns
             mock_provider_controller = MagicMock()

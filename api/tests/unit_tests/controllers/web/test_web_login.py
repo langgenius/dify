@@ -25,9 +25,11 @@ def _patch_wraps():
     console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
     web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
     with (
-        patch("controllers.console.wraps.db") as mock_db,
+        patch("controllers.console.wraps.db", autospec=True) as mock_db,
         patch("controllers.console.wraps.dify_config", console_dify),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        patch(
+            "controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features, autospec=True
+        ),
         patch("controllers.web.login.dify_config", web_dify),
     ):
         mock_db.session.query.return_value.first.return_value = MagicMock()
@@ -35,16 +37,15 @@ def _patch_wraps():
 
 
 class TestEmailCodeLoginSendEmailApi:
-    @patch("controllers.web.login.WebAppAuthService.send_email_code_login_email")
-    @patch("controllers.web.login.WebAppAuthService.get_user_through_email")
+    @patch("controllers.web.login.WebAppAuthService.send_email_code_login_email", autospec=True)
+    @patch("controllers.web.login.WebAppAuthService.get_user_through_email", autospec=True)
     def test_should_fetch_account_with_original_email(
         self,
         mock_get_user,
         mock_send_email,
         app,
     ):
-        mock_account = MagicMock()
-        mock_get_user.return_value = mock_account
+        mock_account = mock_get_user.return_value
         mock_send_email.return_value = "token-123"
 
         with app.test_request_context(
@@ -60,11 +61,11 @@ class TestEmailCodeLoginSendEmailApi:
 
 
 class TestEmailCodeLoginApi:
-    @patch("controllers.web.login.AccountService.reset_login_error_rate_limit")
-    @patch("controllers.web.login.WebAppAuthService.login", return_value="new-access-token")
-    @patch("controllers.web.login.WebAppAuthService.get_user_through_email")
-    @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
-    @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data")
+    @patch("controllers.web.login.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.web.login.WebAppAuthService.login", return_value="new-access-token", autospec=True)
+    @patch("controllers.web.login.WebAppAuthService.get_user_through_email", autospec=True)
+    @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token", autospec=True)
+    @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data", autospec=True)
     def test_should_normalize_email_before_validating(
         self,
         mock_get_token_data,

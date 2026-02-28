@@ -310,7 +310,7 @@ class TestAccountStatusTransitions:
 class TestTenantRelationshipIntegrity:
     """Test suite for tenant relationship integrity."""
 
-    @patch("models.account.db")
+    @patch("models.account.db", autospec=True)
     def test_account_current_tenant_property(self, mock_db):
         """Test the current_tenant property getter."""
         # Arrange
@@ -331,8 +331,8 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert result == tenant
 
-    @patch("models.account.Session")
-    @patch("models.account.db")
+    @patch("models.account.Session", autospec=True)
+    @patch("models.account.db", autospec=True)
     def test_account_current_tenant_setter_with_valid_tenant(self, mock_db, mock_session_class):
         """Test setting current_tenant with a valid tenant relationship."""
         # Arrange
@@ -367,8 +367,8 @@ class TestTenantRelationshipIntegrity:
         assert account._current_tenant == tenant
         assert account.role == TenantAccountRole.OWNER
 
-    @patch("models.account.Session")
-    @patch("models.account.db")
+    @patch("models.account.Session", autospec=True)
+    @patch("models.account.db", autospec=True)
     def test_account_current_tenant_setter_without_relationship(self, mock_db, mock_session_class):
         """Test setting current_tenant when no relationship exists."""
         # Arrange
@@ -418,8 +418,8 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
-    @patch("models.account.Session")
-    @patch("models.account.db")
+    @patch("models.account.Session", autospec=True)
+    @patch("models.account.db", autospec=True)
     def test_account_set_tenant_id_method(self, mock_db, mock_session_class):
         """Test the set_tenant_id method."""
         # Arrange
@@ -450,8 +450,8 @@ class TestTenantRelationshipIntegrity:
         assert account._current_tenant == tenant
         assert account.role == TenantAccountRole.ADMIN
 
-    @patch("models.account.Session")
-    @patch("models.account.db")
+    @patch("models.account.Session", autospec=True)
+    @patch("models.account.db", autospec=True)
     def test_account_set_tenant_id_with_no_relationship(self, mock_db, mock_session_class):
         """Test set_tenant_id when no relationship exists."""
         # Arrange
@@ -608,7 +608,7 @@ class TestAccountRolePermissions:
 class TestAccountGetByOpenId:
     """Test suite for get_by_openid class method."""
 
-    @patch("models.account.db")
+    @patch("models.account.db", autospec=True)
     def test_get_by_openid_success(self, mock_db):
         """Test successful retrieval of account by OpenID."""
         # Arrange
@@ -651,7 +651,7 @@ class TestAccountGetByOpenId:
         # Assert
         assert result == mock_account
 
-    @patch("models.account.db")
+    @patch("models.account.db", autospec=True)
     def test_get_by_openid_not_found(self, mock_db):
         """Test get_by_openid when account integrate doesn't exist."""
         # Arrange
@@ -782,7 +782,7 @@ class TestTenantModel:
         # Assert
         assert tenant.custom_config == '{"feature1": true, "feature2": "value"}'
 
-    @patch("models.account.db")
+    @patch("models.account.db", autospec=True)
     def test_tenant_get_accounts(self, mock_db):
         """Test getting accounts associated with a tenant."""
         # Arrange
