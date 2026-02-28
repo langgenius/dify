@@ -25,11 +25,18 @@ class PromptTransform:
                 provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
             )
             model_instance.credentials = model_config.credentials
+            model_instance.parameters = model_config.parameters
+            model_instance.stop = model_config.stop
 
         if model_schema is None:
-            if model_config is None:
-                raise ValueError("Either model_schema or model_config must be provided.")
-            model_schema = model_config.model_schema
+            model_schema = model_instance.model_type_instance.get_model_schema(
+                model=model_instance.model_name,
+                credentials=model_instance.credentials,
+            )
+            if model_schema is None:
+                if model_config is None:
+                    raise ValueError("Either model_schema or model_config must be provided.")
+                model_schema = model_config.model_schema
 
         if model_parameters is None:
             model_parameters = model_instance.parameters or (model_config.parameters if model_config else {})

@@ -182,7 +182,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 query=query,
                 variable_pool=self.graph_runtime_state.variable_pool,
                 model_instance=model_instance,
-                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=node_data.vision.configs.detail,
@@ -194,7 +193,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 query=query,
                 variable_pool=self.graph_runtime_state.variable_pool,
                 model_instance=model_instance,
-                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=node_data.vision.configs.detail,
@@ -322,7 +320,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -340,7 +337,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             query=query,
             variable_pool=variable_pool,
             model_instance=model_instance,
-            model_schema=model_schema,
             context="",
         )
         prompt_template = self._get_function_calling_prompt_template(
@@ -355,8 +351,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             memory_config=node_data.memory,
             memory=None,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_instance.parameters,
             image_detail_config=vision_detail,
         )
 
@@ -414,7 +408,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -430,7 +423,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 query=query,
                 variable_pool=variable_pool,
                 model_instance=model_instance,
-                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=vision_detail,
@@ -441,7 +433,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 query=query,
                 variable_pool=variable_pool,
                 model_instance=model_instance,
-                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=vision_detail,
@@ -455,7 +446,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -469,7 +459,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             query=query,
             variable_pool=variable_pool,
             model_instance=model_instance,
-            model_schema=model_schema,
             context="",
         )
         prompt_template = self._get_prompt_engineering_prompt_template(
@@ -484,8 +473,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             memory_config=node_data.memory,
             memory=memory,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_instance.parameters,
             image_detail_config=vision_detail,
         )
 
@@ -497,7 +484,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -511,7 +497,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             query=query,
             variable_pool=variable_pool,
             model_instance=model_instance,
-            model_schema=model_schema,
             context="",
         )
         prompt_template = self._get_prompt_engineering_prompt_template(
@@ -533,8 +518,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             memory_config=node_data.memory,
             memory=None,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_instance.parameters,
             image_detail_config=vision_detail,
         )
 
@@ -796,9 +779,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        model_schema: Any,
         context: str | None,
     ) -> int:
+        model_schema = self._fetch_model_schema(model_instance)
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
 
         if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
@@ -815,8 +798,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             memory_config=node_data.memory,
             memory=None,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_instance.parameters,
         )
         rest_tokens = 2000
 
@@ -856,6 +837,16 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 model_factory=self._model_factory,
             )
         return self._model_instance
+
+    @staticmethod
+    def _fetch_model_schema(model_instance: ModelInstance) -> Any:
+        model_schema = model_instance.model_type_instance.get_model_schema(
+            model=model_instance.model_name,
+            credentials=model_instance.credentials,
+        )
+        if not model_schema:
+            raise ModelSchemaNotFoundError("Model schema not found")
+        return model_schema
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
