@@ -165,12 +165,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
         if not model_schema:
             raise ModelSchemaNotFoundError("Model schema not found")
-        model_config = self._build_model_config(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            model_schema=model_schema,
-        )
-
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -188,7 +182,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 node_data=node_data,
                 query=query,
                 variable_pool=self.graph_runtime_state.variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
+                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=node_data.vision.configs.detail,
@@ -199,7 +194,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 data=node_data,
                 query=query,
                 variable_pool=self.graph_runtime_state.variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
+                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=node_data.vision.configs.detail,
@@ -326,7 +322,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -339,9 +336,21 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
 
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, "")
+        rest_token = self._calculate_rest_token(
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            context="",
+        )
         prompt_template = self._get_function_calling_prompt_template(
             node_data, query, variable_pool, memory, rest_token
+        )
+        model_config = self._build_model_config(
+            node_data_model=node_data.model,
+            model_instance=model_instance,
+            model_schema=model_schema,
         )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
@@ -408,7 +417,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -423,7 +433,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 node_data=data,
                 query=query,
                 variable_pool=variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
+                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=vision_detail,
@@ -433,7 +444,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 node_data=data,
                 query=query,
                 variable_pool=variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
+                model_schema=model_schema,
                 memory=memory,
                 files=files,
                 vision_detail=vision_detail,
@@ -446,7 +458,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -456,10 +469,20 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         rest_token = self._calculate_rest_token(
-            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            context="",
         )
         prompt_template = self._get_prompt_engineering_prompt_template(
             node_data=node_data, query=query, variable_pool=variable_pool, memory=memory, max_token_limit=rest_token
+        )
+        model_config = self._build_model_config(
+            node_data_model=node_data.model,
+            model_instance=model_instance,
+            model_schema=model_schema,
         )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
@@ -480,7 +503,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        model_schema: Any,
         memory: TokenBufferMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
@@ -490,7 +514,12 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         rest_token = self._calculate_rest_token(
-            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            context="",
         )
         prompt_template = self._get_prompt_engineering_prompt_template(
             node_data=node_data,
@@ -502,6 +531,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             max_token_limit=rest_token,
         )
 
+        model_config = self._build_model_config(
+            node_data_model=node_data.model,
+            model_instance=model_instance,
+            model_schema=model_schema,
+        )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={},
@@ -771,17 +805,22 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        model_schema: Any,
         context: str | None,
     ) -> int:
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        model_schema = model_config.model_schema
 
         if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
         else:
             prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, variable_pool, None, 2000)
 
+        model_config = self._build_model_config(
+            node_data_model=node_data.model,
+            model_instance=model_instance,
+            model_schema=model_schema,
+        )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={},
