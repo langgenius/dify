@@ -419,9 +419,11 @@ class EnterpriseOtelTrace:
                 **labels,
                 type=request_type,
                 status=info.status,
+                model_name=info.model_name or "",
             ),
         )
         duration_labels = dict(labels)
+        duration_labels["model_name"] = info.model_name or ""
         plugin_name = metadata.get("plugin_name")
         if plugin_name and info.node_type in {"tool", "knowledge-retrieval"}:
             duration_labels["plugin_name"] = plugin_name
@@ -434,6 +436,7 @@ class EnterpriseOtelTrace:
                 self._labels(
                     **labels,
                     type=request_type,
+                    model_name=info.model_name or "",
                 ),
             )
 
@@ -674,6 +677,8 @@ class EnterpriseOtelTrace:
             self._labels(
                 **labels,
                 type="suggested_question",
+                model_provider=info.model_provider or "",
+                model_name=info.model_id or "",
             ),
         )
 
@@ -738,6 +743,13 @@ class EnterpriseOtelTrace:
             attrs["dify.dataset.embedding_providers"] = self._maybe_json(providers)
             attrs["dify.dataset.embedding_models"] = self._maybe_json(models)
 
+        # Add rerank model to logs
+        rerank_provider = metadata.get("rerank_model_provider", "")
+        rerank_model = metadata.get("rerank_model_name", "")
+        if rerank_provider or rerank_model:
+            attrs["dify.retrieval.rerank_provider"] = rerank_provider
+            attrs["dify.retrieval.rerank_model"] = rerank_model
+
         ref = f"ref:message_id={info.message_id}"
         retrieval_inputs = self._safe_payload_value(info.inputs)
         attrs["dify.retrieval.query"] = self._content_or_ref(retrieval_inputs, ref)
@@ -766,12 +778,25 @@ class EnterpriseOtelTrace:
         )
 
         for did in dataset_ids:
+            # Get embedding model for this specific dataset
+            ds_embedding_info = embedding_models.get(did, {})
+            embedding_provider = ds_embedding_info.get("embedding_model_provider", "")
+            embedding_model = ds_embedding_info.get("embedding_model", "")
+
+            # Get rerank model (same for all datasets in this retrieval)
+            rerank_provider = metadata.get("rerank_model_provider", "")
+            rerank_model = metadata.get("rerank_model_name", "")
+
             self._exporter.increment_counter(
                 EnterpriseTelemetryCounter.DATASET_RETRIEVALS,
                 1,
                 self._labels(
                     **labels,
                     dataset_id=did,
+                    embedding_model_provider=embedding_provider,
+                    embedding_model=embedding_model,
+                    rerank_model_provider=rerank_provider,
+                    rerank_model=rerank_model,
                 ),
             )
 

@@ -91,12 +91,12 @@ All counters are cumulative and emitted at 100% accuracy.
 | `type` | Additional Labels |
 |--------|-------------------|
 | `workflow` | `tenant_id`, `app_id`, `status`, `invoke_from` |
-| `node` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `status` |
-| `draft_node` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `status` |
+| `node` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `model_name`, `status` |
+| `draft_node` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `model_name`, `status` |
 | `message` | `tenant_id`, `app_id`, `model_provider`, `model_name`, `status`, `invoke_from` |
 | `tool` | `tenant_id`, `app_id`, `tool_name` |
 | `moderation` | `tenant_id`, `app_id` |
-| `suggested_question` | `tenant_id`, `app_id` |
+| `suggested_question` | `tenant_id`, `app_id`, `model_provider`, `model_name` |
 | `dataset_retrieval` | `tenant_id`, `app_id` |
 | `generate_name` | `tenant_id`, `app_id` |
 | `prompt_generation` | `tenant_id`, `app_id`, `operation_type`, `model_provider`, `model_name`, `status` |
@@ -112,8 +112,8 @@ All counters are cumulative and emitted at 100% accuracy.
 | `type` | Additional Labels |
 |--------|-------------------|
 | `workflow` | `tenant_id`, `app_id` |
-| `node` | `tenant_id`, `app_id`, `node_type`, `model_provider` |
-| `draft_node` | `tenant_id`, `app_id`, `node_type`, `model_provider` |
+| `node` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `model_name` |
+| `draft_node` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `model_name` |
 | `message` | `tenant_id`, `app_id`, `model_provider`, `model_name` |
 | `tool` | `tenant_id`, `app_id`, `tool_name` |
 | `prompt_generation` | `tenant_id`, `app_id`, `operation_type`, `model_provider`, `model_name` |
@@ -123,7 +123,7 @@ All counters are cumulative and emitted at 100% accuracy.
 | Metric | Unit | Labels |
 |--------|------|--------|
 | `dify.feedback.total` | `{feedback}` | `tenant_id`, `app_id`, `rating` |
-| `dify.dataset.retrievals.total` | `{retrieval}` | `tenant_id`, `app_id`, `dataset_id` |
+| `dify.dataset.retrievals.total` | `{retrieval}` | `tenant_id`, `app_id`, `dataset_id`, `embedding_model_provider`, `embedding_model`, `rerank_model_provider`, `rerank_model` |
 | `dify.app.created.total` | `{app}` | `tenant_id`, `app_id`, `mode` |
 | `dify.app.updated.total` | `{app}` | `tenant_id`, `app_id` |
 | `dify.app.deleted.total` | `{app}` | `tenant_id`, `app_id` |
@@ -133,7 +133,7 @@ All counters are cumulative and emitted at 100% accuracy.
 | Metric | Unit | Labels |
 |--------|------|--------|
 | `dify.workflow.duration` | `s` | `tenant_id`, `app_id`, `status` |
-| `dify.node.duration` | `s` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `plugin_name` |
+| `dify.node.duration` | `s` | `tenant_id`, `app_id`, `node_type`, `model_provider`, `model_name`, `plugin_name` |
 | `dify.message.duration` | `s` | `tenant_id`, `app_id`, `model_provider`, `model_name` |
 | `dify.message.time_to_first_token` | `s` | `tenant_id`, `app_id`, `model_provider`, `model_name` |
 | `dify.tool.duration` | `s` | `tenant_id`, `app_id`, `tool_name` |
@@ -288,6 +288,10 @@ Logs without structural spans. Signal type: `metric_only`
 | `dify.message.id` | string | Message identifier |
 | `dify.dataset.id` | string | Dataset identifier |
 | `dify.dataset.name` | string | Dataset name |
+| `dify.dataset.embedding_providers` | JSON array | Embedding model providers (one per dataset) |
+| `dify.dataset.embedding_models` | JSON array | Embedding models (one per dataset) |
+| `dify.retrieval.rerank_provider` | string | Rerank model provider |
+| `dify.retrieval.rerank_model` | string | Rerank model name |
 | `dify.retrieval.query` | string | Search query (content-gated) |
 | `dify.retrieval.document_count` | int | Documents retrieved |
 | `dify.retrieval.duration` | float | Duration (seconds) |
