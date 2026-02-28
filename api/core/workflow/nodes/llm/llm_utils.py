@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from types import MappingProxyType
 from typing import cast
 
 from sqlalchemy import select, update
@@ -50,13 +51,21 @@ def fetch_model_config(
         raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
     provider_model.raise_for_status()
 
-    stop: list[str] = []
-    if "stop" in node_data_model.completion_params:
-        stop = node_data_model.completion_params.pop("stop")
+    completion_params = dict(node_data_model.completion_params)
+    stop = completion_params.pop("stop", [])
+    if not isinstance(stop, list):
+        stop = []
 
     model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
     if not model_schema:
         raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
+
+    # Keep model runtime data on the model instance to avoid split ownership.
+    model_instance.provider = node_data_model.provider
+    model_instance.model_name = node_data_model.name
+    model_instance.credentials = credentials
+    model_instance.parameters = MappingProxyType(completion_params)
+    model_instance.stop = tuple(stop)
 
     model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
     return model_instance, ModelConfigWithCredentialsEntity(
@@ -66,7 +75,7 @@ def fetch_model_config(
         mode=node_data_model.mode,
         provider_model_bundle=provider_model_bundle,
         credentials=credentials,
-        parameters=node_data_model.completion_params,
+        parameters=completion_params,
         stop=stop,
     )
 

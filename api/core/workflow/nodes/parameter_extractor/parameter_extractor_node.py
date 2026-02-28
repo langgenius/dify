@@ -161,8 +161,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         llm_model = model_instance.model_type_instance
         model_schema = llm_model.get_model_schema(
-            model=model_config.model,
-            credentials=model_config.credentials,
+            model=model_instance.model_name,
+            credentials=model_instance.credentials,
         )
         if not model_schema:
             raise ModelSchemaNotFoundError("Model schema not found")
@@ -218,17 +218,16 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             "usage": None,
             "function": {} if not prompt_message_tools else jsonable_encoder(prompt_message_tools[0]),
             "tool_call": None,
-            "model_provider": model_config.provider,
-            "model_name": model_config.model,
+            "model_provider": model_instance.provider,
+            "model_name": model_instance.model_name,
         }
 
         try:
             text, usage, tool_call = self._invoke(
-                node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 tools=prompt_message_tools,
-                stop=model_config.stop,
+                stop=model_instance.stop,
             )
             process_data["usage"] = jsonable_encoder(usage)
             process_data["tool_call"] = jsonable_encoder(tool_call)
@@ -290,17 +289,16 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     def _invoke(
         self,
-        node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         tools: list[PromptMessageTool],
-        stop: list[str],
+        stop: Sequence[str],
     ) -> tuple[str, LLMUsage, AssistantPromptMessage.ToolCall | None]:
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
-            model_parameters=node_data_model.completion_params,
+            model_parameters=dict(model_instance.parameters),
             tools=tools,
-            stop=stop,
+            stop=list(stop),
             stream=False,
             user=self.user_id,
         )

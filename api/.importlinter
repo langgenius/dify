@@ -129,7 +129,6 @@ ignore_imports =
     core.workflow.nodes.human_input.human_input_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
-    core.workflow.nodes.llm.node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform

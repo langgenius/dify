@@ -1,5 +1,6 @@
 import logging
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from types import MappingProxyType
 from typing import IO, Any, Literal, Optional, Union, cast, overload
 
 from configs import dify_config
@@ -38,6 +39,9 @@ class ModelInstance:
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
         self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        # Runtime LLM invocation fields.
+        self.parameters: Mapping[str, Any] = MappingProxyType({})
+        self.stop: Sequence[str] = ()
         self.model_type_instance = self.provider_model_bundle.model_type_instance
         self.load_balancing_manager = self._get_load_balancing_manager(
             configuration=provider_model_bundle.configuration,

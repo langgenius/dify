@@ -126,6 +126,11 @@ def test_execute_llm():
 
         # Create mock model instance
         mock_model_instance = MagicMock()
+        mock_model_instance.provider = "openai"
+        mock_model_instance.model_name = "gpt-3.5-turbo"
+        mock_model_instance.credentials = {}
+        mock_model_instance.parameters = {}
+        mock_model_instance.stop = []
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -149,14 +154,7 @@ def test_execute_llm():
         )
         mock_model_instance.invoke_llm.return_value = mock_llm_result
 
-        # Create mock model config
-        mock_model_config = MagicMock()
-        mock_model_config.mode = "chat"
-        mock_model_config.provider = "openai"
-        mock_model_config.model = "gpt-3.5-turbo"
-        mock_model_config.parameters = {}
-
-        return mock_model_instance, mock_model_config
+        return mock_model_instance
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_1(**_kwargs):
@@ -238,6 +236,11 @@ def test_execute_llm_with_jinja2():
 
         # Create mock model instance
         mock_model_instance = MagicMock()
+        mock_model_instance.provider = "openai"
+        mock_model_instance.model_name = "gpt-3.5-turbo"
+        mock_model_instance.credentials = {}
+        mock_model_instance.parameters = {}
+        mock_model_instance.stop = []
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -261,14 +264,7 @@ def test_execute_llm_with_jinja2():
         )
         mock_model_instance.invoke_llm.return_value = mock_llm_result
 
-        # Create mock model config
-        mock_model_config = MagicMock()
-        mock_model_config.mode = "chat"
-        mock_model_config.provider = "openai"
-        mock_model_config.model = "gpt-3.5-turbo"
-        mock_model_config.parameters = {}
-
-        return mock_model_instance, mock_model_config
+        return mock_model_instance
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_2(**_kwargs):

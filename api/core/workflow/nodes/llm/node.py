@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import select
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -202,15 +201,13 @@ class LLMNode(Node[LLMNodeData]):
                 node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
             # fetch model config
-            model_instance, model_config = self._fetch_model_config(
+            model_instance = self._fetch_model_config(
                 node_data_model=self.node_data.model,
             )
-            model_name = getattr(model_instance, "model_name", None)
-            if not isinstance(model_name, str):
-                model_name = model_config.model
-            model_provider = getattr(model_instance, "provider", None)
-            if not isinstance(model_provider, str):
-                model_provider = model_config.provider
+            model_name = model_instance.model_name
+            model_provider = model_instance.provider
+            model_parameters = model_instance.parameters
+            model_stop = model_instance.stop
             model_schema = model_instance.model_type_instance.get_model_schema(
                 model_name,
                 model_instance.credentials,
@@ -241,8 +238,8 @@ class LLMNode(Node[LLMNodeData]):
                 memory=memory,
                 model_instance=model_instance,
                 model_schema=model_schema,
-                model_parameters=self.node_data.model.completion_params,
-                stop=model_config.stop,
+                model_parameters=model_parameters,
+                stop=model_stop,
                 prompt_template=self.node_data.prompt_template,
                 memory_config=self.node_data.memory,
                 vision_enabled=self.node_data.vision.enabled,
@@ -254,7 +251,6 @@ class LLMNode(Node[LLMNodeData]):
 
             # handle invoke result
             generator = LLMNode.invoke_llm(
-                node_data_model=self.node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
@@ -371,7 +367,6 @@ class LLMNode(Node[LLMNodeData]):
     @staticmethod
     def invoke_llm(
         *,
-        node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None = None,
@@ -384,11 +379,16 @@ class LLMNode(Node[LLMNodeData]):
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
+        model_name = model_instance.model_name
+        model_parameters = model_instance.parameters
+        invoke_model_parameters = dict(model_parameters)
+
         model_schema = model_instance.model_type_instance.get_model_schema(
-            node_data_model.name, model_instance.credentials
+            model_name,
+            model_instance.credentials,
         )
         if not model_schema:
-            raise ValueError(f"Model schema not found for {node_data_model.name}")
+            raise ValueError(f"Model schema not found for {model_name}")
 
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
@@ -402,7 +402,7 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 json_schema=output_schema,
-                model_parameters=node_data_model.completion_params,
+                model_parameters=invoke_model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
@@ -412,7 +412,7 @@ class LLMNode(Node[LLMNodeData]):
 
             invoke_result = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters=node_data_model.completion_params,
+                model_parameters=invoke_model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
@@ -775,18 +775,13 @@ class LLMNode(Node[LLMNodeData]):
         self,
         *,
         node_data_model: ModelConfig,
-    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
-        model, model_config_with_cred = llm_utils.fetch_model_config(
+    ) -> ModelInstance:
+        model_instance, _ = llm_utils.fetch_model_config(
             node_data_model=node_data_model,
             credentials_provider=self._credentials_provider,
             model_factory=self._model_factory,
         )
-        completion_params = model_config_with_cred.parameters
-
-        model_config_with_cred.parameters = completion_params
-        # NOTE(-LAN-): This line modify the `self.node_data.model`, which is used in `_invoke_llm()`.
-        node_data_model.completion_params = completion_params
-        return model, model_config_with_cred
+        return model_instance
 
     @staticmethod
     def fetch_prompt_messages(

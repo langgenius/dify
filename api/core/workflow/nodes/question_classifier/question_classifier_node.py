@@ -150,8 +150,8 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             memory=memory,
             model_instance=model_instance,
             model_schema=model_schema,
-            model_parameters=node_data.model.completion_params,
-            stop=model_config.stop,
+            model_parameters=model_instance.parameters,
+            stop=model_instance.stop,
             sys_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
@@ -166,7 +166,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         try:
             # handle invoke result
             generator = LLMNode.invoke_llm(
-                node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
@@ -211,8 +210,8 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 ),
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "model_provider": model_config.provider,
-                "model_name": model_config.model,
+                "model_provider": model_instance.provider,
+                "model_name": model_instance.model_name,
             }
             outputs = {
                 "class_name": category_name,
