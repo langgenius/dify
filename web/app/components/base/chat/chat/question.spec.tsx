@@ -1,7 +1,7 @@
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatConfig, ChatItem, OnRegenerate } from '../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -180,7 +180,7 @@ describe('Question component', () => {
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    const resendBtn = screen.getByRole('button', { name: /chat.resend/i })
+    const resendBtn = screen.getByRole('button', { name: /operation.save/i })
     await user.click(resendBtn)
 
     await waitFor(() => {
@@ -207,6 +207,42 @@ describe('Question component', () => {
       const md = container.querySelector('.markdown-body')
       expect(md).toBeInTheDocument()
     })
+  })
+
+  it('should confirm editing when Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    await user.clear(textbox)
+    await user.type(textbox, 'Edited with Enter')
+
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+
+    await waitFor(() => {
+      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'Edited with Enter', files: [] })
+    })
+  })
+
+  it('should insert a new line when Shift+Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    await user.clear(textbox)
+    await user.type(textbox, 'Line 1')
+    await user.type(textbox, '{Shift>}{Enter}{/Shift}')
+
+    expect(textbox).toHaveValue('Line 1\n')
+    expect(onRegenerate).not.toHaveBeenCalled()
   })
 
   it('should switch siblings when prev/next buttons are clicked', async () => {

@@ -56,6 +56,7 @@ const Question: FC<QuestionProps> = ({
   const [editedContent, setEditedContent] = useState(content)
   const [contentWidth, setContentWidth] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
+  const isComposingRef = useRef(false)
 
   const handleEdit = useCallback(() => {
     setIsEditing(true)
@@ -71,6 +72,27 @@ const Question: FC<QuestionProps> = ({
     setIsEditing(false)
     setEditedContent(content)
   }, [content])
+
+  const handleEditInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey)
+      return
+
+    if (e.nativeEvent.isComposing || isComposingRef.current)
+      return
+
+    e.preventDefault()
+    handleResend()
+  }, [handleResend])
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true
+  }, [])
+
+  const handleCompositionEnd = useCallback(() => {
+    setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
+  }, [])
 
   const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'prev') {
@@ -128,13 +150,17 @@ const Question: FC<QuestionProps> = ({
         <div
           ref={contentRef}
           data-testid="question-content"
-          className="w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary"
-          style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
+          className={cn(
+            'w-full text-sm',
+            !isEditing && 'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-text-primary',
+            isEditing && 'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur px-4 py-3 shadow-lg',
+          )}
+          style={(!isEditing && theme?.chatBubbleColorStyle) ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
             !!message_files?.length && (
               <FileList
-                className="mb-2"
+                className={cn(isEditing ? 'mb-3' : 'mb-2')}
                 files={message_files}
                 showDeleteAction={false}
                 showDownloadAction={true}
@@ -144,25 +170,24 @@ const Question: FC<QuestionProps> = ({
           {!isEditing
             ? <Markdown content={content} />
             : (
-                <div className="
-                flex flex-col gap-2 rounded-xl
-                border border-components-chat-input-border bg-components-panel-bg-blur p-[9px] shadow-md
-              "
-                >
-                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
+                <div className="flex flex-col gap-4">
+                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
                     <Textarea
                       className={cn(
-                        'w-full p-1 leading-6 text-text-tertiary outline-none body-lg-regular',
+                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}
                       value={editedContent}
                       onChange={e => setEditedContent(e.target.value)}
+                      onKeyDown={handleEditInputKeyDown}
+                      onCompositionStart={handleCompositionStart}
+                      onCompositionEnd={handleCompositionEnd}
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button variant="primary" onClick={handleResend}>{t('chat.resend', { ns: 'common' })}</Button>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button className="min-w-[96px]" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button className="min-w-[96px]" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}
