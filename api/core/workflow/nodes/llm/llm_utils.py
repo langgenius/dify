@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from types import MappingProxyType
 from typing import cast
 
 from sqlalchemy import select, update
@@ -64,7 +63,7 @@ def fetch_model_config(
     model_instance.provider = node_data_model.provider
     model_instance.model_name = node_data_model.name
     model_instance.credentials = credentials
-    model_instance.parameters = MappingProxyType(completion_params)
+    model_instance.parameters = completion_params
     model_instance.stop = tuple(stop)
 
     model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)

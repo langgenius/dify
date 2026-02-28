@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -96,7 +95,7 @@ def fetch_model_config(
     model_instance.provider = node_data_model.provider
     model_instance.model_name = node_data_model.name
     model_instance.credentials = credentials
-    model_instance.parameters = MappingProxyType(completion_params)
+    model_instance.parameters = completion_params
     model_instance.stop = tuple(stop)
 
     return model_instance, ModelConfigWithCredentialsEntity(
