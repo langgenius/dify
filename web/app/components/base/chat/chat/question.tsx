@@ -57,6 +57,7 @@ const Question: FC<QuestionProps> = ({
   const [contentWidth, setContentWidth] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
   const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleEdit = useCallback(() => {
     setIsEditing(true)
@@ -84,15 +85,26 @@ const Question: FC<QuestionProps> = ({
     handleResend()
   }, [handleResend])
 
-  const handleCompositionStart = useCallback(() => {
-    isComposingRef.current = true
+  const clearCompositionEndTimer = useCallback(() => {
+    if (!compositionEndTimerRef.current)
+      return
+
+    clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = null
   }, [])
 
+  const handleCompositionStart = useCallback(() => {
+    clearCompositionEndTimer()
+    isComposingRef.current = true
+  }, [clearCompositionEndTimer])
+
   const handleCompositionEnd = useCallback(() => {
-    setTimeout(() => {
+    clearCompositionEndTimer()
+    compositionEndTimerRef.current = setTimeout(() => {
       isComposingRef.current = false
+      compositionEndTimerRef.current = null
     }, 50)
-  }, [])
+  }, [clearCompositionEndTimer])
 
   const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'prev') {
@@ -121,6 +133,12 @@ const Question: FC<QuestionProps> = ({
       resizeObserver.disconnect()
     }
   }, [])
+
+  useEffect(() => {
+    return () => {
+      clearCompositionEndTimer()
+    }
+  }, [clearCompositionEndTimer])
 
   return (
     <div className="mb-2 flex justify-end last:mb-0">

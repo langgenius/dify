@@ -245,6 +245,50 @@ describe('Question component', () => {
     expect(onRegenerate).not.toHaveBeenCalled()
   })
 
+  it('should not confirm editing when Enter is pressed during IME composition', () => {
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+
+    renderWithProvider(makeItem(), onRegenerate)
+
+    fireEvent.click(screen.getByTestId('edit-btn'))
+    const textbox = screen.getByRole('textbox')
+
+    fireEvent.compositionStart(textbox)
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+
+    expect(onRegenerate).not.toHaveBeenCalled()
+  })
+
+  it('should keep Enter suppressed if a new composition starts before previous composition-end timer finishes', () => {
+    vi.useFakeTimers()
+
+    try {
+      const onRegenerate = vi.fn() as unknown as OnRegenerate
+      renderWithProvider(makeItem(), onRegenerate)
+
+      fireEvent.click(screen.getByTestId('edit-btn'))
+      const textbox = screen.getByRole('textbox')
+
+      fireEvent.compositionStart(textbox)
+      fireEvent.compositionEnd(textbox)
+      fireEvent.compositionStart(textbox)
+
+      vi.advanceTimersByTime(50)
+
+      fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+      expect(onRegenerate).not.toHaveBeenCalled()
+
+      fireEvent.compositionEnd(textbox)
+      vi.advanceTimersByTime(50)
+
+      fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+      expect(onRegenerate).toHaveBeenCalledTimes(1)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('should switch siblings when prev/next buttons are clicked', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
