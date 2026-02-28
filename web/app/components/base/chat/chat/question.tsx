@@ -65,11 +65,21 @@ const Question: FC<QuestionProps> = ({
   }, [content])
 
   const handleResend = useCallback(() => {
+    if (compositionEndTimerRef.current) {
+      clearTimeout(compositionEndTimerRef.current)
+      compositionEndTimerRef.current = null
+    }
+    isComposingRef.current = false
     setIsEditing(false)
     onRegenerate?.(item, { message: editedContent, files: message_files })
   }, [editedContent, message_files, item, onRegenerate])
 
   const handleCancelEditing = useCallback(() => {
+    if (compositionEndTimerRef.current) {
+      clearTimeout(compositionEndTimerRef.current)
+      compositionEndTimerRef.current = null
+    }
+    isComposingRef.current = false
     setIsEditing(false)
     setEditedContent(content)
   }, [content])
@@ -78,8 +88,13 @@ const Question: FC<QuestionProps> = ({
     if (e.key !== 'Enter' || e.shiftKey)
       return
 
-    if (e.nativeEvent.isComposing || isComposingRef.current)
+    if (e.nativeEvent.isComposing)
       return
+
+    if (isComposingRef.current) {
+      e.preventDefault()
+      return
+    }
 
     e.preventDefault()
     handleResend()

@@ -257,9 +257,10 @@ describe('Question component', () => {
     fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
 
     expect(onRegenerate).not.toHaveBeenCalled()
+    expect(textbox).toHaveValue('This is the question content')
   })
 
-  it('should keep Enter suppressed if a new composition starts before previous composition-end timer finishes', () => {
+  it('should keep text unchanged and suppress Enter if a new composition starts before previous composition-end timer finishes', async () => {
     vi.useFakeTimers()
 
     try {
@@ -268,6 +269,7 @@ describe('Question component', () => {
 
       fireEvent.click(screen.getByTestId('edit-btn'))
       const textbox = screen.getByRole('textbox')
+      fireEvent.change(textbox, { target: { value: 'IME guard text' } })
 
       fireEvent.compositionStart(textbox)
       fireEvent.compositionEnd(textbox)
@@ -275,14 +277,17 @@ describe('Question component', () => {
 
       vi.advanceTimersByTime(50)
 
-      fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+      const blockedEnterEvent = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+      textbox.dispatchEvent(blockedEnterEvent)
       expect(onRegenerate).not.toHaveBeenCalled()
+      expect(blockedEnterEvent.defaultPrevented).toBe(true)
+      expect(textbox).toHaveValue('IME guard text')
 
       fireEvent.compositionEnd(textbox)
       vi.advanceTimersByTime(50)
 
       fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
-      expect(onRegenerate).toHaveBeenCalledTimes(1)
+      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'IME guard text', files: [] })
     }
     finally {
       vi.useRealTimers()
