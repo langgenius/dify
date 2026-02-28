@@ -61,7 +61,7 @@ class Keyword:
 
     def __getattr__(self, name):
         method_getter = _DELEGATED_METHOD_MAP.get(name)
-        if method_getter is not None:
+        if method_getter is not None and self._keyword_processor is not None:
             return method_getter(self._keyword_processor)
 
         raise AttributeError(f"'Keyword' object has no attribute '{name}'")

@@ -331,7 +331,7 @@ class Vector:
 
     def __getattr__(self, name):
         method_getter = _DELEGATED_METHOD_MAP.get(name)
-        if method_getter is not None:
+        if method_getter is not None and self._vector_processor is not None:
             return method_getter(self._vector_processor)
 
         raise AttributeError(f"'vector_processor' object has no attribute '{name}'")
