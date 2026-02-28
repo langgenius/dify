@@ -1364,17 +1364,17 @@ def _convert_history_messages_to_text(
             continue
 
         if isinstance(message.content, list):
-            inner_msg = ""
+            content_parts = []
             for content in message.content:
                 if isinstance(content, TextPromptMessageContent):
-                    inner_msg += f"{content.data}\n"
+                    content_parts.append(content.data)
                 elif isinstance(content, ImagePromptMessageContent):
-                    inner_msg += "[image]\n"
+                    content_parts.append("[image]")
 
-            string_messages.append(f"{role}: {inner_msg.strip()}")
+            inner_msg = "\n".join(content_parts)
+            string_messages.append(f"{role}: {inner_msg}")
         else:
             string_messages.append(f"{role}: {message.content}")
-
     return "\n".join(string_messages)
 
 
