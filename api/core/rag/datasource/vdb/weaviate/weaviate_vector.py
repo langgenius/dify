@@ -10,7 +10,7 @@ import json
 import logging
 import threading
 import uuid as _uuid
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import weaviate
@@ -33,8 +33,9 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-_weaviate_client: Optional[weaviate.WeaviateClient] = None
+_weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
 
 class WeaviateConfig(BaseModel):
     """
