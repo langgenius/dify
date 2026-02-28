@@ -1,7 +1,10 @@
+import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
+
+logger = logging.getLogger(__name__)
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.model_manager import ModelInstance
@@ -65,18 +68,27 @@ class TokenBufferMemory:
             if not app:
                 raise ValueError("App not found for conversation")
 
-            if not message.workflow_run_id:
-                raise ValueError("Workflow run ID not found")
-
-            workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
-                tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
-            )
-            if not workflow_run:
-                raise ValueError(f"Workflow run not found: {message.workflow_run_id}")
-            workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
-            if not workflow:
-                raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
-            file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+            file_extra_config = None
+            if message.workflow_run_id:
+                workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
+                    tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+                )
+                if workflow_run:
+                    workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+                    if workflow:
+                        file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+                    else:
+                        logger.warning(
+                            "Workflow %s not found for message %s, skipping file processing",
+                            workflow_run.workflow_id,
+                            message.id,
+                        )
+                else:
+                    logger.warning(
+                        "Workflow run %s not found for message %s, skipping file processing",
+                        message.workflow_run_id,
+                        message.id,
+                    )
         else:
             raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
