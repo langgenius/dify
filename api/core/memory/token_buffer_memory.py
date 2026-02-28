@@ -73,22 +73,22 @@ class TokenBufferMemory:
                 workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
                     tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
                 )
-                if workflow_run:
-                    workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
-                    if workflow:
-                        file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-                    else:
-                        logger.warning(
-                            "Workflow %s not found for message %s, skipping file processing",
-                            workflow_run.workflow_id,
-                            message.id,
-                        )
-                else:
+                if not workflow_run:
                     logger.warning(
                         "Workflow run %s not found for message %s, skipping file processing",
                         message.workflow_run_id,
                         message.id,
                     )
+                elif not (
+                    workflow := db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+                ):
+                    logger.warning(
+                        "Workflow %s not found for message %s, skipping file processing",
+                        workflow_run.workflow_id,
+                        message.id,
+                    )
+                else:
+                    file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         else:
             raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
