@@ -99,12 +99,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             credentials_provider=self._credentials_provider,
             model_factory=self._model_factory,
         )
-        model_schema = model_instance.model_type_instance.get_model_schema(
-            model_instance.model_name,
-            model_instance.credentials,
-        )
-        if not model_schema:
-            raise ValueError(f"Model schema not found for {model_instance.model_name}")
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -130,7 +124,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             node_data=node_data,
             query=query or "",
             model_instance=model_instance,
-            model_schema=model_schema,
             context="",
         )
         prompt_template = self._get_prompt_template(
@@ -148,8 +141,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             sys_query="",
             memory=memory,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_instance.parameters,
             stop=model_instance.stop,
             sys_files=files,
             vision_enabled=node_data.vision.enabled,
@@ -284,9 +275,15 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         node_data: QuestionClassifierNodeData,
         query: str,
         model_instance: ModelInstance,
-        model_schema: Any,
         context: str | None,
     ) -> int:
+        model_schema = model_instance.model_type_instance.get_model_schema(
+            model_instance.model_name,
+            model_instance.credentials,
+        )
+        if not model_schema:
+            raise ValueError(f"Model schema not found for {model_instance.model_name}")
+
         prompt_template = self._get_prompt_template(node_data, query, None, 2000)
         prompt_messages, _ = LLMNode.fetch_prompt_messages(
             prompt_template=prompt_template,
@@ -295,8 +292,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             context=context,
             memory=None,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_instance.parameters,
             stop=model_instance.stop,
             memory_config=node_data.memory,
             vision_enabled=False,

@@ -206,14 +206,7 @@ class LLMNode(Node[LLMNodeData]):
             )
             model_name = model_instance.model_name
             model_provider = model_instance.provider
-            model_parameters = model_instance.parameters
             model_stop = model_instance.stop
-            model_schema = model_instance.model_type_instance.get_model_schema(
-                model_name,
-                model_instance.credentials,
-            )
-            if not model_schema:
-                raise ValueError(f"Model schema not found for {model_name}")
 
             # fetch memory
             memory = llm_utils.fetch_memory(
@@ -237,8 +230,6 @@ class LLMNode(Node[LLMNodeData]):
                 context=context,
                 memory=memory,
                 model_instance=model_instance,
-                model_schema=model_schema,
-                model_parameters=model_parameters,
                 stop=model_stop,
                 prompt_template=self.node_data.prompt_template,
                 memory_config=self.node_data.memory,
@@ -791,8 +782,6 @@ class LLMNode(Node[LLMNodeData]):
         context: str | None = None,
         memory: TokenBufferMemory | None = None,
         model_instance: ModelInstance,
-        model_schema: AIModelEntity,
-        model_parameters: Mapping[str, Any],
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         stop: Sequence[str] | None = None,
         memory_config: MemoryConfig | None = None,
@@ -803,6 +792,7 @@ class LLMNode(Node[LLMNodeData]):
         context_files: list[File] | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
+        model_schema = _fetch_model_schema(model_instance=model_instance)
 
         if isinstance(prompt_template, list):
             # For chat model
@@ -821,8 +811,6 @@ class LLMNode(Node[LLMNodeData]):
                 memory=memory,
                 memory_config=memory_config,
                 model_instance=model_instance,
-                model_schema=model_schema,
-                model_parameters=model_parameters,
             )
             # Extend prompt_messages with memory messages
             prompt_messages.extend(memory_messages)
@@ -860,8 +848,6 @@ class LLMNode(Node[LLMNodeData]):
                 memory=memory,
                 memory_config=memory_config,
                 model_instance=model_instance,
-                model_schema=model_schema,
-                model_parameters=model_parameters,
             )
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
@@ -1311,23 +1297,25 @@ def _calculate_rest_token(
     *,
     prompt_messages: list[PromptMessage],
     model_instance: ModelInstance,
-    model_schema: AIModelEntity,
-    model_parameters: Mapping[str, Any],
+    model_schema: AIModelEntity | None = None,
+    model_parameters: Mapping[str, Any] | None = None,
 ) -> int:
     rest_tokens = 2000
+    runtime_model_schema = model_schema or _fetch_model_schema(model_instance=model_instance)
+    runtime_model_parameters = model_parameters or model_instance.parameters
 
-    model_context_tokens = model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+    model_context_tokens = runtime_model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
     if model_context_tokens:
         curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         max_tokens = 0
-        for parameter_rule in model_schema.parameter_rules:
+        for parameter_rule in runtime_model_schema.parameter_rules:
             if parameter_rule.name == "max_tokens" or (
                 parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
             ):
                 max_tokens = (
-                    model_parameters.get(parameter_rule.name)
-                    or model_parameters.get(str(parameter_rule.use_template))
+                    runtime_model_parameters.get(parameter_rule.name)
+                    or runtime_model_parameters.get(str(parameter_rule.use_template))
                     or 0
                 )
 
@@ -1342,8 +1330,6 @@ def _handle_memory_chat_mode(
     memory: TokenBufferMemory | None,
     memory_config: MemoryConfig | None,
     model_instance: ModelInstance,
-    model_schema: AIModelEntity,
-    model_parameters: Mapping[str, Any],
 ) -> Sequence[PromptMessage]:
     memory_messages: Sequence[PromptMessage] = []
     # Get messages from memory for chat model
@@ -1351,8 +1337,6 @@ def _handle_memory_chat_mode(
         rest_tokens = _calculate_rest_token(
             prompt_messages=[],
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_parameters,
         )
         memory_messages = memory.get_history_prompt_messages(
             max_token_limit=rest_tokens,
@@ -1366,8 +1350,6 @@ def _handle_memory_completion_mode(
     memory: TokenBufferMemory | None,
     memory_config: MemoryConfig | None,
     model_instance: ModelInstance,
-    model_schema: AIModelEntity,
-    model_parameters: Mapping[str, Any],
 ) -> str:
     memory_text = ""
     # Get history text from memory for completion model
@@ -1375,8 +1357,6 @@ def _handle_memory_completion_mode(
         rest_tokens = _calculate_rest_token(
             prompt_messages=[],
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_parameters,
         )
         if not memory_config.role_prefix:
             raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
@@ -1387,6 +1367,16 @@ def _handle_memory_completion_mode(
             ai_prefix=memory_config.role_prefix.assistant,
         )
     return memory_text
+
+
+def _fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
+    model_schema = model_instance.model_type_instance.get_model_schema(
+        model_instance.model_name,
+        model_instance.credentials,
+    )
+    if not model_schema:
+        raise ValueError(f"Model schema not found for {model_instance.model_name}")
+    return model_schema
 
 
 def _handle_completion_template(

@@ -784,7 +784,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         model_schema = self._fetch_model_schema(model_instance)
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
 
-        if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
+        if set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
         else:
             prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, variable_pool, None, 2000)
