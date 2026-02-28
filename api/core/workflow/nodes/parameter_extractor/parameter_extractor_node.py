@@ -24,7 +24,6 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.variables.types import ArrayValidation, SegmentType
 from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult
@@ -32,6 +31,7 @@ from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import llm_utils
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.types import ArrayValidation, SegmentType
 from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData

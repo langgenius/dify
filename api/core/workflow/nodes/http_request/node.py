@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
-from core.variables.segments import ArrayFileSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod
 from core.workflow.file.file_manager import file_manager as default_file_manager
@@ -15,6 +14,7 @@ from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
+from core.workflow.variables.segments import ArrayFileSegment
 from factories import file_factory
 
 from .config import build_http_request_config, resolve_http_request_config
