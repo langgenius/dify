@@ -50,18 +50,22 @@
 - Example:
   - Bad:
     ```python
+    from sqlalchemy.orm import Mapped
+
     class Dataset(TypeBase):
         __tablename__ = "datasets"
-        id = mapped_column(StringUUID, primary_key=True)
-        name = mapped_column(sa.String(255), nullable=False)
+        id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+        name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     ```
   - Good:
     ```python
+    from sqlalchemy.orm import Mapped
+
     class Dataset(TypeBase):
         __tablename__ = "datasets"
-        id = mapped_column(StringUUID, primary_key=True)
-        tenant_id = mapped_column(StringUUID, nullable=False, index=True)
-        name = mapped_column(sa.String(255), nullable=False)
+        id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+        tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+        name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     ```
 
 ### Detect and avoid duplicate/redundant indexes
@@ -99,20 +103,21 @@
   - Bad:
     ```python
     from sqlalchemy.dialects.postgresql import JSONB
-
+    from sqlalchemy.orm import Mapped
 
     class ToolConfig(TypeBase):
         __tablename__ = "tool_configs"
-        config = mapped_column(JSONB, nullable=False)
+        config: Mapped[dict] = mapped_column(JSONB, nullable=False)
     ```
   - Good:
     ```python
-    from models.types import AdjustedJSON
+    from sqlalchemy.orm import Mapped
 
+    from models.types import AdjustedJSON
 
     class ToolConfig(TypeBase):
         __tablename__ = "tool_configs"
-        config = mapped_column(AdjustedJSON(), nullable=False)
+        config: Mapped[dict] = mapped_column(AdjustedJSON(), nullable=False)
     ```
 
 ### Guard migration incompatibilities with dialect checks and shared types
