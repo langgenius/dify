@@ -22,7 +22,6 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.llm import llm_utils
@@ -39,6 +38,7 @@ from core.workflow.nodes.llm.node import LLMNode, _handle_memory_completion_mode
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.enums import UserFrom
 from models.provider import ProviderType
 
