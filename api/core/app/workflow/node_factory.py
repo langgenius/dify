@@ -10,9 +10,6 @@ from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
 )
-from core.helper.code_executor.code_executor import (
-    CodeLanguage as HelperCodeLanguage,
-)
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
@@ -59,7 +56,7 @@ class DefaultWorkflowCodeExecutor:
         inputs: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         return CodeExecutor.execute_workflow_code_template(
-            language=HelperCodeLanguage(language),
+            language=language,
             code=code,
             inputs=inputs,
         )
