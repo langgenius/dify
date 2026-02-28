@@ -1,10 +1,24 @@
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
 from configs import dify_config
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+
+_DELEGATED_METHOD_MAP: dict[str, Callable[[BaseKeyword], Callable[..., Any]]] = {
+    "create_segment_keywords": (
+        lambda keyword_processor: cast(Any, keyword_processor).create_segment_keywords
+    ),
+    "multi_create_segment_keywords": (
+        lambda keyword_processor: cast(Any, keyword_processor).multi_create_segment_keywords
+    ),
+    "update_segment_keywords_index": (
+        lambda keyword_processor: cast(Any, keyword_processor).update_segment_keywords_index
+    ),
+}
 
 
 class Keyword:
@@ -46,9 +60,8 @@ class Keyword:
         return self._keyword_processor.search(query, **kwargs)
 
     def __getattr__(self, name):
-        if self._keyword_processor is not None:
-            method = getattr(self._keyword_processor, name)
-            if callable(method):
-                return method
+        method_getter = _DELEGATED_METHOD_MAP.get(name)
+        if method_getter is not None:
+            return method_getter(self._keyword_processor)
 
         raise AttributeError(f"'Keyword' object has no attribute '{name}'")
