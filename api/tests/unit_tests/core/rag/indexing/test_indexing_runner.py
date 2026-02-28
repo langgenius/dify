@@ -259,9 +259,9 @@ class TestIndexingRunnerExtract:
     def mock_dependencies(self):
         """Mock all external dependencies for extract tests."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.IndexProcessorFactory", autospec=True) as mock_factory,
-            patch("core.indexing_runner.storage", autospec=True) as mock_storage,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
+            patch("core.indexing_runner.storage") as mock_storage,
         ):
             yield {
                 "db": mock_db,
@@ -326,9 +326,9 @@ class TestIndexingRunnerExtract:
 
         # Mock the entire _extract method to avoid ExtractSetting validation
         # This is necessary because ExtractSetting uses Pydantic validation
-        with patch.object(runner, "_update_document_index_status", autospec=True):
-            with patch("core.indexing_runner.select", autospec=True):
-                with patch("core.indexing_runner.ExtractSetting", autospec=True):
+        with patch.object(runner, "_update_document_index_status"):
+            with patch("core.indexing_runner.select"):
+                with patch("core.indexing_runner.ExtractSetting"):
                     # Act: Call the extract method
                     result = runner._extract(mock_processor, sample_dataset_document, sample_process_rule)
 
@@ -361,7 +361,7 @@ class TestIndexingRunnerExtract:
         mock_processor.extract.return_value = extracted_docs
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, "_update_document_index_status", autospec=True):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             result = runner._extract(mock_processor, sample_dataset_document, sample_process_rule)
 
@@ -392,7 +392,7 @@ class TestIndexingRunnerExtract:
         mock_processor.extract.return_value = extracted_docs
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, "_update_document_index_status", autospec=True):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             result = runner._extract(mock_processor, sample_dataset_document, sample_process_rule)
 
@@ -444,8 +444,8 @@ class TestIndexingRunnerTransform:
     def mock_dependencies(self):
         """Mock all external dependencies for transform tests."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.ModelManager", autospec=True) as mock_model_manager,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.ModelManager") as mock_model_manager,
         ):
             yield {
                 "db": mock_db,
@@ -585,11 +585,11 @@ class TestIndexingRunnerLoad:
     def mock_dependencies(self):
         """Mock all external dependencies for load tests."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.ModelManager", autospec=True) as mock_model_manager,
-            patch("core.indexing_runner.current_app", autospec=True) as mock_app,
-            patch("core.indexing_runner.threading.Thread", autospec=True) as mock_thread,
-            patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor", autospec=True) as mock_executor,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.ModelManager") as mock_model_manager,
+            patch("core.indexing_runner.current_app") as mock_app,
+            patch("core.indexing_runner.threading.Thread") as mock_thread,
+            patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor") as mock_executor,
         ):
             yield {
                 "db": mock_db,
@@ -659,7 +659,7 @@ class TestIndexingRunnerLoad:
         mock_dependencies["executor"].return_value = mock_executor_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, "_update_document_index_status", autospec=True):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
@@ -684,7 +684,7 @@ class TestIndexingRunnerLoad:
         mock_dependencies["thread"].return_value = mock_thread_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, "_update_document_index_status", autospec=True):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
@@ -728,7 +728,7 @@ class TestIndexingRunnerLoad:
         mock_dependencies["executor"].return_value = mock_executor_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, "_update_document_index_status", autospec=True):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
@@ -752,11 +752,11 @@ class TestIndexingRunnerRun:
     def mock_dependencies(self):
         """Mock all external dependencies for run tests."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.IndexProcessorFactory", autospec=True) as mock_factory,
-            patch("core.indexing_runner.ModelManager", autospec=True) as mock_model_manager,
-            patch("core.indexing_runner.storage", autospec=True) as mock_storage,
-            patch("core.indexing_runner.threading.Thread", autospec=True) as mock_thread,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
+            patch("core.indexing_runner.ModelManager") as mock_model_manager,
+            patch("core.indexing_runner.storage") as mock_storage,
+            patch("core.indexing_runner.threading.Thread") as mock_thread,
         ):
             yield {
                 "db": mock_db,
@@ -836,15 +836,14 @@ class TestIndexingRunnerRun:
 
         # Mock all internal methods that interact with database
         with (
-            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})], autospec=True),
+            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]),
             patch.object(
                 runner,
                 "_transform",
                 return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
-                autospec=True,
             ),
-            patch.object(runner, "_load_segments", autospec=True),
-            patch.object(runner, "_load", autospec=True),
+            patch.object(runner, "_load_segments"),
+            patch.object(runner, "_load"),
         ):
             # Act
             runner.run([doc])
@@ -853,17 +852,14 @@ class TestIndexingRunnerRun:
         # Since we're mocking the internal methods, we just verify no exceptions were raised
 
         with (
-            patch.object(
-                runner, "_extract", return_value=[Document(page_content="Test", metadata={})], autospec=True
-            ) as mock_extract,
+            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]) as mock_extract,
             patch.object(
                 runner,
                 "_transform",
                 return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
-                autospec=True,
             ) as mock_transform,
-            patch.object(runner, "_load_segments", autospec=True) as mock_load_segments,
-            patch.object(runner, "_load", autospec=True) as mock_load,
+            patch.object(runner, "_load_segments") as mock_load_segments,
+            patch.object(runner, "_load") as mock_load,
         ):
             # Act
             runner.run([doc])
@@ -878,7 +874,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock _extract to raise DocumentIsPausedError
-        with patch.object(runner, "_extract", side_effect=DocumentIsPausedError("Document paused"), autospec=True):
+        with patch.object(runner, "_extract", side_effect=DocumentIsPausedError("Document paused")):
             # Act & Assert
             with pytest.raises(DocumentIsPausedError):
                 runner.run([doc])
@@ -930,9 +926,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock _extract to raise ObjectDeletedError
-        with patch.object(
-            runner, "_extract", side_effect=ObjectDeletedError(state=None, msg="Object deleted"), autospec=True
-        ):
+        with patch.object(runner, "_extract", side_effect=ObjectDeletedError(state=None, msg="Object deleted")):
             # Act
             runner.run([doc])
 
@@ -971,17 +965,14 @@ class TestIndexingRunnerRun:
 
         # Mock all internal methods
         with (
-            patch.object(
-                runner, "_extract", return_value=[Document(page_content="Test", metadata={})], autospec=True
-            ) as mock_extract,
+            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]) as mock_extract,
             patch.object(
                 runner,
                 "_transform",
                 return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
-                autospec=True,
             ),
-            patch.object(runner, "_load_segments", autospec=True),
-            patch.object(runner, "_load", autospec=True),
+            patch.object(runner, "_load_segments"),
+            patch.object(runner, "_load"),
         ):
             # Act
             runner.run(docs)
@@ -1005,8 +996,8 @@ class TestIndexingRunnerRetryLogic:
     def mock_dependencies(self):
         """Mock all external dependencies."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.redis_client", autospec=True) as mock_redis,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.redis_client") as mock_redis,
         ):
             yield {
                 "db": mock_db,
@@ -1114,7 +1105,7 @@ class TestIndexingRunnerDocumentCleaning:
         text = "This is   a test   document with   extra spaces."
 
         # Act
-        with patch("core.indexing_runner.CleanProcessor.clean", autospec=True) as mock_clean:
+        with patch("core.indexing_runner.CleanProcessor.clean") as mock_clean:
             mock_clean.return_value = "This is a test document with extra spaces."
             result = IndexingRunner._document_clean(text, sample_process_rule_automatic)
 
@@ -1128,7 +1119,7 @@ class TestIndexingRunnerDocumentCleaning:
         text = "Visit https://example.com or email test@example.com for more info."
 
         # Act
-        with patch("core.indexing_runner.CleanProcessor.clean", autospec=True) as mock_clean:
+        with patch("core.indexing_runner.CleanProcessor.clean") as mock_clean:
             mock_clean.return_value = "Visit or email for more info."
             result = IndexingRunner._document_clean(text, sample_process_rule_custom)
 
@@ -1185,7 +1176,7 @@ class TestIndexingRunnerSplitter:
     def test_get_splitter_custom_mode(self, mock_embedding_instance):
         """Test splitter creation with custom mode."""
         # Arrange
-        with patch("core.indexing_runner.FixedRecursiveCharacterTextSplitter", autospec=True) as mock_splitter_class:
+        with patch("core.indexing_runner.FixedRecursiveCharacterTextSplitter") as mock_splitter_class:
             mock_splitter = MagicMock()
             mock_splitter_class.from_encoder.return_value = mock_splitter
 
@@ -1209,7 +1200,7 @@ class TestIndexingRunnerSplitter:
     def test_get_splitter_automatic_mode(self, mock_embedding_instance):
         """Test splitter creation with automatic mode."""
         # Arrange
-        with patch("core.indexing_runner.EnhanceRecursiveCharacterTextSplitter", autospec=True) as mock_splitter_class:
+        with patch("core.indexing_runner.EnhanceRecursiveCharacterTextSplitter") as mock_splitter_class:
             mock_splitter = MagicMock()
             mock_splitter_class.from_encoder.return_value = mock_splitter
 
@@ -1241,7 +1232,7 @@ class TestIndexingRunnerSplitter:
     def test_get_splitter_validates_max_tokens_too_large(self, mock_embedding_instance):
         """Test splitter validation rejects max_tokens above maximum."""
         # Arrange
-        with patch("core.indexing_runner.dify_config", autospec=True) as mock_config:
+        with patch("core.indexing_runner.dify_config") as mock_config:
             mock_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = 5000
 
             # Act & Assert
@@ -1269,8 +1260,8 @@ class TestIndexingRunnerLoadSegments:
     def mock_dependencies(self):
         """Mock all external dependencies."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.DatasetDocumentStore", autospec=True) as mock_docstore,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.DatasetDocumentStore") as mock_docstore,
         ):
             yield {
                 "db": mock_db,
@@ -1320,8 +1311,8 @@ class TestIndexingRunnerLoadSegments:
 
         # Mock update methods to avoid database calls
         with (
-            patch.object(runner, "_update_document_index_status", autospec=True),
-            patch.object(runner, "_update_segments_by_document", autospec=True),
+            patch.object(runner, "_update_document_index_status"),
+            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
@@ -1356,8 +1347,8 @@ class TestIndexingRunnerLoadSegments:
 
         # Mock update methods to avoid database calls
         with (
-            patch.object(runner, "_update_document_index_status", autospec=True),
-            patch.object(runner, "_update_segments_by_document", autospec=True),
+            patch.object(runner, "_update_document_index_status"),
+            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
@@ -1379,8 +1370,8 @@ class TestIndexingRunnerLoadSegments:
 
         # Mock update methods to avoid database calls
         with (
-            patch.object(runner, "_update_document_index_status", autospec=True) as mock_update_status,
-            patch.object(runner, "_update_segments_by_document", autospec=True),
+            patch.object(runner, "_update_document_index_status") as mock_update_status,
+            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
@@ -1405,9 +1396,9 @@ class TestIndexingRunnerEstimate:
     def mock_dependencies(self):
         """Mock all external dependencies."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.FeatureService", autospec=True) as mock_feature_service,
-            patch("core.indexing_runner.IndexProcessorFactory", autospec=True) as mock_factory,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.FeatureService") as mock_feature_service,
+            patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             yield {
                 "db": mock_db,
@@ -1427,7 +1418,7 @@ class TestIndexingRunnerEstimate:
         mock_dependencies["feature_service"].get_features.return_value = mock_features
 
         # Create too many extract settings
-        with patch("core.indexing_runner.dify_config", autospec=True) as mock_config:
+        with patch("core.indexing_runner.dify_config") as mock_config:
             mock_config.BATCH_UPLOAD_LIMIT = 10
             extract_settings = [MagicMock() for _ in range(15)]
 
@@ -1455,8 +1446,8 @@ class TestIndexingRunnerProcessChunk:
     def mock_dependencies(self):
         """Mock all external dependencies."""
         with (
-            patch("core.indexing_runner.db", autospec=True) as mock_db,
-            patch("core.indexing_runner.redis_client", autospec=True) as mock_redis,
+            patch("core.indexing_runner.db") as mock_db,
+            patch("core.indexing_runner.redis_client") as mock_redis,
         ):
             yield {
                 "db": mock_db,

@@ -41,7 +41,7 @@ class TestGetOAuthProviders:
             ({"id": None, "secret": None}, {"id": None, "secret": None}, False, False),
         ],
     )
-    @patch("controllers.console.auth.oauth.dify_config", autospec=True)
+    @patch("controllers.console.auth.oauth.dify_config")
     def test_should_configure_oauth_providers_correctly(
         self, mock_config, app, github_config, google_config, expected_github, expected_google
     ):
@@ -83,8 +83,8 @@ class TestOAuthLogin:
             ("", None),
         ],
     )
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
-    @patch("controllers.console.auth.oauth.redirect", autospec=True)
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth.redirect")
     def test_should_handle_oauth_login_with_various_tokens(
         self,
         mock_redirect,
@@ -112,7 +112,7 @@ class TestOAuthLogin:
             ("google", "Invalid provider"),  # When Google is not configured
         ],
     )
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
     def test_should_return_error_for_invalid_providers(
         self, mock_get_providers, resource, app, provider, expected_error
     ):
@@ -152,12 +152,12 @@ class TestOAuthCallback:
 
         return {"provider": oauth_provider, "account": account, "token_pair": token_pair}
 
-    @patch("controllers.console.auth.oauth.dify_config", autospec=True)
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
-    @patch("controllers.console.auth.oauth._generate_account", autospec=True)
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.redirect", autospec=True)
+    @patch("controllers.console.auth.oauth.dify_config")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth._generate_account")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.redirect")
     def test_should_handle_successful_oauth_callback(
         self,
         mock_redirect,
@@ -190,8 +190,8 @@ class TestOAuthCallback:
             (KeyError("Missing key"), "OAuth process failed"),
         ],
     )
-    @patch("controllers.console.auth.oauth.db", autospec=True)
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
+    @patch("controllers.console.auth.oauth.db")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
     def test_should_handle_oauth_exceptions(
         self, mock_get_providers, mock_db, resource, app, exception, expected_error
     ):
@@ -216,10 +216,10 @@ class TestOAuthCallback:
         assert status_code == 400
         assert response["error"] == expected_error
 
-    @patch("controllers.console.auth.oauth.dify_config", autospec=True)
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
-    @patch("controllers.console.auth.oauth.RegisterService", autospec=True)
-    @patch("controllers.console.auth.oauth.redirect", autospec=True)
+    @patch("controllers.console.auth.oauth.dify_config")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.redirect")
     def test_invitation_comparison_is_case_insensitive(
         self,
         mock_redirect,
@@ -256,13 +256,13 @@ class TestOAuthCallback:
             ),
         ],
     )
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.db", autospec=True)
-    @patch("controllers.console.auth.oauth.dify_config", autospec=True)
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
-    @patch("controllers.console.auth.oauth._generate_account", autospec=True)
-    @patch("controllers.console.auth.oauth.redirect", autospec=True)
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.db")
+    @patch("controllers.console.auth.oauth.dify_config")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth._generate_account")
+    @patch("controllers.console.auth.oauth.redirect")
     def test_should_redirect_based_on_account_status(
         self,
         mock_redirect,
@@ -303,12 +303,12 @@ class TestOAuthCallback:
 
         mock_redirect.assert_called_once_with(expected_redirect)
 
-    @patch("controllers.console.auth.oauth.dify_config", autospec=True)
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
-    @patch("controllers.console.auth.oauth._generate_account", autospec=True)
-    @patch("controllers.console.auth.oauth.db", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
+    @patch("controllers.console.auth.oauth.dify_config")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth._generate_account")
+    @patch("controllers.console.auth.oauth.db")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.AccountService")
     def test_should_activate_pending_account(
         self,
         mock_account_service,
@@ -340,13 +340,13 @@ class TestOAuthCallback:
         assert mock_account.initialized_at is not None
         mock_db.session.commit.assert_called_once()
 
-    @patch("controllers.console.auth.oauth.dify_config", autospec=True)
-    @patch("controllers.console.auth.oauth.get_oauth_providers", autospec=True)
-    @patch("controllers.console.auth.oauth._generate_account", autospec=True)
-    @patch("controllers.console.auth.oauth.db", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
-    @patch("controllers.console.auth.oauth.redirect", autospec=True)
+    @patch("controllers.console.auth.oauth.dify_config")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth._generate_account")
+    @patch("controllers.console.auth.oauth.db")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.redirect")
     def test_defensive_check_for_closed_account_status(
         self,
         mock_redirect,
@@ -424,10 +424,10 @@ class TestAccountGeneration:
         account.name = "Test User"
         return account
 
-    @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.oauth.Session", autospec=True)
-    @patch("controllers.console.auth.oauth.Account", autospec=True)
-    @patch("controllers.console.auth.oauth.db", autospec=True)
+    @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.auth.oauth.Session")
+    @patch("controllers.console.auth.oauth.Account")
+    @patch("controllers.console.auth.oauth.db")
     def test_should_get_account_by_openid_or_email(
         self, mock_db, mock_account_model, mock_session, mock_get_account, user_info, mock_account
     ):
@@ -473,12 +473,12 @@ class TestAccountGeneration:
             (False, None, False),  # Registration not allowed
         ],
     )
-    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", autospec=True)
-    @patch("controllers.console.auth.oauth.FeatureService", autospec=True)
-    @patch("controllers.console.auth.oauth.RegisterService", autospec=True)
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.db", autospec=True)
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
+    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.db")
     def test_should_handle_account_generation_scenarios(
         self,
         mock_db,
@@ -514,12 +514,12 @@ class TestAccountGeneration:
                 else:
                     mock_register_service.register.assert_not_called()
 
-    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None, autospec=True)
-    @patch("controllers.console.auth.oauth.FeatureService", autospec=True)
-    @patch("controllers.console.auth.oauth.RegisterService", autospec=True)
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.db", autospec=True)
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
+    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.db")
     def test_should_register_with_lowercase_email(
         self,
         mock_db,
@@ -541,11 +541,11 @@ class TestAccountGeneration:
             email="upper@example.com", name="Test User", password=None, open_id="123", provider="github"
         )
 
-    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", autospec=True)
-    @patch("controllers.console.auth.oauth.TenantService", autospec=True)
-    @patch("controllers.console.auth.oauth.FeatureService", autospec=True)
-    @patch("controllers.console.auth.oauth.AccountService", autospec=True)
-    @patch("controllers.console.auth.oauth.tenant_was_created", autospec=True)
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.tenant_was_created")
     def test_should_create_workspace_for_account_without_tenant(
         self,
         mock_event,

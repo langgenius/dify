@@ -18,20 +18,16 @@ class TestAppDslService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.app_dsl_service.WorkflowService", autospec=True) as mock_workflow_service,
-            patch("services.app_dsl_service.DependenciesAnalysisService", autospec=True) as mock_dependencies_service,
-            patch(
-                "services.app_dsl_service.WorkflowDraftVariableService", autospec=True
-            ) as mock_draft_variable_service,
-            patch("services.app_dsl_service.ssrf_proxy", autospec=True) as mock_ssrf_proxy,
-            patch("services.app_dsl_service.redis_client", autospec=True) as mock_redis_client,
-            patch("services.app_dsl_service.app_was_created", autospec=True) as mock_app_was_created,
-            patch(
-                "services.app_dsl_service.app_model_config_was_updated", autospec=True
-            ) as mock_app_model_config_was_updated,
-            patch("services.app_service.ModelManager", autospec=True) as mock_model_manager,
-            patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
-            patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
+            patch("services.app_dsl_service.WorkflowService") as mock_workflow_service,
+            patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
+            patch("services.app_dsl_service.WorkflowDraftVariableService") as mock_draft_variable_service,
+            patch("services.app_dsl_service.ssrf_proxy") as mock_ssrf_proxy,
+            patch("services.app_dsl_service.redis_client") as mock_redis_client,
+            patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
+            patch("services.app_dsl_service.app_model_config_was_updated") as mock_app_model_config_was_updated,
+            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
             # Setup default mock returns
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -85,7 +81,7 @@ class TestAppDslService:
         fake = Faker()
 
         # Setup mocks for account creation
-        with patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service:
+        with patch("services.account_service.FeatureService") as mock_account_feature_service:
             mock_account_feature_service.get_system_features.return_value.is_allow_register = True
 
             # Create account and tenant first

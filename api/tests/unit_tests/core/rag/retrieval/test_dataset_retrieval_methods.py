@@ -109,8 +109,8 @@ class TestCheckKnowledgeRateLimit:
     5. RateLimitLog is created when limit is exceeded
     """
 
-    @patch("core.rag.retrieval.dataset_retrieval.FeatureService", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.redis_client", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.FeatureService")
+    @patch("core.rag.retrieval.dataset_retrieval.redis_client")
     def test_rate_limit_disabled_no_exception(self, mock_redis, mock_feature_service):
         """
         Test that when rate limit is disabled, no exception is raised.
@@ -144,10 +144,10 @@ class TestCheckKnowledgeRateLimit:
         assert not mock_redis.zremrangebyscore.called
         assert not mock_redis.zcard.called
 
-    @patch("core.rag.retrieval.dataset_retrieval.session_factory", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.FeatureService", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.redis_client", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.time", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.session_factory")
+    @patch("core.rag.retrieval.dataset_retrieval.FeatureService")
+    @patch("core.rag.retrieval.dataset_retrieval.redis_client")
+    @patch("core.rag.retrieval.dataset_retrieval.time")
     def test_rate_limit_enabled_not_exceeded(self, mock_time, mock_redis, mock_feature_service, mock_session_factory):
         """
         Test that when rate limit is enabled but not exceeded, no exception is raised.
@@ -196,10 +196,10 @@ class TestCheckKnowledgeRateLimit:
         mock_redis.zremrangebyscore.assert_called_once_with(expected_key, 0, current_time - 60000)
         mock_redis.zcard.assert_called_once_with(expected_key)
 
-    @patch("core.rag.retrieval.dataset_retrieval.session_factory", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.FeatureService", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.redis_client", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.time", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.session_factory")
+    @patch("core.rag.retrieval.dataset_retrieval.FeatureService")
+    @patch("core.rag.retrieval.dataset_retrieval.redis_client")
+    @patch("core.rag.retrieval.dataset_retrieval.time")
     def test_rate_limit_enabled_exceeded_raises_exception(
         self, mock_time, mock_redis, mock_feature_service, mock_session_factory
     ):
@@ -356,8 +356,8 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         assert request.model_name == "gpt-4"
         assert request.model_mode == "chat"
 
-    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor", autospec=True)
-    @patch("core.rag.retrieval.dataset_retrieval.session_factory", autospec=True)
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
+    @patch("core.rag.retrieval.dataset_retrieval.session_factory")
     def test_knowledge_retrieval_multiple_mode(self, mock_session_factory, mock_data_processor):
         """
         Test knowledge_retrieval in multiple retrieval mode.
@@ -397,22 +397,20 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock _check_knowledge_rate_limit
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit", autospec=True):
+        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             # Mock _get_available_datasets
             mock_dataset1 = create_mock_dataset(dataset_id=dataset_id1, tenant_id=tenant_id)
             mock_dataset2 = create_mock_dataset(dataset_id=dataset_id2, tenant_id=tenant_id)
             with patch.object(
-                dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset1, mock_dataset2], autospec=True
+                dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset1, mock_dataset2]
             ):
                 # Mock get_metadata_filter_condition
-                with patch.object(
-                    dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None), autospec=True
-                ):
+                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                     # Mock multiple_retrieve to return documents
                     doc1 = create_mock_document("Python is great", "doc1", score=0.9)
                     doc2 = create_mock_document("Python is awesome", "doc2", score=0.8)
                     with patch.object(
-                        dataset_retrieval, "multiple_retrieve", return_value=[doc1, doc2], autospec=True
+                        dataset_retrieval, "multiple_retrieve", return_value=[doc1, doc2]
                     ) as mock_multiple_retrieve:
                         # Mock format_retrieval_documents
                         mock_record = Mock()
@@ -436,7 +434,6 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                         with patch(
                             "core.rag.retrieval.dataset_retrieval.RetrievalService",
                             return_value=mock_retrieval_service,
-                            autospec=True,
                         ):
                             # Mock database queries
                             mock_session = MagicMock()
@@ -499,14 +496,16 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock dependencies
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit", autospec=True):
+        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset(dataset_id=dataset_id, tenant_id=tenant_id)
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset], autospec=True):
+            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
                 # Mock get_metadata_filter_condition - should NOT be called when disabled
                 with patch.object(
-                    dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None), autospec=True
+                    dataset_retrieval,
+                    "get_metadata_filter_condition",
+                    return_value=(None, None),
                 ) as mock_get_metadata:
-                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[], autospec=True):
+                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                         # Act
                         result = dataset_retrieval.knowledge_retrieval(request)
 
@@ -547,12 +546,10 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock dependencies
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit", autospec=True):
+        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset(dataset_id=dataset_id, tenant_id=tenant_id, provider="external")
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset], autospec=True):
-                with patch.object(
-                    dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None), autospec=True
-                ):
+            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
+                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                     # Create external document
                     external_doc = create_mock_document(
                         "External knowledge",
@@ -566,9 +563,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                             "title": "External Document",
                         },
                     )
-                    with patch.object(
-                        dataset_retrieval, "multiple_retrieve", return_value=[external_doc], autospec=True
-                    ):
+                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[external_doc]):
                         # Act
                         result = dataset_retrieval.knowledge_retrieval(request)
 
@@ -606,14 +601,12 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock dependencies
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit", autospec=True):
+        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset(dataset_id=dataset_id, tenant_id=tenant_id)
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset], autospec=True):
-                with patch.object(
-                    dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None), autospec=True
-                ):
+            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
+                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                     # Mock multiple_retrieve to return empty list
-                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[], autospec=True):
+                    with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                         # Act
                         result = dataset_retrieval.knowledge_retrieval(request)
 
@@ -652,7 +645,6 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             dataset_retrieval,
             "_check_knowledge_rate_limit",
             side_effect=exc.RateLimitExceededError("Rate limit exceeded"),
-            autospec=True,
         ):
             # Act & Assert
             with pytest.raises(exc.RateLimitExceededError):
@@ -686,9 +678,9 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock dependencies
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit", autospec=True):
+        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             # Mock _get_available_datasets to return empty list
-            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[], autospec=True):
+            with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[]):
                 # Act
                 result = dataset_retrieval.knowledge_retrieval(request)
 

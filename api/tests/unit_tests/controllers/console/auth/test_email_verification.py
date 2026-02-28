@@ -49,10 +49,10 @@ class TestEmailCodeLoginSendEmailApi:
         account.name = "Test User"
         return account
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email")
     def test_send_email_code_existing_user(
         self, mock_send_email, mock_get_user, mock_is_ip_limit, mock_db, app, mock_account
     ):
@@ -82,11 +82,11 @@ class TestEmailCodeLoginSendEmailApi:
         assert response["data"] == "email_token_123"
         mock_send_email.assert_called_once_with(account=mock_account, language="en-US")
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email")
     def test_send_email_code_new_user_registration_allowed(
         self, mock_send_email, mock_get_features, mock_get_user, mock_is_ip_limit, mock_db, app
     ):
@@ -115,10 +115,10 @@ class TestEmailCodeLoginSendEmailApi:
         assert response["result"] == "success"
         mock_send_email.assert_called_once_with(email="newuser@example.com", language="en-US")
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_send_email_code_new_user_registration_disabled(
         self, mock_get_features, mock_get_user, mock_is_ip_limit, mock_db, app
     ):
@@ -141,8 +141,8 @@ class TestEmailCodeLoginSendEmailApi:
             with pytest.raises(AccountNotFound):
                 api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     def test_send_email_code_ip_rate_limited(self, mock_is_ip_limit, mock_db, app):
         """
         Test email code sending blocked by IP rate limit.
@@ -161,9 +161,9 @@ class TestEmailCodeLoginSendEmailApi:
             with pytest.raises(EmailSendIpLimitError):
                 api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app):
         """
         Test email code sending to frozen account.
@@ -190,10 +190,10 @@ class TestEmailCodeLoginSendEmailApi:
             (None, "en-US"),
         ],
     )
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email")
     def test_send_email_code_language_handling(
         self,
         mock_send_email,
@@ -257,13 +257,13 @@ class TestEmailCodeLoginApi:
         token_pair.csrf_token = "csrf_token"
         return token_pair
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.login", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_email_code_login_existing_user(
         self,
         mock_reset_rate_limit,
@@ -306,13 +306,13 @@ class TestEmailCodeLoginApi:
         mock_revoke_token.assert_called_once_with("valid_token")
         mock_login.assert_called_once()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.create_account_and_tenant", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.login", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_email_code_login_new_user_creates_account(
         self,
         mock_reset_rate_limit,
@@ -359,8 +359,8 @@ class TestEmailCodeLoginApi:
         assert response.json["result"] == "success"
         mock_create_account.assert_called_once()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
     def test_email_code_login_invalid_token(self, mock_get_data, mock_db, app):
         """
         Test email code login with invalid token.
@@ -382,8 +382,8 @@ class TestEmailCodeLoginApi:
             with pytest.raises(InvalidTokenError):
                 api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
     def test_email_code_login_email_mismatch(self, mock_get_data, mock_db, app):
         """
         Test email code login with mismatched email.
@@ -405,8 +405,8 @@ class TestEmailCodeLoginApi:
             with pytest.raises(InvalidEmailError):
                 api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
     def test_email_code_login_wrong_code(self, mock_get_data, mock_db, app):
         """
         Test email code login with incorrect code.
@@ -428,12 +428,12 @@ class TestEmailCodeLoginApi:
             with pytest.raises(EmailCodeError):
                 api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_email_code_login_creates_workspace_for_user_without_tenant(
         self,
         mock_get_features,
@@ -472,12 +472,12 @@ class TestEmailCodeLoginApi:
             # This would complete the flow, but we're testing workspace creation logic
             # In real implementation, TenantService.create_tenant would be called
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_email_code_login_workspace_limit_exceeded(
         self,
         mock_get_features,
@@ -514,12 +514,12 @@ class TestEmailCodeLoginApi:
             with pytest.raises(WorkspacesLimitExceeded):
                 api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.get_user_through_email", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_email_code_login_workspace_creation_not_allowed(
         self,
         mock_get_features,

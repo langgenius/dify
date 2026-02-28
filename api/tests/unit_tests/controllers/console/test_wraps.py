@@ -60,11 +60,7 @@ class TestAccountInitialization:
             return "success"
 
         # Act
-        with patch(
-            "controllers.console.wraps.current_account_with_tenant",
-            return_value=(mock_user, "tenant123"),
-            autospec=True,
-        ):
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")):
             result = protected_view()
 
         # Assert
@@ -81,11 +77,7 @@ class TestAccountInitialization:
             return "success"
 
         # Act & Assert
-        with patch(
-            "controllers.console.wraps.current_account_with_tenant",
-            return_value=(mock_user, "tenant123"),
-            autospec=True,
-        ):
+        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")):
             with pytest.raises(AccountNotInitializedError):
                 protected_view()
 
@@ -172,13 +164,9 @@ class TestBillingResourceLimits:
 
         # Act
         with patch(
-            "controllers.console.wraps.current_account_with_tenant",
-            return_value=(MockUser("test_user"), "tenant123"),
-            autospec=True,
+            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
         ):
-            with patch(
-                "controllers.console.wraps.FeatureService.get_features", return_value=mock_features, autospec=True
-            ):
+            with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                 result = add_member()
 
         # Assert
@@ -202,11 +190,8 @@ class TestBillingResourceLimits:
             with patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-                autospec=True,
             ):
-                with patch(
-                    "controllers.console.wraps.FeatureService.get_features", return_value=mock_features, autospec=True
-                ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                     with pytest.raises(Exception) as exc_info:
                         add_member()
                     assert exc_info.value.code == 403
@@ -230,11 +215,8 @@ class TestBillingResourceLimits:
             with patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-                autospec=True,
             ):
-                with patch(
-                    "controllers.console.wraps.FeatureService.get_features", return_value=mock_features, autospec=True
-                ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                     with pytest.raises(Exception) as exc_info:
                         upload_document()
                     assert exc_info.value.code == 403
@@ -244,11 +226,8 @@ class TestBillingResourceLimits:
             with patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-                autospec=True,
             ):
-                with patch(
-                    "controllers.console.wraps.FeatureService.get_features", return_value=mock_features, autospec=True
-                ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
                     result = upload_document()
                     assert result == "document_uploaded"
 
@@ -256,8 +235,8 @@ class TestBillingResourceLimits:
 class TestRateLimiting:
     """Test rate limiting decorator"""
 
-    @patch("controllers.console.wraps.redis_client", autospec=True)
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.redis_client")
+    @patch("controllers.console.wraps.db")
     def test_should_allow_requests_within_rate_limit(self, mock_db, mock_redis):
         """Test that requests within rate limit are allowed"""
         # Arrange
@@ -272,14 +251,10 @@ class TestRateLimiting:
 
         # Act
         with patch(
-            "controllers.console.wraps.current_account_with_tenant",
-            return_value=(MockUser("test_user"), "tenant123"),
-            autospec=True,
+            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
         ):
             with patch(
-                "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
-                return_value=mock_rate_limit,
-                autospec=True,
+                "controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit
             ):
                 result = knowledge_request()
 
@@ -288,8 +263,8 @@ class TestRateLimiting:
         mock_redis.zadd.assert_called_once()
         mock_redis.zremrangebyscore.assert_called_once()
 
-    @patch("controllers.console.wraps.redis_client", autospec=True)
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.redis_client")
+    @patch("controllers.console.wraps.db")
     def test_should_reject_requests_over_rate_limit(self, mock_db, mock_redis):
         """Test that requests over rate limit are rejected and logged"""
         # Arrange
@@ -312,12 +287,9 @@ class TestRateLimiting:
             with patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-                autospec=True,
             ):
                 with patch(
-                    "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
-                    return_value=mock_rate_limit,
-                    autospec=True,
+                    "controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit
                 ):
                     with pytest.raises(Exception) as exc_info:
                         knowledge_request()
@@ -334,7 +306,7 @@ class TestRateLimiting:
 class TestSystemSetup:
     """Test system setup decorator"""
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     def test_should_allow_when_setup_complete(self, mock_db):
         """Test that requests are allowed when setup is complete"""
         # Arrange
@@ -351,8 +323,8 @@ class TestSystemSetup:
         # Assert
         assert result == "admin_success"
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.wraps.os.environ.get", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.wraps.os.environ.get")
     def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
         # Arrange
@@ -368,8 +340,8 @@ class TestSystemSetup:
             with pytest.raises(NotInitValidateError):
                 admin_view()
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.wraps.os.environ.get", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.wraps.os.environ.get")
     def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
         # Arrange
@@ -400,9 +372,7 @@ class TestEnterpriseLicense:
             return "enterprise_success"
 
         # Act
-        with patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings, autospec=True
-        ):
+        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
             result = enterprise_feature()
 
         # Assert
@@ -420,9 +390,7 @@ class TestEnterpriseLicense:
             return "enterprise_success"
 
         # Act & Assert
-        with patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings, autospec=True
-        ):
+        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
             with pytest.raises(UnauthorizedAndForceLogout) as exc_info:
                 enterprise_feature()
             assert "license is invalid" in str(exc_info.value)

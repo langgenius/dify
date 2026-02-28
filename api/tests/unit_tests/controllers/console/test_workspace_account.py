@@ -44,16 +44,14 @@ def _set_logged_in_user(account: Account):
 
 
 class TestChangeEmailSend:
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.workspace.account.current_account_with_tenant", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.get_change_email_data", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.send_change_email_email", autospec=True)
-    @patch(
-        "controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False, autospec=True
-    )
-    @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1", autospec=True)
-    @patch("libs.login.check_csrf_token", return_value=None, autospec=True)
-    @patch("controllers.console.wraps.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
+    @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
     def test_should_normalize_new_email_phase(
         self,
         mock_features,
@@ -95,16 +93,16 @@ class TestChangeEmailSend:
 
 
 class TestChangeEmailValidity:
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.workspace.account.current_account_with_tenant", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.reset_change_email_error_rate_limit", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.generate_change_email_token", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.add_change_email_error_rate_limit", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.get_change_email_data", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit", autospec=True)
-    @patch("libs.login.check_csrf_token", return_value=None, autospec=True)
-    @patch("controllers.console.wraps.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.reset_change_email_error_rate_limit")
+    @patch("controllers.console.workspace.account.AccountService.generate_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.add_change_email_error_rate_limit")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
     def test_should_validate_with_normalized_email(
         self,
         mock_features,
@@ -147,18 +145,16 @@ class TestChangeEmailValidity:
 
 
 class TestChangeEmailReset:
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.workspace.account.current_account_with_tenant", autospec=True)
-    @patch(
-        "controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email", autospec=True
-    )
-    @patch("controllers.console.workspace.account.AccountService.update_account_email", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.get_change_email_data", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.check_email_unique", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", autospec=True)
-    @patch("libs.login.check_csrf_token", return_value=None, autospec=True)
-    @patch("controllers.console.wraps.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
+    @patch("controllers.console.workspace.account.AccountService.update_account_email")
+    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
+    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
     def test_should_normalize_new_email_before_update(
         self,
         mock_features,
@@ -200,8 +196,8 @@ class TestChangeEmailReset:
 
 
 class TestAccountDeletionFeedback:
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.workspace.account.BillingService.update_account_deletion_feedback", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.BillingService.update_account_deletion_feedback")
     def test_should_normalize_feedback_email(self, mock_update, mock_db, app):
         _mock_wraps_db(mock_db)
         with app.test_request_context(
@@ -216,9 +212,9 @@ class TestAccountDeletionFeedback:
 
 
 class TestCheckEmailUnique:
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.check_email_unique", autospec=True)
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
+    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
     def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, mock_db, app):
         _mock_wraps_db(mock_db)
         mock_is_freeze.return_value = False

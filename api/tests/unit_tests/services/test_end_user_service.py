@@ -61,8 +61,8 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         return TestEndUserServiceFactory()
 
     # Test 10: Session context manager properly closes
-    @patch("services.end_user_service.Session", autospec=True)
-    @patch("services.end_user_service.db", autospec=True)
+    @patch("services.end_user_service.Session")
+    @patch("services.end_user_service.db")
     def test_session_context_manager_closes(self, mock_db, mock_session_class, factory):
         """Test that Session context manager is properly used."""
         # Arrange

@@ -22,13 +22,13 @@ class TestQueueTask:
     @pytest.fixture
     def mock_redis_client(self):
         """Mock redis_client for testing."""
-        with patch("services.enterprise.account_deletion_sync.redis_client", autospec=True) as mock_redis:
+        with patch("services.enterprise.account_deletion_sync.redis_client") as mock_redis:
             yield mock_redis
 
     @pytest.fixture
     def mock_uuid(self):
         """Mock UUID generation for predictable task IDs."""
-        with patch("services.enterprise.account_deletion_sync.uuid.uuid4", autospec=True) as mock_uuid_gen:
+        with patch("services.enterprise.account_deletion_sync.uuid.uuid4") as mock_uuid_gen:
             mock_uuid_gen.return_value = MagicMock(hex="test-task-id-1234")
             yield mock_uuid_gen
 
@@ -92,7 +92,7 @@ class TestSyncWorkspaceMemberRemoval:
     @pytest.fixture
     def mock_queue_task(self):
         """Mock _queue_task for testing."""
-        with patch("services.enterprise.account_deletion_sync._queue_task", autospec=True) as mock_queue:
+        with patch("services.enterprise.account_deletion_sync._queue_task") as mock_queue:
             mock_queue.return_value = True
             yield mock_queue
 
@@ -103,7 +103,7 @@ class TestSyncWorkspaceMemberRemoval:
         member_id = "member-456"
         source = "workspace_member_removed"
 
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
             # Act
@@ -116,7 +116,7 @@ class TestSyncWorkspaceMemberRemoval:
     def test_sync_workspace_member_removal_enterprise_disabled(self, mock_queue_task):
         """Test sync when ENTERPRISE_ENABLED is False (community edition)."""
         # Arrange
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = False
 
             # Act
@@ -131,7 +131,7 @@ class TestSyncWorkspaceMemberRemoval:
         # Arrange
         mock_queue_task.return_value = False
 
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
             # Act
@@ -147,20 +147,20 @@ class TestSyncAccountDeletion:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session for testing."""
-        with patch("services.enterprise.account_deletion_sync.db.session", autospec=True) as mock_session:
+        with patch("services.enterprise.account_deletion_sync.db.session") as mock_session:
             yield mock_session
 
     @pytest.fixture
     def mock_queue_task(self):
         """Mock _queue_task for testing."""
-        with patch("services.enterprise.account_deletion_sync._queue_task", autospec=True) as mock_queue:
+        with patch("services.enterprise.account_deletion_sync._queue_task") as mock_queue:
             mock_queue.return_value = True
             yield mock_queue
 
     def test_sync_account_deletion_enterprise_disabled(self, mock_db_session, mock_queue_task):
         """Test sync when ENTERPRISE_ENABLED is False (community edition)."""
         # Arrange
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = False
 
             # Act
@@ -188,7 +188,7 @@ class TestSyncAccountDeletion:
         mock_query.filter_by.return_value.all.return_value = [mock_join1, mock_join2, mock_join3]
         mock_db_session.query.return_value = mock_query
 
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
             # Act
@@ -210,7 +210,7 @@ class TestSyncAccountDeletion:
         mock_query.filter_by.return_value.all.return_value = []
         mock_db_session.query.return_value = mock_query
 
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
             # Act
@@ -243,7 +243,7 @@ class TestSyncAccountDeletion:
 
         mock_queue_task.side_effect = queue_side_effect
 
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
             # Act
@@ -265,7 +265,7 @@ class TestSyncAccountDeletion:
 
         mock_queue_task.return_value = False
 
-        with patch("services.enterprise.account_deletion_sync.dify_config", autospec=True) as mock_config:
+        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
             # Act

@@ -78,7 +78,7 @@ class TestScheduleService(unittest.TestCase):
         with pytest.raises(UnknownTimeZoneError):
             calculate_next_run_at(cron_expr, timezone)
 
-    @patch("libs.schedule_utils.calculate_next_run_at", autospec=True)
+    @patch("libs.schedule_utils.calculate_next_run_at")
     def test_create_schedule(self, mock_calculate_next_run):
         """Test creating a new schedule."""
         mock_session = MagicMock(spec=Session)
@@ -107,7 +107,7 @@ class TestScheduleService(unittest.TestCase):
         mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
 
-    @patch("services.trigger.schedule_service.calculate_next_run_at", autospec=True)
+    @patch("services.trigger.schedule_service.calculate_next_run_at")
     def test_update_schedule(self, mock_calculate_next_run):
         """Test updating an existing schedule."""
         mock_session = MagicMock(spec=Session)
@@ -187,7 +187,7 @@ class TestScheduleService(unittest.TestCase):
         assert "Schedule not found: non-existent-id" in str(context.value)
         mock_session.delete.assert_not_called()
 
-    @patch("services.trigger.schedule_service.select", autospec=True)
+    @patch("services.trigger.schedule_service.select")
     def test_get_tenant_owner(self, mock_select):
         """Test getting tenant owner account."""
         mock_session = MagicMock(spec=Session)
@@ -209,7 +209,7 @@ class TestScheduleService(unittest.TestCase):
         assert result is not None
         assert result.id == "owner-account-id"
 
-    @patch("services.trigger.schedule_service.select", autospec=True)
+    @patch("services.trigger.schedule_service.select")
     def test_get_tenant_owner_fallback_to_admin(self, mock_select):
         """Test getting tenant owner falls back to admin if no owner."""
         mock_session = MagicMock(spec=Session)
@@ -231,7 +231,7 @@ class TestScheduleService(unittest.TestCase):
         assert result is not None
         assert result.id == "admin-account-id"
 
-    @patch("services.trigger.schedule_service.calculate_next_run_at", autospec=True)
+    @patch("services.trigger.schedule_service.calculate_next_run_at")
     def test_update_next_run_at(self, mock_calculate_next_run):
         """Test updating next run time after schedule triggered."""
         mock_session = MagicMock(spec=Session)
@@ -676,9 +676,9 @@ class TestScheduleWithTimezone(unittest.TestCase):
 class TestSyncScheduleFromWorkflow(unittest.TestCase):
     """Test cases for syncing schedule from workflow."""
 
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db", autospec=True)
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService", autospec=True)
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select", autospec=True)
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
     def test_sync_schedule_create_new(self, mock_select, mock_service, mock_db):
         """Test creating new schedule when none exists."""
         mock_session = MagicMock()
@@ -706,9 +706,9 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             mock_service.create_schedule.assert_called_once()
             mock_session.commit.assert_called_once()
 
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db", autospec=True)
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService", autospec=True)
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select", autospec=True)
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
     def test_sync_schedule_update_existing(self, mock_select, mock_service, mock_db):
         """Test updating existing schedule."""
         mock_session = MagicMock()
@@ -748,9 +748,9 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             assert updates_obj.timezone == "America/New_York"
             mock_session.commit.assert_called_once()
 
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db", autospec=True)
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService", autospec=True)
-    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select", autospec=True)
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
     def test_sync_schedule_remove_when_no_config(self, mock_select, mock_service, mock_db):
         """Test removing schedule when no schedule config in workflow."""
         mock_session = MagicMock()

@@ -130,7 +130,7 @@ class TestFeedbackService:
         return [(feedback, message, conversation, app, account)]
 
     # Test 01: CSV Export - Basic Functionality
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_csv_basic(self, mock_db, factory, sample_feedback_data):
         """Test basic CSV export with single feedback record."""
         # Arrange
@@ -168,7 +168,7 @@ class TestFeedbackService:
         assert rows[0]["ai_response"] == "Python is a programming language."
 
     # Test 02: JSON Export - Basic Functionality
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_json_basic(self, mock_db, factory, sample_feedback_data):
         """Test basic JSON export with metadata structure."""
         # Arrange
@@ -201,7 +201,7 @@ class TestFeedbackService:
         assert len(json_content["feedback_data"]) == 1
 
     # Test 03: Filter by from_source
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_filter_from_source(self, mock_db, factory):
         """Test filtering by feedback source (user/admin)."""
         # Arrange
@@ -221,7 +221,7 @@ class TestFeedbackService:
         mock_query.filter.assert_called()
 
     # Test 04: Filter by rating
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_filter_rating(self, mock_db, factory):
         """Test filtering by rating (like/dislike)."""
         # Arrange
@@ -241,7 +241,7 @@ class TestFeedbackService:
         mock_query.filter.assert_called()
 
     # Test 05: Filter by has_comment (True)
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_filter_has_comment_true(self, mock_db, factory):
         """Test filtering for feedback with comments."""
         # Arrange
@@ -261,7 +261,7 @@ class TestFeedbackService:
         mock_query.filter.assert_called()
 
     # Test 06: Filter by has_comment (False)
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_filter_has_comment_false(self, mock_db, factory):
         """Test filtering for feedback without comments."""
         # Arrange
@@ -281,7 +281,7 @@ class TestFeedbackService:
         mock_query.filter.assert_called()
 
     # Test 07: Filter by date range
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_filter_date_range(self, mock_db, factory):
         """Test filtering by start and end dates."""
         # Arrange
@@ -305,7 +305,7 @@ class TestFeedbackService:
         assert mock_query.filter.call_count >= 2  # Called for both start and end dates
 
     # Test 08: Invalid date format - start_date
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_invalid_start_date(self, mock_db):
         """Test error handling for invalid start_date format."""
         # Arrange
@@ -320,7 +320,7 @@ class TestFeedbackService:
             FeedbackService.export_feedbacks(app_id="app-456", start_date="invalid-date")
 
     # Test 09: Invalid date format - end_date
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_invalid_end_date(self, mock_db):
         """Test error handling for invalid end_date format."""
         # Arrange
@@ -342,7 +342,7 @@ class TestFeedbackService:
             FeedbackService.export_feedbacks(app_id="app-456", format_type="xml")
 
     # Test 11: Empty result set - CSV
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_empty_results_csv(self, mock_db):
         """Test CSV export with no feedback records."""
         # Arrange
@@ -367,7 +367,7 @@ class TestFeedbackService:
         assert reader.fieldnames is not None
 
     # Test 12: Empty result set - JSON
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_empty_results_json(self, mock_db):
         """Test JSON export with no feedback records."""
         # Arrange
@@ -389,7 +389,7 @@ class TestFeedbackService:
         assert len(json_content["feedback_data"]) == 0
 
     # Test 13: Long response truncation
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_long_response_truncation(self, mock_db, factory):
         """Test that long AI responses are truncated to 500 characters."""
         # Arrange
@@ -419,7 +419,7 @@ class TestFeedbackService:
         assert ai_response.endswith("...")
 
     # Test 14: Null account (end user feedback)
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_null_account(self, mock_db, factory):
         """Test handling of feedback from end users (no account)."""
         # Arrange
@@ -446,7 +446,7 @@ class TestFeedbackService:
         assert json_content["feedback_data"][0]["from_account_name"] == ""
 
     # Test 15: Null conversation name
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_null_conversation_name(self, mock_db, factory):
         """Test handling of conversations without names."""
         # Arrange
@@ -473,7 +473,7 @@ class TestFeedbackService:
         assert json_content["feedback_data"][0]["conversation_name"] == ""
 
     # Test 16: Dislike rating emoji
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_dislike_rating(self, mock_db, factory):
         """Test that dislike rating shows thumbs down emoji."""
         # Arrange
@@ -501,7 +501,7 @@ class TestFeedbackService:
         assert json_content["feedback_data"][0]["feedback_rating_raw"] == "dislike"
 
     # Test 17: Combined filters
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_combined_filters(self, mock_db, factory):
         """Test applying multiple filters simultaneously."""
         # Arrange
@@ -529,7 +529,7 @@ class TestFeedbackService:
         assert mock_query.filter.call_count >= 4
 
     # Test 18: Message query fallback to inputs
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_message_query_from_inputs(self, mock_db, factory):
         """Test fallback to inputs.query when message.query is None."""
         # Arrange
@@ -556,7 +556,7 @@ class TestFeedbackService:
         assert json_content["feedback_data"][0]["user_query"] == "Query from inputs"
 
     # Test 19: Empty feedback content
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_empty_feedback_content(self, mock_db, factory):
         """Test handling of feedback with empty/null content."""
         # Arrange
@@ -584,7 +584,7 @@ class TestFeedbackService:
         assert json_content["feedback_data"][0]["has_comment"] == "No"
 
     # Test 20: CSV headers validation
-    @patch("services.feedback_service.db", autospec=True)
+    @patch("services.feedback_service.db")
     def test_export_feedbacks_csv_headers(self, mock_db, factory, sample_feedback_data):
         """Test that CSV contains all expected headers."""
         # Arrange

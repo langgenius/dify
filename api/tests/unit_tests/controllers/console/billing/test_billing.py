@@ -34,17 +34,17 @@ class TestPartnerTenants:
     @pytest.fixture
     def mock_billing_service(self):
         """Mock BillingService."""
-        with patch("controllers.console.billing.billing.BillingService", autospec=True) as mock_service:
+        with patch("controllers.console.billing.billing.BillingService") as mock_service:
             yield mock_service
 
     @pytest.fixture
     def mock_decorators(self):
         """Mock decorators to avoid database access."""
         with (
-            patch("controllers.console.wraps.db", autospec=True) as mock_db,
+            patch("controllers.console.wraps.db") as mock_db,
             patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token", autospec=True) as mock_csrf,
+            patch("libs.login.check_csrf_token") as mock_csrf,
         ):
             mock_db.session.query.return_value.first.return_value = MagicMock()  # Mock setup exists
             mock_csrf.return_value = None
@@ -68,9 +68,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
                 result = resource.put(partner_key_encoded)
@@ -96,9 +95,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
 
@@ -121,9 +119,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
 
@@ -162,9 +159,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
 
@@ -194,9 +190,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
 
@@ -221,9 +216,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
 
@@ -248,9 +242,8 @@ class TestPartnerTenants:
                 patch(
                     "controllers.console.billing.billing.current_account_with_tenant",
                     return_value=(mock_account, "tenant-456"),
-                    autospec=True,
                 ),
-                patch("libs.login._get_user", return_value=mock_account, autospec=True),
+                patch("libs.login._get_user", return_value=mock_account),
             ):
                 resource = PartnerTenants()
 

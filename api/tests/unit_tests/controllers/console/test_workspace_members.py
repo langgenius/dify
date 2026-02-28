@@ -35,11 +35,11 @@ def _build_feature_flags():
 
 
 class TestMemberInviteEmailApi:
-    @patch("controllers.console.workspace.members.FeatureService.get_features", autospec=True)
-    @patch("controllers.console.workspace.members.RegisterService.invite_new_member", autospec=True)
-    @patch("controllers.console.workspace.members.current_account_with_tenant", autospec=True)
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("libs.login.check_csrf_token", return_value=None, autospec=True)
+    @patch("controllers.console.workspace.members.FeatureService.get_features")
+    @patch("controllers.console.workspace.members.RegisterService.invite_new_member")
+    @patch("controllers.console.workspace.members.current_account_with_tenant")
+    @patch("controllers.console.wraps.db")
+    @patch("libs.login.check_csrf_token", return_value=None)
     def test_invite_normalizes_emails(
         self,
         mock_csrf,

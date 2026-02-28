@@ -73,14 +73,14 @@ class TestLoginApi:
         token_pair.csrf_token = "mock_csrf_token"
         return token_pair
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.login", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_successful_login_without_invitation(
         self,
         mock_reset_rate_limit,
@@ -125,14 +125,14 @@ class TestLoginApi:
         mock_reset_rate_limit.assert_called_once_with("test@example.com")
         assert response.json["result"] == "success"
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.login", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_successful_login_with_valid_invitation(
         self,
         mock_reset_rate_limit,
@@ -179,10 +179,10 @@ class TestLoginApi:
         mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", "valid_token")
         assert response.json["result"] == "success"
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
         """
         Test login rejection when rate limit is exceeded.
@@ -204,9 +204,9 @@ class TestLoginApi:
             with pytest.raises(EmailPasswordLoginLimitError):
                 login_api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
-    @patch("controllers.console.auth.login.BillingService.is_email_in_freeze", autospec=True)
+    @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
     def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app):
         """
         Test login rejection for frozen accounts.
@@ -227,12 +227,12 @@ class TestLoginApi:
             with pytest.raises(AccountInFreezeError):
                 login_api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     def test_login_fails_with_invalid_credentials(
         self,
         mock_add_rate_limit,
@@ -266,11 +266,11 @@ class TestLoginApi:
 
         mock_add_rate_limit.assert_called_once_with("test@example.com")
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
     def test_login_fails_for_banned_account(
         self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app
     ):
@@ -295,13 +295,13 @@ class TestLoginApi:
             with pytest.raises(AccountBannedError):
                 login_api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.FeatureService.get_system_features", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
         mock_get_features,
@@ -340,10 +340,10 @@ class TestLoginApi:
             with pytest.raises(WorkspacesLimitExceeded):
                 login_api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
         """
         Test login failure when invitation email doesn't match login email.
@@ -371,15 +371,15 @@ class TestLoginApi:
             with pytest.raises(InvalidEmailError):
                 login_api.post()
 
-    @patch("controllers.console.wraps.db", autospec=True)
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
-    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.authenticate", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit", autospec=True)
-    @patch("controllers.console.auth.login.TenantService.get_join_tenants", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.login", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_login_retries_with_lowercase_email(
         self,
         mock_reset_rate_limit,
@@ -436,10 +436,10 @@ class TestLogoutApi:
         account.email = "test@example.com"
         return account
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.current_account_with_tenant", autospec=True)
-    @patch("controllers.console.auth.login.AccountService.logout", autospec=True)
-    @patch("controllers.console.auth.login.flask_login.logout_user", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.current_account_with_tenant")
+    @patch("controllers.console.auth.login.AccountService.logout")
+    @patch("controllers.console.auth.login.flask_login.logout_user")
     def test_successful_logout(
         self, mock_logout_user, mock_service_logout, mock_current_account, mock_db, app, mock_account
     ):
@@ -466,9 +466,9 @@ class TestLogoutApi:
         mock_logout_user.assert_called_once()
         assert response.json["result"] == "success"
 
-    @patch("controllers.console.wraps.db", autospec=True)
-    @patch("controllers.console.auth.login.current_account_with_tenant", autospec=True)
-    @patch("controllers.console.auth.login.flask_login", autospec=True)
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.current_account_with_tenant")
+    @patch("controllers.console.auth.login.flask_login")
     def test_logout_anonymous_user(self, mock_flask_login, mock_current_account, mock_db, app):
         """
         Test logout for anonymous (not logged in) user.

@@ -125,8 +125,8 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is False
 
     # Test 03: Basic pagination without first_id (desc order)
-    @patch("services.message_service.db", autospec=True)
-    @patch("services.message_service.ConversationService", autospec=True)
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_without_first_id_desc(self, mock_conversation_service, mock_db, factory):
         """Test basic pagination without first_id in descending order."""
         # Arrange
@@ -170,8 +170,8 @@ class TestMessageServicePaginationByFirstId:
         assert result.data[0].id == "msg-000"
 
     # Test 04: Basic pagination without first_id (asc order)
-    @patch("services.message_service.db", autospec=True)
-    @patch("services.message_service.ConversationService", autospec=True)
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_without_first_id_asc(self, mock_conversation_service, mock_db, factory):
         """Test basic pagination without first_id in ascending order."""
         # Arrange
@@ -215,8 +215,8 @@ class TestMessageServicePaginationByFirstId:
         assert result.data[4].id == "msg-000"
 
     # Test 05: Pagination with first_id
-    @patch("services.message_service.db", autospec=True)
-    @patch("services.message_service.ConversationService", autospec=True)
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_with_first_id(self, mock_conversation_service, mock_db, factory):
         """Test pagination with first_id to get messages before a specific message."""
         # Arrange
@@ -285,8 +285,8 @@ class TestMessageServicePaginationByFirstId:
         mock_query_history.where.assert_called_once()
 
     # Test 06: First message not found
-    @patch("services.message_service.db", autospec=True)
-    @patch("services.message_service.ConversationService", autospec=True)
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_first_message_not_exists(self, mock_conversation_service, mock_db, factory):
         """Test error handling when first_id doesn't exist."""
         # Arrange
@@ -312,8 +312,8 @@ class TestMessageServicePaginationByFirstId:
             )
 
     # Test 07: Has_more flag when results exceed limit
-    @patch("services.message_service.db", autospec=True)
-    @patch("services.message_service.ConversationService", autospec=True)
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_has_more_true(self, mock_conversation_service, mock_db, factory):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
@@ -354,8 +354,8 @@ class TestMessageServicePaginationByFirstId:
         assert result.limit == 10
 
     # Test 08: Empty conversation
-    @patch("services.message_service.db", autospec=True)
-    @patch("services.message_service.ConversationService", autospec=True)
+    @patch("services.message_service.db")
+    @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_empty_conversation(self, mock_conversation_service, mock_db, factory):
         """Test pagination with conversation that has no messages."""
         # Arrange
@@ -424,7 +424,7 @@ class TestMessageServicePaginationByLastId:
         assert result.has_more is False
 
     # Test 10: Basic pagination without last_id
-    @patch("services.message_service.db", autospec=True)
+    @patch("services.message_service.db")
     def test_pagination_by_last_id_without_last_id(self, mock_db, factory):
         """Test basic pagination without last_id."""
         # Arrange
@@ -460,7 +460,7 @@ class TestMessageServicePaginationByLastId:
         assert result.limit == 10
 
     # Test 11: Pagination with last_id
-    @patch("services.message_service.db", autospec=True)
+    @patch("services.message_service.db")
     def test_pagination_by_last_id_with_last_id(self, mock_db, factory):
         """Test pagination with last_id to get messages after a specific message."""
         # Arrange
@@ -511,7 +511,7 @@ class TestMessageServicePaginationByLastId:
         assert result.has_more is False
 
     # Test 12: Last message not found
-    @patch("services.message_service.db", autospec=True)
+    @patch("services.message_service.db")
     def test_pagination_by_last_id_last_message_not_exists(self, mock_db, factory):
         """Test error handling when last_id doesn't exist."""
         # Arrange
@@ -533,8 +533,8 @@ class TestMessageServicePaginationByLastId:
             )
 
     # Test 13: Pagination with conversation_id filter
-    @patch("services.message_service.ConversationService", autospec=True)
-    @patch("services.message_service.db", autospec=True)
+    @patch("services.message_service.ConversationService")
+    @patch("services.message_service.db")
     def test_pagination_by_last_id_with_conversation_filter(self, mock_db, mock_conversation_service, factory):
         """Test pagination filtered by conversation_id."""
         # Arrange
@@ -577,7 +577,7 @@ class TestMessageServicePaginationByLastId:
         mock_conversation_service.get_conversation.assert_called_once()
 
     # Test 14: Pagination with include_ids filter
-    @patch("services.message_service.db", autospec=True)
+    @patch("services.message_service.db")
     def test_pagination_by_last_id_with_include_ids(self, mock_db, factory):
         """Test pagination filtered by include_ids."""
         # Arrange
@@ -612,7 +612,7 @@ class TestMessageServicePaginationByLastId:
         assert result.data[1].id == "msg-003"
 
     # Test 15: Has_more flag when results exceed limit
-    @patch("services.message_service.db", autospec=True)
+    @patch("services.message_service.db")
     def test_pagination_by_last_id_has_more_true(self, mock_db, factory):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
