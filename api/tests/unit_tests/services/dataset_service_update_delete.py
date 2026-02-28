@@ -642,8 +642,16 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
 
         # Mock embedding model
         mock_embedding_model = Mock()
-        mock_embedding_model.model = "text-embedding-ada-002"
+        mock_embedding_model.model_name = "text-embedding-ada-002"
         mock_embedding_model.provider = "openai"
+        mock_embedding_model.credentials = {}
+
+        mock_model_schema = Mock()
+        mock_model_schema.features = []
+
+        mock_text_embedding_model = Mock()
+        mock_text_embedding_model.get_model_schema.return_value = mock_model_schema
+        mock_embedding_model.model_type_instance = mock_text_embedding_model
 
         mock_model_instance = Mock()
         mock_model_instance.get_model_instance.return_value = mock_embedding_model
