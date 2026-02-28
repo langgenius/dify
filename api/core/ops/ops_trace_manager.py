@@ -810,6 +810,17 @@ class TraceTask:
                         "embedding_model": row[1] or "",
                         "embedding_model_provider": row[2] or "",
                     }
+
+        # Extract rerank model info from retrieval_model kwargs
+        rerank_model_provider = ""
+        rerank_model_name = ""
+        if "retrieval_model" in kwargs:
+            retrieval_model = kwargs["retrieval_model"]
+            if isinstance(retrieval_model, dict):
+                reranking_model = retrieval_model.get("reranking_model")
+                if isinstance(reranking_model, dict):
+                    rerank_model_provider = reranking_model.get("reranking_provider_name", "")
+                    rerank_model_name = reranking_model.get("reranking_model_name", "")
         metadata = {
             "message_id": message_id,
             "ls_provider": message_data.model_provider,
@@ -820,13 +831,14 @@ class TraceTask:
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
-            "from_source": message_data.from_source,
             "tenant_id": tenant_id,
             "app_id": message_data.app_id,
             "user_id": message_data.from_end_user_id or message_data.from_account_id,
             "app_name": app_name,
             "workspace_name": workspace_name,
             "embedding_models": embedding_models,
+            "rerank_model_provider": rerank_model_provider,
+            "rerank_model_name": rerank_model_name,
         }
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
