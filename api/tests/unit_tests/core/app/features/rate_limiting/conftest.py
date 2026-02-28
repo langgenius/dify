@@ -120,5 +120,5 @@ def reset_rate_limit_instances():
 @pytest.fixture
 def redis_patch():
     """Patch redis_client globally for rate limit tests."""
-    with patch("core.app.features.rate_limiting.rate_limit.redis_client", autospec=True) as mock:
+    with patch("core.app.features.rate_limiting.rate_limit.redis_client") as mock:
         yield mock
