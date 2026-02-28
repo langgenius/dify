@@ -4,12 +4,10 @@ import uuid
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import AssistantPromptMessage
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -72,14 +70,6 @@ def init_parameter_extractor_node(config: dict):
     variable_pool.add(["a", "args2"], 2)
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-    # Create node factory
-    node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
-    )
-
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     node = ParameterExtractorNode(
         id=str(uuid.uuid4()),
