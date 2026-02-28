@@ -547,8 +547,22 @@ class TableTestRunner:
         """Run tests in parallel."""
         results = []
 
+        flask_app: Any = None
+        try:
+            from flask import current_app
+
+            flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
+        except RuntimeError:
+            flask_app = None
+
+        def _run_test_case_with_context(test_case: WorkflowTestCase) -> WorkflowTestResult:
+            if flask_app is None:
+                return self.run_test_case(test_case)
+            with flask_app.app_context():
+                return self.run_test_case(test_case)
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_test = {executor.submit(self.run_test_case, tc): tc for tc in test_cases}
+            future_to_test = {executor.submit(_run_test_case_with_context, tc): tc for tc in test_cases}
 
             for future in as_completed(future_to_test):
                 test_case = future_to_test[future]

@@ -9,11 +9,12 @@ This test validates that:
 """
 
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
+from core.model_manager import ModelInstance
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
@@ -115,7 +116,12 @@ def test_parallel_streaming_workflow():
 
     # Create node factory and graph
     node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    with patch.object(
+        DifyNodeFactory,
+        "_build_model_instance_for_llm_node",
+        return_value=MagicMock(spec=ModelInstance),
+    ):
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     # Create the graph engine
     engine = GraphEngine(

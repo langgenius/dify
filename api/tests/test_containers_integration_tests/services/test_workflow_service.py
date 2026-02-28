@@ -1391,10 +1391,20 @@ class TestWorkflowService:
 
         workflow_service = WorkflowService()
 
+        from unittest.mock import patch
+
+        from core.app.workflow.node_factory import DifyNodeFactory
+        from core.model_manager import ModelInstance
+
         # Act
-        result = workflow_service.run_free_workflow_node(
-            node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
-        )
+        with patch.object(
+            DifyNodeFactory,
+            "_build_model_instance_for_llm_node",
+            return_value=MagicMock(spec=ModelInstance),
+        ):
+            result = workflow_service.run_free_workflow_node(
+                node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
+            )
 
         # Assert
         assert result is not None

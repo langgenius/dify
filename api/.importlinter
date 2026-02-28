@@ -110,7 +110,6 @@ ignore_imports =
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     core.workflow.nodes.llm.llm_utils -> configs
-    core.workflow.nodes.llm.llm_utils -> core.app.entities.app_invoke_entities
     core.workflow.nodes.llm.llm_utils -> core.model_manager
     core.workflow.nodes.llm.protocols -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
@@ -129,13 +128,9 @@ ignore_imports =
     core.workflow.nodes.human_input.human_input_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
-    core.workflow.nodes.llm.node -> core.app.entities.app_invoke_entities
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.app.entities.app_invoke_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_runtime.model_providers.__base.large_language_model
-    core.workflow.nodes.question_classifier.question_classifier_node -> core.app.entities.app_invoke_entities
-    core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.advanced_prompt_transform
     core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.simple_prompt_transform
     core.workflow.nodes.start.entities -> core.app.app_config.entities
     core.workflow.nodes.start.start_node -> core.app.app_config.entities

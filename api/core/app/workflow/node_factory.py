@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, final
+from typing import TYPE_CHECKING, Any, cast, final
 
 from typing_extensions import override
 
@@ -9,6 +9,9 @@ from core.datasource.datasource_manager import DatasourceManager
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict
@@ -23,6 +26,8 @@ from core.workflow.nodes.datasource import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.llm.entities import ModelConfig
+from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
@@ -171,6 +176,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.LLM:
+            model_instance = self._build_model_instance_for_llm_node(node_data)
             return LLMNode(
                 id=node_id,
                 config=node_config,
@@ -178,6 +184,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+                model_instance=model_instance,
             )
 
         if node_type == NodeType.DATASOURCE:
@@ -208,6 +215,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
+            model_instance = self._build_model_instance_for_llm_node(node_data)
             return QuestionClassifierNode(
                 id=node_id,
                 config=node_config,
@@ -215,9 +223,11 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+                model_instance=model_instance,
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
+            model_instance = self._build_model_instance_for_llm_node(node_data)
             return ParameterExtractorNode(
                 id=node_id,
                 config=node_config,
@@ -225,6 +235,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+                model_instance=model_instance,
             )
 
         return node_class(
@@ -233,3 +244,37 @@ class DifyNodeFactory(NodeFactory):
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
         )
+
+    def _build_model_instance_for_llm_node(self, node_data: Mapping[str, Any]) -> ModelInstance:
+        node_data_model = ModelConfig.model_validate(node_data["model"])
+        if not node_data_model.mode:
+            raise LLMModeRequiredError("LLM mode is required.")
+
+        credentials = self._llm_credentials_provider.fetch(node_data_model.provider, node_data_model.name)
+        model_instance = self._llm_model_factory.init_model_instance(node_data_model.provider, node_data_model.name)
+        provider_model_bundle = model_instance.provider_model_bundle
+
+        provider_model = provider_model_bundle.configuration.get_provider_model(
+            model=node_data_model.name,
+            model_type=ModelType.LLM,
+        )
+        if provider_model is None:
+            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
+        provider_model.raise_for_status()
+
+        completion_params = dict(node_data_model.completion_params)
+        stop = completion_params.pop("stop", [])
+        if not isinstance(stop, list):
+            stop = []
+
+        model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
+        if not model_schema:
+            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
+
+        model_instance.provider = node_data_model.provider
+        model_instance.model_name = node_data_model.name
+        model_instance.credentials = credentials
+        model_instance.parameters = completion_params
+        model_instance.stop = tuple(stop)
+        model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        return model_instance
