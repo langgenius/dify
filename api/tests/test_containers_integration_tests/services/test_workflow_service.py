@@ -764,7 +764,7 @@ class TestWorkflowService:
         # Act - Mock current_user context and pass session
         from unittest.mock import patch
 
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("flask_login.utils._get_user", return_value=account, autospec=True):
             result = workflow_service.publish_workflow(
                 session=db_session_with_containers, app_model=app, account=account
             )
@@ -1401,6 +1401,7 @@ class TestWorkflowService:
             DifyNodeFactory,
             "_build_model_instance_for_llm_node",
             return_value=MagicMock(spec=ModelInstance),
+            autospec=True,
         ):
             result = workflow_service.run_free_workflow_node(
                 node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs

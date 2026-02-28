@@ -56,9 +56,9 @@ class TestMailInviteMemberTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_invite_member_task.mail") as mock_mail,
-            patch("tasks.mail_invite_member_task.get_email_i18n_service") as mock_email_service,
-            patch("tasks.mail_invite_member_task.dify_config") as mock_config,
+            patch("tasks.mail_invite_member_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_invite_member_task.get_email_i18n_service", autospec=True) as mock_email_service,
+            patch("tasks.mail_invite_member_task.dify_config", autospec=True) as mock_config,
         ):
             # Setup mail service mock
             mock_mail.is_inited.return_value = True
@@ -306,7 +306,7 @@ class TestMailInviteMemberTask:
         mock_email_service.send_email.side_effect = Exception("Email service failed")
 
         # Act & Assert: Execute task and verify exception is handled
-        with patch("tasks.mail_invite_member_task.logger") as mock_logger:
+        with patch("tasks.mail_invite_member_task.logger", autospec=True) as mock_logger:
             send_invite_member_mail_task(
                 language="en-US",
                 to="test@example.com",

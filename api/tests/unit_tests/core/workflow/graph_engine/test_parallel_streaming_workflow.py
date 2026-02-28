@@ -117,9 +117,7 @@ def test_parallel_streaming_workflow():
     # Create node factory and graph
     node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
     with patch.object(
-        DifyNodeFactory,
-        "_build_model_instance_for_llm_node",
-        return_value=MagicMock(spec=ModelInstance),
+        DifyNodeFactory, "_build_model_instance_for_llm_node", return_value=MagicMock(spec=ModelInstance), autospec=True
     ):
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 

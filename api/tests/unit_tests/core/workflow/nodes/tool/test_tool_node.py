@@ -92,7 +92,9 @@ def _run_transform(tool_node: ToolNode, message: ToolInvokeMessage) -> tuple[lis
         return messages
 
     tool_runtime = MagicMock()
-    with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform):
+    with patch.object(
+        ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform, autospec=True
+    ):
         generator = tool_node._transform_message(
             messages=iter([message]),
             tool_info={"provider_type": "builtin", "provider_id": "provider"},

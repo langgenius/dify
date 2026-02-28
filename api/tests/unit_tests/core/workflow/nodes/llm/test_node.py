@@ -198,11 +198,10 @@ def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsE
             provider_model_bundle.configuration.__class__,
             "get_provider_model",
             return_value=provider_model,
+            autospec=True,
         ),
         mock.patch.object(
-            model_type_instance.__class__,
-            "get_model_schema",
-            return_value=model_config.model_schema,
+            model_type_instance.__class__, "get_model_schema", return_value=model_config.model_schema, autospec=True
         ),
     ):
         fetch_model_config(
