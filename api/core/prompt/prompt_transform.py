@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -15,9 +14,7 @@ class PromptTransform:
         *,
         model_config: ModelConfigWithCredentialsEntity | None = None,
         model_instance: ModelInstance | None = None,
-        model_schema: AIModelEntity | None = None,
-        model_parameters: Mapping[str, Any] | None = None,
-    ) -> tuple[ModelInstance, AIModelEntity, Mapping[str, Any]]:
+    ) -> tuple[ModelInstance, AIModelEntity]:
         if model_instance is None:
             if model_config is None:
                 raise ValueError("Either model_config or model_instance must be provided.")
@@ -28,20 +25,16 @@ class PromptTransform:
             model_instance.parameters = model_config.parameters
             model_instance.stop = model_config.stop
 
+        model_schema = model_instance.model_type_instance.get_model_schema(
+            model=model_instance.model_name,
+            credentials=model_instance.credentials,
+        )
         if model_schema is None:
-            model_schema = model_instance.model_type_instance.get_model_schema(
-                model=model_instance.model_name,
-                credentials=model_instance.credentials,
-            )
-            if model_schema is None:
-                if model_config is None:
-                    raise ValueError("Either model_schema or model_config must be provided.")
-                model_schema = model_config.model_schema
+            if model_config is None:
+                raise ValueError("Model schema not found for the provided model instance.")
+            model_schema = model_config.model_schema
 
-        if model_parameters is None:
-            model_parameters = model_instance.parameters or (model_config.parameters if model_config else {})
-
-        return model_instance, model_schema, model_parameters
+        return model_instance, model_schema
 
     def _append_chat_histories(
         self,
@@ -51,15 +44,11 @@ class PromptTransform:
         *,
         model_config: ModelConfigWithCredentialsEntity | None = None,
         model_instance: ModelInstance | None = None,
-        model_schema: AIModelEntity | None = None,
-        model_parameters: Mapping[str, Any] | None = None,
     ) -> list[PromptMessage]:
         rest_tokens = self._calculate_rest_token(
             prompt_messages,
             model_config=model_config,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_parameters,
         )
         histories = self._get_history_messages_list_from_memory(memory, memory_config, rest_tokens)
         prompt_messages.extend(histories)
@@ -72,15 +61,12 @@ class PromptTransform:
         *,
         model_config: ModelConfigWithCredentialsEntity | None = None,
         model_instance: ModelInstance | None = None,
-        model_schema: AIModelEntity | None = None,
-        model_parameters: Mapping[str, Any] | None = None,
     ) -> int:
-        model_instance, model_schema, model_parameters = self._resolve_model_runtime(
+        model_instance, model_schema = self._resolve_model_runtime(
             model_config=model_config,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=model_parameters,
         )
+        model_parameters = model_instance.parameters
         rest_tokens = 2000
 
         model_context_tokens = model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)

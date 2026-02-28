@@ -37,7 +37,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelPropertyKey
+from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -1291,12 +1291,10 @@ def _calculate_rest_token(
     *,
     prompt_messages: list[PromptMessage],
     model_instance: ModelInstance,
-    model_schema: AIModelEntity | None = None,
-    model_parameters: Mapping[str, Any] | None = None,
 ) -> int:
     rest_tokens = 2000
-    runtime_model_schema = model_schema or llm_utils.fetch_model_schema(model_instance=model_instance)
-    runtime_model_parameters = model_parameters or model_instance.parameters
+    runtime_model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+    runtime_model_parameters = model_instance.parameters
 
     model_context_tokens = runtime_model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
     if model_context_tokens:
