@@ -590,7 +590,7 @@ def test_handle_list_messages_basic(llm_node):
 
 
 def test_handle_memory_completion_mode_uses_prompt_message_interface():
-    memory = mock.MagicMock()
+    memory = mock.MagicMock(spec=MockTokenBufferMemory)
     memory.get_history_prompt_messages.return_value = [
         UserPromptMessage(
             content=[
@@ -605,28 +605,22 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         AssistantPromptMessage(content="first answer"),
     ]
 
-    model_instance = mock.MagicMock()
-    model_instance.provider = "openai"
-    model_instance.model_name = "gpt-3.5-turbo"
-    model_instance.credentials = {}
-    model_instance.parameters = {}
-    model_instance.model_type_instance.get_model_schema.return_value = mock.MagicMock(
-        model_properties={},
-        parameter_rules=[],
-    )
+    model_instance = mock.MagicMock(spec=ModelInstance)
 
     memory_config = MemoryConfig(
         role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    memory_text = _handle_memory_completion_mode(
-        memory=memory,
-        memory_config=memory_config,
-        model_instance=model_instance,
-    )
+    with mock.patch("core.workflow.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = _handle_memory_completion_mode(
+            memory=memory,
+            memory_config=memory_config,
+            model_instance=model_instance,
+        )
 
     assert memory_text == "Human: first question\n[image]\nAssistant: first answer"
+    mock_rest_token.assert_called_once_with(prompt_messages=[], model_instance=model_instance)
     memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=3)
 
 
