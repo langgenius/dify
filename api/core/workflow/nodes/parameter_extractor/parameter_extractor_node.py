@@ -157,13 +157,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
             raise InvalidModelTypeError("Model is not a Large Language Model")
 
-        llm_model = model_instance.model_type_instance
-        model_schema = llm_model.get_model_schema(
-            model=model_instance.model_name,
-            credentials=model_instance.credentials,
-        )
-        if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
+        try:
+            model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+        except ValueError as exc:
+            raise ModelSchemaNotFoundError("Model schema not found") from exc
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -781,7 +778,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         model_instance: ModelInstance,
         context: str | None,
     ) -> int:
-        model_schema = self._fetch_model_schema(model_instance)
+        try:
+            model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+        except ValueError as exc:
+            raise ModelSchemaNotFoundError("Model schema not found") from exc
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
 
         if set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
@@ -837,16 +837,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 model_factory=self._model_factory,
             )
         return self._model_instance
-
-    @staticmethod
-    def _fetch_model_schema(model_instance: ModelInstance) -> Any:
-        model_schema = model_instance.model_type_instance.get_model_schema(
-            model=model_instance.model_name,
-            credentials=model_instance.credentials,
-        )
-        if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
-        return model_schema
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

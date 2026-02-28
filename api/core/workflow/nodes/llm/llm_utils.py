@@ -9,7 +9,7 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
@@ -66,6 +66,16 @@ def fetch_model_instance(
 
     model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
     return model_instance
+
+
+def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
+    model_schema = model_instance.model_type_instance.get_model_schema(
+        model_instance.model_name,
+        model_instance.credentials,
+    )
+    if not model_schema:
+        raise ValueError(f"Model schema not found for {model_instance.model_name}")
+    return model_schema
 
 
 def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequence["File"]:

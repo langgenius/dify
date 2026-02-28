@@ -370,16 +370,10 @@ class LLMNode(Node[LLMNodeData]):
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
-        model_name = model_instance.model_name
         model_parameters = model_instance.parameters
         invoke_model_parameters = dict(model_parameters)
 
-        model_schema = model_instance.model_type_instance.get_model_schema(
-            model_name,
-            model_instance.credentials,
-        )
-        if not model_schema:
-            raise ValueError(f"Model schema not found for {model_name}")
+        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
@@ -792,7 +786,7 @@ class LLMNode(Node[LLMNodeData]):
         context_files: list[File] | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
-        model_schema = _fetch_model_schema(model_instance=model_instance)
+        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         if isinstance(prompt_template, list):
             # For chat model
@@ -1301,7 +1295,7 @@ def _calculate_rest_token(
     model_parameters: Mapping[str, Any] | None = None,
 ) -> int:
     rest_tokens = 2000
-    runtime_model_schema = model_schema or _fetch_model_schema(model_instance=model_instance)
+    runtime_model_schema = model_schema or llm_utils.fetch_model_schema(model_instance=model_instance)
     runtime_model_parameters = model_parameters or model_instance.parameters
 
     model_context_tokens = runtime_model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
@@ -1367,16 +1361,6 @@ def _handle_memory_completion_mode(
             ai_prefix=memory_config.role_prefix.assistant,
         )
     return memory_text
-
-
-def _fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
-    model_schema = model_instance.model_type_instance.get_model_schema(
-        model_instance.model_name,
-        model_instance.credentials,
-    )
-    if not model_schema:
-        raise ValueError(f"Model schema not found for {model_instance.model_name}")
-    return model_schema
 
 
 def _handle_completion_template(

@@ -277,12 +277,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         model_instance: ModelInstance,
         context: str | None,
     ) -> int:
-        model_schema = model_instance.model_type_instance.get_model_schema(
-            model_instance.model_name,
-            model_instance.credentials,
-        )
-        if not model_schema:
-            raise ValueError(f"Model schema not found for {model_instance.model_name}")
+        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         prompt_template = self._get_prompt_template(node_data, query, None, 2000)
         prompt_messages, _ = LLMNode.fetch_prompt_messages(
