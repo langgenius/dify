@@ -151,9 +151,9 @@ const Question: FC<QuestionProps> = ({
           ref={contentRef}
           data-testid="question-content"
           className={cn(
-            'w-full text-sm',
-            !isEditing && 'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-text-primary',
-            isEditing && 'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur px-4 py-3 shadow-lg',
+            'w-full text-sm px-4 py-3',
+            !isEditing && 'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 text-text-primary',
+            isEditing && 'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
           )}
           style={(!isEditing && theme?.chatBubbleColorStyle) ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
