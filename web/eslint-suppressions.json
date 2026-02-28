@@ -2052,9 +2052,6 @@
   "app/components/base/input/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/base/linked-apps-panel/index.tsx": {
@@ -3994,9 +3991,6 @@
   "app/components/header/account-setting/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     }
   },
   "app/components/header/account-setting/key-validator/declarations.ts": {
