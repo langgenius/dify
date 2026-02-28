@@ -64,6 +64,8 @@ class RagPipelineTransformService:
                 node = self._deal_file_extensions(node)
             if node.get("data", {}).get("type") == "knowledge-index":
                 knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
+                if dataset.tenant_id != current_user.current_tenant_id:
+                    raise ValueError("Unauthorized")
                 node = self._deal_knowledge_index(knowledge_configuration, dataset, indexing_technique, retrieval_model, node)
             new_nodes.append(node)
         if new_nodes:
