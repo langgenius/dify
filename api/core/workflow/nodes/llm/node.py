@@ -82,7 +82,6 @@ from .entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
-    ModelConfig,
 )
 from .exc import (
     InvalidContextStructureError,
@@ -115,6 +114,7 @@ class LLMNode(Node[LLMNodeData]):
     _llm_file_saver: LLMFileSaver
     _credentials_provider: CredentialsProvider
     _model_factory: ModelFactory
+    _model_instance: ModelInstance
 
     def __init__(
         self,
@@ -125,6 +125,7 @@ class LLMNode(Node[LLMNodeData]):
         *,
         credentials_provider: CredentialsProvider,
         model_factory: ModelFactory,
+        model_instance: ModelInstance,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -138,6 +139,7 @@ class LLMNode(Node[LLMNodeData]):
 
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
+        self._model_instance = model_instance
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -201,9 +203,7 @@ class LLMNode(Node[LLMNodeData]):
                 node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
             # fetch model config
-            model_instance = self._fetch_model_instance(
-                node_data_model=self.node_data.model,
-            )
+            model_instance = self._model_instance
             model_name = model_instance.model_name
             model_provider = model_instance.provider
             model_stop = model_instance.stop
@@ -755,18 +755,6 @@ class LLMNode(Node[LLMNodeData]):
             return source
 
         return None
-
-    def _fetch_model_instance(
-        self,
-        *,
-        node_data_model: ModelConfig,
-    ) -> ModelInstance:
-        model_instance = llm_utils.fetch_model_instance(
-            node_data_model=node_data_model,
-            credentials_provider=self._credentials_provider,
-            model_factory=self._model_factory,
-        )
-        return model_instance
 
     @staticmethod
     def fetch_prompt_messages(

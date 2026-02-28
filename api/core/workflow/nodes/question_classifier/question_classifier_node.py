@@ -20,7 +20,12 @@ from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from core.workflow.nodes.llm import LLMNode, LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, llm_utils
+from core.workflow.nodes.llm import (
+    LLMNode,
+    LLMNodeChatModelMessage,
+    LLMNodeCompletionModelPromptTemplate,
+    llm_utils,
+)
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -50,6 +55,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     _llm_file_saver: LLMFileSaver
     _credentials_provider: "CredentialsProvider"
     _model_factory: "ModelFactory"
+    _model_instance: ModelInstance
 
     def __init__(
         self,
@@ -60,6 +66,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         *,
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
+        model_instance: ModelInstance,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -73,6 +80,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
 
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
+        self._model_instance = model_instance
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -94,11 +102,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         query = variable.value if variable else None
         variables = {"query": query}
         # fetch model instance
-        model_instance = llm_utils.fetch_model_instance(
-            node_data_model=node_data.model,
-            credentials_provider=self._credentials_provider,
-            model_factory=self._model_factory,
-        )
+        model_instance = self._model_instance
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,

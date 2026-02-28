@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCre
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -115,6 +116,7 @@ def llm_node(
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
+        model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
     )
     return node
@@ -601,6 +603,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
+        model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
     )
     return node, mock_file_saver

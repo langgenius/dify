@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities import AssistantPromptMessage
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
@@ -87,6 +88,7 @@ def init_parameter_extractor_node(config: dict):
         graph_runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
+        model_instance=MagicMock(spec=ModelInstance),
     )
     return node
 
@@ -116,12 +118,12 @@ def test_function_calling_parameter_extractor(setup_model_mock):
         }
     )
 
-    node._fetch_model_instance = get_mocked_fetch_model_instance(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -157,12 +159,12 @@ def test_instructions(setup_model_mock):
         },
     )
 
-    node._fetch_model_instance = get_mocked_fetch_model_instance(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -207,12 +209,12 @@ def test_chat_parameter_extractor(setup_model_mock):
         },
     )
 
-    node._fetch_model_instance = get_mocked_fetch_model_instance(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -258,12 +260,12 @@ def test_completion_parameter_extractor(setup_model_mock):
         },
     )
 
-    node._fetch_model_instance = get_mocked_fetch_model_instance(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo-instruct",
         mode="completion",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -383,12 +385,12 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
         },
     )
 
-    node._fetch_model_instance = get_mocked_fetch_model_instance(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     # Test the mock before running the actual test
     monkeypatch.setattr("core.workflow.nodes.llm.llm_utils.fetch_memory", get_mocked_fetch_memory("customized memory"))
     db.session.close = MagicMock()

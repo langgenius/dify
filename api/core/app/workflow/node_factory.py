@@ -9,6 +9,7 @@ from core.datasource.datasource_manager import DatasourceManager
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
+from core.model_manager import ModelInstance
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict
@@ -23,6 +24,8 @@ from core.workflow.nodes.datasource import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.llm import llm_utils
+from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
@@ -171,6 +174,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.LLM:
+            model_instance = self._build_model_instance_for_llm_node(node_data)
             return LLMNode(
                 id=node_id,
                 config=node_config,
@@ -178,6 +182,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+                model_instance=model_instance,
             )
 
         if node_type == NodeType.DATASOURCE:
@@ -208,6 +213,7 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
+            model_instance = self._build_model_instance_for_llm_node(node_data)
             return QuestionClassifierNode(
                 id=node_id,
                 config=node_config,
@@ -215,9 +221,11 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+                model_instance=model_instance,
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
+            model_instance = self._build_model_instance_for_llm_node(node_data)
             return ParameterExtractorNode(
                 id=node_id,
                 config=node_config,
@@ -225,6 +233,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
                 model_factory=self._llm_model_factory,
+                model_instance=model_instance,
             )
 
         return node_class(
@@ -232,4 +241,12 @@ class DifyNodeFactory(NodeFactory):
             config=node_config,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
+        )
+
+    def _build_model_instance_for_llm_node(self, node_data: Mapping[str, Any]) -> ModelInstance:
+        node_data_model = ModelConfig.model_validate(node_data["model"])
+        return llm_utils.fetch_model_instance(
+            node_data_model=node_data_model,
+            credentials_provider=self._llm_credentials_provider,
+            model_factory=self._llm_model_factory,
         )

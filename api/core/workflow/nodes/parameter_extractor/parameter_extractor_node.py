@@ -30,7 +30,7 @@ from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.llm import ModelConfig, llm_utils
+from core.workflow.nodes.llm import llm_utils
 from core.workflow.runtime import VariablePool
 from factories.variable_factory import build_segment_with_type
 
@@ -94,7 +94,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     node_type = NodeType.PARAMETER_EXTRACTOR
 
-    _model_instance: ModelInstance | None = None
+    _model_instance: ModelInstance
     _credentials_provider: "CredentialsProvider"
     _model_factory: "ModelFactory"
 
@@ -107,6 +107,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         *,
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
+        model_instance: ModelInstance,
     ) -> None:
         super().__init__(
             id=id,
@@ -116,6 +117,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
+        self._model_instance = model_instance
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -153,7 +155,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             else []
         )
 
-        model_instance = self._fetch_model_instance(node_data.model)
+        model_instance = self._model_instance
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
             raise InvalidModelTypeError("Model is not a Large Language Model")
 
@@ -825,18 +827,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             rest_tokens = max(rest_tokens, 0)
 
         return rest_tokens
-
-    def _fetch_model_instance(self, node_data_model: ModelConfig) -> ModelInstance:
-        """
-        Fetch model instance.
-        """
-        if not self._model_instance:
-            self._model_instance = llm_utils.fetch_model_instance(
-                node_data_model=node_data_model,
-                credentials_provider=self._credentials_provider,
-                model_factory=self._model_factory,
-            )
-        return self._model_instance
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

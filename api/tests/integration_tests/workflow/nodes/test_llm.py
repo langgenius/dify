@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
+from core.model_manager import ModelInstance
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
@@ -82,6 +83,7 @@ def init_llm_node(config: dict) -> LLMNode:
         graph_runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(),
         model_factory=MagicMock(),
+        model_instance=MagicMock(spec=ModelInstance),
     )
 
     return node
@@ -116,8 +118,7 @@ def test_execute_llm():
 
     db.session.close = MagicMock()
 
-    # Mock _fetch_model_instance to avoid database calls
-    def mock_fetch_model_instance(*_args, **_kwargs):
+    def build_mock_model_instance() -> MagicMock:
         from decimal import Decimal
         from unittest.mock import MagicMock
 
@@ -173,10 +174,9 @@ def test_execute_llm():
             UserPromptMessage(content="what's the weather today?"),
         ], []
 
-    with (
-        patch.object(LLMNode, "_fetch_model_instance", mock_fetch_model_instance),
-        patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1),
-    ):
+    node._model_instance = build_mock_model_instance()
+
+    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
         # execute node
         result = node._run()
         assert isinstance(result, Generator)
@@ -234,8 +234,7 @@ def test_execute_llm_with_jinja2():
     # Mock db.session.close()
     db.session.close = MagicMock()
 
-    # Mock _fetch_model_instance to avoid database calls
-    def mock_fetch_model_instance(*_args, **_kwargs):
+    def build_mock_model_instance() -> MagicMock:
         from decimal import Decimal
         from unittest.mock import MagicMock
 
@@ -291,10 +290,9 @@ def test_execute_llm_with_jinja2():
             UserPromptMessage(content="what's the weather today?"),
         ], []
 
-    with (
-        patch.object(LLMNode, "_fetch_model_instance", mock_fetch_model_instance),
-        patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2),
-    ):
+    node._model_instance = build_mock_model_instance()
+
+    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
         # execute node
         result = node._run()
 
