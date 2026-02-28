@@ -140,8 +140,6 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> core.entities.provider_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
     core.workflow.nodes.question_classifier.question_classifier_node -> core.model_manager
-    core.workflow.nodes.llm.llm_utils -> core.variables.segments
-    core.workflow.nodes.loop.entities -> core.variables.types
     core.workflow.nodes.tool.tool_node -> core.tools.utils.message_transformer
     core.workflow.nodes.tool.tool_node -> models
     core.workflow.nodes.agent.agent_node -> models.model
@@ -178,54 +176,6 @@ ignore_imports =
     core.workflow.nodes.llm.file_saver -> core.tools.signature
     core.workflow.nodes.llm.file_saver -> core.tools.tool_file_manager
     core.workflow.nodes.tool.tool_node -> core.tools.errors
-    core.workflow.conversation_variable_updater -> core.variables
-    core.workflow.graph_engine.entities.commands -> core.variables.variables
-    core.workflow.nodes.agent.agent_node -> core.variables.segments
-    core.workflow.nodes.answer.answer_node -> core.variables
-    core.workflow.nodes.code.code_node -> core.variables.segments
-    core.workflow.nodes.code.code_node -> core.variables.types
-    core.workflow.nodes.code.entities -> core.variables.types
-    core.workflow.nodes.document_extractor.node -> core.variables
-    core.workflow.nodes.document_extractor.node -> core.variables.segments
-    core.workflow.nodes.http_request.executor -> core.variables.segments
-    core.workflow.nodes.http_request.node -> core.variables.segments
-    core.workflow.nodes.human_input.entities -> core.variables.consts
-    core.workflow.nodes.iteration.iteration_node -> core.variables
-    core.workflow.nodes.iteration.iteration_node -> core.variables.segments
-    core.workflow.nodes.iteration.iteration_node -> core.variables.variables
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.variables
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.variables.segments
-    core.workflow.nodes.list_operator.node -> core.variables
-    core.workflow.nodes.list_operator.node -> core.variables.segments
-    core.workflow.nodes.llm.node -> core.variables
-    core.workflow.nodes.loop.loop_node -> core.variables
-    core.workflow.nodes.parameter_extractor.entities -> core.variables.types
-    core.workflow.nodes.parameter_extractor.exc -> core.variables.types
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.variables.types
-    core.workflow.nodes.tool.tool_node -> core.variables.segments
-    core.workflow.nodes.tool.tool_node -> core.variables.variables
-    core.workflow.nodes.trigger_webhook.node -> core.variables.types
-    core.workflow.nodes.trigger_webhook.node -> core.variables.variables
-    core.workflow.nodes.variable_aggregator.entities -> core.variables.types
-    core.workflow.nodes.variable_aggregator.variable_aggregator_node -> core.variables.segments
-    core.workflow.nodes.variable_assigner.common.helpers -> core.variables
-    core.workflow.nodes.variable_assigner.common.helpers -> core.variables.consts
-    core.workflow.nodes.variable_assigner.common.helpers -> core.variables.types
-    core.workflow.nodes.variable_assigner.v1.node -> core.variables
-    core.workflow.nodes.variable_assigner.v2.helpers -> core.variables
-    core.workflow.nodes.variable_assigner.v2.node -> core.variables
-    core.workflow.nodes.variable_assigner.v2.node -> core.variables.consts
-    core.workflow.runtime.graph_runtime_state_protocol -> core.variables.segments
-    core.workflow.runtime.read_only_wrappers -> core.variables.segments
-    core.workflow.runtime.variable_pool -> core.variables
-    core.workflow.runtime.variable_pool -> core.variables.consts
-    core.workflow.runtime.variable_pool -> core.variables.segments
-    core.workflow.runtime.variable_pool -> core.variables.variables
-    core.workflow.utils.condition.processor -> core.variables
-    core.workflow.utils.condition.processor -> core.variables.segments
-    core.workflow.variable_loader -> core.variables
-    core.workflow.variable_loader -> core.variables.consts
-    core.workflow.workflow_type_encoder -> core.variables
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database

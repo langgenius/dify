@@ -43,14 +43,6 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.signature import sign_upload_file
-from core.variables import (
-    ArrayFileSegment,
-    ArraySegment,
-    FileSegment,
-    NoneSegment,
-    ObjectSegment,
-    StringSegment,
-)
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
@@ -73,6 +65,14 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import VariablePool
+from core.workflow.variables import (
+    ArrayFileSegment,
+    ArraySegment,
+    FileSegment,
+    NoneSegment,
+    ObjectSegment,
+    StringSegment,
+)
 from extensions.ext_database import db
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile

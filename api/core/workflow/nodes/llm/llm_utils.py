@@ -12,10 +12,10 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
 from core.workflow.file.models import File
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
