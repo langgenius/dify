@@ -1635,7 +1635,7 @@ class LLMNode(Node[LLMNodeData]):
                 )
 
                 if bundle is not None and file_tree is not None:
-                    skill_entry = SkillCompiler().compile_one(
+                    skill_entry = SkillCompiler().compile_document(
                         bundle=bundle,
                         document=SkillDocument(
                             skill_id="anonymous", content=result_text, metadata=message.metadata or {}
@@ -1676,7 +1676,7 @@ class LLMNode(Node[LLMNodeData]):
                 plain_text = segment_group.text
 
                 if plain_text and bundle is not None and file_tree is not None:
-                    skill_entry = SkillCompiler().compile_one(
+                    skill_entry = SkillCompiler().compile_document(
                         bundle=bundle,
                         document=SkillDocument(
                             skill_id="anonymous", content=plain_text, metadata=message.metadata or {}
@@ -2040,7 +2040,7 @@ class LLMNode(Node[LLMNodeData]):
         tool_deps_list: list[ToolDependencies] = []
         for prompt in self.node_data.prompt_template:
             if isinstance(prompt, LLMNodeChatModelMessage):
-                skill_entry = SkillCompiler().compile_one(
+                skill_entry = SkillCompiler().compile_document(
                     bundle=bundle,
                     document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata=prompt.metadata or {}),
                     file_tree=file_tree,

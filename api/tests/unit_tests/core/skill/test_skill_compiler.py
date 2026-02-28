@@ -392,8 +392,8 @@ class TestSkillCompilerComplexGraph:
             # Content should have resolved references (no § markers for valid refs)
             assert "§[file].[app].[skill-" not in entry.content or "[File not found]" in entry.content
 
-        # Verify hub nodes have many dependents in reverse graph
-        assert len(bundle.reverse_graph.get("skill-0", [])) > 5, "skill-0 should be a hub"
+        # Verify hub nodes have many dependents in reference map
+        assert len(bundle.reference_map.get("skill-0", [])) > 5, "skill-0 should be a hub"
 
         # Verify transitive dependencies propagate through cycles
         # skill-9 -> skill-0 (via chain 9->8->...->1->0) and skill-9 refs skill-0 directly via cycle
@@ -406,7 +406,7 @@ class TestSkillCompilerComplexGraph:
             entry = bundle.get(f"skill-{i}")
             if entry and entry.tools.dependencies:
                 # This skill has tools, check if skills that reference it also have these tools
-                dependents = bundle.reverse_graph.get(f"skill-{i}", [])
+                dependents = bundle.reference_map.get(f"skill-{i}", [])
                 for dep_id in dependents[:3]:  # Check first 3 dependents
                     dep_entry = bundle.get(dep_id)
                     if dep_entry:
@@ -421,8 +421,8 @@ class TestSkillCompilerComplexGraph:
 
         print(f"\n✓ Successfully compiled {num_skills} skills")
         print(f"  - {num_tools} tool types")
-        print(f"  - {sum(len(v) for v in bundle.dependency_graph.values())} total edges")
-        print(f"  - Hub skill-0 has {len(bundle.reverse_graph.get('skill-0', []))} dependents")
+        print(f"  - {sum(len(v) for v in bundle.depends_on_map.values())} total edges")
+        print(f"  - Hub skill-0 has {len(bundle.reference_map.get('skill-0', []))} dependents")
 
 
 class TestSkillCompilerCircularDependencies:
@@ -581,3 +581,89 @@ class TestSkillCompilerCircularDependencies:
             assert entry.tools.dependencies[0].tool_name == "api_tool"
             assert len(entry.tools.references) == 1
             assert entry.tools.references[0].uuid == "tool-c"
+
+
+class TestSkillCompilerIncrementalUpdates:
+    def test_put_recomputes_dependents_when_dependency_removed(self):
+        tool = ToolReference(
+            uuid="tool-b",
+            type=ToolProviderType.BUILT_IN,
+            provider="sandbox",
+            tool_name="bash",
+        )
+        doc_a = SkillDocument(
+            skill_id="skill-a",
+            content="A refs B: §[file].[app].[skill-b]§",
+            metadata=make_metadata(
+                tools={},
+                files=[FileReference(source="app", asset_id="skill-b")],
+            ),
+        )
+        doc_b = SkillDocument(
+            skill_id="skill-b",
+            content="B uses §[tool].[sandbox].[bash].[tool-b]§",
+            metadata=make_metadata(tools={"tool-b": tool}, files=[]),
+        )
+
+        tree = create_file_tree(
+            AppAssetNode.create_file("skill-a", "a.md"),
+            AppAssetNode.create_file("skill-b", "b.md"),
+        )
+        compiler = SkillCompiler()
+        bundle = compiler.compile_bundle([doc_a, doc_b], tree, "assets-1")
+
+        entry_a_before = bundle.get("skill-a")
+        assert entry_a_before is not None
+        assert {dep.tool_name for dep in entry_a_before.tools.dependencies} == {"bash"}
+
+        doc_b_updated = SkillDocument(
+            skill_id="skill-b",
+            content="B has no tools now.",
+            metadata=make_metadata(tools={}, files=[]),
+        )
+
+        updated_bundle = compiler.put(bundle, doc_b_updated, tree)
+        entry_b_after = updated_bundle.get("skill-b")
+        assert entry_b_after is not None
+        assert len(entry_b_after.tools.dependencies) == 0
+
+        entry_a_after = updated_bundle.get("skill-a")
+        assert entry_a_after is not None
+        assert len(entry_a_after.tools.dependencies) == 0
+
+    def test_compile_increment_without_merge(self):
+        tool_ref = ToolReference(
+            uuid="tool-1",
+            type=ToolProviderType.BUILT_IN,
+            provider="sandbox",
+            tool_name="python",
+        )
+        library_doc = SkillDocument(
+            skill_id="skill-lib",
+            content="Library Code §[tool].[sandbox].[python].[tool-1]§",
+            metadata=make_metadata(tools={"tool-1": tool_ref}, files=[]),
+        )
+        tree = create_file_tree(
+            AppAssetNode.create_file("skill-lib", "lib.md"),
+        )
+        compiler = SkillCompiler()
+        bundle = compiler.compile_bundle([library_doc], tree, "assets-1")
+
+        template_doc = SkillDocument(
+            skill_id="anonymous",
+            content="Use the lib: §[file].[app].[skill-lib]§",
+            metadata=make_metadata(tools={}, files=[FileReference(source="app", asset_id="skill-lib")]),
+        )
+
+        patch = compiler.compile_increment(
+            base_bundle=bundle,
+            documents=[template_doc],
+            file_tree=tree,
+        )
+        preview_entry = patch.get("anonymous")
+        assert preview_entry is not None
+        assert "lib.md" in preview_entry.content
+        assert len(preview_entry.tools.dependencies) == 1
+        assert preview_entry.tools.dependencies[0].tool_name == "python"
+
+        assert bundle.get("anonymous") is None

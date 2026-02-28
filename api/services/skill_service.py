@@ -104,7 +104,7 @@ class SkillService:
         """Extract tool dependencies using SkillCompiler.
 
         This method loads the SkillBundle and AppAssetFileTree, then uses
-        SkillCompiler.compile_one() to properly extract tool dependencies
+        SkillCompiler.compile_document() to properly extract tool dependencies
         including transitive dependencies from referenced skill files.
         """
         # Get the draft assets to obtain assets_id and file_tree
@@ -145,7 +145,7 @@ class SkillService:
                     text: str = prompt.get("text", "")
                     metadata: dict[str, Any] = prompt.get("metadata") or {}
 
-                    skill_entry = compiler.compile_one(
+                    skill_entry = compiler.compile_document(
                         bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=text, metadata=metadata),
                         file_tree=file_tree,

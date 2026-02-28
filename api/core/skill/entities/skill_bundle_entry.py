@@ -16,6 +16,8 @@ class SkillBundleEntry(BaseModel):
 
     skill_id: str = Field(description="Unique identifier for this skill")
     source: SourceInfo = Field(description="Source file information")
+    direct_tools: ToolDependencies = Field(description="Direct tool dependencies parsed from this skill only")
+    direct_files: AssetReferences = Field(description="Direct file references parsed from this skill only")
     tools: ToolDependencies = Field(description="All tool dependencies (transitive closure)")
     files: AssetReferences = Field(description="All file references (transitive closure)")
     content: str = Field(description="Resolved content with all references replaced")

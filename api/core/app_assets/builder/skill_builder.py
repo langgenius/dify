@@ -60,7 +60,7 @@ class SkillBuilder:
 
         # 2. Compile all skills (CPU-bound, single thread)
         documents = [SkillDocument(skill_id=s.node.id, content=s.content, metadata=s.metadata) for s in loaded]
-        artifact_set = SkillCompiler().compile_all(documents, tree, ctx.build_id)
+        artifact_set = SkillCompiler().compile_bundle(documents, tree, ctx.build_id)
 
         SkillManager.save_bundle(ctx.tenant_id, ctx.app_id, ctx.build_id, artifact_set)
 
