@@ -5,7 +5,6 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import ImagePromptMessageContent
@@ -347,11 +346,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         prompt_template = self._get_function_calling_prompt_template(
             node_data, query, variable_pool, memory, rest_token
         )
-        model_config = self._build_model_config(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            model_schema=model_schema,
-        )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={},
@@ -360,7 +354,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context="",
             memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=model_instance.parameters,
             image_detail_config=vision_detail,
         )
 
@@ -479,11 +475,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         prompt_template = self._get_prompt_engineering_prompt_template(
             node_data=node_data, query=query, variable_pool=variable_pool, memory=memory, max_token_limit=rest_token
         )
-        model_config = self._build_model_config(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            model_schema=model_schema,
-        )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={"structure": json.dumps(node_data.get_parameter_json_schema())},
@@ -492,7 +483,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context="",
             memory_config=node_data.memory,
             memory=memory,
-            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=model_instance.parameters,
             image_detail_config=vision_detail,
         )
 
@@ -531,11 +524,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             max_token_limit=rest_token,
         )
 
-        model_config = self._build_model_config(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            model_schema=model_schema,
-        )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={},
@@ -544,7 +532,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context="",
             memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=model_instance.parameters,
             image_detail_config=vision_detail,
         )
 
@@ -816,11 +806,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         else:
             prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, variable_pool, None, 2000)
 
-        model_config = self._build_model_config(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            model_schema=model_schema,
-        )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={},
@@ -829,27 +814,30 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context=context,
             memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=model_instance.parameters,
         )
         rest_tokens = 2000
 
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+        model_context_tokens = model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if model_context_tokens:
-            model_type_instance = model_config.provider_model_bundle.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
+            model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
             curr_message_tokens = (
-                model_type_instance.get_num_tokens(model_config.model, model_config.credentials, prompt_messages) + 1000
+                model_type_instance.get_num_tokens(
+                    model_instance.model_name, model_instance.credentials, prompt_messages
+                )
+                + 1000
             )  # add 1000 to ensure tool call messages
 
             max_tokens = 0
-            for parameter_rule in model_config.model_schema.parameter_rules:
+            for parameter_rule in model_schema.parameter_rules:
                 if parameter_rule.name == "max_tokens" or (
                     parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
                 ):
                     max_tokens = (
-                        model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template or "")
+                        model_instance.parameters.get(parameter_rule.name)
+                        or model_instance.parameters.get(parameter_rule.use_template or "")
                     ) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
@@ -868,24 +856,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 model_factory=self._model_factory,
             )
         return self._model_instance
-
-    @staticmethod
-    def _build_model_config(
-        *,
-        node_data_model: ModelConfig,
-        model_instance: ModelInstance,
-        model_schema: Any,
-    ) -> ModelConfigWithCredentialsEntity:
-        return ModelConfigWithCredentialsEntity(
-            provider=model_instance.provider,
-            model=model_instance.model_name,
-            model_schema=model_schema,
-            mode=node_data_model.mode,
-            provider_model_bundle=model_instance.provider_model_bundle,
-            credentials=model_instance.credentials,
-            parameters=dict(model_instance.parameters),
-            stop=list(model_instance.stop),
-        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

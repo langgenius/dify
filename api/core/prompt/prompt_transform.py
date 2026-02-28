@@ -1,48 +1,93 @@
+from collections.abc import Mapping
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
-from core.model_runtime.entities.model_entities import ModelPropertyKey
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 
 
 class PromptTransform:
+    def _resolve_model_runtime(
+        self,
+        *,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
+        model_schema: AIModelEntity | None = None,
+        model_parameters: Mapping[str, Any] | None = None,
+    ) -> tuple[ModelInstance, AIModelEntity, Mapping[str, Any]]:
+        if model_instance is None:
+            if model_config is None:
+                raise ValueError("Either model_config or model_instance must be provided.")
+            model_instance = ModelInstance(
+                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
+            )
+            model_instance.credentials = model_config.credentials
+
+        if model_schema is None:
+            if model_config is None:
+                raise ValueError("Either model_schema or model_config must be provided.")
+            model_schema = model_config.model_schema
+
+        if model_parameters is None:
+            model_parameters = model_instance.parameters or (model_config.parameters if model_config else {})
+
+        return model_instance, model_schema, model_parameters
+
     def _append_chat_histories(
         self,
         memory: TokenBufferMemory,
         memory_config: MemoryConfig,
         prompt_messages: list[PromptMessage],
-        model_config: ModelConfigWithCredentialsEntity,
+        *,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
+        model_schema: AIModelEntity | None = None,
+        model_parameters: Mapping[str, Any] | None = None,
     ) -> list[PromptMessage]:
-        rest_tokens = self._calculate_rest_token(prompt_messages, model_config)
+        rest_tokens = self._calculate_rest_token(
+            prompt_messages,
+            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=model_parameters,
+        )
         histories = self._get_history_messages_list_from_memory(memory, memory_config, rest_tokens)
         prompt_messages.extend(histories)
 
         return prompt_messages
 
     def _calculate_rest_token(
-        self, prompt_messages: list[PromptMessage], model_config: ModelConfigWithCredentialsEntity
+        self,
+        prompt_messages: list[PromptMessage],
+        *,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
+        model_schema: AIModelEntity | None = None,
+        model_parameters: Mapping[str, Any] | None = None,
     ) -> int:
+        model_instance, model_schema, model_parameters = self._resolve_model_runtime(
+            model_config=model_config,
+            model_instance=model_instance,
+            model_schema=model_schema,
+            model_parameters=model_parameters,
+        )
         rest_tokens = 2000
 
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+        model_context_tokens = model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if model_context_tokens:
-            model_instance = ModelInstance(
-                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-            )
-
             curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
             max_tokens = 0
-            for parameter_rule in model_config.model_schema.parameter_rules:
+            for parameter_rule in model_schema.parameter_rules:
                 if parameter_rule.name == "max_tokens" or (
                     parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
                 ):
                     max_tokens = (
-                        model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template or "")
+                        model_parameters.get(parameter_rule.name)
+                        or model_parameters.get(parameter_rule.use_template or "")
                     ) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
