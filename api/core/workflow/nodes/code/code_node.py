@@ -1,10 +1,8 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
+from textwrap import dedent
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, cast
 
-from core.helper.code_executor.code_node_provider import CodeNodeProvider
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
-from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
@@ -36,11 +34,75 @@ class WorkflowCodeExecutor(Protocol):
     def is_execution_error(self, error: Exception) -> bool: ...
 
 
+class CodeConfigProvider(Protocol):
+    @classmethod
+    def is_accept_language(cls, language: str) -> bool: ...
+
+    @classmethod
+    def get_default_config(cls) -> Mapping[str, object]: ...
+
+
+def _build_default_config(*, language: CodeLanguage, code: str) -> Mapping[str, object]:
+    return {
+        "type": "code",
+        "config": {
+            "variables": [
+                {"variable": "arg1", "value_selector": []},
+                {"variable": "arg2", "value_selector": []},
+            ],
+            "code_language": language,
+            "code": code,
+            "outputs": {"result": {"type": "string", "children": None}},
+        },
+    }
+
+
+class _Python3CodeConfigProvider:
+    @classmethod
+    def is_accept_language(cls, language: str) -> bool:
+        return language == CodeLanguage.PYTHON3
+
+    @classmethod
+    def get_default_config(cls) -> Mapping[str, object]:
+        return _build_default_config(
+            language=CodeLanguage.PYTHON3,
+            code=dedent(
+                """
+                def main(arg1: str, arg2: str):
+                    return {
+                        "result": arg1 + arg2,
+                    }
+                """
+            ),
+        )
+
+
+class _JavascriptCodeConfigProvider:
+    @classmethod
+    def is_accept_language(cls, language: str) -> bool:
+        return language == CodeLanguage.JAVASCRIPT
+
+    @classmethod
+    def get_default_config(cls) -> Mapping[str, object]:
+        return _build_default_config(
+            language=CodeLanguage.JAVASCRIPT,
+            code=dedent(
+                """
+                function main({arg1, arg2}) {
+                    return {
+                        result: arg1 + arg2
+                    }
+                }
+                """
+            ),
+        )
+
+
 class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
-    _DEFAULT_CODE_PROVIDERS: ClassVar[tuple[type[CodeNodeProvider], ...]] = (
-        Python3CodeProvider,
-        JavascriptCodeProvider,
+    _DEFAULT_CODE_PROVIDERS: ClassVar[tuple[type[CodeConfigProvider], ...]] = (
+        _Python3CodeConfigProvider,
+        _JavascriptCodeConfigProvider,
     )
     _limits: CodeNodeLimits
 
@@ -52,7 +114,7 @@ class CodeNode(Node[CodeNodeData]):
         graph_runtime_state: "GraphRuntimeState",
         *,
         code_executor: WorkflowCodeExecutor,
-        code_providers: Sequence[type[CodeNodeProvider]] | None = None,
+        code_providers: Sequence[type[CodeConfigProvider]] | None = None,
         code_limits: CodeNodeLimits,
     ) -> None:
         super().__init__(
@@ -62,7 +124,7 @@ class CodeNode(Node[CodeNodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         self._code_executor: WorkflowCodeExecutor = code_executor
-        self._code_providers: tuple[type[CodeNodeProvider], ...] = (
+        self._code_providers: tuple[type[CodeConfigProvider], ...] = (
             tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
         )
         self._limits = code_limits
@@ -78,14 +140,14 @@ class CodeNode(Node[CodeNodeData]):
         if filters:
             code_language = cast(CodeLanguage, filters.get("code_language", CodeLanguage.PYTHON3))
 
-        code_provider: type[CodeNodeProvider] = next(
+        code_provider: type[CodeConfigProvider] = next(
             provider for provider in cls._DEFAULT_CODE_PROVIDERS if provider.is_accept_language(code_language)
         )
 
         return code_provider.get_default_config()
 
     @classmethod
-    def default_code_providers(cls) -> tuple[type[CodeNodeProvider], ...]:
+    def default_code_providers(cls) -> tuple[type[CodeConfigProvider], ...]:
         return cls._DEFAULT_CODE_PROVIDERS
 
     @classmethod
@@ -130,7 +192,7 @@ class CodeNode(Node[CodeNodeData]):
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
 
-    def _select_code_provider(self, code_language: CodeLanguage) -> type[CodeNodeProvider]:
+    def _select_code_provider(self, code_language: CodeLanguage) -> type[CodeConfigProvider]:
         for provider in self._code_providers:
             if provider.is_accept_language(code_language):
                 return provider
