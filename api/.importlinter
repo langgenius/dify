@@ -106,7 +106,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> core.provider_manager
     core.workflow.nodes.agent.agent_node -> core.tools.tool_manager
     core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
-    core.workflow.nodes.http_request.node -> core.tools.tool_file_manager
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     core.workflow.nodes.llm.llm_utils -> configs
@@ -147,8 +146,6 @@ ignore_imports =
     core.workflow.nodes.code.code_node -> core.helper.code_executor.javascript.javascript_code_provider
     core.workflow.nodes.code.code_node -> core.helper.code_executor.python3.python3_code_provider
     core.workflow.nodes.code.entities -> core.helper.code_executor.code_executor
-    core.workflow.nodes.http_request.executor -> core.helper.ssrf_proxy
-    core.workflow.nodes.http_request.node -> core.helper.ssrf_proxy
     core.workflow.nodes.llm.file_saver -> core.helper.ssrf_proxy
     core.workflow.nodes.llm.node -> core.helper.code_executor
     core.workflow.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor
