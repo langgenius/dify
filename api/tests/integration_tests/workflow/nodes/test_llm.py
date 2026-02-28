@@ -11,6 +11,7 @@ from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
@@ -71,8 +72,8 @@ def init_llm_node(config: dict) -> LLMNode:
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        credentials_provider=MagicMock(),
-        model_factory=MagicMock(),
+        credentials_provider=MagicMock(spec=CredentialsProvider),
+        model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
     )
 
@@ -116,7 +117,7 @@ def test_execute_llm():
         from core.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
-        mock_model_instance = MagicMock()
+        mock_model_instance = MagicMock(spec=ModelInstance)
         mock_model_instance.provider = "openai"
         mock_model_instance.model_name = "gpt-3.5-turbo"
         mock_model_instance.credentials = {}
@@ -232,7 +233,7 @@ def test_execute_llm_with_jinja2():
         from core.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
-        mock_model_instance = MagicMock()
+        mock_model_instance = MagicMock(spec=ModelInstance)
         mock_model_instance.provider = "openai"
         mock_model_instance.model_name = "gpt-3.5-turbo"
         mock_model_instance.credentials = {}
