@@ -15,7 +15,7 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
+from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
@@ -116,7 +116,7 @@ def test_function_calling_parameter_extractor(setup_model_mock):
         }
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._fetch_model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
@@ -157,7 +157,7 @@ def test_instructions(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._fetch_model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
@@ -207,7 +207,7 @@ def test_chat_parameter_extractor(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._fetch_model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
@@ -258,7 +258,7 @@ def test_completion_parameter_extractor(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._fetch_model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo-instruct",
         mode="completion",
@@ -383,7 +383,7 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._fetch_model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",

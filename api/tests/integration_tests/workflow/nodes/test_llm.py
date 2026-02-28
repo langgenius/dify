@@ -116,8 +116,8 @@ def test_execute_llm():
 
     db.session.close = MagicMock()
 
-    # Mock the _fetch_model_config to avoid database calls
-    def mock_fetch_model_config(*_args, **_kwargs):
+    # Mock _fetch_model_instance to avoid database calls
+    def mock_fetch_model_instance(*_args, **_kwargs):
         from decimal import Decimal
         from unittest.mock import MagicMock
 
@@ -131,6 +131,14 @@ def test_execute_llm():
         mock_model_instance.credentials = {}
         mock_model_instance.parameters = {}
         mock_model_instance.stop = []
+        mock_model_instance.model_type_instance = MagicMock()
+        mock_model_instance.model_type_instance.get_model_schema.return_value = MagicMock(
+            model_properties={},
+            parameter_rules=[],
+            features=[],
+        )
+        mock_model_instance.provider_model_bundle = MagicMock()
+        mock_model_instance.provider_model_bundle.configuration.using_provider_type = "custom"
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -166,7 +174,7 @@ def test_execute_llm():
         ], []
 
     with (
-        patch.object(LLMNode, "_fetch_model_config", mock_fetch_model_config),
+        patch.object(LLMNode, "_fetch_model_instance", mock_fetch_model_instance),
         patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1),
     ):
         # execute node
@@ -226,8 +234,8 @@ def test_execute_llm_with_jinja2():
     # Mock db.session.close()
     db.session.close = MagicMock()
 
-    # Mock the _fetch_model_config method
-    def mock_fetch_model_config(*_args, **_kwargs):
+    # Mock _fetch_model_instance to avoid database calls
+    def mock_fetch_model_instance(*_args, **_kwargs):
         from decimal import Decimal
         from unittest.mock import MagicMock
 
@@ -241,6 +249,14 @@ def test_execute_llm_with_jinja2():
         mock_model_instance.credentials = {}
         mock_model_instance.parameters = {}
         mock_model_instance.stop = []
+        mock_model_instance.model_type_instance = MagicMock()
+        mock_model_instance.model_type_instance.get_model_schema.return_value = MagicMock(
+            model_properties={},
+            parameter_rules=[],
+            features=[],
+        )
+        mock_model_instance.provider_model_bundle = MagicMock()
+        mock_model_instance.provider_model_bundle.configuration.using_provider_type = "custom"
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -276,7 +292,7 @@ def test_execute_llm_with_jinja2():
         ], []
 
     with (
-        patch.object(LLMNode, "_fetch_model_config", mock_fetch_model_config),
+        patch.object(LLMNode, "_fetch_model_instance", mock_fetch_model_instance),
         patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2),
     ):
         # execute node
