@@ -63,7 +63,8 @@ class RagPipelineTransformService:
             ):
                 node = self._deal_file_extensions(node)
             if node.get("data", {}).get("type") == "knowledge-index":
-                node = self._deal_knowledge_index(dataset, doc_form, indexing_technique, retrieval_model, node)
+                knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
+                node = self._deal_knowledge_index(knowledge_configuration, dataset, indexing_technique, retrieval_model, node)
             new_nodes.append(node)
         if new_nodes:
             graph["nodes"] = new_nodes
@@ -155,14 +156,13 @@ class RagPipelineTransformService:
 
     def _deal_knowledge_index(
         self,
+        knowledge_configuration: KnowledgeConfiguration,
         dataset: Dataset,
-        doc_form: str,
         indexing_technique: str | None,
         retrieval_model: RetrievalSetting | None,
         node: dict,
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
