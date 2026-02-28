@@ -12,6 +12,7 @@ from core.entities.provider_entities import CustomConfiguration, SystemConfigura
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageRole,
@@ -20,6 +21,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.entities import GraphInitParams
 from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.llm import llm_utils
@@ -32,7 +34,7 @@ from core.workflow.nodes.llm.entities import (
     VisionConfigOptions,
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
-from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.llm.node import LLMNode, _handle_memory_completion_mode
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -585,6 +587,41 @@ def test_handle_list_messages_basic(llm_node):
     assert len(result) == 1
     assert isinstance(result[0], UserPromptMessage)
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
+
+
+def test_handle_memory_completion_mode_uses_prompt_message_interface():
+    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+    memory.get_history_prompt_messages.return_value = [
+        UserPromptMessage(
+            content=[
+                TextPromptMessageContent(data="first question"),
+                ImagePromptMessageContent(
+                    format="png",
+                    url="https://example.com/image.png",
+                    mime_type="image/png",
+                ),
+            ]
+        ),
+        AssistantPromptMessage(content="first answer"),
+    ]
+
+    model_instance = mock.MagicMock(spec=ModelInstance)
+
+    memory_config = MemoryConfig(
+        role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
+        window=MemoryConfig.WindowConfig(enabled=True, size=3),
+    )
+
+    with mock.patch("core.workflow.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = _handle_memory_completion_mode(
+            memory=memory,
+            memory_config=memory_config,
+            model_instance=model_instance,
+        )
+
+    assert memory_text == "Human: first question\n[image]\nAssistant: first answer"
+    mock_rest_token.assert_called_once_with(prompt_messages=[], model_instance=model_instance)
+    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=3)
 
 
 @pytest.fixture

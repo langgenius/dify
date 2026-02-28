@@ -14,7 +14,6 @@ from sqlalchemy import select
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -63,7 +62,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory, PromptMessageMemory
 from core.workflow.runtime import VariablePool
 from core.workflow.variables import (
     ArrayFileSegment,
@@ -115,6 +114,7 @@ class LLMNode(Node[LLMNodeData]):
     _credentials_provider: CredentialsProvider
     _model_factory: ModelFactory
     _model_instance: ModelInstance
+    _memory: PromptMessageMemory | None
 
     def __init__(
         self,
@@ -126,6 +126,7 @@ class LLMNode(Node[LLMNodeData]):
         credentials_provider: CredentialsProvider,
         model_factory: ModelFactory,
         model_instance: ModelInstance,
+        memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -140,6 +141,7 @@ class LLMNode(Node[LLMNodeData]):
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
         self._model_instance = model_instance
+        self._memory = memory
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -208,13 +210,7 @@ class LLMNode(Node[LLMNodeData]):
             model_provider = model_instance.provider
             model_stop = model_instance.stop
 
-            # fetch memory
-            memory = llm_utils.fetch_memory(
-                variable_pool=variable_pool,
-                app_id=self.app_id,
-                node_data_memory=self.node_data.memory,
-                model_instance=model_instance,
-            )
+            memory = self._memory
 
             query: str | None = None
             if self.node_data.memory:
@@ -762,7 +758,7 @@ class LLMNode(Node[LLMNodeData]):
         sys_query: str | None = None,
         sys_files: Sequence[File],
         context: str | None = None,
-        memory: TokenBufferMemory | None = None,
+        memory: PromptMessageMemory | None = None,
         model_instance: ModelInstance,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         stop: Sequence[str] | None = None,
@@ -1307,7 +1303,7 @@ def _calculate_rest_token(
 
 def _handle_memory_chat_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: PromptMessageMemory | None,
     memory_config: MemoryConfig | None,
     model_instance: ModelInstance,
 ) -> Sequence[PromptMessage]:
@@ -1327,7 +1323,7 @@ def _handle_memory_chat_mode(
 
 def _handle_memory_completion_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: PromptMessageMemory | None,
     memory_config: MemoryConfig | None,
     model_instance: ModelInstance,
 ) -> str:
@@ -1340,13 +1336,46 @@ def _handle_memory_completion_mode(
         )
         if not memory_config.role_prefix:
             raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
-        memory_text = memory.get_history_prompt_text(
+        memory_messages = memory.get_history_prompt_messages(
             max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
+        )
+        memory_text = _convert_history_messages_to_text(
+            history_messages=memory_messages,
             human_prefix=memory_config.role_prefix.user,
             ai_prefix=memory_config.role_prefix.assistant,
         )
     return memory_text
+
+
+def _convert_history_messages_to_text(
+    *,
+    history_messages: Sequence[PromptMessage],
+    human_prefix: str,
+    ai_prefix: str,
+) -> str:
+    string_messages: list[str] = []
+    for message in history_messages:
+        if message.role == PromptMessageRole.USER:
+            role = human_prefix
+        elif message.role == PromptMessageRole.ASSISTANT:
+            role = ai_prefix
+        else:
+            continue
+
+        if isinstance(message.content, list):
+            content_parts = []
+            for content in message.content:
+                if isinstance(content, TextPromptMessageContent):
+                    content_parts.append(content.data)
+                elif isinstance(content, ImagePromptMessageContent):
+                    content_parts.append("[image]")
+
+            inner_msg = "\n".join(content_parts)
+            string_messages.append(f"{role}: {inner_msg}")
+        else:
+            string_messages.append(f"{role}: {message.content}")
+    return "\n".join(string_messages)
 
 
 def _handle_completion_template(
