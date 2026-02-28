@@ -112,7 +112,6 @@ class MockNodeFactory(DifyNodeFactory):
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
                     code_executor=self._code_executor,
-                    code_providers=self._code_providers,
                     code_limits=self._code_limits,
                 )
             elif node_type == NodeType.HTTP_REQUEST:
