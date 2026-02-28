@@ -1,10 +1,12 @@
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, final
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, final
 
 from typing_extensions import override
 
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeExecutor
+from core.app.llm.model_access import build_dify_model_access
+from core.datasource.datasource_manager import DatasourceManager
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -14,22 +16,43 @@ from core.workflow.enums import NodeType
 from core.workflow.file.file_manager import file_manager
 from core.workflow.graph.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.code_node import CodeNode
+from core.workflow.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
+from core.workflow.nodes.code.entities import CodeLanguage
 from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.nodes.datasource import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
-from core.workflow.nodes.http_request.node import HttpRequestNode
+from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
+from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from core.workflow.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
-    Jinja2TemplateRenderer,
 )
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
+
+
+class DefaultWorkflowCodeExecutor:
+    def execute(
+        self,
+        *,
+        language: CodeLanguage,
+        code: str,
+        inputs: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        return CodeExecutor.execute_workflow_code_template(
+            language=language,
+            code=code,
+            inputs=inputs,
+        )
+
+    def is_execution_error(self, error: Exception) -> bool:
+        return isinstance(error, CodeExecutionError)
 
 
 @final
@@ -45,23 +68,12 @@ class DifyNodeFactory(NodeFactory):
         self,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        code_executor: type[CodeExecutor] | None = None,
-        code_providers: Sequence[type[CodeNodeProvider]] | None = None,
-        code_limits: CodeNodeLimits | None = None,
-        template_renderer: Jinja2TemplateRenderer | None = None,
-        template_transform_max_output_length: int | None = None,
-        http_request_http_client: HttpClientProtocol | None = None,
-        http_request_tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
-        http_request_file_manager: FileManagerProtocol | None = None,
-        document_extractor_unstructured_api_config: UnstructuredApiConfig | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
-        self._code_executor: type[CodeExecutor] = code_executor or CodeExecutor
-        self._code_providers: tuple[type[CodeNodeProvider], ...] = (
-            tuple(code_providers) if code_providers else CodeNode.default_code_providers()
-        )
-        self._code_limits = code_limits or CodeNodeLimits(
+        self._code_executor: WorkflowCodeExecutor = DefaultWorkflowCodeExecutor()
+        self._code_providers: tuple[type[CodeNodeProvider], ...] = CodeNode.default_code_providers()
+        self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
             min_number=dify_config.CODE_MIN_NUMBER,
@@ -71,21 +83,27 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
-        self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
-        self._template_transform_max_output_length = (
-            template_transform_max_output_length or dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
-        )
-        self._http_request_http_client = http_request_http_client or ssrf_proxy
-        self._http_request_tool_file_manager_factory = http_request_tool_file_manager_factory
-        self._http_request_file_manager = http_request_file_manager or file_manager
+        self._template_renderer = CodeExecutorJinja2TemplateRenderer()
+        self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
+        self._http_request_http_client = ssrf_proxy
+        self._http_request_tool_file_manager_factory = ToolFileManager
+        self._http_request_file_manager = file_manager
         self._rag_retrieval = DatasetRetrieval()
-        self._document_extractor_unstructured_api_config = (
-            document_extractor_unstructured_api_config
-            or UnstructuredApiConfig(
-                api_url=dify_config.UNSTRUCTURED_API_URL,
-                api_key=dify_config.UNSTRUCTURED_API_KEY or "",
-            )
+        self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
+            api_url=dify_config.UNSTRUCTURED_API_URL,
+            api_key=dify_config.UNSTRUCTURED_API_KEY or "",
         )
+        self._http_request_config = build_http_request_config(
+            max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+            max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+            max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+            max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+            max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+            ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+            ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+        )
+
+        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(graph_init_params.tenant_id)
 
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:
@@ -146,9 +164,29 @@ class DifyNodeFactory(NodeFactory):
                 config=node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
+                http_request_config=self._http_request_config,
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
+            )
+
+        if node_type == NodeType.LLM:
+            return LLMNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                credentials_provider=self._llm_credentials_provider,
+                model_factory=self._llm_model_factory,
+            )
+
+        if node_type == NodeType.DATASOURCE:
+            return DatasourceNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                datasource_manager=DatasourceManager,
             )
 
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
@@ -167,6 +205,26 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
+            )
+
+        if node_type == NodeType.QUESTION_CLASSIFIER:
+            return QuestionClassifierNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                credentials_provider=self._llm_credentials_provider,
+                model_factory=self._llm_model_factory,
+            )
+
+        if node_type == NodeType.PARAMETER_EXTRACTOR:
+            return ParameterExtractorNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                credentials_provider=self._llm_credentials_provider,
+                model_factory=self._llm_model_factory,
             )
 
         return node_class(

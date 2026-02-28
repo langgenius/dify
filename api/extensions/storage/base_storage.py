@@ -20,15 +20,15 @@ class BaseStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def download(self, filename, target_filepath):
+    def download(self, filename: str, target_filepath: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def exists(self, filename):
+    def exists(self, filename: str) -> bool:
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, filename):
+    def delete(self, filename: str):
         raise NotImplementedError
 
     def scan(self, path, files=True, directories=False) -> list[str]:

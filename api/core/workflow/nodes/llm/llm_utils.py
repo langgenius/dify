@@ -8,7 +8,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -17,6 +17,8 @@ from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegme
 from core.workflow.enums import SystemVariableKey
 from core.workflow.file.models import File
 from core.workflow.nodes.llm.entities import ModelConfig
+from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -24,49 +26,46 @@ from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
 
-from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
+from .exc import InvalidVariableTypeError
 
 
 def fetch_model_config(
-    tenant_id: str, node_data_model: ModelConfig
+    *,
+    node_data_model: ModelConfig,
+    credentials_provider: CredentialsProvider,
+    model_factory: ModelFactory,
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
 
-    model = ModelManager().get_model_instance(
-        tenant_id=tenant_id,
-        model_type=ModelType.LLM,
-        provider=node_data_model.provider,
+    credentials = credentials_provider.fetch(node_data_model.provider, node_data_model.name)
+    model_instance = model_factory.init_model_instance(node_data_model.provider, node_data_model.name)
+    provider_model_bundle = model_instance.provider_model_bundle
+
+    provider_model = provider_model_bundle.configuration.get_provider_model(
         model=node_data_model.name,
+        model_type=ModelType.LLM,
     )
-
-    model.model_type_instance = cast(LargeLanguageModel, model.model_type_instance)
-
-    # check model
-    provider_model = model.provider_model_bundle.configuration.get_provider_model(
-        model=node_data_model.name, model_type=ModelType.LLM
-    )
-
     if provider_model is None:
         raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
     provider_model.raise_for_status()
 
-    # model config
     stop: list[str] = []
     if "stop" in node_data_model.completion_params:
         stop = node_data_model.completion_params.pop("stop")
 
-    model_schema = model.model_type_instance.get_model_schema(node_data_model.name, model.credentials)
+    model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
     if not model_schema:
         raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
 
-    return model, ModelConfigWithCredentialsEntity(
+    model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+    return model_instance, ModelConfigWithCredentialsEntity(
         provider=node_data_model.provider,
         model=node_data_model.name,
         model_schema=model_schema,
         mode=node_data_model.mode,
-        provider_model_bundle=model.provider_model_bundle,
-        credentials=model.credentials,
+        provider_model_bundle=provider_model_bundle,
+        credentials=credentials,
         parameters=node_data_model.completion_params,
         stop=stop,
     )
@@ -131,7 +130,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
         if quota_unit == QuotaUnit.TOKENS:
             used_quota = usage.total_tokens
         elif quota_unit == QuotaUnit.CREDITS:
-            used_quota = dify_config.get_model_credits(model_instance.model)
+            used_quota = dify_config.get_model_credits(model_instance.model_name)
         else:
             used_quota = 1
 
