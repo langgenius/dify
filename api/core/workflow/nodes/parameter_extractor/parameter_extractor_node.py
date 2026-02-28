@@ -96,7 +96,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     node_type = NodeType.PARAMETER_EXTRACTOR
 
     _model_instance: ModelInstance | None = None
-    _model_config: ModelConfigWithCredentialsEntity | None = None
     _credentials_provider: "CredentialsProvider"
     _model_factory: "ModelFactory"
 
@@ -155,7 +154,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             else []
         )
 
-        model_instance, model_config = self._fetch_model_config(node_data.model)
+        model_instance = self._fetch_model_instance(node_data.model)
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
             raise InvalidModelTypeError("Model is not a Large Language Model")
 
@@ -166,6 +165,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
         if not model_schema:
             raise ModelSchemaNotFoundError("Model schema not found")
+        model_config = self._build_model_config(
+            node_data_model=node_data.model,
+            model_instance=model_instance,
+            model_schema=model_schema,
+        )
 
         # fetch memory
         memory = llm_utils.fetch_memory(
@@ -211,9 +215,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         }
 
         process_data = {
-            "model_mode": model_config.mode,
+            "model_mode": node_data.model.mode,
             "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                model_mode=model_config.mode, prompt_messages=prompt_messages
+                model_mode=node_data.model.mode, prompt_messages=prompt_messages
             ),
             "usage": None,
             "function": {} if not prompt_message_tools else jsonable_encoder(prompt_message_tools[0]),
@@ -771,15 +775,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         context: str | None,
     ) -> int:
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-
-        model_instance, model_config = self._fetch_model_config(node_data.model)
-        if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
-            raise InvalidModelTypeError("Model is not a Large Language Model")
-
-        llm_model = model_instance.model_type_instance
-        model_schema = llm_model.get_model_schema(model_config.model, model_config.credentials)
-        if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
+        model_schema = model_config.model_schema
 
         if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
@@ -822,20 +818,35 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         return rest_tokens
 
-    def _fetch_model_config(
-        self, node_data_model: ModelConfig
-    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    def _fetch_model_instance(self, node_data_model: ModelConfig) -> ModelInstance:
         """
-        Fetch model config.
+        Fetch model instance.
         """
-        if not self._model_instance or not self._model_config:
-            self._model_instance, self._model_config = llm_utils.fetch_model_config(
+        if not self._model_instance:
+            self._model_instance = llm_utils.fetch_model_instance(
                 node_data_model=node_data_model,
                 credentials_provider=self._credentials_provider,
                 model_factory=self._model_factory,
             )
+        return self._model_instance
 
-        return self._model_instance, self._model_config
+    @staticmethod
+    def _build_model_config(
+        *,
+        node_data_model: ModelConfig,
+        model_instance: ModelInstance,
+        model_schema: Any,
+    ) -> ModelConfigWithCredentialsEntity:
+        return ModelConfigWithCredentialsEntity(
+            provider=model_instance.provider,
+            model=model_instance.model_name,
+            model_schema=model_schema,
+            mode=node_data_model.mode,
+            provider_model_bundle=model_instance.provider_model_bundle,
+            credentials=model_instance.credentials,
+            parameters=dict(model_instance.parameters),
+            stop=list(model_instance.stop),
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
