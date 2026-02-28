@@ -222,7 +222,7 @@
     "cross-env": "10.1.0",
     "esbuild": "0.27.2",
     "eslint": "10.0.2",
-    "eslint-plugin-better-tailwindcss": "4.3.1",
+    "eslint-plugin-better-tailwindcss": "https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15",
     "eslint-plugin-hyoban": "0.11.2",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.5.2",

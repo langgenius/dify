@@ -533,8 +533,8 @@ importers:
         specifier: 10.0.2
         version: 10.0.2(jiti@1.21.7)
       eslint-plugin-better-tailwindcss:
-        specifier: 4.3.1
-        version: 4.3.1(eslint@10.0.2(jiti@1.21.7))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
+        specifier: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15
+        version: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15(eslint@10.0.2(jiti@1.21.7))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
       eslint-plugin-hyoban:
         specifier: 0.11.2
         version: 0.11.2(eslint@10.0.2(jiti@1.21.7))
@@ -4677,8 +4677,9 @@ packages:
     peerDependencies:
       eslint: '*'
 
-  eslint-plugin-better-tailwindcss@4.3.1:
-    resolution: {integrity: sha512-b6xM31GukKz0WlgMD0tQdY/rLjf/9mWIk8EcA45ngOKJPPQf1C482xZtBlT357jyunQE2mOk4NlPcL4i9Pr85A==}
+  eslint-plugin-better-tailwindcss@https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15:
+    resolution: {integrity: sha512-hbxpqInIW0Q5UIwXEuQxSBjrMd5bYttXeSPU6dfK2zpECKNIzGR+KXZZEdZaPagEMDJosSyQ9RKievmBcCAxfA==, tarball: https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15}
+    version: 4.3.1
     engines: {node: ^20.19.0 || ^22.12.0 || >=23.0.0}
     peerDependencies:
       eslint: ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
@@ -12345,7 +12346,7 @@ snapshots:
     dependencies:
       eslint: 10.0.2(jiti@1.21.7)
 
-  eslint-plugin-better-tailwindcss@4.3.1(eslint@10.0.2(jiti@1.21.7))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3):
+  eslint-plugin-better-tailwindcss@https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15(eslint@10.0.2(jiti@1.21.7))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3):
     dependencies:
       '@eslint/css-tree': 3.6.9
       '@valibot/to-json-schema': 1.5.0(valibot@1.2.0(typescript@5.9.3))
