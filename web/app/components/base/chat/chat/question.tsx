@@ -186,8 +186,8 @@ const Question: FC<QuestionProps> = ({
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <Button className="min-w-[96px]" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button className="min-w-[96px]" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}
