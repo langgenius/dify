@@ -1,10 +1,10 @@
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
+from core.model_runtime.token_buffer_memory import TokenBufferMemory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 
 

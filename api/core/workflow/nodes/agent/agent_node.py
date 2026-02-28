@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.provider_manager import ProviderManager
 from core.tools.entities.tool_entities import (

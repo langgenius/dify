@@ -247,6 +247,11 @@ ignore_imports =
     core.workflow.workflow_entry -> models.enums
     core.workflow.nodes.agent.agent_node -> services
     core.workflow.nodes.tool.tool_node -> services
+    core.workflow.nodes.agent.agent_node -> core.model_runtime.token_buffer_memory
+    core.workflow.nodes.llm.llm_utils -> core.model_runtime.token_buffer_memory
+    core.workflow.nodes.llm.node -> core.model_runtime.token_buffer_memory
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_runtime.token_buffer_memory
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.model_runtime.token_buffer_memory
 
 [importlinter:contract:model-runtime-no-internal-imports]
 name = Model Runtime Internal Imports
@@ -299,6 +304,13 @@ ignore_imports =
     core.model_runtime.model_providers.model_provider_factory -> configs
     core.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
     core.model_runtime.model_providers.model_provider_factory -> models.provider_ids
+    core.model_runtime.token_buffer_memory -> core.app.app_config.features.file_upload.manager
+    core.model_runtime.token_buffer_memory -> core.model_manager
+    core.model_runtime.token_buffer_memory -> core.prompt.utils.extract_thread_messages
+    core.model_runtime.token_buffer_memory -> core.workflow.file.file_manager
+    core.model_runtime.token_buffer_memory -> extensions.ext_database
+    core.model_runtime.token_buffer_memory -> models.model
+    core.model_runtime.token_buffer_memory -> models.workflow
 
 [importlinter:contract:rsc]
 name = RSC
