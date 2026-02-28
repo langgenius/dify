@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -10,7 +10,7 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
@@ -29,12 +29,12 @@ from models.provider_ids import ModelProviderID
 from .exc import InvalidVariableTypeError
 
 
-def fetch_model_config(
+def _prepare_model_instance(
     *,
     node_data_model: ModelConfig,
     credentials_provider: CredentialsProvider,
     model_factory: ModelFactory,
-) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+) -> tuple[ModelInstance, AIModelEntity, dict[str, Any], list[str]]:
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
 
@@ -67,13 +67,42 @@ def fetch_model_config(
     model_instance.stop = tuple(stop)
 
     model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+    return model_instance, model_schema, completion_params, stop
+
+
+def fetch_model_instance(
+    *,
+    node_data_model: ModelConfig,
+    credentials_provider: CredentialsProvider,
+    model_factory: ModelFactory,
+) -> ModelInstance:
+    model_instance, _, _, _ = _prepare_model_instance(
+        node_data_model=node_data_model,
+        credentials_provider=credentials_provider,
+        model_factory=model_factory,
+    )
+    return model_instance
+
+
+def fetch_model_config(
+    *,
+    node_data_model: ModelConfig,
+    credentials_provider: CredentialsProvider,
+    model_factory: ModelFactory,
+) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    model_instance, model_schema, completion_params, stop = _prepare_model_instance(
+        node_data_model=node_data_model,
+        credentials_provider=credentials_provider,
+        model_factory=model_factory,
+    )
+    provider_model_bundle = model_instance.provider_model_bundle
     return model_instance, ModelConfigWithCredentialsEntity(
         provider=node_data_model.provider,
         model=node_data_model.name,
         model_schema=model_schema,
         mode=node_data_model.mode,
         provider_model_bundle=provider_model_bundle,
-        credentials=credentials,
+        credentials=model_instance.credentials,
         parameters=completion_params,
         stop=stop,
     )

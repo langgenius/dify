@@ -201,7 +201,7 @@ class LLMNode(Node[LLMNodeData]):
                 node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
             # fetch model config
-            model_instance = self._fetch_model_config(
+            model_instance = self._fetch_model_instance(
                 node_data_model=self.node_data.model,
             )
             model_name = model_instance.model_name
@@ -771,12 +771,12 @@ class LLMNode(Node[LLMNodeData]):
 
         return None
 
-    def _fetch_model_config(
+    def _fetch_model_instance(
         self,
         *,
         node_data_model: ModelConfig,
     ) -> ModelInstance:
-        model_instance, _ = llm_utils.fetch_model_config(
+        model_instance = llm_utils.fetch_model_instance(
             node_data_model=node_data_model,
             credentials_provider=self._credentials_provider,
             model_factory=self._model_factory,
