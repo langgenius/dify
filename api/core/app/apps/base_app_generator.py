@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Union, final
+from typing import TYPE_CHECKING, Any, Union, final, cast
 
 from sqlalchemy.orm import Session
 
@@ -224,6 +224,7 @@ class BaseAppGenerator:
     def _get_draft_var_saver_factory(invoke_from: InvokeFrom, account: Account | EndUser) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
+            account = cast(Account, account)
 
             def draft_var_saver_factory(
                 session: Session,
