@@ -189,6 +189,24 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `total_price` (decimal) optional 总费用
           - `currency` (string) optional 货币，如 `USD` / `RMB`
         - `created_at` (timestamp) 开始时间
+    - `event: human_input_required` Workflow 已暂停，等待 Human-in-the-Loop 输入
+      - `task_id` (string) 任务 ID，用于请求跟踪
+      - `workflow_run_id` (string) workflow 执行 ID
+      - `event` (string) 固定为 `human_input_required`
+      - `data` (object) 详细内容
+        - `form_id` (string) 人工输入表单 ID
+        - `node_id` (string) Human Input 节点 ID
+        - `node_title` (string) Human Input 节点标题
+        - `form_content` (string) 渲染后的表单内容
+        - `inputs` (array[object]) 表单输入项定义
+        - `actions` (array[object]) 用户可选动作按钮
+          - `id` (string) 动作 ID
+          - `title` (string) 按钮文案
+          - `button_style` (string) 按钮样式
+        - `display_in_ui` (bool) 是否需要在 UI 展示该表单
+        - `form_token` (string) 用于 `/form/human_input/:form_token` 接口的令牌
+        - `resolved_default_values` (object) 运行时解析后的默认值
+        - `expiration_time` (timestamp) 表单过期时间（Unix 秒级时间戳）
     - `event: workflow_finished` workflow 执行结束，成功失败同一事件中不同状态
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
       - `workflow_run_id` (string) workflow 执行 ID
@@ -570,6 +588,166 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='GET'
+  title='获取人工输入表单'
+  name='#get-human-input-form'
+/>
+<Row>
+  <Col>
+    通过 `form_token` 获取待处理的 Human-in-the-Loop 表单。
+
+    当流式事件返回 `human_input_required`（包含 `form_token`）时，可调用此接口拉取表单详情。
+
+    ### Path
+    - `form_token` (string) 必填，暂停事件返回的表单 token
+
+    ### Response
+    - `form_content` (string) 已渲染的表单内容（markdown/plain text）
+    - `inputs` (array[object]) 表单输入项定义
+    - `resolved_default_values` (object) 已解析的默认值（字符串）
+    - `user_actions` (array[object]) 操作按钮列表
+    - `expiration_time` (timestamp) 表单过期时间（Unix 秒）
+
+    ### Errors
+    - 404，表单不存在或不属于当前应用
+    - 412，`human_input_form_submitted`，表单已被提交
+    - 412，`human_input_form_expired`，表单已过期
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "form_content": "请确认最终结果：{{#$output.answer#}}",
+      "inputs": [
+        {
+          "label": "答案",
+          "type": "text-input",
+          "required": true,
+          "output_variable_name": "answer"
+        }
+      ],
+      "resolved_default_values": {
+        "answer": "初始值"
+      },
+      "user_actions": [
+        { "id": "approve", "title": "通过", "button_style": "primary" },
+        { "id": "reject", "title": "拒绝", "button_style": "warning" }
+      ],
+      "expiration_time": 1735689600
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='POST'
+  title='提交人工输入表单'
+  name='#submit-human-input-form'
+/>
+<Row>
+  <Col>
+    提交待处理的 Human-in-the-Loop 表单。
+
+    ### Path
+    - `form_token` (string) 必填，暂停事件返回的表单 token
+
+    ### Request Body
+    - `inputs` (object) 必填，表单字段的 key/value
+    - `action` (string) 必填，从 `user_actions` 中选择的动作 ID
+    - `user` (string) 必填，终端用户标识
+
+    ### Response
+    成功时返回空对象。
+
+    ### Errors
+    - 400，`invalid_form_data`，提交数据与表单 schema 不匹配
+    - 404，表单不存在或不属于当前应用
+    - 412，`human_input_form_submitted`，表单已被提交
+    - 412，`human_input_form_expired`，表单已过期
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+  "inputs": {"answer": "已确认答案"},
+  "action": "approve",
+  "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflow/:task_id/events'
+  method='GET'
+  title='获取恢复后的 Workflow 事件流'
+  name='#get-workflow-resume-events'
+/>
+<Row>
+  <Col>
+    在提交人工输入表单后，继续订阅工作流后续执行事件。
+
+    返回 `text/event-stream`，可持续接收直到工作流结束。
+
+    ### Path
+    - `task_id` (string) 必填，workflow 运行 ID（`workflow_run_id`）
+
+    ### Query
+    - `user` (string) 必填，终端用户标识
+    - `include_state_snapshot` (bool) 可选，设为 `true` 时会先回放持久化状态快照，再继续实时事件
+
+    ### Response
+    Server-Sent Events 流（`text/event-stream`）。
+    常见事件包括 `node_started`、`node_finished`、`human_input_form_filled`、`human_input_form_timeout`、`workflow_finished`。
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflow/:task_id/events"
+      targetCode={`curl -N -X GET '${props.appDetail.api_base_url}/workflow/{workflow_run_id}/events?user=abc-123' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+    data: {"event":"human_input_form_filled","task_id":"run-1","workflow_run_id":"run-1","data":{"node_id":"human_input_1","node_title":"Human Input","rendered_content":"已确认答案","action_id":"approve","action_text":"通过"}}
+    data: {"event":"node_finished","task_id":"run-1","workflow_run_id":"run-1","data":{"id":"node-execution-id","node_id":"llm_1","node_type":"llm","title":"LLM","index":5,"status":"succeeded","created_at":1735689601}}
+    data: {"event":"workflow_finished","task_id":"run-1","workflow_run_id":"run-1","data":{"id":"run-1","workflow_id":"workflow-id","status":"succeeded","outputs":{"text":"Done"},"created_at":1735689590,"finished_at":1735689602,"elapsed_time":12.0,"total_tokens":1000,"total_steps":6}}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 ---
 
 <Heading
