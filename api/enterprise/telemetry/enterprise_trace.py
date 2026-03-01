@@ -102,7 +102,7 @@ class EnterpriseOtelTrace:
         metadata = self._metadata(trace_info)
         tenant_id, app_id, user_id = self._context_ids(trace_info, metadata)
         return {
-            "dify.trace_id": trace_info.trace_id,
+            "dify.trace_id": trace_info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.app_id": app_id,
             "dify.app.name": metadata.get("app_name"),
@@ -163,7 +163,7 @@ class EnterpriseOtelTrace:
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Slim span attrs: identity + structure + status + timing only --
         span_attrs: dict[str, Any] = {
-            "dify.trace_id": info.trace_id,
+            "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.app_id": app_id,
             "dify.workflow.id": info.workflow_id,
@@ -307,7 +307,7 @@ class EnterpriseOtelTrace:
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Slim span attrs: identity + structure + status + timing --
         span_attrs: dict[str, Any] = {
-            "dify.trace_id": info.trace_id,
+            "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.app_id": app_id,
             "dify.workflow.id": info.workflow_id,
@@ -563,6 +563,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.TOOL_EXECUTION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -617,6 +618,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.MODERATION_CHECK,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -662,6 +664,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.SUGGESTED_QUESTION_GENERATION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -818,6 +821,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.GENERATE_NAME_EXECUTION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -840,7 +844,7 @@ class EnterpriseOtelTrace:
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = {
-            "dify.trace_id": info.trace_id,
+            "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.user.id": user_id,
             "dify.app.id": app_id or "",
@@ -871,6 +875,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.PROMPT_GENERATION_EXECUTION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
