@@ -43,7 +43,7 @@ describe('Input component', () => {
 
   it('shows left icon when showLeftIcon is true', () => {
     render(<Input showLeftIcon />)
-    const searchIcon = document.querySelector('svg')
+    const searchIcon = document.querySelector('.i-ri-search-line')
     expect(searchIcon).toBeInTheDocument()
     const input = screen.getByPlaceholderText('Search')
     expect(input).toHaveClass('pl-[26px]')
@@ -51,7 +51,7 @@ describe('Input component', () => {
 
   it('shows clear icon when showClearIcon is true and has value', () => {
     render(<Input showClearIcon value="test" />)
-    const clearIcon = document.querySelector('.group svg')
+    const clearIcon = document.querySelector('.i-ri-close-circle-fill')
     expect(clearIcon).toBeInTheDocument()
     const input = screen.getByDisplayValue('test')
     expect(input).toHaveClass('pr-[26px]')
@@ -59,21 +59,21 @@ describe('Input component', () => {
 
   it('does not show clear icon when disabled, even with value', () => {
     render(<Input showClearIcon value="test" disabled />)
-    const clearIcon = document.querySelector('.group svg')
+    const clearIcon = document.querySelector('.i-ri-close-circle-fill')
     expect(clearIcon).not.toBeInTheDocument()
   })
 
   it('calls onClear when clear icon is clicked', () => {
     const onClear = vi.fn()
     render(<Input showClearIcon value="test" onClear={onClear} />)
-    const clearIconContainer = document.querySelector('.group')
+    const clearIconContainer = screen.getByTestId('input-clear')
     fireEvent.click(clearIconContainer!)
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 
   it('shows warning icon when destructive is true', () => {
     render(<Input destructive />)
-    const warningIcon = document.querySelector('svg')
+    const warningIcon = document.querySelector('.i-ri-error-warning-line')
     expect(warningIcon).toBeInTheDocument()
     const input = screen.getByPlaceholderText('Please input')
     expect(input).toHaveClass('border-components-input-border-destructive')

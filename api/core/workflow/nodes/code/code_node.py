@@ -1,18 +1,15 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from textwrap import dedent
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
-from core.helper.code_executor.code_node_provider import CodeNodeProvider
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
-from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
-from core.variables.segments import ArrayFileSegment
-from core.variables.types import SegmentType
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.nodes.code.entities import CodeLanguage, CodeNodeData
 from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.variables.segments import ArrayFileSegment
+from core.workflow.variables.types import SegmentType
 
 from .exc import (
     CodeNodeError,
@@ -25,12 +22,56 @@ if TYPE_CHECKING:
     from core.workflow.runtime import GraphRuntimeState
 
 
+class WorkflowCodeExecutor(Protocol):
+    def execute(
+        self,
+        *,
+        language: CodeLanguage,
+        code: str,
+        inputs: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def is_execution_error(self, error: Exception) -> bool: ...
+
+
+def _build_default_config(*, language: CodeLanguage, code: str) -> Mapping[str, object]:
+    return {
+        "type": "code",
+        "config": {
+            "variables": [
+                {"variable": "arg1", "value_selector": []},
+                {"variable": "arg2", "value_selector": []},
+            ],
+            "code_language": language,
+            "code": code,
+            "outputs": {"result": {"type": "string", "children": None}},
+        },
+    }
+
+
+_DEFAULT_CODE_BY_LANGUAGE: Mapping[CodeLanguage, str] = {
+    CodeLanguage.PYTHON3: dedent(
+        """
+        def main(arg1: str, arg2: str):
+            return {
+                "result": arg1 + arg2,
+            }
+        """
+    ),
+    CodeLanguage.JAVASCRIPT: dedent(
+        """
+        function main({arg1, arg2}) {
+            return {
+                result: arg1 + arg2
+            }
+        }
+        """
+    ),
+}
+
+
 class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
-    _DEFAULT_CODE_PROVIDERS: ClassVar[tuple[type[CodeNodeProvider], ...]] = (
-        Python3CodeProvider,
-        JavascriptCodeProvider,
-    )
     _limits: CodeNodeLimits
 
     def __init__(
@@ -40,8 +81,7 @@ class CodeNode(Node[CodeNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
-        code_executor: type[CodeExecutor] | None = None,
-        code_providers: Sequence[type[CodeNodeProvider]] | None = None,
+        code_executor: WorkflowCodeExecutor,
         code_limits: CodeNodeLimits,
     ) -> None:
         super().__init__(
@@ -50,10 +90,7 @@ class CodeNode(Node[CodeNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._code_executor: type[CodeExecutor] = code_executor or CodeExecutor
-        self._code_providers: tuple[type[CodeNodeProvider], ...] = (
-            tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
-        )
+        self._code_executor: WorkflowCodeExecutor = code_executor
         self._limits = code_limits
 
     @classmethod
@@ -67,15 +104,10 @@ class CodeNode(Node[CodeNodeData]):
         if filters:
             code_language = cast(CodeLanguage, filters.get("code_language", CodeLanguage.PYTHON3))
 
-        code_provider: type[CodeNodeProvider] = next(
-            provider for provider in cls._DEFAULT_CODE_PROVIDERS if provider.is_accept_language(code_language)
-        )
-
-        return code_provider.get_default_config()
-
-    @classmethod
-    def default_code_providers(cls) -> tuple[type[CodeNodeProvider], ...]:
-        return cls._DEFAULT_CODE_PROVIDERS
+        default_code = _DEFAULT_CODE_BY_LANGUAGE.get(code_language)
+        if default_code is None:
+            raise CodeNodeError(f"Unsupported code language: {code_language}")
+        return _build_default_config(language=code_language, code=default_code)
 
     @classmethod
     def version(cls) -> str:
@@ -97,8 +129,7 @@ class CodeNode(Node[CodeNodeData]):
                 variables[variable_name] = variable.to_object() if variable else None
         # Run code
         try:
-            _ = self._select_code_provider(code_language)
-            result = self._code_executor.execute_workflow_code_template(
+            result = self._code_executor.execute(
                 language=code_language,
                 code=code,
                 inputs=variables,
@@ -106,18 +137,18 @@ class CodeNode(Node[CodeNodeData]):
 
             # Transform result
             result = self._transform_result(result=result, output_schema=self.node_data.outputs)
-        except (CodeExecutionError, CodeNodeError) as e:
+        except CodeNodeError as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+            )
+        except Exception as e:
+            if not self._code_executor.is_execution_error(e):
+                raise
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
             )
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
-
-    def _select_code_provider(self, code_language: CodeLanguage) -> type[CodeNodeProvider]:
-        for provider in self._code_providers:
-            if provider.is_accept_language(code_language):
-                return provider
-        raise CodeNodeError(f"Unsupported code language: {code_language}")
 
     def _check_string(self, value: str | None, variable: str) -> str | None:
         """

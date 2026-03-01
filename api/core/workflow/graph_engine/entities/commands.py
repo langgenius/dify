@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.variables.variables import Variable
+from core.workflow.variables.variables import Variable
 
 
 class CommandType(StrEnum):

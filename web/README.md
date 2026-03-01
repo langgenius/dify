@@ -33,7 +33,7 @@ Then, configure the environment variables. Create a file named `.env.local` in t
 cp .env.example .env.local
 ```
 
-```
+```txt
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 # The deployment edition, SELF_HOSTED
