@@ -7,11 +7,8 @@ from pydantic import BaseModel, Field
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.file import FileUploadConfig
-from core.workflow.variables import input_entities as workflow_input_entities
+from core.workflow.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
-
-VariableEntity = workflow_input_entities.VariableEntity
-VariableEntityType = workflow_input_entities.VariableEntityType
 
 
 class ModelConfigEntity(BaseModel):
@@ -93,7 +90,7 @@ class PromptTemplateEntity(BaseModel):
     advanced_completion_prompt_template: AdvancedCompletionPromptTemplateEntity | None = None
 
 
-class RagPipelineVariableEntity(VariableEntity):
+class RagPipelineVariableEntity(WorkflowVariableEntity):
     """
     Rag Pipeline Variable Entity.
     """
@@ -263,7 +260,7 @@ class AppConfig(BaseModel):
     app_id: str
     app_mode: AppMode
     additional_features: AppAdditionalFeatures | None = None
-    variables: list[VariableEntity] = []
+    variables: list[WorkflowVariableEntity] = []
     sensitive_word_avoidance: SensitiveWordAvoidanceEntity | None = None
 
 
