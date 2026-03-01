@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
-from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
@@ -26,13 +25,13 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayFileSegment, StringSegment
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import (
     AgentLogEvent,
     NodeEventBase,
@@ -44,6 +43,7 @@ from core.workflow.nodes.agent.entities import AgentNodeData, AgentOldVersionMod
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.segments import ArrayFileSegment, StringSegment
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
