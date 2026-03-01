@@ -1,6 +1,5 @@
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
-from core.variables.types import SegmentType
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.code.exc import (
@@ -9,6 +8,7 @@ from core.workflow.nodes.code.exc import (
     OutputValidationError,
 )
 from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.variables.types import SegmentType
 
 CodeNode._limits = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,

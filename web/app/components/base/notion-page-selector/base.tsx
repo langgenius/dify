@@ -137,7 +137,7 @@ const NotionPageSelector = ({
   }
 
   return (
-    <div className="flex flex-col gap-y-2">
+    <div className="flex flex-col gap-y-2" data-testid="notion-page-selector-base">
       <Header
         onClickConfiguration={handleConfigureNotion}
         title="Choose notion pages"
@@ -162,7 +162,7 @@ const NotionPageSelector = ({
         <div className="overflow-hidden rounded-b-xl">
           {isFetchingNotionPages
             ? (
-                <div className="flex h-[296px] items-center justify-center">
+                <div className="flex h-[296px] items-center justify-center" data-testid="notion-page-selector-loading">
                   <Loading />
                 </div>
               )

@@ -1,7 +1,6 @@
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.variables import SegmentType, VariableBase
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -9,6 +8,7 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
+from core.workflow.variables import SegmentType, VariableBase
 
 from .node_data import VariableAssignerData, WriteMode
 

@@ -30,13 +30,13 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
       >
-        <div className="mr-6 flex items-center">
+        <div data-testid="tooltip-trigger-content" className="mr-6 flex items-center">
           {icon}
           {data}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className="system-xs-medium rounded-lg bg-components-tooltip-bg p-3 text-text-quaternary shadow-lg">
+        <div data-testid="tooltip-popup" className="rounded-lg bg-components-tooltip-bg p-3 text-text-quaternary shadow-lg system-xs-medium">
           {text}
           {' '}
           {data}
