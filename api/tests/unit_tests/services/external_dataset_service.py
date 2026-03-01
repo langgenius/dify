@@ -135,8 +135,8 @@ class TestExternalDatasetServiceGetExternalKnowledgeApis:
         """
 
         with (
-            patch("services.external_knowledge_service.db.paginate") as mock_paginate,
-            patch("services.external_knowledge_service.select"),
+            patch("services.external_knowledge_service.db.paginate", autospec=True) as mock_paginate,
+            patch("services.external_knowledge_service.select", autospec=True),
         ):
             yield mock_paginate
 
@@ -245,7 +245,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         Patch ``db.session`` for all CRUD tests in this class.
         """
 
-        with patch("services.external_knowledge_service.db.session") as mock_session:
+        with patch("services.external_knowledge_service.db.session", autospec=True) as mock_session:
             yield mock_session
 
     def test_create_external_knowledge_api_success(self, mock_db_session: MagicMock):
@@ -263,7 +263,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         }
 
         # We do not want to actually call the remote endpoint here, so we patch the validator.
-        with patch.object(ExternalDatasetService, "check_endpoint_and_api_key") as mock_check:
+        with patch.object(ExternalDatasetService, "check_endpoint_and_api_key", autospec=True) as mock_check:
             result = ExternalDatasetService.create_external_knowledge_api(tenant_id, user_id, args)
 
         assert isinstance(result, ExternalKnowledgeApis)
@@ -386,7 +386,7 @@ class TestExternalDatasetServiceUsageAndBindings:
 
     @pytest.fixture
     def mock_db_session(self):
-        with patch("services.external_knowledge_service.db.session") as mock_session:
+        with patch("services.external_knowledge_service.db.session", autospec=True) as mock_session:
             yield mock_session
 
     def test_external_knowledge_api_use_check_in_use(self, mock_db_session: MagicMock):
@@ -447,7 +447,7 @@ class TestExternalDatasetServiceDocumentCreateArgsValidate:
 
     @pytest.fixture
     def mock_db_session(self):
-        with patch("services.external_knowledge_service.db.session") as mock_session:
+        with patch("services.external_knowledge_service.db.session", autospec=True) as mock_session:
             yield mock_session
 
     def test_document_create_args_validate_success(self, mock_db_session: MagicMock):
@@ -520,7 +520,7 @@ class TestExternalDatasetServiceProcessExternalApi:
 
         fake_response = httpx.Response(200)
 
-        with patch("services.external_knowledge_service.ssrf_proxy.post") as mock_post:
+        with patch("services.external_knowledge_service.ssrf_proxy.post", autospec=True) as mock_post:
             mock_post.return_value = fake_response
 
             result = ExternalDatasetService.process_external_api(settings, files=None)
@@ -681,7 +681,7 @@ class TestExternalDatasetServiceCreateExternalDataset:
 
     @pytest.fixture
     def mock_db_session(self):
-        with patch("services.external_knowledge_service.db.session") as mock_session:
+        with patch("services.external_knowledge_service.db.session", autospec=True) as mock_session:
             yield mock_session
 
     def test_create_external_dataset_success(self, mock_db_session: MagicMock):
@@ -801,7 +801,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
 
     @pytest.fixture
     def mock_db_session(self):
-        with patch("services.external_knowledge_service.db.session") as mock_session:
+        with patch("services.external_knowledge_service.db.session", autospec=True) as mock_session:
             yield mock_session
 
     def test_fetch_external_knowledge_retrieval_success(self, mock_db_session: MagicMock):
@@ -838,7 +838,9 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
 
         metadata_condition = SimpleNamespace(model_dump=lambda: {"field": "value"})
 
-        with patch.object(ExternalDatasetService, "process_external_api", return_value=fake_response) as mock_process:
+        with patch.object(
+            ExternalDatasetService, "process_external_api", return_value=fake_response, autospec=True
+        ) as mock_process:
             result = ExternalDatasetService.fetch_external_knowledge_retrieval(
                 tenant_id=tenant_id,
                 dataset_id=dataset_id,
@@ -908,7 +910,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
         fake_response.status_code = 500
         fake_response.json.return_value = {}
 
-        with patch.object(ExternalDatasetService, "process_external_api", return_value=fake_response):
+        with patch.object(ExternalDatasetService, "process_external_api", return_value=fake_response, autospec=True):
             result = ExternalDatasetService.fetch_external_knowledge_retrieval(
                 tenant_id="tenant-1",
                 dataset_id="ds-1",
