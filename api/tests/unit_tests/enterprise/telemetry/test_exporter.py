@@ -121,8 +121,8 @@ def test_api_key_overrides_conflicting_header(
 
 @patch("enterprise.telemetry.exporter.GRPCSpanExporter")
 @patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_api_key_set_uses_secure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
-    """Test that API key presence enables TLS (insecure=False) for gRPC."""
+def test_https_endpoint_uses_secure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+    """Test that https:// endpoint enables TLS (insecure=False) for gRPC."""
     mock_config = SimpleNamespace(
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
@@ -135,18 +135,17 @@ def test_api_key_set_uses_secure_grpc(mock_metric_exporter: MagicMock, mock_span
 
     EnterpriseExporter(mock_config)
 
-    # Verify insecure=False for both exporters
+    # Verify insecure=False for both exporters (https:// scheme)
     assert mock_span_exporter.call_args is not None
     assert mock_span_exporter.call_args.kwargs["insecure"] is False
 
     assert mock_metric_exporter.call_args is not None
     assert mock_metric_exporter.call_args.kwargs["insecure"] is False
 
-
 @patch("enterprise.telemetry.exporter.GRPCSpanExporter")
 @patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_no_api_key_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
-    """Test that empty API key uses insecure gRPC (backward compat)."""
+def test_http_endpoint_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+    """Test that http:// endpoint uses insecure gRPC (insecure=True)."""
     mock_config = SimpleNamespace(
         ENTERPRISE_OTLP_ENDPOINT="http://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
@@ -159,13 +158,12 @@ def test_no_api_key_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_spa
 
     EnterpriseExporter(mock_config)
 
-    # Verify insecure=True for both exporters
+    # Verify insecure=True for both exporters (http:// scheme)
     assert mock_span_exporter.call_args is not None
     assert mock_span_exporter.call_args.kwargs["insecure"] is True
 
     assert mock_metric_exporter.call_args is not None
     assert mock_metric_exporter.call_args.kwargs["insecure"] is True
-
 
 @patch("enterprise.telemetry.exporter.HTTPSpanExporter")
 @patch("enterprise.telemetry.exporter.HTTPMetricExporter")
@@ -213,3 +211,51 @@ def test_api_key_with_special_chars_preserved(mock_metric_exporter: MagicMock, m
     headers = mock_span_exporter.call_args.kwargs.get("headers")
     assert headers is not None
     assert ("authorization", f"Bearer {special_key}") in headers
+
+
+@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
+@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
+def test_no_scheme_localhost_uses_insecure(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+    """Test that endpoint without scheme defaults to insecure for localhost."""
+    mock_config = SimpleNamespace(
+        ENTERPRISE_OTLP_ENDPOINT="localhost:4317",
+        ENTERPRISE_OTLP_HEADERS="",
+        ENTERPRISE_OTLP_PROTOCOL="grpc",
+        ENTERPRISE_SERVICE_NAME="dify",
+        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
+        ENTERPRISE_INCLUDE_CONTENT=True,
+        ENTERPRISE_OTLP_API_KEY="",
+    )
+
+    EnterpriseExporter(mock_config)
+
+    # Verify insecure=True for localhost without scheme
+    assert mock_span_exporter.call_args is not None
+    assert mock_span_exporter.call_args.kwargs["insecure"] is True
+
+    assert mock_metric_exporter.call_args is not None
+    assert mock_metric_exporter.call_args.kwargs["insecure"] is True
+
+
+@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
+@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
+def test_no_scheme_production_uses_insecure(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+    """Test that endpoint without scheme defaults to insecure (not https://)."""
+    mock_config = SimpleNamespace(
+        ENTERPRISE_OTLP_ENDPOINT="collector.example.com:4317",
+        ENTERPRISE_OTLP_HEADERS="",
+        ENTERPRISE_OTLP_PROTOCOL="grpc",
+        ENTERPRISE_SERVICE_NAME="dify",
+        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
+        ENTERPRISE_INCLUDE_CONTENT=True,
+        ENTERPRISE_OTLP_API_KEY="",
+    )
+
+    EnterpriseExporter(mock_config)
+
+    # Verify insecure=True for any endpoint without https:// scheme
+    assert mock_span_exporter.call_args is not None
+    assert mock_span_exporter.call_args.kwargs["insecure"] is True
+
+    assert mock_metric_exporter.call_args is not None
+    assert mock_metric_exporter.call_args.kwargs["insecure"] is True
