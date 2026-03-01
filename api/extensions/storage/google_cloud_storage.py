@@ -61,6 +61,6 @@ class GoogleCloudStorage(BaseStorage):
         blob = bucket.blob(filename)
         return blob.exists()
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         bucket = self.client.get_bucket(self.bucket_name)
         bucket.delete_blob(filename)
