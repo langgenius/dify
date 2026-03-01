@@ -37,6 +37,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -62,7 +63,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory, PromptMessageMemory
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import VariablePool
 from core.workflow.variables import (
     ArrayFileSegment,
