@@ -1338,46 +1338,14 @@ def _handle_memory_completion_mode(
         )
         if not memory_config.role_prefix:
             raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
-        memory_messages = memory.get_history_prompt_messages(
+        memory_text = llm_utils.fetch_memory_text(
+            memory=memory,
             max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
-        )
-        memory_text = _convert_history_messages_to_text(
-            history_messages=memory_messages,
             human_prefix=memory_config.role_prefix.user,
             ai_prefix=memory_config.role_prefix.assistant,
         )
     return memory_text
-
-
-def _convert_history_messages_to_text(
-    *,
-    history_messages: Sequence[PromptMessage],
-    human_prefix: str,
-    ai_prefix: str,
-) -> str:
-    string_messages: list[str] = []
-    for message in history_messages:
-        if message.role == PromptMessageRole.USER:
-            role = human_prefix
-        elif message.role == PromptMessageRole.ASSISTANT:
-            role = ai_prefix
-        else:
-            continue
-
-        if isinstance(message.content, list):
-            content_parts = []
-            for content in message.content:
-                if isinstance(content, TextPromptMessageContent):
-                    content_parts.append(content.data)
-                elif isinstance(content, ImagePromptMessageContent):
-                    content_parts.append("[image]")
-
-            inner_msg = "\n".join(content_parts)
-            string_messages.append(f"{role}: {inner_msg}")
-        else:
-            string_messages.append(f"{role}: {message.content}")
-    return "\n".join(string_messages)
 
 
 def _handle_completion_template(
