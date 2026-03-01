@@ -77,7 +77,7 @@ class DummyResult:
 
 
 class TestMCPAppApi:
-    @patch.object(module, "handle_mcp_request", return_value=DummyResult())
+    @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
     def test_success_request(self, mock_handle):
         fake_payload(
             {
@@ -321,7 +321,7 @@ class TestMCPAppApi:
             post_fn("server-1")
         assert "App is unavailable" in str(exc_info.value)
 
-    @patch.object(module, "handle_mcp_request", return_value=None)
+    @patch.object(module, "handle_mcp_request", return_value=None, autospec=True)
     def test_mcp_request_no_response(self, mock_handle):
         """Test when handle_mcp_request returns None"""
         fake_payload(
@@ -380,7 +380,7 @@ class TestMCPAppApi:
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
-        with patch.object(module, "handle_mcp_request", return_value=DummyResult()):
+        with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True):
             post_fn = unwrap(api.post)
             response = post_fn("server-1")
             assert isinstance(response, Response)
@@ -409,7 +409,7 @@ class TestMCPAppApi:
         api = module.MCPAppApi()
         api._get_mcp_server_and_app = MagicMock(return_value=(server, app))
 
-        with patch.object(module, "handle_mcp_request", return_value=DummyResult()):
+        with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True):
             post_fn = unwrap(api.post)
             response = post_fn("server-1")
             assert isinstance(response, Response)
