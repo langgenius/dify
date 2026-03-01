@@ -57,18 +57,11 @@ ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
-# global runtime packages
-RUN pnpm add -g pm2
-
-
 # Create non-root user
 ARG dify_uid=1001
 RUN addgroup -S -g ${dify_uid} dify && \
     adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
-    mkdir -p /app && \
-    mkdir -p /.pm2 && \
-    chown -R dify:dify /app /.pm2
-
+    mkdir -p /app
 
 WORKDIR /app/web
 
