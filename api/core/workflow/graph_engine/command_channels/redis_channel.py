@@ -7,12 +7,28 @@ Each instance uses a unique key for its command queue.
 """
 
 import json
-from typing import TYPE_CHECKING, Any, final
+from contextlib import AbstractContextManager
+from typing import Any, Protocol, final
 
 from ..entities.commands import AbortCommand, CommandType, GraphEngineCommand, PauseCommand, UpdateVariablesCommand
 
-if TYPE_CHECKING:
-    from extensions.ext_redis import RedisClientWrapper
+
+class RedisPipelineProtocol(Protocol):
+    """Minimal Redis pipeline contract used by the command channel."""
+
+    def lrange(self, name: str, start: int, end: int) -> Any: ...
+    def delete(self, *names: str) -> Any: ...
+    def execute(self) -> list[Any]: ...
+    def rpush(self, name: str, *values: str) -> Any: ...
+    def expire(self, name: str, time: int) -> Any: ...
+    def set(self, name: str, value: str, ex: int | None = None) -> Any: ...
+    def get(self, name: str) -> Any: ...
+
+
+class RedisClientProtocol(Protocol):
+    """Redis client contract required by the command channel."""
+
+    def pipeline(self) -> AbstractContextManager[RedisPipelineProtocol]: ...
 
 
 @final
@@ -26,7 +42,7 @@ class RedisChannel:
 
     def __init__(
         self,
-        redis_client: "RedisClientWrapper",
+        redis_client: RedisClientProtocol,
         channel_key: str,
         command_ttl: int = 3600,
     ) -> None:
