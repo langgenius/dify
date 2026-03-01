@@ -121,9 +121,7 @@ def test_extract_images_from_docx(monkeypatch):
     db_stub = SimpleNamespace(session=DummySession())
     monkeypatch.setattr(we, "db", db_stub)
 
-    # Patch config values used for URL composition and storage type
-    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(we.dify_config, "INTERNAL_FILES_URL", "http://internal.docker:5001", raising=False)
+    # Patch config value used in this code path
     monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
 
     # Patch UploadFile to avoid real DB models

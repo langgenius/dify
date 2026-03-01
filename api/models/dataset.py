@@ -804,41 +804,53 @@ class DocumentSegment(Base):
     def sign_content(self) -> str:
         return self.get_sign_content()
 
+    @staticmethod
+    def _build_signed_query_params(*, sign_target: str, upload_file_id: str) -> str:
+        nonce = os.urandom(16).hex()
+        timestamp = str(int(time.time()))
+        data_to_sign = f"{sign_target}|{upload_file_id}|{timestamp}|{nonce}"
+        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        encoded_sign = base64.urlsafe_b64encode(sign).decode()
+        return f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+
+    def _get_accessible_upload_file_ids(self, upload_file_ids: set[str]) -> set[str]:
+        if not upload_file_ids:
+            return set()
+
+        matched_upload_file_ids = db.session.scalars(
+            select(UploadFile.id).where(
+                UploadFile.tenant_id == self.tenant_id,
+                UploadFile.id.in_(list(upload_file_ids)),
+            )
+        ).all()
+        return {str(upload_file_id) for upload_file_id in matched_upload_file_ids}
+
     def get_sign_content(self) -> str:
         signed_urls: list[tuple[int, int, str]] = []
         text = self.content
 
-        # For data before v0.10.0
-        pattern = r"(?:https?://[^\s\)\"\']+)?/files/([a-f0-9\-]+)/image-preview(?:\?[^\s\)\"\']*)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+        upload_file_preview_patterns = {
+            "image-preview": r"(?:https?://[^\s\)\"\']+)?/files/([a-f0-9\-]+)/image-preview(?:\?[^\s\)\"\']*)?",
+            "file-preview": r"(?:https?://[^\s\)\"\']+)?/files/([a-f0-9\-]+)/file-preview(?:\?[^\s\)\"\']*)?",
+        }
+        upload_file_matches: list[tuple[re.Match[str], str, str]] = []
+        upload_file_ids: set[str] = set()
 
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/image-preview"
-            signed_url = f"{base_url}?{params}"
-            signed_urls.append((match.start(), match.end(), signed_url))
+        for preview_type, pattern in upload_file_preview_patterns.items():
+            for match in re.finditer(pattern, text):
+                upload_file_id = match.group(1)
+                upload_file_matches.append((match, preview_type, upload_file_id))
+                upload_file_ids.add(upload_file_id)
 
-        # For data after v0.10.0
-        pattern = r"(?:https?://[^\s\)\"\']+)?/files/([a-f0-9\-]+)/file-preview(?:\?[^\s\)\"\']*)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+        accessible_upload_file_ids = self._get_accessible_upload_file_ids(upload_file_ids)
 
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/file-preview"
+        for match, preview_type, upload_file_id in upload_file_matches:
+            if upload_file_id not in accessible_upload_file_ids:
+                continue
+
+            params = self._build_signed_query_params(sign_target=preview_type, upload_file_id=upload_file_id)
+            base_url = f"/files/{upload_file_id}/{preview_type}"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
@@ -849,14 +861,7 @@ class DocumentSegment(Base):
         for match in matches:
             upload_file_id = match.group(1)
             file_extension = match.group(2)
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            params = self._build_signed_query_params(sign_target="file-preview", upload_file_id=upload_file_id)
             base_url = f"/files/tools/{upload_file_id}.{file_extension}"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
