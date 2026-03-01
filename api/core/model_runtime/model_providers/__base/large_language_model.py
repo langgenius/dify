@@ -91,7 +91,8 @@ def _build_llm_result_from_chunks(
     """
     Build a single `LLMResult` by accumulating all returned chunks.
 
-    Some models only support streaming output (e.g. Qwen3 open-source edition),
+    Some models only support streaming output (e.g. Qwen3 open-source edition)
+    and the plugin side may still implement the response via a chunked stream,
     so all chunks must be consumed and concatenated into a single ``LLMResult``.
 
     The ``usage`` is taken from the last chunk that carries it, which is the
