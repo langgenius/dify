@@ -5,9 +5,9 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
-from core.variables import ArrayNumberSegment, ArrayStringSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.nodes.list_operator.node import ListOperatorNode
+from core.workflow.variables import ArrayNumberSegment, ArrayStringSegment
 from models.workflow import WorkflowType
 
 

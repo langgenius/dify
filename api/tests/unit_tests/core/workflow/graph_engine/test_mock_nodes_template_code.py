@@ -215,9 +215,9 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_with_variables(self):
         """Test that MockTemplateTransformNode processes templates with variables."""
-        from core.variables import StringVariable
         from core.workflow.entities import GraphInitParams
         from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from core.workflow.variables import StringVariable
 
         # Create test parameters
         graph_init_params = GraphInitParams(
