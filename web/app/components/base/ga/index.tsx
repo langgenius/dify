@@ -9,9 +9,13 @@ export enum GaType {
   webapp = 'webapp',
 }
 
+export const GA_MEASUREMENT_ID_ADMIN = 'G-DM9497FN4V'
+export const GA_MEASUREMENT_ID_WEBAPP = 'G-2MFWXK7WYT'
+export const COOKIEYES_SCRIPT_SRC = 'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
+
 const gaIdMaps = {
-  [GaType.admin]: 'G-DM9497FN4V',
-  [GaType.webapp]: 'G-2MFWXK7WYT',
+  [GaType.admin]: GA_MEASUREMENT_ID_ADMIN,
+  [GaType.webapp]: GA_MEASUREMENT_ID_WEBAPP,
 }
 
 export type IGAProps = {
@@ -21,7 +25,7 @@ export type IGAProps = {
 const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
   if (!cspHeader)
     return undefined
-  const nonceMatch = cspHeader.match(/'nonce-([^']+)'/)
+  const nonceMatch = /'nonce-([^']+)'/.exec(cspHeader)
   return nonceMatch ? nonceMatch[1] : undefined
 }
 
@@ -62,7 +66,7 @@ const GA: FC<IGAProps> = async ({
       <Script
         id="cookieyes"
         strategy="lazyOnload"
-        src="https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js"
+        src={COOKIEYES_SCRIPT_SRC}
         nonce={nonce}
       />
     </>

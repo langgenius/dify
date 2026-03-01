@@ -11,7 +11,6 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.app.workflow.node_factory import DifyNodeFactory
-from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.enums import WorkflowType
 from core.workflow.graph import Graph
@@ -21,6 +20,7 @@ from core.workflow.repositories.workflow_node_execution_repository import Workfl
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
+from core.workflow.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline

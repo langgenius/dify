@@ -101,11 +101,32 @@ def test_node_mock_config():
 
 def test_mock_factory_detection():
     """Test MockNodeFactory node type detection."""
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from models.enums import UserFrom
+
     print("Testing MockNodeFactory detection...")
 
+    graph_init_params = GraphInitParams(
+        tenant_id="test",
+        app_id="test",
+        workflow_id="test",
+        graph_config={},
+        user_id="test",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(environment_variables=[], conversation_variables=[], user_inputs={}),
+        start_at=0,
+        total_tokens=0,
+        node_run_steps=0,
+    )
     factory = MockNodeFactory(
-        graph_init_params=None,
-        graph_runtime_state=None,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
         mock_config=None,
     )
 
@@ -133,11 +154,32 @@ def test_mock_factory_detection():
 
 def test_mock_factory_registration():
     """Test registering and unregistering mock node types."""
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from models.enums import UserFrom
+
     print("Testing MockNodeFactory registration...")
 
+    graph_init_params = GraphInitParams(
+        tenant_id="test",
+        app_id="test",
+        workflow_id="test",
+        graph_config={},
+        user_id="test",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(environment_variables=[], conversation_variables=[], user_inputs={}),
+        start_at=0,
+        total_tokens=0,
+        node_run_steps=0,
+    )
     factory = MockNodeFactory(
-        graph_init_params=None,
-        graph_runtime_state=None,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
         mock_config=None,
     )
 

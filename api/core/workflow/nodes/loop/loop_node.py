@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables import Segment, SegmentType
 from core.workflow.enums import (
     NodeExecutionType,
     NodeType,
@@ -31,6 +30,7 @@ from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.loop.entities import LoopCompletedReason, LoopNodeData, LoopVariableData
 from core.workflow.utils.condition.processor import ConditionProcessor
+from core.workflow.variables import Segment, SegmentType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type, segment_to_variable
 from libs.datetime_utils import naive_utc_now
 
@@ -71,9 +71,9 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         if self.node_data.loop_variables:
             value_processor: dict[Literal["constant", "variable"], Callable[[LoopVariableData], Segment | None]] = {
                 "constant": lambda var: self._get_segment_for_constant(var.var_type, var.value),
-                "variable": lambda var: self.graph_runtime_state.variable_pool.get(var.value)
-                if isinstance(var.value, list)
-                else None,
+                "variable": lambda var: (
+                    self.graph_runtime_state.variable_pool.get(var.value) if isinstance(var.value, list) else None
+                ),
             }
             for loop_variable in self.node_data.loop_variables:
                 if loop_variable.value_type not in value_processor:
