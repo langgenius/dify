@@ -21,17 +21,17 @@ def upgrade():
             'conversation_app_created_at_idx',
             ['app_id', sa.literal_column('created_at DESC')],
             unique=False,
-            postgresql_where=sa.text('is_deleted = false'),
+            postgresql_where=sa.text('is_deleted IS false'),
         )
         batch_op.create_index(
             'conversation_app_updated_at_idx',
             ['app_id', sa.literal_column('updated_at DESC')],
             unique=False,
-            postgresql_where=sa.text('is_deleted = false'),
+            postgresql_where=sa.text('is_deleted IS false'),
         )
 
 
 def downgrade():
     with op.batch_alter_table('conversations', schema=None) as batch_op:
-        batch_op.drop_index('conversation_app_updated_at_idx', postgresql_where=sa.text('is_deleted = false'))
-        batch_op.drop_index('conversation_app_created_at_idx', postgresql_where=sa.text('is_deleted = false'))
+        batch_op.drop_index('conversation_app_updated_at_idx', postgresql_where=sa.text('is_deleted IS false'))
+        batch_op.drop_index('conversation_app_created_at_idx', postgresql_where=sa.text('is_deleted IS false'))

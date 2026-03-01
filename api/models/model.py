@@ -715,13 +715,13 @@ class Conversation(Base):
             "conversation_app_created_at_idx",
             "app_id",
             sa.text("created_at DESC"),
-            postgresql_where=sa.text("is_deleted = false"),
+            postgresql_where=sa.text("is_deleted IS false"),
         ),
         sa.Index(
             "conversation_app_updated_at_idx",
             "app_id",
             sa.text("updated_at DESC"),
-            postgresql_where=sa.text("is_deleted = false"),
+            postgresql_where=sa.text("is_deleted IS false"),
         ),
     )
 
