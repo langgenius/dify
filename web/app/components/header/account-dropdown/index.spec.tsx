@@ -1,10 +1,9 @@
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
+import { useRouter } from 'next/navigation'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -49,6 +48,14 @@ vi.mock('@/context/modal-context', () => ({
 vi.mock('@/service/use-common', () => ({
   useLogout: vi.fn(),
 }))
+
+vi.mock('next/navigation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/navigation')>()
+  return {
+    ...actual,
+    useRouter: vi.fn(),
+  }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -119,15 +126,6 @@ describe('AccountDropdown', () => {
   const mockSetShowAccountSettingModal = vi.fn()
 
   const renderWithRouter = (ui: React.ReactElement) => {
-    const mockRouter = {
-      push: mockPush,
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-    } as unknown as AppRouterInstance
-
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -138,9 +136,7 @@ describe('AccountDropdown', () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <AppRouterContext.Provider value={mockRouter}>
-          {ui}
-        </AppRouterContext.Provider>
+        {ui}
       </QueryClientProvider>,
     )
   }
@@ -166,6 +162,14 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
+    vi.mocked(useRouter).mockReturnValue({
+      push: mockPush,
+      replace: vi.fn(),
+      prefetch: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+    })
   })
 
   afterEach(() => {
