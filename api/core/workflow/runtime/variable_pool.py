@@ -8,10 +8,6 @@ from typing import Annotated, Any, Union, cast
 
 from pydantic import BaseModel, Field
 
-from core.variables import Segment, SegmentGroup, VariableBase
-from core.variables.consts import SELECTORS_LENGTH
-from core.variables.segments import FileSegment, ObjectSegment
-from core.variables.variables import RAGPipelineVariableInput, Variable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
@@ -20,6 +16,10 @@ from core.workflow.constants import (
 )
 from core.workflow.file import File, FileAttribute, file_manager
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import Segment, SegmentGroup, VariableBase
+from core.workflow.variables.consts import SELECTORS_LENGTH
+from core.workflow.variables.segments import FileSegment, ObjectSegment
+from core.workflow.variables.variables import RAGPipelineVariableInput, Variable
 from factories import variable_factory
 
 VariableValue = Union[str, int, float, dict[str, object], list[object], File]

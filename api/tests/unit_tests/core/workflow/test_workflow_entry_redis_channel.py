@@ -26,11 +26,8 @@ class TestWorkflowEntryRedisChannel:
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
         # Patch GraphEngine to verify it receives the Redis channel
-        with patch("core.workflow.workflow_entry.GraphEngine") as MockGraphEngine:
-            mock_graph_engine = MagicMock()
-            MockGraphEngine.return_value = mock_graph_engine
-
-            # Create WorkflowEntry with Redis channel
+        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+            mock_graph_engine = MockGraphEngine.return_value  # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
                 app_id="test-app",
@@ -63,15 +60,11 @@ class TestWorkflowEntryRedisChannel:
 
         # Patch GraphEngine and InMemoryChannel
         with (
-            patch("core.workflow.workflow_entry.GraphEngine") as MockGraphEngine,
-            patch("core.workflow.workflow_entry.InMemoryChannel") as MockInMemoryChannel,
+            patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine,
+            patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as MockInMemoryChannel,
         ):
-            mock_graph_engine = MagicMock()
-            MockGraphEngine.return_value = mock_graph_engine
-            mock_inmemory_channel = MagicMock()
-            MockInMemoryChannel.return_value = mock_inmemory_channel
-
-            # Create WorkflowEntry without providing a channel
+            mock_graph_engine = MockGraphEngine.return_value
+            mock_inmemory_channel = MockInMemoryChannel.return_value  # Create WorkflowEntry without providing a channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
                 app_id="test-app",
@@ -114,7 +107,7 @@ class TestWorkflowEntryRedisChannel:
         mock_event2 = MagicMock()
 
         # Patch GraphEngine
-        with patch("core.workflow.workflow_entry.GraphEngine") as MockGraphEngine:
+        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
             mock_graph_engine = MagicMock()
             mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
             MockGraphEngine.return_value = mock_graph_engine
