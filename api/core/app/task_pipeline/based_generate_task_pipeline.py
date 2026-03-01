@@ -17,6 +17,7 @@ from core.app.entities.task_entities import (
 )
 from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.moderation.moderation_coordinator import ModerationCoordinator
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from models.enums import MessageStatus
 from models.model import Message
@@ -38,7 +39,7 @@ class BasedGenerateTaskPipeline:
         self._application_generate_entity = application_generate_entity
         self.queue_manager = queue_manager
         self.start_at = time.perf_counter()
-        self.output_moderation_handler = self._init_output_moderation()
+        self.output_moderation_handler = self._init_output_moderation(self.queue_manager.moderation_coordinator)
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
@@ -100,7 +101,7 @@ class BasedGenerateTaskPipeline:
         """
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
-    def _init_output_moderation(self) -> OutputModeration | None:
+    def _init_output_moderation(self, moderation_coordinator: ModerationCoordinator | None) -> OutputModeration | None:
         """
         Init output moderation.
         :return:
@@ -114,6 +115,7 @@ class BasedGenerateTaskPipeline:
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
                 queue_manager=self.queue_manager,
+                coordinator=moderation_coordinator,
             )
         return None
 
