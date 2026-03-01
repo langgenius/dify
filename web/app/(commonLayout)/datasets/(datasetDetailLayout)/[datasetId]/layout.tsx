@@ -6,12 +6,11 @@ const DatasetDetailLayout = async (
     params: Promise<{ datasetId: string }>
   },
 ) => {
-  const params = await props.params
-
   const {
     children,
+    params,
   } = props
 
-  return <Main params={(await params)}>{children}</Main>
+  return <Main datasetId={(await params).datasetId}>{children}</Main>
 }
 export default DatasetDetailLayout

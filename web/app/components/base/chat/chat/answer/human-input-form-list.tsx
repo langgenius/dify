@@ -45,22 +45,28 @@ const HumanInputFormList = ({
   const filteredHumanInputFormDataList = humanInputFormDataList.filter(formData => formData.display_in_ui)
 
   return (
-    <div className="mt-2 flex flex-col gap-y-2">
+    <div
+      className="mt-2 flex flex-col gap-y-2"
+      data-testid="human-input-form-list"
+    >
       {
         filteredHumanInputFormDataList.map(formData => (
-          <ContentWrapper
+          <div
             key={formData.form_id}
-            nodeTitle={formData.node_title}
+            data-testid="human-input-form-item"
           >
-            <UnsubmittedHumanInputContent
-              key={formData.form_id}
-              formData={formData}
-              showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
-              isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}
-              showDebugModeTip={!!deliveryMethodsConfig[formData.node_id]?.showDebugModeTip}
-              onSubmit={onHumanInputFormSubmit}
-            />
-          </ContentWrapper>
+            <ContentWrapper
+              nodeTitle={formData.node_title}
+            >
+              <UnsubmittedHumanInputContent
+                formData={formData}
+                showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
+                isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}
+                showDebugModeTip={!!deliveryMethodsConfig[formData.node_id]?.showDebugModeTip}
+                onSubmit={onHumanInputFormSubmit}
+              />
+            </ContentWrapper>
+          </div>
         ))
       }
     </div>
