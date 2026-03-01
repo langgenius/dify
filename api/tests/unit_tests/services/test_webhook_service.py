@@ -87,7 +87,7 @@ class TestWebhookServiceUnit:
             webhook_trigger = MagicMock()
             webhook_trigger.tenant_id = "test_tenant"
 
-            with patch.object(WebhookService, "_process_file_uploads") as mock_process_files:
+            with patch.object(WebhookService, "_process_file_uploads", autospec=True) as mock_process_files:
                 mock_process_files.return_value = {"file": "mocked_file_obj"}
 
                 webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
@@ -123,8 +123,10 @@ class TestWebhookServiceUnit:
             mock_file.to_dict.return_value = {"file": "data"}
 
             with (
-                patch.object(WebhookService, "_detect_binary_mimetype", return_value="text/plain") as mock_detect,
-                patch.object(WebhookService, "_create_file_from_binary") as mock_create,
+                patch.object(
+                    WebhookService, "_detect_binary_mimetype", return_value="text/plain", autospec=True
+                ) as mock_detect,
+                patch.object(WebhookService, "_create_file_from_binary", autospec=True) as mock_create,
             ):
                 mock_create.return_value = mock_file
                 body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
@@ -168,7 +170,7 @@ class TestWebhookServiceUnit:
         fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
 
-        with patch("services.trigger.webhook_service.logger") as mock_logger:
+        with patch("services.trigger.webhook_service.logger", autospec=True) as mock_logger:
             result = WebhookService._detect_binary_mimetype(b"binary data")
 
             assert result == "application/octet-stream"
@@ -245,15 +247,12 @@ class TestWebhookServiceUnit:
         assert response_data[0]["id"] == 1
         assert response_data[1]["id"] == 2
 
-    @patch("services.trigger.webhook_service.ToolFileManager")
-    @patch("services.trigger.webhook_service.file_factory")
+    @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
+    @patch("services.trigger.webhook_service.file_factory", autospec=True)
     def test_process_file_uploads_success(self, mock_file_factory, mock_tool_file_manager):
         """Test successful file upload processing."""
         # Mock ToolFileManager
-        mock_tool_file_instance = MagicMock()
-        mock_tool_file_manager.return_value = mock_tool_file_instance
-
-        # Mock file creation
+        mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
         mock_tool_file = MagicMock()
         mock_tool_file.id = "test_file_id"
         mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
@@ -285,15 +284,12 @@ class TestWebhookServiceUnit:
         assert mock_tool_file_manager.call_count == 2
         assert mock_file_factory.build_from_mapping.call_count == 2
 
-    @patch("services.trigger.webhook_service.ToolFileManager")
-    @patch("services.trigger.webhook_service.file_factory")
+    @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
+    @patch("services.trigger.webhook_service.file_factory", autospec=True)
     def test_process_file_uploads_with_errors(self, mock_file_factory, mock_tool_file_manager):
         """Test file upload processing with errors."""
         # Mock ToolFileManager
-        mock_tool_file_instance = MagicMock()
-        mock_tool_file_manager.return_value = mock_tool_file_instance
-
-        # Mock file creation
+        mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
         mock_tool_file = MagicMock()
         mock_tool_file.id = "test_file_id"
         mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
@@ -544,8 +540,8 @@ class TestWebhookServiceUnit:
 
         # Mock the WebhookService methods
         with (
-            patch.object(WebhookService, "get_webhook_trigger_and_workflow") as mock_get_trigger,
-            patch.object(WebhookService, "extract_and_validate_webhook_data") as mock_extract,
+            patch.object(WebhookService, "get_webhook_trigger_and_workflow", autospec=True) as mock_get_trigger,
+            patch.object(WebhookService, "extract_and_validate_webhook_data", autospec=True) as mock_extract,
         ):
             mock_trigger = MagicMock()
             mock_workflow = MagicMock()

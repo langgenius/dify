@@ -178,7 +178,7 @@ class AgentChatAppRunner(AppRunner):
 
         # change function call strategy based on LLM model
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         if not model_schema:
             raise ValueError("Model schema not found")
 

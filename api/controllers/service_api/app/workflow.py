@@ -31,6 +31,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
 from libs.helper import OptionalTimestampField, TimestampField
@@ -280,7 +281,7 @@ class WorkflowTaskStopApi(Resource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 
