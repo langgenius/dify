@@ -68,6 +68,7 @@ def init_code_node(code_config: dict):
         config=code_config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        code_executor=node_factory._code_executor,
         code_limits=CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,

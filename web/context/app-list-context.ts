@@ -1,11 +1,11 @@
-import type { CurrentTryAppParams } from './explore-context'
+import type { SetTryAppPanel, TryAppSelection } from '@/types/try-app'
 import { noop } from 'es-toolkit/function'
 import { createContext } from 'use-context-selector'
 
 type Props = {
-  currentApp?: CurrentTryAppParams
+  currentApp?: TryAppSelection
   isShowTryAppPanel: boolean
-  setShowTryAppPanel: (showTryAppPanel: boolean, params?: CurrentTryAppParams) => void
+  setShowTryAppPanel: SetTryAppPanel
   controlHideCreateFromTemplatePanel: number
 }
 

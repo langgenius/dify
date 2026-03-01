@@ -1,4 +1,4 @@
-from core.file import File, FileTransferMethod, FileType
+from core.workflow.file import File, FileTransferMethod, FileType
 
 
 def test_file():
