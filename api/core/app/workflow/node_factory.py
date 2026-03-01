@@ -16,6 +16,7 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -35,7 +36,6 @@ from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import Kno
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.llm.protocols import PromptMessageMemory
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
