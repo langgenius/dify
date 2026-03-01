@@ -59,7 +59,7 @@ class LLMQuotaLayer(GraphEngineLayer):
         try:
             ensure_llm_quota_available(model_instance=model_instance)
         except QuotaExceededError as exc:
-            node.graph_runtime_state.stop_event.set()
+            self._set_stop_event(node)
             self._send_abort_command(reason=str(exc))
             logger.warning("LLM quota check failed, node_id=%s, error=%s", node.id, exc)
 
@@ -81,11 +81,17 @@ class LLMQuotaLayer(GraphEngineLayer):
                 usage=result_event.node_run_result.llm_usage,
             )
         except QuotaExceededError as exc:
-            node.graph_runtime_state.stop_event.set()
+            self._set_stop_event(node)
             self._send_abort_command(reason=str(exc))
             logger.warning("LLM quota deduction exceeded, node_id=%s, error=%s", node.id, exc)
         except Exception:
             logger.exception("LLM quota deduction failed, node_id=%s", node.id)
+
+    @staticmethod
+    def _set_stop_event(node: Node) -> None:
+        stop_event = getattr(node.graph_runtime_state, "stop_event", None)
+        if stop_event is not None:
+            stop_event.set()
 
     def _send_abort_command(self, *, reason: str) -> None:
         if not self.command_channel or self._abort_sent:

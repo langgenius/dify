@@ -302,6 +302,11 @@ class Node(Generic[NodeDataT]):
         """
         raise NotImplementedError
 
+    def _should_stop(self) -> bool:
+        """Check whether execution has been asked to stop."""
+        stop_event = getattr(self.graph_runtime_state, "stop_event", None)
+        return bool(stop_event and stop_event.is_set())
+
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
