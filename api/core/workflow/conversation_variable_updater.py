@@ -1,7 +1,7 @@
 import abc
 from typing import Protocol
 
-from core.variables import VariableBase
+from core.workflow.variables import VariableBase
 
 
 class ConversationVariableUpdater(Protocol):

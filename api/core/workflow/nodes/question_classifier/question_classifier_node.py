@@ -3,12 +3,10 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities import GraphInitParams
@@ -22,7 +20,12 @@ from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from core.workflow.nodes.llm import LLMNode, LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, llm_utils
+from core.workflow.nodes.llm import (
+    LLMNode,
+    LLMNodeChatModelMessage,
+    LLMNodeCompletionModelPromptTemplate,
+    llm_utils,
+)
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -52,6 +55,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     _llm_file_saver: LLMFileSaver
     _credentials_provider: "CredentialsProvider"
     _model_factory: "ModelFactory"
+    _model_instance: ModelInstance
 
     def __init__(
         self,
@@ -62,6 +66,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         *,
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
+        model_instance: ModelInstance,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -75,6 +80,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
 
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
+        self._model_instance = model_instance
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -95,18 +101,8 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         variable = variable_pool.get(node_data.query_variable_selector) if node_data.query_variable_selector else None
         query = variable.value if variable else None
         variables = {"query": query}
-        # fetch model config
-        model_instance, model_config = llm_utils.fetch_model_config(
-            node_data_model=node_data.model,
-            credentials_provider=self._credentials_provider,
-            model_factory=self._model_factory,
-        )
-        model_schema = model_instance.model_type_instance.get_model_schema(
-            model_instance.model_name,
-            model_instance.credentials,
-        )
-        if not model_schema:
-            raise ValueError(f"Model schema not found for {model_instance.model_name}")
+        # fetch model instance
+        model_instance = self._model_instance
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -131,7 +127,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         rest_token = self._calculate_rest_token(
             node_data=node_data,
             query=query or "",
-            model_config=model_config,
+            model_instance=model_instance,
             context="",
         )
         prompt_template = self._get_prompt_template(
@@ -149,9 +145,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             sys_query="",
             memory=memory,
             model_instance=model_instance,
-            model_schema=model_schema,
-            model_parameters=node_data.model.completion_params,
-            stop=model_config.stop,
+            stop=model_instance.stop,
             sys_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
@@ -166,7 +160,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         try:
             # handle invoke result
             generator = LLMNode.invoke_llm(
-                node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
@@ -205,14 +198,14 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                     category_name = classes_map[category_id_result]
                     category_id = category_id_result
             process_data = {
-                "model_mode": model_config.mode,
+                "model_mode": node_data.model.mode,
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                    model_mode=model_config.mode, prompt_messages=prompt_messages
+                    model_mode=node_data.model.mode, prompt_messages=prompt_messages
                 ),
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "model_provider": model_config.provider,
-                "model_name": model_config.model,
+                "model_provider": model_instance.provider,
+                "model_name": model_instance.model_name,
             }
             outputs = {
                 "class_name": category_name,
@@ -285,39 +278,40 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self,
         node_data: QuestionClassifierNodeData,
         query: str,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
         context: str | None,
     ) -> int:
-        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
+        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+
         prompt_template = self._get_prompt_template(node_data, query, None, 2000)
-        prompt_messages = prompt_transform.get_prompt(
+        prompt_messages, _ = LLMNode.fetch_prompt_messages(
             prompt_template=prompt_template,
-            inputs={},
-            query="",
-            files=[],
+            sys_query="",
+            sys_files=[],
             context=context,
-            memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
+            stop=model_instance.stop,
+            memory_config=node_data.memory,
+            vision_enabled=False,
+            vision_detail=node_data.vision.configs.detail,
+            variable_pool=self.graph_runtime_state.variable_pool,
+            jinja2_variables=[],
         )
         rest_tokens = 2000
 
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+        model_context_tokens = model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if model_context_tokens:
-            model_instance = ModelInstance(
-                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-            )
-
             curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
             max_tokens = 0
-            for parameter_rule in model_config.model_schema.parameter_rules:
+            for parameter_rule in model_schema.parameter_rules:
                 if parameter_rule.name == "max_tokens" or (
                     parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
                 ):
                     max_tokens = (
-                        model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template or "")
+                        model_instance.parameters.get(parameter_rule.name)
+                        or model_instance.parameters.get(parameter_rule.use_template or "")
                     ) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens

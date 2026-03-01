@@ -10,7 +10,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
-from core.variables.types import SegmentType
+from core.workflow.variables.types import SegmentType
 from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
