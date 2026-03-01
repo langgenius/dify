@@ -68,6 +68,21 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
                     index_node_ids.extend(attachment_ids)
             index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
 
+            # Disable summary indexes for these segments
+            from services.summary_index_service import SummaryIndexService
+
+            segment_ids_list = [segment.id for segment in segments]
+            try:
+                # Get disabled_by from first segment (they should all have the same disabled_by)
+                disabled_by = segments[0].disabled_by if segments else None
+                SummaryIndexService.disable_summaries_for_segments(
+                    dataset=dataset,
+                    segment_ids=segment_ids_list,
+                    disabled_by=disabled_by,
+                )
+            except Exception as e:
+                logger.warning("Failed to disable summaries for segments: %s", str(e))
+
             end_at = time.perf_counter()
             logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
         except Exception:

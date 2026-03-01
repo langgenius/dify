@@ -58,5 +58,15 @@
   "generation.tabs.create": "Ejecutar una vez",
   "generation.tabs.saved": "Guardado",
   "generation.title": "Completado por IA",
+  "humanInput.completed": "Parece que esta solicitud fue tratada en otro lugar.",
+  "humanInput.expirationTimeNowOrFuture": "Esta acción expirará {{relativeTime}}.",
+  "humanInput.expired": "Parece que esta solicitud ha expirado.",
+  "humanInput.expiredTip": "Esta acción ha expirado.",
+  "humanInput.formNotFound": "Formulario no encontrado.",
+  "humanInput.rateLimitExceeded": "Demasiadas solicitudes, inténtelo de nuevo más tarde.",
+  "humanInput.recorded": "Su entrada ha sido registrada.",
+  "humanInput.sorry": "¡Lo sentimos!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "¡Gracias!",
   "login.backToHome": "Volver a Inicio"
 }

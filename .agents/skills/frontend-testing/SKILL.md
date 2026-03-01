@@ -7,7 +7,7 @@ description: Generate Vitest + React Testing Library tests for Dify frontend com
 
 This skill enables Claude to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
 
-> **⚠️ Authoritative Source**: This skill is derived from `web/testing/testing.md`. Use Vitest mock/timer APIs (`vi.*`).
+> **⚠️ Authoritative Source**: This skill is derived from `web/docs/test.md`. Use Vitest mock/timer APIs (`vi.*`).
 
 ## When to Apply This Skill
 
@@ -309,7 +309,7 @@ For more detailed information, refer to:
 
 ### Primary Specification (MUST follow)
 
-- **`web/testing/testing.md`** - The canonical testing specification. This skill is derived from this document.
+- **`web/docs/test.md`** - The canonical testing specification. This skill is derived from this document.
 
 ### Reference Examples in Codebase
 

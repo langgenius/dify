@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import { RiQuestionLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 import { tooltipManager } from './TooltipManager'
@@ -61,6 +61,20 @@ const Tooltip: FC<TooltipProps> = ({
     isHoverTriggerRef.current = isHoverTrigger
   }, [isHoverTrigger])
 
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearCloseTimeout()
+    }
+  }, [clearCloseTimeout])
+
   const close = () => setOpen(false)
 
   const handleLeave = (isTrigger: boolean) => {
@@ -71,7 +85,9 @@ const Tooltip: FC<TooltipProps> = ({
 
     // give time to move to the popup
     if (needsDelay) {
-      setTimeout(() => {
+      clearCloseTimeout()
+      closeTimeoutRef.current = setTimeout(() => {
+        closeTimeoutRef.current = null
         if (!isHoverPopupRef.current && !isHoverTriggerRef.current) {
           setOpen(false)
           tooltipManager.clear(close)
@@ -79,6 +95,7 @@ const Tooltip: FC<TooltipProps> = ({
       }, 300)
     }
     else {
+      clearCloseTimeout()
       setOpen(false)
       tooltipManager.clear(close)
     }
@@ -95,6 +112,7 @@ const Tooltip: FC<TooltipProps> = ({
         onClick={() => triggerMethod === 'click' && setOpen(v => !v)}
         onMouseEnter={() => {
           if (triggerMethod === 'hover') {
+            clearCloseTimeout()
             setHoverTrigger()
             tooltipManager.register(close)
             setOpen(true)
@@ -115,7 +133,12 @@ const Tooltip: FC<TooltipProps> = ({
               !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
               popupClassName,
             )}
-            onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}
+            onMouseEnter={() => {
+              if (triggerMethod === 'hover') {
+                clearCloseTimeout()
+                setHoverPopup()
+              }
+            }}
             onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
           >
             {popupContent}

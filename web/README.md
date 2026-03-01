@@ -33,7 +33,7 @@ Then, configure the environment variables. Create a file named `.env.local` in t
 cp .env.example .env.local
 ```
 
-```
+```txt
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 # The deployment edition, SELF_HOSTED
@@ -106,6 +106,8 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 ## Lint Code
 
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
+
+Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
 ## Test
 

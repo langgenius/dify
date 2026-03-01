@@ -9,7 +9,7 @@ def parse_env_example(file_path):
     Parses the .env.example file and returns a dictionary with variable names as keys and default values as values.
     """
     env_vars = {}
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         for line_number, line in enumerate(f, 1):
             line = line.strip()
             # Ignore empty lines and comments
@@ -55,7 +55,7 @@ def insert_shared_env(template_path, output_path, shared_env_block, header_comme
     Inserts the shared environment variables block and header comments into the template file,
     removing any existing x-shared-env anchors, and generates the final docker-compose.yaml file.
     """
-    with open(template_path, "r") as f:
+    with open(template_path, "r", encoding="utf-8") as f:
         template_content = f.read()
 
     # Remove existing x-shared-env: &shared-api-worker-env lines
@@ -69,7 +69,7 @@ def insert_shared_env(template_path, output_path, shared_env_block, header_comme
     # Prepare the final content with header comments and shared env block
     final_content = f"{header_comments}\n{shared_env_block}\n\n{template_content}"
 
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(final_content)
     print(f"Generated {output_path}")
 

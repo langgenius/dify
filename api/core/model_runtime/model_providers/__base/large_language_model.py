@@ -83,15 +83,21 @@ def _merge_tool_call_delta(
         tool_call.function.arguments += delta.function.arguments
 
 
-def _build_llm_result_from_first_chunk(
+def _build_llm_result_from_chunks(
     model: str,
     prompt_messages: Sequence[PromptMessage],
     chunks: Iterator[LLMResultChunk],
 ) -> LLMResult:
     """
-    Build a single `LLMResult` from the first returned chunk.
+    Build a single `LLMResult` by accumulating all returned chunks.
 
-    This is used for `stream=False` because the plugin side may still implement the response via a chunked stream.
+    Some models only support streaming output (e.g. Qwen3 open-source edition)
+    and the plugin side may still implement the response via a chunked stream,
+    so all chunks must be consumed and concatenated into a single ``LLMResult``.
+
+    The ``usage`` is taken from the last chunk that carries it, which is the
+    typical convention for streaming responses (the final chunk contains the
+    aggregated token counts).
     """
     content = ""
     content_list: list[PromptMessageContentUnionTypes] = []
@@ -99,18 +105,28 @@ def _build_llm_result_from_first_chunk(
     system_fingerprint: str | None = None
     tools_calls: list[AssistantPromptMessage.ToolCall] = []
 
-    first_chunk = next(chunks, None)
-    if first_chunk is not None:
-        if isinstance(first_chunk.delta.message.content, str):
-            content += first_chunk.delta.message.content
-        elif isinstance(first_chunk.delta.message.content, list):
-            content_list.extend(first_chunk.delta.message.content)
+    try:
+        for chunk in chunks:
+            if isinstance(chunk.delta.message.content, str):
+                content += chunk.delta.message.content
+            elif isinstance(chunk.delta.message.content, list):
+                content_list.extend(chunk.delta.message.content)
 
-        if first_chunk.delta.message.tool_calls:
-            _increase_tool_call(first_chunk.delta.message.tool_calls, tools_calls)
+            if chunk.delta.message.tool_calls:
+                _increase_tool_call(chunk.delta.message.tool_calls, tools_calls)
 
-        usage = first_chunk.delta.usage or LLMUsage.empty_usage()
-        system_fingerprint = first_chunk.system_fingerprint
+            if chunk.delta.usage:
+                usage = chunk.delta.usage
+            if chunk.system_fingerprint:
+                system_fingerprint = chunk.system_fingerprint
+    except Exception:
+        logger.exception("Error while consuming non-stream plugin chunk iterator.")
+        raise
+    finally:
+        # Drain any remaining chunks to release underlying streaming resources (e.g. HTTP connections).
+        close = getattr(chunks, "close", None)
+        if callable(close):
+            close()
 
     return LLMResult(
         model=model,
@@ -163,7 +179,7 @@ def _normalize_non_stream_plugin_result(
 ) -> LLMResult:
     if isinstance(result, LLMResult):
         return result
-    return _build_llm_result_from_first_chunk(model=model, prompt_messages=prompt_messages, chunks=result)
+    return _build_llm_result_from_chunks(model=model, prompt_messages=prompt_messages, chunks=result)
 
 
 def _increase_tool_call(
@@ -283,7 +299,7 @@ class LargeLanguageModel(AIModel):
             # TODO
             raise self._transform_invoke_error(e)
 
-        if stream and isinstance(result, Generator):
+        if stream and not isinstance(result, LLMResult):
             return self._invoke_result_generator(
                 model=model,
                 result=result,

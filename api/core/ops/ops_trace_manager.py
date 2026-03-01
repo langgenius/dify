@@ -15,10 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
-from core.ops.entities.config_entity import (
-    OPS_FILE_PATH,
-    TracingProviderEnum,
-)
+from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -31,8 +28,8 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.engine import db
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
@@ -44,8 +41,8 @@ logger = logging.getLogger(__name__)
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, provider: str) -> dict[str, Any]:
-        match provider:
+    def __getitem__(self, key: str) -> dict[str, Any]:
+        match key:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
@@ -152,7 +149,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 }
 
             case _:
-                raise KeyError(f"Unsupported tracing provider: {provider}")
+                raise KeyError(f"Unsupported tracing provider: {key}")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -469,6 +466,8 @@ class TraceTask:
 
     @classmethod
     def _get_workflow_run_repo(cls):
+        from repositories.factory import DifyAPIRepositoryFactory
+
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:

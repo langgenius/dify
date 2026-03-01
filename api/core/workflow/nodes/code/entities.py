@@ -1,11 +1,18 @@
-from typing import Annotated, Literal, Self
+from enum import StrEnum
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel
 
-from core.helper.code_executor.code_executor import CodeLanguage
-from core.variables.types import SegmentType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.variables.types import SegmentType
+
+
+class CodeLanguage(StrEnum):
+    PYTHON3 = "python3"
+    JINJA2 = "jinja2"
+    JAVASCRIPT = "javascript"
+
 
 _ALLOWED_OUTPUT_FROM_CODE = frozenset(
     [
@@ -34,7 +41,7 @@ class CodeNodeData(BaseNodeData):
 
     class Output(BaseModel):
         type: Annotated[SegmentType, AfterValidator(_validate_type)]
-        children: dict[str, Self] | None = None
+        children: dict[str, "CodeNodeData.Output"] | None = None
 
     class Dependency(BaseModel):
         name: str
