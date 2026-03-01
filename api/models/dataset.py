@@ -8,6 +8,7 @@ import os
 import pickle
 import re
 import time
+from operator import itemgetter
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, cast
@@ -867,6 +868,7 @@ class DocumentSegment(Base):
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # Reconstruct the text with signed URLs
+        signed_urls.sort(key=itemgetter(0))
         offset = 0
         for start, end, signed_url in signed_urls:
             text = text[: start + offset] + signed_url + text[end + offset :]
