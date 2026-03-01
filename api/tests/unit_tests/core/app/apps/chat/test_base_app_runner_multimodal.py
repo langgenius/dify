@@ -71,17 +71,17 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -158,17 +158,17 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_raw.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -231,17 +231,17 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_raw.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -282,9 +282,9 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     # Act
                     # Create a mock runner with the method bound
                     runner = MagicMock()
@@ -321,14 +321,14 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock to raise exception
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.side_effect = Exception("Network error")
             mock_mgr_class.return_value = mock_mgr
 
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     # Act
                     # Create a mock runner with the method bound
                     runner = MagicMock()
@@ -368,17 +368,17 @@ class TestBaseAppRunnerMultimodal:
         )
         mock_queue_manager.invoke_from = InvokeFrom.DEBUGGER
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -420,17 +420,17 @@ class TestBaseAppRunnerMultimodal:
         )
         mock_queue_manager.invoke_from = InvokeFrom.SERVICE_API
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session", autospec=True) as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
