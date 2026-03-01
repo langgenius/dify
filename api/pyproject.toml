@@ -116,7 +116,6 @@ dev = [
     "dotenv-linter~=0.5.0",
     "faker~=38.2.0",
     "lxml-stubs~=0.5.1",
-    "ty>=0.0.14",
     "basedpyright~=1.31.0",
     "ruff~=0.14.0",
     "pytest~=8.3.2",
