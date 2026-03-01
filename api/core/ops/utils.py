@@ -9,7 +9,7 @@ from models.engine import db
 from models.model import Message
 
 
-def filter_none_values(data: dict) -> dict[str, Any]:
+def filter_none_values(data: dict[str, Any]) -> dict[str, Any]:
     new_data = {}
     for key, value in data.items():
         if value is None:
