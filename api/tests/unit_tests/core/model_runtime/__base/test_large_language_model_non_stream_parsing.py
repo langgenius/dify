@@ -103,8 +103,8 @@ def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
     assert result.system_fingerprint is None
 
 
-def test__normalize_non_stream_plugin_result__accumulates_all_chunks_and_closes_iterator():
-    """All chunks are accumulated and the iterator is closed after consumption."""
+def test__normalize_non_stream_plugin_result__accumulates_all_chunks():
+    """All chunks are accumulated from the iterator."""
     prompt_messages = [UserPromptMessage(content="hi")]
 
     closed: list[bool] = []
