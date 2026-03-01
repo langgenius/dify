@@ -1,13 +1,13 @@
-import { get } from 'lodash-es'
-import { buildChatItemTree, getThreadMessages } from '../utils'
 import type { ChatItemInTree } from '../types'
+import { get } from 'es-toolkit/compat'
+import { buildChatItemTree, getThreadMessages } from '../utils'
 import branchedTestMessages from './branchedTestMessages.json'
 import legacyTestMessages from './legacyTestMessages.json'
 import mixedTestMessages from './mixedTestMessages.json'
 import multiRootNodesMessages from './multiRootNodesMessages.json'
 import multiRootNodesWithLegacyTestMessages from './multiRootNodesWithLegacyTestMessages.json'
-import realWorldMessages from './realWorldMessages.json'
 import partialMessages from './partialMessages.json'
+import realWorldMessages from './realWorldMessages.json'
 
 function visitNode(tree: ChatItemInTree | ChatItemInTree[], path: string): ChatItemInTree {
   return get(tree, path)

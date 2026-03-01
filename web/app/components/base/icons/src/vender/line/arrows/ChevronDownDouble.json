@@ -1,39 +1,39 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "12",
-			"height": "13",
-			"viewBox": "0 0 12 13",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "chevron-down-double"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Icon",
-							"d": "M3.5 7L6 9.5L8.5 7M3.5 3.5L6 6L8.5 3.5",
-							"stroke": "currentColor",
-							"stroke-width": "1.25",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			}
-		]
-	},
-	"name": "ChevronDownDouble"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "12",
+      "height": "13",
+      "viewBox": "0 0 12 13",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "chevron-down-double"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Icon",
+              "d": "M3.5 7L6 9.5L8.5 7M3.5 3.5L6 6L8.5 3.5",
+              "stroke": "currentColor",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "ChevronDownDouble"
 }

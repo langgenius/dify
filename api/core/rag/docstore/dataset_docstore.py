@@ -1,13 +1,15 @@
-from collections.abc import Sequence
-from typing import Any, Optional
+from __future__ import annotations
 
-from sqlalchemy import func
+from collections.abc import Sequence
+from typing import Any
+
+from sqlalchemy import func, select
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 
 
 class DatasetDocumentStore:
@@ -15,14 +17,14 @@ class DatasetDocumentStore:
         self,
         dataset: Dataset,
         user_id: str,
-        document_id: Optional[str] = None,
+        document_id: str | None = None,
     ):
         self._dataset = dataset
         self._user_id = user_id
         self._document_id = document_id
 
     @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> "DatasetDocumentStore":
+    def from_dict(cls, config_dict: dict[str, Any]) -> DatasetDocumentStore:
         return cls(**config_dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -32,18 +34,17 @@ class DatasetDocumentStore:
         }
 
     @property
-    def dateset_id(self) -> Any:
+    def dataset_id(self):
         return self._dataset.id
 
     @property
-    def user_id(self) -> Any:
+    def user_id(self):
         return self._user_id
 
     @property
     def docs(self) -> dict[str, Document]:
-        document_segments = (
-            db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == self._dataset.id).all()
-        )
+        stmt = select(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id)
+        document_segments = db.session.scalars(stmt).all()
 
         output = {}
         for document_segment in document_segments:
@@ -60,10 +61,10 @@ class DatasetDocumentStore:
 
         return output
 
-    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
+    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False):
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
-            .filter(DocumentSegment.document_id == self._document_id)
+            .where(DocumentSegment.document_id == self._document_id)
             .scalar()
         )
 
@@ -121,15 +122,18 @@ class DatasetDocumentStore:
 
                 db.session.add(segment_document)
                 db.session.flush()
+                self.add_multimodel_documents_binding(
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                )
                 if save_child:
                     if doc.children:
-                        for postion, child in enumerate(doc.children, start=1):
+                        for position, child in enumerate(doc.children, start=1):
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
                                 document_id=self._document_id,
                                 segment_id=segment_document.id,
-                                position=postion,
+                                position=position,
                                 index_node_id=child.metadata.get("doc_id"),
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
@@ -145,9 +149,12 @@ class DatasetDocumentStore:
                 segment_document.index_node_hash = doc.metadata.get("doc_hash")
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
+                self.add_multimodel_documents_binding(
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                )
                 if save_child and doc.children:
                     # delete the existing child chunks
-                    db.session.query(ChildChunk).filter(
+                    db.session.query(ChildChunk).where(
                         ChildChunk.tenant_id == self._dataset.tenant_id,
                         ChildChunk.dataset_id == self._dataset.id,
                         ChildChunk.document_id == self._document_id,
@@ -177,7 +184,7 @@ class DatasetDocumentStore:
         result = self.get_document_segment(doc_id)
         return result is not None
 
-    def get_document(self, doc_id: str, raise_error: bool = True) -> Optional[Document]:
+    def get_document(self, doc_id: str, raise_error: bool = True) -> Document | None:
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -196,7 +203,7 @@ class DatasetDocumentStore:
             },
         )
 
-    def delete_document(self, doc_id: str, raise_error: bool = True) -> None:
+    def delete_document(self, doc_id: str, raise_error: bool = True):
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -208,7 +215,7 @@ class DatasetDocumentStore:
         db.session.delete(document_segment)
         db.session.commit()
 
-    def set_document_hash(self, doc_id: str, doc_hash: str) -> None:
+    def set_document_hash(self, doc_id: str, doc_hash: str):
         """Set the hash for a given doc_id."""
         document_segment = self.get_document_segment(doc_id)
 
@@ -218,20 +225,31 @@ class DatasetDocumentStore:
         document_segment.index_node_hash = doc_hash
         db.session.commit()
 
-    def get_document_hash(self, doc_id: str) -> Optional[str]:
+    def get_document_hash(self, doc_id: str) -> str | None:
         """Get the stored hash for a document, if it exists."""
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
             return None
-        data: Optional[str] = document_segment.index_node_hash
+        data: str | None = document_segment.index_node_hash
         return data
 
-    def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
-        document_segment = (
-            db.session.query(DocumentSegment)
-            .filter(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
-            .first()
+    def get_document_segment(self, doc_id: str) -> DocumentSegment | None:
+        stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
         )
+        document_segment = db.session.scalar(stmt)
 
         return document_segment
+
+    def add_multimodel_documents_binding(self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None):
+        if multimodel_documents:
+            for multimodel_document in multimodel_documents:
+                binding = SegmentAttachmentBinding(
+                    tenant_id=self._dataset.tenant_id,
+                    dataset_id=self._dataset.id,
+                    document_id=self._document_id,
+                    segment_id=segment_id,
+                    attachment_id=multimodel_document.metadata["doc_id"],
+                )
+                db.session.add(binding)

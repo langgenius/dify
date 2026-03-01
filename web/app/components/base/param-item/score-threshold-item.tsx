@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
@@ -20,7 +20,6 @@ const VALUE_LIMIT = {
   max: 1,
 }
 
-const key = 'score_threshold'
 const ScoreThresholdItem: FC<Props> = ({
   className,
   value,
@@ -36,14 +35,19 @@ const ScoreThresholdItem: FC<Props> = ({
     notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
     onChange(key, notOutRangeValue)
   }
+  const safeValue = Math.min(
+    VALUE_LIMIT.max,
+    Math.max(VALUE_LIMIT.min, Number.parseFloat(value.toFixed(2))),
+  )
+
   return (
     <ParamItem
       className={className}
-      id={key}
-      name={t(`appDebug.datasetConfig.${key}`)}
-      tip={t(`appDebug.datasetConfig.${key}Tip`) as string}
+      id="score_threshold"
+      name={t('datasetConfig.score_threshold', { ns: 'appDebug' })}
+      tip={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
-      value={value}
+      value={safeValue}
       enable={enable}
       onChange={handleParamChange}
       hasSwitch={hasSwitch}

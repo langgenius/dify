@@ -1,11 +1,10 @@
 import time
 
-import psycopg2  # type: ignore
+import psycopg2
 
 from core.rag.datasource.vdb.opengauss.opengauss import OpenGauss, OpenGaussConfig
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    get_example_text,
     setup_mock_redis,
 )
 

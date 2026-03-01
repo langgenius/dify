@@ -1,11 +1,10 @@
 from collections.abc import Mapping, Sequence
-from typing import Optional, cast
+from typing import cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import file_manager
-from core.file.models import File
 from core.helper.code_executor.jinja2.jinja2_formatter import Jinja2Formatter
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -18,7 +17,9 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.file import file_manager
+from core.workflow.file.models import File
+from core.workflow.runtime import VariablePool
 
 
 class AdvancedPromptTransform(PromptTransform):
@@ -30,7 +31,7 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         with_variable_tmpl: bool = False,
         image_detail_config: ImagePromptMessageContent.DETAIL = ImagePromptMessageContent.DETAIL.LOW,
-    ) -> None:
+    ):
         self.with_variable_tmpl = with_variable_tmpl
         self.image_detail_config = image_detail_config
 
@@ -41,11 +42,12 @@ class AdvancedPromptTransform(PromptTransform):
         inputs: Mapping[str, str],
         query: str,
         files: Sequence[File],
-        context: Optional[str],
-        memory_config: Optional[MemoryConfig],
-        memory: Optional[TokenBufferMemory],
-        model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        context: str | None,
+        memory_config: MemoryConfig | None,
+        memory: TokenBufferMemory | None,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         prompt_messages = []
 
@@ -59,6 +61,7 @@ class AdvancedPromptTransform(PromptTransform):
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                model_instance=model_instance,
                 image_detail_config=image_detail_config,
             )
         elif isinstance(prompt_template, list) and all(isinstance(item, ChatModelMessage) for item in prompt_template):
@@ -71,6 +74,7 @@ class AdvancedPromptTransform(PromptTransform):
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                model_instance=model_instance,
                 image_detail_config=image_detail_config,
             )
 
@@ -80,13 +84,14 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         prompt_template: CompletionModelPromptTemplate,
         inputs: Mapping[str, str],
-        query: Optional[str],
+        query: str | None,
         files: Sequence[File],
-        context: Optional[str],
-        memory_config: Optional[MemoryConfig],
-        memory: Optional[TokenBufferMemory],
-        model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        context: str | None,
+        memory_config: MemoryConfig | None,
+        memory: TokenBufferMemory | None,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         """
         Get completion model prompt messages.
@@ -111,6 +116,7 @@ class AdvancedPromptTransform(PromptTransform):
                     parser=parser,
                     prompt_inputs=prompt_inputs,
                     model_config=model_config,
+                    model_instance=model_instance,
                 )
 
             if query:
@@ -125,11 +131,11 @@ class AdvancedPromptTransform(PromptTransform):
 
         if files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:
@@ -141,13 +147,14 @@ class AdvancedPromptTransform(PromptTransform):
         self,
         prompt_template: list[ChatModelMessage],
         inputs: Mapping[str, str],
-        query: Optional[str],
+        query: str | None,
         files: Sequence[File],
-        context: Optional[str],
-        memory_config: Optional[MemoryConfig],
-        memory: Optional[TokenBufferMemory],
-        model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
+        context: str | None,
+        memory_config: MemoryConfig | None,
+        memory: TokenBufferMemory | None,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
@@ -158,7 +165,7 @@ class AdvancedPromptTransform(PromptTransform):
 
             if prompt_item.edition_type == "basic" or not prompt_item.edition_type:
                 if self.with_variable_tmpl:
-                    vp = VariablePool()
+                    vp = VariablePool.empty()
                     for k, v in inputs.items():
                         if k.startswith("#"):
                             vp.add(k[1:-1].split("."), v)
@@ -196,16 +203,22 @@ class AdvancedPromptTransform(PromptTransform):
 
             query = parser.format(prompt_inputs)
 
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         if memory and memory_config:
-            prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
-
+            prompt_messages = self._append_chat_histories(
+                memory,
+                memory_config,
+                prompt_messages,
+                model_config=model_config,
+                model_instance=model_instance,
+            )
             if files and query is not None:
-                prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-                prompt_message_contents.append(TextPromptMessageContent(data=query))
                 for file in files:
                     prompt_message_contents.append(
                         file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                     )
+                prompt_message_contents.append(TextPromptMessageContent(data=query))
+
                 prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:
                 prompt_messages.append(UserPromptMessage(content=query))
@@ -215,27 +228,27 @@ class AdvancedPromptTransform(PromptTransform):
                 last_message = prompt_messages[-1] if prompt_messages else None
                 if last_message and last_message.role == PromptMessageRole.USER:
                     # get last user message content and add files
-                    prompt_message_contents = [TextPromptMessageContent(data=cast(str, last_message.content))]
                     for file in files:
                         prompt_message_contents.append(
                             file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                         )
+                    prompt_message_contents.append(TextPromptMessageContent(data=cast(str, last_message.content)))
 
                     last_message.content = prompt_message_contents
                 else:
-                    prompt_message_contents = [TextPromptMessageContent(data="")]  # not for query
                     for file in files:
                         prompt_message_contents.append(
                             file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                         )
+                    prompt_message_contents.append(TextPromptMessageContent(data=""))
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:
-                prompt_message_contents = [TextPromptMessageContent(data=query)]
                 for file in files:
                     prompt_message_contents.append(
                         file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                     )
+                prompt_message_contents.append(TextPromptMessageContent(data=query))
 
                 prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         elif query:
@@ -275,7 +288,8 @@ class AdvancedPromptTransform(PromptTransform):
         role_prefix: MemoryConfig.RolePrefix,
         parser: PromptTemplateParser,
         prompt_inputs: Mapping[str, str],
-        model_config: ModelConfigWithCredentialsEntity,
+        model_config: ModelConfigWithCredentialsEntity | None = None,
+        model_instance: ModelInstance | None = None,
     ) -> Mapping[str, str]:
         prompt_inputs = dict(prompt_inputs)
         if "#histories#" in parser.variable_keys:
@@ -285,7 +299,11 @@ class AdvancedPromptTransform(PromptTransform):
                 prompt_inputs = {k: inputs[k] for k in parser.variable_keys if k in inputs}
                 tmp_human_message = UserPromptMessage(content=parser.format(prompt_inputs))
 
-                rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
+                rest_tokens = self._calculate_rest_token(
+                    [tmp_human_message],
+                    model_config=model_config,
+                    model_instance=model_instance,
+                )
 
                 histories = self._get_history_messages_from_memory(
                     memory=memory,

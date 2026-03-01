@@ -1,64 +1,64 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "12",
-			"height": "12",
-			"viewBox": "0 0 12 12",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"clip-path": "url(#clip0_7998_4025)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M6 1.125V2.375M6 9V11M2.875 6H1.125M10.625 6H9.875M9.22855 9.22855L8.875 8.875M9.33211 2.70789L8.625 3.415M2.46079 9.53921L3.875 8.125M2.56434 2.60434L3.625 3.665",
-							"stroke": "#667085",
-							"stroke-width": "1.25",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_7998_4025"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "12",
-									"height": "12",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "Loading"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "12",
+      "height": "12",
+      "viewBox": "0 0 12 12",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_7998_4025)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M6 1.125V2.375M6 9V11M2.875 6H1.125M10.625 6H9.875M9.22855 9.22855L8.875 8.875M9.33211 2.70789L8.625 3.415M2.46079 9.53921L3.875 8.125M2.56434 2.60434L3.625 3.665",
+              "stroke": "#667085",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_7998_4025"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "12",
+                  "height": "12",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Loading"
 }

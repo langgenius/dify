@@ -1,15 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import produce from 'immer'
-import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
+import type { ToastHandle } from '@/app/components/base/toast'
+import type { VarType } from '@/app/components/workflow/types'
+import { useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
-import Input from '@/app/components/base/input'
-import type { VarType } from '@/app/components/workflow/types'
-import { checkKeys } from '@/utils/var'
-import Toast from '@/app/components/base/toast'
 
 type Props = {
   readonly: boolean
@@ -27,6 +30,7 @@ const OutputVarList: FC<Props> = ({
   onRemove,
 }) => {
   const { t } = useTranslation()
+  const [toastHandler, setToastHandler] = useState<ToastHandle>()
 
   const list = outputKeyOrders.map((key) => {
     return {
@@ -34,27 +38,36 @@ const OutputVarList: FC<Props> = ({
       variable_type: outputs[key]?.type,
     }
   })
+
+  const { run: validateVarInput } = useDebounceFn((existingVariables: typeof list, newKey: string) => {
+    const result = checkKeys([newKey], true)
+    if (!result.isValid) {
+      setToastHandler(Toast.notify({
+        type: 'error',
+        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
+      }))
+      return
+    }
+    if (existingVariables.some(key => key.variable?.trim() === newKey.trim())) {
+      setToastHandler(Toast.notify({
+        type: 'error',
+        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
+      }))
+    }
+    else {
+      toastHandler?.clear?.()
+    }
+  }, { wait: 500 })
+
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
+
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const newKey = e.target.value
 
-      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-      if (!isValid) {
-        Toast.notify({
-          type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-        })
-        return
-      }
-
-      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
-        Toast.notify({
-          type: 'error',
-          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
-        })
-        return
-      }
+      toastHandler?.clear?.()
+      validateVarInput(list.toSpliced(index, 1), newKey)
 
       const newOutputs = produce(outputs, (draft) => {
         draft[newKey] = draft[oldKey]
@@ -62,8 +75,7 @@ const OutputVarList: FC<Props> = ({
       })
       onChange(newOutputs, index, newKey)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, onChange, outputs, outputKeyOrders])
+  }, [list, onChange, outputs, outputKeyOrders, validateVarInput])
 
   const handleVarTypeChange = useCallback((index: number) => {
     return (value: string) => {
@@ -73,7 +85,6 @@ const OutputVarList: FC<Props> = ({
       })
       onChange(newOutputs)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, onChange, outputs, outputKeyOrders])
 
   const handleVarRemove = useCallback((index: number) => {
@@ -83,14 +94,14 @@ const OutputVarList: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <Input
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
-            wrapperClassName='grow'
+            wrapperClassName="grow"
           />
           <VarTypePicker
             readonly={readonly}
@@ -98,7 +109,7 @@ const OutputVarList: FC<Props> = ({
             onChange={handleVarTypeChange(index)}
           />
           <RemoveButton
-            className='!bg-gray-100 !p-2 hover:!bg-gray-200'
+            className="!bg-gray-100 !p-2 hover:!bg-gray-200"
             onClick={handleVarRemove(index)}
           />
         </div>

@@ -1,101 +1,83 @@
 'use client'
+import type { ActivePluginType } from './constants'
+import { useTranslation } from '#i18n'
 import {
   RiArchive2Line,
   RiBrain2Line,
+  RiDatabase2Line,
   RiHammerLine,
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
-import { PluginType } from '../types'
-import { useMarketplaceContext } from './context'
-import {
-  useMixedTranslation,
-  useSearchBoxAutoAnimate,
-} from './hooks'
-import cn from '@/utils/classnames'
-import { useCallback, useEffect } from 'react'
+import { useSetAtom } from 'jotai'
+import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import { cn } from '@/utils/classnames'
+import { searchModeAtom, useActivePluginType } from './atoms'
+import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
-export const PLUGIN_TYPE_SEARCH_MAP = {
-  all: 'all',
-  model: PluginType.model,
-  tool: PluginType.tool,
-  agent: PluginType.agent,
-  extension: PluginType.extension,
-  bundle: 'bundle',
-}
 type PluginTypeSwitchProps = {
-  locale?: string
   className?: string
-  searchBoxAutoAnimate?: boolean
-  showSearchParams?: boolean
 }
 const PluginTypeSwitch = ({
-  locale,
   className,
-  searchBoxAutoAnimate,
-  showSearchParams,
 }: PluginTypeSwitchProps) => {
-  const { t } = useMixedTranslation(locale)
-  const activePluginType = useMarketplaceContext(s => s.activePluginType)
-  const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
-  const { searchBoxCanAnimate } = useSearchBoxAutoAnimate(searchBoxAutoAnimate)
+  const { t } = useTranslation()
+  const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
+  const setSearchMode = useSetAtom(searchModeAtom)
 
-  const options = [
+  const options: Array<{
+    value: ActivePluginType
+    text: string
+    icon: React.ReactNode | null
+  }> = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: t('plugin.category.all'),
+      text: t('category.all', { ns: 'plugin' }),
       icon: null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
-      text: t('plugin.category.models'),
-      icon: <RiBrain2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.models', { ns: 'plugin' }),
+      icon: <RiBrain2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
-      text: t('plugin.category.tools'),
-      icon: <RiHammerLine className='mr-1.5 h-4 w-4' />,
+      text: t('category.tools', { ns: 'plugin' }),
+      icon: <RiHammerLine className="mr-1.5 h-4 w-4" />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.datasource,
+      text: t('category.datasources', { ns: 'plugin' }),
+      icon: <RiDatabase2Line className="mr-1.5 h-4 w-4" />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.trigger,
+      text: t('category.triggers', { ns: 'plugin' }),
+      icon: <TriggerIcon className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t('plugin.category.agents'),
-      icon: <RiSpeakAiLine className='mr-1.5 h-4 w-4' />,
+      text: t('category.agents', { ns: 'plugin' }),
+      icon: <RiSpeakAiLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
-      text: t('plugin.category.extensions'),
-      icon: <RiPuzzle2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.extensions', { ns: 'plugin' }),
+      icon: <RiPuzzle2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t('plugin.category.bundles'),
-      icon: <RiArchive2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.bundles', { ns: 'plugin' }),
+      icon: <RiArchive2Line className="mr-1.5 h-4 w-4" />,
     },
   ]
-
-  const handlePopState = useCallback(() => {
-    if (!showSearchParams)
-      return
-    const url = new URL(window.location.href)
-    const category = url.searchParams.get('category') || PLUGIN_TYPE_SEARCH_MAP.all
-    handleActivePluginTypeChange(category)
-  }, [showSearchParams, handleActivePluginTypeChange])
-
-  useEffect(() => {
-    window.addEventListener('popstate', () => {
-      handlePopState()
-    })
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [handlePopState])
 
   return (
     <div className={cn(
       'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
-      searchBoxCanAnimate && 'sticky top-[56px] z-10',
       className,
-    )}>
+    )}
+    >
       {
         options.map(option => (
           <div
@@ -106,6 +88,9 @@ const PluginTypeSwitch = ({
             )}
             onClick={() => {
               handleActivePluginTypeChange(option.value)
+              if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
+                setSearchMode(null)
+              }
             }}
           >
             {option.icon}

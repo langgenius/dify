@@ -1,6 +1,5 @@
 .filePreview {
   @apply flex flex-col border-l border-components-panel-border shrink-0 bg-background-default-lighter;
-  width: 528px;
 }
 
 .previewHeader {
@@ -28,6 +27,7 @@
   background: #f9fafb center no-repeat url(../assets/Loading.svg);
   background-size: contain;
 }
+
 .fileContent {
   white-space: pre-line;
 }

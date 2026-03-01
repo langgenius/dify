@@ -1,33 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
-import Link from 'next/link'
-import { Trans, useTranslation } from 'react-i18next'
-import { useContext, useContextSelector } from 'use-context-selector'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import Modal from '@/app/components/base/modal'
-import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import AppIcon from '@/app/components/base/app-icon'
-import Switch from '@/app/components/base/switch'
-import PremiumBadge from '@/app/components/base/premium-badge'
-import { SimpleSelect } from '@/app/components/base/select'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
-import { useToastContext } from '@/app/components/base/toast'
-import { LanguagesSupported, languages } from '@/i18n/language'
-import Tooltip from '@/app/components/base/tooltip'
-import AppContext, { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
-import { useModalContext } from '@/context/modal-context'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
+import Link from 'next/link'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import I18n from '@/context/i18n'
-import cn from '@/utils/classnames'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
+import PremiumBadge from '@/app/components/base/premium-badge'
+import { SimpleSelect } from '@/app/components/base/select'
+import Switch from '@/app/components/base/switch'
+import Textarea from '@/app/components/base/textarea'
+import { useToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { languages } from '@/i18n-config/language'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -56,7 +56,7 @@ export type ConfigParams = {
   enable_sso?: boolean
 }
 
-const prefixSettings = 'appOverview.overview.appInfo.settings'
+const prefixSettings = 'overview.appInfo.settings'
 
 const SettingsModal: FC<ISettingsModalProps> = ({
   isChat,
@@ -65,8 +65,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const {
@@ -101,7 +99,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -110,14 +107,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       : { type: 'emoji', icon, background: icon_background! },
   )
 
-  const { enableBilling, plan } = useProviderContext()
+  const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
       setShowPricingModal()
     else
-      setShowAccountSettingModal({ payload: 'billing' })
+      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   useEffect(() => {
@@ -138,7 +135,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     setAppIcon(icon_type === 'image'
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! })
-  }, [appInfo])
+  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
 
   const onHide = () => {
     onClose()
@@ -149,7 +146,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const onClickSave = async () => {
     if (!inputInfo.title) {
-      notify({ type: 'error', message: t('app.newApp.nameNotEmpty') })
+      notify({ type: 'error', message: t('newApp.nameNotEmpty', { ns: 'app' }) })
       return
     }
 
@@ -157,7 +154,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       if (hex === null || hex?.length === 0)
         return true
 
-      const regex = /#([A-Fa-f0-9]{6})/
+      const regex = /#([A-F0-9]{6})/i
       const check = regex.test(hex)
       return check
     }
@@ -171,11 +168,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
     if (inputInfo !== null) {
       if (!validateColorHex(inputInfo.chatColorTheme)) {
-        notify({ type: 'error', message: t(`${prefixSettings}.invalidHexMessage`) })
+        notify({ type: 'error', message: t(`${prefixSettings}.invalidHexMessage`, { ns: 'appOverview' }) })
         return
       }
       if (!validatePrivacyPolicy(inputInfo.privacyPolicy)) {
-        notify({ type: 'error', message: t(`${prefixSettings}.invalidPrivacyPolicy`) })
+        notify({ type: 'error', message: t(`${prefixSettings}.invalidPrivacyPolicy`, { ns: 'appOverview' }) })
         return
       }
     }
@@ -188,7 +185,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: isFreePlan
+      copyright: !webappCopyrightEnabled
         ? ''
         : inputInfo.copyrightSwitchValue
           ? inputInfo.copyright
@@ -229,38 +226,37 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         isShow={isShow}
         closable={false}
         onClose={onHide}
-        className='max-w-[520px] p-0'
+        className="max-w-[520px] p-0"
       >
         {/* header */}
-        <div className='pb-3 pl-6 pr-5 pt-5'>
-          <div className='flex items-center gap-1'>
-            <div className='title-2xl-semi-bold grow text-text-primary'>{t(`${prefixSettings}.title`)}</div>
-            <ActionButton className='shrink-0' onClick={onHide}>
-              <RiCloseLine className='h-4 w-4' />
+        <div className="pb-3 pl-6 pr-5 pt-5">
+          <div className="flex items-center gap-1">
+            <div className="title-2xl-semi-bold grow text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</div>
+            <ActionButton className="shrink-0" onClick={onHide}>
+              <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className='system-xs-regular mt-0.5 text-text-tertiary'>
-            <span>{t(`${prefixSettings}.modalTip`)}</span>
-            <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+          <div className="system-xs-regular mt-0.5 text-text-tertiary">
+            <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
           </div>
         </div>
         {/* form body */}
-        <div className='space-y-5 px-6 py-3'>
+        <div className="space-y-5 px-6 py-3">
           {/* name & icon */}
-          <div className='flex gap-4'>
-            <div className='grow'>
-              <div className={cn('system-sm-semibold mb-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.webName`)}</div>
+          <div className="flex gap-4">
+            <div className="grow">
+              <div className={cn('system-sm-semibold mb-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.webName`, { ns: 'appOverview' })}</div>
               <Input
-                className='w-full'
+                className="w-full"
                 value={inputInfo.title}
                 onChange={onChange('title')}
-                placeholder={t('app.appNamePlaceholder') || ''}
+                placeholder={t('appNamePlaceholder', { ns: 'app' }) || ''}
               />
             </div>
             <AppIcon
-              size='xxl'
+              size="xxl"
               onClick={() => { setShowAppIconPicker(true) }}
-              className='mt-2 cursor-pointer'
+              className="mt-2 cursor-pointer"
               iconType={appIcon.type}
               icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
               background={appIcon.type === 'image' ? undefined : appIcon.background}
@@ -268,35 +264,35 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             />
           </div>
           {/* description */}
-          <div className='relative'>
-            <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.webDesc`)}</div>
+          <div className="relative">
+            <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
             <Textarea
-              className='mt-1'
+              className="mt-1"
               value={inputInfo.desc}
               onChange={e => onDesChange(e.target.value)}
-              placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
+              placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
             />
-            <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`)}</p>
+            <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
           </div>
           <Divider className="my-0 h-px" />
           {/* answer icon */}
           {isChat && (
-            <div className='w-full'>
-              <div className='flex items-center justify-between'>
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('app.answerIcon.title')}</div>
+            <div className="w-full">
+              <div className="flex items-center justify-between">
+                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  defaultValue={inputInfo.use_icon_as_answer_icon}
+                  value={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
-              <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t('app.answerIcon.description')}</p>
+              <p className="body-xs-regular pb-0.5 text-text-tertiary">{t('answerIcon.description', { ns: 'app' })}</p>
             </div>
           )}
           {/* language */}
-          <div className='flex items-center'>
-            <div className={cn('system-sm-semibold grow py-1 text-text-secondary')}>{t(`${prefixSettings}.language`)}</div>
+          <div className="flex items-center">
+            <div className={cn('system-sm-semibold grow py-1 text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
             <SimpleSelect
-              wrapperClassName='w-[200px]'
+              wrapperClassName="w-[200px]"
               items={languages.filter(item => item.supported)}
               defaultValue={language}
               onSelect={item => setLanguage(item.value as Language)}
@@ -305,86 +301,70 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           {/* theme color */}
           {isChat && (
-            <div className='flex items-center'>
-              <div className='grow'>
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.chatColorTheme`)}</div>
-                <div className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.chatColorThemeDesc`)}</div>
+            <div className="flex items-center">
+              <div className="grow">
+                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}</div>
+                <div className="body-xs-regular pb-0.5 text-text-tertiary">{t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}</div>
               </div>
-              <div className='shrink-0'>
+              <div className="shrink-0">
                 <Input
-                  className='mb-1 w-[200px]'
+                  className="mb-1 w-[200px]"
                   value={inputInfo.chatColorTheme ?? ''}
                   onChange={onChange('chatColorTheme')}
-                  placeholder='E.g #A020F0'
+                  placeholder="E.g #A020F0"
                 />
-                <div className='flex items-center justify-between'>
-                  <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
-                  <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                <div className="flex items-center justify-between">
+                  <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
+                  <Switch value={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
               </div>
             </div>
           )}
           {/* workflow detail */}
-          <div className='w-full'>
-            <div className='flex items-center justify-between'>
-              <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`)}</div>
+          <div className="w-full">
+            <div className="flex items-center justify-between">
+              <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
               <Switch
-                disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
-                defaultValue={inputInfo.show_workflow_steps}
+                disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
+                value={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
-            <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
+            <p className="body-xs-regular pb-0.5 text-text-tertiary">{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</p>
           </div>
-          {/* SSO */}
-          {systemFeatures.enable_web_sso_switch_component && (
-            <>
-              <Divider className="my-0 h-px" />
-              <div className='w-full'>
-                <p className='system-xs-medium-uppercase mb-1 text-text-tertiary'>{t(`${prefixSettings}.sso.label`)}</p>
-                <div className='flex items-center justify-between'>
-                  <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.sso.title`)}</div>
-                  <Tooltip
-                    disabled={systemFeatures.sso_enforced_for_web}
-                    popupContent={
-                      <div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>
-                    }
-                    asChild={false}
-                  >
-                    <Switch disabled={!systemFeatures.sso_enforced_for_web || !isCurrentWorkspaceEditor} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
-                  </Tooltip>
-                </div>
-                <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.sso.description`)}</p>
-              </div>
-            </>
-          )}
           {/* more settings switch */}
           <Divider className="my-0 h-px" />
           {!isShowMore && (
-            <div className='flex cursor-pointer items-center' onClick={() => setIsShowMore(true)}>
-              <div className='grow'>
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.entry`)}</div>
-                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.more.copyRightPlaceholder`)} & {t(`${prefixSettings}.more.privacyPolicyPlaceholder`)}</p>
+            <div className="flex cursor-pointer items-center" onClick={() => setIsShowMore(true)}>
+              <div className="grow">
+                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
+                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>
+                  {t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' })}
+                  {' '}
+                  &
+                  {' '}
+                  {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
+                </p>
               </div>
-              <RiArrowRightSLine className='ml-1 h-4 w-4 shrink-0 text-text-secondary' />
+              <RiArrowRightSLine className="ml-1 h-4 w-4 shrink-0 text-text-secondary" />
             </div>
           )}
           {/* more settings */}
           {isShowMore && (
             <>
               {/* copyright */}
-              <div className='w-full'>
-                <div className='flex items-center'>
-                  <div className='flex grow items-center'>
-                    <div className={cn('system-sm-semibold mr-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.more.copyright`)}</div>
+              <div className="w-full">
+                <div className="flex items-center">
+                  <div className="flex grow items-center">
+                    <div className={cn('system-sm-semibold mr-1 py-1 text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
                     {/* upgrade button */}
                     {enableBilling && isFreePlan && (
-                      <div className='h-[18px] select-none'>
-                        <PremiumBadge size='s' color='blue' allowHover={true} onClick={handlePlanClick}>
-                          <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
-                          <div className='system-xs-medium'>
-                            <span className='p-1'>
-                              {t('billing.upgradeBtn.encourageShort')}
+                      <div className="h-[18px] select-none">
+                        <PremiumBadge size="s" color="blue" allowHover={true} onClick={handlePlanClick}>
+                          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                          <div className="system-xs-medium">
+                            <span className="p-1">
+                              {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                             </span>
                           </div>
                         </PremiumBadge>
@@ -392,65 +372,65 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     )}
                   </div>
                   <Tooltip
-                    disabled={!isFreePlan}
+                    disabled={webappCopyrightEnabled}
                     popupContent={
-                      <div className='w-[260px]'>{t(`${prefixSettings}.more.copyrightTooltip`)}</div>
+                      <div className="w-[180px]">{t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}</div>
                     }
                     asChild={false}
                   >
                     <Switch
-                      disabled={isFreePlan}
-                      defaultValue={inputInfo.copyrightSwitchValue}
+                      disabled={!webappCopyrightEnabled}
+                      value={inputInfo.copyrightSwitchValue}
                       onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
                   </Tooltip>
                 </div>
-                <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.more.copyrightTip`)}</p>
+                <p className="body-xs-regular pb-0.5 text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
                 {inputInfo.copyrightSwitchValue && (
                   <Input
-                    className='mt-2 h-10'
+                    className="mt-2 h-10"
                     value={inputInfo.copyright}
                     onChange={onChange('copyright')}
-                    placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`) as string}
+                    placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' }) as string}
                   />
                 )}
               </div>
               {/* privacy policy */}
-              <div className='w-full'>
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`)}</div>
+              <div className="w-full">
+                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
                 <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>
                   <Trans
                     i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-                    components={{ privacyPolicyLink: <Link href={'https://dify.ai/privacy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
+                    ns="appOverview"
+                    components={{ privacyPolicyLink: <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-accent" /> }}
                   />
                 </p>
                 <Input
-                  className='mt-1'
+                  className="mt-1"
                   value={inputInfo.privacyPolicy}
                   onChange={onChange('privacyPolicy')}
-                  placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`) as string}
+                  placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' }) as string}
                 />
               </div>
               {/* custom disclaimer */}
-              <div className='w-full'>
-                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
-                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
+              <div className="w-full">
+                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
+                <p className={cn('body-xs-regular pb-0.5 text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
                 <Textarea
-                  className='mt-1'
+                  className="mt-1"
                   value={inputInfo.customDisclaimer}
                   onChange={onChange('customDisclaimer')}
-                  placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`) as string}
+                  placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
                 />
               </div>
             </>
           )}
         </div>
         {/* footer */}
-        <div className='flex justify-end p-6 pt-5'>
-          <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+        <div className="flex justify-end p-6 pt-5">
+          <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
         </div>
-
         {showAppIconPicker && (
           <div onClick={e => e.stopPropagation()}>
             <AppIconPicker

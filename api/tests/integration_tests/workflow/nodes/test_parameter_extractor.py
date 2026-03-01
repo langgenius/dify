@@ -1,23 +1,22 @@
 import os
 import time
 import uuid
-from typing import Optional
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_manager import ModelInstance
 from core.model_runtime.entities import AssistantPromptMessage
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
+from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 
 
@@ -28,7 +27,7 @@ def get_mocked_fetch_memory(memory_text: str):
             human_prefix: str = "Human",
             ai_prefix: str = "Assistant",
             max_token_limit: int = 2000,
-            message_limit: Optional[int] = None,
+            message_limit: int | None = None,
         ):
             return memory_text
 
@@ -44,15 +43,12 @@ def init_parameter_extractor_node(config: dict):
                 "target": "llm",
             },
         ],
-        "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
+        "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -63,26 +59,28 @@ def init_parameter_extractor_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa", files=[], query="what's the weather in SF", conversation_id="abababa"
+        ),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["a", "b123", "args1"], 1)
-    variable_pool.add(["a", "b123", "args2"], 2)
+    variable_pool.add(["a", "args1"], 1)
+    variable_pool.add(["a", "args2"], 2)
 
-    return ParameterExtractorNode(
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    node = ParameterExtractorNode(
         id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+        credentials_provider=MagicMock(spec=CredentialsProvider),
+        model_factory=MagicMock(spec=ModelFactory),
+        model_instance=MagicMock(spec=ModelInstance),
     )
+    return node
 
 
 def test_function_calling_parameter_extractor(setup_model_mock):
@@ -110,12 +108,12 @@ def test_function_calling_parameter_extractor(setup_model_mock):
         }
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -151,12 +149,12 @@ def test_instructions(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -201,12 +199,12 @@ def test_chat_parameter_extractor(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -252,12 +250,12 @@ def test_completion_parameter_extractor(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo-instruct",
         mode="completion",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
+    )()
     db.session.close = MagicMock()
 
     result = node._run()
@@ -352,7 +350,7 @@ def test_extract_json_from_tool_call():
     assert result["location"] == "kawaii"
 
 
-def test_chat_parameter_extractor_with_memory(setup_model_mock):
+def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
     """
     Test chat parameter extractor with memory.
     """
@@ -377,13 +375,14 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock):
         },
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config(
+    node._model_instance = get_mocked_fetch_model_instance(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
-    )
-    node._fetch_memory = get_mocked_fetch_memory("customized memory")
+    )()
+    # Test the mock before running the actual test
+    monkeypatch.setattr("core.workflow.nodes.llm.llm_utils.fetch_memory", get_mocked_fetch_memory("customized memory"))
     db.session.close = MagicMock()
 
     result = node._run()

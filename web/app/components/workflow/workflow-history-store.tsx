@@ -1,10 +1,13 @@
-import { type ReactNode, createContext, useContext, useMemo, useState } from 'react'
-import { type StoreApi, create } from 'zustand'
-import { type TemporalState, temporal } from 'zundo'
-import isDeepEqual from 'fast-deep-equal'
+import type { ReactNode } from 'react'
+import type { TemporalState } from 'zundo'
+import type { StoreApi } from 'zustand'
+import type { WorkflowHistoryEventT } from './hooks'
 import type { Edge, Node } from './types'
-import type { WorkflowHistoryEvent } from './hooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import isDeepEqual from 'fast-deep-equal'
+import { createContext, useContext, useMemo, useState } from 'react'
+import { temporal } from 'zundo'
+import { create } from 'zustand'
 
 export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: noop })
 export const Provider = WorkflowHistoryStoreContext.Provider
@@ -51,6 +54,7 @@ export function useWorkflowHistoryStore() {
         setState: (state: WorkflowHistoryState) => {
           store.setState({
             workflowHistoryEvent: state.workflowHistoryEvent,
+            workflowHistoryEventMeta: state.workflowHistoryEventMeta,
             nodes: state.nodes.map((node: Node) => ({ ...node, data: { ...node.data, selected: false } })),
             edges: state.edges.map((edge: Edge) => ({ ...edge, selected: false }) as Edge),
           })
@@ -76,6 +80,7 @@ function createStore({
     (set, get) => {
       return {
         workflowHistoryEvent: undefined,
+        workflowHistoryEventMeta: undefined,
         nodes: storeNodes,
         edges: storeEdges,
         getNodes: () => get().nodes,
@@ -96,7 +101,8 @@ function createStore({
 export type WorkflowHistoryStore = {
   nodes: Node[]
   edges: Edge[]
-  workflowHistoryEvent: WorkflowHistoryEvent | undefined
+  workflowHistoryEvent: WorkflowHistoryEventT | undefined
+  workflowHistoryEventMeta?: WorkflowHistoryEventMeta
 }
 
 export type WorkflowHistoryActions = {
@@ -118,4 +124,9 @@ export type WorkflowWithHistoryProviderProps = {
   nodes: Node[]
   edges: Edge[]
   children: ReactNode
+}
+
+export type WorkflowHistoryEventMeta = {
+  nodeId?: string
+  nodeTitle?: string
 }

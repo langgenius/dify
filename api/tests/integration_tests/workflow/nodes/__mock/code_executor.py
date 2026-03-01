@@ -12,7 +12,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false") == "true"
 
 class MockedCodeExecutor:
     @classmethod
-    def invoke(cls, language: Literal["python3", "javascript", "jinja2"], code: str, inputs: dict) -> dict:
+    def invoke(cls, language: Literal["python3", "javascript", "jinja2"], code: str, inputs: dict):
         # invoke directly
         match language:
             case CodeLanguage.PYTHON3:

@@ -1,5 +1,66 @@
-from sqlalchemy.orm import declarative_base
+from datetime import datetime
+from uuid import uuid4
 
-from models.engine import metadata
+from sqlalchemy import DateTime, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_column
 
-Base = declarative_base(metadata=metadata)
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+
+from .engine import metadata
+from .types import StringUUID
+
+
+class Base(DeclarativeBase):
+    metadata = metadata
+
+
+class TypeBase(MappedAsDataclass, DeclarativeBase):
+    """
+    This is for adding type, after all finished, rename to Base.
+    """
+
+    metadata = metadata
+
+
+class DefaultFieldsMixin:
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        # NOTE: The default serve as fallback mechanisms.
+        # The application can generate the `id` before saving to optimize
+        # the insertion process (especially for interdependent models)
+        # and reduce database roundtrips.
+        default=lambda: str(uuidv7()),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id})>"
+
+
+def gen_uuidv4_string() -> str:
+    """gen_uuidv4_string generate a UUIDv4 string.
+
+    NOTE: This function exists only for historical reasons. New models should use uuidv7 for primary key generation.
+    """
+    return str(uuid4())
+
+
+def gen_uuidv7_string() -> str:
+    """gen_uuidv4_string generate a UUIDv4 string."""
+    return str(uuidv7())

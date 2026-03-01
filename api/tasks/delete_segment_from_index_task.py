@@ -2,15 +2,21 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import delete
 
+from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from extensions.ext_database import db
-from models.dataset import Dataset, Document
+from models.dataset import Dataset, Document, SegmentAttachmentBinding
+from models.model import UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def delete_segment_from_index_task(index_node_ids: list, dataset_id: str, document_id: str):
+def delete_segment_from_index_task(
+    index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
+):
     """
     Async Remove segment from index
     :param index_node_ids:
@@ -19,27 +25,62 @@ def delete_segment_from_index_task(index_node_ids: list, dataset_id: str, docume
 
     Usage: delete_segment_from_index_task.delay(index_node_ids, dataset_id, document_id)
     """
-    logging.info(click.style("Start delete segment from index", fg="green"))
+    logger.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()
-    try:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
-        if not dataset:
-            return
+    with session_factory.create_session() as session:
+        try:
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            if not dataset:
+                logging.warning("Dataset %s not found, skipping index cleanup", dataset_id)
+                return
 
-        dataset_document = db.session.query(Document).filter(Document.id == document_id).first()
-        if not dataset_document:
-            return
+            dataset_document = session.query(Document).where(Document.id == document_id).first()
+            if not dataset_document:
+                return
 
-        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            return
+            if (
+                not dataset_document.enabled
+                or dataset_document.archived
+                or dataset_document.indexing_status != "completed"
+            ):
+                logging.info("Document not in valid state for index operations, skipping")
+                return
+            doc_form = dataset_document.doc_form
 
-        index_type = dataset_document.doc_form
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+            # Proceed with index cleanup using the index_node_ids directly
+            # For actual deletion, we should delete summaries (not just disable them)
+            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+            index_processor.clean(
+                dataset,
+                index_node_ids,
+                with_keywords=True,
+                delete_child_chunks=True,
+                precomputed_child_node_ids=child_node_ids,
+                delete_summaries=True,  # Actually delete summaries when segment is deleted
+            )
+            if dataset.is_multimodal:
+                # delete segment attachment binding
+                segment_attachment_bindings = (
+                    session.query(SegmentAttachmentBinding)
+                    .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                    .all()
+                )
+                if segment_attachment_bindings:
+                    attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
+                    index_processor.clean(dataset=dataset, node_ids=attachment_ids, with_keywords=False)
+                    segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
 
-        end_at = time.perf_counter()
-        logging.info(click.style("Segment deleted from index latency: {}".format(end_at - start_at), fg="green"))
-    except Exception:
-        logging.exception("delete segment from index failed")
-    finally:
-        db.session.close()
+                    for i in range(0, len(segment_attachment_bind_ids), 1000):
+                        segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
+                        )
+                        session.execute(segment_attachment_bind_delete_stmt)
+
+                    # delete upload file
+                    session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).delete(synchronize_session=False)
+                    session.commit()
+
+            end_at = time.perf_counter()
+            logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
+        except Exception:
+            logger.exception("delete segment from index failed")

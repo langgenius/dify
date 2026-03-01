@@ -1,25 +1,33 @@
+import type { TextNode } from 'lexical'
+import type { WorkflowVariableBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import { $applyNodeReplacement } from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
 } from 'react'
-import type { TextNode } from 'lexical'
-import { $applyNodeReplacement } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../../utils'
-import type { WorkflowVariableBlockType } from '../../types'
-import { CustomTextNode } from '../custom-text/node'
-import { $createWorkflowVariableBlockNode } from './node'
-import { WorkflowVariableBlockNode } from './index'
 import { VAR_REGEX as REGEX, resetReg } from '@/config'
+import { decoratorTransform } from '../../utils'
+import { CustomTextNode } from '../custom-text/node'
+import { WorkflowVariableBlockNode } from './index'
+import { $createWorkflowVariableBlockNode } from './node'
 
 const WorkflowVariableBlockReplacementBlock = ({
   workflowNodesMap,
   getVarType,
   onInsert,
+  variables,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
+  const ragVariables = variables?.reduce<any[]>((acc, curr) => {
+    if (curr.nodeId === 'rag')
+      acc.push(...curr.vars)
+    else
+      acc.push(...curr.vars.filter(v => v.isRagVariable))
+    return acc
+  }, [])
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -31,8 +39,8 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType))
-  }, [onInsert, workflowNodesMap, getVarType])
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], ragVariables))
+  }, [onInsert, workflowNodesMap, getVarType, variables, ragVariables])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

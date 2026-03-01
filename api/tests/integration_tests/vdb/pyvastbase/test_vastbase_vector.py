@@ -1,7 +1,6 @@
 from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVector, VastbaseVectorConfig
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    get_example_text,
     setup_mock_redis,
 )
 

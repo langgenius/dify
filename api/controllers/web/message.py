@@ -1,11 +1,12 @@
 import logging
+from typing import Literal
 
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask import request
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
-import services
-from controllers.web import api
+from controllers.common.schema import register_schema_models
+from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
@@ -20,102 +21,176 @@ from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
-from fields.raws import FilesContainedField
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
 from libs import helper
-from libs.helper import TimestampField, uuid_value
+from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import MessageService
 
+logger = logging.getLogger(__name__)
 
+
+class MessageListQuery(BaseModel):
+    conversation_id: str = Field(description="Conversation UUID")
+    first_id: str | None = Field(default=None, description="First message ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return (1-100)")
+
+    @field_validator("conversation_id", "first_id")
+    @classmethod
+    def validate_uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class MessageFeedbackPayload(BaseModel):
+    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
+    content: str | None = Field(default=None, description="Feedback content")
+
+
+class MessageMoreLikeThisQuery(BaseModel):
+    response_mode: Literal["blocking", "streaming"] = Field(
+        description="Response mode",
+    )
+
+
+register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
+
+
+@web_ns.route("/messages")
 class MessageListApi(WebApiResource):
-    message_fields = {
-        "id": fields.String,
-        "conversation_id": fields.String,
-        "parent_message_id": fields.String,
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-        "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
-        "created_at": TimestampField,
-        "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
-        "metadata": fields.Raw(attribute="message_metadata_dict"),
-        "status": fields.String,
-        "error": fields.String,
-    }
-
-    message_infinite_scroll_pagination_fields = {
-        "limit": fields.Integer,
-        "has_more": fields.Boolean,
-        "data": fields.List(fields.Nested(message_fields)),
-    }
-
-    @marshal_with(message_infinite_scroll_pagination_fields)
+    @web_ns.doc("Get Message List")
+    @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
+    @web_ns.doc(
+        params={
+            "conversation_id": {"description": "Conversation UUID", "type": "string", "required": True},
+            "first_id": {
+                "description": "First message ID for pagination",
+                "type": "string",
+                "required": False,
+            },
+            "limit": {
+                "description": "Number of messages to return (1-100)",
+                "type": "integer",
+                "required": False,
+                "default": 20,
+            },
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Conversation Not Found or Not a Chat App",
+            500: "Internal Server Error",
+        }
+    )
     def get(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        args = parser.parse_args()
+        raw_args = request.args.to_dict()
+        query = MessageListQuery.model_validate(raw_args)
 
         try:
-            return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
+            pagination = MessageService.pagination_by_first_id(
+                app_model, end_user, query.conversation_id, query.first_id, query.limit
             )
-        except services.errors.conversation.ConversationNotExistsError:
+            adapter = TypeAdapter(WebMessageListItem)
+            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+            return WebMessageInfiniteScrollPagination(
+                limit=pagination.limit,
+                has_more=pagination.has_more,
+                data=items,
+            ).model_dump(mode="json")
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        except services.errors.message.FirstMessageNotExistsError:
+        except FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
 
 
+@web_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(WebApiResource):
+    @web_ns.doc("Create Message Feedback")
+    @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        params={
+            "rating": {
+                "description": "Feedback rating",
+                "type": "string",
+                "enum": ["like", "dislike"],
+                "required": False,
+            },
+            "content": {"description": "Feedback content", "type": "string", "required": False},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Feedback submitted successfully",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Message Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
-        parser.add_argument("content", type=str, location="json", default=None)
-        args = parser.parse_args()
+        payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
                 message_id=message_id,
                 user=end_user,
-                rating=args.get("rating"),
-                content=args.get("content"),
+                rating=payload.rating,
+                content=payload.content,
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
+@web_ns.route("/messages/<uuid:message_id>/more-like-this")
 class MessageMoreLikeThisApi(WebApiResource):
+    @web_ns.doc("Generate More Like This")
+    @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
+    @web_ns.expect(web_ns.models[MessageMoreLikeThisQuery.__name__])
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request - Not a completion app or feature disabled",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Message Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def get(self, app_model, end_user, message_id):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
-        )
-        args = parser.parse_args()
+        raw_args = request.args.to_dict()
+        query = MessageMoreLikeThisQuery.model_validate(raw_args)
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = query.response_mode == "streaming"
 
         try:
             response = AppGenerateService.generate_more_like_this(
@@ -142,11 +217,25 @@ class MessageMoreLikeThisApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
+    @web_ns.doc("Get Suggested Questions")
+    @web_ns.doc(description="Get suggested follow-up questions after a message (chat apps only).")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request - Not a chat app or feature disabled",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Message Not Found or Conversation Not Found",
+            500: "Internal Server Error",
+        }
+    )
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -158,6 +247,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.WEB_APP
             )
+            # questions is a list of strings, not a list of Message objects
         except MessageNotExistsError:
             raise NotFound("Message not found")
         except ConversationNotExistsError:
@@ -173,13 +263,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {"data": questions}
-
-
-api.add_resource(MessageListApi, "/messages")
-api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
-api.add_resource(MessageMoreLikeThisApi, "/messages/<uuid:message_id>/more-like-this")
-api.add_resource(MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")
+        return SuggestedQuestionsResponse(data=questions).model_dump(mode="json")

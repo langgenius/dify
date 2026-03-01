@@ -1,324 +1,170 @@
+import time
+from typing import Any
+
 import httpx
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod, FileType
-from core.variables import ArrayFileVariable, FileVariable
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-from core.workflow.nodes.answer import AnswerStreamGenerateRoute
-from core.workflow.nodes.end import EndStreamParam
-from core.workflow.nodes.http_request import (
-    BodyData,
-    HttpRequestNode,
-    HttpRequestNodeAuthorization,
-    HttpRequestNodeBody,
-    HttpRequestNodeData,
-)
+from core.helper.ssrf_proxy import ssrf_proxy
+from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file.file_manager import file_manager
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout, Response
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+
+HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
+    max_connect_timeout=10,
+    max_read_timeout=600,
+    max_write_timeout=600,
+    max_binary_size=10 * 1024 * 1024,
+    max_text_size=1 * 1024 * 1024,
+    ssl_verify=True,
+    ssrf_default_max_retries=3,
+)
 
 
-def test_http_request_node_binary_file(monkeypatch):
-    data = HttpRequestNodeData(
-        title="test",
-        method="post",
-        url="http://example.org/post",
-        authorization=HttpRequestNodeAuthorization(type="no-auth"),
-        headers="",
-        params="",
-        body=HttpRequestNodeBody(
-            type="binary",
-            data=[
-                BodyData(
-                    key="file",
-                    type="file",
-                    value="",
-                    file=["1111", "file"],
+def test_get_default_config_without_filters_uses_literal_defaults():
+    default_config = HttpRequestNode.get_default_config()
+    timeout = default_config["config"]["timeout"]
+
+    assert default_config["type"] == "http-request"
+    assert timeout["connect"] == 10
+    assert timeout["read"] == 600
+    assert timeout["write"] == 600
+    assert timeout["max_connect_timeout"] == 10
+    assert timeout["max_read_timeout"] == 600
+    assert timeout["max_write_timeout"] == 600
+    assert default_config["config"]["ssl_verify"] is True
+    assert default_config["retry_config"]["max_retries"] == 3
+
+
+def test_get_default_config_uses_injected_http_request_config():
+    custom_config = HttpRequestNodeConfig(
+        max_connect_timeout=3,
+        max_read_timeout=4,
+        max_write_timeout=5,
+        max_binary_size=1024,
+        max_text_size=2048,
+        ssl_verify=False,
+        ssrf_default_max_retries=7,
+    )
+
+    default_config = HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: custom_config})
+    timeout = default_config["config"]["timeout"]
+
+    assert timeout["connect"] == 3
+    assert timeout["read"] == 4
+    assert timeout["write"] == 5
+    assert timeout["max_connect_timeout"] == 3
+    assert timeout["max_read_timeout"] == 4
+    assert timeout["max_write_timeout"] == 5
+    assert default_config["config"]["ssl_verify"] is False
+    assert default_config["retry_config"]["max_retries"] == 7
+
+
+def test_get_default_config_with_malformed_http_request_config_raises_value_error():
+    with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
+        HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"})
+
+
+def _build_http_node(
+    *, timeout: dict[str, int | None] | None = None, ssl_verify: bool | None = None
+) -> HttpRequestNode:
+    node_data: dict[str, Any] = {
+        "type": "http-request",
+        "title": "HTTP request",
+        "method": "get",
+        "url": "http://example.com",
+        "authorization": {"type": "no-auth"},
+        "headers": "",
+        "params": "",
+        "body": {"type": "none", "data": []},
+    }
+    if timeout is not None:
+        node_data["timeout"] = timeout
+    node_data["ssl_verify"] = ssl_verify
+
+    node_config: dict[str, Any] = {
+        "id": "http-node",
+        "data": node_data,
+    }
+    graph_config = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start"}},
+            node_config,
+        ],
+        "edges": [],
+    }
+    graph_init_params = GraphInitParams(
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        graph_config=graph_config,
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(system_variables=SystemVariable(user_id="user", files=[]), user_inputs={}),
+        start_at=time.perf_counter(),
+    )
+    return HttpRequestNode(
+        id="http-node",
+        config=node_config,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+        http_request_config=HTTP_REQUEST_CONFIG,
+        http_client=ssrf_proxy,
+        tool_file_manager_factory=ToolFileManager,
+        file_manager=file_manager,
+    )
+
+
+def test_get_request_timeout_returns_new_object_without_mutating_node_data():
+    node = _build_http_node(timeout={"connect": None, "read": 30, "write": None})
+    original_timeout = node.node_data.timeout
+
+    assert original_timeout is not None
+    resolved_timeout = node._get_request_timeout(node.node_data)
+
+    assert resolved_timeout is not original_timeout
+    assert original_timeout.connect is None
+    assert original_timeout.read == 30
+    assert original_timeout.write is None
+    assert resolved_timeout == HttpRequestNodeTimeout(connect=10, read=30, write=600)
+
+
+@pytest.mark.parametrize("ssl_verify", [None, False, True])
+def test_run_passes_node_data_ssl_verify_to_executor(monkeypatch: pytest.MonkeyPatch, ssl_verify: bool | None):
+    node = _build_http_node(ssl_verify=ssl_verify)
+    captured: dict[str, bool | None] = {}
+
+    class FakeExecutor:
+        def __init__(self, *, ssl_verify: bool | None, **kwargs: Any):
+            captured["ssl_verify"] = ssl_verify
+            self.url = "http://example.com"
+
+        def to_log(self) -> str:
+            return "request-log"
+
+        def invoke(self) -> Response:
+            return Response(
+                httpx.Response(
+                    status_code=200,
+                    content=b"ok",
+                    headers={"content-type": "text/plain"},
+                    request=httpx.Request("GET", "http://example.com"),
                 )
-            ],
-        ),
-    )
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={},
-    )
-    variable_pool.add(
-        ["1111", "file"],
-        FileVariable(
-            name="file",
-            value=File(
-                tenant_id="1",
-                type=FileType.IMAGE,
-                transfer_method=FileTransferMethod.LOCAL_FILE,
-                related_id="1111",
-                storage_key="",
-            ),
-        ),
-    )
-    node = HttpRequestNode(
-        id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.http_request.executor.file_manager.download",
-        lambda *args, **kwargs: b"test",
-    )
-    monkeypatch.setattr(
-        "core.helper.ssrf_proxy.post",
-        lambda *args, **kwargs: httpx.Response(200, content=kwargs["content"]),
-    )
-    result = node._run()
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert result.outputs["body"] == "test"
+            )
 
-
-def test_http_request_node_form_with_file(monkeypatch):
-    data = HttpRequestNodeData(
-        title="test",
-        method="post",
-        url="http://example.org/post",
-        authorization=HttpRequestNodeAuthorization(type="no-auth"),
-        headers="",
-        params="",
-        body=HttpRequestNodeBody(
-            type="form-data",
-            data=[
-                BodyData(
-                    key="file",
-                    type="file",
-                    file=["1111", "file"],
-                ),
-                BodyData(
-                    key="name",
-                    type="text",
-                    value="test",
-                ),
-            ],
-        ),
-    )
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={},
-    )
-    variable_pool.add(
-        ["1111", "file"],
-        FileVariable(
-            name="file",
-            value=File(
-                tenant_id="1",
-                type=FileType.IMAGE,
-                transfer_method=FileTransferMethod.LOCAL_FILE,
-                related_id="1111",
-                storage_key="",
-            ),
-        ),
-    )
-    node = HttpRequestNode(
-        id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.http_request.executor.file_manager.download",
-        lambda *args, **kwargs: b"test",
-    )
-
-    def attr_checker(*args, **kwargs):
-        assert kwargs["data"] == {"name": "test"}
-        assert kwargs["files"] == [("file", (None, b"test", "application/octet-stream"))]
-        return httpx.Response(200, content=b"")
-
-    monkeypatch.setattr(
-        "core.helper.ssrf_proxy.post",
-        attr_checker,
-    )
-    result = node._run()
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert result.outputs["body"] == ""
-
-
-def test_http_request_node_form_with_multiple_files(monkeypatch):
-    data = HttpRequestNodeData(
-        title="test",
-        method="post",
-        url="http://example.org/upload",
-        authorization=HttpRequestNodeAuthorization(type="no-auth"),
-        headers="",
-        params="",
-        body=HttpRequestNodeBody(
-            type="form-data",
-            data=[
-                BodyData(
-                    key="files",
-                    type="file",
-                    file=["1111", "files"],
-                ),
-                BodyData(
-                    key="name",
-                    type="text",
-                    value="test",
-                ),
-            ],
-        ),
-    )
-
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={},
-    )
-
-    files = [
-        File(
-            tenant_id="1",
-            type=FileType.IMAGE,
-            transfer_method=FileTransferMethod.LOCAL_FILE,
-            related_id="file1",
-            filename="image1.jpg",
-            mime_type="image/jpeg",
-            storage_key="",
-        ),
-        File(
-            tenant_id="1",
-            type=FileType.DOCUMENT,
-            transfer_method=FileTransferMethod.LOCAL_FILE,
-            related_id="file2",
-            filename="document.pdf",
-            mime_type="application/pdf",
-            storage_key="",
-        ),
-    ]
-
-    variable_pool.add(
-        ["1111", "files"],
-        ArrayFileVariable(
-            name="files",
-            value=files,
-        ),
-    )
-
-    node = HttpRequestNode(
-        id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
-    )
-
-    monkeypatch.setattr(
-        "core.workflow.nodes.http_request.executor.file_manager.download",
-        lambda file: b"test_image_data" if file.mime_type == "image/jpeg" else b"test_pdf_data",
-    )
-
-    def attr_checker(*args, **kwargs):
-        assert kwargs["data"] == {"name": "test"}
-
-        assert len(kwargs["files"]) == 2
-        assert kwargs["files"][0][0] == "files"
-        assert kwargs["files"][1][0] == "files"
-
-        file_tuples = [f[1] for f in kwargs["files"]]
-        file_contents = [f[1] for f in file_tuples]
-        file_types = [f[2] for f in file_tuples]
-
-        assert b"test_image_data" in file_contents
-        assert b"test_pdf_data" in file_contents
-        assert "image/jpeg" in file_types
-        assert "application/pdf" in file_types
-
-        return httpx.Response(200, content=b'{"status":"success"}')
-
-    monkeypatch.setattr(
-        "core.helper.ssrf_proxy.post",
-        attr_checker,
-    )
+    monkeypatch.setattr("core.workflow.nodes.http_request.node.Executor", FakeExecutor)
 
     result = node._run()
+
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert result.outputs["body"] == '{"status":"success"}'
-    print(result.outputs["body"])
+    assert captured["ssl_verify"] is ssl_verify

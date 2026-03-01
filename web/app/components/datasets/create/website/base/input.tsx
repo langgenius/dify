@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 
 type Props = {
   value: string | number
@@ -21,7 +22,7 @@ const Input: FC<Props> = ({
     const value = e.target.value
     if (isNumber) {
       let numberValue = Number.parseInt(value, 10) // integer only
-      if (isNaN(numberValue)) {
+      if (Number.isNaN(numberValue)) {
         onChange('')
         return
       }
@@ -50,12 +51,12 @@ const Input: FC<Props> = ({
       {...otherOption}
       value={value}
       onChange={handleChange}
-      className='system-xs-regular focus:bg-components-inout-border-active flex h-8 w-full rounded-lg border border-transparent
+      className="system-xs-regular focus:bg-components-inout-border-active flex h-8 w-full rounded-lg border border-transparent
       bg-components-input-bg-normal p-2 text-components-input-text-filled
         caret-[#295eff] placeholder:text-components-input-text-placeholder hover:border
         hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border focus:border-components-input-border-active
         focus:shadow-xs focus:shadow-shadow-shadow-3
-        focus-visible:outline-none'
+        focus-visible:outline-none"
       placeholder={placeholder}
     />
   )

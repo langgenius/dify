@@ -1,11 +1,11 @@
-import { useTranslation } from 'react-i18next'
-import { RiArrowRightSLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
 import type {
   LoopDurationMap,
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { RiArrowRightSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 
 type LoopLogTriggerProps = {
@@ -21,7 +21,8 @@ const LoopLogTrigger = ({
   const { t } = useTranslation()
 
   const filterNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
+    if (!allExecutions)
+      return []
 
     const parallelNodes = allExecutions.filter(exec =>
       exec.execution_metadata?.parallel_mode_run_id === key,
@@ -29,7 +30,7 @@ const LoopLogTrigger = ({
     if (parallelNodes.length > 0)
       return parallelNodes
 
-    const serialIndex = parseInt(key, 10)
+    const serialIndex = Number.parseInt(key, 10)
     if (!isNaN(serialIndex)) {
       const serialNodes = allExecutions.filter(exec =>
         exec.execution_metadata?.loop_id === nodeInfo.node_id
@@ -51,15 +52,14 @@ const LoopLogTrigger = ({
     const loopVarMap = loopNodeMeta?.loop_variable_map || {}
 
     let structuredList: NodeTracing[][] = []
-
-    if (loopNodeMeta?.loop_duration_map) {
+    if (nodeInfo.details?.length) {
+      structuredList = nodeInfo.details
+    }
+    else if (loopNodeMeta?.loop_duration_map) {
       const instanceKeys = Object.keys(loopNodeMeta.loop_duration_map)
       structuredList = instanceKeys
         .map(key => filterNodesForInstance(key))
         .filter(branchNodes => branchNodes.length > 0)
-    }
-    else if (nodeInfo.details?.length) {
-      structuredList = nodeInfo.details
     }
 
     onShowLoopResultList(
@@ -91,17 +91,20 @@ const LoopLogTrigger = ({
 
   return (
     <Button
-      className='flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg border-none bg-components-button-tertiary-bg-hover px-3 py-2 hover:bg-components-button-tertiary-bg-hover'
+      className="flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg border-none bg-components-button-tertiary-bg-hover px-3 py-2 hover:bg-components-button-tertiary-bg-hover"
       onClick={handleOnShowLoopDetail}
     >
-      <Loop className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
-      <div className='system-sm-medium flex-1 text-left text-components-button-tertiary-text'>{t('workflow.nodes.loop.loop', { count: displayLoopCount })}{errorCount > 0 && (
-        <>
-          {t('workflow.nodes.loop.comma')}
-          {t('workflow.nodes.loop.error', { count: errorCount })}
-        </>
-      )}</div>
-      <RiArrowRightSLine className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
+      <Loop className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+      <div className="system-sm-medium flex-1 text-left text-components-button-tertiary-text">
+        {t('nodes.loop.loop', { ns: 'workflow', count: displayLoopCount })}
+        {errorCount > 0 && (
+          <>
+            {t('nodes.loop.comma', { ns: 'workflow' })}
+            {t('nodes.loop.error', { ns: 'workflow', count: errorCount })}
+          </>
+        )}
+      </div>
+      <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
     </Button>
   )
 }

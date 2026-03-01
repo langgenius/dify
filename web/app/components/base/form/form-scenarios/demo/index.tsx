@@ -24,11 +24,11 @@ const DemoForm = () => {
     },
   })
 
-const name = useStore(form.store, state => state.values.name)
+  const name = useStore(form.store, state => state.values.name)
 
   return (
     <form
-      className='flex w-[400px] flex-col gap-4'
+      className="flex w-[400px] flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -36,21 +36,21 @@ const name = useStore(form.store, state => state.values.name)
       }}
     >
       <form.AppField
-        name='name'
+        name="name"
         children={field => (
-          <field.TextField label='Name' />
+          <field.TextField label="Name" />
         )}
       />
       <form.AppField
-        name='surname'
+        name="surname"
         children={field => (
-          <field.TextField label='Surname' />
+          <field.TextField label="Surname" />
         )}
       />
       <form.AppField
-        name='isAcceptingTerms'
+        name="isAcceptingTerms"
         children={field => (
-          <field.CheckboxField label='I accept the terms and conditions.' />
+          <field.CheckboxField label="I accept the terms and conditions." />
         )}
       />
       {
@@ -59,7 +59,7 @@ const name = useStore(form.store, state => state.values.name)
         )
       }
       <form.AppForm>
-        <form.SubmitButton>Submit</form.SubmitButton>
+        <form.Actions />
       </form.AppForm>
     </form>
   )

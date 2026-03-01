@@ -1,0 +1,1 @@
+# App integration tests package

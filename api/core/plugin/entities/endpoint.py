@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -24,7 +23,7 @@ class EndpointProviderDeclaration(BaseModel):
     """
 
     settings: list[ProviderConfig] = Field(default_factory=list)
-    endpoints: Optional[list[EndpointDeclaration]] = Field(default_factory=list[EndpointDeclaration])
+    endpoints: list[EndpointDeclaration] | None = Field(default_factory=list[EndpointDeclaration])
 
 
 class EndpointEntity(BasePluginEntity):

@@ -1,18 +1,16 @@
-import { useCallback, useMemo } from 'react'
-import produce from 'immer'
-import { useStoreApi } from 'reactflow'
-
 import type { ValueSelector, Var } from '../../types'
-import { InputVarType, VarType } from '../../types'
 import type { DocExtractorNodeType } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import { produce } from 'immer'
+import { useCallback, useMemo } from 'react'
+import { useStoreApi } from 'reactflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
 
 const useConfig = (id: string, payload: DocExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -58,53 +56,11 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
     setInputs(newInputs)
   }, [getType, inputs, setInputs])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    isCompleted,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<DocExtractorNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: { files: [] },
-  })
-  const varInputs = [{
-    label: inputs.title,
-    variable: 'files',
-    type: InputVarType.multiFiles,
-    required: true,
-  }]
-
-  const files = runInputData.files
-  const setFiles = useCallback((newFiles: []) => {
-    setRunInputData({
-      ...runInputData,
-      files: newFiles,
-    })
-  }, [runInputData, setRunInputData])
-
   return {
     readOnly,
     inputs,
     filterVar,
     handleVarChanges,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    isCompleted,
-    handleRun,
-    handleStop,
-    varInputs,
-    files,
-    setFiles,
-    runResult,
   }
 }
 

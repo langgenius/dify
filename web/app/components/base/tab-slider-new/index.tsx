@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string
@@ -19,14 +19,18 @@ const TabSliderNew: FC<TabSliderProps> = ({
   options,
 }) => {
   return (
-    <div className={cn(className, 'relative flex')}>
+    <div
+      data-testid="tab-slider-new"
+      className={cn(className, 'relative flex')}
+    >
       {options.map(option => (
         <div
           key={option.value}
+          data-testid={`tab-item-${option.value}`}
           onClick={() => onChange(option.value)}
           className={cn(
-            'mr-1 flex h-[32px] cursor-pointer items-center rounded-lg border-[0.5px] border-transparent px-3 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
-            value === option.value && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
+            'mr-1 flex h-[32px] cursor-pointer items-center rounded-lg border-[0.5px] border-transparent px-3 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover',
+            value === option.value && 'border-components-main-nav-nav-button-border bg-state-base-hover text-components-main-nav-nav-button-text-active shadow-xs',
           )}
         >
           {option.icon}

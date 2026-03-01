@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.tools.__base.tool import Tool
@@ -20,13 +22,11 @@ class BuiltinTool(Tool):
     :param meta: the meta data of a tool call processing
     """
 
-    provider: str
-
     def __init__(self, provider: str, **kwargs):
         super().__init__(**kwargs)
         self.provider = provider
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "BuiltinTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> BuiltinTool:
         """
         fork a new tool with metadata
         :return: the new tool

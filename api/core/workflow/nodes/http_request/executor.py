@@ -1,21 +1,23 @@
 import base64
 import json
-from collections.abc import Mapping
+import secrets
+import string
+from collections.abc import Callable, Mapping
 from copy import deepcopy
-from random import randint
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
 import httpx
+from json_repair import repair_json
 
-from configs import dify_config
-from core.file import file_manager
-from core.helper import ssrf_proxy
-from core.variables.segments import ArrayFileSegment, FileSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.file.enums import FileTransferMethod
+from core.workflow.runtime import VariablePool
+from core.workflow.variables.segments import ArrayFileSegment, FileSegment
 
+from ..protocols import FileManagerProtocol, HttpClientProtocol
 from .entities import (
     HttpRequestNodeAuthorization,
+    HttpRequestNodeConfig,
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
     Response,
@@ -74,8 +76,13 @@ class Executor:
         node_data: HttpRequestNodeData,
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
-        max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
+        http_request_config: HttpRequestNodeConfig,
+        max_retries: int | None = None,
+        ssl_verify: bool | None = None,
+        http_client: HttpClientProtocol,
+        file_manager: FileManagerProtocol,
     ):
+        self._http_request_config = http_request_config
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
             if node_data.authorization.config is None:
@@ -83,19 +90,32 @@ class Executor:
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
+            # Validate that API key is not empty after template conversion
+            if not node_data.authorization.config.api_key or not node_data.authorization.config.api_key.strip():
+                raise AuthorizationConfigError(
+                    "API key is required for authorization but was empty. Please provide a valid API key."
+                )
 
-        self.url: str = node_data.url
+        self.url = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        self.ssl_verify = node_data.ssl_verify
-        self.params = []
+        self.ssl_verify = ssl_verify if ssl_verify is not None else node_data.ssl_verify
+        if self.ssl_verify is None:
+            self.ssl_verify = self._http_request_config.ssl_verify
+        if not isinstance(self.ssl_verify, bool):
+            raise ValueError("ssl_verify must be a boolean")
+        self.params = None
         self.headers = {}
         self.content = None
         self.files = None
         self.data = None
         self.json = None
-        self.max_retries = max_retries
+        self.max_retries = (
+            max_retries if max_retries is not None else self._http_request_config.ssrf_default_max_retries
+        )
+        self._http_client = http_client
+        self._file_manager = file_manager
 
         # init template
         self.variable_pool = variable_pool
@@ -137,7 +157,8 @@ class Executor:
                 (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value_str).text)
             )
 
-        self.params = result
+        if result:
+            self.params = result
 
     def _init_headers(self):
         """
@@ -177,7 +198,8 @@ class Executor:
                         raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
                     try:
-                        json_object = json.loads(json_string, strict=False)
+                        repaired = repair_json(json_string)
+                        json_object = json.loads(repaired, strict=False)
                     except json.JSONDecodeError as e:
                         raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
@@ -190,7 +212,7 @@ class Executor:
                     if file_variable is None:
                         raise FileFetchError(f"cannot fetch file with selector {file_selector}")
                     file = file_variable.value
-                    self.content = file_manager.download(file)
+                    self.content = self._file_manager.download(file)
                 case "x-www-form-urlencoded":
                     form_data = {
                         self.variable_pool.convert_template(item.key).text: self.variable_pool.convert_template(
@@ -224,10 +246,12 @@ class Executor:
                     files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
-                            if file.related_id is not None:
+                            if file.related_id is not None or (
+                                file.transfer_method == FileTransferMethod.REMOTE_URL and file.remote_url is not None
+                            ):
                                 file_tuple = (
                                     file.filename,
-                                    file_manager.download(file),
+                                    self._file_manager.download(file),
                                     file.mime_type or "application/octet-stream",
                                 )
                                 if key not in files:
@@ -235,6 +259,10 @@ class Executor:
                                 files[key].append(file_tuple)
 
                     # convert files to list for httpx request
+                    # If there are no actual files, we still need to force httpx to use `multipart/form-data`.
+                    # This is achieved by inserting a harmless placeholder file that will be ignored by the server.
+                    if not files:
+                        self.files = [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
                     if files:
                         self.files = []
                         for key, file_tuples in files.items():
@@ -252,15 +280,12 @@ class Executor:
             if authorization.config is None:
                 raise AuthorizationConfigError("authorization config is required")
 
-            if self.auth.config.api_key is None:
-                raise AuthorizationConfigError("api_key is required")
-
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
 
-            if self.auth.config.type == "bearer":
+            if self.auth.config.type == "bearer" and authorization.config.api_key:
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
-            elif self.auth.config.type == "basic":
+            elif self.auth.config.type == "basic" and authorization.config.api_key:
                 credentials = authorization.config.api_key
                 if ":" in credentials:
                     encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
@@ -268,7 +293,32 @@ class Executor:
                     encoded_credentials = credentials
                 headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
-                headers[authorization.config.header] = authorization.config.api_key or ""
+                if authorization.config.header and authorization.config.api_key:
+                    headers[authorization.config.header] = authorization.config.api_key
+
+        # Handle Content-Type for multipart/form-data requests
+        # Fix for issue #23829: Missing boundary when using multipart/form-data
+        body = self.node_data.body
+        if body and body.type == "form-data":
+            # For multipart/form-data with files (including placeholder files),
+            # remove any manually set Content-Type header to let httpx handle
+            # For multipart/form-data, if any files are present (including placeholder files),
+            # we must remove any manually set Content-Type header. This is because httpx needs to
+            # automatically set the Content-Type and boundary for multipart encoding whenever files
+            # are included, even if they are placeholders, to avoid boundary issues and ensure correct
+            # file upload behaviour. Manually setting Content-Type can cause httpx to fail to set the
+            # boundary, resulting in invalid requests.
+            if self.files:
+                # Remove Content-Type if it was manually set to avoid boundary issues
+                headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+            else:
+                # No files at all, set Content-Type manually
+                if "content-type" not in (k.lower() for k in headers):
+                    headers["Content-Type"] = "multipart/form-data"
+        elif body and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+            # Set Content-Type for other body types
+            if "content-type" not in (k.lower() for k in headers):
+                headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
 
         return headers
 
@@ -276,9 +326,9 @@ class Executor:
         executor_response = Response(response)
 
         threshold_size = (
-            dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+            self._http_request_config.max_binary_size
             if executor_response.is_file
-            else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+            else self._http_request_config.max_text_size
         )
         if executor_response.size > threshold_size:
             raise ResponseSizeError(
@@ -293,26 +343,19 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        if self.method not in {
-            "get",
-            "head",
-            "post",
-            "put",
-            "delete",
-            "patch",
-            "options",
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-        }:
+        _METHOD_MAP: dict[str, Callable[..., httpx.Response]] = {
+            "get": self._http_client.get,
+            "head": self._http_client.head,
+            "post": self._http_client.post,
+            "put": self._http_client.put,
+            "delete": self._http_client.delete,
+            "patch": self._http_client.patch,
+        }
+        method_lc = self.method.lower()
+        if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
-        request_args = {
-            "url": self.url,
+        request_args: dict[str, Any] = {
             "data": self.data,
             "files": self.files,
             "json": self.json,
@@ -322,15 +365,19 @@ class Executor:
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
-            "max_retries": self.max_retries,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
-        except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
-            raise HttpRequestNodeError(str(e))
-        # FIXME: fix type ignore, this maybe httpx type issue
-        return response  # type: ignore
+            response = _METHOD_MAP[method_lc](
+                url=self.url,
+                **request_args,
+                max_retries=self.max_retries,
+            )
+        except self._http_client.max_retries_exceeded_error as e:
+            raise HttpRequestNodeError(f"Reached maximum retries for URL {self.url}") from e
+        except self._http_client.request_error as e:
+            raise HttpRequestNodeError(str(e)) from e
+        return response
 
     def invoke(self) -> Response:
         # assemble headers
@@ -373,24 +420,35 @@ class Executor:
             raw += f"{k}: {v}\r\n"
 
         body_string = ""
-        if self.files:
-            for key, (filename, content, mime_type) in self.files:
+        # Only log actual files if present.
+        # '__multipart_placeholder__' is inserted to force multipart encoding but is not a real file.
+        # This prevents logging meaningless placeholder entries.
+        if self.files and not all(f[0] == "__multipart_placeholder__" for f in self.files):
+            for file_entry in self.files:
+                # file_entry should be (key, (filename, content, mime_type)), but handle edge cases
+                if len(file_entry) != 2 or len(file_entry[1]) < 2:
+                    continue  # skip malformed entries
+                key = file_entry[0]
+                content = file_entry[1][1]
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                # decode content
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    # fix: decode binary content
-                    pass
-                body_string += "\r\n"
+                # decode content safely
+                # Do not decode binary content; use a placeholder with file metadata instead.
+                # Includes filename, size, and MIME type for better logging context.
+                body_string += (
+                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', "
+                    f"type='{file_entry[1][2] if len(file_entry[1]) > 2 else 'unknown'}', "
+                    f"size={len(content)} bytes>\r\n"
+                )
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
-                if isinstance(self.content, str):
+                # If content is bytes, do not decode it; show a placeholder with size.
+                # Provides content size information for binary data without exposing the raw bytes.
+                if isinstance(self.content, bytes):
+                    body_string = f"<binary_content: size={len(self.content)} bytes>"
+                else:
                     body_string = self.content
-                elif isinstance(self.content, bytes):
-                    body_string = self.content.decode("utf-8", errors="replace")
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
                 body_string = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":
@@ -427,4 +485,4 @@ def _generate_random_string(n: int) -> str:
         >>> _generate_random_string(5)
         'abcde'
     """
-    return "".join([chr(randint(97, 122)) for _ in range(n)])
+    return "".join(secrets.choice(string.ascii_lowercase) for _ in range(n))

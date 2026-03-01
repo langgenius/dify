@@ -1,12 +1,22 @@
-import type { Var } from '../../types'
-import { BlockEnum, type NodeDefault } from '../../types'
-import { getNotExistVariablesByArray, getNotExistVariablesByText } from '../../utils/workflow'
-import { type IfElseNodeType, LogicalOperator } from './types'
+import type { NodeDefault } from '../../types'
+import type { IfElseNodeType } from './types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { VarType } from '../../types'
+import { LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
-const i18nPrefix = 'workflow.errorMsg'
 
+const i18nPrefix = 'errorMsg'
+
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 1,
+  type: BlockEnum.IfElse,
+  helpLinkUri: 'ifelse',
+})
 const nodeDefault: NodeDefault<IfElseNodeType> = {
+  metaData,
   defaultValue: {
     _targetBranches: [
       {
@@ -26,31 +36,21 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
       },
     ],
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
-  },
   checkValid(payload: IfElseNodeType, t: any) {
     let errorMessages = ''
     const { cases } = payload
     if (!cases || cases.length === 0)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: 'IF' })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: 'IF' })
 
     cases.forEach((caseItem, index) => {
       if (!caseItem.conditions.length)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: index === 0 ? 'IF' : 'ELIF' })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: index === 0 ? 'IF' : 'ELIF' })
 
       caseItem.conditions.forEach((condition) => {
         if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
         if (!errorMessages && !condition.comparison_operator)
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.ifElse.operator') })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.ifElse.operator', { ns: 'workflow' }) })
         if (!errorMessages) {
           if (condition.sub_variable_condition) {
             const isSet = condition.sub_variable_condition.conditions.every((c) => {
@@ -60,14 +60,14 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
               if (isEmptyRelatedOperator(c.comparison_operator!))
                 return true
 
-              return !!c.value
+              return (c.varType === VarType.boolean || c.varType === VarType.arrayBoolean) ? c.value === undefined : !!c.value
             })
             if (!isSet)
-              errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+              errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
           }
           else {
-            if (!isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
-              errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+            if (!isEmptyRelatedOperator(condition.comparison_operator!) && ((condition.varType === VarType.boolean || condition.varType === VarType.arrayBoolean) ? condition.value === undefined : !condition.value))
+              errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
           }
         }
       })
@@ -75,41 +75,6 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
-    }
-  },
-  checkVarValid(payload: IfElseNodeType, varMap: Record<string, Var>, t: any) {
-    const errorMessageArr = []
-
-    const condition_variable_selector_warnings: string[] = []
-    const condition_value_warnings: string[] = []
-    payload.cases.forEach((caseItem) => {
-      caseItem.conditions.forEach((condition) => {
-        if (!condition.variable_selector)
-          return
-        const selector_warnings = getNotExistVariablesByArray([condition.variable_selector], varMap)
-        if (selector_warnings.length)
-          condition_variable_selector_warnings.push(...selector_warnings)
-        const value_warnings = Array.isArray(condition.value) ? getNotExistVariablesByArray([condition.value], varMap) : getNotExistVariablesByText(condition.value, varMap)
-        if (value_warnings.length)
-          condition_value_warnings.push(...value_warnings)
-        condition.sub_variable_condition?.conditions.forEach((subCondition) => {
-          const sub_variable_value_warnings = Array.isArray(subCondition.value) ? getNotExistVariablesByArray([subCondition.value], varMap) : getNotExistVariablesByText(subCondition.value, varMap)
-          if (sub_variable_value_warnings.length)
-            condition_value_warnings.push(...sub_variable_value_warnings)
-        })
-      })
-    })
-
-    if (condition_variable_selector_warnings.length)
-      errorMessageArr.push(`${t('workflow.nodes.ifElse.condition')} ${t('workflow.common.referenceVar')}${condition_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
-
-    if (condition_value_warnings.length)
-      errorMessageArr.push(`${t('workflow.nodes.ifElse.enterValue')} ${t('workflow.common.referenceVar')}${condition_value_warnings.join('、')}${t('workflow.common.noExist')}`)
-
-    return {
-      isValid: true,
-      warning_vars: condition_variable_selector_warnings,
-      errorMessage: errorMessageArr,
     }
   },
 }

@@ -1,3 +1,4 @@
+import type { Shape } from './store'
 import {
   createContext,
   useEffect,
@@ -7,7 +8,6 @@ import { useStore } from 'reactflow'
 import {
   createHooksStore,
 } from './store'
-import type { Shape } from './store'
 
 type HooksStore = ReturnType<typeof createHooksStore>
 export const HooksStoreContext = createContext<HooksStore | null | undefined>(null)
@@ -22,7 +22,6 @@ export const HooksStoreContextProvider = ({ children, ...restProps }: HooksStore
   useEffect(() => {
     if (storeRef.current && d3Selection && d3Zoom)
       storeRef.current.getState().refreshAll(restProps)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d3Selection, d3Zoom])
 
   if (!storeRef.current)

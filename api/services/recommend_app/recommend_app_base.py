@@ -5,7 +5,7 @@ class RecommendAppRetrievalBase(ABC):
     """Interface for recommend app retrieval."""
 
     @abstractmethod
-    def get_recommended_apps_and_categories(self, language: str) -> dict:
+    def get_recommended_apps_and_categories(self, language: str):
         raise NotImplementedError
 
     @abstractmethod

@@ -1,32 +1,33 @@
-import { BlockEnum } from '../../types'
-import type { NodeDefault, Var } from '../../types'
+import type { NodeDefault, ToolWithProvider, Var } from '../../types'
 import type { ToolNodeType } from './types'
+import { CollectionType } from '@/app/components/tools/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
-import { getNotExistVariablesByArray, getNotExistVariablesByText } from '../../utils/workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { canFindTool } from '@/utils'
+import { TOOL_OUTPUT_STRUCT } from '../../constants'
+import { Type } from '../llm/types'
+import { resolveVarType } from './output-schema-utils'
 
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'errorMsg'
 
+const metaData = genNodeMetaData({
+  sort: -1,
+  type: BlockEnum.Tool,
+  helpLinkUri: 'tools',
+})
 const nodeDefault: NodeDefault<ToolNodeType> = {
+  metaData,
   defaultValue: {
     tool_parameters: {},
     tool_configurations: {},
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
+    tool_node_version: '2',
   },
   checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
     if (notAuthed)
-      errorMessages = t(`${i18nPrefix}.authRequired`)
+      errorMessages = t(`${i18nPrefix}.authRequired`, { ns: 'workflow' })
 
     if (!errorMessages) {
       toolInputsSchema.filter((field: any) => {
@@ -34,17 +35,17 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       }).forEach((field: any) => {
         const targetVar = payload.tool_parameters[field.variable]
         if (!targetVar) {
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
           return
         }
         const { type: variable_type, value } = targetVar
         if (variable_type === VarKindType.variable) {
           if (!errorMessages && (!value || value.length === 0))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
         }
         else {
           if (!errorMessages && (value === undefined || value === null || value === ''))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
         }
       })
     }
@@ -55,7 +56,9 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       }).forEach((field: any) => {
         const value = payload.tool_configurations[field.variable]
         if (!errorMessages && (value === undefined || value === null || value === ''))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
+        if (!errorMessages && typeof value === 'object' && !!value.type && (value.value === undefined || value.value === null || value.value === '' || (Array.isArray(value.value) && value.value.length === 0)))
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
       })
     }
 
@@ -64,34 +67,60 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       errorMessage: errorMessages,
     }
   },
-  checkVarValid(payload: ToolNodeType, varMap: Record<string, Var>, t: any) {
-    const errorMessageArr = []
-    const tool_parametersMap = payload.tool_parameters
-    const tool_parameters_array = Object.values(tool_parametersMap)
-    const tool_parameters_warnings: string[] = []
-    tool_parameters_array?.forEach((item) => {
-      if (!item.value)
-        return
-      if (Array.isArray(item.value)) {
-        const warnings = getNotExistVariablesByArray([item.value], varMap)
-        if (warnings.length)
-          tool_parameters_warnings.push(...warnings)
-        return
-      }
-      if (typeof item.value === 'string') {
-        const warnings = getNotExistVariablesByText(item.value, varMap)
-        if (warnings.length)
-          tool_parameters_warnings.push(...warnings)
-      }
-    })
-    if (tool_parameters_warnings.length)
-      errorMessageArr.push(`${t('workflow.nodes.tool.inputVars')} ${t('workflow.common.referenceVar')}${tool_parameters_warnings.join('、')}${t('workflow.common.noExist')}`)
-
-    return {
-      isValid: true,
-      warning_vars: tool_parameters_warnings,
-      errorMessage: errorMessageArr,
+  getOutputVars(payload: ToolNodeType, allPluginInfoList: Record<string, ToolWithProvider[]>, _ragVars: any, { schemaTypeDefinitions } = { schemaTypeDefinitions: [] }) {
+    const { provider_id, provider_type } = payload
+    let currentTools: ToolWithProvider[] = []
+    switch (provider_type) {
+      case CollectionType.builtIn:
+        currentTools = allPluginInfoList.buildInTools ?? []
+        break
+      case CollectionType.custom:
+        currentTools = allPluginInfoList.customTools ?? []
+        break
+      case CollectionType.workflow:
+        currentTools = allPluginInfoList.workflowTools ?? []
+        break
+      case CollectionType.mcp:
+        currentTools = allPluginInfoList.mcpTools ?? []
+        break
+      default:
+        currentTools = []
     }
+    const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
+    const currTool = currCollection?.tools.find(tool => tool.name === payload.tool_name)
+    const output_schema = currTool?.output_schema
+    let res: Var[] = []
+    if (!output_schema || !output_schema.properties) {
+      res = TOOL_OUTPUT_STRUCT
+    }
+    else {
+      const outputSchema: Var[] = []
+      Object.keys(output_schema.properties).forEach((outputKey) => {
+        const output = output_schema.properties[outputKey]
+        const { type, schemaType } = resolveVarType(output, schemaTypeDefinitions)
+
+        outputSchema.push({
+          variable: outputKey,
+          type,
+          des: output.description,
+          schemaType,
+          children: output.type === 'object'
+            ? {
+                schema: {
+                  type: Type.object,
+                  properties: output.properties,
+                  additionalProperties: false,
+                },
+              }
+            : undefined,
+        })
+      })
+      res = [
+        ...TOOL_OUTPUT_STRUCT,
+        ...outputSchema,
+      ]
+    }
+    return res
   },
 }
 

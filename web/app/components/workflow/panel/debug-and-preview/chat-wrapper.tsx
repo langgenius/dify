@@ -1,26 +1,28 @@
+import type { StartNodeType } from '../../nodes/start/types'
+import type { ChatWrapperRefType } from './index'
+import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { BlockEnum } from '../../types'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../../store'
-import type { StartNodeType } from '../../nodes/start/types'
-import Empty from './empty'
-import UserInput from './user-input'
-import ConversationVariableModal from './conversation-variable-modal'
-import { useChat } from './hooks'
-import type { ChatWrapperRefType } from './index'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../../store'
+import { BlockEnum, WorkflowRunningStatus } from '../../types'
+import ConversationVariableModal from './conversation-variable-modal'
+import Empty from './empty'
+import { useChat } from './hooks'
+import UserInput from './user-input'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -37,7 +39,7 @@ const ChatWrapper = (
     showInputsFieldsPanel,
     onHide,
   }: ChatWrapperProps & {
-    ref: React.RefObject<ChatWrapperRefType>;
+    ref: React.RefObject<ChatWrapperRefType>
   },
 ) => {
   const nodes = useNodes<StartNodeType>()
@@ -46,6 +48,19 @@ const ChatWrapper = (
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
+  const setInputs = useStore(s => s.setInputs)
+
+  const initialInputs = useMemo(() => {
+    const initInputs: Record<string, any> = {}
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          initInputs[variable.variable] = variable.default
+      })
+    }
+    return initInputs
+  }, [startVariables])
+
   const features = useFeatures(s => s.features)
   const config = useMemo(() => {
     return {
@@ -69,7 +84,9 @@ const ChatWrapper = (
     suggestedQuestions,
     handleSend,
     handleRestart,
-    setTargetMessageId,
+    handleSwitchSibling,
+    handleSubmitHumanInputForm,
+    getHumanInputNodeData,
   } = useChat(
     config,
     {
@@ -79,6 +96,11 @@ const ChatWrapper = (
     [],
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
+
+  const handleRestartChat = useCallback(() => {
+    handleRestart()
+    setInputs(initialInputs)
+  }, [handleRestart, setInputs, initialInputs])
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
@@ -95,21 +117,48 @@ const ChatWrapper = (
     )
   }, [handleSend, workflowStore, conversationId, chatList, appDetail])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(editedQuestion ? editedQuestion.message : question.content,
-      editedQuestion ? editedQuestion.files : question.message_files,
-      true,
-      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
-    )
+    doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
+
+  const doSwitchSibling = useCallback((siblingMessageId: string) => {
+    handleSwitchSibling(siblingMessageId, {
+      onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+    })
+  }, [handleSwitchSibling, appDetail])
+
+  const doHumanInputFormSubmit = useCallback(async (formToken: string, formData: any) => {
+    // Handle human input form submission
+    await handleSubmitHumanInputForm(formToken, formData)
+  }, [handleSubmitHumanInputForm])
+
+  const inputDisabled = useMemo(() => {
+    const latestMessage = chatList[chatList.length - 1]
+    return latestMessage?.isAnswer && (latestMessage.workflowProcess?.status === WorkflowRunningStatus.Paused)
+  }, [chatList])
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
 
   useImperativeHandle(ref, () => {
     return {
-      handleRestart,
+      handleRestart: handleRestartChat,
     }
-  }, [handleRestart])
+  }, [handleRestartChat])
+
+  useEffect(() => {
+    if (Object.keys(initialInputs).length > 0) {
+      setInputs({
+        ...initialInputs,
+        ...inputs,
+      })
+    }
+  }, [initialInputs])
 
   useEffect(() => {
     if (isResponding)
@@ -125,10 +174,10 @@ const ChatWrapper = (
         } as any}
         chatList={chatList}
         isResponding={isResponding}
-        chatContainerClassName='px-3'
-        chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
-        chatFooterClassName='px-4 rounded-bl-2xl'
-        chatFooterInnerClassName='pb-0'
+        chatContainerClassName="px-3"
+        chatContainerInnerClassName="pt-6 w-full max-w-full mx-auto"
+        chatFooterClassName="px-4 rounded-bl-2xl"
+        chatFooterInnerClassName="pb-0"
         showFileUpload
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
@@ -137,6 +186,8 @@ const ChatWrapper = (
         inputsForm={(startVariables || []) as any}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
+        onHumanInputFormSubmit={doHumanInputFormSubmit}
+        getHumanInputNodeData={getHumanInputNodeData}
         chatNode={(
           <>
             {showInputsFieldsPanel && <UserInput />}
@@ -150,8 +201,10 @@ const ChatWrapper = (
         noSpacing
         suggestedQuestions={suggestedQuestions}
         showPromptLog
-        chatAnswerContainerInner='!pr-2'
-        switchSibling={setTargetMessageId}
+        chatAnswerContainerInner="!pr-2"
+        switchSibling={doSwitchSibling}
+        inputDisabled={inputDisabled}
+        hideAvatar
       />
       {showConversationVariableModal && (
         <ConversationVariableModal

@@ -15,7 +15,7 @@ def get_mocked_fetch_model_config(
     mode: str,
     credentials: dict,
 ):
-    model_provider_factory = ModelProviderFactory(tenant_id="test_tenant")
+    model_provider_factory = ModelProviderFactory(tenant_id="9d2074fc-6f86-45a9-b09d-6ecc63b9056b")
     model_type_instance = model_provider_factory.get_model_type_instance(provider, ModelType.LLM)
     provider_model_bundle = ProviderModelBundle(
         configuration=ProviderConfiguration(
@@ -48,3 +48,19 @@ def get_mocked_fetch_model_config(
     )
 
     return MagicMock(return_value=(model_instance, model_config))
+
+
+def get_mocked_fetch_model_instance(
+    provider: str,
+    model: str,
+    mode: str,
+    credentials: dict,
+):
+    mock_fetch_model_config = get_mocked_fetch_model_config(
+        provider=provider,
+        model=model,
+        mode=mode,
+        credentials=credentials,
+    )
+    model_instance, _ = mock_fetch_model_config()
+    return MagicMock(return_value=model_instance)

@@ -7,8 +7,19 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 ### Run by source code
 
 Before starting the web frontend service, please make sure the following environment is ready.
-- [Node.js](https://nodejs.org) >= v22.11.x
-- [pnpm](https://pnpm.io) v10.x
+
+- [Node.js](https://nodejs.org)
+- [pnpm](https://pnpm.io)
+
+> [!TIP]
+> It is recommended to install and enable Corepack to manage package manager versions automatically:
+>
+> ```bash
+> npm install -g corepack
+> corepack enable
+> ```
+>
+> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
 
 First, install the dependencies:
 
@@ -22,7 +33,7 @@ Then, configure the environment variables. Create a file named `.env.local` in t
 cp .env.example .env.local
 ```
 
-```
+```txt
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 # The deployment edition, SELF_HOSTED
@@ -31,16 +42,20 @@ NEXT_PUBLIC_EDITION=SELF_HOSTED
 # different from api or web app domain.
 # example: http://cloud.dify.ai/console/api
 NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
-NEXT_PUBLIC_WEB_PREFIX=http://localhost:3000
+NEXT_PUBLIC_COOKIE_DOMAIN=
 # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
 # console or api domain.
 # example: http://udify.app/api
 NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
-NEXT_PUBLIC_PUBLIC_WEB_PREFIX=http://localhost:3000
 
 # SENTRY
 NEXT_PUBLIC_SENTRY_DSN=
 ```
+
+> [!IMPORTANT]
+>
+> 1. When the frontend and backend run on different subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1. The frontend and backend must be under the same top-level domain in order to share authentication cookies.
+> 1. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
 
 Finally, run the development server:
 
@@ -92,28 +107,40 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
+Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
+
 ## Test
 
-We start to use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
+We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-You can create a test file with a suffix of `.spec` beside the file that to be tested. For example, if you want to test a file named `util.ts`. The test file name should be `util.spec.ts`.
+**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 Run test:
 
 ```bash
-pnpm run test
+pnpm test
 ```
 
-If you are not familiar with writing tests, here is some code to refer to:
-* [classnames.spec.ts](./utils/classnames.spec.ts)
-* [index.spec.tsx](./app/components/base/button/index.spec.tsx)
+### Example Code
 
+If you are not familiar with writing tests, refer to:
 
+- [classnames.spec.ts](./utils/classnames.spec.ts) - Utility function test example
+- [index.spec.tsx](./app/components/base/button/index.spec.tsx) - Component test example
 
+### Analyze Component Complexity
+
+Before writing tests, use the script to analyze component complexity:
+
+```bash
+pnpm analyze-component app/components/your-component/index.tsx
+```
+
+This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
 
 ## Documentation
 
-Visit <https://docs.dify.ai/getting-started/readme> to view the full documentation.
+Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 

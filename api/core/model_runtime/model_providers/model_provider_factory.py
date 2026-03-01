@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import hashlib
 import logging
-import os
 from collections.abc import Sequence
 from threading import Lock
-from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import ValidationError
+from redis import RedisError
 
 import contexts
-from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
+from configs import dify_config
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -20,56 +21,29 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
-from core.plugin.entities.plugin import ModelProviderID
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
-from core.plugin.impl.asset import PluginAssetManager
-from core.plugin.impl.model import PluginModelClient
+from extensions.ext_redis import redis_client
+from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
 
 
-class ModelProviderExtension(BaseModel):
-    plugin_model_provider_entity: PluginModelProviderEntity
-    position: Optional[int] = None
-
-
 class ModelProviderFactory:
-    provider_position_map: dict[str, int]
-
-    def __init__(self, tenant_id: str) -> None:
-        self.provider_position_map = {}
+    def __init__(self, tenant_id: str):
+        from core.plugin.impl.model import PluginModelClient
 
         self.tenant_id = tenant_id
         self.plugin_model_manager = PluginModelClient()
-
-        if not self.provider_position_map:
-            # get the path of current classes
-            current_path = os.path.abspath(__file__)
-            model_providers_path = os.path.dirname(current_path)
-
-            # get _position.yaml file path
-            self.provider_position_map = get_provider_position_map(model_providers_path)
 
     def get_providers(self) -> Sequence[ProviderEntity]:
         """
         Get all providers
         :return: list of providers
         """
-        # Fetch plugin model providers
+        # FIXME(-LAN-): Removed position map sorting since providers are fetched from plugin server
+        # The plugin server should return providers in the desired order
         plugin_providers = self.get_plugin_model_providers()
-
-        # Convert PluginModelProviderEntity to ModelProviderExtension
-        model_provider_extensions = []
-        for provider in plugin_providers:
-            model_provider_extensions.append(ModelProviderExtension(plugin_model_provider_entity=provider))
-
-        sorted_extensions = sort_to_dict_by_position_map(
-            position_map=self.provider_position_map,
-            data=model_provider_extensions,
-            name_func=lambda x: x.plugin_model_provider_entity.declaration.provider,
-        )
-
-        return [extension.plugin_model_provider_entity.declaration for extension in sorted_extensions.values()]
+        return [provider.declaration for provider in plugin_providers]
 
     def get_plugin_model_providers(self) -> Sequence[PluginModelProviderEntity]:
         """
@@ -132,7 +106,7 @@ class ModelProviderFactory:
 
         return plugin_model_provider_entity
 
-    def provider_credentials_validate(self, *, provider: str, credentials: dict) -> dict:
+    def provider_credentials_validate(self, *, provider: str, credentials: dict):
         """
         Validate provider credentials
 
@@ -163,9 +137,7 @@ class ModelProviderFactory:
 
         return filtered_credentials
 
-    def model_credentials_validate(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
-    ) -> dict:
+    def model_credentials_validate(self, *, provider: str, model_type: ModelType, model: str, credentials: dict):
         """
         Validate model credentials
 
@@ -201,48 +173,74 @@ class ModelProviderFactory:
         return filtered_credentials
 
     def get_model_schema(
-        self, *, provider: str, model_type: ModelType, model: str, credentials: dict
+        self, *, provider: str, model_type: ModelType, model: str, credentials: dict | None
     ) -> AIModelEntity | None:
         """
         Get model schema
         """
         plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
         cache_key = f"{self.tenant_id}:{plugin_id}:{provider_name}:{model_type.value}:{model}"
-        # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []
         cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
+        cached_schema_json = None
         try:
-            contexts.plugin_model_schemas.get()
-        except LookupError:
-            contexts.plugin_model_schemas.set({})
-            contexts.plugin_model_schema_lock.set(Lock())
-
-        with contexts.plugin_model_schema_lock.get():
-            if cache_key in contexts.plugin_model_schemas.get():
-                return contexts.plugin_model_schemas.get()[cache_key]
-
-            schema = self.plugin_model_manager.get_model_schema(
-                tenant_id=self.tenant_id,
-                user_id="unknown",
-                plugin_id=plugin_id,
-                provider=provider_name,
-                model_type=model_type.value,
-                model=model,
-                credentials=credentials or {},
+            cached_schema_json = redis_client.get(cache_key)
+        except (RedisError, RuntimeError) as exc:
+            logger.warning(
+                "Failed to read plugin model schema cache for model %s: %s",
+                model,
+                str(exc),
+                exc_info=True,
             )
+        if cached_schema_json:
+            try:
+                return AIModelEntity.model_validate_json(cached_schema_json)
+            except ValidationError:
+                logger.warning(
+                    "Failed to validate cached plugin model schema for model %s",
+                    model,
+                    exc_info=True,
+                )
+                try:
+                    redis_client.delete(cache_key)
+                except (RedisError, RuntimeError) as exc:
+                    logger.warning(
+                        "Failed to delete invalid plugin model schema cache for model %s: %s",
+                        model,
+                        str(exc),
+                        exc_info=True,
+                    )
 
-            if schema:
-                contexts.plugin_model_schemas.get()[cache_key] = schema
+        schema = self.plugin_model_manager.get_model_schema(
+            tenant_id=self.tenant_id,
+            user_id="unknown",
+            plugin_id=plugin_id,
+            provider=provider_name,
+            model_type=model_type.value,
+            model=model,
+            credentials=credentials or {},
+        )
 
-            return schema
+        if schema:
+            try:
+                redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_SCHEMA_CACHE_TTL, schema.model_dump_json())
+            except (RedisError, RuntimeError) as exc:
+                logger.warning(
+                    "Failed to write plugin model schema cache for model %s: %s",
+                    model,
+                    str(exc),
+                    exc_info=True,
+                )
+
+        return schema
 
     def get_models(
         self,
         *,
-        provider: Optional[str] = None,
-        model_type: Optional[ModelType] = None,
-        provider_configs: Optional[list[ProviderConfig]] = None,
+        provider: str | None = None,
+        model_type: ModelType | None = None,
+        provider_configs: list[ProviderConfig] | None = None,
     ) -> list[SimpleProviderEntity]:
         """
         Get all models for given model type
@@ -256,11 +254,6 @@ class ModelProviderFactory:
 
         # scan all providers
         plugin_model_provider_entities = self.get_plugin_model_providers()
-
-        # convert provider_configs to dict
-        provider_credentials_dict = {}
-        for provider_config in provider_configs:
-            provider_credentials_dict[provider_config.provider] = provider_config.credentials
 
         # traverse all model_provider_extensions
         providers = []
@@ -309,23 +302,25 @@ class ModelProviderFactory:
         }
 
         if model_type == ModelType.LLM:
-            return LargeLanguageModel(**init_params)  # type: ignore
+            return LargeLanguageModel.model_validate(init_params)
         elif model_type == ModelType.TEXT_EMBEDDING:
-            return TextEmbeddingModel(**init_params)  # type: ignore
+            return TextEmbeddingModel.model_validate(init_params)
         elif model_type == ModelType.RERANK:
-            return RerankModel(**init_params)  # type: ignore
+            return RerankModel.model_validate(init_params)
         elif model_type == ModelType.SPEECH2TEXT:
-            return Speech2TextModel(**init_params)  # type: ignore
+            return Speech2TextModel.model_validate(init_params)
         elif model_type == ModelType.MODERATION:
-            return ModerationModel(**init_params)  # type: ignore
+            return ModerationModel.model_validate(init_params)
         elif model_type == ModelType.TTS:
-            return TTSModel(**init_params)  # type: ignore
+            return TTSModel.model_validate(init_params)
+
+        raise ValueError(f"Unsupported model type: {model_type}")
 
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """
         Get provider icon
         :param provider: provider name
-        :param icon_type: icon type (icon_small or icon_large)
+        :param icon_type: icon type (icon_small or icon_small_dark)
         :param lang: language (zh_Hans or en_US)
         :return: provider icon
         """
@@ -340,14 +335,16 @@ class ModelProviderFactory:
                 file_name = provider_schema.icon_small.zh_Hans
             else:
                 file_name = provider_schema.icon_small.en_US
-        else:
-            if not provider_schema.icon_large:
-                raise ValueError(f"Provider {provider} does not have large icon.")
+        elif icon_type.lower() == "icon_small_dark":
+            if not provider_schema.icon_small_dark:
+                raise ValueError(f"Provider {provider} does not have small dark icon.")
 
             if lang.lower() == "zh_hans":
-                file_name = provider_schema.icon_large.zh_Hans
+                file_name = provider_schema.icon_small_dark.zh_Hans
             else:
-                file_name = provider_schema.icon_large.en_US
+                file_name = provider_schema.icon_small_dark.en_US
+        else:
+            raise ValueError(f"Unsupported icon type: {icon_type}.")
 
         if not file_name:
             raise ValueError(f"Provider {provider} does not have icon.")
@@ -371,6 +368,8 @@ class ModelProviderFactory:
         mime_type = image_mime_types.get(extension, "image/png")
 
         # get icon bytes from plugin asset manager
+        from core.plugin.impl.asset import PluginAssetManager
+
         plugin_asset_manager = PluginAssetManager()
         return plugin_asset_manager.fetch_asset(tenant_id=self.tenant_id, id=file_name), mime_type
 
@@ -380,5 +379,6 @@ class ModelProviderFactory:
         :param provider: provider name
         :return: plugin id and provider name
         """
+
         provider_id = ModelProviderID(provider)
         return provider_id.plugin_id, provider_id.provider_name

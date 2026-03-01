@@ -1,45 +1,49 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiBookmark3Line,
-  RiErrorWarningFill,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import TabHeader from '../../base/tab-header'
-import { checkOrSetAccessToken } from '../utils'
-import MenuDropdown from './menu-dropdown'
-import RunBatch from './run-batch'
-import ResDownload from './run-batch/res-download'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
-import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
   PromptConfig,
   SavedMessage,
   TextToSpeechConfig,
 } from '@/models/debug'
+import type { InstalledApp } from '@/models/explore'
+import type { SiteInfo } from '@/models/share'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import {
+  RiBookmark3Line,
+  RiErrorWarningFill,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { useSearchParams } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
-import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import Res from '@/app/components/share/text-generation/result'
-import SavedItems from '@/app/components/app/text-generate/saved-items'
-import type { InstalledApp } from '@/models/explore'
-import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Toast from '@/app/components/base/toast'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { Resolution, TransferMethod } from '@/types/app'
+import Res from '@/app/components/share/text-generation/result'
+import RunOnce from '@/app/components/share/text-generation/run-once'
+import { appDefaultIconBackground, BATCH_CONCURRENCY } from '@/config'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import LogoSite from '@/app/components/base/logo/logo-site'
-import cn from '@/utils/classnames'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { changeLanguage } from '@/i18n-config/client'
+import { AccessMode } from '@/models/access-control'
+import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { Resolution, TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import TabHeader from '../../base/tab-header'
+import MenuDropdown from './menu-dropdown'
+import RunBatch from './run-batch'
+import ResDownload from './run-batch/res-download'
 
-const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
+const GROUP_SIZE = BATCH_CONCURRENCY // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
   running = 'running',
@@ -65,10 +69,10 @@ export type IMainProps = {
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
-  installedAppInfo,
   isWorkflow = false,
 }) => {
   const { notify } = Toast
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -77,17 +81,6 @@ const TextGeneration: FC<IMainProps> = ({
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
   const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
-
-  const router = useRouter()
-  const pathname = usePathname()
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    if (params.has('mode')) {
-      params.delete('mode')
-      router.replace(`${pathname}?${params.toString()}`)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
@@ -98,9 +91,9 @@ const TextGeneration: FC<IMainProps> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
-  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
@@ -108,18 +101,20 @@ const TextGeneration: FC<IMainProps> = ({
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
-  const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
+  const fetchSavedMessage = useCallback(async () => {
+    if (!appId)
+      return
+    const res: any = await doFetchSavedMessage(appSourceType, appId)
     setSavedMessages(res.data)
-  }
+  }, [appSourceType, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
-    notify({ type: 'success', message: t('common.api.saved') })
+    await saveMessage(messageId, appSourceType, appId)
+    notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
-    notify({ type: 'success', message: t('common.api.remove') })
+    await removeMessage(messageId, appSourceType, appId)
+    notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
     fetchSavedMessage()
   }
 
@@ -133,6 +128,12 @@ const TextGeneration: FC<IMainProps> = ({
     transfer_methods: [TransferMethod.local_file],
   })
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
+  const [runControl, setRunControl] = useState<{ onStop: () => Promise<void> | void, isStopping: boolean } | null>(null)
+
+  useEffect(() => {
+    if (isCallBatchAPI)
+      setRunControl(null)
+  }, [isCallBatchAPI])
 
   const handleSend = () => {
     setIsCallBatchAPI(false)
@@ -159,10 +160,9 @@ const TextGeneration: FC<IMainProps> = ({
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
-  const [currGroupNum, doSetCurrGroupNum] = useState(0)
   const currGroupNumRef = useRef(0)
+
   const setCurrGroupNum = (num: number) => {
-    doSetCurrGroupNum(num)
     currGroupNumRef.current = num
   }
   const getCurrGroupNum = () => {
@@ -172,10 +172,8 @@ const TextGeneration: FC<IMainProps> = ({
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTasksFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const allTasksRun = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
-  const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
   const batchCompletionResRef = useRef<Record<string, string>>({})
   const setBatchCompletionRes = (res: Record<string, string>) => {
-    doSetBatchCompletionRes(res)
     batchCompletionResRef.current = res
   }
   const getBatchCompletionRes = () => batchCompletionResRef.current
@@ -191,12 +189,12 @@ const TextGeneration: FC<IMainProps> = ({
     if (typeof batchCompletionResLatest[task.id] === 'object')
       result = JSON.stringify(result)
 
-    res[t('share.generation.completionResult')] = result
+    res[t('generation.completionResult', { ns: 'share' })] = result
     return res
   })
   const checkBatchInputs = (data: string[][]) => {
     if (!data || data.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
+      notify({ type: 'error', message: t('generation.errorMsg.empty', { ns: 'share' }) })
       return false
     }
     const headerData = data[0]
@@ -210,13 +208,13 @@ const TextGeneration: FC<IMainProps> = ({
     })
 
     if (!isMapVarName) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
+      notify({ type: 'error', message: t('generation.errorMsg.fileStructNotMatch', { ns: 'share' }) })
       return false
     }
 
     let payloadData = data.slice(1)
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
       return false
     }
 
@@ -237,7 +235,7 @@ const TextGeneration: FC<IMainProps> = ({
       })
 
       if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex + 2 }) })
+        notify({ type: 'error', message: t('generation.errorMsg.emptyLine', { ns: 'share', rowIndex: startIndex + 2 }) })
         return false
       }
     }
@@ -246,7 +244,7 @@ const TextGeneration: FC<IMainProps> = ({
     payloadData = payloadData.filter(item => !item.every(i => i === ''))
     // after remove empty rows in the end, checked again
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
       return false
     }
     let errorRowIndex = 0
@@ -260,11 +258,10 @@ const TextGeneration: FC<IMainProps> = ({
       promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
         if (errorRowIndex !== 0)
           return
-        if (varItem.type === 'string') {
-          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
-          if (item[varIndex].length > maxLen) {
+        if (varItem.type === 'string' && varItem.max_length) {
+          if (item[varIndex].length > varItem.max_length) {
             moreThanMaxLengthVarName = varItem.name
-            maxLength = maxLen
+            maxLength = varItem.max_length
             errorRowIndex = index + 1
             return
           }
@@ -281,10 +278,10 @@ const TextGeneration: FC<IMainProps> = ({
 
     if (errorRowIndex !== 0) {
       if (requiredVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+        notify({ type: 'error', message: t('generation.errorMsg.invalidLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
 
       if (moreThanMaxLengthVarName)
-        notify({ type: 'error', message: t('share.generation.errorMsg.moreThanMaxLengthLine', { rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
+        notify({ type: 'error', message: t('generation.errorMsg.moreThanMaxLengthLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
 
       return false
     }
@@ -294,7 +291,7 @@ const TextGeneration: FC<IMainProps> = ({
     if (!checkBatchInputs(data))
       return
     if (!allTasksFinished) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForBatchResponse', { ns: 'appDebug' }) })
       return
     }
 
@@ -367,50 +364,30 @@ const TextGeneration: FC<IMainProps> = ({
     }
   }
 
-  const fetchInitData = async () => {
-    if (!isInstalledApp)
-      await checkOrSetAccessToken()
-
-    return Promise.all([
-      isInstalledApp
-        ? {
-          app_id: installedAppInfo?.id,
-          site: {
-            title: installedAppInfo?.app.name,
-            prompt_public: false,
-            copyright: '',
-            icon: installedAppInfo?.app.icon,
-            icon_background: installedAppInfo?.app.icon_background,
-          },
-          plan: 'basic',
-        }
-        : fetchAppInfo(),
-      fetchAppParams(isInstalledApp, installedAppInfo?.id),
-      !isWorkflow
-        ? fetchSavedMessage()
-        : {},
-    ])
-  }
-
+  const appData = useWebAppStore(s => s.appInfo)
+  const appParams = useWebAppStore(s => s.appParams)
+  const accessMode = useWebAppStore(s => s.webAppAccessMode)
   useEffect(() => {
     (async () => {
-      const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo, can_replace_logo, custom_config } = appData
+      if (!appData || !appParams)
+        return
+      if (!isWorkflow)
+        fetchSavedMessage()
+      const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
-      setCanReplaceLogo(can_replace_logo)
       setCustomConfig(custom_config)
-      changeLanguage(siteInfo.default_language)
+      await changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
+        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
-      })
+      } as any)
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for future
@@ -419,17 +396,10 @@ const TextGeneration: FC<IMainProps> = ({
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
     })()
-  }, [])
+  }, [appData, appParams, fetchSavedMessage, isWorkflow])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
-  useEffect(() => {
-    if (siteInfo?.title) {
-      if (canReplaceLogo)
-        document.title = `${siteInfo.title}`
-      else
-        document.title = `${siteInfo.title} - Powered by Dify`
-    }
-  }, [siteInfo?.title, canReplaceLogo])
+  useDocumentTitle(siteInfo?.title || t('generation.title', { ns: 'share' }))
 
   useAppFavicon({
     enable: !isInstalledApp,
@@ -448,31 +418,35 @@ const TextGeneration: FC<IMainProps> = ({
   }
   const [resultExisted, setResultExisted] = useState(false)
 
-  const renderRes = (task?: Task) => (<Res
-    key={task?.id}
-    isWorkflow={isWorkflow}
-    isCallBatchAPI={isCallBatchAPI}
-    isPC={isPC}
-    isMobile={!isPC}
-    isInstalledApp={isInstalledApp}
-    installedAppInfo={installedAppInfo}
-    isError={task?.status === TaskStatus.failed}
-    promptConfig={promptConfig}
-    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-    inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
-    controlSend={controlSend}
-    controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
-    controlStopResponding={controlStopResponding}
-    onShowRes={showResultPanel}
-    handleSaveMessage={handleSaveMessage}
-    taskId={task?.id}
-    onCompleted={handleCompleted}
-    visionConfig={visionConfig}
-    completionFiles={completionFiles}
-    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
-    siteInfo={siteInfo}
-    onRunStart={() => setResultExisted(true)}
-  />)
+  const renderRes = (task?: Task) => (
+    <Res
+      key={task?.id}
+      isWorkflow={isWorkflow}
+      isCallBatchAPI={isCallBatchAPI}
+      isPC={isPC}
+      isMobile={!isPC}
+      appSourceType={isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp}
+      appId={appId}
+      isError={task?.status === TaskStatus.failed}
+      promptConfig={promptConfig}
+      moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+      inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
+      controlSend={controlSend}
+      controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
+      controlStopResponding={controlStopResponding}
+      onShowRes={showResultPanel}
+      handleSaveMessage={handleSaveMessage}
+      taskId={task?.id}
+      onCompleted={handleCompleted}
+      visionConfig={visionConfig}
+      completionFiles={completionFiles}
+      isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+      siteInfo={siteInfo}
+      onRunStart={() => setResultExisted(true)}
+      onRunControlChange={!isCallBatchAPI ? setRunControl : undefined}
+      hideInlineStopButton={!isCallBatchAPI}
+    />
+  )
 
   const renderBatchRes = () => {
     return (showTaskList.map(task => renderRes(task)))
@@ -494,8 +468,9 @@ const TextGeneration: FC<IMainProps> = ({
         <div className={cn(
           'flex shrink-0 items-center justify-between px-14 pb-2 pt-9',
           !isPC && 'px-4 pb-1 pt-3',
-        )}>
-          <div className='system-md-semibold-uppercase text-text-primary'>{t('share.generation.executions', { num: allTaskList.length })}</div>
+        )}
+        >
+          <div className="system-md-semibold-uppercase text-text-primary">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
           {allSuccessTaskList.length > 0 && (
             <ResDownload
               isMobile={!isPC}
@@ -509,20 +484,21 @@ const TextGeneration: FC<IMainProps> = ({
         isPC && 'px-14 py-8',
         isPC && isCallBatchAPI && 'pt-0',
         !isPC && 'p-0 pb-2',
-      )}>
+      )}
+      >
         {!isCallBatchAPI ? renderRes() : renderBatchRes()}
         {!noPendingTask && (
-          <div className='mt-4'>
-            <Loading type='area' />
+          <div className="mt-4">
+            <Loading type="area" />
           </div>
         )}
       </div>
       {isCallBatchAPI && allFailedTaskList.length > 0 && (
-        <div className='absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm'>
-          <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
-          <div className='system-sm-medium text-text-secondary'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
-          <div className='h-3.5 w-px bg-divider-regular'></div>
-          <div onClick={handleRetryAllFailedTask} className='system-sm-semibold-uppercase cursor-pointer text-text-accent'>{t('share.generation.batchFailed.retry')}</div>
+        <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm">
+          <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+          <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
+          <div className="h-3.5 w-px bg-divider-regular"></div>
+          <div onClick={handleRetryAllFailedTask} className="system-sm-semibold-uppercase cursor-pointer text-text-accent">{t('generation.batchFailed.retry', { ns: 'share' })}</div>
         </div>
       )}
     </div>
@@ -530,27 +506,29 @@ const TextGeneration: FC<IMainProps> = ({
 
   if (!appId || !siteInfo || !promptConfig) {
     return (
-      <div className='flex h-screen items-center'>
-        <Loading type='app' />
-      </div>)
+      <div className="flex h-screen items-center">
+        <Loading type="app" />
+      </div>
+    )
   }
-
   return (
     <div className={cn(
       'bg-background-default-burn',
       isPC && 'flex',
       !isPC && 'flex-col',
       isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
-    )}>
+    )}
+    >
       {/* Left */}
       <div className={cn(
         'relative flex h-full shrink-0 flex-col',
         isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%_-_64px)]' : '',
         isInstalledApp && 'rounded-l-2xl',
-      )}>
+      )}
+      >
         {/* header */}
         <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
-          <div className='flex items-center gap-3'>
+          <div className="flex items-center gap-3">
             <AppIcon
               size={isPC ? 'large' : 'small'}
               iconType={siteInfo.icon_type}
@@ -558,30 +536,30 @@ const TextGeneration: FC<IMainProps> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
-            <MenuDropdown data={siteInfo} />
+            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
+            <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
-            <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
+            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
           )}
           <TabHeader
             items={[
-              { id: 'create', name: t('share.generation.tabs.create') },
-              { id: 'batch', name: t('share.generation.tabs.batch') },
+              { id: 'create', name: t('generation.tabs.create', { ns: 'share' }) },
+              { id: 'batch', name: t('generation.tabs.batch', { ns: 'share' }) },
               ...(!isWorkflow
                 ? [{
-                  id: 'saved',
-                  name: t('share.generation.tabs.saved'),
-                  isRight: true,
-                  icon: <RiBookmark3Line className='h-4 w-4' />,
-                  extra: savedMessages.length > 0
-                    ? (
-                      <Badge className='ml-1'>
-                        {savedMessages.length}
-                      </Badge>
-                    )
-                    : null,
-                }]
+                    id: 'saved',
+                    name: t('generation.tabs.saved', { ns: 'share' }),
+                    isRight: true,
+                    icon: <RiBookmark3Line className="h-4 w-4" />,
+                    extra: savedMessages.length > 0
+                      ? (
+                          <Badge className="ml-1">
+                            {savedMessages.length}
+                          </Badge>
+                        )
+                      : null,
+                  }]
                 : []),
             ]}
             value={currentTab}
@@ -593,7 +571,8 @@ const TextGeneration: FC<IMainProps> = ({
           'h-0 grow overflow-y-auto bg-components-panel-bg',
           isPC ? 'px-8' : 'px-4',
           !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-        )}>
+        )}
+        >
           <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
             <RunOnce
               siteInfo={siteInfo}
@@ -604,6 +583,7 @@ const TextGeneration: FC<IMainProps> = ({
               onSend={handleSend}
               visionConfig={visionConfig}
               onVisionFilesChange={setCompletionFiles}
+              runControl={runControl}
             />
           </div>
           <div className={cn(isInBatchTab ? 'block' : 'hidden')}>
@@ -629,14 +609,16 @@ const TextGeneration: FC<IMainProps> = ({
             'flex shrink-0 items-center gap-1.5 bg-components-panel-bg py-3',
             isPC ? 'px-8' : 'px-4',
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-          )}>
-            <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-            {customConfig?.replace_webapp_logo && (
-              <img src={customConfig?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-            )}
-            {!customConfig?.replace_webapp_logo && (
-              <LogoSite className='!h-5' />
-            )}
+          )}
+          >
+            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+            {
+              systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
+                : customConfig?.replace_webapp_logo
+                  ? <img src={`${customConfig?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
+                  : <DifyLogo size="small" />
+            }
           </div>
         )}
       </div>
@@ -649,7 +631,8 @@ const TextGeneration: FC<IMainProps> = ({
             : resultExisted
               ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
               : '',
-      )}>
+      )}
+      >
         {!isPC && (
           <div
             className={cn(
@@ -664,7 +647,7 @@ const TextGeneration: FC<IMainProps> = ({
                 showResultPanel()
             }}
           >
-            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid'/>
+            <div className="h-1 w-8 cursor-grab rounded bg-divider-solid" />
           </div>
         )}
         {renderResWrap}

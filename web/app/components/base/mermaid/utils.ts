@@ -2,49 +2,51 @@ export function cleanUpSvgCode(svgCode: string): string {
   return svgCode.replaceAll('<br>', '<br/>')
 }
 
-/**
- * Preprocesses mermaid code to fix common syntax issues
- */
-export function preprocessMermaidCode(code: string): string {
-  if (!code || typeof code !== 'string')
+export const sanitizeMermaidCode = (mermaidCode: string): string => {
+  if (!mermaidCode || typeof mermaidCode !== 'string')
     return ''
 
-  // First check if this is a gantt chart
-  if (code.trim().startsWith('gantt')) {
-    // For gantt charts, we need to ensure each task is on its own line
-    // Split the code into lines and process each line separately
-    const lines = code.split('\n').map(line => line.trim())
-    return lines.join('\n')
-  }
+  return mermaidCode
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trimStart()
 
-  return code
-    // Replace English colons with Chinese colons in section nodes to avoid parsing issues
-    .replace(/section\s+([^:]+):/g, (match, sectionName) => `section ${sectionName}：`)
-    // Fix common syntax issues
-    .replace(/fifopacket/g, 'rect')
-    // Clean up empty lines and extra spaces
-    .trim()
+      // Mermaid directives can override config; treat as untrusted in chat context.
+      if (trimmed.startsWith('%%{'))
+        return false
+
+      // Mermaid click directives can create JS callbacks/links inside rendered SVG.
+      if (trimmed.startsWith('click '))
+        return false
+
+      return true
+    })
+    .join('\n')
 }
 
 /**
- * Prepares mermaid code based on selected style
+ * Prepares mermaid code for rendering by sanitizing common syntax issues.
+ * @param {string} mermaidCode - The mermaid code to prepare
+ * @param {'classic' | 'handDrawn'} style - The rendering style
+ * @returns {string} - The prepared mermaid code
  */
-export function prepareMermaidCode(code: string, style: 'classic' | 'handDrawn'): string {
-  let finalCode = preprocessMermaidCode(code)
+export const prepareMermaidCode = (mermaidCode: string, style: 'classic' | 'handDrawn'): string => {
+  if (!mermaidCode || typeof mermaidCode !== 'string')
+    return ''
 
-  // Special handling for gantt charts
-  if (finalCode.trim().startsWith('gantt')) {
-    // For gantt charts, preserve the structure exactly as is
-    return finalCode
-  }
+  let code = sanitizeMermaidCode(mermaidCode.trim())
 
+  // Convenience: Basic BR replacement. This is a common and safe operation.
+  code = code.replace(/<br\s*\/?>/g, '\n')
+
+  let finalCode = code
+
+  // Hand-drawn style requires some specific clean-up.
   if (style === 'handDrawn') {
     finalCode = finalCode
-      // Remove style definitions that interfere with hand-drawn style
       .replace(/style\s+[^\n]+/g, '')
       .replace(/linkStyle\s+[^\n]+/g, '')
       .replace(/^flowchart/, 'graph')
-      // Remove any styles that might interfere with hand-drawn style
       .replace(/class="[^"]*"/g, '')
       .replace(/fill="[^"]*"/g, '')
       .replace(/stroke="[^"]*"/g, '')
@@ -77,8 +79,7 @@ export function svgToBase64(svgGraph: string): Promise<string> {
       reader.readAsDataURL(blob)
     })
   }
-  catch (error) {
-    console.error('Error converting SVG to base64:', error)
+  catch {
     return Promise.resolve('')
   }
 }
@@ -111,20 +112,16 @@ export function processSvgForTheme(
     }
     else {
       let i = 0
-      themes.dark.nodeColors.forEach(() => {
-        const regex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-        processedSvg = processedSvg.replace(regex, (match: string) => {
-          const colorIndex = i % themes.dark.nodeColors.length
-          i++
-          return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${themes.dark.nodeColors[colorIndex].bg}"`)
-        })
+      const nodeColorRegex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
+      processedSvg = processedSvg.replace(nodeColorRegex, (match: string) => {
+        const colorIndex = i % themes.dark.nodeColors.length
+        i++
+        return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${themes.dark.nodeColors[colorIndex].bg}"`)
       })
 
       processedSvg = processedSvg
-        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
-        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
+        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
+        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
     }
   }
   else {
@@ -135,21 +132,17 @@ export function processSvgForTheme(
         .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
     }
     else {
-      themes.light.nodeColors.forEach(() => {
-        const regex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
-        let i = 0
-        processedSvg = processedSvg.replace(regex, (match: string) => {
-          const colorIndex = i % themes.light.nodeColors.length
-          i++
-          return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${themes.light.nodeColors[colorIndex].bg}"`)
-        })
+      let i = 0
+      const nodeColorRegex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
+      processedSvg = processedSvg.replace(nodeColorRegex, (match: string) => {
+        const colorIndex = i % themes.light.nodeColors.length
+        i++
+        return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${themes.light.nodeColors[colorIndex].bg}"`)
       })
 
       processedSvg = processedSvg
-        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<path stroke="${themes.light.connectionColor}"`)
-        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<$1 stroke="${themes.light.connectionColor}"`)
+        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<path stroke="${themes.light.connectionColor}"`)
+        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<$1 stroke="${themes.light.connectionColor}"`)
     }
   }
 
@@ -173,38 +166,31 @@ export function isMermaidCodeComplete(code: string): boolean {
       return lines.length >= 3
     }
 
+    // Special handling for mindmaps
+    if (trimmedCode.startsWith('mindmap')) {
+      // For mindmaps, check if it has at least a root node
+      const lines = trimmedCode.split('\n').filter(line => line.trim().length > 0)
+      return lines.length >= 2
+    }
+
     // Check for basic syntax structure
-    const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram)/.test(trimmedCode)
+    const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram|mindmap)/.test(trimmedCode)
 
-    // Check for balanced brackets and parentheses
-    const isBalanced = (() => {
-      const stack = []
-      const pairs = { '{': '}', '[': ']', '(': ')' }
-
-      for (const char of trimmedCode) {
-        if (char in pairs) {
-          stack.push(char)
-        }
-        else if (Object.values(pairs).includes(char)) {
-          const last = stack.pop()
-          if (pairs[last as keyof typeof pairs] !== char)
-            return false
-        }
-      }
-
-      return stack.length === 0
-    })()
+    // The balanced bracket check was too strict and produced false negatives for valid
+    // mermaid syntax like the asymmetric shape `A>B]`. Relying on Mermaid's own
+    // parser is more robust.
+    const isBalanced = true
 
     // Check for common syntax errors
     const hasNoSyntaxErrors = !trimmedCode.includes('undefined')
-                           && !trimmedCode.includes('[object Object]')
-                           && trimmedCode.split('\n').every(line =>
-                             !(line.includes('-->') && !line.match(/\S+\s*-->\s*\S+/)))
+      && !trimmedCode.includes('[object Object]')
+      && trimmedCode.split('\n').every(line =>
+        !(line.includes('-->') && !/\S+\s*-->\s*\S+/.exec(line)))
 
     return hasValidStart && isBalanced && hasNoSyntaxErrors
   }
   catch (error) {
-    console.debug('Mermaid code validation error:', error)
+    console.error('Mermaid code validation error:', error)
     return false
   }
 }

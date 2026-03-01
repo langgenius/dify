@@ -1,0 +1,233 @@
+app:
+  description: 'this workflow run a loop until num >= 5, it outputs {"num": 5}'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: test_loop
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: loop
+      id: 1754827922555-source-1754827949615-target
+      source: '1754827922555'
+      sourceHandle: source
+      target: '1754827949615'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: '1754827949615'
+        sourceType: loop-start
+        targetType: assigner
+      id: 1754827949615start-source-1754827988715-target
+      source: 1754827949615start
+      sourceHandle: source
+      target: '1754827988715'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: loop
+        targetType: end
+      id: 1754827949615-source-1754828005059-target
+      source: '1754827949615'
+      sourceHandle: source
+      target: '1754828005059'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 54
+      id: '1754827922555'
+      position:
+        x: 30
+        y: 303
+      positionAbsolute:
+        x: 30
+        y: 303
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        break_conditions:
+        - comparison_operator: ≥
+          id: 5969c8b0-0d1e-4057-8652-f62622663435
+          value: '5'
+          varType: number
+          variable_selector:
+          - '1754827949615'
+          - num
+        desc: ''
+        height: 206
+        logical_operator: and
+        loop_count: 10
+        loop_variables:
+        - id: 47c15345-4a5d-40a0-8fbb-88f8a4074475
+          label: num
+          value: '1'
+          value_type: constant
+          var_type: number
+        selected: false
+        start_node_id: 1754827949615start
+        title: Loop
+        type: loop
+        width: 508
+      height: 206
+      id: '1754827949615'
+      position:
+        x: 334
+        y: 303
+      positionAbsolute:
+        x: 334
+        y: 303
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 508
+      zIndex: 1
+    - data:
+        desc: ''
+        isInLoop: true
+        selected: false
+        title: ''
+        type: loop-start
+      draggable: false
+      height: 48
+      id: 1754827949615start
+      parentId: '1754827949615'
+      position:
+        x: 60
+        y: 79
+      positionAbsolute:
+        x: 394
+        y: 382
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-loop-start
+      width: 44
+      zIndex: 1002
+    - data:
+        desc: ''
+        isInIteration: false
+        isInLoop: true
+        items:
+        - input_type: constant
+          operation: +=
+          value: 1
+          variable_selector:
+          - '1754827949615'
+          - num
+          write_mode: over-write
+        loop_id: '1754827949615'
+        selected: false
+        title: Variable Assigner
+        type: assigner
+        version: '2'
+      height: 86
+      id: '1754827988715'
+      parentId: '1754827949615'
+      position:
+        x: 204
+        y: 60
+      positionAbsolute:
+        x: 538
+        y: 363
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754827949615'
+          - num
+          value_type: number
+          variable: num
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: '1754828005059'
+      position:
+        x: 902
+        y: 303
+      positionAbsolute:
+        x: 902
+        y: 303
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

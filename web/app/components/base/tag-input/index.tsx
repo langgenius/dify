@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
-import { } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
+import { useCallback, useState } from 'react'
 import AutosizeInput from 'react-18-input-autosize'
-import { RiAddLine, RiCloseLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
+import { cn } from '@/utils/classnames'
 
 type TagInputProps = {
   items: string[]
@@ -15,6 +13,8 @@ type TagInputProps = {
   customizedConfirmKey?: 'Enter' | 'Tab'
   isInWorkflow?: boolean
   placeholder?: string
+  required?: boolean
+  inputClassName?: string
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -25,6 +25,8 @@ const TagInput: FC<TagInputProps> = ({
   customizedConfirmKey = 'Enter',
   isInWorkflow,
   placeholder,
+  required = false,
+  inputClassName,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -40,6 +42,30 @@ const TagInput: FC<TagInputProps> = ({
     onChange(copyItems)
   }
 
+  const handleNewTag = useCallback((value: string) => {
+    const valueTrimmed = value.trim()
+    if (!valueTrimmed) {
+      if (required)
+        notify({ type: 'error', message: t('segment.keywordEmpty', { ns: 'datasetDocuments' }) })
+      return
+    }
+
+    if ((items.find(item => item === valueTrimmed))) {
+      notify({ type: 'error', message: t('segment.keywordDuplicate', { ns: 'datasetDocuments' }) })
+      return
+    }
+
+    if (valueTrimmed.length > 20) {
+      notify({ type: 'error', message: t('segment.keywordError', { ns: 'datasetDocuments' }) })
+      return
+    }
+
+    onChange([...items, valueTrimmed])
+    setTimeout(() => {
+      setValue('')
+    })
+  }, [items, onChange, notify, t, required])
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isSpecialMode && e.key === 'Enter')
       setValue(`${value}↵`)
@@ -48,24 +74,12 @@ const TagInput: FC<TagInputProps> = ({
       if (isSpecialMode)
         e.preventDefault()
 
-      const valueTrimmed = value.trim()
-      if (!valueTrimmed || (items.find(item => item === valueTrimmed)))
-        return
-
-      if (valueTrimmed.length > 20) {
-        notify({ type: 'error', message: t('datasetDocuments.segment.keywordError') })
-        return
-      }
-
-      onChange([...items, valueTrimmed])
-      setTimeout(() => {
-        setValue('')
-      })
+      handleNewTag(value)
     }
   }
 
   const handleBlur = () => {
-    setValue('')
+    handleNewTag(value)
     setFocused(false)
   }
 
@@ -75,13 +89,13 @@ const TagInput: FC<TagInputProps> = ({
         (items || []).map((item, index) => (
           <div
             key={item}
-            className={cn('system-xs-regular mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary')}
+            className={cn('mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary system-xs-regular')}
           >
             {item}
             {
               !disableRemove && (
-                <div className='flex h-4 w-4 cursor-pointer items-center justify-center' onClick={() => handleRemove(index)}>
-                  <RiCloseLine className='ml-0.5 h-3.5 w-3.5 text-text-tertiary' />
+                <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
+                  <span className="i-ri-close-line ml-0.5 h-3.5 w-3.5 text-text-tertiary" data-testid="remove-tag" />
                 </div>
               )
             }
@@ -91,17 +105,20 @@ const TagInput: FC<TagInputProps> = ({
       {
         !disableAdd && (
           <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
-            {!isSpecialMode && !focused && <RiAddLine className='h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary' />}
+            {!isSpecialMode && !focused && <span className="i-ri-add-line h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
             <AutosizeInput
-              inputClassName={cn('appearance-none caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '')}
+              inputClassName={cn(
+                'appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
+                isSpecialMode ? 'bg-transparent' : '',
+                inputClassName,
+              )}
               className={cn(
                 !isInWorkflow && 'max-w-[300px]',
                 isInWorkflow && 'max-w-[146px]',
-                `
-                system-xs-regular overflow-hidden rounded-md py-1
-                ${isSpecialMode && 'border border-transparent px-1.5'}
-                ${focused && isSpecialMode && 'border-dashed border-divider-deep'}
-              `)}
+                'overflow-hidden rounded-md py-1 system-xs-regular',
+                isSpecialMode && 'border border-transparent px-1.5',
+                focused && isSpecialMode && 'border-dashed border-divider-deep',
+              )}
               onFocus={() => setFocused(true)}
               onBlur={handleBlur}
               value={value}
@@ -109,7 +126,7 @@ const TagInput: FC<TagInputProps> = ({
                 setValue(e.target.value)
               }}
               onKeyDown={handleKeyDown}
-              placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
+              placeholder={placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))}
             />
           </div>
         )

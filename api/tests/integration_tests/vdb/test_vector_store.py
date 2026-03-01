@@ -26,7 +26,7 @@ def get_example_document(doc_id: str) -> Document:
 
 
 @pytest.fixture
-def setup_mock_redis() -> None:
+def setup_mock_redis():
     # get
     ext_redis.redis_client.get = MagicMock(return_value=None)
 
@@ -48,7 +48,7 @@ class AbstractVectorTest:
         self.example_doc_id = str(uuid.uuid4())
         self.example_embedding = [1.001 * i for i in range(128)]
 
-    def create_vector(self) -> None:
+    def create_vector(self):
         self.vector.create(
             texts=[get_example_document(doc_id=self.example_doc_id)],
             embeddings=[self.example_embedding],

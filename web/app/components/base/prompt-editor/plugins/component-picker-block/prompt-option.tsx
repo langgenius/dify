@@ -32,13 +32,18 @@ export const PromptMenuItem = memo(({
           return
         onMouseEnter()
       }}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       onClick={() => {
         if (disabled)
           return
         onClick()
-      }}>
+      }}
+    >
       {icon}
-      <div className='ml-1 text-[13px] text-text-secondary'>{title}</div>
+      <div className="ml-1 text-[13px] text-text-secondary">{title}</div>
     </div>
   )
 })

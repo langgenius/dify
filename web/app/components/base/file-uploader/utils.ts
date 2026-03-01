@@ -1,17 +1,48 @@
-import mime from 'mime'
-import { FileAppearanceTypeEnum } from './types'
+import type { TFunction } from 'i18next'
 import type { FileEntity } from './types'
-import { upload } from '@/service/base'
+import type { FileResponse } from '@/types/workflow'
+import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { FileResponse } from '@/types/workflow'
+import { upload } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { FileAppearanceTypeEnum } from './types'
 
+/**
+ * Get appropriate error message for file upload errors
+ * @param error - The error object from upload failure
+ * @param defaultMessage - Default error message to use if no specific error is matched
+ * @param t - Translation function
+ * @returns Localized error message
+ */
+export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
+  const errorCode = error?.response?.code
+
+  if (errorCode === 'forbidden')
+    return error?.response?.message
+
+  if (errorCode === 'file_extension_blocked')
+    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
+
+  return defaultMessage
+}
+
+type FileUploadResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  preview_url: string | null
+  size: number
+  source_url: string
+}
 type FileUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
-  onSuccessCallback: (res: { id: string }) => void
-  onErrorCallback: () => void
+  onSuccessCallback: (res: FileUploadResponse) => void
+  onErrorCallback: (error?: any) => void
 }
 type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
 export const fileUpload: FileUpload = ({
@@ -34,27 +65,49 @@ export const fileUpload: FileUpload = ({
     data: formData,
     onprogress: onProgress,
   }, isPublic, url)
-    .then((res: { id: string }) => {
-      onSuccessCallback(res)
+    .then((res) => {
+      onSuccessCallback(res as FileUploadResponse)
     })
-    .catch(() => {
-      onErrorCallback()
+    .catch((error) => {
+      onErrorCallback(error)
     })
 }
 
+const additionalExtensionMap = new Map<string, string[]>([
+  ['text/x-markdown', ['md']],
+])
+
 export const getFileExtension = (fileName: string, fileMimetype: string, isRemote?: boolean) => {
   let extension = ''
-  if (fileMimetype)
-    extension = mime.getExtension(fileMimetype) || ''
+  let extensions = new Set<string>()
+  if (fileMimetype) {
+    const extensionsFromMimeType = mime.getAllExtensions(fileMimetype) || new Set<string>()
+    const additionalExtensions = additionalExtensionMap.get(fileMimetype) || []
+    extensions = new Set<string>([
+      ...extensionsFromMimeType,
+      ...additionalExtensions,
+    ])
+  }
 
-  if (fileName && !extension) {
+  let extensionInFileName = ''
+  if (fileName) {
     const fileNamePair = fileName.split('.')
     const fileNamePairLength = fileNamePair.length
 
-    if (fileNamePairLength > 1)
-      extension = fileNamePair[fileNamePairLength - 1]
-    else
-      extension = ''
+    if (fileNamePairLength > 1) {
+      extensionInFileName = fileNamePair[fileNamePairLength - 1].toLowerCase()
+      if (extensions.has(extensionInFileName))
+        extension = extensionInFileName
+    }
+  }
+  if (!extension) {
+    if (extensions.size > 0) {
+      const firstExtension = extensions.values().next().value
+      extension = firstExtension ? firstExtension.toLowerCase() : ''
+    }
+    else {
+      extension = extensionInFileName
+    }
   }
 
   if (isRemote)
@@ -126,6 +179,20 @@ export const getProcessedFiles = (files: FileEntity[]) => {
 
 export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
   return files.map((fileItem) => {
+    let supportFileType = fileItem.type
+
+    if (fileItem.filename && fileItem.mime_type) {
+      const detectedTypeFromFileName = getSupportFileType(fileItem.filename, '')
+      const detectedTypeFromMime = getSupportFileType('', fileItem.mime_type)
+
+      if (detectedTypeFromFileName
+        && detectedTypeFromMime
+        && detectedTypeFromFileName === detectedTypeFromMime
+        && detectedTypeFromFileName !== fileItem.type) {
+        supportFileType = detectedTypeFromFileName
+      }
+    }
+
     return {
       id: fileItem.related_id,
       name: fileItem.filename,
@@ -133,9 +200,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       type: fileItem.mime_type,
       progress: 100,
       transferMethod: fileItem.transfer_method,
-      supportFileType: fileItem.type,
+      supportFileType,
       uploadedId: fileItem.upload_file_id || fileItem.related_id,
-      url: fileItem.url,
+      url: fileItem.url || fileItem.remote_url,
     }
   })
 }
@@ -181,16 +248,4 @@ export const fileIsUploaded = (file: FileEntity) => {
 
   if (file.transferMethod === TransferMethod.remote_url && file.progress === 100)
     return true
-}
-
-export const downloadFile = (url: string, filename: string) => {
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.style.display = 'none'
-  anchor.target = '_blank'
-  anchor.title = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  document.body.removeChild(anchor)
 }

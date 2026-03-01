@@ -4,7 +4,6 @@ import time
 from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    get_example_text,
     setup_mock_redis,
 )
 

@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import Field
 from pydantic.fields import FieldInfo
@@ -15,22 +15,22 @@ class ApolloSettingsSourceInfo(BaseSettings):
     Packaging build information
     """
 
-    APOLLO_APP_ID: Optional[str] = Field(
+    APOLLO_APP_ID: str | None = Field(
         description="apollo app_id",
         default=None,
     )
 
-    APOLLO_CLUSTER: Optional[str] = Field(
+    APOLLO_CLUSTER: str | None = Field(
         description="apollo cluster",
         default=None,
     )
 
-    APOLLO_CONFIG_URL: Optional[str] = Field(
+    APOLLO_CONFIG_URL: str | None = Field(
         description="apollo config url",
         default=None,
     )
 
-    APOLLO_NAMESPACE: Optional[str] = Field(
+    APOLLO_NAMESPACE: str | None = Field(
         description="apollo namespace",
         default=None,
     )

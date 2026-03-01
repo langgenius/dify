@@ -1,24 +1,20 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import ConfigVision from '../_base/components/config-vision'
-import { findVariableWhenOnLLMVision } from '../utils'
-import useConfig from './use-config'
-import ClassList from './components/class-list'
-import AdvancedSetting from './components/advanced-setting'
 import type { QuestionClassifierNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import ConfigVision from '../_base/components/config-vision'
+import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import AdvancedSetting from './components/advanced-setting'
+import ClassList from './components/class-list'
+import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   id,
@@ -38,78 +34,28 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     hasSetBlockStatus,
     availableVars,
     availableNodesWithParent,
-    availableVisionVars,
     handleInstructionChange,
-    inputVarValues,
-    varInputs,
-    setInputVarValues,
     handleMemoryChange,
     isVisionModel,
     handleVisionResolutionChange,
     handleVisionResolutionEnabledChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
     filterVar,
-    visionFiles,
-    setVisionFiles,
+    handleSortTopic,
   } = useConfig(id, data)
 
   const model = inputs.model
 
-  const singleRunForms = (() => {
-    const forms: FormProps[] = []
-
-    forms.push(
-      {
-        label: t('workflow.nodes.llm.singleRun.variable')!,
-        inputs: [{
-          label: t(`${i18nPrefix}.inputVars`)!,
-          variable: 'query',
-          type: InputVarType.paragraph,
-          required: true,
-        }, ...varInputs],
-        values: inputVarValues,
-        onChange: setInputVarValues,
-      },
-    )
-
-    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
-      const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVisionVars)
-
-      forms.push(
-        {
-          label: t('workflow.nodes.llm.vision')!,
-          inputs: [{
-            label: currentVariable?.variable as any,
-            variable: '#files#',
-            type: currentVariable?.formType as any,
-            required: false,
-          }],
-          values: { '#files#': visionFiles },
-          onChange: keyValue => setVisionFiles(keyValue['#files#']),
-        },
-      )
-    }
-
-    return forms
-  })()
-
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4">
         <Field
-          title={t(`${i18nPrefix}.model`)}
+          title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
         >
           <ModelParameterModal
-            popupClassName='!w-[387px]'
+            popupClassName="!w-[387px]"
             isInWorkflow
             isAdvancedMode={true}
-            mode={model?.mode}
             provider={model?.provider}
             completionParams={model.completion_params}
             modelId={model.name}
@@ -121,7 +67,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.inputVars`)}
+          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
           required
         >
           <VarReferencePicker
@@ -143,22 +89,18 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           config={inputs.vision?.configs}
           onConfigChange={handleVisionResolutionChange}
         />
-        <Field
-          title={t(`${i18nPrefix}.class`)}
-          required
-        >
-          <ClassList
-            nodeId={id}
-            list={inputs.classes}
-            onChange={handleTopicsChange}
-            readonly={readOnly}
-            filterVar={filterVar}
-          />
-        </Field>
+        <ClassList
+          nodeId={id}
+          list={inputs.classes}
+          onChange={handleTopicsChange}
+          readonly={readOnly}
+          filterVar={filterVar}
+          handleSortTopic={handleSortTopic}
+        />
         <Split />
       </div>
       <FieldCollapse
-        title={t(`${i18nPrefix}.advancedSetting`)}
+        title={t(`${i18nPrefix}.advancedSetting`, { ns: 'workflow' })}
       >
         <AdvancedSetting
           hideMemorySetting={!isChatMode}
@@ -179,24 +121,18 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='class_name'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.className`)}
+              name="class_name"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.className`, { ns: 'workflow' })}
+            />
+            <VarItem
+              name="usage"
+              type="object"
+              description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
             />
           </>
         </OutputVars>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
 }

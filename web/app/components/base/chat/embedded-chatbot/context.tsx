@@ -1,7 +1,6 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
 import type {
   ChatConfig,
   ChatItem,
@@ -14,14 +13,14 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
+import { AppSourceType } from '@/service/share'
 
 export type EmbeddedChatbotContextValue = {
-  appInfoError?: any
-  appInfoLoading?: boolean
-  appMeta?: AppMeta
-  appData?: AppData
-  appParams?: ChatConfig
+  appMeta: AppMeta | null
+  appData: AppData | null
+  appParams: ChatConfig | null
   appChatListDataLoading?: boolean
   currentConversationId: string
   currentConversationItem?: ConversationItem
@@ -39,20 +38,31 @@ export type EmbeddedChatbotContextValue = {
   chatShouldReloadKey: string
   isMobile: boolean
   isInstalledApp: boolean
+  appSourceType: AppSourceType
   allowResetChat: boolean
   appId?: string
+  disableFeedback?: boolean
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
   clearChatList?: boolean
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
-  setIsResponding: (state: boolean) => void,
-  currentConversationInputs: Record<string, any> | null,
-  setCurrentConversationInputs: (v: Record<string, any>) => void,
+  setIsResponding: (state: boolean) => void
+  currentConversationInputs: Record<string, any> | null
+  setCurrentConversationInputs: (v: Record<string, any>) => void
+  allInputsHidden: boolean
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
+  appData: null,
+  appMeta: null,
+  appParams: null,
+  appChatListDataLoading: false,
   currentConversationId: '',
   appPrevChatList: [],
   pinnedConversationList: [],
@@ -67,6 +77,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
   isMobile: false,
+  appSourceType: AppSourceType.webApp,
   isInstalledApp: false,
   allowResetChat: true,
   handleFeedback: noop,
@@ -77,5 +88,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   setIsResponding: noop,
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
+  allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

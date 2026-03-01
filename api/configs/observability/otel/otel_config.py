@@ -12,6 +12,16 @@ class OTelConfig(BaseSettings):
         default=False,
     )
 
+    OTLP_TRACE_ENDPOINT: str = Field(
+        description="OTLP trace endpoint",
+        default="",
+    )
+
+    OTLP_METRIC_ENDPOINT: str = Field(
+        description="OTLP metric endpoint",
+        default="",
+    )
+
     OTLP_BASE_ENDPOINT: str = Field(
         description="OTLP base endpoint",
         default="http://localhost:4318",
@@ -25,6 +35,11 @@ class OTelConfig(BaseSettings):
     OTEL_EXPORTER_TYPE: str = Field(
         description="OTEL exporter type",
         default="otlp",
+    )
+
+    OTEL_EXPORTER_OTLP_PROTOCOL: str = Field(
+        description="OTLP exporter protocol ('grpc' or 'http')",
+        default="http",
     )
 
     OTEL_SAMPLING_RATE: float = Field(default=0.1, description="Sampling rate for traces (0.0 to 1.0)")

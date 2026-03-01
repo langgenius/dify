@@ -1,10 +1,10 @@
-import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'next/navigation'
-import style from '../page.module.css'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { apiPrefix } from '@/config'
-import classNames from '@/utils/classnames'
+import { API_PREFIX } from '@/config'
 import { getPurifyHref } from '@/utils'
+import { cn } from '@/utils/classnames'
+import style from '../page.module.css'
 
 type SocialAuthProps = {
   disabled?: boolean
@@ -15,48 +15,46 @@ export default function SocialAuth(props: SocialAuthProps) {
   const searchParams = useSearchParams()
 
   const getOAuthLink = (href: string) => {
-    const url = getPurifyHref(`${apiPrefix}${href}`)
+    const url = getPurifyHref(`${API_PREFIX}${href}`)
     if (searchParams.has('invite_token'))
       return `${url}?${searchParams.toString()}`
 
     return url
   }
-  return <>
-    <div className='w-full'>
-      <a href={getOAuthLink('/oauth/login/github')}>
-        <Button
-          disabled={props.disabled}
-          className='w-full'
-        >
-          <>
-            <span className={
-              classNames(
-                style.githubIcon,
-                'w-5 h-5 mr-2',
-              )
-            } />
-            <span className="truncate">{t('login.withGitHub')}</span>
-          </>
-        </Button>
-      </a>
-    </div>
-    <div className='w-full'>
-      <a href={getOAuthLink('/oauth/login/google')}>
-        <Button
-          disabled={props.disabled}
-          className='w-full'
-        >
-          <>
-            <span className={
-              classNames(
-                style.googleIcon,
-                'w-5 h-5 mr-2',
-              )
-            } />
-            <span className="truncate">{t('login.withGoogle')}</span>
-          </>
-        </Button>
-      </a>
-    </div>
-  </>
+  return (
+    <>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/github')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.githubIcon, 'mr-2 h-5 w-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('withGitHub', { ns: 'login' })}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/google')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.googleIcon, 'mr-2 h-5 w-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('withGoogle', { ns: 'login' })}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+    </>
+  )
 }

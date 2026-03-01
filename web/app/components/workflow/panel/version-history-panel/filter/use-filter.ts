@@ -7,11 +7,11 @@ export const useFilterOptions = () => {
   return [
     {
       key: WorkflowVersionFilterOptions.all,
-      name: t('workflow.versionHistory.filter.all'),
+      name: t('versionHistory.filter.all', { ns: 'workflow' }),
     },
     {
       key: WorkflowVersionFilterOptions.onlyYours,
-      name: t('workflow.versionHistory.filter.onlyYours'),
+      name: t('versionHistory.filter.onlyYours', { ns: 'workflow' }),
     },
   ]
 }

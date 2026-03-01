@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { WEB_PREFIX } from '@/config'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 
 type LogoSiteProps = {
   className?: string
@@ -12,9 +12,9 @@ const LogoSite: FC<LogoSiteProps> = ({
 }) => {
   return (
     <img
-      src={`${WEB_PREFIX}/logo/logo.png`}
-      className={classNames('block w-[22.651px] h-[24.5px]', className)}
-      alt='logo'
+      src={`${basePath}/logo/logo.png`}
+      className={cn('block h-[24.5px] w-[22.651px]', className)}
+      alt="logo"
     />
   )
 }

@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import yaml  # type: ignore
 from dotenv import dotenv_values
-from pathlib import Path
 
 BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "APP_MAX_EXECUTION_TIME",
@@ -98,23 +99,15 @@ with open(Path("docker") / Path("docker-compose.yaml")) as f:
 
 def test_yaml_config():
     # python set == operator is used to compare two sets
-    DIFF_API_WITH_DOCKER = (
-        API_CONFIG_SET - DOCKER_CONFIG_SET - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
-    )
+    DIFF_API_WITH_DOCKER = API_CONFIG_SET - DOCKER_CONFIG_SET - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
     if DIFF_API_WITH_DOCKER:
-        print(
-            f"API and Docker config sets are different with key: {DIFF_API_WITH_DOCKER}"
-        )
+        print(f"API and Docker config sets are different with key: {DIFF_API_WITH_DOCKER}")
         raise Exception("API and Docker config sets are different")
     DIFF_API_WITH_DOCKER_COMPOSE = (
-        API_CONFIG_SET
-        - DOCKER_COMPOSE_CONFIG_SET
-        - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
+        API_CONFIG_SET - DOCKER_COMPOSE_CONFIG_SET - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
     )
     if DIFF_API_WITH_DOCKER_COMPOSE:
-        print(
-            f"API and Docker Compose config sets are different with key: {DIFF_API_WITH_DOCKER_COMPOSE}"
-        )
+        print(f"API and Docker Compose config sets are different with key: {DIFF_API_WITH_DOCKER_COMPOSE}")
         raise Exception("API and Docker Compose config sets are different")
     print("All tests passed!")
 

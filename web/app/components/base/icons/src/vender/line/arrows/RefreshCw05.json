@@ -1,29 +1,29 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M5.69773 13.1783C7.29715 13.8879 9.20212 13.8494 10.8334 12.9075C13.5438 11.3427 14.4724 7.87704 12.9076 5.16672L12.7409 4.87804M3.09233 10.8335C1.52752 8.12314 2.45615 4.65746 5.16647 3.09265C6.7978 2.15081 8.70277 2.11227 10.3022 2.82185M1.66226 10.8892L3.48363 11.3773L3.97166 9.5559M12.0284 6.44393L12.5164 4.62256L14.3378 5.1106",
-					"stroke": "currentColor",
-					"stroke-width": "1.5",
-					"stroke-linecap": "round",
-					"stroke-linejoin": "round"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "RefreshCw05"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M5.69773 13.1783C7.29715 13.8879 9.20212 13.8494 10.8334 12.9075C13.5438 11.3427 14.4724 7.87704 12.9076 5.16672L12.7409 4.87804M3.09233 10.8335C1.52752 8.12314 2.45615 4.65746 5.16647 3.09265C6.7978 2.15081 8.70277 2.11227 10.3022 2.82185M1.66226 10.8892L3.48363 11.3773L3.97166 9.5559M12.0284 6.44393L12.5164 4.62256L14.3378 5.1106",
+          "stroke": "currentColor",
+          "stroke-width": "1.5",
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "RefreshCw05"
 }

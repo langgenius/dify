@@ -25,7 +25,7 @@ class PromptTemplateParser:
         self.regex = WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX
         self.variable_keys = self.extract()
 
-    def extract(self) -> list:
+    def extract(self):
         # Regular expression to match the template rules
         return re.findall(self.regex, self.template)
 

@@ -1,5 +1,3 @@
-@use '../../themes/light';
-@use '../../themes/dark';
 @use '../../themes/markdown-light';
 @use '../../themes/markdown-dark';
 
@@ -856,6 +854,18 @@
 
 .markdown-body .pl-c {
   color: var(--color-prettylights-syntax-comment);
+}
+
+.markdown-body .katex {
+  /* Allow long inline formulas to wrap instead of overflowing */
+  white-space: normal !important;
+  overflow-wrap: break-word; /* better cross-browser support */
+  word-break: break-word;   /* non-standard fallback for older WebKit/Blink */
+}
+
+.markdown-body .katex-display {
+  /* Fallback for very long display equations */
+  overflow-x: auto;
 }
 
 .markdown-body .pl-c1,

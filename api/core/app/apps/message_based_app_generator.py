@@ -1,18 +1,23 @@
 import json
 import logging
-from collections.abc import Generator
-from datetime import UTC, datetime
-from typing import Optional, Union, cast
+from collections.abc import Callable, Generator, Mapping
+from typing import Union, cast
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.streaming_utils import stream_topic_events
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
     AppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    ConversationAppGenerateEntity,
     InvokeFrom,
 )
 from core.app.entities.task_entities import (
@@ -24,11 +29,15 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
+from extensions.ext_redis import get_pubsub_broadcast_channel
+from libs.broadcast_channel.channel import Topic
+from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
+from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -76,16 +85,15 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(f"Failed to handle response, conversation_id: {conversation.id}")
+                logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
+    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
         if conversation:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .filter(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
-                .first()
+            stmt = select(AppModelConfig).where(
+                AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
+            app_model_config = db.session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -108,7 +116,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AgentChatAppGenerateEntity,
             AdvancedChatAppGenerateEntity,
         ],
-        conversation: Optional[Conversation] = None,
+        conversation: Conversation | None = None,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -149,87 +157,94 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         introduction = self._get_conversation_introduction(application_generate_entity)
 
         # get conversation name
-        if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
-            query = application_generate_entity.query or "New conversation"
-        else:
-            query = next(iter(application_generate_entity.inputs.values()), "New conversation")
-            if isinstance(query, int):
-                query = str(query)
-        query = query or "New conversation"
+        query = application_generate_entity.query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
-        if not conversation:
-            conversation = Conversation(
+        created_new_conversation = conversation is None
+        try:
+            if not conversation:
+                conversation = Conversation(
+                    app_id=app_config.app_id,
+                    app_model_config_id=app_model_config_id,
+                    model_provider=model_provider,
+                    model_id=model_id,
+                    override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
+                    mode=app_config.app_mode.value,
+                    name=conversation_name,
+                    inputs=application_generate_entity.inputs,
+                    introduction=introduction,
+                    system_instruction="",
+                    system_instruction_tokens=0,
+                    status="normal",
+                    invoke_from=application_generate_entity.invoke_from.value,
+                    from_source=from_source,
+                    from_end_user_id=end_user_id,
+                    from_account_id=account_id,
+                )
+
+                db.session.add(conversation)
+                db.session.flush()
+                db.session.refresh(conversation)
+            else:
+                conversation.updated_at = naive_utc_now()
+
+            message = Message(
                 app_id=app_config.app_id,
-                app_model_config_id=app_model_config_id,
                 model_provider=model_provider,
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
-                mode=app_config.app_mode.value,
-                name=conversation_name,
+                conversation_id=conversation.id,
                 inputs=application_generate_entity.inputs,
-                introduction=introduction,
-                system_instruction="",
-                system_instruction_tokens=0,
-                status="normal",
+                query=application_generate_entity.query,
+                message="",
+                message_tokens=0,
+                message_unit_price=0,
+                message_price_unit=0,
+                answer="",
+                answer_tokens=0,
+                answer_unit_price=0,
+                answer_price_unit=0,
+                parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
+                provider_response_latency=0,
+                total_price=0,
+                currency="USD",
                 invoke_from=application_generate_entity.invoke_from.value,
                 from_source=from_source,
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
+                app_mode=app_config.app_mode,
             )
 
-            db.session.add(conversation)
-            db.session.commit()
-            db.session.refresh(conversation)
-        else:
-            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
+            db.session.add(message)
+            db.session.flush()
+            db.session.refresh(message)
 
-        message = Message(
-            app_id=app_config.app_id,
-            model_provider=model_provider,
-            model_id=model_id,
-            override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
-            conversation_id=conversation.id,
-            inputs=application_generate_entity.inputs,
-            query=application_generate_entity.query or "",
-            message="",
-            message_tokens=0,
-            message_unit_price=0,
-            message_price_unit=0,
-            answer="",
-            answer_tokens=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
-            parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
-            provider_response_latency=0,
-            total_price=0,
-            currency="USD",
-            invoke_from=application_generate_entity.invoke_from.value,
-            from_source=from_source,
-            from_end_user_id=end_user_id,
-            from_account_id=account_id,
-        )
+            message_files = []
+            for file in application_generate_entity.files:
+                message_file = MessageFile(
+                    message_id=message.id,
+                    type=file.type,
+                    transfer_method=file.transfer_method,
+                    belongs_to="user",
+                    url=file.remote_url,
+                    upload_file_id=file.related_id,
+                    created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
+                    created_by=account_id or end_user_id or "",
+                )
+                message_files.append(message_file)
 
-        db.session.add(message)
-        db.session.commit()
-        db.session.refresh(message)
+            if message_files:
+                db.session.add_all(message_files)
 
-        for file in application_generate_entity.files:
-            message_file = MessageFile(
-                message_id=message.id,
-                type=file.type,
-                transfer_method=file.transfer_method,
-                belongs_to="user",
-                url=file.remote_url,
-                upload_file_id=file.related_id,
-                created_by_role=(CreatedByRole.ACCOUNT if account_id else CreatedByRole.END_USER),
-                created_by=account_id or end_user_id or "",
-            )
-            db.session.add(message_file)
             db.session.commit()
 
-        return conversation, message
+            if isinstance(application_generate_entity, ConversationAppGenerateEntity):
+                application_generate_entity.conversation_id = conversation.id
+                application_generate_entity.is_new_conversation = created_new_conversation
+            return conversation, message
+        except Exception:
+            db.session.rollback()
+            raise
 
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:
         """
@@ -251,25 +266,56 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         return introduction or ""
 
-    def _get_conversation(self, conversation_id: str):
+    def _get_conversation(self, conversation_id: str) -> Conversation:
         """
         Get conversation by conversation id
         :param conversation_id: conversation id
         :return: conversation
         """
-        conversation = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id))
 
         if not conversation:
-            raise ConversationNotExistsError()
+            raise ConversationNotExistsError("Conversation not exists")
 
         return conversation
 
-    def _get_message(self, message_id: str) -> Optional[Message]:
+    def _get_message(self, message_id: str) -> Message:
         """
         Get message by message id
         :param message_id: message id
         :return: message
         """
-        message = db.session.query(Message).filter(Message.id == message_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message = session.scalar(select(Message).where(Message.id == message_id))
+
+        if message is None:
+            raise MessageNotExistsError("Message not exists")
 
         return message
+
+    @staticmethod
+    def _make_channel_key(app_mode: AppMode, workflow_run_id: str):
+        return f"channel:{app_mode}:{workflow_run_id}"
+
+    @classmethod
+    def get_response_topic(cls, app_mode: AppMode, workflow_run_id: str) -> Topic:
+        key = cls._make_channel_key(app_mode, workflow_run_id)
+        channel = get_pubsub_broadcast_channel()
+        topic = channel.topic(key)
+        return topic
+
+    @classmethod
+    def retrieve_events(
+        cls,
+        app_mode: AppMode,
+        workflow_run_id: str,
+        idle_timeout=300,
+        on_subscribe: Callable[[], None] | None = None,
+    ) -> Generator[Mapping | str, None, None]:
+        topic = cls.get_response_topic(app_mode, workflow_run_id)
+        return stream_topic_events(
+            topic=topic,
+            idle_timeout=idle_timeout,
+            on_subscribe=on_subscribe,
+        )

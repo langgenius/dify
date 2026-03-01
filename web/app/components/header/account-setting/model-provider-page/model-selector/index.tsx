@@ -1,21 +1,22 @@
 import type { FC } from 'react'
-import { useState } from 'react'
 import type {
   DefaultModel,
   Model,
+  ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useCurrentProviderAndModel } from '../hooks'
-import ModelTrigger from './model-trigger'
-import EmptyTrigger from './empty-trigger'
-import DeprecatedModelTrigger from './deprecated-model-trigger'
-import Popup from './popup'
+import { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import { useCurrentProviderAndModel } from '../hooks'
+import DeprecatedModelTrigger from './deprecated-model-trigger'
+import EmptyTrigger from './empty-trigger'
+import ModelTrigger from './model-trigger'
+import Popup from './popup'
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -24,7 +25,7 @@ type ModelSelectorProps = {
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
   readonly?: boolean
-  scopeFeatures?: string[]
+  scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
 }
@@ -66,13 +67,13 @@ const ModelSelector: FC<ModelSelectorProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={4}
     >
-      <div className={classNames('relative')}>
+      <div className={cn('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
-          className='block'
+          className="block"
         >
           {
             currentModel && currentProvider && (

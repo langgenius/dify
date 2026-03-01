@@ -1,31 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
 import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
-import { ChangeType, VarType } from '../../types'
-import { useStore } from '../../store'
+import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { AppModeEnum } from '@/types/app'
+import { supportFunctionCall } from '@/utils/tool-call'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import useOneStepRun from '../_base/hooks/use-one-step-run'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { supportFunctionCall } from '@/utils/tool-call'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useStore } from '../../store'
+import { ChangeType, VarType } from '../../types'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+  } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
 
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
   const inputRef = useRef(inputs)
 
@@ -59,9 +64,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     })
     setInputs(newInputs)
 
-    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload)
+    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload) {
       handleOutVarRenameChange(id, [id, moreInfo.payload.beforeKey], [id, moreInfo.payload.afterKey!])
-  }, [handleOutVarRenameChange, id, inputs, setInputs])
+      renameInspectVarName(id, moreInfo.payload.beforeKey, moreInfo.payload.afterKey!)
+    }
+    else {
+      deleteNodeInspectorVars(id)
+    }
+  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, renameInspectVarName, setInputs])
 
   const addExtractParameter = useCallback((payload: Param) => {
     const newInputs = produce(inputs, (draft) => {
@@ -70,19 +80,20 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       draft.parameters.push(payload)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, id, inputs, setInputs])
 
   // model
   const model = inputs.model || {
     provider: '',
     name: '',
-    mode: 'chat',
+    mode: AppModeEnum.CHAT,
     completion_params: {
       temperature: 0.7,
     },
   }
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
   const isCompletionModel = !isChatModel
 
   const {
@@ -116,14 +127,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     currentModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputRef.current.model?.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
     })
     setInputs(newInputs)
     setModelChanged(true)
@@ -145,7 +156,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const {
@@ -163,23 +173,12 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     return [VarType.number, VarType.string].includes(varPayload.type)
   }, [])
 
-  const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
-  }, [])
-
   const {
     availableVars,
     availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: filterInputVar,
-  })
-
-  const {
-    availableVars: availableVisionVars,
-  } = useAvailableVarList(id, {
-    onlyLeafNodeVar: false,
-    filterVar: filterVisionInputVar,
   })
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
@@ -223,49 +222,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    runInputDataRef,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<ParameterExtractorNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      'query': '',
-      '#files#': [],
-    },
-  })
-
-  const varInputs = getInputVars([inputs.instruction])
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
-
-  const visionFiles = runInputData['#files#']
-  const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#files#': newFiles,
-    })
-  }, [runInputDataRef, setRunInputData])
-
   return {
     readOnly,
     handleInputVarChange,
@@ -283,24 +239,12 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     hasSetBlockStatus,
     availableVars,
     availableNodesWithParent,
-    availableVisionVars,
     isSupportFunctionCall,
     handleReasoningModeChange,
     handleMemoryChange,
-    varInputs,
-    inputVarValues,
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
   }
 }
 

@@ -1,27 +1,25 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type {
   Callback,
   ChatConfig,
   ChatItemInTree,
   Feedback,
 } from '../types'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type {
   AppConversationData,
   AppData,
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
 
 export type ChatWithHistoryContextValue = {
-  appInfoError?: any
-  appInfoLoading?: boolean
-  appMeta?: AppMeta
-  appData?: AppData
+  appMeta?: AppMeta | null
+  appData?: AppData | null
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -54,9 +52,14 @@ export type ChatWithHistoryContextValue = {
   clearChatList?: boolean
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
-  setIsResponding: (state: boolean) => void,
-  currentConversationInputs: Record<string, any> | null,
-  setCurrentConversationInputs: (v: Record<string, any>) => void,
+  setIsResponding: (state: boolean) => void
+  currentConversationInputs: Record<string, any> | null
+  setCurrentConversationInputs: (v: Record<string, any>) => void
+  allInputsHidden: boolean
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -90,5 +93,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setIsResponding: noop,
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
+  allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

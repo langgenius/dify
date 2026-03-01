@@ -1,16 +1,16 @@
-import environs
+import os
 
 from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStore, LindormVectorStoreConfig
 from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
 
-env = environs.Env()
-
 
 class Config:
-    SEARCH_ENDPOINT = env.str("SEARCH_ENDPOINT", "http://ld-************-proxy-search-pub.lindorm.aliyuncs.com:30070")
-    SEARCH_USERNAME = env.str("SEARCH_USERNAME", "ADMIN")
-    SEARCH_PWD = env.str("SEARCH_PWD", "ADMIN")
-    USING_UGC = env.bool("USING_UGC", True)
+    SEARCH_ENDPOINT = os.environ.get(
+        "SEARCH_ENDPOINT", "http://ld-************-proxy-search-pub.lindorm.aliyuncs.com:30070"
+    )
+    SEARCH_USERNAME = os.environ.get("SEARCH_USERNAME", "ADMIN")
+    SEARCH_PWD = os.environ.get("SEARCH_PWD", "ADMIN")
+    USING_UGC = os.environ.get("USING_UGC", "True").lower() == "true"
 
 
 class TestLindormVectorStore(AbstractVectorTest):

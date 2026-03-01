@@ -1,23 +1,24 @@
 import type { FC } from 'react'
+import type { DebugWithMultipleModelContextType } from './context'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { AppModeEnum } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
-import DebugItem from './debug-item'
 import {
   DebugWithMultipleModelContextProvider,
   useDebugWithMultipleModelContext,
 } from './context'
-import type { DebugWithMultipleModelContextType } from './context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
-import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useFeatures } from '@/app/components/base/features/hooks'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
+import DebugItem from './debug-item'
 
 const DebugWithMultipleModel = () => {
   const {
@@ -33,7 +34,7 @@ const DebugWithMultipleModel = () => {
   } = useDebugWithMultipleModelContext()
 
   const { eventEmitter } = useEventEmitterContextContext()
-  const isChatMode = mode === 'chat' || mode === 'agent-chat'
+  const isChatMode = mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT
 
   const handleSend = useCallback((message: string, files?: FileEntity[]) => {
     if (checkCanSend && !checkCanSend())
@@ -99,10 +100,18 @@ const DebugWithMultipleModel = () => {
   }, [twoLine, threeLine, fourLine])
 
   const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
-  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
+  const inputsForm = modelConfig.configs.prompt_variables
+    .filter(item => item.type !== 'api')
+    .map(item => ({
+      ...item,
+      label: item.name,
+      variable: item.key,
+      hide: item.hide ?? false,
+      required: item.required ?? false,
+    })) as InputForm[]
 
   return (
-    <div className='flex h-full flex-col'>
+    <div className="flex h-full flex-col">
       <div
         className={`
           relative mb-3 grow overflow-auto px-6
@@ -131,8 +140,9 @@ const DebugWithMultipleModel = () => {
         }
       </div>
       {isChatMode && (
-        <div className='shrink-0 px-6 pb-0'>
+        <div className="shrink-0 px-6 pb-0">
           <ChatInputArea
+            botName="Bot"
             showFeatureBar
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}

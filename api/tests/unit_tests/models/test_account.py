@@ -1,7 +1,7 @@
 from models.account import TenantAccountRole
 
 
-def test_account_is_privileged_role() -> None:
+def test_account_is_privileged_role():
     assert TenantAccountRole.ADMIN == "admin"
     assert TenantAccountRole.OWNER == "owner"
     assert TenantAccountRole.EDITOR == "editor"

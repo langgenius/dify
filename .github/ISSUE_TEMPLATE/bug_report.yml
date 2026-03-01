@@ -8,13 +8,15 @@ body:
       label: Self Checks
       description: "To make sure we get to you in time, please check the following :)"
       options:
+        - label: I have read the [Contributing Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) and [Language Policy](https://github.com/langgenius/dify/issues/1542).
+          required: true
         - label: This is only for bug report, if you would like to ask a question, please head to [Discussions](https://github.com/langgenius/dify/discussions/categories/general).
           required: true
         - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
           required: true
-        - label: I confirm that I am using English to submit this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
+        - label: I confirm that I am using English to submit this report, otherwise it will be closed.
           required: true
-        - label: "[FOR CHINESE USERS] 请务必使用英文提交 Issue，否则会被关闭。谢谢！:)"
+        - label: 【中文用户 & Non English User】请使用英语提交，否则会被关闭 ：）
           required: true
         - label: "Please do not modify this template :) and fill in all the required fields."
           required: true
@@ -42,20 +44,22 @@ body:
     attributes:
       label: Steps to reproduce
       description: We highly suggest including screenshots and a bug report log. Please use the right markdown syntax for code blocks.
-      placeholder: Having detailed steps helps us reproduce the bug.
+      placeholder: Having detailed steps helps us reproduce the bug. If you have logs, please use fenced code blocks (triple backticks ```) to format them.
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: ✔️ Expected Behavior
-      placeholder: What were you expecting?
+      description: Describe what you expected to happen.
+      placeholder: What were you expecting? Please do not copy and paste the steps to reproduce here.
     validations:
-      required: false
+      required: true
 
   - type: textarea
     attributes:
       label: ❌ Actual Behavior
-      placeholder: What happened instead?
+      description: Describe what actually happened.
+      placeholder: What happened instead? Please do not copy and paste the steps to reproduce here.
     validations:
       required: false

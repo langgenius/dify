@@ -1,32 +1,31 @@
 'use client'
+import type { CreateApiKeyResponse } from '@/models/app'
+import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
-import useSWR, { useSWRConfig } from 'swr'
-import SecretKeyGenerateModal from './secret-key-generate'
-import s from './style.module.css'
 import ActionButton from '@/app/components/base/action-button'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import Loading from '@/app/components/base/loading'
+import Modal from '@/app/components/base/modal'
+import { useAppContext } from '@/context/app-context'
+import useTimestamp from '@/hooks/use-timestamp'
 import {
   createApikey as createAppApikey,
   delApikey as delAppApikey,
-  fetchApiKeysList as fetchAppApiKeysList,
 } from '@/service/apps'
 import {
   createApikey as createDatasetApikey,
   delApikey as delDatasetApikey,
-  fetchApiKeysList as fetchDatasetApiKeysList,
 } from '@/service/datasets'
-import type { CreateApiKeyResponse } from '@/models/app'
-import Loading from '@/app/components/base/loading'
-import Confirm from '@/app/components/base/confirm'
-import useTimestamp from '@/hooks/use-timestamp'
-import { useAppContext } from '@/context/app-context'
+import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
+import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
+import SecretKeyGenerateModal from './secret-key-generate'
+import s from './style.module.css'
 
 type ISecretKeyModalProps = {
   isShow: boolean
@@ -45,12 +44,12 @@ const SecretKeyModal = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
-  const { mutate } = useSWRConfig()
-  const commonParams = appId
-    ? { url: `/apps/${appId}/api-keys`, params: {} }
-    : { url: '/datasets/api-keys', params: {} }
-  const fetchApiKeysList = appId ? fetchAppApiKeysList : fetchDatasetApiKeysList
-  const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
+  const invalidateAppApiKeys = useInvalidateAppApiKeys()
+  const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
+  const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useAppApiKeys(appId, { enabled: !!appId && isShow })
+  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({ enabled: !appId && isShow })
+  const apiKeysList = appId ? appApiKeys : datasetApiKeys
+  const isApiKeysLoading = appId ? isAppApiKeysLoading : isDatasetApiKeysLoading
 
   const [delKeyID, setDelKeyId] = useState('')
 
@@ -64,7 +63,10 @@ const SecretKeyModal = ({
       ? { url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} }
       : { url: `/datasets/api-keys/${delKeyID}`, params: {} }
     await delApikey(params)
-    mutate(commonParams)
+    if (appId)
+      invalidateAppApiKeys(appId)
+    else
+      invalidateDatasetApiKeys()
   }
 
   const onCreate = async () => {
@@ -75,7 +77,10 @@ const SecretKeyModal = ({
     const res = await createApikey(params)
     setVisible(true)
     setNewKey(res)
-    mutate(commonParams)
+    if (appId)
+      invalidateAppApiKeys(appId)
+    else
+      invalidateDatasetApiKeys()
   }
 
   const generateToken = (token: string) => {
@@ -83,26 +88,28 @@ const SecretKeyModal = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} flex flex-col px-8`}>
-      <XMarkIcon className={`absolute h-6 w-6 cursor-pointer text-text-tertiary ${s.close}`} onClick={onClose} />
-      <p className='mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
-      {!apiKeysList && <div className='mt-4'><Loading /></div>}
+    <Modal isShow={isShow} onClose={onClose} title={`${t('apiKeyModal.apiSecretKey', { ns: 'appApi' })}`} className={`${s.customModal} flex flex-col px-8`}>
+      <div className="-mr-2 -mt-6 mb-4 flex justify-end">
+        <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
+      </div>
+      <p className="mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
+      {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
       {
         !!apiKeysList?.data?.length && (
-          <div className='mt-4 flex grow flex-col overflow-hidden'>
-            <div className='flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary'>
-              <div className='w-64 shrink-0 px-3'>{t('appApi.apiKeyModal.secretKey')}</div>
-              <div className='w-[200px] shrink-0 px-3'>{t('appApi.apiKeyModal.created')}</div>
-              <div className='w-[200px] shrink-0 px-3'>{t('appApi.apiKeyModal.lastUsed')}</div>
-              <div className='grow px-3'></div>
+          <div className="mt-4 flex grow flex-col overflow-hidden">
+            <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
+              <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
+              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
+              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
+              <div className="grow px-3"></div>
             </div>
-            <div className='grow overflow-auto'>
+            <div className="grow overflow-auto">
               {apiKeysList.data.map(api => (
-                <div className='flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary' key={api.id}>
-                  <div className='w-64 shrink-0 truncate px-3 font-mono'>{generateToken(api.token)}</div>
-                  <div className='w-[200px] shrink-0 truncate px-3'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
-                  <div className='w-[200px] shrink-0 truncate px-3'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
-                  <div className='flex grow space-x-2 px-3'>
+                <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
+                  <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
+                  <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+                  <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
+                  <div className="flex grow space-x-2 px-3">
                     <CopyFeedback content={api.token} />
                     {isCurrentWorkspaceManager && (
                       <ActionButton
@@ -111,7 +118,7 @@ const SecretKeyModal = ({
                           setShowConfirmDelete(true)
                         }}
                       >
-                        <RiDeleteBinLine className='h-4 w-4' />
+                        <RiDeleteBinLine className="h-4 w-4" />
                       </ActionButton>
                     )}
                   </div>
@@ -121,17 +128,17 @@ const SecretKeyModal = ({
           </div>
         )
       }
-      <div className='flex'>
+      <div className="flex">
         <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-          <PlusIcon className='mr-1 flex h-4 w-4 shrink-0' />
-          <div className='text-xs font-medium text-text-secondary'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
+          <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
+          <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
         </Button>
       </div>
-      <SecretKeyGenerateModal className='shrink-0' isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
+      <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
       {showConfirmDelete && (
         <Confirm
-          title={`${t('appApi.actionMsg.deleteConfirmTitle')}`}
-          content={`${t('appApi.actionMsg.deleteConfirmTips')}`}
+          title={`${t('actionMsg.deleteConfirmTitle', { ns: 'appApi' })}`}
+          content={`${t('actionMsg.deleteConfirmTips', { ns: 'appApi' })}`}
           isShow={showConfirmDelete}
           onConfirm={onDel}
           onCancel={() => {
@@ -140,7 +147,7 @@ const SecretKeyModal = ({
           }}
         />
       )}
-    </Modal >
+    </Modal>
   )
 }
 

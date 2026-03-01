@@ -1,17 +1,15 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from decimal import Decimal
+from textwrap import dedent
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from configs import dify_config
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
-from core.helper.code_executor.code_node_provider import CodeNodeProvider
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
-from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
-from core.variables.segments import ArrayFileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.code.entities import CodeLanguage, CodeNodeData
+from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.variables.segments import ArrayFileSegment
+from core.workflow.variables.types import SegmentType
 
 from .exc import (
     CodeNodeError,
@@ -19,13 +17,84 @@ from .exc import (
     OutputValidationError,
 )
 
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
-class CodeNode(BaseNode[CodeNodeData]):
-    _node_data_cls = CodeNodeData
-    _node_type = NodeType.CODE
+
+class WorkflowCodeExecutor(Protocol):
+    def execute(
+        self,
+        *,
+        language: CodeLanguage,
+        code: str,
+        inputs: Mapping[str, Any],
+    ) -> Mapping[str, Any]: ...
+
+    def is_execution_error(self, error: Exception) -> bool: ...
+
+
+def _build_default_config(*, language: CodeLanguage, code: str) -> Mapping[str, object]:
+    return {
+        "type": "code",
+        "config": {
+            "variables": [
+                {"variable": "arg1", "value_selector": []},
+                {"variable": "arg2", "value_selector": []},
+            ],
+            "code_language": language,
+            "code": code,
+            "outputs": {"result": {"type": "string", "children": None}},
+        },
+    }
+
+
+_DEFAULT_CODE_BY_LANGUAGE: Mapping[CodeLanguage, str] = {
+    CodeLanguage.PYTHON3: dedent(
+        """
+        def main(arg1: str, arg2: str):
+            return {
+                "result": arg1 + arg2,
+            }
+        """
+    ),
+    CodeLanguage.JAVASCRIPT: dedent(
+        """
+        function main({arg1, arg2}) {
+            return {
+                result: arg1 + arg2
+            }
+        }
+        """
+    ),
+}
+
+
+class CodeNode(Node[CodeNodeData]):
+    node_type = NodeType.CODE
+    _limits: CodeNodeLimits
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        code_executor: WorkflowCodeExecutor,
+        code_limits: CodeNodeLimits,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._code_executor: WorkflowCodeExecutor = code_executor
+        self._limits = code_limits
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
         Get default config of node.
         :param filters: filter by node config parameters.
@@ -33,12 +102,16 @@ class CodeNode(BaseNode[CodeNodeData]):
         """
         code_language = CodeLanguage.PYTHON3
         if filters:
-            code_language = filters.get("code_language", CodeLanguage.PYTHON3)
+            code_language = cast(CodeLanguage, filters.get("code_language", CodeLanguage.PYTHON3))
 
-        providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
-        code_provider: type[CodeNodeProvider] = next(p for p in providers if p.is_accept_language(code_language))
+        default_code = _DEFAULT_CODE_BY_LANGUAGE.get(code_language)
+        if default_code is None:
+            raise CodeNodeError(f"Unsupported code language: {code_language}")
+        return _build_default_config(language=code_language, code=default_code)
 
-        return code_provider.get_default_config()
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         # Get code language
@@ -56,7 +129,7 @@ class CodeNode(BaseNode[CodeNodeData]):
                 variables[variable_name] = variable.to_object() if variable else None
         # Run code
         try:
-            result = CodeExecutor.execute_workflow_code_template(
+            result = self._code_executor.execute(
                 language=code_language,
                 code=code,
                 inputs=variables,
@@ -64,7 +137,13 @@ class CodeNode(BaseNode[CodeNodeData]):
 
             # Transform result
             result = self._transform_result(result=result, output_schema=self.node_data.outputs)
-        except (CodeExecutionError, CodeNodeError) as e:
+        except CodeNodeError as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+            )
+        except Exception as e:
+            if not self._code_executor.is_execution_error(e):
+                raise
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
             )
@@ -80,16 +159,20 @@ class CodeNode(BaseNode[CodeNodeData]):
         """
         if value is None:
             return None
-        if not isinstance(value, str):
-            raise OutputValidationError(f"Output variable `{variable}` must be a string")
 
-        if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
+        if len(value) > self._limits.max_string_length:
             raise OutputValidationError(
                 f"The length of output variable `{variable}` must be"
-                f" less than {dify_config.CODE_MAX_STRING_LENGTH} characters"
+                f" less than {self._limits.max_string_length} characters"
             )
 
         return value.replace("\x00", "")
+
+    def _check_boolean(self, value: bool | None, variable: str) -> bool | None:
+        if value is None:
+            return None
+
+        return value
 
     def _check_number(self, value: int | float | None, variable: str) -> int | float | None:
         """
@@ -100,21 +183,21 @@ class CodeNode(BaseNode[CodeNodeData]):
         """
         if value is None:
             return None
-        if not isinstance(value, int | float):
-            raise OutputValidationError(f"Output variable `{variable}` must be a number")
 
-        if value > dify_config.CODE_MAX_NUMBER or value < dify_config.CODE_MIN_NUMBER:
+        if value > self._limits.max_number or value < self._limits.min_number:
             raise OutputValidationError(
                 f"Output variable `{variable}` is out of range,"
-                f" it must be between {dify_config.CODE_MIN_NUMBER} and {dify_config.CODE_MAX_NUMBER}."
+                f" it must be between {self._limits.min_number} and {self._limits.max_number}."
             )
 
         if isinstance(value, float):
+            decimal_value = Decimal(str(value)).normalize()
+            precision = -decimal_value.as_tuple().exponent if decimal_value.as_tuple().exponent < 0 else 0  # type: ignore[operator]
             # raise error if precision is too high
-            if len(str(value).split(".")[1]) > dify_config.CODE_MAX_PRECISION:
+            if precision > self._limits.max_precision:
                 raise OutputValidationError(
                     f"Output variable `{variable}` has too high precision,"
-                    f" it must be less than {dify_config.CODE_MAX_PRECISION} digits."
+                    f" it must be less than {self._limits.max_precision} digits."
                 )
 
         return value
@@ -122,12 +205,15 @@ class CodeNode(BaseNode[CodeNodeData]):
     def _transform_result(
         self,
         result: Mapping[str, Any],
-        output_schema: Optional[dict[str, CodeNodeData.Output]],
+        output_schema: dict[str, CodeNodeData.Output] | None,
         prefix: str = "",
         depth: int = 1,
     ):
-        if depth > dify_config.CODE_MAX_DEPTH:
-            raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+        # TODO(QuantumGhost): Replace native Python lists with `Array*Segment` classes.
+        # Note that `_transform_result` may produce lists containing `None` values,
+        # which don't conform to the type requirements of `Array*Segment` classes.
+        if depth > self._limits.max_depth:
+            raise DepthLimitError(f"Depth limit {self._limits.max_depth} reached, object too deep.")
 
         transformed_result: dict[str, Any] = {}
         if output_schema is None:
@@ -140,6 +226,8 @@ class CodeNode(BaseNode[CodeNodeData]):
                         prefix=f"{prefix}.{output_name}" if prefix else output_name,
                         depth=depth + 1,
                     )
+                elif isinstance(output_value, bool):
+                    self._check_boolean(output_value, variable=f"{prefix}.{output_name}" if prefix else output_name)
                 elif isinstance(output_value, int | float):
                     self._check_number(
                         value=output_value, variable=f"{prefix}.{output_name}" if prefix else output_name
@@ -167,8 +255,11 @@ class CodeNode(BaseNode[CodeNodeData]):
                                     value=value,
                                     variable=f"{prefix}.{output_name}[{i}]" if prefix else f"{output_name}[{i}]",
                                 )
-                        elif isinstance(first_element, dict) and all(
-                            value is None or isinstance(value, dict) for value in output_value
+                        elif (
+                            isinstance(first_element, dict)
+                            and all(value is None or isinstance(value, dict) for value in output_value)
+                            or isinstance(first_element, list)
+                            and all(value is None or isinstance(value, list) for value in output_value)
                         ):
                             for i, value in enumerate(output_value):
                                 if value is not None:
@@ -196,7 +287,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             if output_name not in result:
                 raise OutputValidationError(f"Output {prefix}{dot}{output_name} is missing.")
 
-            if output_config.type == "object":
+            if output_config.type == SegmentType.OBJECT:
                 # check if output is object
                 if not isinstance(result.get(output_name), dict):
                     if result[output_name] is None:
@@ -213,39 +304,72 @@ class CodeNode(BaseNode[CodeNodeData]):
                         prefix=f"{prefix}.{output_name}",
                         depth=depth + 1,
                     )
-            elif output_config.type == "number":
+            elif output_config.type == SegmentType.NUMBER:
                 # check if number available
-                transformed_result[output_name] = self._check_number(
-                    value=result[output_name], variable=f"{prefix}{dot}{output_name}"
-                )
-            elif output_config.type == "string":
+                value = result.get(output_name)
+                if value is not None and not isinstance(value, (int, float)):
+                    raise OutputValidationError(
+                        f"Output {prefix}{dot}{output_name} is not a number,"
+                        f" got {type(result.get(output_name))} instead."
+                    )
+                checked = self._check_number(value=value, variable=f"{prefix}{dot}{output_name}")
+                # If the output is a boolean and the output schema specifies a NUMBER type,
+                # convert the boolean value to an integer.
+                #
+                # This ensures compatibility with existing workflows that may use
+                # `True` and `False` as values for NUMBER type outputs.
+                transformed_result[output_name] = self._convert_boolean_to_int(checked)
+
+            elif output_config.type == SegmentType.STRING:
                 # check if string available
+                value = result.get(output_name)
+                if value is not None and not isinstance(value, str):
+                    raise OutputValidationError(
+                        f"Output {prefix}{dot}{output_name} must be a string, got {type(value).__name__} instead"
+                    )
                 transformed_result[output_name] = self._check_string(
+                    value=value,
+                    variable=f"{prefix}{dot}{output_name}",
+                )
+            elif output_config.type == SegmentType.BOOLEAN:
+                transformed_result[output_name] = self._check_boolean(
                     value=result[output_name],
                     variable=f"{prefix}{dot}{output_name}",
                 )
-            elif output_config.type == "array[number]":
+            elif output_config.type == SegmentType.ARRAY_NUMBER:
                 # check if array of number available
-                if not isinstance(result[output_name], list):
-                    if result[output_name] is None:
+                value = result[output_name]
+                if not isinstance(value, list):
+                    if value is None:
                         transformed_result[output_name] = None
                     else:
                         raise OutputValidationError(
-                            f"Output {prefix}{dot}{output_name} is not an array,"
-                            f" got {type(result.get(output_name))} instead."
+                            f"Output {prefix}{dot}{output_name} is not an array, got {type(value)} instead."
                         )
                 else:
-                    if len(result[output_name]) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
+                    if len(value) > self._limits.max_number_array_length:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
+                            f" less than {self._limits.max_number_array_length} elements."
                         )
 
+                    for i, inner_value in enumerate(value):
+                        if not isinstance(inner_value, (int, float)):
+                            raise OutputValidationError(
+                                f"The element at index {i} of output variable `{prefix}{dot}{output_name}` must be"
+                                f" a number."
+                            )
+                        _ = self._check_number(value=inner_value, variable=f"{prefix}{dot}{output_name}[{i}]")
                     transformed_result[output_name] = [
-                        self._check_number(value=value, variable=f"{prefix}{dot}{output_name}[{i}]")
-                        for i, value in enumerate(result[output_name])
+                        # If the element is a boolean and the output schema specifies a `array[number]` type,
+                        # convert the boolean value to an integer.
+                        #
+                        # This ensures compatibility with existing workflows that may use
+                        # `True` and `False` as values for NUMBER type outputs.
+                        self._convert_boolean_to_int(v)
+                        for v in value
                     ]
-            elif output_config.type == "array[string]":
+            elif output_config.type == SegmentType.ARRAY_STRING:
                 # check if array of string available
                 if not isinstance(result[output_name], list):
                     if result[output_name] is None:
@@ -256,17 +380,17 @@ class CodeNode(BaseNode[CodeNodeData]):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    if len(result[output_name]) > dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
+                    if len(result[output_name]) > self._limits.max_string_array_length:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {dify_config.CODE_MAX_STRING_ARRAY_LENGTH} elements."
+                            f" less than {self._limits.max_string_array_length} elements."
                         )
 
                     transformed_result[output_name] = [
                         self._check_string(value=value, variable=f"{prefix}{dot}{output_name}[{i}]")
                         for i, value in enumerate(result[output_name])
                     ]
-            elif output_config.type == "array[object]":
+            elif output_config.type == SegmentType.ARRAY_OBJECT:
                 # check if array of object available
                 if not isinstance(result[output_name], list):
                     if result[output_name] is None:
@@ -277,10 +401,10 @@ class CodeNode(BaseNode[CodeNodeData]):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    if len(result[output_name]) > dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
+                    if len(result[output_name]) > self._limits.max_object_array_length:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements."
+                            f" less than {self._limits.max_object_array_length} elements."
                         )
 
                     for i, value in enumerate(result[output_name]):
@@ -304,6 +428,27 @@ class CodeNode(BaseNode[CodeNodeData]):
                         )
                         for i, value in enumerate(result[output_name])
                     ]
+            elif output_config.type == SegmentType.ARRAY_BOOLEAN:
+                # check if array of object available
+                value = result[output_name]
+                if not isinstance(value, list):
+                    if value is None:
+                        transformed_result[output_name] = None
+                    else:
+                        raise OutputValidationError(
+                            f"Output {prefix}{dot}{output_name} is not an array,"
+                            f" got {type(result.get(output_name))} instead."
+                        )
+                else:
+                    for i, inner_value in enumerate(value):
+                        if inner_value is not None and not isinstance(inner_value, bool):
+                            raise OutputValidationError(
+                                f"Output {prefix}{dot}{output_name}[{i}] is not a boolean,"
+                                f" got {type(inner_value)} instead."
+                            )
+                        _ = self._check_boolean(value=inner_value, variable=f"{prefix}{dot}{output_name}[{i}]")
+                    transformed_result[output_name] = value
+
             else:
                 raise OutputValidationError(f"Output type {output_config.type} is not supported.")
 
@@ -321,16 +466,30 @@ class CodeNode(BaseNode[CodeNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: CodeNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
+        _ = graph_config  # Explicitly mark as unused
+        # Create typed NodeData from dict
+        typed_node_data = CodeNodeData.model_validate(node_data)
+
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in node_data.variables
+            for variable_selector in typed_node_data.variables
         }
+
+    @property
+    def retry(self) -> bool:
+        return self.node_data.retry_config.retry_enabled
+
+    @staticmethod
+    def _convert_boolean_to_int(value: bool | int | float | None) -> int | float | None:
+        """This function convert boolean to integers when the output schema specifies a NUMBER type.
+
+        This ensures compatibility with existing workflows that may use
+        `True` and `False` as values for NUMBER type outputs.
+        """
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return int(value)
+        return value

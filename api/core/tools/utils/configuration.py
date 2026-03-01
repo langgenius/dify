@@ -1,119 +1,14 @@
+import contextlib
 from copy import deepcopy
 from typing import Any
 
-from pydantic import BaseModel
-
-from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
-from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-
-
-class ProviderConfigEncrypter(BaseModel):
-    tenant_id: str
-    config: list[BasicProviderConfig]
-    provider_type: str
-    provider_identity: str
-
-    def _deep_copy(self, data: dict[str, str]) -> dict[str, str]:
-        """
-        deep copy data
-        """
-        return deepcopy(data)
-
-    def encrypt(self, data: dict[str, str]) -> dict[str, str]:
-        """
-        encrypt tool credentials with tenant id
-
-        return a deep copy of credentials with encrypted values
-        """
-        data = self._deep_copy(data)
-
-        # get fields need to be decrypted
-        fields = dict[str, BasicProviderConfig]()
-        for credential in self.config:
-            fields[credential.name] = credential
-
-        for field_name, field in fields.items():
-            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
-                if field_name in data:
-                    encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name] or "")
-                    data[field_name] = encrypted
-
-        return data
-
-    def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
-        """
-        mask tool credentials
-
-        return a deep copy of credentials with masked values
-        """
-        data = self._deep_copy(data)
-
-        # get fields need to be decrypted
-        fields = dict[str, BasicProviderConfig]()
-        for credential in self.config:
-            fields[credential.name] = credential
-
-        for field_name, field in fields.items():
-            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
-                if field_name in data:
-                    if len(data[field_name]) > 6:
-                        data[field_name] = (
-                            data[field_name][:2] + "*" * (len(data[field_name]) - 4) + data[field_name][-2:]
-                        )
-                    else:
-                        data[field_name] = "*" * len(data[field_name])
-
-        return data
-
-    def decrypt(self, data: dict[str, str]) -> dict[str, str]:
-        """
-        decrypt tool credentials with tenant id
-
-        return a deep copy of credentials with decrypted values
-        """
-        cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id,
-            identity_id=f"{self.provider_type}.{self.provider_identity}",
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
-        )
-        cached_credentials = cache.get()
-        if cached_credentials:
-            return cached_credentials
-        data = self._deep_copy(data)
-        # get fields need to be decrypted
-        fields = dict[str, BasicProviderConfig]()
-        for credential in self.config:
-            fields[credential.name] = credential
-
-        for field_name, field in fields.items():
-            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
-                if field_name in data:
-                    try:
-                        # if the value is None or empty string, skip decrypt
-                        if not data[field_name]:
-                            continue
-
-                        data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
-                    except Exception:
-                        pass
-
-        cache.set(data)
-        return data
-
-    def delete_tool_credentials_cache(self):
-        cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id,
-            identity_id=f"{self.provider_type}.{self.provider_identity}",
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
-        )
-        cache.delete()
 
 
 class ToolParameterConfigurationManager:
@@ -129,7 +24,7 @@ class ToolParameterConfigurationManager:
 
     def __init__(
         self, tenant_id: str, tool_runtime: Tool, provider_name: str, provider_type: ToolProviderType, identity_id: str
-    ) -> None:
+    ):
         self.tenant_id = tenant_id
         self.tool_runtime = tool_runtime
         self.provider_name = provider_name
@@ -243,11 +138,9 @@ class ToolParameterConfigurationManager:
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
             ):
                 if parameter.name in parameters:
-                    try:
-                        has_secret_input = True
+                    has_secret_input = True
+                    with contextlib.suppress(Exception):
                         parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
-                    except Exception:
-                        pass
 
         if has_secret_input:
             cache.set(parameters)

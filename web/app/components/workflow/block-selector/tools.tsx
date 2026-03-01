@@ -1,40 +1,41 @@
-import {
-  memo,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 import type { BlockEnum, ToolWithProvider } from '../types'
-import IndexBar, { groupItems } from './index-bar'
-import type { ToolDefaultValue, ToolValue } from './types'
-import { ViewType } from './view-type-select'
-import Empty from '@/app/components/tools/add-tool-modal/empty'
+import type { ToolDefaultValue, ToolTypeEnum, ToolValue } from './types'
+import { memo, useMemo, useRef } from 'react'
+import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
-import ToolListTreeView from './tool/tool-list-tree-view/list'
+import { cn } from '@/utils/classnames'
+import IndexBar, { groupItems } from './index-bar'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
-import classNames from '@/utils/classnames'
+import ToolListTreeView from './tool/tool-list-tree-view/list'
+import { ViewType } from './view-type-select'
 
 type ToolsProps = {
-  showWorkflowEmpty: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]
   viewType: ViewType
   hasSearchText: boolean
+  toolType?: ToolTypeEnum
+  isAgent?: boolean
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
 }
-const Blocks = ({
-  showWorkflowEmpty,
+const Tools = ({
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   tools,
   viewType,
   hasSearchText,
+  toolType,
+  isAgent,
   className,
   indexBarClassName,
   selectedTools,
 }: ToolsProps) => {
-  const { t } = useTranslation()
+  // const tools: any = []
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
@@ -87,41 +88,41 @@ const Blocks = ({
   const toolRefs = useRef({})
 
   return (
-    <div className={classNames('p-1 max-w-[320px]', className)}>
-      {
-        !tools.length && !showWorkflowEmpty && (
-          <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
-        )
-      }
-      {!tools.length && showWorkflowEmpty && (
-        <div className='py-10'>
-          <Empty />
+    <div className={cn('max-w-[100%] p-1', className)}>
+      {!tools.length && !hasSearchText && (
+        <div className="py-10">
+          <Empty type={toolType!} isAgent={isAgent} />
         </div>
       )}
       {!!tools.length && (
-        isFlatView ? (
-          <ToolListFlatView
-            toolRefs={toolRefs}
-            letters={letters}
-            payload={listViewToolData}
-            isShowLetterIndex={isShowLetterIndex}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            selectedTools={selectedTools}
-          />
-        ) : (
-          <ToolListTreeView
-            payload={treeViewToolsData}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            selectedTools={selectedTools}
-          />
-        )
+        isFlatView
+          ? (
+              <ToolListFlatView
+                toolRefs={toolRefs}
+                letters={letters}
+                payload={listViewToolData}
+                isShowLetterIndex={isShowLetterIndex}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+                indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
+              />
+            )
+          : (
+              <ToolListTreeView
+                payload={treeViewToolsData}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+              />
+            )
       )}
-
-      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
     </div>
   )
 }
 
-export default memo(Blocks)
+export default memo(Tools)

@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import type { PluginDeclaration } from '../../types'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { InstallStep } from '../../types'
-import Install from './steps/install'
 import Installed from '../base/installed'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
+import Install from './steps/install'
 
 type Props = {
   step: InstallStep
-  onStepChange: (step: InstallStep) => void,
+  onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
   setIsInstalling: (isInstalling: boolean) => void
   onClose: () => void
-  uniqueIdentifier: string | null,
-  manifest: PluginDeclaration | null,
-  errorMsg: string | null,
-  onError: (errorMsg: string) => void,
+  uniqueIdentifier: string | null
+  manifest: PluginDeclaration | null
+  errorMsg: string | null
+  onError: (errorMsg: string) => void
 }
 
 const ReadyToInstall: FC<Props> = ({

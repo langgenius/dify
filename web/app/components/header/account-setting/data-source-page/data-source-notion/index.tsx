@@ -1,14 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import useSWR from 'swr'
+import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import NotionIcon from '@/app/components/base/notion-icon'
+import Toast from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
+import { useDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
-import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
-import { useAppContext } from '@/context/app-context'
-import { fetchNotionConnection } from '@/service/common'
-import NotionIcon from '@/app/components/base/notion-icon'
-import { noop } from 'lodash-es'
 
 const Icon: FC<{
   src: string
@@ -24,7 +26,7 @@ const Icon: FC<{
   )
 }
 type Props = {
-  workspaces: TDataSourceNotion[]
+  workspaces?: TDataSourceNotion[]
 }
 
 const DataSourceNotion: FC<Props> = ({
@@ -32,9 +34,14 @@ const DataSourceNotion: FC<Props> = ({
 }) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
-  const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
+  const { data: integrates } = useDataSourceIntegrates({
+    initialData: workspaces ? { data: workspaces } : undefined,
+  })
+  const { data } = useNotionConnection(canConnectNotion)
+  const { t } = useTranslation()
 
-  const connected = !!workspaces.length
+  const resolvedWorkspaces = integrates?.data ?? []
+  const connected = !!resolvedWorkspaces.length
 
   const handleConnectNotion = () => {
     if (!isCurrentWorkspaceManager)
@@ -51,9 +58,19 @@ const DataSourceNotion: FC<Props> = ({
   }
 
   useEffect(() => {
-    if (data?.data)
-      window.location.href = data.data
-  }, [data])
+    if (data && 'data' in data) {
+      if (data.data && typeof data.data === 'string' && data.data.startsWith('http')) {
+        window.location.href = data.data
+      }
+      else if (data.data === 'internal') {
+        Toast.notify({
+          type: 'info',
+          message: t('dataSource.notion.integratedAlert', { ns: 'common' }),
+        })
+      }
+    }
+  }, [data, t])
+
   return (
     <Panel
       type={DataSourceType.notion}
@@ -61,14 +78,15 @@ const DataSourceNotion: FC<Props> = ({
       onConfigure={handleConnectNotion}
       readOnly={!isCurrentWorkspaceManager}
       isSupportList
-      configuredList={workspaces.map(workspace => ({
+      configuredList={resolvedWorkspaces.map(workspace => ({
         id: workspace.id,
         logo: ({ className }: { className: string }) => (
           <Icon
             src={workspace.source_info.workspace_icon!}
             name={workspace.source_info.workspace_name}
             className={className}
-          />),
+          />
+        ),
         name: workspace.source_info.workspace_name,
         isActive: workspace.is_bound,
         notionConfig: {

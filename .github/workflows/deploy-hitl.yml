@@ -1,0 +1,25 @@
+name: Deploy HITL
+
+on:
+  workflow_run:
+    workflows: ["Build and Push API & Web"]
+    branches:
+      - "build/feat/hitl"
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'build/feat/hitl'
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HITL_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}

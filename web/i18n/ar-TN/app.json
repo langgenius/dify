@@ -1,0 +1,283 @@
+{
+  "accessControl": "التحكم في الوصول إلى تطبيق الويب",
+  "accessControlDialog.accessItems.anyone": "أي شخص لديه الرابط",
+  "accessControlDialog.accessItems.external": "المستخدمون الخارجيون Authenticated",
+  "accessControlDialog.accessItems.organization": "جميع الأعضاء داخل المنصة",
+  "accessControlDialog.accessItems.specific": "أعضاء محددون داخل المنصة",
+  "accessControlDialog.accessLabel": "من لديه حق الوصول",
+  "accessControlDialog.description": "تعيين أذونات الوصول إلى تطبيق الويب",
+  "accessControlDialog.groups_one": "{{count}} مجموعة",
+  "accessControlDialog.groups_other": "{{count}} مجموعات",
+  "accessControlDialog.members_one": "{{count}} عضو",
+  "accessControlDialog.members_other": "{{count}} أعضاء",
+  "accessControlDialog.noGroupsOrMembers": "لم يتم تحديد مجموعات أو أعضاء",
+  "accessControlDialog.operateGroupAndMember.allMembers": "جميع الأعضاء",
+  "accessControlDialog.operateGroupAndMember.expand": "توسيع",
+  "accessControlDialog.operateGroupAndMember.noResult": "لا توجد نتائج",
+  "accessControlDialog.operateGroupAndMember.searchPlaceholder": "بحث عن مجموعات وأعضاء",
+  "accessControlDialog.title": "التحكم في الوصول إلى تطبيق الويب",
+  "accessControlDialog.updateSuccess": "تم التحديث بنجاح",
+  "accessControlDialog.webAppSSONotEnabledTip": "الرجاء الاتصال بمسؤول المؤسسة لتكوين المصادقة الخارجية لتطبيق الويب.",
+  "accessItemsDescription.anyone": "يمكن لأي شخص الوصول إلى تطبيق الويب (لا يلزم تسجيل الدخول)",
+  "accessItemsDescription.external": "يمكن فقط للمستخدمين الخارجيين authenticated الوصول إلى تطبيق الويب",
+  "accessItemsDescription.organization": "يمكن لجميع الأعضاء داخل المنصة الوصول إلى تطبيق الويب",
+  "accessItemsDescription.specific": "يمكن فقط لأعضاء محددين داخل المنصة الوصول إلى تطبيق الويب",
+  "answerIcon.description": "ما إذا كان سيتم استخدام أيقونة تطبيق الويب لاستبدال 🤖 في التطبيق المشترك",
+  "answerIcon.descriptionInExplore": "ما إذا كان سيتم استخدام أيقونة تطبيق الويب لاستبدال 🤖 في الاستكشاف",
+  "answerIcon.title": "استخدم أيقونة تطبيق الويب لاستبدال 🤖",
+  "appDeleteFailed": "فشل حذف التطبيق",
+  "appDeleted": "تم حذف التطبيق",
+  "appNamePlaceholder": "اعطِ تطبيقك اسمًا",
+  "appSelector.label": "تطبيق",
+  "appSelector.noParams": "لا توجد معلمات مطلوبة",
+  "appSelector.params": "معلمات التطبيق",
+  "appSelector.placeholder": "اختر تطبيقًا...",
+  "communityIntro": "ناقش مع أعضاء الفريق والمساهمين والمطورين على قنوات مختلفة.",
+  "createApp": "إنشاء تطبيق",
+  "createFromConfigFile": "إنشاء من ملف DSL",
+  "deleteAppConfirmContent": "حذف التطبيق لا رجعة فيه. لن يتمكن المستخدمون من الوصول إلى تطبيقك بعد الآن، وسيتم حذف جميع تكوينات المطالبة والسجلات بشكل دائم.",
+  "deleteAppConfirmTitle": "حذف هذا التطبيق؟",
+  "dslUploader.browse": "تصفح",
+  "dslUploader.button": "اسحب وأفلت الملف، أو",
+  "duplicate": "نسخ",
+  "duplicateTitle": "نسخ التطبيق",
+  "editApp": "تعديل المعلومات",
+  "editAppTitle": "تعديل معلومات التطبيق",
+  "editDone": "تم تحديث معلومات التطبيق",
+  "editFailed": "فشل تحديث معلومات التطبيق",
+  "export": "تصدير DSL",
+  "exportFailed": "فشل تصدير DSL.",
+  "gotoAnything.actions.accountDesc": "الانتقال إلى صفحة الحساب",
+  "gotoAnything.actions.communityDesc": "فتح مجتمع Discord",
+  "gotoAnything.actions.docDesc": "فتح وثائق المساعدة",
+  "gotoAnything.actions.feedbackDesc": "فتح مناقشات ملاحظات المجتمع",
+  "gotoAnything.actions.languageCategoryDesc": "تبديل لغة الواجهة",
+  "gotoAnything.actions.languageCategoryTitle": "اللغة",
+  "gotoAnything.actions.languageChangeDesc": "تغيير لغة واجهة المستخدم",
+  "gotoAnything.actions.runDesc": "تشغيل أوامر سريعة (السمة، اللغة، ...)",
+  "gotoAnything.actions.runTitle": "أوامر",
+  "gotoAnything.actions.searchApplications": "بحث في التطبيقات",
+  "gotoAnything.actions.searchApplicationsDesc": "البحث والانتقال إلى تطبيقاتك",
+  "gotoAnything.actions.searchKnowledgeBases": "بحث في قواعد المعرفة",
+  "gotoAnything.actions.searchKnowledgeBasesDesc": "البحث والانتقال إلى قواعد المعرفة الخاصة بك",
+  "gotoAnything.actions.searchPlugins": "بحث في الإضافات",
+  "gotoAnything.actions.searchPluginsDesc": "البحث والانتقال إلى إضافاتك",
+  "gotoAnything.actions.searchWorkflowNodes": "بحث في عقد سير العمل",
+  "gotoAnything.actions.searchWorkflowNodesDesc": "البحث والانتقال إلى العقد في سير العمل الحالي بالاسم أو النوع",
+  "gotoAnything.actions.searchWorkflowNodesHelp": "هذه الميزة تعمل فقط عند عرض سير العمل. انتقل إلى سير العمل أولاً.",
+  "gotoAnything.actions.slashDesc": "تنفيذ الأوامر (اكتب / لرؤية جميع الأوامر المتاحة)",
+  "gotoAnything.actions.slashTitle": "الأوامر",
+  "gotoAnything.actions.themeCategoryDesc": "تبديل سمة التطبيق",
+  "gotoAnything.actions.themeCategoryTitle": "السمة",
+  "gotoAnything.actions.themeDark": "السمة الداكنة",
+  "gotoAnything.actions.themeDarkDesc": "استخدم المظهر الداكن",
+  "gotoAnything.actions.themeLight": "السمة الفاتحة",
+  "gotoAnything.actions.themeLightDesc": "استخدم المظهر الفاتح",
+  "gotoAnything.actions.themeSystem": "سمة النظام",
+  "gotoAnything.actions.themeSystemDesc": "اتبع مظهر نظام التشغيل",
+  "gotoAnything.actions.zenDesc": "تبديل وضع التركيز على اللوحة",
+  "gotoAnything.actions.zenTitle": "وضع Zen",
+  "gotoAnything.clearToSearchAll": "امسح @ للبحث في الكل",
+  "gotoAnything.commandHint": "اكتب @ للتصفح حسب الفئة",
+  "gotoAnything.emptyState.noAppsFound": "لم يتم العثور على تطبيقات",
+  "gotoAnything.emptyState.noKnowledgeBasesFound": "لم يتم العثور على قواعد معرفة",
+  "gotoAnything.emptyState.noPluginsFound": "لم يتم العثور على إضافات",
+  "gotoAnything.emptyState.noWorkflowNodesFound": "لم يتم العثور على عقد سير عمل",
+  "gotoAnything.emptyState.tryDifferentTerm": "جرب مصطلح بحث مختلف",
+  "gotoAnything.emptyState.trySpecificSearch": "جرب {{shortcuts}} لعمليات بحث محددة",
+  "gotoAnything.groups.apps": "تطبيقات",
+  "gotoAnything.groups.commands": "أوامر",
+  "gotoAnything.groups.knowledgeBases": "قواعد المعرفة",
+  "gotoAnything.groups.plugins": "إضافات",
+  "gotoAnything.groups.workflowNodes": "عقد سير العمل",
+  "gotoAnything.inScope": "في {{scope}}",
+  "gotoAnything.noMatchingCommands": "لم يتم العثور على أوامر مطابقة",
+  "gotoAnything.noResults": "لم يتم العثور على نتائج",
+  "gotoAnything.pressEscToClose": "اضغط ESC للإغلاق",
+  "gotoAnything.resultCount": "{{count}} نتيجة",
+  "gotoAnything.resultCount_other": "{{count}} نتائج",
+  "gotoAnything.searchFailed": "فشل البحث",
+  "gotoAnything.searchHint": "ابدأ الكتابة للبحث عن كل شيء على الفور",
+  "gotoAnything.searchPlaceholder": "ابحث أو اكتب @ أو / للأوامر...",
+  "gotoAnything.searchTemporarilyUnavailable": "البحث غير متاح مؤقتًا",
+  "gotoAnything.searchTitle": "ابحث عن أي شيء",
+  "gotoAnything.searching": "جاري البحث...",
+  "gotoAnything.selectSearchType": "اختر ما تريد البحث عنه",
+  "gotoAnything.selectToNavigate": "اختر للانتقال",
+  "gotoAnything.servicesUnavailableMessage": "قد تواجه بعض خدمات البحث مشكلات. حاول مرة أخرى لاحقًا.",
+  "gotoAnything.slashHint": "اكتب / لرؤية جميع الأوامر المتاحة",
+  "gotoAnything.someServicesUnavailable": "بعض خدمات البحث غير متوفرة",
+  "gotoAnything.startTyping": "ابدأ الكتابة للبحث",
+  "gotoAnything.tips": "اضغط ↑↓ للتنقل",
+  "gotoAnything.tryDifferentSearch": "جرب مصطلح بحث مختلف",
+  "gotoAnything.useAtForSpecific": "استخدم @ لأنواع محددة",
+  "iconPicker.cancel": "إلغاء",
+  "iconPicker.emoji": "رموز تعبيرية",
+  "iconPicker.image": "صورة",
+  "iconPicker.ok": "موافق",
+  "importDSL": "استيراد ملف DSL",
+  "importFromDSL": "استيراد من DSL",
+  "importFromDSLFile": "من ملف DSL",
+  "importFromDSLUrl": "من رابط",
+  "importFromDSLUrlPlaceholder": "لصق رابط DSL هنا",
+  "join": "انضم إلى المجتمع",
+  "maxActiveRequests": "أقصى عدد للطلبات المتزامنة",
+  "maxActiveRequestsPlaceholder": "أدخل 0 لغير محدود",
+  "maxActiveRequestsTip": "الحد الأقصى لعدد الطلبات النشطة المتزامنة لكل تطبيق (0 لغير محدود)",
+  "mermaid.classic": "كلاسيكي",
+  "mermaid.handDrawn": "رسم يدوي",
+  "newApp.Cancel": "إلغاء",
+  "newApp.Confirm": "تأكيد",
+  "newApp.Create": "إنشاء",
+  "newApp.advancedShortDescription": "سير عمل محسن للمحادثات متعددة الأدوار",
+  "newApp.advancedUserDescription": "سير عمل مع ميزات ذاكرة إضافية وواجهة روبوت دردشة.",
+  "newApp.agentAssistant": "مساعد وكيل جديد",
+  "newApp.agentShortDescription": "وكيل ذكي مع الاستدلال واستخدام الأدوات المستقل",
+  "newApp.agentUserDescription": "وكيل ذكي قادر على الاستدلال التكراري واستخدام الأدوات بشكل مستقل لتحقيق أهداف المهمة.",
+  "newApp.appCreateDSLErrorPart1": "تم اكتشاف اختلاف كبير في إصدارات DSL. قد يؤدي فرض الاستيراد إلى تعطل التطبيق.",
+  "newApp.appCreateDSLErrorPart2": "هل تريد المتابعة؟",
+  "newApp.appCreateDSLErrorPart3": "إصدار DSL للتطبيق الحالي: ",
+  "newApp.appCreateDSLErrorPart4": "إصدار DSL المدعوم من النظام: ",
+  "newApp.appCreateDSLErrorTitle": "عدم توافق الإصدار",
+  "newApp.appCreateDSLWarning": "تحذير: قد يؤثر اختلاف إصدار DSL على ميزات معينة",
+  "newApp.appCreateFailed": "فشل إنشاء التطبيق",
+  "newApp.appCreated": "تم إنشاء التطبيق",
+  "newApp.appDescriptionPlaceholder": "أدخل وصف التطبيق",
+  "newApp.appNamePlaceholder": "أعط اسمًا لتطبيقك",
+  "newApp.appTemplateNotSelected": "الرجاء تحديد قالب",
+  "newApp.appTypeRequired": "الرجاء تحديد نوع التطبيق",
+  "newApp.captionDescription": "الوصف",
+  "newApp.captionName": "اسم التطبيق والأيقونة",
+  "newApp.caution": "تحذير",
+  "newApp.chatApp": "مساعد",
+  "newApp.chatAppIntro": "أريد بناء تطبيق قائم على الدردشة. يستخدم هذا التطبيق تنسيق سؤال وجواب، مما يسمح بجولات متعددة من المحادثة المستمرة.",
+  "newApp.chatbotShortDescription": "روبوت دردشة قائم على LLM مع إعداد بسيط",
+  "newApp.chatbotUserDescription": "قم ببناء روبوت دردشة قائم على LLM بسرعة مع تكوين بسيط. يمكنك التبديل إلى Chatflow لاحقًا.",
+  "newApp.chooseAppType": "اختر نوع التطبيق",
+  "newApp.completeApp": "مولد نصوص",
+  "newApp.completeAppIntro": "أريد إنشاء تطبيق يولد نصوصًا عالية الجودة بناءً على المطالبات، مثل إنشاء المقالات والملخصات والترجمات والمزيد.",
+  "newApp.completionShortDescription": "مساعد AI لمهام توليد النصوص",
+  "newApp.completionUserDescription": "قم ببناء مساعد AI لمهام توليد النصوص بسرعة مع تكوين بسيط.",
+  "newApp.dropDSLToCreateApp": "أفلت ملف DSL هنا لإنشاء تطبيق",
+  "newApp.forAdvanced": "للمستخدمين المتقدمين",
+  "newApp.forBeginners": "أنواع تطبيقات أبسط",
+  "newApp.foundResult": "{{count}} نتيجة",
+  "newApp.foundResults": "{{count}} نتائج",
+  "newApp.hideTemplates": "العودة إلى اختيار الوضع",
+  "newApp.import": "استيراد",
+  "newApp.learnMore": "اعرف المزيد",
+  "newApp.nameNotEmpty": "لا يمكن أن يكون الاسم فارغًا",
+  "newApp.noAppsFound": "لم يتم العثور على تطبيقات",
+  "newApp.noIdeaTip": "لا توجد أفكار؟ تحقق من قوالبنا",
+  "newApp.noTemplateFound": "لم يتم العثور على قوالب",
+  "newApp.noTemplateFoundTip": "حاول البحث باستخدام كلمات مفتاحية مختلفة.",
+  "newApp.optional": "اختياري",
+  "newApp.previewDemo": "معاينة العرض التوضيحي",
+  "newApp.showTemplates": "أريد الاختيار من قالب",
+  "newApp.startFromBlank": "إنشاء من البداية",
+  "newApp.startFromTemplate": "إنشاء من قالب",
+  "newApp.useTemplate": "استخدم هذا القالب",
+  "newApp.workflowShortDescription": "تدفق وكيل للأتمتة الذكية",
+  "newApp.workflowUserDescription": "قم ببناء تدفقات عمل AI مستقلة بشكل مرئي مع بساطة السحب والإفلات.",
+  "newApp.workflowWarning": "حاليا في النسخة التجريبية (beta)",
+  "newAppFromTemplate.byCategories": "حسب الفئات",
+  "newAppFromTemplate.searchAllTemplate": "بحث في كل القوالب...",
+  "newAppFromTemplate.sidebar.Agent": "Agent",
+  "newAppFromTemplate.sidebar.Assistant": "مساعد",
+  "newAppFromTemplate.sidebar.HR": "الموارد البشرية",
+  "newAppFromTemplate.sidebar.Programming": "برمجة",
+  "newAppFromTemplate.sidebar.Recommended": "موصى به",
+  "newAppFromTemplate.sidebar.Workflow": "سير العمل",
+  "newAppFromTemplate.sidebar.Writing": "كتابة",
+  "noAccessPermission": "لا يوجد إذن للوصول إلى تطبيق الويب",
+  "noUserInputNode": "عقدة إدخال المستخدم مفقودة",
+  "notPublishedYet": "التطبيق لم ينشر بعد",
+  "openInExplore": "فتح في الاستكشاف",
+  "publishApp.notSet": "لم يتم تعيينه",
+  "publishApp.notSetDesc": "حاليا لا يمكن لأحد الوصول إلى تطبيق الويب. الرجاء تعيين الأذونات.",
+  "publishApp.title": "من يمكنه الوصول إلى تطبيق الويب",
+  "removeOriginal": "حذف التطبيق الأصلي",
+  "roadmap": "شاهد خريطة الطريق",
+  "showMyCreatedAppsOnly": "تم إنشاؤه بواسطتي",
+  "structOutput.LLMResponse": "استجابة LLM",
+  "structOutput.configure": "تكوين",
+  "structOutput.modelNotSupported": "النموذج غير مدعوم",
+  "structOutput.modelNotSupportedTip": "النموذج الحالي لا يدعم هذه الميزة ويتم تخفيضه تلقائيًا إلى حقن المطالبة.",
+  "structOutput.moreFillTip": "يظهر 10 مستويات كحد أقصى من التداخل",
+  "structOutput.notConfiguredTip": "لم يتم تكوين الإخراج الهيكلي بعد",
+  "structOutput.required": "مطلوب",
+  "structOutput.structured": "هيكلي",
+  "structOutput.structuredTip": "المخرجات الهيكلية هي ميزة تضمن أن يولد النموذج دائمًا استجابات تلتزم بـ JSON Schema الذي قدمته",
+  "switch": "التبديل إلى Workflow Orchestrate",
+  "switchLabel": "نسخة التطبيق التي سيتم إنشاؤها",
+  "switchStart": "بدء التبديل",
+  "switchTip": "غير مسموح",
+  "switchTipEnd": " بالعودة إلى Basic Orchestrate.",
+  "switchTipStart": "سيتم إنشاء نسخة تطبيق جديدة لك، وستنتقل النسخة الجديدة إلى Workflow Orchestrate. النسخة الجديدة ستكون ",
+  "theme.switchDark": "التبديل إلى الوضع الداكن",
+  "theme.switchLight": "التبديل إلى الوضع الفاتح",
+  "tracing.aliyun.description": "منصة المراقبة المدارة بالكامل والتي لا تحتاج إلى صيانة والمقدمة من Alibaba Cloud، تتيح المراقبة الجاهزة والتتبع وتقييم تطبيقات Dify.",
+  "tracing.aliyun.title": "Cloud Monitor",
+  "tracing.arize.description": "مراقبة LLM على مستوى المؤسسة، والتقييم عبر الإنترنت وغير المتصل بالإنترنت، والمراقبة، والتجريب - بدعم من OpenTelemetry. مصمم خصيصًا لتطبيقات LLM والتطبيقات التي تعتمد على الوكيل.",
+  "tracing.arize.title": "Arize",
+  "tracing.collapse": "طي",
+  "tracing.config": "تكوين",
+  "tracing.configProvider.clientId": "معرف العميل (Client ID)",
+  "tracing.configProvider.clientSecret": "سر العميل (Client Secret)",
+  "tracing.configProvider.databricksHost": "عنوان URL لمساحة عمل Databricks",
+  "tracing.configProvider.experimentId": "معرف التجربة",
+  "tracing.configProvider.password": "كلمة المرور",
+  "tracing.configProvider.personalAccessToken": "رمز الوصول الشخصي (القديم)",
+  "tracing.configProvider.placeholder": "أدخل {{key}} الخاص بك",
+  "tracing.configProvider.project": "مشروع",
+  "tracing.configProvider.publicKey": "المفتاح العام",
+  "tracing.configProvider.removeConfirmContent": "التكوين الحالي قيد الاستخدام، وستؤدي إزالته إلى إيقاف ميزة التتبع.",
+  "tracing.configProvider.removeConfirmTitle": "إزالة تكوين {{key}}؟",
+  "tracing.configProvider.secretKey": "المفتاح السري",
+  "tracing.configProvider.title": "تكوين ",
+  "tracing.configProvider.trackingUri": "رابط التتبع",
+  "tracing.configProvider.username": "اسم المستخدم",
+  "tracing.configProvider.viewDocsLink": "عرض وثائق {{key}}",
+  "tracing.configProviderTitle.configured": "تم التكوين",
+  "tracing.configProviderTitle.moreProvider": "مزيد من المزودين",
+  "tracing.configProviderTitle.notConfigured": "تكوين المزود لتمكين التتبع",
+  "tracing.databricks.description": "توفر Databricks تدفق MLflow مدار بالكامل مع حوكمة وأمان قويين لتخزين بيانات التتبع.",
+  "tracing.databricks.title": "Databricks",
+  "tracing.description": "تكوين مزود LLMOps خارجي وتتبع أداء التطبيق.",
+  "tracing.disabled": "معطل",
+  "tracing.disabledTip": "الرجاء تكوين المزود أولاً",
+  "tracing.enabled": "في الخدمة",
+  "tracing.expand": "توسيع",
+  "tracing.inUse": "قيد الاستخدام",
+  "tracing.langfuse.description": "مراقبة LLM مفتوحة المصدر وتقييمها وإدارة المطالبات والمقاييس لتصحيح وتحسين تطبيق LLM الخاص بك.",
+  "tracing.langfuse.title": "Langfuse",
+  "tracing.langsmith.description": "منصة مطور شاملة لكل خطوة من خطوات دورة حياة التطبيق المدعوم بـ LLM.",
+  "tracing.langsmith.title": "LangSmith",
+  "tracing.mlflow.description": "MLflow هي منصة مفتوحة المصدر لإدارة التجارب وتقييم ومراقبة تطبيقات LLM.",
+  "tracing.mlflow.title": "MLflow",
+  "tracing.opik.description": "Opik هي منصة مفتوحة المصدر لتقييم واختبار ومراقبة تطبيقات LLM.",
+  "tracing.opik.title": "Opik",
+  "tracing.phoenix.description": "منصة مفتوحة المصدر تعتمد على OpenTelemetry للمراقبة والتقييم وهندسة المطالبات والتجريب لتدفقات عمل LLM والوكلاء.",
+  "tracing.phoenix.title": "Phoenix",
+  "tracing.tencent.description": "تُوفر مراقبة أداء التطبيقات من Tencent تتبعًا شاملاً وتحليلاً متعدد الأبعاد لتطبيقات LLM.",
+  "tracing.tencent.title": "Tencent APM",
+  "tracing.title": "تتبع أداء التطبيق",
+  "tracing.tracing": "تتبع",
+  "tracing.tracingDescription": "التقاط السياق الكامل لتنفيذ التطبيق، بما في ذلك مكالمات LLM، والسياق، والمطالبات، وطلبات HTTP، والمزيد، إلى منصة تتبع تابعة لجهة خارجية.",
+  "tracing.view": "عرض",
+  "tracing.weave.description": "Weave هي منصة مفتوحة المصدر لتقييم واختبار ومراقبة تطبيقات LLM.",
+  "tracing.weave.title": "Weave",
+  "typeSelector.advanced": "Chatflow",
+  "typeSelector.agent": "Agent",
+  "typeSelector.all": "كل الأنواع",
+  "typeSelector.chatbot": "روبوت دردشة",
+  "typeSelector.completion": "إكمال",
+  "typeSelector.workflow": "سير العمل",
+  "types.advanced": "Chatflow",
+  "types.agent": "Agent",
+  "types.all": "الكل",
+  "types.basic": "أساسي",
+  "types.chatbot": "روبوت دردشة",
+  "types.completion": "إكمال",
+  "types.workflow": "سير العمل (Workflow)"
+}
