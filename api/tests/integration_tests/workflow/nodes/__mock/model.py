@@ -48,3 +48,19 @@ def get_mocked_fetch_model_config(
     )
 
     return MagicMock(return_value=(model_instance, model_config))
+
+
+def get_mocked_fetch_model_instance(
+    provider: str,
+    model: str,
+    mode: str,
+    credentials: dict,
+):
+    mock_fetch_model_config = get_mocked_fetch_model_config(
+        provider=provider,
+        model=model,
+        mode=mode,
+        credentials=credentials,
+    )
+    model_instance, _ = mock_fetch_model_config()
+    return MagicMock(return_value=model_instance)

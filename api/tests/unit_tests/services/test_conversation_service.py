@@ -237,9 +237,9 @@ class TestConversationServiceSummarization:
     titles based on the first message.
     """
 
-    @patch("services.conversation_service.db.session")
-    @patch("services.conversation_service.ConversationService.get_conversation")
-    @patch("services.conversation_service.ConversationService.auto_generate_name")
+    @patch("services.conversation_service.db.session", autospec=True)
+    @patch("services.conversation_service.ConversationService.get_conversation", autospec=True)
+    @patch("services.conversation_service.ConversationService.auto_generate_name", autospec=True)
     def test_rename_with_auto_generate(self, mock_auto_generate, mock_get_conversation, mock_db_session):
         """
         Test renaming conversation with auto-generation enabled.
