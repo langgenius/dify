@@ -5,71 +5,34 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
 from core.workflow.file.models import File
-from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
 
-from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
+from .exc import InvalidVariableTypeError
 
 
-def fetch_model_config(
-    tenant_id: str, node_data_model: ModelConfig
-) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
-    if not node_data_model.mode:
-        raise LLMModeRequiredError("LLM mode is required.")
-
-    model = ModelManager().get_model_instance(
-        tenant_id=tenant_id,
-        model_type=ModelType.LLM,
-        provider=node_data_model.provider,
-        model=node_data_model.name,
+def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
+    model_schema = cast(LargeLanguageModel, model_instance.model_type_instance).get_model_schema(
+        model_instance.model_name,
+        model_instance.credentials,
     )
-
-    model.model_type_instance = cast(LargeLanguageModel, model.model_type_instance)
-
-    # check model
-    provider_model = model.provider_model_bundle.configuration.get_provider_model(
-        model=node_data_model.name, model_type=ModelType.LLM
-    )
-
-    if provider_model is None:
-        raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-    provider_model.raise_for_status()
-
-    # model config
-    stop: list[str] = []
-    if "stop" in node_data_model.completion_params:
-        stop = node_data_model.completion_params.pop("stop")
-
-    model_schema = model.model_type_instance.get_model_schema(node_data_model.name, model.credentials)
     if not model_schema:
-        raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-
-    return model, ModelConfigWithCredentialsEntity(
-        provider=node_data_model.provider,
-        model=node_data_model.name,
-        model_schema=model_schema,
-        mode=node_data_model.mode,
-        provider_model_bundle=model.provider_model_bundle,
-        credentials=model.credentials,
-        parameters=node_data_model.completion_params,
-        stop=stop,
-    )
+        raise ValueError(f"Model schema not found for {model_instance.model_name}")
+    return model_schema
 
 
 def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequence["File"]:
@@ -131,7 +94,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
         if quota_unit == QuotaUnit.TOKENS:
             used_quota = usage.total_tokens
         elif quota_unit == QuotaUnit.CREDITS:
-            used_quota = dify_config.get_model_credits(model_instance.model)
+            used_quota = dify_config.get_model_credits(model_instance.model_name)
         else:
             used_quota = 1
 

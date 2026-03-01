@@ -1,6 +1,8 @@
 import pytest
 
 from configs import dify_config
+from core.helper.ssrf_proxy import ssrf_proxy
+from core.workflow.file.file_manager import file_manager
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
@@ -59,6 +61,8 @@ def test_executor_with_json_body_and_number_variable():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # Check the executor's data
@@ -113,6 +117,8 @@ def test_executor_with_json_body_and_object_variable():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # Check the executor's data
@@ -169,6 +175,8 @@ def test_executor_with_json_body_and_nested_object_variable():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # Check the executor's data
@@ -213,6 +221,8 @@ def test_extract_selectors_from_template_with_newline():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     assert executor.params == [("test", "line1\nline2")]
@@ -258,6 +268,8 @@ def test_executor_with_form_data():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # Check the executor's data
@@ -309,6 +321,8 @@ def test_init_headers():
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
     executor = create_executor("aa\n cc:")
@@ -344,6 +358,8 @@ def test_init_params():
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
     # Test basic key-value pairs
@@ -394,6 +410,8 @@ def test_empty_api_key_raises_error_bearer():
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
 
@@ -419,6 +437,8 @@ def test_empty_api_key_raises_error_basic():
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
 
@@ -444,6 +464,8 @@ def test_empty_api_key_raises_error_custom():
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
 
@@ -469,6 +491,8 @@ def test_whitespace_only_api_key_raises_error():
             timeout=timeout,
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
 
@@ -493,6 +517,8 @@ def test_valid_api_key_works():
         timeout=timeout,
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # Should not raise an error
@@ -541,6 +567,8 @@ def test_executor_with_json_body_and_unquoted_uuid_variable():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # The UUID should be preserved in full, not truncated
@@ -586,6 +614,8 @@ def test_executor_with_json_body_and_unquoted_uuid_with_newlines():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     # The UUID should be preserved in full
@@ -625,6 +655,8 @@ def test_executor_with_json_body_preserves_numbers_and_strings():
         timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
         http_request_config=HTTP_REQUEST_CONFIG,
         variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
     )
 
     assert executor.json["count"] == 42
