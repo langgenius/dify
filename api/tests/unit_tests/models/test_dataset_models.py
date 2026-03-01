@@ -490,6 +490,15 @@ class TestDocumentModelRelationships:
 class TestDocumentSegmentIndexing:
     """Test suite for DocumentSegment model indexing and operations."""
 
+    @staticmethod
+    def _mock_scalars_result(upload_file_ids: list[str]):
+        class _ScalarsResult:
+            @staticmethod
+            def all() -> list[str]:
+                return upload_file_ids
+
+        return _ScalarsResult()
+
     def test_document_segment_creation_with_required_fields(self):
         """Test creating a document segment with all required fields."""
         # Arrange
@@ -562,8 +571,7 @@ class TestDocumentSegmentIndexing:
             tokens=1,
             created_by=str(uuid4()),
         )
-        mock_scalars_result = MagicMock()
-        mock_scalars_result.all.return_value = [upload_file_id]
+        mock_scalars_result = self._mock_scalars_result([upload_file_id])
 
         # Act
         with (
@@ -594,8 +602,7 @@ class TestDocumentSegmentIndexing:
             tokens=1,
             created_by=str(uuid4()),
         )
-        mock_scalars_result = MagicMock()
-        mock_scalars_result.all.return_value = [upload_file_id]
+        mock_scalars_result = self._mock_scalars_result([upload_file_id])
 
         # Act
         with (
@@ -630,8 +637,7 @@ class TestDocumentSegmentIndexing:
             tokens=1,
             created_by=str(uuid4()),
         )
-        mock_scalars_result = MagicMock()
-        mock_scalars_result.all.return_value = [allowed_upload_file_id]
+        mock_scalars_result = self._mock_scalars_result([allowed_upload_file_id])
 
         # Act
         with (
