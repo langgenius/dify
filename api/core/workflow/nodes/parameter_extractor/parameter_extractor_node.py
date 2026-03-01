@@ -5,7 +5,6 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import ImagePromptMessageContent
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -24,12 +23,17 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import (
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import llm_utils
+from core.workflow.nodes.llm.protocols import PromptMessageMemory
 from core.workflow.runtime import VariablePool
 from core.workflow.variables.types import ArrayValidation, SegmentType
 from factories.variable_factory import build_segment_with_type
@@ -97,6 +101,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     _model_instance: ModelInstance
     _credentials_provider: "CredentialsProvider"
     _model_factory: "ModelFactory"
+    _memory: PromptMessageMemory | None
 
     def __init__(
         self,
@@ -108,6 +113,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
         model_instance: ModelInstance,
+        memory: PromptMessageMemory | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -118,6 +124,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
         self._model_instance = model_instance
+        self._memory = memory
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -163,13 +170,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
         except ValueError as exc:
             raise ModelSchemaNotFoundError("Model schema not found") from exc
-        # fetch memory
-        memory = llm_utils.fetch_memory(
-            variable_pool=variable_pool,
-            app_id=self.app_id,
-            node_data_memory=node_data.memory,
-            model_instance=model_instance,
-        )
+        memory = self._memory
 
         if (
             set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}
@@ -316,7 +317,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> tuple[list[PromptMessage], list[PromptMessageTool]]:
@@ -404,7 +405,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -442,7 +443,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -467,7 +468,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             files=files,
             context="",
             memory_config=node_data.memory,
-            memory=memory,
+            # AdvancedPromptTransform is still typed against TokenBufferMemory.
+            memory=cast(Any, memory),
             model_instance=model_instance,
             image_detail_config=vision_detail,
         )
@@ -480,7 +482,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         query: str,
         variable_pool: VariablePool,
         model_instance: ModelInstance,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -712,7 +714,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         max_token_limit: int = 2000,
     ) -> list[ChatModelMessage]:
         model_mode = ModelMode(node_data.model.mode)
@@ -721,8 +723,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         instruction = variable_pool.convert_template(node_data.instruction or "").text
 
         if memory and node_data.memory and node_data.memory.window:
-            memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
+            memory_str = llm_utils.fetch_memory_text(
+                memory=memory, max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
@@ -739,7 +741,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         max_token_limit: int = 2000,
     ):
         model_mode = ModelMode(node_data.model.mode)
@@ -748,8 +750,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         instruction = variable_pool.convert_template(node_data.instruction or "").text
 
         if memory and node_data.memory and node_data.memory.window:
-            memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
+            memory_str = llm_utils.fetch_memory_text(
+                memory=memory, max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(

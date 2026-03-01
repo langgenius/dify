@@ -54,7 +54,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
-    core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
     # TODO(QuantumGhost): use DI to avoid depending on global DB.
@@ -114,7 +113,6 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> core.model_manager
     core.workflow.nodes.llm.protocols -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
-    core.workflow.nodes.llm.llm_utils -> models.model
     core.workflow.nodes.llm.node -> core.tools.signature
     core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     core.workflow.nodes.tool.tool_node -> core.tools.tool_engine
@@ -150,7 +148,6 @@ ignore_imports =
     core.workflow.nodes.llm.node -> core.model_manager
     core.workflow.nodes.agent.entities -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.llm.llm_utils -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.llm.node -> core.prompt.entities.advanced_prompt_entities
     core.workflow.nodes.llm.node -> core.prompt.utils.prompt_message_util
     core.workflow.nodes.parameter_extractor.entities -> core.prompt.entities.advanced_prompt_entities
@@ -172,7 +169,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
-    core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
     core.workflow.nodes.human_input.human_input_node -> extensions.ext_database

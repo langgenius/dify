@@ -3,7 +3,6 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -27,7 +26,7 @@ from core.workflow.nodes.llm import (
     llm_utils,
 )
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory, PromptMessageMemory
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -56,6 +55,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     _credentials_provider: "CredentialsProvider"
     _model_factory: "ModelFactory"
     _model_instance: ModelInstance
+    _memory: PromptMessageMemory | None
 
     def __init__(
         self,
@@ -67,6 +67,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
         model_instance: ModelInstance,
+        memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -81,6 +82,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self._credentials_provider = credentials_provider
         self._model_factory = model_factory
         self._model_instance = model_instance
+        self._memory = memory
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -103,13 +105,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         variables = {"query": query}
         # fetch model instance
         model_instance = self._model_instance
-        # fetch memory
-        memory = llm_utils.fetch_memory(
-            variable_pool=variable_pool,
-            app_id=self.app_id,
-            node_data_memory=node_data.memory,
-            model_instance=model_instance,
-        )
+        memory = self._memory
         # fetch instruction
         node_data.instruction = node_data.instruction or ""
         node_data.instruction = variable_pool.convert_template(node_data.instruction).text
@@ -327,7 +323,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self,
         node_data: QuestionClassifierNodeData,
         query: str,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         max_token_limit: int = 2000,
     ):
         model_mode = ModelMode(node_data.model.mode)
@@ -340,7 +336,8 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         input_text = query
         memory_str = ""
         if memory:
-            memory_str = memory.get_history_prompt_text(
+            memory_str = llm_utils.fetch_memory_text(
+                memory=memory,
                 max_token_limit=max_token_limit,
                 message_limit=node_data.memory.window.size if node_data.memory and node_data.memory.window else None,
             )
