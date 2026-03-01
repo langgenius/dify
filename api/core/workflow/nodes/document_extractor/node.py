@@ -4,6 +4,8 @@ import json
 import logging
 import os
 import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -105,6 +107,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
             else:
                 raise DocumentExtractorError(f"Unsupported variable type: {type(value)}")
         except DocumentExtractorError as e:
+            logger.error(e, exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
@@ -435,8 +438,41 @@ def _extract_text_from_docx(file_content: bytes) -> str:
 
         return "\n".join(text)
 
+    except KeyError as e:
+        error_msg = str(e)
+        error_msg_lower = error_msg.lower()
+        if "word/media" in error_msg_lower or "word/" in error_msg_lower:
+            logger.warning("DOCX file contains missing media references: %s. Using XML parsing fallback.", e)
+            return _extract_text_from_docx_xml_fallback(file_content)
+        raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
+
+
+def _extract_text_from_docx_xml_fallback(file_content: bytes) -> str:
+    """
+    Extract text from corrupted DOCX by parsing XML directly.
+    This handles cases where the DOCX references missing media files.
+    """
+    text_content = []
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as z:
+            # Try to read document.xml directly
+            try:
+                xml_content = z.read("word/document.xml")
+                root = ET.fromstring(xml_content)
+
+                # Extract all text elements
+                for elem in root.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"):
+                    if elem.text:
+                        text_content.append(elem.text)
+            except KeyError:
+                raise TextExtractionError("Invalid DOCX structure: word/document.xml not found")
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from corrupted DOCX: {str(e)}") from e
+
+    return "\n".join(text_content)
 
 
 def _download_file_content(file: File) -> bytes:
