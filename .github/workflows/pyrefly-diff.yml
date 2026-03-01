@@ -31,14 +31,16 @@ jobs:
 
       - name: Run pyrefly on PR branch
         run: |
-          uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
+          uv run --directory api --dev pyrefly check 2>&1 \
+            | uv run --directory api python -m libs.pyrefly_diagnostics > /tmp/pyrefly_pr.txt || true
 
       - name: Checkout base branch
         run: git checkout ${{ github.base_ref }}
 
       - name: Run pyrefly on base branch
         run: |
-          uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
+          uv run --directory api --dev pyrefly check 2>&1 \
+            | uv run --directory api python -m libs.pyrefly_diagnostics > /tmp/pyrefly_base.txt || true
 
       - name: Compute diff
         run: |
