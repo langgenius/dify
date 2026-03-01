@@ -126,7 +126,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
@@ -272,7 +272,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:

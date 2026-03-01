@@ -139,7 +139,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
@@ -206,7 +206,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         documents = []
         for qa_chunk in qa_chunks.qa_chunks:

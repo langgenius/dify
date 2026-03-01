@@ -75,7 +75,7 @@ class BaseIndexProcessor(ABC):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -83,7 +83,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
