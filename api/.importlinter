@@ -29,6 +29,8 @@ ignore_imports =
 
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
+    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
+    core.workflow.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
 
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
@@ -107,14 +109,12 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> core.tools.tool_manager
     core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
+    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
-    core.workflow.nodes.llm.llm_utils -> configs
     core.workflow.nodes.llm.llm_utils -> core.model_manager
     core.workflow.nodes.llm.protocols -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
     core.workflow.nodes.llm.llm_utils -> models.model
-    core.workflow.nodes.llm.llm_utils -> models.provider
-    core.workflow.nodes.llm.llm_utils -> services.credit_pool_service
     core.workflow.nodes.llm.node -> core.tools.signature
     core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     core.workflow.nodes.tool.tool_node -> core.tools.tool_engine
@@ -135,8 +135,8 @@ ignore_imports =
     core.workflow.nodes.start.start_node -> core.app.app_config.entities
     core.workflow.workflow_entry -> core.app.apps.exc
     core.workflow.workflow_entry -> core.app.entities.app_invoke_entities
+    core.workflow.workflow_entry -> core.app.workflow.layers.llm_quota
     core.workflow.workflow_entry -> core.app.workflow.node_factory
-    core.workflow.nodes.llm.llm_utils -> core.entities.provider_entities
     core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
     core.workflow.nodes.question_classifier.question_classifier_node -> core.model_manager
     core.workflow.nodes.tool.tool_node -> core.tools.utils.message_transformer
@@ -180,7 +180,7 @@ ignore_imports =
     core.workflow.workflow_entry -> extensions.otel.runtime
     core.workflow.nodes.agent.agent_node -> models
     core.workflow.nodes.base.node -> models.enums
-    core.workflow.nodes.llm.llm_utils -> models.provider_ids
+    core.workflow.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
     core.workflow.nodes.llm.node -> models.model
     core.workflow.workflow_entry -> models.enums
     core.workflow.nodes.agent.agent_node -> services

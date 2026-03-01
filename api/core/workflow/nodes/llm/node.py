@@ -278,8 +278,6 @@ class LLMNode(Node[LLMNodeData]):
                         else None
                     )
 
-                    # deduct quota
-                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
                 elif isinstance(event, LLMStructuredOutput):
                     structured_output = event
@@ -1233,6 +1231,10 @@ class LLMNode(Node[LLMNodeData]):
     @property
     def retry(self) -> bool:
         return self.node_data.retry_config.retry_enabled
+
+    @property
+    def model_instance(self) -> ModelInstance:
+        return self._model_instance
 
 
 def _combine_message_content_with_role(

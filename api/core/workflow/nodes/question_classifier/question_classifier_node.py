@@ -240,6 +240,10 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 llm_usage=usage,
             )
 
+    @property
+    def model_instance(self) -> ModelInstance:
+        return self._model_instance
+
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,

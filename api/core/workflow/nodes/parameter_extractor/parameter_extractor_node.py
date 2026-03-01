@@ -308,9 +308,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         usage = invoke_result.usage
         tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
 
-        # deduct quota
-        llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
-
         return text, usage, tool_call
 
     def _generate_function_call_prompt(
@@ -827,6 +824,10 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             rest_tokens = max(rest_tokens, 0)
 
         return rest_tokens
+
+    @property
+    def model_instance(self) -> ModelInstance:
+        return self._model_instance
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
