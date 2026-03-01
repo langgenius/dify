@@ -19,19 +19,21 @@ import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
-import Loading from '@/app/components/base/loading'
 
+import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import Toast from '@/app/components/base/toast'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { useStore } from '../../../store'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
 import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
@@ -83,6 +85,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
+  const { appDetail } = useStore(useShallow(state => ({
+    appDetail: state.appDetail,
+  })))
   const localModel = localStorage.getItem('auto-gen-model')
     ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
     : null
@@ -235,6 +240,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           instruction,
           model_config: model,
           no_variable: false,
+          app_id: appDetail?.id,
         })
         apiRes = {
           ...res,
@@ -256,6 +262,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           instruction,
           ideal_output: ideaOutput,
           model_config: model,
+          app_id: appDetail?.id,
         })
         apiRes = res
         if (error) {
