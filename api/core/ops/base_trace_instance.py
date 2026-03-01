@@ -14,7 +14,6 @@ class BaseTraceInstance(ABC):
     Base trace instance for ops trace services
     """
 
-    @abstractmethod
     def __init__(self, trace_config: BaseTracingConfig):
         """
         Abstract initializer for the trace instance.
