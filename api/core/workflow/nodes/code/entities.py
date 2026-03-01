@@ -1,11 +1,18 @@
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel
 
-from core.helper.code_executor.code_executor import CodeLanguage
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.variables.types import SegmentType
+
+
+class CodeLanguage(StrEnum):
+    PYTHON3 = "python3"
+    JINJA2 = "jinja2"
+    JAVASCRIPT = "javascript"
+
 
 _ALLOWED_OUTPUT_FROM_CODE = frozenset(
     [

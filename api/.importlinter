@@ -142,10 +142,6 @@ ignore_imports =
     core.workflow.nodes.tool.tool_node -> core.tools.utils.message_transformer
     core.workflow.nodes.tool.tool_node -> models
     core.workflow.nodes.agent.agent_node -> models.model
-    core.workflow.nodes.code.code_node -> core.helper.code_executor.code_node_provider
-    core.workflow.nodes.code.code_node -> core.helper.code_executor.javascript.javascript_code_provider
-    core.workflow.nodes.code.code_node -> core.helper.code_executor.python3.python3_code_provider
-    core.workflow.nodes.code.entities -> core.helper.code_executor.code_executor
     core.workflow.nodes.llm.file_saver -> core.helper.ssrf_proxy
     core.workflow.nodes.llm.node -> core.helper.code_executor
     core.workflow.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor

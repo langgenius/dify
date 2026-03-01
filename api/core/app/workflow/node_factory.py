@@ -6,8 +6,10 @@ from typing_extensions import override
 from configs import dify_config
 from core.app.llm.model_access import build_dify_model_access
 from core.datasource.datasource_manager import DatasourceManager
-from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
-from core.helper.code_executor.code_node_provider import CodeNodeProvider
+from core.helper.code_executor.code_executor import (
+    CodeExecutionError,
+    CodeExecutor,
+)
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
@@ -80,7 +82,6 @@ class DifyNodeFactory(NodeFactory):
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._code_executor: WorkflowCodeExecutor = DefaultWorkflowCodeExecutor()
-        self._code_providers: tuple[type[CodeNodeProvider], ...] = CodeNode.default_code_providers()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,
@@ -152,7 +153,6 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 code_executor=self._code_executor,
-                code_providers=self._code_providers,
                 code_limits=self._code_limits,
             )
 
