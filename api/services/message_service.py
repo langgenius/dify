@@ -1,6 +1,9 @@
 import json
+import logging
 from collections.abc import Sequence
 from typing import Union
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.orm import sessionmaker
 
@@ -204,6 +207,22 @@ class MessageService:
             db.session.add(feedback)
 
         db.session.commit()
+
+        if rating in ("like", "dislike"):
+            try:
+                from_source = "user" if isinstance(user, EndUser) else "admin"
+                trace_manager = TraceQueueManager(app_id=app_model.id)
+                trace_manager.add_trace_task(
+                    TraceTask(
+                        TraceTaskName.FEEDBACK_TRACE,
+                        message_id=str(message.id),
+                        rating=rating,
+                        content=content,
+                        from_source=from_source,
+                    )
+                )
+            except Exception:
+                logger.exception("Failed to enqueue feedback trace task")
 
         return feedback
 

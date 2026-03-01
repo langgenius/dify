@@ -29,6 +29,7 @@ from core.ops.entities.config_entity import ArizeConfig, PhoenixConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -190,6 +191,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 self.tool_trace(trace_info)
             if isinstance(trace_info, GenerateNameTraceInfo):
                 self.generate_name_trace(trace_info)
+            if isinstance(trace_info, FeedbackTraceInfo):
+                logger.debug("[Arize/Phoenix] Feedback trace not supported, skipping")
 
         except Exception as e:
             logger.error("[Arize/Phoenix] Trace Entity Error: %s", str(e), exc_info=True)

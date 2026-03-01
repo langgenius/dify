@@ -12,6 +12,7 @@ from core.ops.entities.config_entity import TencentConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
+    FeedbackTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
@@ -65,6 +66,8 @@ class TencentDataTrace(BaseTraceInstance):
             self.tool_trace(trace_info)
         elif isinstance(trace_info, GenerateNameTraceInfo):
             pass
+        elif isinstance(trace_info, FeedbackTraceInfo):
+            logger.debug("Tencent does not support feedback trace, skipping")
 
     def api_check(self) -> bool:
         return self.trace_client.api_check()
