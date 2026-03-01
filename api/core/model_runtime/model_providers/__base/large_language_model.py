@@ -124,8 +124,9 @@ def _build_llm_result_from_chunks(
         raise
     finally:
         # Drain any remaining chunks to release underlying streaming resources (e.g. HTTP connections).
-        if hasattr(chunks, "close"):
-            chunks.close()
+        close = getattr(chunks, "close", None)
+        if callable(close):
+            close()
 
     return LLMResult(
         model=model,
