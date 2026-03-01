@@ -19,11 +19,11 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.prompt.advanced_prompt_transform import AdvancedPromptTransform
+from core.model_runtime.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
+from core.model_runtime.prompt.simple_prompt_transform import ModelMode
+from core.model_runtime.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
-from core.prompt.simple_prompt_transform import ModelMode
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult

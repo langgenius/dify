@@ -21,7 +21,7 @@ from core.model_runtime.entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.model_runtime.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from core.workflow.file import file_manager

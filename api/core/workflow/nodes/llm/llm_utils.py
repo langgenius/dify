@@ -11,7 +11,7 @@ from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.enums import SystemVariableKey
 from core.workflow.file.models import File
 from core.workflow.runtime import VariablePool

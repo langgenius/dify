@@ -14,7 +14,7 @@ from core.app.app_config.entities import (
     VariableEntityType,
 )
 from core.model_runtime.entities.llm_entities import LLMMode
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.model_runtime.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models import Account, Tenant
 from models.api_based_extension import APIBasedExtension
 from models.model import App, AppMode, AppModelConfig

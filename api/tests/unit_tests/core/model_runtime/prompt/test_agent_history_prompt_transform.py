@@ -12,7 +12,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.model_runtime.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from models.model import Conversation
 
 

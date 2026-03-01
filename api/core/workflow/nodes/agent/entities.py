@@ -3,7 +3,7 @@ from typing import Any, Literal, Union
 
 from pydantic import BaseModel
 
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from core.workflow.nodes.base.entities import BaseNodeData
 

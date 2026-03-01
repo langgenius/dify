@@ -33,10 +33,14 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
+from core.model_runtime.prompt.advanced_prompt_transform import AdvancedPromptTransform
+from core.model_runtime.prompt.entities.advanced_prompt_entities import (
+    ChatModelMessage,
+    CompletionModelPromptTemplate,
+    MemoryConfig,
+)
+from core.model_runtime.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.moderation.input_moderation import InputModeration
-from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file.enums import FileTransferMethod, FileType
 from extensions.ext_database import db

@@ -1,6 +1,6 @@
 import copy
 
-from core.prompt.prompt_templates.advanced_prompt_templates import (
+from core.model_runtime.prompt.prompt_templates.advanced_prompt_templates import (
     BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG,
     BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG,
     BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG,

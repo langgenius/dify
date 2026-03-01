@@ -6,7 +6,7 @@
 # from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
 # from core.model_runtime.entities.provider_entities import ProviderEntity
 # from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-# from core.prompt.prompt_transform import PromptTransform
+# from core.model_runtime.prompt.prompt_transform import PromptTransform
 
 
 # def test__calculate_rest_token():

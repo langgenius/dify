@@ -14,7 +14,7 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict

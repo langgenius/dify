@@ -10,7 +10,7 @@ from core.model_runtime.entities import (
     PromptMessageRole,
     TextPromptMessageContent,
 )
-from core.prompt.simple_prompt_transform import ModelMode
+from core.model_runtime.prompt.simple_prompt_transform import ModelMode
 
 
 class PromptMessageUtil:

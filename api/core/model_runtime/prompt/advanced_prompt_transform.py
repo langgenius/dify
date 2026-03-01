@@ -14,9 +14,13 @@ from core.model_runtime.entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.prompt.prompt_transform import PromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.model_runtime.prompt.entities.advanced_prompt_entities import (
+    ChatModelMessage,
+    CompletionModelPromptTemplate,
+    MemoryConfig,
+)
+from core.model_runtime.prompt.prompt_transform import PromptTransform
+from core.model_runtime.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file import file_manager
 from core.workflow.file.models import File
 from core.workflow.runtime import VariablePool

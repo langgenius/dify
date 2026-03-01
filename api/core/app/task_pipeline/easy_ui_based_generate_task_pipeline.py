@@ -52,10 +52,10 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.model_runtime.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.signature import sign_tool_file
 from core.workflow.file import helpers as file_helpers
 from core.workflow.file.enums import FileTransferMethod

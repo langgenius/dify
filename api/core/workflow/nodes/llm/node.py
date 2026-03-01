@@ -37,9 +37,9 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
+from core.model_runtime.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.signature import sign_upload_file
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID

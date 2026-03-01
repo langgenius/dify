@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.model_runtime.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from models.model import Message
 

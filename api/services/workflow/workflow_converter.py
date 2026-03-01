@@ -15,9 +15,9 @@ from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
+from core.model_runtime.prompt.simple_prompt_transform import SimplePromptTransform
+from core.model_runtime.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.simple_prompt_transform import SimplePromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file.models import FileUploadConfig
 from core.workflow.nodes import NodeType
 from events.app_event import app_was_created

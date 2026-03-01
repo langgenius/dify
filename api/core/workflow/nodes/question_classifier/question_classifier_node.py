@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Any
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
+from core.model_runtime.prompt.simple_prompt_transform import ModelMode
+from core.model_runtime.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.prompt.simple_prompt_transform import ModelMode
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     NodeExecutionType,

@@ -15,9 +15,9 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.prompt.prompt_transform import PromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.prompt_transform import PromptTransform
+from core.model_runtime.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file import file_manager
 from models.model import AppMode
 

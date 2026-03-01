@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from constants import UUID_NIL
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.model_runtime.prompt.utils.extract_thread_messages import extract_thread_messages
 
 
 class MockMessage:

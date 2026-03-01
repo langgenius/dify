@@ -7,7 +7,7 @@ from pydantic import (
     field_validator,
 )
 
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 from core.workflow.variables.types import SegmentType

@@ -21,7 +21,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.entities import GraphInitParams
 from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.llm import llm_utils

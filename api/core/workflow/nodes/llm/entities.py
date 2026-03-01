@@ -4,7 +4,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import (
+    ChatModelMessage,
+    CompletionModelPromptTemplate,
+    MemoryConfig,
+)
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
 

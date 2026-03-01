@@ -5,7 +5,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.model_runtime.prompt.entities.advanced_prompt_entities import MemoryConfig
 
 
 class PromptTransform:

@@ -14,7 +14,7 @@ from core.model_runtime.entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.model_runtime.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.workflow.file import file_manager
 from extensions.ext_database import db
 from factories import file_factory

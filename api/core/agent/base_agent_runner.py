@@ -32,7 +32,7 @@ from core.model_runtime.entities import (
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.model_runtime.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,

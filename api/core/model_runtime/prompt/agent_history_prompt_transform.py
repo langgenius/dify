@@ -10,7 +10,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.prompt_transform import PromptTransform
+from core.model_runtime.prompt.prompt_transform import PromptTransform
 
 
 class AgentHistoryPromptTransform(PromptTransform):
