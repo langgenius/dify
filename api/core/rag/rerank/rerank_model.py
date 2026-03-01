@@ -38,7 +38,7 @@ class RerankModelRunner(BaseRerankRunner):
         is_support_vision = model_manager.check_model_support_vision(
             tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id,
             provider=self.rerank_model_instance.provider,
-            model=self.rerank_model_instance.model,
+            model=self.rerank_model_instance.model_name,
             model_type=ModelType.RERANK,
         )
         if not is_support_vision:

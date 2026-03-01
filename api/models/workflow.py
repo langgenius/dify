@@ -22,8 +22,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from typing_extensions import deprecated
 
-from core.variables import utils as variable_utils
-from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -33,6 +31,8 @@ from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason,
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from core.workflow.file.constants import maybe_file_object
 from core.workflow.file.models import File
+from core.workflow.variables import utils as variable_utils
+from core.workflow.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
-from core.variables import SecretVariable, Segment, SegmentType, VariableBase
+from core.workflow.variables import SecretVariable, Segment, SegmentType, VariableBase
 from factories import variable_factory
 from libs import helper
 

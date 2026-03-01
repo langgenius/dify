@@ -323,14 +323,8 @@ describe('CustomizeModal', () => {
         expect(screen.getByText('appOverview.overview.appInfo.customize.title')).toBeInTheDocument()
       })
 
-      // Find the close button by navigating from the heading to the close icon
-      // The close icon is an SVG inside a sibling div of the title
-      const heading = screen.getByRole('heading', { name: /customize\.title/i })
-      const closeIcon = heading.parentElement!.querySelector('svg')
-
-      // Assert - closeIcon must exist for the test to be valid
-      expect(closeIcon).toBeInTheDocument()
-      fireEvent.click(closeIcon!)
+      const closeButton = screen.getByTestId('modal-close-button')
+      fireEvent.click(closeButton)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
   })

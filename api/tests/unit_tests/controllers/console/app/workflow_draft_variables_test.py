@@ -13,8 +13,8 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     _serialize_full_content,
 )
-from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.variables.types import SegmentType
 from factories.variable_factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -40,7 +40,7 @@ class TestWorkflowDraftVariableFields:
         mock_variable.variable_file = mock_variable_file
 
         # Mock the file helpers
-        with patch("controllers.console.app.workflow_draft_variable.file_helpers") as mock_file_helpers:
+        with patch("controllers.console.app.workflow_draft_variable.file_helpers", autospec=True) as mock_file_helpers:
             mock_file_helpers.get_signed_file_url.return_value = "http://example.com/signed-url"
 
             # Call the function
@@ -200,7 +200,7 @@ class TestWorkflowDraftVariableFields:
             }
         )
 
-        with patch("controllers.console.app.workflow_draft_variable.file_helpers") as mock_file_helpers:
+        with patch("controllers.console.app.workflow_draft_variable.file_helpers", autospec=True) as mock_file_helpers:
             mock_file_helpers.get_signed_file_url.return_value = "http://example.com/signed-url"
             assert marshal(node_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
             expected_with_value = expected_without_value.copy()

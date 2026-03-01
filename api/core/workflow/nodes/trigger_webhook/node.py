@@ -2,14 +2,14 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from core.variables.types import SegmentType
-from core.variables.variables import FileVariable
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import NodeExecutionType, NodeType
 from core.workflow.file import FileTransferMethod
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from core.workflow.variables.types import SegmentType
+from core.workflow.variables.variables import FileVariable
 from factories import file_factory
 from factories.variable_factory import build_segment_with_type
 
