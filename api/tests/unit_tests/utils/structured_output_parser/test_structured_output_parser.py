@@ -321,7 +321,9 @@ def test_structured_output_parser():
                     )
         else:
             # Test successful cases
-            with patch("core.llm_generator.output_parser.structured_output.json_repair.loads") as mock_json_repair:
+            with patch(
+                "core.llm_generator.output_parser.structured_output.json_repair.loads", autospec=True
+            ) as mock_json_repair:
                 # Configure json_repair mock for cases that need it
                 if case["name"] == "json_repair_scenario":
                     mock_json_repair.return_value = {"name": "test"}
@@ -402,7 +404,9 @@ def test_parse_structured_output_edge_cases():
 
     prompt_messages = [UserPromptMessage(content="Test reasoning")]
 
-    with patch("core.llm_generator.output_parser.structured_output.json_repair.loads") as mock_json_repair:
+    with patch(
+        "core.llm_generator.output_parser.structured_output.json_repair.loads", autospec=True
+    ) as mock_json_repair:
         # Mock json_repair to return a list with dict
         mock_json_repair.return_value = [{"thought": "reasoning process"}, "other content"]
 
