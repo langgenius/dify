@@ -121,6 +121,11 @@ def _build_llm_result_from_chunks(
                 system_fingerprint = chunk.system_fingerprint
     except Exception:
         logger.exception("Error while consuming non-stream plugin chunk iterator.")
+        raise
+    finally:
+        # Drain any remaining chunks to release underlying streaming resources (e.g. HTTP connections).
+        if hasattr(chunks, "close"):
+            chunks.close()
 
     return LLMResult(
         model=model,
