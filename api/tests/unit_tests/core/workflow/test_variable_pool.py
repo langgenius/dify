@@ -3,8 +3,12 @@ from collections import defaultdict
 
 import pytest
 
-from core.variables import FileSegment, StringSegment
-from core.variables.segments import (
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.file import File, FileTransferMethod, FileType
+from core.workflow.runtime import VariablePool
+from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import FileSegment, StringSegment
+from core.workflow.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -15,7 +19,7 @@ from core.variables.segments import (
     NoneSegment,
     ObjectSegment,
 )
-from core.variables.variables import (
+from core.workflow.variables.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -25,10 +29,6 @@ from core.variables.variables import (
     StringVariable,
     Variable,
 )
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
 from factories.variable_factory import build_segment, segment_to_variable
 
 

@@ -21,12 +21,12 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from core.helper import ssrf_proxy
-from core.variables import ArrayFileSegment
-from core.variables.segments import ArrayStringSegment, FileSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod, file_manager
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from core.workflow.variables import ArrayFileSegment
+from core.workflow.variables.segments import ArrayStringSegment, FileSegment
 
 from .entities import DocumentExtractorNodeData, UnstructuredApiConfig
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
