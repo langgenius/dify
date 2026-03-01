@@ -9,9 +9,11 @@ from typing import TYPE_CHECKING, cast, final
 
 from typing_extensions import override
 
-from core.app.llm import deduct_llm_quota
+from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
+from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.workflow.enums import NodeType
+from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase
 from core.workflow.graph_events.node import NodeRunSucceededEvent
@@ -29,9 +31,13 @@ logger = logging.getLogger(__name__)
 class LLMQuotaLayer(GraphEngineLayer):
     """Graph layer that applies LLM quota deduction after node execution."""
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._abort_sent = False
+
     @override
     def on_graph_start(self) -> None:
-        return
+        self._abort_sent = False
 
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
@@ -40,6 +46,22 @@ class LLMQuotaLayer(GraphEngineLayer):
     @override
     def on_graph_end(self, error: Exception | None) -> None:
         _ = error
+
+    @override
+    def on_node_run_start(self, node: Node) -> None:
+        if self._abort_sent:
+            return
+
+        model_instance = self._extract_model_instance(node)
+        if model_instance is None:
+            return
+
+        try:
+            ensure_llm_quota_available(model_instance=model_instance)
+        except QuotaExceededError as exc:
+            node.graph_runtime_state.stop_event.set()
+            self._send_abort_command(reason=str(exc))
+            logger.warning("LLM quota check failed, node_id=%s, error=%s", node.id, exc)
 
     @override
     def on_node_run_end(
@@ -60,6 +82,21 @@ class LLMQuotaLayer(GraphEngineLayer):
             )
         except Exception:
             logger.exception("LLM quota deduction failed, node_id=%s", node.id)
+
+    def _send_abort_command(self, *, reason: str) -> None:
+        if not self.command_channel or self._abort_sent:
+            return
+
+        try:
+            self.command_channel.send_command(
+                AbortCommand(
+                    command_type=CommandType.ABORT,
+                    reason=reason,
+                )
+            )
+            self._abort_sent = True
+        except Exception:
+            logger.exception("Failed to send quota abort command")
 
     @staticmethod
     def _extract_model_instance(node: Node) -> ModelInstance | None:

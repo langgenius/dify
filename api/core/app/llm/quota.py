@@ -2,13 +2,30 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
+
+
+def ensure_llm_quota_available(*, model_instance: ModelInstance) -> None:
+    provider_model_bundle = model_instance.provider_model_bundle
+    provider_configuration = provider_model_bundle.configuration
+
+    if provider_configuration.using_provider_type != ProviderType.SYSTEM:
+        return
+
+    provider_model = provider_configuration.get_provider_model(
+        model_type=model_instance.model_type_instance.model_type,
+        model=model_instance.model_name,
+    )
+    if provider_model and provider_model.status == ModelStatus.QUOTA_EXCEEDED:
+        raise QuotaExceededError(f"Model provider {model_instance.provider} quota exceeded.")
 
 
 def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:

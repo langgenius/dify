@@ -352,6 +352,21 @@ class Node(Generic[NodeDataT]):
         # ===
         yield start_event
 
+        if self._should_stop():
+            error_message = "Execution cancelled"
+            yield NodeRunFailedEvent(
+                id=self.execution_id,
+                node_id=self._node_id,
+                node_type=self.node_type,
+                start_at=self._start_at,
+                node_run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    error=error_message,
+                ),
+                error=error_message,
+            )
+            return
+
         try:
             result = self._run()
 
