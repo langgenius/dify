@@ -1,10 +1,7 @@
-"""Community telemetry helpers.
+"""Telemetry facade.
 
-Provides ``emit()`` which enqueues trace events into the CE trace pipeline
-(``TraceQueueManager`` → ``ops_trace`` Celery queue → Langfuse / LangSmith / etc.).
-
-Enterprise-only traces (node execution, draft node execution, prompt generation)
-are silently dropped when enterprise telemetry is disabled.
+Thin public API for emitting telemetry events.  All routing logic
+lives in ``core.telemetry.gateway`` which is shared by both CE and EE.
 """
 
 from __future__ import annotations
@@ -13,48 +10,34 @@ from typing import TYPE_CHECKING
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.telemetry.events import TelemetryContext, TelemetryEvent
+from core.telemetry.gateway import TRACE_TASK_TO_CASE
+from core.telemetry.gateway import emit as gateway_emit
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
 
-_ENTERPRISE_ONLY_TRACES: frozenset[TraceTaskName] = frozenset(
-    {
-        TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
-        TraceTaskName.NODE_EXECUTION_TRACE,
-        TraceTaskName.PROMPT_GENERATION_TRACE,
-    }
-)
-
-
-def _is_enterprise_telemetry_enabled() -> bool:
-    try:
-        from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
-
-        return is_enterprise_telemetry_enabled()
-    except Exception:
-        return False
-
 
 def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
-    from core.ops.ops_trace_manager import TraceQueueManager as LocalTraceQueueManager
-    from core.ops.ops_trace_manager import TraceTask
+    """Emit a telemetry event.
 
-    if event.name in _ENTERPRISE_ONLY_TRACES and not _is_enterprise_telemetry_enabled():
+    Translates the ``TelemetryEvent`` (keyed by ``TraceTaskName``) into a
+    ``TelemetryCase`` and delegates to ``core.telemetry.gateway.emit()``.
+    """
+    case = TRACE_TASK_TO_CASE.get(event.name)
+    if case is None:
         return
 
-    queue_manager = trace_manager or LocalTraceQueueManager(
-        app_id=event.context.app_id,
-        user_id=event.context.user_id,
-    )
-    queue_manager.add_trace_task(TraceTask(event.name, **event.payload))
+    context: dict[str, object] = {
+        "tenant_id": event.context.tenant_id,
+        "user_id": event.context.user_id,
+        "app_id": event.context.app_id,
+    }
+    gateway_emit(case, context, event.payload, trace_manager)
 
-
-is_enterprise_telemetry_enabled = _is_enterprise_telemetry_enabled
 
 __all__ = [
     "TelemetryContext",
     "TelemetryEvent",
     "TraceTaskName",
     "emit",
-    "is_enterprise_telemetry_enabled",
 ]

@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from core.telemetry.gateway import CASE_ROUTING
 from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase, TelemetryEnvelope
-from enterprise.telemetry.gateway import CASE_ROUTING
 
 
 class TestTelemetryCase:
@@ -221,11 +221,6 @@ class TestCaseRouting:
             TelemetryCase.APP_UPDATED,
             TelemetryCase.APP_DELETED,
             TelemetryCase.FEEDBACK_CREATED,
-            TelemetryCase.TOOL_EXECUTION,
-            TelemetryCase.MODERATION_CHECK,
-            TelemetryCase.SUGGESTED_QUESTION,
-            TelemetryCase.DATASET_RETRIEVAL,
-            TelemetryCase.GENERATE_NAME,
         }
         for case in metric_log_cases:
             route = CASE_ROUTING[case]
@@ -240,17 +235,17 @@ class TestCaseRouting:
             TelemetryCase.NODE_EXECUTION,
             TelemetryCase.DRAFT_NODE_EXECUTION,
             TelemetryCase.PROMPT_GENERATION,
+            TelemetryCase.TOOL_EXECUTION,
+            TelemetryCase.MODERATION_CHECK,
+            TelemetryCase.SUGGESTED_QUESTION,
+            TelemetryCase.DATASET_RETRIEVAL,
+            TelemetryCase.GENERATE_NAME,
         }
         metric_log_cases = {
             TelemetryCase.APP_CREATED,
             TelemetryCase.APP_UPDATED,
             TelemetryCase.APP_DELETED,
             TelemetryCase.FEEDBACK_CREATED,
-            TelemetryCase.TOOL_EXECUTION,
-            TelemetryCase.MODERATION_CHECK,
-            TelemetryCase.SUGGESTED_QUESTION,
-            TelemetryCase.DATASET_RETRIEVAL,
-            TelemetryCase.GENERATE_NAME,
         }
 
         all_cases = trace_cases | metric_log_cases

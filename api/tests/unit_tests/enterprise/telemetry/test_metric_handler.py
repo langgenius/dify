@@ -304,6 +304,7 @@ def test_on_app_created_emits_correct_event(mock_redis):
             attributes={
                 "dify.app.id": "app-789",
                 "dify.tenant_id": "tenant-123",
+                "dify.event.id": "event-456",
                 "dify.app.mode": "chat",
             },
             tenant_id="tenant-123",
@@ -345,6 +346,7 @@ def test_on_app_updated_emits_correct_event(mock_redis):
             attributes={
                 "dify.app.id": "app-789",
                 "dify.tenant_id": "tenant-123",
+                "dify.event.id": "event-456",
             },
             tenant_id="tenant-123",
         )
@@ -384,6 +386,7 @@ def test_on_app_deleted_emits_correct_event(mock_redis):
             attributes={
                 "dify.app.id": "app-789",
                 "dify.tenant_id": "tenant-123",
+                "dify.event.id": "event-456",
             },
             tenant_id="tenant-123",
         )
