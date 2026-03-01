@@ -11,8 +11,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayAnySegment, ArrayFileSegment
-from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -23,6 +21,8 @@ from core.workflow.file import File, FileTransferMethod
 from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.variables.segments import ArrayAnySegment, ArrayFileSegment
+from core.workflow.variables.variables import ArrayAnyVariable
 from extensions.ext_database import db
 from factories import file_factory
 from models import ToolFile

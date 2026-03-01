@@ -4,8 +4,6 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Discriminator, Field, Tag
 
-from core.helper import encrypter
-
 from .segments import (
     ArrayAnySegment,
     ArrayBooleanSegment,
@@ -25,6 +23,14 @@ from .segments import (
     get_segment_discriminator,
 )
 from .types import SegmentType
+
+
+def _obfuscated_token(token: str) -> str:
+    if not token:
+        return token
+    if len(token) <= 8:
+        return "*" * 20
+    return token[:6] + "*" * 12 + token[-2:]
 
 
 class VariableBase(Segment):
@@ -86,7 +92,7 @@ class SecretVariable(StringVariable):
 
     @property
     def log(self) -> str:
-        return encrypter.obfuscated_token(self.value)
+        return _obfuscated_token(self.value)
 
 
 class NoneVariable(NoneSegment, VariableBase):
