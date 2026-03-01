@@ -47,7 +47,7 @@ class ModelInvocationUtils:
             raise InvokeModelError("Model not found")
 
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
 
         if not schema:
             raise InvokeModelError("No model schema found")

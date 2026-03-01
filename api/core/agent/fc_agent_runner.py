@@ -178,7 +178,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 )
 
                 yield LLMResultChunk(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=result.prompt_messages,
                     system_fingerprint=result.system_fingerprint,
                     delta=LLMResultChunkDelta(
@@ -308,7 +308,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),

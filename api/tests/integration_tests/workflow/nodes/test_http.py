@@ -7,8 +7,11 @@ import pytest
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.node_factory import DifyNodeFactory
+from core.helper.ssrf_proxy import ssrf_proxy
+from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.file.file_manager import file_manager
 from core.workflow.graph import Graph
 from core.workflow.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -76,6 +79,9 @@ def init_http_node(config: dict):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
+        http_client=ssrf_proxy,
+        tool_file_manager_factory=ToolFileManager,
+        file_manager=file_manager,
     )
 
     return node
@@ -229,6 +235,8 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
             timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
             http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
 
@@ -716,6 +724,9 @@ def test_nested_object_variable_selector(setup_http_mock):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
+        http_client=ssrf_proxy,
+        tool_file_manager_factory=ToolFileManager,
+        file_manager=file_manager,
     )
 
     result = node._run()

@@ -15,8 +15,6 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.variables import VariableBase
-from core.variables.variables import Variable
 from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -41,6 +39,8 @@ from core.workflow.repositories.human_input_form_repository import FormCreatePar
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import load_into_variable_pool
+from core.workflow.variables import VariableBase
+from core.workflow.variables.variables import Variable
 from core.workflow.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
