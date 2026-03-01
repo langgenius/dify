@@ -7,20 +7,12 @@ from enterprise.telemetry.contracts import TelemetryCase
 
 
 @pytest.fixture
-def mock_exporter():
-    with patch("extensions.ext_enterprise_telemetry.get_enterprise_exporter") as mock:
-        exporter = MagicMock()
-        mock.return_value = exporter
-        yield exporter
-
-
-@pytest.fixture
-def mock_task():
-    with patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry") as mock:
+def mock_gateway_emit():
+    with patch("core.telemetry.gateway.emit") as mock:
         yield mock
 
 
-def test_handle_app_created_calls_task(mock_exporter, mock_task):
+def test_handle_app_created_calls_task(mock_gateway_emit):
     sender = MagicMock()
     sender.id = "app-123"
     sender.tenant_id = "tenant-456"
@@ -28,54 +20,53 @@ def test_handle_app_created_calls_task(mock_exporter, mock_task):
 
     event_handlers._handle_app_created(sender)
 
-    mock_task.delay.assert_called_once()
-    call_args = mock_task.delay.call_args[0][0]
-    assert "app_created" in call_args
-    assert "tenant-456" in call_args
-    assert "app-123" in call_args
-    assert "chat" in call_args
+    mock_gateway_emit.assert_called_once_with(
+        case=TelemetryCase.APP_CREATED,
+        context={"tenant_id": "tenant-456"},
+        payload={"app_id": "app-123", "mode": "chat"},
+    )
 
 
-def test_handle_app_created_no_exporter(mock_task):
-    with patch("extensions.ext_enterprise_telemetry.get_enterprise_exporter", return_value=None):
-        sender = MagicMock()
-        sender.id = "app-123"
-        sender.tenant_id = "tenant-456"
+def test_handle_app_created_no_exporter(mock_gateway_emit):
+    """Gateway handles exporter availability internally; handler always calls gateway."""
+    sender = MagicMock()
+    sender.id = "app-123"
+    sender.tenant_id = "tenant-456"
 
-        event_handlers._handle_app_created(sender)
+    event_handlers._handle_app_created(sender)
 
-        mock_task.delay.assert_not_called()
+    mock_gateway_emit.assert_called_once()
 
 
-def test_handle_app_updated_calls_task(mock_exporter, mock_task):
+def test_handle_app_updated_calls_task(mock_gateway_emit):
     sender = MagicMock()
     sender.id = "app-123"
     sender.tenant_id = "tenant-456"
 
     event_handlers._handle_app_updated(sender)
 
-    mock_task.delay.assert_called_once()
-    call_args = mock_task.delay.call_args[0][0]
-    assert "app_updated" in call_args
-    assert "tenant-456" in call_args
-    assert "app-123" in call_args
+    mock_gateway_emit.assert_called_once_with(
+        case=TelemetryCase.APP_UPDATED,
+        context={"tenant_id": "tenant-456"},
+        payload={"app_id": "app-123"},
+    )
 
 
-def test_handle_app_deleted_calls_task(mock_exporter, mock_task):
+def test_handle_app_deleted_calls_task(mock_gateway_emit):
     sender = MagicMock()
     sender.id = "app-123"
     sender.tenant_id = "tenant-456"
 
     event_handlers._handle_app_deleted(sender)
 
-    mock_task.delay.assert_called_once()
-    call_args = mock_task.delay.call_args[0][0]
-    assert "app_deleted" in call_args
-    assert "tenant-456" in call_args
-    assert "app-123" in call_args
+    mock_gateway_emit.assert_called_once_with(
+        case=TelemetryCase.APP_DELETED,
+        context={"tenant_id": "tenant-456"},
+        payload={"app_id": "app-123"},
+    )
 
 
-def test_handle_feedback_created_calls_task(mock_exporter, mock_task):
+def test_handle_feedback_created_calls_task(mock_gateway_emit):
     sender = MagicMock()
     sender.message_id = "msg-123"
     sender.app_id = "app-456"
@@ -88,34 +79,34 @@ def test_handle_feedback_created_calls_task(mock_exporter, mock_task):
 
     event_handlers._handle_feedback_created(sender, tenant_id="tenant-456")
 
-    mock_task.delay.assert_called_once()
-    call_args = mock_task.delay.call_args[0][0]
-    assert "feedback_created" in call_args
-    assert "tenant-456" in call_args
-    assert "msg-123" in call_args
-    assert "app-456" in call_args
-    assert "conv-789" in call_args
-    assert "user-001" in call_args
-    assert "like" in call_args
-    assert "api" in call_args
-    assert "Great response!" in call_args
+    mock_gateway_emit.assert_called_once_with(
+        case=TelemetryCase.FEEDBACK_CREATED,
+        context={"tenant_id": "tenant-456"},
+        payload={
+            "message_id": "msg-123",
+            "app_id": "app-456",
+            "conversation_id": "conv-789",
+            "from_end_user_id": "user-001",
+            "from_account_id": None,
+            "rating": "like",
+            "from_source": "api",
+            "content": "Great response!",
+        },
+    )
 
 
-def test_handle_feedback_created_no_exporter(mock_task):
-    with patch("extensions.ext_enterprise_telemetry.get_enterprise_exporter", return_value=None):
-        sender = MagicMock()
-        sender.message_id = "msg-123"
+def test_handle_feedback_created_no_exporter(mock_gateway_emit):
+    """Gateway handles exporter availability internally; handler always calls gateway."""
+    sender = MagicMock()
+    sender.message_id = "msg-123"
 
-        event_handlers._handle_feedback_created(sender, tenant_id="tenant-456")
+    event_handlers._handle_feedback_created(sender, tenant_id="tenant-456")
 
-        mock_task.delay.assert_not_called()
+    mock_gateway_emit.assert_called_once()
 
 
-def test_handlers_create_valid_envelopes(mock_exporter, mock_task):
-    import json
-
-    from enterprise.telemetry.contracts import TelemetryEnvelope
-
+def test_handlers_create_valid_envelopes(mock_gateway_emit):
+    """Verify handlers pass correct TelemetryCase and payload structure."""
     sender = MagicMock()
     sender.id = "app-123"
     sender.tenant_id = "tenant-456"
@@ -123,12 +114,8 @@ def test_handlers_create_valid_envelopes(mock_exporter, mock_task):
 
     event_handlers._handle_app_created(sender)
 
-    call_args = mock_task.delay.call_args[0][0]
-    envelope_dict = json.loads(call_args)
-    envelope = TelemetryEnvelope(**envelope_dict)
-
-    assert envelope.case == TelemetryCase.APP_CREATED
-    assert envelope.tenant_id == "tenant-456"
-    assert envelope.event_id
-    assert envelope.payload["app_id"] == "app-123"
-    assert envelope.payload["mode"] == "chat"
+    call_kwargs = mock_gateway_emit.call_args[1]
+    assert call_kwargs["case"] == TelemetryCase.APP_CREATED
+    assert call_kwargs["context"]["tenant_id"] == "tenant-456"
+    assert call_kwargs["payload"]["app_id"] == "app-123"
+    assert call_kwargs["payload"]["mode"] == "chat"
