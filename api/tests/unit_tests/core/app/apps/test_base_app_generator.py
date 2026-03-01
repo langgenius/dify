@@ -1,7 +1,7 @@
 import pytest
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def test_validate_inputs_with_zero():
