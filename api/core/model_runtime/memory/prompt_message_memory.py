@@ -5,7 +5,6 @@ from typing import Protocol
 
 from core.model_runtime.entities import PromptMessage
 
-
 DEFAULT_MEMORY_MAX_TOKEN_LIMIT = 2000
 
 
