@@ -112,9 +112,12 @@ ignore_imports =
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     core.workflow.nodes.llm.llm_utils -> core.model_manager
+    core.workflow.nodes.llm.llm_utils -> core.entities.provider_entities
     core.workflow.nodes.llm.protocols -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
+    core.workflow.nodes.llm.llm_utils -> configs
     core.workflow.nodes.llm.llm_utils -> models.provider
+    core.workflow.nodes.llm.llm_utils -> models.provider_ids
     core.workflow.nodes.llm.llm_utils -> services.credit_pool_service
     core.workflow.nodes.llm.node -> core.tools.signature
     core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
