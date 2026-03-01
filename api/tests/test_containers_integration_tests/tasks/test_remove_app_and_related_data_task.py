@@ -4,8 +4,8 @@ from unittest.mock import ANY, call, patch
 import pytest
 
 from core.db.session_factory import session_factory
-from core.variables.segments import StringSegment
-from core.variables.types import SegmentType
+from core.workflow.variables.segments import StringSegment
+from core.workflow.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from models import Tenant
 from models.enums import CreatorUserRole

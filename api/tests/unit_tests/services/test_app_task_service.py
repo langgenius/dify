@@ -44,9 +44,10 @@ class TestAppTaskService:
         # Assert
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
         if should_call_graph_engine:
-            mock_graph_engine_manager.send_stop_command.assert_called_once_with(task_id)
+            mock_graph_engine_manager.assert_called_once()
+            mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(task_id)
         else:
-            mock_graph_engine_manager.send_stop_command.assert_not_called()
+            mock_graph_engine_manager.assert_not_called()
 
     @pytest.mark.parametrize(
         "invoke_from",
@@ -76,7 +77,8 @@ class TestAppTaskService:
 
         # Assert
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
-        mock_graph_engine_manager.send_stop_command.assert_called_once_with(task_id)
+        mock_graph_engine_manager.assert_called_once()
+        mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(task_id)
 
     @patch("services.app_task_service.GraphEngineManager")
     @patch("services.app_task_service.AppQueueManager")
@@ -96,7 +98,7 @@ class TestAppTaskService:
         app_mode = AppMode.ADVANCED_CHAT
 
         # Simulate GraphEngine failure
-        mock_graph_engine_manager.send_stop_command.side_effect = Exception("GraphEngine error")
+        mock_graph_engine_manager.return_value.send_stop_command.side_effect = Exception("GraphEngine error")
 
         # Act & Assert - should raise the exception since it's not caught
         with pytest.raises(Exception, match="GraphEngine error"):

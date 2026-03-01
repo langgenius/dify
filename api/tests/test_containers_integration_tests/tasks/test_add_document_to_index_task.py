@@ -18,7 +18,9 @@ class TestAddDocumentToIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.add_document_to_index_task.IndexProcessorFactory") as mock_index_processor_factory,
+            patch(
+                "tasks.add_document_to_index_task.IndexProcessorFactory", autospec=True
+            ) as mock_index_processor_factory,
         ):
             # Setup mock index processor
             mock_processor = MagicMock()
@@ -378,7 +380,7 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Mock the get_child_chunks method for each segment
-        with patch.object(DocumentSegment, "get_child_chunks") as mock_get_child_chunks:
+        with patch.object(DocumentSegment, "get_child_chunks", autospec=True) as mock_get_child_chunks:
             # Setup mock to return child chunks for each segment
             mock_child_chunks = []
             for i in range(2):  # Each segment has 2 child chunks

@@ -51,9 +51,9 @@ class TestBatchCreateSegmentToIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.batch_create_segment_to_index_task.storage") as mock_storage,
-            patch("tasks.batch_create_segment_to_index_task.ModelManager") as mock_model_manager,
-            patch("tasks.batch_create_segment_to_index_task.VectorService") as mock_vector_service,
+            patch("tasks.batch_create_segment_to_index_task.storage", autospec=True) as mock_storage,
+            patch("tasks.batch_create_segment_to_index_task.ModelManager", autospec=True) as mock_model_manager,
+            patch("tasks.batch_create_segment_to_index_task.VectorService", autospec=True) as mock_vector_service,
         ):
             # Setup default mock returns
             mock_storage.download.return_value = None
