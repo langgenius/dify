@@ -63,6 +63,10 @@ class TestJoinDefaultWorkspace:
             with pytest.raises(ValueError, match="Invalid response payload"):
                 EnterpriseService.join_default_workspace(account_id=account_id)
 
+    def test_join_default_workspace_joined_without_workspace_id_raises(self):
+        with pytest.raises(ValueError, match="workspace_id must be non-empty when joined is True"):
+            DefaultWorkspaceJoinResult(workspace_id="", joined=True, message="ok")
+
 
 class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_enterprise_disabled_noop(self):
