@@ -80,6 +80,10 @@ class LLMQuotaLayer(GraphEngineLayer):
                 model_instance=model_instance,
                 usage=result_event.node_run_result.llm_usage,
             )
+        except QuotaExceededError as exc:
+            node.graph_runtime_state.stop_event.set()
+            self._send_abort_command(reason=str(exc))
+            logger.warning("LLM quota deduction exceeded, node_id=%s, error=%s", node.id, exc)
         except Exception:
             logger.exception("LLM quota deduction failed, node_id=%s", node.id)
 
