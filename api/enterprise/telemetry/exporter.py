@@ -109,9 +109,10 @@ class EnterpriseExporter:
         sampling_rate: float = getattr(config, "ENTERPRISE_OTEL_SAMPLING_RATE", 1.0)
         self.include_content: bool = getattr(config, "ENTERPRISE_INCLUDE_CONTENT", True)
         api_key: str = getattr(config, "ENTERPRISE_OTLP_API_KEY", "")
-        # Auto-detect TLS: when bearer token is configured, use secure channel
-        insecure: bool = not bool(api_key)
-
+        
+        # Auto-detect TLS: https:// uses secure, everything else is insecure
+        insecure = not endpoint.startswith("https://")
+        
         resource = Resource(
             attributes={
                 ResourceAttributes.SERVICE_NAME: service_name,
