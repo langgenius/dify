@@ -46,13 +46,13 @@ class DefaultWorkspaceJoinResult(BaseModel):
     """
 
     # Only workspace_id can be empty when "no default workspace configured".
-    workspace_id: str = ""
+    workspace_id: str = Field(default="", alias="workspaceId")
 
     # These fields are required to avoid silently treating error payloads as "skipped".
     joined: bool
     message: str
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 def try_join_default_workspace(account_id: str) -> None:
