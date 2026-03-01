@@ -35,7 +35,9 @@ class CacheEmbedding(Embeddings):
             embedding = (
                 db.session.query(Embedding)
                 .filter_by(
-                    model_name=self._model_instance.model, hash=hash, provider_name=self._model_instance.provider
+                    model_name=self._model_instance.model_name,
+                    hash=hash,
+                    provider_name=self._model_instance.provider,
                 )
                 .first()
             )
@@ -52,7 +54,7 @@ class CacheEmbedding(Embeddings):
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
-                    self._model_instance.model, self._model_instance.credentials
+                    self._model_instance.model_name, self._model_instance.credentials
                 )
                 max_chunks = (
                     model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
@@ -87,7 +89,7 @@ class CacheEmbedding(Embeddings):
                         hash = helper.generate_text_hash(texts[i])
                         if hash not in cache_embeddings:
                             embedding_cache = Embedding(
-                                model_name=self._model_instance.model,
+                                model_name=self._model_instance.model_name,
                                 hash=hash,
                                 provider_name=self._model_instance.provider,
                                 embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
@@ -114,7 +116,9 @@ class CacheEmbedding(Embeddings):
             embedding = (
                 db.session.query(Embedding)
                 .filter_by(
-                    model_name=self._model_instance.model, hash=file_id, provider_name=self._model_instance.provider
+                    model_name=self._model_instance.model_name,
+                    hash=file_id,
+                    provider_name=self._model_instance.provider,
                 )
                 .first()
             )
@@ -131,7 +135,7 @@ class CacheEmbedding(Embeddings):
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
                 model_schema = model_type_instance.get_model_schema(
-                    self._model_instance.model, self._model_instance.credentials
+                    self._model_instance.model_name, self._model_instance.credentials
                 )
                 max_chunks = (
                     model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
@@ -168,7 +172,7 @@ class CacheEmbedding(Embeddings):
                         file_id = multimodel_documents[i]["file_id"]
                         if file_id not in cache_embeddings:
                             embedding_cache = Embedding(
-                                model_name=self._model_instance.model,
+                                model_name=self._model_instance.model_name,
                                 hash=file_id,
                                 provider_name=self._model_instance.provider,
                                 embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
@@ -190,7 +194,7 @@ class CacheEmbedding(Embeddings):
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{hash}"
+        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{hash}"
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
             redis_client.expire(embedding_cache_key, 600)
@@ -233,7 +237,7 @@ class CacheEmbedding(Embeddings):
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{file_id}"
+        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{file_id}"
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
             redis_client.expire(embedding_cache_key, 600)
