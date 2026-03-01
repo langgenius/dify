@@ -54,7 +54,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
-    core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
     # TODO(QuantumGhost): use DI to avoid depending on global DB.
@@ -112,13 +111,8 @@ ignore_imports =
     core.workflow.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     core.workflow.nodes.llm.llm_utils -> core.model_manager
-    core.workflow.nodes.llm.llm_utils -> core.entities.provider_entities
     core.workflow.nodes.llm.protocols -> core.model_manager
     core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
-    core.workflow.nodes.llm.llm_utils -> configs
-    core.workflow.nodes.llm.llm_utils -> models.provider
-    core.workflow.nodes.llm.llm_utils -> models.provider_ids
-    core.workflow.nodes.llm.llm_utils -> services.credit_pool_service
     core.workflow.nodes.llm.node -> core.tools.signature
     core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     core.workflow.nodes.tool.tool_node -> core.tools.tool_engine
@@ -175,7 +169,6 @@ ignore_imports =
     core.workflow.nodes.agent.agent_node -> extensions.ext_database
     core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     core.workflow.nodes.llm.file_saver -> extensions.ext_database
-    core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
     core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
