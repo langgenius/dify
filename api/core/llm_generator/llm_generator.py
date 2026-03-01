@@ -27,10 +27,10 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.ops.entities.trace_entity import TraceTaskName, OperationType
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
+from core.telemetry import emit as telemetry_emit
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -95,16 +95,17 @@ class LLMGenerator:
         if len(name) > 75:
             name = name[:75] + "..."
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.GENERATE_NAME_TRACE,
-                conversation_id=conversation_id,
-                generate_conversation_name=name,
-                inputs=prompt,
-                timer=timer,
-                tenant_id=tenant_id,
+        telemetry_emit(
+            TelemetryEvent(
+                name=TraceTaskName.GENERATE_NAME_TRACE,
+                context=TelemetryContext(tenant_id=tenant_id, app_id=app_id),
+                payload={
+                    "conversation_id": conversation_id,
+                    "generate_conversation_name": name,
+                    "inputs": prompt,
+                    "timer": timer,
+                    "tenant_id": tenant_id,
+                },
             )
         )
 
@@ -197,25 +198,6 @@ class LLMGenerator:
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
-<<<<<<< HEAD
-=======
-            if user_id:
-                prompt_value = rule_config.get("prompt", "")
-                generated_output = str(prompt_value) if prompt_value else ""
-                cls._emit_prompt_generation_trace(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    app_id=app_id,
-                    operation_type=OperationType.RULE_GENERATE,
-                    instruction=instruction,
-                    generated_output=generated_output,
-                    llm_result=llm_result,
-                    model_config=model_config,
-                    timer=timer,
-                    error=error or None,
-                )
-
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
             return rule_config
 
         # get rule config prompt, parameter and statement
@@ -247,48 +229,9 @@ class LLMGenerator:
 
         try:
             try:
-<<<<<<< HEAD
                 # the first step to generate the task prompt
                 prompt_content: LLMResult = model_instance.invoke_llm(
                     prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-=======
-                try:
-                    # the first step to generate the task prompt
-                    prompt_content: LLMResult = model_instance.invoke_llm(
-                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                    )
-                    llm_result = prompt_content
-                except InvokeError as e:
-                    error = str(e)
-                    error_step = "generate prefix prompt"
-                    rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
-
-                    if user_id:
-                        cls._emit_prompt_generation_trace(
-                            tenant_id=tenant_id,
-                            user_id=user_id,
-                            app_id=app_id,
-                            operation_type=OperationType.RULE_GENERATE,
-                            instruction=instruction,
-                            generated_output="",
-                            llm_result=llm_result,
-                            model_config=model_config,
-                            timer=timer,
-                            error=error,
-                        )
-
-                    return rule_config
-
-                rule_config["prompt"] = cast(str, prompt_content.message.content)
-
-                if not isinstance(prompt_content.message.content, str):
-                    raise NotImplementedError("prompt content is not a string")
-                parameter_generate_prompt = parameter_template.format(
-                    inputs={
-                        "INPUT_TEXT": prompt_content.message.content,
-                    },
-                    remove_template_variables=False,
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
                 )
             except InvokeError as e:
                 error = str(e)
@@ -341,24 +284,6 @@ class LLMGenerator:
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
-<<<<<<< HEAD
-=======
-        if user_id:
-            generated_output = rule_config.get("prompt", "")
-            cls._emit_prompt_generation_trace(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=app_id,
-                operation_type=OperationType.RULE_GENERATE,
-                instruction=instruction,
-                generated_output=str(generated_output) if generated_output else "",
-                llm_result=llm_result,
-                model_config=model_config,
-                timer=timer,
-                error=error or None,
-            )
-
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
         return rule_config
 
     @classmethod
@@ -389,48 +314,10 @@ class LLMGenerator:
         )
 
         prompt_messages = [UserPromptMessage(content=prompt)]
-<<<<<<< HEAD
         model_parameters = args.model_config_data.completion_params
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-=======
-        model_parameters = model_config.get("completion_params", {})
-
-        llm_result = None
-        error = None
-        with measure_time() as timer:
-            try:
-                llm_result = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                )
-
-                generated_code = cast(str, llm_result.message.content)
-                result = {"code": generated_code, "language": code_language, "error": ""}
-
-            except InvokeError as e:
-                error = str(e)
-                result = {"code": "", "language": code_language, "error": f"Failed to generate code. Error: {error}"}
-            except Exception as e:
-                logger.exception(
-                    "Failed to invoke LLM model, model: %s, language: %s", model_config.get("name"), code_language
-                )
-                error = str(e)
-                result = {"code": "", "language": code_language, "error": f"An unexpected error occurred: {str(e)}"}
-
-        if user_id:
-            cls._emit_prompt_generation_trace(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=app_id,
-                operation_type=OperationType.CODE_GENERATE,
-                instruction=instruction,
-                generated_output=result.get("code", ""),
-                llm_result=llm_result,
-                model_config=model_config,
-                timer=timer,
-                error=error,
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
             )
 
             generated_code = response.message.get_text_content()
@@ -488,58 +375,9 @@ class LLMGenerator:
         ]
         model_parameters = args.model_config_data.completion_params
 
-<<<<<<< HEAD
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-=======
-        llm_result = None
-        error = None
-        result = {"output": "", "error": ""}
-
-        with measure_time() as timer:
-            try:
-                llm_result = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                )
-
-                raw_content = llm_result.message.content
-
-                if not isinstance(raw_content, str):
-                    raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
-
-                try:
-                    parsed_content = json.loads(raw_content)
-                except json.JSONDecodeError:
-                    parsed_content = json_repair.loads(raw_content)
-
-                if not isinstance(parsed_content, dict | list):
-                    raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
-
-                generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
-                result = {"output": generated_json_schema, "error": ""}
-
-            except InvokeError as e:
-                error = str(e)
-                result = {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
-            except Exception as e:
-                logger.exception("Failed to invoke LLM model, model: %s", model_config.get("name"))
-                error = str(e)
-                result = {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
-
-        if user_id:
-            cls._emit_prompt_generation_trace(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=app_id,
-                operation_type=OperationType.STRUCTURED_OUTPUT,
-                instruction=instruction,
-                generated_output=result.get("output", ""),
-                llm_result=llm_result,
-                model_config=model_config,
-                timer=timer,
-                error=error,
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
             )
 
             raw_content = response.message.get_text_content()
@@ -725,123 +563,24 @@ class LLMGenerator:
         ]
         model_parameters = {"temperature": 0.4}
 
-        llm_result = None
-        error = None
-        result = {}
-
-        with measure_time() as timer:
-            try:
-                llm_result = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                )
-
-                generated_raw = llm_result.message.get_text_content()
-                first_brace = generated_raw.find("{")
-                last_brace = generated_raw.rfind("}")
-                if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
-                    raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
-                json_str = generated_raw[first_brace : last_brace + 1]
-                data = json_repair.loads(json_str)
-                if not isinstance(data, dict):
-                    raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
-                result = data
-            except InvokeError as e:
-                error = str(e)
-                result = {"error": f"Failed to generate code. Error: {error}"}
-            except Exception as e:
-                logger.exception(
-                    "Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=True
-                )
-                error = str(e)
-                result = {"error": f"An unexpected error occurred: {str(e)}"}
-
-        if user_id:
-            generated_output = ""
-            if isinstance(result, dict):
-                for key in ["prompt", "code", "output", "modified"]:
-                    if result.get(key):
-                        generated_output = str(result[key])
-                        break
-
-            LLMGenerator._emit_prompt_generation_trace(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=app_id,
-                operation_type=OperationType.INSTRUCTION_MODIFY,
-                instruction=instruction,
-                generated_output=generated_output,
-                llm_result=llm_result,
-                model_config=model_config,
-                timer=timer,
-                error=error,
+        try:
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-        return result
-
-    @classmethod
-    def _emit_prompt_generation_trace(
-        cls,
-        tenant_id: str,
-        user_id: str,
-        app_id: str | None,
-        operation_type: OperationType,
-        instruction: str,
-        generated_output: str,
-        llm_result: LLMResult | None,
-        model_config: dict | None = None,
-        timer=None,
-        error: str | None = None,
-    ):
-        if llm_result:
-            prompt_tokens = llm_result.usage.prompt_tokens
-            completion_tokens = llm_result.usage.completion_tokens
-            total_tokens = llm_result.usage.total_tokens
-            model_name = llm_result.model
-            # Extract provider from model_config if available, otherwise fall back to parsing model name
-            if model_config and model_config.get("provider"):
-                model_provider = model_config.get("provider", "")
-            else:
-                model_provider = model_name.split("/")[0] if "/" in model_name else ""
-            latency = llm_result.usage.latency
-            total_price = float(llm_result.usage.total_price) if llm_result.usage.total_price else None
-            currency = llm_result.usage.currency
-        else:
-            prompt_tokens = 0
-            completion_tokens = 0
-            total_tokens = 0
-            model_provider = model_config.get("provider", "") if model_config else ""
-            model_name = model_config.get("name", "") if model_config else ""
-            latency = 0.0
-            if timer:
-                start_time = timer.get("start")
-                end_time = timer.get("end")
-                if start_time and end_time:
-                    latency = (end_time - start_time).total_seconds()
-            total_price = None
-            currency = None
-
-        telemetry_emit(
-            TelemetryEvent(
-                name=TraceTaskName.PROMPT_GENERATION_TRACE,
-                context=TelemetryContext(tenant_id=tenant_id, user_id=user_id, app_id=app_id),
-                payload={
-                    "tenant_id": tenant_id,
-                    "user_id": user_id,
-                    "app_id": app_id,
-                    "operation_type": operation_type,
-                    "instruction": instruction,
-                    "generated_output": generated_output,
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": total_tokens,
-                    "model_provider": model_provider,
-                    "model_name": model_name,
-                    "latency": latency,
-                    "total_price": total_price,
-                    "currency": currency,
-                    "timer": timer,
-                    "error": error,
-                },
-            )
-        )
->>>>>>> 81c62ae9a0 (feat(telemetry): add enterprise OTEL telemetry with gateway, traces, metrics, and logs)
+            generated_raw = response.message.get_text_content()
+            first_brace = generated_raw.find("{")
+            last_brace = generated_raw.rfind("}")
+            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+            json_str = generated_raw[first_brace : last_brace + 1]
+            data = json_repair.loads(json_str)
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
+            return data
+        except InvokeError as e:
+            error = str(e)
+            return {"error": f"Failed to generate code. Error: {error}"}
+        except Exception as e:
+            logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True)
+            return {"error": f"An unexpected error occurred: {str(e)}"}
