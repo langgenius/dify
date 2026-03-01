@@ -92,9 +92,7 @@ class TokenBufferMemory:
                             message.workflow_run_id,
                         )
             else:
-                logger.warning(
-                    "TokenBufferMemory: message missing workflow_run_id in workflow mode"
-                )
+                logger.warning("TokenBufferMemory: message missing workflow_run_id in workflow mode")
         else:
             raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
