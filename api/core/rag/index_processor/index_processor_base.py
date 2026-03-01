@@ -79,7 +79,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         raise NotImplementedError
 
     @abstractmethod

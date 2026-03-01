@@ -146,7 +146,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
