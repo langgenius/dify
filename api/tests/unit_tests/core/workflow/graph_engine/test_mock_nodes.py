@@ -10,6 +10,7 @@ from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -44,9 +45,10 @@ class MockNodeMixin:
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ):
-        if isinstance(self, (LLMNode, QuestionClassifierNode)):
+        if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
+            kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
 
         super().__init__(
             id=id,
