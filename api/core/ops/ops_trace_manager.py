@@ -41,8 +41,8 @@ logger = logging.getLogger(__name__)
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, provider: str) -> dict[str, Any]:
-        match provider:
+    def __getitem__(self, key: str) -> dict[str, Any]:
+        match key:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
@@ -149,7 +149,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 }
 
             case _:
-                raise KeyError(f"Unsupported tracing provider: {provider}")
+                raise KeyError(f"Unsupported tracing provider: {key}")
 
 
 provider_config_map = OpsTraceProviderConfigMap()

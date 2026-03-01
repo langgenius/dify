@@ -273,9 +273,6 @@
     }
   },
   "app/account/oauth/authorize/page.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7976,27 +7973,14 @@
       "count": 6
     }
   },
-  "app/signin/check-code/page.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
   "app/signin/components/mail-and-code-auth.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/signin/components/mail-and-password-auth.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/signin/invite-settings/page.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     }
   },
   "app/signin/layout.tsx": {
@@ -8005,11 +7989,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/signin/normal-form.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 20
     }
   },
   "app/signin/one-more-step.tsx": {
