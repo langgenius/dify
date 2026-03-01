@@ -1,11 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import InputCopy from '../input-copy'
-
-vi.mock('copy-to-clipboard', () => ({
-  default: vi.fn().mockReturnValue(true),
-}))
 
 async function renderAndFlush(ui: React.ReactElement) {
   const result = render(ui)
@@ -15,15 +10,21 @@ async function renderAndFlush(ui: React.ReactElement) {
   return result
 }
 
+const execCommandMock = vi.fn().mockReturnValue(true)
+
 describe('InputCopy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
+    execCommandMock.mockReturnValue(true)
+    document.execCommand = execCommandMock
   })
 
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('rendering', () => {
@@ -107,7 +108,7 @@ describe('InputCopy', () => {
         await user.click(copyableArea)
       })
 
-      expect(copy).toHaveBeenCalledWith('copy-this-value')
+      expect(execCommandMock).toHaveBeenCalledWith('copy')
     })
 
     it('should update copied state after clicking', async () => {
@@ -119,7 +120,7 @@ describe('InputCopy', () => {
         await user.click(copyableArea)
       })
 
-      expect(copy).toHaveBeenCalledWith('test-value')
+      expect(execCommandMock).toHaveBeenCalledWith('copy')
     })
 
     it('should reset copied state after timeout', async () => {
@@ -131,7 +132,7 @@ describe('InputCopy', () => {
         await user.click(copyableArea)
       })
 
-      expect(copy).toHaveBeenCalledWith('test-value')
+      expect(execCommandMock).toHaveBeenCalledWith('copy')
 
       await act(async () => {
         vi.advanceTimersByTime(1500)
@@ -306,7 +307,7 @@ describe('InputCopy', () => {
         await user.click(copyableArea)
       })
 
-      expect(copy).toHaveBeenCalledTimes(3)
+      expect(execCommandMock).toHaveBeenCalledTimes(3)
     })
   })
 })

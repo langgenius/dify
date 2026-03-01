@@ -315,3 +315,165 @@ describe('getCollectionsParams', () => {
     })
   })
 })
+
+describe('getMarketplacePlugins', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should return empty result when queryParams is undefined', async () => {
+    const { getMarketplacePlugins } = await import('../utils')
+    const result = await getMarketplacePlugins(undefined, 1)
+
+    expect(result).toEqual({
+      plugins: [],
+      total: 0,
+      page: 1,
+      page_size: 40,
+    })
+    expect(mockSearchAdvanced).not.toHaveBeenCalled()
+  })
+
+  it('should fetch plugins with valid query params', async () => {
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: {
+        plugins: [{ type: 'plugin', org: 'test', name: 'p1', tags: [] }],
+        total: 1,
+      },
+    })
+
+    const { getMarketplacePlugins } = await import('../utils')
+    const result = await getMarketplacePlugins({
+      query: 'test',
+      sort_by: 'install_count',
+      sort_order: 'DESC',
+      category: 'tool',
+      tags: ['search'],
+      type: 'plugin',
+      page_size: 20,
+    }, 1)
+
+    expect(result.plugins).toHaveLength(1)
+    expect(result.total).toBe(1)
+    expect(result.page).toBe(1)
+    expect(result.page_size).toBe(20)
+  })
+
+  it('should use bundles endpoint when type is bundle', async () => {
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: {
+        bundles: [{ type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} }],
+        total: 1,
+      },
+    })
+
+    const { getMarketplacePlugins } = await import('../utils')
+    const result = await getMarketplacePlugins({
+      query: 'bundle',
+      type: 'bundle',
+    }, 1)
+
+    expect(result.plugins).toHaveLength(1)
+    const call = mockSearchAdvanced.mock.calls[0]
+    expect(call[0].params.kind).toBe('bundles')
+  })
+
+  it('should use empty category when category is all', async () => {
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: { plugins: [], total: 0 },
+    })
+
+    const { getMarketplacePlugins } = await import('../utils')
+    await getMarketplacePlugins({
+      query: 'test',
+      category: 'all',
+    }, 1)
+
+    const call = mockSearchAdvanced.mock.calls[0]
+    expect(call[0].body.category).toBe('')
+  })
+
+  it('should handle API error and return empty result', async () => {
+    mockSearchAdvanced.mockRejectedValueOnce(new Error('API error'))
+
+    const { getMarketplacePlugins } = await import('../utils')
+    const result = await getMarketplacePlugins({
+      query: 'fail',
+    }, 2)
+
+    expect(result).toEqual({
+      plugins: [],
+      total: 0,
+      page: 2,
+      page_size: 40,
+    })
+  })
+
+  it('should pass abort signal when provided', async () => {
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: { plugins: [], total: 0 },
+    })
+
+    const controller = new AbortController()
+    const { getMarketplacePlugins } = await import('../utils')
+    await getMarketplacePlugins({ query: 'test' }, 1, controller.signal)
+
+    const call = mockSearchAdvanced.mock.calls[0]
+    expect(call[1]).toMatchObject({ signal: controller.signal })
+  })
+
+  it('should default page_size to 40 when not provided', async () => {
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: { plugins: [], total: 0 },
+    })
+
+    const { getMarketplacePlugins } = await import('../utils')
+    const result = await getMarketplacePlugins({ query: 'test' }, 1)
+
+    expect(result.page_size).toBe(40)
+  })
+
+  it('should handle response with bundles fallback to plugins fallback to empty', async () => {
+    // No bundles and no plugins in response
+    mockSearchAdvanced.mockResolvedValueOnce({
+      data: { total: 0 },
+    })
+
+    const { getMarketplacePlugins } = await import('../utils')
+    const result = await getMarketplacePlugins({ query: 'test' }, 1)
+
+    expect(result.plugins).toEqual([])
+  })
+})
+
+// ================================
+// Edge cases for ||/optional chaining branches
+// ================================
+describe('Utils branch edge cases', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should handle collectionPlugins returning undefined plugins', async () => {
+    mockCollectionPlugins.mockResolvedValueOnce({
+      data: { plugins: undefined },
+    })
+
+    const { getMarketplacePluginsByCollectionId } = await import('../utils')
+    const result = await getMarketplacePluginsByCollectionId('test-collection')
+
+    expect(result).toEqual([])
+  })
+
+  it('should handle collections returning undefined collections list', async () => {
+    mockCollections.mockResolvedValueOnce({
+      data: { collections: undefined },
+    })
+
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
+    const result = await getMarketplaceCollectionsAndPlugins()
+
+    // undefined || [] evaluates to [], so empty array is expected
+    expect(result.marketplaceCollections).toEqual([])
+  })
+})

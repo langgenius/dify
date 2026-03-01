@@ -12,9 +12,10 @@ import { forumCommand } from '../forum'
 
 vi.mock('../command-bus')
 
+const mockT = vi.fn((key: string) => key)
 vi.mock('react-i18next', () => ({
   getI18n: () => ({
-    t: (key: string) => key,
+    t: (key: string) => mockT(key),
     language: 'en',
   }),
 }))
@@ -62,9 +63,30 @@ describe('docsCommand', () => {
     })
   })
 
+  it('search uses fallback description when i18n returns empty', async () => {
+    mockT.mockImplementation((key: string) =>
+      key.includes('docDesc') ? '' : key,
+    )
+
+    const results = await docsCommand.search('', 'en')
+
+    expect(results[0].description).toBe('Open help documentation')
+    mockT.mockImplementation((key: string) => key)
+  })
+
   it('registers navigation.doc command', () => {
     docsCommand.register?.({} as Record<string, never>)
     expect(registerCommands).toHaveBeenCalledWith({ 'navigation.doc': expect.any(Function) })
+  })
+
+  it('registered handler opens doc URL with correct locale', async () => {
+    docsCommand.register?.({} as Record<string, never>)
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+    await handlers['navigation.doc']()
+
+    expect(openSpy).toHaveBeenCalledWith('https://docs.dify.ai/en', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
   })
 
   it('unregisters navigation.doc command', () => {
@@ -154,9 +176,40 @@ describe('communityCommand', () => {
     })
   })
 
+  it('search uses fallback description when i18n returns empty', async () => {
+    mockT.mockImplementation((key: string) =>
+      key.includes('communityDesc') ? '' : key,
+    )
+
+    const results = await communityCommand.search('', 'en')
+
+    expect(results[0].description).toBe('Open Discord community')
+    mockT.mockImplementation((key: string) => key)
+  })
+
   it('registers navigation.community command', () => {
     communityCommand.register?.({} as Record<string, never>)
     expect(registerCommands).toHaveBeenCalledWith({ 'navigation.community': expect.any(Function) })
+  })
+
+  it('registered handler opens URL from args', async () => {
+    communityCommand.register?.({} as Record<string, never>)
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+    await handlers['navigation.community']({ url: 'https://custom-url.com' })
+
+    expect(openSpy).toHaveBeenCalledWith('https://custom-url.com', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
+  })
+
+  it('registered handler falls back to default URL when no args', async () => {
+    communityCommand.register?.({} as Record<string, never>)
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+    await handlers['navigation.community']()
+
+    expect(openSpy).toHaveBeenCalledWith('https://discord.gg/5AEfbxcd9k', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
   })
 
   it('unregisters navigation.community command', () => {
@@ -200,9 +253,40 @@ describe('forumCommand', () => {
     })
   })
 
+  it('search uses fallback description when i18n returns empty', async () => {
+    mockT.mockImplementation((key: string) =>
+      key.includes('feedbackDesc') ? '' : key,
+    )
+
+    const results = await forumCommand.search('', 'en')
+
+    expect(results[0].description).toBe('Open community feedback discussions')
+    mockT.mockImplementation((key: string) => key)
+  })
+
   it('registers navigation.forum command', () => {
     forumCommand.register?.({} as Record<string, never>)
     expect(registerCommands).toHaveBeenCalledWith({ 'navigation.forum': expect.any(Function) })
+  })
+
+  it('registered handler opens URL from args', async () => {
+    forumCommand.register?.({} as Record<string, never>)
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+    await handlers['navigation.forum']({ url: 'https://custom-forum.com' })
+
+    expect(openSpy).toHaveBeenCalledWith('https://custom-forum.com', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
+  })
+
+  it('registered handler falls back to default URL when no args', async () => {
+    forumCommand.register?.({} as Record<string, never>)
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+    await handlers['navigation.forum']()
+
+    expect(openSpy).toHaveBeenCalledWith('https://forum.dify.ai', '_blank', 'noopener,noreferrer')
+    openSpy.mockRestore()
   })
 
   it('unregisters navigation.forum command', () => {
