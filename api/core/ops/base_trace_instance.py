@@ -16,7 +16,7 @@ class BaseTraceInstance(ABC):
 
     def __init__(self, trace_config: BaseTracingConfig):
         """
-        Abstract initializer for the trace instance.
+        Initializer for the trace instance.
         Distribute trace tasks by matching entities
         """
         self.trace_config = trace_config
