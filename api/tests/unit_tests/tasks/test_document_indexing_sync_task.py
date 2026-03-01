@@ -75,7 +75,7 @@ def mock_document(document_id, dataset_id, notion_workspace_id, notion_page_id, 
 @pytest.fixture
 def mock_db_session(mock_document, mock_dataset):
     """Mock session_factory.create_session to drive deterministic read-only task flow."""
-    with patch("tasks.document_indexing_sync_task.session_factory") as mock_session_factory:
+    with patch("tasks.document_indexing_sync_task.session_factory", autospec=True) as mock_session_factory:
         session = MagicMock()
         session.scalars.return_value.all.return_value = []
         session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
@@ -96,7 +96,7 @@ def mock_db_session(mock_document, mock_dataset):
 @pytest.fixture
 def mock_datasource_provider_service():
     """Mock datasource credential provider."""
-    with patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_service_class:
+    with patch("tasks.document_indexing_sync_task.DatasourceProviderService", autospec=True) as mock_service_class:
         mock_service = MagicMock()
         mock_service.get_datasource_credentials.return_value = {"integration_secret": "test_token"}
         mock_service_class.return_value = mock_service
@@ -106,7 +106,7 @@ def mock_datasource_provider_service():
 @pytest.fixture
 def mock_notion_extractor():
     """Mock notion extractor class and instance."""
-    with patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_extractor_class:
+    with patch("tasks.document_indexing_sync_task.NotionExtractor", autospec=True) as mock_extractor_class:
         mock_extractor = MagicMock()
         mock_extractor.get_notion_last_edited_time.return_value = "2024-01-01T00:00:00Z"
         mock_extractor_class.return_value = mock_extractor
