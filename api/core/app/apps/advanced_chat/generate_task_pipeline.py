@@ -603,8 +603,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueAdvancedChatMessageEndEvent,
         *,
         graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
         resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
 

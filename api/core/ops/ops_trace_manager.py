@@ -33,7 +33,6 @@ from core.ops.entities.trace_entity import (
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.engine import db
 from models.account import Tenant
 from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
@@ -44,6 +43,25 @@ if TYPE_CHECKING:
     from core.workflow.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
+
+
+def _lookup_app_and_workspace_names(app_id: str | None, tenant_id: str | None) -> tuple[str, str]:
+    """Return (app_name, workspace_name) for the given IDs. Falls back to empty strings."""
+    app_name = ""
+    workspace_name = ""
+    if not app_id and not tenant_id:
+        return app_name, workspace_name
+    with Session(db.engine) as session:
+        if app_id:
+            name = session.scalar(select(App.name).where(App.id == app_id))
+            if name:
+                app_name = name
+        if tenant_id:
+            name = session.scalar(select(Tenant.name).where(Tenant.id == tenant_id))
+            if name:
+                workspace_name = name
+    return app_name, workspace_name
+
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
