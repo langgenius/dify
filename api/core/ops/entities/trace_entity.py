@@ -27,6 +27,26 @@ class BaseTraceInfo(BaseModel):
 
     model_config = ConfigDict(protected_namespaces=())
 
+    @property
+    def resolved_trace_id(self) -> str | None:
+        """Get trace_id with intelligent fallback.
+        
+        Priority:
+        1. External trace_id (from X-Trace-Id header)
+        2. workflow_run_id (if this trace type has it)
+        3. message_id (as final fallback)
+        """
+        if self.trace_id:
+            return self.trace_id
+        
+        # Try workflow_run_id (only exists on workflow-related traces)
+        workflow_run_id = getattr(self, "workflow_run_id", None)
+        if workflow_run_id:
+            return workflow_run_id
+        
+        # Final fallback to message_id
+        return str(self.message_id) if self.message_id else None
+
     @field_serializer("start_time", "end_time")
     def serialize_datetime(self, dt: datetime | None) -> str | None:
         if dt is None:
