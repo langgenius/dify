@@ -7,11 +7,8 @@ from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
-
 _DELEGATED_METHOD_MAP: dict[str, Callable[[BaseKeyword], Callable[..., Any]]] = {
-    "create_segment_keywords": (
-        lambda keyword_processor: cast(Any, keyword_processor).create_segment_keywords
-    ),
+    "create_segment_keywords": (lambda keyword_processor: cast(Any, keyword_processor).create_segment_keywords),
     "multi_create_segment_keywords": (
         lambda keyword_processor: cast(Any, keyword_processor).multi_create_segment_keywords
     ),
