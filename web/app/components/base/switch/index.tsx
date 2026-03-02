@@ -1,40 +1,30 @@
 'use client'
 import { Switch as OriginalSwitch } from '@headlessui/react'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
 import { cn } from '@/utils/classnames'
 
 type SwitchProps = {
-  onChange?: (value: boolean) => void
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
-  defaultValue?: boolean
-  value?: boolean
-  disabled?: boolean
-  className?: string
+  'value': boolean
+  'onChange'?: (value: boolean) => void
+  'size'?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
+  'disabled'?: boolean
+  'className'?: string
+  'data-testid'?: string
 }
 
 const Switch = (
   {
     ref: propRef,
+    value,
     onChange,
     size = 'md',
-    defaultValue = false,
-    value,
     disabled = false,
     className,
+    'data-testid': dataTestid,
   }: SwitchProps & {
     ref?: React.RefObject<HTMLButtonElement>
   },
 ) => {
-  const isControlled = value !== undefined
-  const [uncontrolledEnabled, setUncontrolledEnabled] = useState(defaultValue)
-
-  useEffect(() => {
-    if (!isControlled)
-      setUncontrolledEnabled(defaultValue)
-  }, [defaultValue, isControlled])
-
-  const enabled = isControlled ? value : uncontrolledEnabled
   const wrapStyle = {
     lg: 'h-6 w-11',
     l: 'h-5 w-9',
@@ -61,21 +51,18 @@ const Switch = (
   return (
     <OriginalSwitch
       ref={propRef}
-      checked={enabled}
+      checked={value}
       onChange={(checked: boolean) => {
         if (disabled)
           return
-
-        if (!isControlled)
-          setUncontrolledEnabled(checked)
-
         onChange?.(checked)
       }}
-      className={cn(wrapStyle[size], enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
+      className={cn(wrapStyle[size], value ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
+      data-testid={dataTestid}
     >
       <span
         aria-hidden="true"
-        className={cn(circleStyle[size], enabled ? translateLeft[size] : 'translate-x-0', size === 'xs' && 'rounded-[1px]', 'pointer-events-none inline-block rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out')}
+        className={cn(circleStyle[size], value ? translateLeft[size] : 'translate-x-0', size === 'xs' && 'rounded-[1px]', 'pointer-events-none inline-block rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out')}
       />
     </OriginalSwitch>
   )

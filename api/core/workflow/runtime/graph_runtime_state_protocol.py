@@ -2,8 +2,8 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables.segments import Segment
 from core.workflow.system_variable import SystemVariableReadOnlyView
+from core.workflow.variables.segments import Segment
 
 
 class ReadOnlyVariablePool(Protocol):

@@ -28,13 +28,13 @@ import { cn } from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
-  params: { datasetId: string }
+  datasetId: string
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
-    params: { datasetId },
+    datasetId,
   } = props
   const { t } = useTranslation()
   const pathname = usePathname()

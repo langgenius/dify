@@ -8,7 +8,9 @@ allowing tests to run without external dependencies.
 import time
 from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
+from unittest.mock import MagicMock
 
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -18,6 +20,7 @@ from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.http_request import HttpRequestNode
 from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from core.workflow.nodes.llm import LLMNode
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
 from core.workflow.nodes.question_classifier import QuestionClassifierNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
@@ -42,6 +45,11 @@ class MockNodeMixin:
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ):
+        if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
+            kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
+            kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
+            kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
+
         super().__init__(
             id=id,
             config=config,
