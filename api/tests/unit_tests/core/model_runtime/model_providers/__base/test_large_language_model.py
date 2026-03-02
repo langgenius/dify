@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import core.model_runtime.model_providers.__base.large_language_model as llm_module
+from core.model_runtime.model_providers.__base.large_language_model import _build_llm_result_from_first_chunk
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -253,7 +254,7 @@ def test_build_llm_result_from_first_chunk_reads_first_and_drains(
         yield first
         raise RuntimeError("drain boom")
 
-    result = llm_module._build_llm_result_from_first_chunk(
+    result = _build_llm_result_from_first_chunk(
         model="m", prompt_messages=[UserPromptMessage(content="u")], chunks=iter_with_error()
     )
     assert result.model == "m"
@@ -271,7 +272,7 @@ def test_build_llm_result_from_first_chunk_empty_iterator() -> None:
             yield _chunk()
         return
 
-    result = llm_module._build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=empty())
+    result = _build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=empty())
     assert result.message.content == []
     assert result.usage.total_tokens == 0
     assert result.system_fingerprint is None
@@ -279,7 +280,7 @@ def test_build_llm_result_from_first_chunk_empty_iterator() -> None:
 
 def test_build_llm_result_from_first_chunk_drains_remaining_chunks() -> None:
     chunks = iter([_chunk(content="first"), _chunk(content="second")])
-    result = llm_module._build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=chunks)
+    result = _build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=chunks)
     assert result.message.content == "first"
 
 
