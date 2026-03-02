@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -26,7 +27,7 @@ from core.workflow.nodes.llm import (
     llm_utils,
 )
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory, PromptMessageMemory
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
