@@ -37,7 +37,6 @@ class WorkerPool:
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         layers: list[GraphEngineLayer],
-        stop_event: threading.Event,
         config: GraphEngineConfig,
         execution_context: IExecutionContext | None = None,
     ) -> None:
@@ -64,7 +63,6 @@ class WorkerPool:
         self._worker_counter = 0
         self._lock = threading.RLock()
         self._running = False
-        self._stop_event = stop_event
 
         # No longer tracking worker states with callbacks to avoid lock contention
 
@@ -135,7 +133,6 @@ class WorkerPool:
             layers=self._layers,
             worker_id=worker_id,
             execution_context=self._execution_context,
-            stop_event=self._stop_event,
         )
 
         worker.start()

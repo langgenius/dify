@@ -27,3 +27,16 @@ class HttpClientProtocol(Protocol):
 
 class FileManagerProtocol(Protocol):
     def download(self, f: File, /) -> bytes: ...
+
+
+class ToolFileManagerProtocol(Protocol):
+    def create_file_by_raw(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> Any: ...
