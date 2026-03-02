@@ -19,6 +19,14 @@ type PopoverContentProps = {
   alignOffset?: number
   className?: string
   popupClassName?: string
+  positionerProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof BasePopover.Positioner>,
+    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
+  >
+  popupProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof BasePopover.Popup>,
+    'children' | 'className'
+  >
 }
 
 export function PopoverContent({
@@ -28,6 +36,8 @@ export function PopoverContent({
   alignOffset = 0,
   className,
   popupClassName,
+  positionerProps,
+  popupProps,
 }: PopoverContentProps) {
   const { side, align } = parsePlacement(placement)
 
@@ -39,6 +49,7 @@ export function PopoverContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className={cn('outline-none', className)}
+        {...positionerProps}
       >
         <BasePopover.Popup
           className={cn(
@@ -46,6 +57,7 @@ export function PopoverContent({
             'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
             popupClassName,
           )}
+          {...popupProps}
         >
           {children}
         </BasePopover.Popup>
