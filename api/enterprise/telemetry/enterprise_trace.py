@@ -491,15 +491,15 @@ class EnterpriseOtelTrace:
         labels = self._labels(
             tenant_id=tenant_id or "",
             app_id=app_id or "",
-            model_provider=metadata.get("ls_provider", ""),
-            model_name=metadata.get("ls_model_name", ""),
+            model_provider=metadata.get("ls_provider") or "",
+            model_name=metadata.get("ls_model_name") or "",
         )
         token_labels = TokenMetricLabels(
             tenant_id=tenant_id or "",
             app_id=app_id or "",
             operation_type=OperationType.MESSAGE,
-            model_provider=metadata.get("ls_provider", ""),
-            model_name=metadata.get("ls_model_name", ""),
+            model_provider=metadata.get("ls_provider") or "",
+            model_name=metadata.get("ls_model_name") or "",
             node_type="",
         ).to_dict()
         self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
