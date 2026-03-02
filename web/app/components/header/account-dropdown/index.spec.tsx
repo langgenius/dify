@@ -189,6 +189,14 @@ describe('AccountDropdown', () => {
       expect(screen.getByText('test@example.com')).toBeInTheDocument()
     })
 
+    it('should set an accessible label on avatar trigger when menu trigger is rendered', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
+    })
+
     it('should show EDU badge for education accounts', () => {
       // Arrange
       vi.mocked(useProviderContext).mockReturnValue({

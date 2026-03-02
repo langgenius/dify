@@ -161,9 +161,12 @@ export default function AppSelector() {
   }
 
   return (
-    <div className="">
+    <div>
       <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
-        <DropdownMenuTrigger className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}>
+        <DropdownMenuTrigger
+          aria-label={t('account.account', { ns: 'common' })}
+          className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
+        >
           <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
