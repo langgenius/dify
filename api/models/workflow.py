@@ -791,7 +791,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     __tablename__ = "workflow_node_executions"
 
-    @declared_attr
+    @declared_attr.directive
     @classmethod
     def __table_args__(cls) -> Any:
         return (
