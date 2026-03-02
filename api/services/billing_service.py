@@ -394,7 +394,6 @@ class BillingService:
             tenant_whitelist.append(item["tenant_id"])
         return tenant_whitelist
 
-
     @classmethod
     def get_account_notification(cls, account_id: str) -> dict:
         """Return the active in-product notification for account_id, if any.
