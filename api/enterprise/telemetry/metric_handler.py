@@ -7,11 +7,13 @@ idempotency checking, and payload rehydration.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 from enterprise.telemetry.contracts import TelemetryCase, TelemetryEnvelope
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 
 logger = logging.getLogger(__name__)
 
@@ -136,44 +138,46 @@ class EnterpriseMetricHandler:
             return False
 
     def _rehydrate(self, envelope: TelemetryEnvelope) -> dict[str, Any]:
-        """Rehydrate payload from reference or fallback.
+        """Rehydrate payload from storage reference or inline data.
 
-        Attempts to resolve payload_ref to full data. If that fails,
-        falls back to payload_fallback. If both fail, emits a degraded
-        event marker.
+        If the envelope payload is empty and metadata contains a
+        ``payload_ref``, the full payload is loaded from object storage
+        (where the gateway wrote it as JSON).  When both the inline
+        payload and storage resolution fail, a degraded-event marker
+        is emitted so the gap is observable.
 
         Args:
             envelope: The telemetry envelope containing payload data.
 
         Returns:
-            The rehydrated payload dictionary.
+            The rehydrated payload dictionary, or ``{}`` on total failure.
         """
-        # For now, payload is directly in the envelope
-        # Future: implement payload_ref resolution from storage
         payload = envelope.payload
 
-        if not payload and envelope.payload_fallback:
-            import pickle
-
-            try:
-                payload = pickle.loads(envelope.payload_fallback)  # noqa: S301
-                logger.debug("Used payload_fallback for event_id=%s", envelope.event_id)
-            except Exception:
-                logger.warning(
-                    "Failed to deserialize payload_fallback for event_id=%s",
-                    envelope.event_id,
-                    exc_info=True,
-                )
+        # Resolve from object storage when the gateway offloaded a large payload.
+        if not payload and envelope.metadata:
+            payload_ref = envelope.metadata.get("payload_ref")
+            if payload_ref:
+                try:
+                    payload_bytes = storage.load(payload_ref)
+                    payload = json.loads(payload_bytes.decode("utf-8"))
+                    logger.debug("Loaded payload from storage: key=%s", payload_ref)
+                except Exception:
+                    logger.warning(
+                        "Failed to load payload from storage: key=%s, event_id=%s",
+                        payload_ref,
+                        envelope.event_id,
+                        exc_info=True,
+                    )
 
         if not payload:
-            # Both ref and fallback failed - emit degraded event
+            # Storage resolution failed or no data available — emit degraded event.
             logger.error(
                 "Payload rehydration failed for event_id=%s, tenant_id=%s, case=%s",
                 envelope.event_id,
                 envelope.tenant_id,
                 envelope.case,
             )
-            # Emit degraded event marker
             from enterprise.telemetry.entities import EnterpriseTelemetryEvent
             from enterprise.telemetry.telemetry_log import emit_metric_only_event
 
