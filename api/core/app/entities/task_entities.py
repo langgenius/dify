@@ -6,10 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.nodes.human_input.entities import FormInput, UserAction
+from dify_graph.entities import AgentNodeStrategyInit
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.nodes.human_input.entities import FormInput, UserAction
 
 
 class AnnotationReplyAccount(BaseModel):

@@ -38,13 +38,13 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.file.enums import FileTransferMethod, FileType
+from dify_graph.file.enums import FileTransferMethod, FileType
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, Message, MessageAnnotation, MessageFile
 
 if TYPE_CHECKING:
-    from core.workflow.file.models import File
+    from dify_graph.file.models import File
 
 _logger = logging.getLogger(__name__)
 

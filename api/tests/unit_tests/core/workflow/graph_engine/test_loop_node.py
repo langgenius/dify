@@ -8,7 +8,7 @@ This module tests the loop node's ability to:
 4. Output the final loop variable value
 """
 
-from tests.unit_tests.core.workflow.graph_engine.test_table_runner import (
+from tests.unit_tests.dify_graph.graph_engine.test_table_runner import (
     TableTestRunner,
     WorkflowTestCase,
 )

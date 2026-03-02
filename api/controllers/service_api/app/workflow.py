@@ -28,8 +28,8 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model

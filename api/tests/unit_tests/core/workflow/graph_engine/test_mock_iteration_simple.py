@@ -9,16 +9,16 @@ from pathlib import Path
 api_dir = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(api_dir))
 
-from core.workflow.enums import NodeType
-from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfigBuilder
-from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
+from dify_graph.enums import NodeType
+from tests.unit_tests.dify_graph.graph_engine.test_mock_config import MockConfigBuilder
+from tests.unit_tests.dify_graph.graph_engine.test_mock_factory import MockNodeFactory
 
 
 def test_mock_factory_registers_iteration_node():
     """Test that MockNodeFactory has iteration node registered."""
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from models.enums import UserFrom
 
     # Create a MockNodeFactory instance
@@ -53,7 +53,7 @@ def test_mock_factory_registers_iteration_node():
     print("✓ Loop node is registered in MockNodeFactory")
 
     # Check the class types
-    from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockIterationNode, MockLoopNode
+    from tests.unit_tests.dify_graph.graph_engine.test_mock_nodes import MockIterationNode, MockLoopNode
 
     assert factory._mock_node_types[NodeType.ITERATION] == MockIterationNode
     print("✓ Iteration node maps to MockIterationNode class")
@@ -66,10 +66,10 @@ def test_mock_iteration_node_preserves_config():
     """Test that MockIterationNode preserves mock configuration."""
 
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from models.enums import UserFrom
-    from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockIterationNode
+    from tests.unit_tests.dify_graph.graph_engine.test_mock_nodes import MockIterationNode
 
     # Create mock config
     mock_config = MockConfigBuilder().with_llm_response("Test response").build()
@@ -128,10 +128,10 @@ def test_mock_loop_node_preserves_config():
     """Test that MockLoopNode preserves mock configuration."""
 
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from models.enums import UserFrom
-    from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockLoopNode
+    from tests.unit_tests.dify_graph.graph_engine.test_mock_nodes import MockLoopNode
 
     # Create mock config
     mock_config = MockConfigBuilder().with_http_response({"status": 200}).build()

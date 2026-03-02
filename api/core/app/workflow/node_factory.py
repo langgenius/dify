@@ -21,35 +21,35 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.entities.graph_config import NodeConfigDict
-from core.workflow.enums import NodeType, SystemVariableKey
-from core.workflow.file.file_manager import file_manager
-from core.workflow.graph.graph import NodeFactory
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
-from core.workflow.nodes.code.entities import CodeLanguage
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.nodes.datasource import DatasourceNode
-from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
-from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from core.workflow.nodes.llm.entities import ModelConfig
-from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
-from core.workflow.nodes.template_transform.template_renderer import (
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import NodeType, SystemVariableKey
+from dify_graph.file.file_manager import file_manager
+from dify_graph.graph.graph import NodeFactory
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
+from dify_graph.nodes.code.entities import CodeLanguage
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.nodes.datasource import DatasourceNode
+from dify_graph.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
+from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_config
+from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from dify_graph.nodes.llm.entities import ModelConfig
+from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from dify_graph.nodes.llm.node import LLMNode
+from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
+from dify_graph.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
 )
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
-from core.workflow.variables.segments import StringSegment
+from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
+from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState
 
 
 def fetch_memory(

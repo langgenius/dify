@@ -23,7 +23,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.graph_engine.manager import GraphEngineManager
 from extensions.ext_redis import redis_client
 from libs import helper
 from models.model import App, AppMode, EndUser

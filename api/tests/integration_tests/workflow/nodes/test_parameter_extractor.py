@@ -6,12 +6,12 @@ from unittest.mock import MagicMock
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
