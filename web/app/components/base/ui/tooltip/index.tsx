@@ -14,6 +14,8 @@ export type TooltipProps = {
   popupClassName?: string
   noDecoration?: boolean
   offset?: number
+  delay?: number
+  closeDelay?: number
 }
 
 const Tooltip = React.memo(({
@@ -24,6 +26,8 @@ const Tooltip = React.memo(({
   popupClassName,
   noDecoration,
   offset = 8,
+  delay,
+  closeDelay,
 }: TooltipProps) => {
   const { side, align } = parsePlacement(position)
 
@@ -33,8 +37,8 @@ const Tooltip = React.memo(({
   return (
     <BaseTooltip.Root>
       {React.isValidElement(children)
-        ? <BaseTooltip.Trigger render={children} />
-        : <BaseTooltip.Trigger render={<span className="inline-flex" />}>{children}</BaseTooltip.Trigger>}
+        ? <BaseTooltip.Trigger delay={delay} closeDelay={closeDelay} render={children} />
+        : <BaseTooltip.Trigger delay={delay} closeDelay={closeDelay} render={<span className="inline-flex" />}>{children}</BaseTooltip.Trigger>}
       <BaseTooltip.Portal>
         <BaseTooltip.Positioner
           side={side}

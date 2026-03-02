@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
+import Tooltip from '@/app/components/base/ui/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -17,7 +18,6 @@ import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
 import Spinner from '../../base/spinner'
 import Toast from '../../base/toast'
-import Tooltip from '../../base/tooltip'
 
 const submenuTriggerClassName = '!mx-0 !h-8 !rounded-lg !px-3 data-[highlighted]:!bg-state-base-hover'
 const submenuItemClassName = '!mx-0 !h-10 !rounded-lg !py-1 !pl-1 !pr-2 data-[highlighted]:!bg-state-base-hover'
@@ -84,7 +84,7 @@ function ComplianceDocActionVisual({
   }
 
   return (
-    <Tooltip asChild={false} popupContent={tooltipText}>
+    <Tooltip popupContent={tooltipText} delay={0}>
       <PremiumBadge color="blue" allowHover={true}>
         <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
         <div className="px-1 system-xs-medium">
