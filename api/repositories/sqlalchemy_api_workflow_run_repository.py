@@ -43,7 +43,8 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.execution_extra_content import ExecutionExtraContent
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -484,6 +485,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        delete_execution_extra_contents: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> dict[str, int]:
         if not runs:
             return {
@@ -494,6 +496,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "trigger_logs": 0,
                 "pauses": 0,
                 "pause_reasons": 0,
+                "human_input_forms": 0,
+                "human_input_form_deliveries": 0,
+                "human_input_form_recipients": 0,
+                "execution_extra_contents": 0,
             }
 
         with self._session_maker() as session:
@@ -519,6 +525,28 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
                 pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
+            form_ids = self._collect_human_input_form_ids_by_run_ids(session, run_ids)
+            form_recipients_deleted = 0
+            form_deliveries_deleted = 0
+            forms_deleted = 0
+            if form_ids:
+                recipients_result = session.execute(
+                    delete(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
+                )
+                form_recipients_deleted = cast(CursorResult, recipients_result).rowcount or 0
+
+                deliveries_result = session.execute(
+                    delete(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids))
+                )
+                form_deliveries_deleted = cast(CursorResult, deliveries_result).rowcount or 0
+
+                forms_result = session.execute(delete(HumanInputForm).where(HumanInputForm.id.in_(form_ids)))
+                forms_deleted = cast(CursorResult, forms_result).rowcount or 0
+
+            execution_extra_contents_deleted = (
+                delete_execution_extra_contents(session, run_ids) if delete_execution_extra_contents else 0
+            )
+
             trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
 
             runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
@@ -534,6 +562,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "trigger_logs": trigger_logs_deleted,
                 "pauses": pauses_deleted,
                 "pause_reasons": pause_reasons_deleted,
+                "human_input_forms": forms_deleted,
+                "human_input_form_deliveries": form_deliveries_deleted,
+                "human_input_form_recipients": form_recipients_deleted,
+                "execution_extra_contents": execution_extra_contents_deleted,
             }
 
     def get_app_logs_by_run_id(
@@ -543,6 +575,51 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> Sequence[WorkflowAppLog]:
         stmt = select(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id == run_id)
         return list(session.scalars(stmt))
+
+    def get_execution_extra_contents_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[ExecutionExtraContent]:
+        stmt = select(ExecutionExtraContent).where(ExecutionExtraContent.workflow_run_id == run_id)
+        return list(session.scalars(stmt))
+
+    def get_human_input_forms_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[HumanInputForm]:
+        stmt = select(HumanInputForm).where(HumanInputForm.workflow_run_id == run_id)
+        return list(session.scalars(stmt))
+
+    def get_human_input_deliveries_by_form_ids(
+        self,
+        session: Session,
+        form_ids: Sequence[str],
+    ) -> Sequence[HumanInputDelivery]:
+        if not form_ids:
+            return []
+        stmt = select(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids))
+        return list(session.scalars(stmt))
+
+    def get_human_input_recipients_by_form_ids(
+        self,
+        session: Session,
+        form_ids: Sequence[str],
+    ) -> Sequence[HumanInputFormRecipient]:
+        if not form_ids:
+            return []
+        stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
+        return list(session.scalars(stmt))
+
+    @staticmethod
+    def _collect_human_input_form_ids_by_run_ids(
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> set[str]:
+        if not run_ids:
+            return set()
+        return set(session.scalars(select(HumanInputForm.id).where(HumanInputForm.workflow_run_id.in_(run_ids))).all())
 
     def create_archive_logs(
         self,
@@ -659,6 +736,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        count_execution_extra_contents: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> dict[str, int]:
         if not runs:
             return {
@@ -669,6 +747,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "trigger_logs": 0,
                 "pauses": 0,
                 "pause_reasons": 0,
+                "human_input_forms": 0,
+                "human_input_form_deliveries": 0,
+                "human_input_form_recipients": 0,
+                "execution_extra_contents": 0,
             }
 
         with self._session_maker() as session:
@@ -700,6 +782,29 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     or 0
                 )
 
+            form_ids = self._collect_human_input_form_ids_by_run_ids(session, run_ids)
+            forms_count = len(form_ids)
+            form_deliveries_count = 0
+            form_recipients_count = 0
+            if form_ids:
+                form_deliveries_count = (
+                    session.scalar(
+                        select(func.count()).select_from(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids))
+                    )
+                    or 0
+                )
+                form_recipients_count = (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(HumanInputFormRecipient)
+                        .where(HumanInputFormRecipient.form_id.in_(form_ids))
+                    )
+                    or 0
+                )
+            execution_extra_contents_count = (
+                count_execution_extra_contents(session, run_ids) if count_execution_extra_contents else 0
+            )
+
             trigger_logs_count = count_trigger_logs(session, run_ids) if count_trigger_logs else 0
 
             return {
@@ -710,6 +815,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "trigger_logs": trigger_logs_count,
                 "pauses": pauses_count,
                 "pause_reasons": int(pause_reasons_count),
+                "human_input_forms": forms_count,
+                "human_input_form_deliveries": int(form_deliveries_count),
+                "human_input_form_recipients": int(form_recipients_count),
+                "execution_extra_contents": int(execution_extra_contents_count),
             }
 
     def create_workflow_pause(

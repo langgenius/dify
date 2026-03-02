@@ -45,6 +45,8 @@ from core.workflow.enums import WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
+from models.execution_extra_content import ExecutionExtraContent
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -333,10 +335,12 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        delete_execution_extra_contents: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> dict[str, int]:
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
-        trigger logs, pauses, pause reasons).
+        trigger logs, pauses, pause reasons, human input forms, recipients, deliveries,
+        and execution extra contents). External stores can be injected via callbacks.
         """
         ...
 
@@ -370,6 +374,46 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_execution_extra_contents_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[ExecutionExtraContent]:
+        """
+        Fetch execution extra contents by workflow run ID.
+        """
+        ...
+
+    def get_human_input_forms_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[HumanInputForm]:
+        """
+        Fetch human input forms by workflow run ID.
+        """
+        ...
+
+    def get_human_input_deliveries_by_form_ids(
+        self,
+        session: Session,
+        form_ids: Sequence[str],
+    ) -> Sequence[HumanInputDelivery]:
+        """
+        Fetch human input deliveries by form IDs.
+        """
+        ...
+
+    def get_human_input_recipients_by_form_ids(
+        self,
+        session: Session,
+        form_ids: Sequence[str],
+    ) -> Sequence[HumanInputFormRecipient]:
+        """
+        Fetch human input recipients by form IDs.
+        """
+        ...
+
     def create_archive_logs(
         self,
         session: Session,
@@ -400,10 +444,12 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         runs: Sequence[WorkflowRun],
         count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        count_execution_extra_contents: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> dict[str, int]:
         """
         Count workflow runs and their related records (node executions, offloads, app logs,
-        trigger logs, pauses, pause reasons) without deleting data.
+        trigger logs, pauses, pause reasons, human input forms, recipients, deliveries,
+        and execution extra contents) without deleting data.
         """
         ...
 

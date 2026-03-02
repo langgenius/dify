@@ -45,6 +45,10 @@ class FakeRepo:
             "trigger_logs": 0,
             "pauses": 0,
             "pause_reasons": 0,
+            "human_input_forms": 0,
+            "human_input_form_deliveries": 0,
+            "human_input_form_recipients": 0,
+            "execution_extra_contents": 0,
         }
         self.count_result = count_result or {
             "runs": 0,
@@ -54,6 +58,10 @@ class FakeRepo:
             "trigger_logs": 0,
             "pauses": 0,
             "pause_reasons": 0,
+            "human_input_forms": 0,
+            "human_input_form_deliveries": 0,
+            "human_input_form_recipients": 0,
+            "execution_extra_contents": 0,
         }
 
     def get_runs_batch_by_time_range(
@@ -73,7 +81,11 @@ class FakeRepo:
         return batch
 
     def delete_runs_with_related(
-        self, runs: list[FakeRun], delete_node_executions=None, delete_trigger_logs=None
+        self,
+        runs: list[FakeRun],
+        delete_node_executions=None,
+        delete_trigger_logs=None,
+        delete_execution_extra_contents=None,
     ) -> dict[str, int]:
         self.deleted.append([run.id for run in runs])
         result = self.delete_result.copy()
@@ -81,7 +93,11 @@ class FakeRepo:
         return result
 
     def count_runs_with_related(
-        self, runs: list[FakeRun], count_node_executions=None, count_trigger_logs=None
+        self,
+        runs: list[FakeRun],
+        count_node_executions=None,
+        count_trigger_logs=None,
+        count_execution_extra_contents=None,
     ) -> dict[str, int]:
         self.counted.append([run.id for run in runs])
         result = self.count_result.copy()
@@ -277,6 +293,10 @@ def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: py
             "trigger_logs": 4,
             "pauses": 5,
             "pause_reasons": 6,
+            "human_input_forms": 7,
+            "human_input_form_deliveries": 8,
+            "human_input_form_recipients": 9,
+            "execution_extra_contents": 10,
         },
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10, dry_run=True)
@@ -297,6 +317,10 @@ def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: py
     assert "trigger_logs 4" in captured
     assert "pauses 5" in captured
     assert "pause_reasons 6" in captured
+    assert "human_input_forms 7" in captured
+    assert "human_input_form_deliveries 8" in captured
+    assert "human_input_form_recipients 9" in captured
+    assert "execution_extra_contents 10" in captured
 
 
 def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
