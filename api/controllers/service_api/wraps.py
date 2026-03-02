@@ -3,8 +3,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar, overload
-from typing import Concatenate, ParamSpec, TypeVar, cast
+from typing import Concatenate, ParamSpec, TypeVar, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
