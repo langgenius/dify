@@ -137,7 +137,6 @@ class AppService:
             **app_template["app"],
             name=args["name"],
             description=args.get("description", ""),
-            mode=args["mode"],
             icon_type=args.get("icon_type", "emoji"),
             icon=args["icon"],
             icon_background=args["icon_background"],
@@ -147,7 +146,7 @@ class AppService:
             created_by=account.id,
             updated_by=account.id,
         )
-
+        app.mode = args["mode"]
         db.session.add(app)
         db.session.flush()
 
