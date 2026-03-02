@@ -37,7 +37,7 @@ from models.dataset import Dataset
 from models.engine import db
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from models.provider import Provider, ProviderModel, ProviderType
+from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -91,46 +91,95 @@ def _lookup_llm_credential_info(
     """
     Lookup LLM credential ID and name for the given provider and model.
     Returns (credential_id, credential_name).
+    
+    Handles async timing issues gracefully - if credential is deleted between lookups,
+    returns the ID but empty name rather than failing.
     """
     if not tenant_id or not provider:
         return None, ""
     
-    with Session(db.engine) as session:
-        # Try to find provider-level or model-level configuration
-        provider_record = session.scalar(
-            select(Provider).where(
-                Provider.tenant_id == tenant_id,
-                Provider.provider_name == provider,
-                Provider.provider_type == ProviderType.CUSTOM,
-            )
-        )
-        
-        if not provider_record:
-            return None, ""
-        
-        # Check if there's a model-specific config
-        credential_id = None
-        credential_name = ""
-        
-        if model and provider_record.credential_id:
-            # Try model-level first
-            model_record = session.scalar(
-                select(ProviderModel).where(
-                    ProviderModel.tenant_id == tenant_id,
-                    ProviderModel.provider_name == provider,
-                    ProviderModel.model_name == model,
-                    ProviderModel.model_type == model_type,
+    try:
+        with Session(db.engine) as session:
+            # Try to find provider-level or model-level configuration
+            provider_record = session.scalar(
+                select(Provider).where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name == provider,
+                    Provider.provider_type == ProviderType.CUSTOM,
                 )
             )
             
-            if model_record and model_record.credential_id:
-                credential_id = model_record.credential_id
-        
-        if not credential_id and provider_record.credential_id:
-            # Fall back to provider-level credential
-            credential_id = provider_record.credential_id
-        
-        return credential_id, credential_name
+            if not provider_record:
+                return None, ""
+            
+            # Check if there's a model-specific config
+            credential_id = None
+            credential_name = ""
+            is_model_level = False
+            
+            if model and provider_record.credential_id:
+                # Try model-level first
+                model_record = session.scalar(
+                    select(ProviderModel).where(
+                        ProviderModel.tenant_id == tenant_id,
+                        ProviderModel.provider_name == provider,
+                        ProviderModel.model_name == model,
+                        ProviderModel.model_type == model_type,
+                    )
+                )
+                
+                if model_record and model_record.credential_id:
+                    credential_id = model_record.credential_id
+                    is_model_level = True
+            
+            if not credential_id and provider_record.credential_id:
+                # Fall back to provider-level credential
+                credential_id = provider_record.credential_id
+                is_model_level = False
+            
+            # Lookup credential_name if we have credential_id
+            if credential_id:
+                try:
+                    if is_model_level:
+                        # Query ProviderModelCredential
+                        cred_name = session.scalar(
+                            select(ProviderModelCredential.credential_name).where(
+                                ProviderModelCredential.id == credential_id
+                            )
+                        )
+                    else:
+                        # Query ProviderCredential
+                        cred_name = session.scalar(
+                            select(ProviderCredential.credential_name).where(
+                                ProviderCredential.id == credential_id
+                            )
+                        )
+                    
+                    if cred_name:
+                        credential_name = str(cred_name)
+                except Exception as e:
+                    # Credential might have been deleted between lookups (async timing)
+                    # Return ID but empty name rather than failing
+                    logger.warning(
+                        "Failed to lookup credential name for credential_id=%s (provider=%s, model=%s): %s",
+                        credential_id,
+                        provider,
+                        model,
+                        str(e),
+                    )
+            
+            return credential_id, credential_name
+    except Exception as e:
+        # Database query failed or other unexpected error
+        # Return empty rather than propagating error to telemetry emission
+        logger.warning(
+            "Failed to lookup LLM credential info for tenant_id=%s, provider=%s, model=%s: %s",
+            tenant_id,
+            provider,
+            model,
+            str(e),
+        )
+        return None, ""
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
