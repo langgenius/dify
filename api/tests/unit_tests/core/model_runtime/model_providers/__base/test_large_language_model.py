@@ -24,17 +24,8 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelType, PriceInfo
-from core.model_runtime.model_providers.__base.large_language_model import (
-    LargeLanguageModel,
-    _build_llm_result_from_first_chunk,
-    _gen_tool_call_id,
-    _get_or_create_tool_call,
-    _increase_tool_call,
-    _invoke_llm_via_plugin,
-    _merge_tool_call_delta,
-    _normalize_non_stream_plugin_result,
-    _run_callbacks,
-)
+
+# Access large_language_model members via llm_module to avoid partial import issues in CI
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 
 
@@ -109,7 +100,7 @@ class SpyCallback(Callback):
         self.error.append(kwargs)
 
 
-class _TestLLM(LargeLanguageModel):
+class _TestLLM(llm_module.LargeLanguageModel):
     def get_price(self, model: str, credentials: dict, price_type: Any, tokens: int) -> PriceInfo:  # type: ignore[override]
         return PriceInfo(
             unit_price=Decimal("0.01"),
@@ -146,13 +137,13 @@ def llm() -> _TestLLM:
 
 def test_gen_tool_call_id_is_uuid_based(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(llm_module.uuid, "uuid4", lambda: SimpleNamespace(hex="abc123"))
-    assert _gen_tool_call_id() == "chatcmpl-tool-abc123"
+    assert llm_module._gen_tool_call_id() == "chatcmpl-tool-abc123"
 
 
 def test_run_callbacks_no_callbacks_noop() -> None:
     invoked: list[int] = []
-    _run_callbacks(None, event="x", invoke=lambda _: invoked.append(1))
-    _run_callbacks([], event="x", invoke=lambda _: invoked.append(1))
+    llm_module._run_callbacks(None, event="x", invoke=lambda _: invoked.append(1))
+    llm_module._run_callbacks([], event="x", invoke=lambda _: invoked.append(1))
     assert invoked == []
 
 
@@ -161,7 +152,9 @@ def test_run_callbacks_swallows_error_when_raise_error_false(caplog: pytest.LogC
         raise_error = False
 
     caplog.set_level(logging.WARNING)
-    _run_callbacks([Boom()], event="on_before_invoke", invoke=lambda _: (_ for _ in ()).throw(ValueError("boom")))
+    llm_module._run_callbacks(
+        [Boom()], event="on_before_invoke", invoke=lambda _: (_ for _ in ()).throw(ValueError("boom"))
+    )
     assert any("Callback" in record.message and "failed with error" in record.message for record in caplog.records)
 
 
@@ -170,7 +163,9 @@ def test_run_callbacks_reraises_when_raise_error_true() -> None:
         raise_error = True
 
     with pytest.raises(ValueError, match="boom"):
-        _run_callbacks([Boom()], event="on_before_invoke", invoke=lambda _: (_ for _ in ()).throw(ValueError("boom")))
+        llm_module._run_callbacks(
+            [Boom()], event="on_before_invoke", invoke=lambda _: (_ for _ in ()).throw(ValueError("boom"))
+        )
 
 
 def test_get_or_create_tool_call_empty_id_returns_last() -> None:
@@ -178,17 +173,17 @@ def test_get_or_create_tool_call_empty_id_returns_last() -> None:
         _tool_call_delta(tool_call_id="id1", function_name="a"),
         _tool_call_delta(tool_call_id="id2", function_name="b"),
     ]
-    assert _get_or_create_tool_call(calls, "") is calls[-1]
+    assert llm_module._get_or_create_tool_call(calls, "") is calls[-1]
 
 
 def test_get_or_create_tool_call_empty_id_without_existing_raises() -> None:
     with pytest.raises(ValueError, match="tool_call_id is empty"):
-        _get_or_create_tool_call([], "")
+        llm_module._get_or_create_tool_call([], "")
 
 
 def test_get_or_create_tool_call_creates_if_missing() -> None:
     calls: list[AssistantPromptMessage.ToolCall] = []
-    tool_call = _get_or_create_tool_call(calls, "new-id")
+    tool_call = llm_module._get_or_create_tool_call(calls, "new-id")
     assert tool_call.id == "new-id"
     assert tool_call.function.name == ""
     assert tool_call.function.arguments == ""
@@ -198,13 +193,13 @@ def test_get_or_create_tool_call_creates_if_missing() -> None:
 def test_get_or_create_tool_call_returns_existing_when_found() -> None:
     existing = _tool_call_delta(tool_call_id="same-id", function_name="fn", function_arguments="{}")
     calls = [existing]
-    assert _get_or_create_tool_call(calls, "same-id") is existing
+    assert llm_module._get_or_create_tool_call(calls, "same-id") is existing
 
 
 def test_merge_tool_call_delta_updates_fields_and_appends_arguments() -> None:
     tool_call = _tool_call_delta(tool_call_id="id", tool_type="function", function_name="x", function_arguments="{")
     delta = _tool_call_delta(tool_call_id="id2", tool_type="function", function_name="y", function_arguments="}")
-    _merge_tool_call_delta(tool_call, delta)
+    llm_module._merge_tool_call_delta(tool_call, delta)
     assert tool_call.id == "id2"
     assert tool_call.type == "function"
     assert tool_call.function.name == "y"
@@ -215,7 +210,7 @@ def test_increase_tool_call_generates_id_when_missing(monkeypatch: pytest.Monkey
     monkeypatch.setattr(llm_module.uuid, "uuid4", lambda: SimpleNamespace(hex="fixed"))
     delta = _tool_call_delta(tool_call_id="", function_name="fn", function_arguments="{")
     existing: list[AssistantPromptMessage.ToolCall] = []
-    _increase_tool_call([delta], existing)
+    llm_module._increase_tool_call([delta], existing)
     assert len(existing) == 1
     assert existing[0].id == "chatcmpl-tool-fixed"
     assert existing[0].function.name == "fn"
@@ -224,8 +219,12 @@ def test_increase_tool_call_generates_id_when_missing(monkeypatch: pytest.Monkey
 
 def test_increase_tool_call_merges_incremental_arguments() -> None:
     existing: list[AssistantPromptMessage.ToolCall] = []
-    _increase_tool_call([_tool_call_delta(tool_call_id="id", function_name="fn", function_arguments="{")], existing)
-    _increase_tool_call([_tool_call_delta(tool_call_id="id", function_name="", function_arguments="}")], existing)
+    llm_module._increase_tool_call(
+        [_tool_call_delta(tool_call_id="id", function_name="fn", function_arguments="{")], existing
+    )
+    llm_module._increase_tool_call(
+        [_tool_call_delta(tool_call_id="id", function_name="", function_arguments="}")], existing
+    )
     assert len(existing) == 1
     assert existing[0].function.name == "fn"
     assert existing[0].function.arguments == "{}"
@@ -254,7 +253,7 @@ def test_build_llm_result_from_first_chunk_reads_first_and_drains(
         yield first
         raise RuntimeError("drain boom")
 
-    result = _build_llm_result_from_first_chunk(
+    result = llm_module._build_llm_result_from_first_chunk(
         model="m", prompt_messages=[UserPromptMessage(content="u")], chunks=iter_with_error()
     )
     assert result.model == "m"
@@ -272,7 +271,7 @@ def test_build_llm_result_from_first_chunk_empty_iterator() -> None:
             yield _chunk()
         return
 
-    result = _build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=empty())
+    result = llm_module._build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=empty())
     assert result.message.content == []
     assert result.usage.total_tokens == 0
     assert result.system_fingerprint is None
@@ -280,7 +279,7 @@ def test_build_llm_result_from_first_chunk_empty_iterator() -> None:
 
 def test_build_llm_result_from_first_chunk_drains_remaining_chunks() -> None:
     chunks = iter([_chunk(content="first"), _chunk(content="second")])
-    result = _build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=chunks)
+    result = llm_module._build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=chunks)
     assert result.message.content == "first"
 
 
@@ -297,7 +296,7 @@ def test_invoke_llm_via_plugin_passes_list_converted_stop(monkeypatch: pytest.Mo
     monkeypatch.setattr(plugin_model_module, "PluginModelClient", FakePluginModelClient)
 
     prompt_messages: Sequence[PromptMessage] = (UserPromptMessage(content="hi"),)
-    result = _invoke_llm_via_plugin(
+    result = llm_module._invoke_llm_via_plugin(
         tenant_id="t",
         user_id="u",
         plugin_id="p",
@@ -318,12 +317,14 @@ def test_invoke_llm_via_plugin_passes_list_converted_stop(monkeypatch: pytest.Mo
 
 def test_normalize_non_stream_plugin_result_passthrough_llmresult() -> None:
     llm_result = LLMResult(model="m", message=AssistantPromptMessage(content="x"), usage=_usage())
-    assert _normalize_non_stream_plugin_result(model="m", prompt_messages=[], result=llm_result) is llm_result
+    assert (
+        llm_module._normalize_non_stream_plugin_result(model="m", prompt_messages=[], result=llm_result) is llm_result
+    )
 
 
 def test_normalize_non_stream_plugin_result_builds_from_chunks() -> None:
     chunks = iter([_chunk(content="hello", usage=_usage(1, 1))])
-    result = _normalize_non_stream_plugin_result(
+    result = llm_module._normalize_non_stream_plugin_result(
         model="m", prompt_messages=[UserPromptMessage(content="u")], result=chunks
     )
     assert isinstance(result, LLMResult)
