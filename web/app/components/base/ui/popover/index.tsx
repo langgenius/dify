@@ -1,6 +1,6 @@
 'use client'
 
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@/app/components/base/ui/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -48,13 +48,13 @@ export function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('outline-none', className)}
+        className={cn('z-50 outline-none', className)}
         {...positionerProps}
       >
         <BasePopover.Popup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
+            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...popupProps}
