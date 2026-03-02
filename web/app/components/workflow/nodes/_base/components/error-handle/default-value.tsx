@@ -5,7 +5,6 @@ import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { VarType } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 
 type DefaultValueProps = {
   forms: DefaultValueForm[]
@@ -16,7 +15,6 @@ const DefaultValue = ({
   onFormChange,
 }: DefaultValueProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const getFormChangeHandler = useCallback(({ key, type }: DefaultValueForm) => {
     return (payload: any) => {
       let value
@@ -35,15 +33,6 @@ const DefaultValue = ({
       <div className="body-xs-regular mb-2 text-text-tertiary">
         {t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' })}
         &nbsp;
-        <a
-          href={docLink('/guides/workflow/error-handling/README', {
-            'zh-Hans': '/guides/workflow/error-handling/readme',
-          })}
-          target="_blank"
-          className="text-text-accent"
-        >
-          {t('common.learnMore', { ns: 'workflow' })}
-        </a>
       </div>
       <div className="space-y-1">
         {

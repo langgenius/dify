@@ -8,18 +8,18 @@ from typing import Annotated, Any, Union, cast
 
 from pydantic import BaseModel, Field
 
-from core.file import File, FileAttribute, file_manager
-from core.variables import Segment, SegmentGroup, VariableBase
-from core.variables.consts import SELECTORS_LENGTH
-from core.variables.segments import FileSegment, ObjectSegment
-from core.variables.variables import RAGPipelineVariableInput, Variable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.file import File, FileAttribute, file_manager
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import Segment, SegmentGroup, VariableBase
+from core.workflow.variables.consts import SELECTORS_LENGTH
+from core.workflow.variables.segments import FileSegment, ObjectSegment
+from core.workflow.variables.variables import RAGPipelineVariableInput, Variable
 from factories import variable_factory
 
 VariableValue = Union[str, int, float, dict[str, object], list[object], File]
@@ -44,7 +44,7 @@ class VariablePool(BaseModel):
     )
     system_variables: SystemVariable = Field(
         description="System variables",
-        default_factory=SystemVariable.empty,
+        default_factory=SystemVariable.default,
     )
     environment_variables: Sequence[Variable] = Field(
         description="Environment variables.",
@@ -271,4 +271,4 @@ class VariablePool(BaseModel):
     @classmethod
     def empty(cls) -> VariablePool:
         """Create an empty variable pool."""
-        return cls(system_variables=SystemVariable.empty())
+        return cls(system_variables=SystemVariable.default())

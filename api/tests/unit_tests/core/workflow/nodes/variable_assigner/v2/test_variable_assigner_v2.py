@@ -3,14 +3,14 @@ import uuid
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import ArrayStringVariable
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode
 from core.workflow.nodes.variable_assigner.v2.enums import InputType, Operation
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import ArrayStringVariable
 from models.enums import UserFrom
 
 DEFAULT_NODE_ID = "node_id"

@@ -1,4 +1,3 @@
-import type { ActivePluginType } from './constants'
 import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -17,32 +16,14 @@ export function useSetMarketplaceSort() {
   return useSetAtom(marketplaceSortAtom)
 }
 
-/**
- * Preserve the state for marketplace
- */
-export const preserveSearchStateInQueryAtom = atom<boolean>(false)
-
-const searchPluginTextAtom = atom<string>('')
-const activePluginTypeAtom = atom<ActivePluginType>('all')
-const filterPluginTagsAtom = atom<string[]>([])
-
 export function useSearchPluginText() {
-  const preserveSearchStateInQuery = useAtomValue(preserveSearchStateInQueryAtom)
-  const queryState = useQueryState('q', marketplaceSearchParamsParsers.q)
-  const atomState = useAtom(searchPluginTextAtom)
-  return preserveSearchStateInQuery ? queryState : atomState
+  return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
 export function useActivePluginType() {
-  const preserveSearchStateInQuery = useAtomValue(preserveSearchStateInQueryAtom)
-  const queryState = useQueryState('category', marketplaceSearchParamsParsers.category)
-  const atomState = useAtom(activePluginTypeAtom)
-  return preserveSearchStateInQuery ? queryState : atomState
+  return useQueryState('category', marketplaceSearchParamsParsers.category)
 }
 export function useFilterPluginTags() {
-  const preserveSearchStateInQuery = useAtomValue(preserveSearchStateInQueryAtom)
-  const queryState = useQueryState('tags', marketplaceSearchParamsParsers.tags)
-  const atomState = useAtom(filterPluginTagsAtom)
-  return preserveSearchStateInQuery ? queryState : atomState
+  return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
 /**

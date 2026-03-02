@@ -178,7 +178,7 @@ class AgentChatAppRunner(AppRunner):
 
         # change function call strategy based on LLM model
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         if not model_schema:
             raise ValueError("Model schema not found")
 
@@ -236,4 +236,7 @@ class AgentChatAppRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream,
             agent=True,
+            message_id=message.id,
+            user_id=application_generate_entity.user_id,
+            tenant_id=app_config.tenant_id,
         )

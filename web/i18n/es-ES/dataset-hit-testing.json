@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "Prueba del efecto de impacto del conocimiento basado en el texto de consulta proporcionado.",
   "hit.emptyTip": "Los resultados de la prueba de recuperación se mostrarán aquí",
-  "hit.title": "PÁRRAFOS DE RECUPERACIÓN",
+  "hit.title": "{{num}} Párrafos recuperados",
   "hitChunks": "Golpea {{num}} fragmentos secundarios",
   "imageUploader.dropZoneTip": "Arrastra el archivo aquí para subirlo",
   "imageUploader.singleChunkAttachmentLimitTooltip": "El número de archivos adjuntos de un solo bloque no puede superar {{limit}}",

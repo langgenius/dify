@@ -5,11 +5,12 @@ This module provides a MockNodeFactory that automatically detects and mocks node
 requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request).
 """
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,
@@ -74,7 +75,7 @@ class MockNodeFactory(DifyNodeFactory):
             NodeType.CODE: MockCodeNode,
         }
 
-    def create_node(self, node_config: dict[str, Any]) -> Node:
+    def create_node(self, node_config: Mapping[str, Any]) -> Node:
         """
         Create a node instance, using mock implementations for third-party service nodes.
 
@@ -111,8 +112,29 @@ class MockNodeFactory(DifyNodeFactory):
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
                     code_executor=self._code_executor,
-                    code_providers=self._code_providers,
                     code_limits=self._code_limits,
+                )
+            elif node_type == NodeType.HTTP_REQUEST:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    http_request_config=self._http_request_config,
+                    http_client=self._http_request_http_client,
+                    tool_file_manager_factory=self._http_request_tool_file_manager_factory,
+                    file_manager=self._http_request_file_manager,
+                )
+            elif node_type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER, NodeType.PARAMETER_EXTRACTOR}:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
                 )
             else:
                 mock_instance = mock_class(

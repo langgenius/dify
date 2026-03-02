@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "कोई ज्ञान आधार नहीं मिले",
   "gotoAnything.emptyState.noPluginsFound": "कोई प्लगइन नहीं मिले",
   "gotoAnything.emptyState.noWorkflowNodesFound": "कोई कार्यप्रवाह नोड नहीं मिला",
-  "gotoAnything.emptyState.tryDifferentTerm": "एक अलग खोज शब्द आज़माएं या {{mode}} फ़िल्टर हटा दें",
+  "gotoAnything.emptyState.tryDifferentTerm": "एक अलग खोज शब्द आज़माएं",
   "gotoAnything.emptyState.trySpecificSearch": "विशिष्ट खोज के लिए {{shortcuts}} आज़माएं",
   "gotoAnything.groups.apps": "ऐप्स",
   "gotoAnything.groups.commands": "आदेश",

@@ -5,7 +5,6 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -17,7 +16,6 @@ import { ToastContext } from '@/app/components/base/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -36,7 +34,6 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -59,23 +56,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
   const disableAppCards = !shouldRenderAppCards
 
-  const triggerDocUrl = docLink('/guides/workflow/node/start')
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
         {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
       </div>
-      <div
-        className="cursor-pointer text-xs font-medium text-text-accent hover:underline"
-        onClick={(event) => {
-          event.stopPropagation()
-          window.open(triggerDocUrl, '_blank')
-        }}
-      >
-        {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
-      </div>
     </div>
-  ), [t, triggerDocUrl])
+  ), [t])
 
   const disableWebAppTooltip = disableAppCards
     ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))

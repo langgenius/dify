@@ -236,7 +236,7 @@
   "task.installSuccess": "تم تثبيت {{successLength}} من الإضافات بنجاح",
   "task.installed": "مثبت",
   "task.installedError": "{{errorLength}} إضافات فشل تثبيتها",
-  "task.installing": "تثبيت {{installingLength}} إضافات، 0 تم.",
+  "task.installing": "جارٍ تثبيت الإضافات.",
   "task.installingWithError": "تثبيت {{installingLength}} إضافات، {{successLength}} نجاح، {{errorLength}} فشل",
   "task.installingWithSuccess": "تثبيت {{installingLength}} إضافات، {{successLength}} نجاح.",
   "task.runningPlugins": "تثبيت الإضافات",

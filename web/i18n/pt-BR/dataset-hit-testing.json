@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "Teste o efeito de recuperação do conhecimento com base no texto de consulta fornecido.",
   "hit.emptyTip": "Os resultados do teste de recuperação serão exibidos aqui",
-  "hit.title": "PARÁGRAFOS DE RECUPERAÇÃO",
+  "hit.title": "{{num}} parágrafos de recuperação",
   "hitChunks": "Hit {{num}} pedaços filhos",
   "imageUploader.dropZoneTip": "Arraste o arquivo aqui para enviar",
   "imageUploader.singleChunkAttachmentLimitTooltip": "O número de anexos de um único bloco não pode exceder {{limit}}",

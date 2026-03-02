@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Базы знаний не найдены",
   "gotoAnything.emptyState.noPluginsFound": "Плагины не найдены",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Узлы расчетной схемы не найдены",
-  "gotoAnything.emptyState.tryDifferentTerm": "Попробуйте другой поисковый термин или удалите фильтр {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Попробуйте другой поисковый термин",
   "gotoAnything.emptyState.trySpecificSearch": "Попробуйте {{shortcuts}} для конкретного поиска",
   "gotoAnything.groups.apps": "Приложения",
   "gotoAnything.groups.commands": "Команды",

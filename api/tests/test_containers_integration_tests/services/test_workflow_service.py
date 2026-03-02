@@ -764,7 +764,7 @@ class TestWorkflowService:
         # Act - Mock current_user context and pass session
         from unittest.mock import patch
 
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("flask_login.utils._get_user", return_value=account, autospec=True):
             result = workflow_service.publish_workflow(
                 session=db_session_with_containers, app_model=app, account=account
             )
@@ -925,24 +925,24 @@ class TestWorkflowService:
         # Create app model config (required for conversion)
         from models.model import AppModelConfig
 
-        app_model_config = AppModelConfig()
-        app_model_config.id = fake.uuid4()
-        app_model_config.app_id = app.id
-        app_model_config.tenant_id = app.tenant_id
-        app_model_config.provider = "openai"
-        app_model_config.model_id = "gpt-3.5-turbo"
-        # Set the model field directly - this is what model_dict property returns
-        app_model_config.model = json.dumps(
-            {
-                "provider": "openai",
-                "name": "gpt-3.5-turbo",
-                "completion_params": {"max_tokens": 1000, "temperature": 0.7},
-            }
+        app_model_config = AppModelConfig(
+            app_id=app.id,
+            provider="openai",
+            model_id="gpt-3.5-turbo",
+            # Set the model field directly - this is what model_dict property returns
+            model=json.dumps(
+                {
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo",
+                    "completion_params": {"max_tokens": 1000, "temperature": 0.7},
+                }
+            ),
+            # Set pre_prompt for PromptTemplateConfigManager
+            pre_prompt="You are a helpful assistant.",
+            created_by=account.id,
+            updated_by=account.id,
         )
-        # Set pre_prompt for PromptTemplateConfigManager
-        app_model_config.pre_prompt = "You are a helpful assistant."
-        app_model_config.created_by = account.id
-        app_model_config.updated_by = account.id
+        app_model_config.id = fake.uuid4()
 
         from extensions.ext_database import db
 
@@ -987,24 +987,24 @@ class TestWorkflowService:
         # Create app model config (required for conversion)
         from models.model import AppModelConfig
 
-        app_model_config = AppModelConfig()
-        app_model_config.id = fake.uuid4()
-        app_model_config.app_id = app.id
-        app_model_config.tenant_id = app.tenant_id
-        app_model_config.provider = "openai"
-        app_model_config.model_id = "gpt-3.5-turbo"
-        # Set the model field directly - this is what model_dict property returns
-        app_model_config.model = json.dumps(
-            {
-                "provider": "openai",
-                "name": "gpt-3.5-turbo",
-                "completion_params": {"max_tokens": 1000, "temperature": 0.7},
-            }
+        app_model_config = AppModelConfig(
+            app_id=app.id,
+            provider="openai",
+            model_id="gpt-3.5-turbo",
+            # Set the model field directly - this is what model_dict property returns
+            model=json.dumps(
+                {
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo",
+                    "completion_params": {"max_tokens": 1000, "temperature": 0.7},
+                }
+            ),
+            # Set pre_prompt for PromptTemplateConfigManager
+            pre_prompt="Complete the following text:",
+            created_by=account.id,
+            updated_by=account.id,
         )
-        # Set pre_prompt for PromptTemplateConfigManager
-        app_model_config.pre_prompt = "Complete the following text:"
-        app_model_config.created_by = account.id
-        app_model_config.updated_by = account.id
+        app_model_config.id = fake.uuid4()
 
         from extensions.ext_database import db
 
@@ -1391,10 +1391,21 @@ class TestWorkflowService:
 
         workflow_service = WorkflowService()
 
+        from unittest.mock import patch
+
+        from core.app.workflow.node_factory import DifyNodeFactory
+        from core.model_manager import ModelInstance
+
         # Act
-        result = workflow_service.run_free_workflow_node(
-            node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
-        )
+        with patch.object(
+            DifyNodeFactory,
+            "_build_model_instance_for_llm_node",
+            return_value=MagicMock(spec=ModelInstance),
+            autospec=True,
+        ):
+            result = workflow_service.run_free_workflow_node(
+                node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
+            )
 
         # Assert
         assert result is not None

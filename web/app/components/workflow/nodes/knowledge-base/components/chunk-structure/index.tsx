@@ -41,7 +41,7 @@ const ChunkStructure = ({
       }}
     >
       {
-        chunkStructure && (
+        !!chunkStructure && (
           <OptionCard
             {...optionMap[chunkStructure]}
             selectedId={chunkStructure}

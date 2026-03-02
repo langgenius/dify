@@ -188,36 +188,36 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className="system-xl-semibold text-text-primary">{t('retrievalSettings', { ns: 'dataset' })}</div>
-      <div className="system-xs-regular text-text-tertiary">
+      <div className="text-text-primary system-xl-semibold">{t('retrievalSettings', { ns: 'dataset' })}</div>
+      <div className="text-text-tertiary system-xs-regular">
         {t('defaultRetrievalTip', { ns: 'dataset' })}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className="my-2 flex h-6 items-center py-1">
-            <div className="system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary">
+          <div className="my-2 flex flex-col items-center py-1">
+            <div className="mb-2 mr-2 shrink-0 text-text-secondary system-xs-semibold-uppercase">
               {t('rerankSettings', { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="mx-0 !h-px" />
+            <Divider bgStyle="gradient" className="m-0 !h-px" />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
-              <div className="system-xs-medium mt-4 text-text-warning">
+              <div className="mt-4 text-text-warning system-xs-medium">
                 {t('inconsistentEmbeddingModelTip', { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
-              <div className="system-xs-medium mt-4 text-text-warning">
+              <div className="mt-4 text-text-warning system-xs-medium">
                 {t('mixtureInternalAndExternalTip', { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
-              <div className="system-xs-medium mt-4 text-text-warning">
+              <div className="mt-4 text-text-warning system-xs-medium">
                 {t('allExternalTip', { ns: 'dataset' })}
               </div>
             )
@@ -225,7 +225,7 @@ const ConfigContent: FC<Props> = ({
           {
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
-              <div className="system-xs-medium mt-4 text-text-warning">
+              <div className="mt-4 text-text-warning system-xs-medium">
                 {t('mixtureHighQualityAndEconomicTip', { ns: 'dataset' })}
               </div>
             )
@@ -238,7 +238,7 @@ const ConfigContent: FC<Props> = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'system-sm-medium flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
+                        'flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-medium',
                         selectedRerankMode === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
                       )}
                       onClick={() => handleRerankModeChange(option.value)}
@@ -267,12 +267,12 @@ const ConfigContent: FC<Props> = ({
                     canManuallyToggleRerank && (
                       <Switch
                         size="md"
-                        defaultValue={showRerankModel}
+                        value={showRerankModel ?? false}
                         onChange={handleManuallyToggleRerank}
                       />
                     )
                   }
-                  <div className="system-sm-semibold ml-1 leading-[32px] text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
+                  <div className="ml-1 leading-[32px] text-text-secondary system-sm-semibold">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
                   <Tooltip
                     popupContent={(
                       <div className="w-[200px]">

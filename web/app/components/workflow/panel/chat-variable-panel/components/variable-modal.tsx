@@ -22,7 +22,7 @@ import {
   arrayStringPlaceholder,
   objectPlaceholder,
 } from '@/app/components/workflow/panel/chat-variable-panel/utils'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import ArrayBoolList from './array-bool-list'
@@ -58,7 +58,7 @@ const ChatVariableModal = ({
 }: ModalPropsType) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const varList = useStore(s => s.conversationVariables)
+  const workflowStore = useWorkflowStore()
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
   const [value, setValue] = React.useState<any>()
@@ -234,6 +234,7 @@ const ChatVariableModal = ({
   const handleSave = () => {
     if (!checkVariableName(name))
       return
+    const varList = workflowStore.getState().conversationVariables
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
       return notify({ type: 'error', message: 'name is existed' })
     // if (type !== ChatVarType.Object && !value)

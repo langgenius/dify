@@ -7,6 +7,7 @@
   "batchAction.cancel": "キャンセル",
   "batchAction.delete": "削除",
   "batchAction.disable": "無効にする",
+  "batchAction.download": "ダウンロード",
   "batchAction.enable": "有効にする",
   "batchAction.reIndex": "再インデックス",
   "batchAction.selected": "選択済み",

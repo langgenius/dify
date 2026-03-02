@@ -1,4 +1,4 @@
-from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import (
     GraphRunSucceededEvent,
@@ -27,6 +27,7 @@ def test_tool_in_chatflow():
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
+        config=GraphEngineConfig(),
     )
 
     events = list(engine.run())

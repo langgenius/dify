@@ -19,8 +19,20 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.variables import (
+from core.workflow.entities.graph_init_params import GraphInitParams
+from core.workflow.graph import Graph
+from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
+from core.workflow.graph_engine.command_channels import InMemoryChannel
+from core.workflow.graph_events import (
+    GraphEngineEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+)
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
+from core.workflow.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -29,18 +41,6 @@ from core.variables import (
     ObjectVariable,
     StringVariable,
 )
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
-    GraphEngineEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-)
-from core.workflow.nodes.node_factory import DifyNodeFactory
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
@@ -309,10 +309,12 @@ class TableTestRunner:
                 graph=graph,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=InMemoryChannel(),
-                min_workers=self.graph_engine_min_workers,
-                max_workers=self.graph_engine_max_workers,
-                scale_up_threshold=self.graph_engine_scale_up_threshold,
-                scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                config=GraphEngineConfig(
+                    min_workers=self.graph_engine_min_workers,
+                    max_workers=self.graph_engine_max_workers,
+                    scale_up_threshold=self.graph_engine_scale_up_threshold,
+                    scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                ),
             )
 
             # Execute and collect events
@@ -545,8 +547,22 @@ class TableTestRunner:
         """Run tests in parallel."""
         results = []
 
+        flask_app: Any = None
+        try:
+            from flask import current_app
+
+            flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
+        except RuntimeError:
+            flask_app = None
+
+        def _run_test_case_with_context(test_case: WorkflowTestCase) -> WorkflowTestResult:
+            if flask_app is None:
+                return self.run_test_case(test_case)
+            with flask_app.app_context():
+                return self.run_test_case(test_case)
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_test = {executor.submit(self.run_test_case, tc): tc for tc in test_cases}
+            future_to_test = {executor.submit(_run_test_case_with_context, tc): tc for tc in test_cases}
 
             for future in as_completed(future_to_test):
                 test_case = future_to_test[future]

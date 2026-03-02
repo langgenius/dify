@@ -69,6 +69,13 @@ class ActivateCheckApi(Resource):
         if invitation:
             data = invitation.get("data", {})
             tenant = invitation.get("tenant", None)
+
+            # Check workspace permission
+            if tenant:
+                from libs.workspace_permission import check_workspace_member_invite_permission
+
+                check_workspace_member_invite_permission(tenant.id)
+
             workspace_name = tenant.name if tenant else None
             workspace_id = tenant.id if tenant else None
             invitee_email = data.get("email") if data else None

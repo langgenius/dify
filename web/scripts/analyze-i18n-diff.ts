@@ -106,7 +106,7 @@ function parseTsContent(content: string): NestedTranslation {
   // Use Function constructor to safely evaluate the object literal
   // This handles JS object syntax like unquoted keys, template literals, etc.
   try {
-    // eslint-disable-next-line no-new-func, sonarjs/code-eval
+    // eslint-disable-next-line no-new-func
     const fn = new Function(`return (${cleaned})`)
     return fn() as NestedTranslation
   }
@@ -123,7 +123,7 @@ function parseTsContent(content: string): NestedTranslation {
 function getMainBranchFile(filePath: string): string | null {
   try {
     const relativePath = `./i18n/${LOCALE}/${filePath}`
-    // eslint-disable-next-line sonarjs/os-command
+
     return execSync(`git show main:${relativePath}`, {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -148,12 +148,12 @@ function getTranslationFiles(): string[] {
 function getMainBranchNamespaces(): string[] {
   try {
     const relativePath = `./i18n/${LOCALE}`
-    // eslint-disable-next-line sonarjs/os-command
+
     const output = execSync(`git ls-tree --name-only main ${relativePath}/`, {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     })
-    // eslint-disable-next-line sonarjs/os-command
+
     return output
       .trim()
       .split('\n')

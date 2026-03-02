@@ -19,14 +19,14 @@ class TestAgentService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.agent_service.PluginAgentClient") as mock_plugin_agent_client,
-            patch("services.agent_service.ToolManager") as mock_tool_manager,
-            patch("services.agent_service.AgentConfigManager") as mock_agent_config_manager,
+            patch("services.agent_service.PluginAgentClient", autospec=True) as mock_plugin_agent_client,
+            patch("services.agent_service.ToolManager", autospec=True) as mock_tool_manager,
+            patch("services.agent_service.AgentConfigManager", autospec=True) as mock_agent_config_manager,
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
-            patch("services.app_service.FeatureService") as mock_feature_service,
-            patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
+            patch("services.app_service.ModelManager", autospec=True) as mock_model_manager,
+            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
             mock_plugin_agent_client_instance = mock_plugin_agent_client.return_value
@@ -172,7 +172,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -180,6 +179,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -413,7 +413,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -421,6 +420,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -485,7 +485,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -493,6 +492,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -841,7 +841,7 @@ class TestAgentService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
-        from core.file import FileTransferMethod, FileType
+        from core.workflow.file import FileTransferMethod, FileType
         from extensions.ext_database import db
         from models.enums import CreatorUserRole
 
