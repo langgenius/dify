@@ -890,6 +890,7 @@ class WebhookService:
 
                 # create new webhook records
                 for node_id in nodes_not_found:
+                    assert app.created_by is not None
                     webhook_record = WorkflowWebhookTrigger(
                         app_id=app.id,
                         tenant_id=app.tenant_id,

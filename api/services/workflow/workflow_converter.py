@@ -71,6 +71,7 @@ class WorkflowConverter:
         new_app = App(
             tenant_id=app_model.tenant_id,
             name=name or app_model.name + "(workflow)",
+            description="",
             mode=AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW,
             icon_type=icon_type or app_model.icon_type,
             icon=icon or app_model.icon,
@@ -83,6 +84,9 @@ class WorkflowConverter:
             is_public=app_model.is_public,
             created_by=account.id,
             updated_by=account.id,
+            max_active_requests=None,
+            status="normal",
+            
         )
         db.session.add(new_app)
         db.session.flush()

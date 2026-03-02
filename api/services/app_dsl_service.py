@@ -449,7 +449,6 @@ class AppDslService:
 
             # Create new app
             app = App(
-                id=str(uuid4()),
                 tenant_id=account.current_tenant_id,
                 mode=app_mode.value,
                 name=name or app_data.get("name", ""),
@@ -462,7 +461,10 @@ class AppDslService:
                 use_icon_as_answer_icon=app_data.get("use_icon_as_answer_icon", False),
                 created_by=account.id,
                 updated_by=account.id,
+                status="normal",
+
             )
+            app.id = str(uuid4())
             self._session.add(app)
             self._session.commit()
             app_was_created.send(app, account=account)

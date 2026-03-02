@@ -82,7 +82,7 @@ class App(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
+    description: Mapped[str] = mapped_column(LongText)
     mode: Mapped[str] = mapped_column(String(255))
     icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon: Mapped[str] = mapped_column(String(255))
@@ -105,9 +105,9 @@ class App(TypeBase):
     )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
 
     @property
     def desc_or_prompt(self) -> str:
