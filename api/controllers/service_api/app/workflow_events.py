@@ -58,14 +58,13 @@ class WorkflowEventsApi(Resource):
             run_id=task_id,
         )
 
-        if workflow_run is None:
-            raise NotFound(f"WorkflowRun not found, id={task_id}")
-        if workflow_run.app_id != app_model.id:
-            raise NotFound(f"WorkflowRun not found, id={task_id}")
-        if workflow_run.created_by_role != CreatorUserRole.END_USER:
-            raise NotFound(f"WorkflowRun not created by end user, id={task_id}")
-        if workflow_run.created_by != end_user.id:
-            raise NotFound(f"WorkflowRun not created by the current end user, id={task_id}")
+        if (
+            workflow_run is None
+            or workflow_run.app_id != app_model.id
+            or workflow_run.created_by_role != CreatorUserRole.END_USER
+            or workflow_run.created_by != end_user.id
+        ):
+            raise NotFound("Workflow run not found")
 
         if workflow_run.finished_at is not None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
