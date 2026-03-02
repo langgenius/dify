@@ -12,7 +12,6 @@ import { ToastProvider } from './components/base/toast'
 import BrowserInitializer from './components/browser-initializer'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
-import { PWAProvider } from './components/provider/serwist'
 import SentryInitializer from './components/sentry-initializer'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
@@ -61,35 +60,33 @@ const LocaleLayout = async ({
         {...datasetMap}
       >
         <div className="isolate h-full">
-          <PWAProvider>
-            <ReactScanLoader />
-            <JotaiProvider>
-              <ThemeProvider
-                attribute="data-theme"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-                enableColorScheme={false}
-              >
-                <NuqsAdapter>
-                  <BrowserInitializer>
-                    <SentryInitializer>
-                      <TanstackQueryInitializer>
-                        <I18nServerProvider>
-                          <ToastProvider>
-                            <GlobalPublicStoreProvider>
-                              {children}
-                            </GlobalPublicStoreProvider>
-                          </ToastProvider>
-                        </I18nServerProvider>
-                      </TanstackQueryInitializer>
-                    </SentryInitializer>
-                  </BrowserInitializer>
-                </NuqsAdapter>
-              </ThemeProvider>
-            </JotaiProvider>
-            <RoutePrefixHandle />
-          </PWAProvider>
+          <ReactScanLoader />
+          <JotaiProvider>
+            <ThemeProvider
+              attribute="data-theme"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              enableColorScheme={false}
+            >
+              <NuqsAdapter>
+                <BrowserInitializer>
+                  <SentryInitializer>
+                    <TanstackQueryInitializer>
+                      <I18nServerProvider>
+                        <ToastProvider>
+                          <GlobalPublicStoreProvider>
+                            {children}
+                          </GlobalPublicStoreProvider>
+                        </ToastProvider>
+                      </I18nServerProvider>
+                    </TanstackQueryInitializer>
+                  </SentryInitializer>
+                </BrowserInitializer>
+              </NuqsAdapter>
+            </ThemeProvider>
+          </JotaiProvider>
+          <RoutePrefixHandle />
         </div>
       </body>
     </html>
