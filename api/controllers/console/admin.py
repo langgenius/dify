@@ -282,76 +282,132 @@ class DeleteExploreBannerApi(Resource):
         return {"result": "success"}, 204
 
 
-class SaveNotificationContentPayload(BaseModel):
-    content: str = Field(...)
+class LangContentPayload(BaseModel):
+    lang: str = Field(..., description="Language tag: 'zh' | 'en' | 'jp'")
+    title: str = Field(...)
+    body: str = Field(...)
+    cta_label: str = Field(...)
+    cta_url: str = Field(...)
 
 
-class SaveNotificationUserPayload(BaseModel):
-    user_email: list[str] = Field(...)
+class UpsertNotificationPayload(BaseModel):
+    notification_id: str | None = Field(default=None, description="Omit to create; supply UUID to update")
+    contents: list[LangContentPayload] = Field(..., min_length=1)
+    start_time: str | None = Field(default=None, description="RFC3339, e.g. 2026-03-01T00:00:00Z")
+    end_time: str | None = Field(default=None, description="RFC3339, e.g. 2026-03-20T23:59:59Z")
+    frequency: str = Field(default="once", description="'once' | 'every_page_load'")
+    status: str = Field(default="active", description="'active' | 'inactive'")
+
+
+class BatchAddNotificationAccountsPayload(BaseModel):
+    notification_id: str = Field(...)
+    user_email: list[str] = Field(..., description="List of account email addresses")
 
 
 console_ns.schema_model(
-    SaveNotificationContentPayload.__name__,
-    SaveNotificationContentPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+    UpsertNotificationPayload.__name__,
+    UpsertNotificationPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 console_ns.schema_model(
-    SaveNotificationUserPayload.__name__,
-    SaveNotificationUserPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+    BatchAddNotificationAccountsPayload.__name__,
+    BatchAddNotificationAccountsPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 
-@console_ns.route("/admin/save_notification_content")
-class SaveNotificationContentApi(Resource):
-    @console_ns.doc("save_notification_content")
-    @console_ns.doc(description="Save a notification content")
-    @console_ns.expect(console_ns.models[SaveNotificationContentPayload.__name__])
-    @console_ns.response(200, "Notification content saved successfully")
-    @only_edition_cloud
-    @admin_required
-    def post(self):
-        payload = SaveNotificationContentPayload.model_validate(console_ns.payload)
-        BillingService.save_notification_content(payload.content)
-        return {"result": "success"}, 200
-
-
-@console_ns.route("/admin/save_notification_user")
-class SaveNotificationUserApi(Resource):
-    @console_ns.doc("save_notification_user")
+@console_ns.route("/admin/upsert_notification")
+class UpsertNotificationApi(Resource):
+    @console_ns.doc("upsert_notification")
     @console_ns.doc(
-        description="Save notification users via JSON body or file upload. "
-        'JSON: {"user_email": ["a@example.com", ...]}. '
-        "File: multipart/form-data with a 'file' field (CSV or TXT, one email per line)."
+        description=(
+            "Create or update an in-product notification. "
+            "Supply notification_id to update an existing one; omit it to create a new one. "
+            "Pass at least one language variant in contents (zh / en / jp)."
+        )
     )
-    @console_ns.response(200, "Notification users saved successfully")
+    @console_ns.expect(console_ns.models[UpsertNotificationPayload.__name__])
+    @console_ns.response(200, "Notification upserted successfully")
     @only_edition_cloud
     @admin_required
     def post(self):
-        # Determine input mode: file upload or JSON body
+        payload = UpsertNotificationPayload.model_validate(console_ns.payload)
+        result = BillingService.upsert_notification(
+            contents=[c.model_dump() for c in payload.contents],
+            frequency=payload.frequency,
+            status=payload.status,
+            notification_id=payload.notification_id,
+            start_time=payload.start_time,
+            end_time=payload.end_time,
+        )
+        return {"result": "success", "notification_id": result.get("notificationId")}, 200
+
+
+@console_ns.route("/admin/batch_add_notification_accounts")
+class BatchAddNotificationAccountsApi(Resource):
+    @console_ns.doc("batch_add_notification_accounts")
+    @console_ns.doc(
+        description=(
+            "Register target accounts for a notification by email address. "
+            'JSON body: {"notification_id": "...", "user_email": ["a@example.com", ...]}. '
+            "File upload: multipart/form-data with a 'file' field (CSV or TXT, one email per line) "
+            "plus a 'notification_id' field. "
+            "Emails that do not match any account are silently skipped."
+        )
+    )
+    @console_ns.response(200, "Accounts added successfully")
+    @only_edition_cloud
+    @admin_required
+    def post(self):
+        from models.account import Account
+
         if "file" in request.files:
+            notification_id = request.form.get("notification_id", "").strip()
+            if not notification_id:
+                raise BadRequest("notification_id is required.")
             emails = self._parse_emails_from_file()
         else:
-            payload = SaveNotificationUserPayload.model_validate(console_ns.payload)
+            payload = BatchAddNotificationAccountsPayload.model_validate(console_ns.payload)
+            notification_id = payload.notification_id
             emails = payload.user_email
 
         if not emails:
             raise BadRequest("No valid email addresses provided.")
 
-        # Use batch API for bulk insert (chunks of 1000 per request to billing service)
-        result = BillingService.save_notification_users_batch(emails)
+        # Resolve emails → account IDs in chunks to avoid large IN-clause
+        account_ids: list[str] = []
+        chunk_size = 500
+        for i in range(0, len(emails), chunk_size):
+            chunk = emails[i : i + chunk_size]
+            rows = db.session.execute(
+                select(Account.id, Account.email).where(Account.email.in_(chunk))
+            ).all()
+            account_ids.extend(str(row.id) for row in rows)
+
+        if not account_ids:
+            raise BadRequest("None of the provided emails matched an existing account.")
+
+        # Send to dify-saas in batches of 1000
+        total_count = 0
+        batch_size = 1000
+        for i in range(0, len(account_ids), batch_size):
+            batch = account_ids[i : i + batch_size]
+            result = BillingService.batch_add_notification_accounts(
+                notification_id=notification_id,
+                account_ids=batch,
+            )
+            total_count += result.get("count", 0)
 
         return {
             "result": "success",
-            "total": len(emails),
-            "succeeded": result["succeeded"],
-            "failed_chunks": result["failed_chunks"],
+            "emails_provided": len(emails),
+            "accounts_matched": len(account_ids),
+            "count": total_count,
         }, 200
 
     @staticmethod
     def _parse_emails_from_file() -> list[str]:
         """Parse email addresses from an uploaded CSV or TXT file."""
         file = request.files["file"]
-
         if not file.filename:
             raise BadRequest("Uploaded file has no filename.")
 
@@ -359,7 +415,6 @@ class SaveNotificationUserApi(Resource):
         if not filename_lower.endswith((".csv", ".txt")):
             raise BadRequest("Invalid file type. Only CSV (.csv) and TXT (.txt) files are allowed.")
 
-        # Read file content
         try:
             content = file.read().decode("utf-8")
         except UnicodeDecodeError:
@@ -375,20 +430,20 @@ class SaveNotificationUserApi(Resource):
             for row in reader:
                 for cell in row:
                     cell = cell.strip()
-                    emails.append(cell)
+                    if cell:
+                        emails.append(cell)
         else:
-            # TXT file: one email per line
             for line in content.splitlines():
                 line = line.strip()
-                emails.append(line)
+                if line:
+                    emails.append(line)
 
         # Deduplicate while preserving order
         seen: set[str] = set()
         unique_emails: list[str] = []
         for email in emails:
-            email_lower = email.lower()
-            if email_lower not in seen:
-                seen.add(email_lower)
+            if email.lower() not in seen:
+                seen.add(email.lower())
                 unique_emails.append(email)
 
         return unique_emails
