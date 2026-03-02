@@ -51,7 +51,7 @@ def process_trace_tasks(file_info):
             try:
                 EnterpriseOtelTrace().trace(trace_info)
             except Exception:
-                logger.warning("Enterprise trace failed for app_id: %s", app_id, exc_info=True)
+                logger.exception("Enterprise trace failed for app_id: %s", app_id)
 
         if trace_instance:
             with current_app.app_context():

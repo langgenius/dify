@@ -66,12 +66,20 @@ def init_app(app: DifyApp):
             exporter = GRPCSpanExporter(
                 endpoint=endpoint,
                 # Header field names must consist of lowercase letters, check RFC7540
-                headers=((("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),) if dify_config.OTLP_API_KEY else None),
+                headers=(
+                    (
+                        ("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),
+                    ) if dify_config.OTLP_API_KEY else None
+                ),
                 insecure=insecure,
             )
             metric_exporter = GRPCMetricExporter(
                 endpoint=endpoint,
-                headers=((("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),) if dify_config.OTLP_API_KEY else None),
+                headers=(
+                    (
+                        ("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),
+                    ) if dify_config.OTLP_API_KEY else None
+                ),
                 insecure=insecure,
             )
         else:
