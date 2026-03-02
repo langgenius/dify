@@ -37,7 +37,7 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('isolate outline-none', className)}
+        className={cn('outline-none', className)}
       >
         <BaseTooltip.Popup
           className={cn(

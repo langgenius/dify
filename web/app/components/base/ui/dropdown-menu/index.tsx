@@ -52,7 +52,7 @@ function DropdownMenuPopup({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('isolate outline-none', className)}
+        className={cn('outline-none', className)}
       >
         <Menu.Popup
           className={cn(
