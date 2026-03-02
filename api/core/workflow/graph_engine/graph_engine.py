@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import queue
-import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
@@ -77,13 +76,10 @@ class GraphEngine:
         config: GraphEngineConfig = _DEFAULT_CONFIG,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
-        # stop event
-        self._stop_event = threading.Event()
 
         # Bind runtime state to current workflow context
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
-        self._graph_runtime_state.stop_event = self._stop_event
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
         self._config = config
@@ -163,7 +159,6 @@ class GraphEngine:
             layers=self._layers,
             execution_context=execution_context,
             config=self._config,
-            stop_event=self._stop_event,
         )
 
         # === Orchestration ===
@@ -194,7 +189,6 @@ class GraphEngine:
             event_handler=self._event_handler_registry,
             execution_coordinator=self._execution_coordinator,
             event_emitter=self._event_manager,
-            stop_event=self._stop_event,
         )
 
         # === Validation ===
@@ -314,7 +308,6 @@ class GraphEngine:
 
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
-        self._stop_event.clear()
         paused_nodes: list[str] = []
         deferred_nodes: list[str] = []
         if resume:
@@ -348,7 +341,6 @@ class GraphEngine:
 
     def _stop_execution(self) -> None:
         """Stop execution subsystems."""
-        self._stop_event.set()
         self._dispatcher.stop()
         self._worker_pool.stop()
         # Don't mark complete here as the dispatcher already does it
