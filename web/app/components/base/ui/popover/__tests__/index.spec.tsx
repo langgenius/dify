@@ -17,6 +17,7 @@ type PositionerMockProps = ComponentPropsWithoutRef<'div'> & {
 
 const positionerPropsSpy = vi.fn<(props: PositionerMockProps) => void>()
 const popupClassNameSpy = vi.fn<(className: string | undefined) => void>()
+const popupPropsSpy = vi.fn<(props: ComponentPropsWithoutRef<'div'>) => void>()
 const parsePlacementMock = vi.fn<(placement: Placement) => ParsedPlacement>()
 
 vi.mock('@base-ui/react/popover', () => {
@@ -53,10 +54,11 @@ vi.mock('@base-ui/react/popover', () => {
     )
   }
 
-  const Popup = ({ children, className }: ComponentPropsWithoutRef<'div'>) => {
+  const Popup = ({ children, className, ...props }: ComponentPropsWithoutRef<'div'>) => {
     popupClassNameSpy(className)
+    popupPropsSpy({ className, ...props })
     return (
-      <div data-testid="mock-popup" className={className}>
+      <div data-testid="mock-popup" className={className} {...props}>
         {children}
       </div>
     )
@@ -165,6 +167,43 @@ describe('PopoverContent', () => {
       expect(popup).toHaveClass('rounded-xl')
       expect(popup).toHaveClass('custom-popup')
       expect(popupClassNameSpy).toHaveBeenCalledWith(expect.stringContaining('custom-popup'))
+    })
+  })
+
+  describe('Passthrough props', () => {
+    it('should forward positionerProps and popupProps when passthrough props are provided', () => {
+      // Arrange
+      render(
+        <PopoverContent
+          positionerProps={{
+            'aria-label': 'popover positioner',
+          }}
+          popupProps={{
+            'role': 'dialog',
+            'aria-label': 'popover content',
+          }}
+        >
+          <span>Popover body</span>
+        </PopoverContent>,
+      )
+
+      // Act
+      const popup = screen.getByTestId('mock-popup')
+
+      // Assert
+      expect(positionerPropsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'aria-label': 'popover positioner',
+        }),
+      )
+      expect(popupPropsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'role': 'dialog',
+          'aria-label': 'popover content',
+        }),
+      )
+      expect(popup).toHaveAttribute('role', 'dialog')
+      expect(popup).toHaveAttribute('aria-label', 'popover content')
     })
   })
 

@@ -219,6 +219,38 @@ describe('Select wrappers', () => {
       expect(screen.getByTestId('base-select-list')).toHaveClass('max-h-80', 'custom-list')
     })
 
+    it('should forward passthrough props to positioner popup and list when passthrough props are provided', () => {
+      // Arrange & Act
+      render(
+        <SelectContent
+          positionerProps={{
+            'aria-label': 'select positioner',
+          }}
+          popupProps={{
+            'role': 'dialog',
+            'aria-label': 'select popup',
+          }}
+          listProps={{
+            'role': 'listbox',
+            'aria-label': 'select list',
+          }}
+        >
+          <div>Option A</div>
+        </SelectContent>,
+      )
+
+      // Assert
+      const positioner = screen.getByTestId('base-select-positioner')
+      const popup = screen.getByTestId('base-select-popup')
+      const list = screen.getByTestId('base-select-list')
+
+      expect(positioner).toHaveAttribute('aria-label', 'select positioner')
+      expect(popup).toHaveAttribute('role', 'dialog')
+      expect(popup).toHaveAttribute('aria-label', 'select popup')
+      expect(list).toHaveAttribute('role', 'listbox')
+      expect(list).toHaveAttribute('aria-label', 'select list')
+    })
+
     it('should render children inside list when children are provided', () => {
       // Arrange & Act
       render(

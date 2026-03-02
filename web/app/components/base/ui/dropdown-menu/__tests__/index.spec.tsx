@@ -179,6 +179,32 @@ describe('dropdown-menu wrapper', () => {
       expect(popup).toHaveClass('content-popup-custom')
       expect(screen.getByText('custom content')).toBeInTheDocument()
     })
+
+    it('should forward positioner and popup passthrough props when passthrough props are provided', () => {
+      // Arrange
+
+      // Act
+      render(
+        <DropdownMenuContent
+          positionerProps={{
+            'aria-label': 'dropdown content positioner',
+          }}
+          popupProps={{
+            'role': 'menu',
+            'aria-label': 'dropdown content popup',
+          }}
+        >
+          <span>passthrough content</span>
+        </DropdownMenuContent>,
+      )
+
+      // Assert
+      const positioner = screen.getByTestId('menu-positioner')
+      const popup = screen.getByTestId('menu-popup')
+      expect(positioner).toHaveAttribute('aria-label', 'dropdown content positioner')
+      expect(popup).toHaveAttribute('role', 'menu')
+      expect(popup).toHaveAttribute('aria-label', 'dropdown content popup')
+    })
   })
 
   describe('DropdownMenuSubContent', () => {
@@ -235,6 +261,32 @@ describe('dropdown-menu wrapper', () => {
       expect(positioner).toHaveClass('outline-none')
       expect(positioner).toHaveClass('sub-positioner-custom')
       expect(popup).toHaveClass('sub-popup-custom')
+    })
+
+    it('should forward passthrough props for sub-content positioner and popup when passthrough props are provided', () => {
+      // Arrange
+
+      // Act
+      render(
+        <DropdownMenuSubContent
+          positionerProps={{
+            'aria-label': 'dropdown sub positioner',
+          }}
+          popupProps={{
+            'role': 'menu',
+            'aria-label': 'dropdown sub popup',
+          }}
+        >
+          <span>passthrough sub content</span>
+        </DropdownMenuSubContent>,
+      )
+
+      // Assert
+      const positioner = screen.getByTestId('menu-positioner')
+      const popup = screen.getByTestId('menu-popup')
+      expect(positioner).toHaveAttribute('aria-label', 'dropdown sub positioner')
+      expect(popup).toHaveAttribute('role', 'menu')
+      expect(popup).toHaveAttribute('aria-label', 'dropdown sub popup')
     })
   })
 
