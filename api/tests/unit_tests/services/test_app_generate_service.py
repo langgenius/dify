@@ -24,6 +24,26 @@ class _DummyRateLimit:
         return generator
 
 
+class _FakeTimer:
+    instances: list["_FakeTimer"] = []
+
+    def __init__(self, interval: float, callback):
+        self.interval = interval
+        self._callback = callback
+        self.cancelled = False
+        self.started = False
+        _FakeTimer.instances.append(self)
+
+    def start(self) -> None:
+        self.started = True
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+    def fire(self) -> None:
+        self._callback()
+
+
 def test_workflow_blocking_injects_pause_state_config(mocker, monkeypatch):
     monkeypatch.setattr(app_generate_service_module.dify_config, "BILLING_ENABLED", False)
     mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
@@ -116,3 +136,33 @@ def test_advanced_chat_blocking_returns_dict_and_does_not_use_event_retrieval(mo
     assert result == {"result": "ok"}
     assert generate_spy.call_args.kwargs.get("streaming") is False
     retrieve_spy.assert_not_called()
+
+
+def test_build_streaming_task_on_subscribe_starts_once_when_timer_fires_first(monkeypatch) -> None:
+    starts: list[str] = []
+    _FakeTimer.instances.clear()
+    monkeypatch.setattr(app_generate_service_module.threading, "Timer", _FakeTimer)
+
+    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: starts.append("started"))
+    timer = _FakeTimer.instances[0]
+
+    timer.fire()
+    on_subscribe()
+
+    assert len(starts) == 1
+    assert timer.cancelled is True
+
+
+def test_build_streaming_task_on_subscribe_starts_once_when_subscribe_happens_first(monkeypatch) -> None:
+    starts: list[str] = []
+    _FakeTimer.instances.clear()
+    monkeypatch.setattr(app_generate_service_module.threading, "Timer", _FakeTimer)
+
+    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: starts.append("started"))
+    timer = _FakeTimer.instances[0]
+
+    on_subscribe()
+    timer.fire()
+
+    assert len(starts) == 1
+    assert timer.cancelled is True

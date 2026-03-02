@@ -1,7 +1,7 @@
 import logging
 import time
-from collections.abc import Sequence
-from typing import cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
@@ -9,6 +9,7 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata
 from dify_graph.enums import WorkflowType
 from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
@@ -43,6 +44,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        execution_graph_config: Mapping[str, Any] | None = None,
+        skip_validation: bool = False,
+        rerun_metadata: WorkflowRunRerunMetadata | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -57,6 +61,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
+        self._execution_graph_config = execution_graph_config
+        self._skip_validation = skip_validation
+        self._rerun_metadata = rerun_metadata
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -73,11 +80,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         resume_state = self._resume_graph_runtime_state
 
+        graph_config = self._execution_graph_config or self._workflow.graph_dict
+
         if resume_state is not None:
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
-                graph_config=self._workflow.graph_dict,
+                graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
@@ -85,6 +94,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
+                skip_validation=self._skip_validation,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
@@ -113,7 +123,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
-                graph_config=self._workflow.graph_dict,
+                graph_config=graph_config,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
@@ -121,6 +131,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
+                skip_validation=self._skip_validation,
             )
 
         # RUN WORKFLOW
@@ -136,7 +147,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             app_id=self._workflow.app_id,
             workflow_id=self._workflow.id,
             graph=graph,
-            graph_config=self._workflow.graph_dict,
+            graph_config=graph_config,
             user_id=self.application_generate_entity.user_id,
             user_from=user_from,
             invoke_from=invoke_from,
@@ -152,11 +163,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id,
                 workflow_type=WorkflowType(self._workflow.type),
                 version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
+                graph_data=graph_config,
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
             trace_manager=self.application_generate_entity.trace_manager,
+            rerun_metadata=self._rerun_metadata,
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)

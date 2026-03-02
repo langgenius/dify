@@ -19,6 +19,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
+from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata
 from dify_graph.enums import (
     SystemVariableKey,
     WorkflowExecutionStatus,
@@ -81,6 +82,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         trace_manager: TraceQueueManager | None = None,
+        rerun_metadata: WorkflowRunRerunMetadata | None = None,
     ) -> None:
         super().__init__()
         self._application_generate_entity = application_generate_entity
@@ -88,6 +90,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._trace_manager = trace_manager
+        self._rerun_metadata = rerun_metadata
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
@@ -168,6 +171,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             inputs=self._prepare_workflow_inputs(),
             started_at=naive_utc_now(),
         )
+        workflow_execution.rerun_metadata = self._rerun_metadata
 
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution

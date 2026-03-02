@@ -576,6 +576,8 @@ class WorkflowRun(Base):
 
         `app-run` for (published) app execution
 
+        `rerun` for node rerun execution
+
     - version (string) Version
     - graph (text) Workflow canvas configuration (JSON)
     - inputs (text) Input parameters
@@ -594,6 +596,12 @@ class WorkflowRun(Base):
     - created_by (uuid) Runner ID
     - created_at (timestamp) Run time
     - finished_at (timestamp) End time
+    - rerun_from_workflow_run_id (uuid) `optional` Source workflow run ID when this run is a rerun
+    - rerun_from_node_id (string) `optional` Source target node ID when this run is a rerun
+    - rerun_overrides (text) `optional` Applied override payload as JSON string
+    - rerun_scope (text) `optional` Calculated rerun scope as JSON string
+    - rerun_chain_root_workflow_run_id (uuid) `optional` Root workflow run ID for rerun chain
+    - rerun_kind (string) `optional` Rerun kind marker
     """
 
     __tablename__ = "workflow_runs"
@@ -601,6 +609,8 @@ class WorkflowRun(Base):
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
         sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
+        sa.Index("workflow_run_rerun_from_workflow_run_id_idx", "rerun_from_workflow_run_id"),
+        sa.Index("workflow_run_rerun_chain_root_workflow_run_id_idx", "rerun_chain_root_workflow_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -627,6 +637,12 @@ class WorkflowRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+    rerun_from_workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    rerun_from_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    rerun_overrides: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    rerun_scope: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    rerun_chain_root_workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    rerun_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         "WorkflowPause",
@@ -664,6 +680,14 @@ class WorkflowRun(Base):
         return json.loads(self.outputs) if self.outputs else {}
 
     @property
+    def rerun_overrides_dict(self) -> Any:
+        return json.loads(self.rerun_overrides) if self.rerun_overrides else None
+
+    @property
+    def rerun_scope_dict(self) -> Mapping[str, Any] | None:
+        return json.loads(self.rerun_scope) if self.rerun_scope else None
+
+    @property
     @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def message(self):
         from .model import Message
@@ -699,10 +723,18 @@ class WorkflowRun(Base):
             "created_at": self.created_at,
             "finished_at": self.finished_at,
             "exceptions_count": self.exceptions_count,
+            "rerun_from_workflow_run_id": self.rerun_from_workflow_run_id,
+            "rerun_from_node_id": self.rerun_from_node_id,
+            "rerun_overrides": self.rerun_overrides_dict,
+            "rerun_scope": self.rerun_scope_dict,
+            "rerun_chain_root_workflow_run_id": self.rerun_chain_root_workflow_run_id,
+            "rerun_kind": self.rerun_kind,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
+        rerun_overrides = data.get("rerun_overrides")
+        rerun_scope = data.get("rerun_scope")
         return cls(
             id=data.get("id"),
             tenant_id=data.get("tenant_id"),
@@ -724,6 +756,18 @@ class WorkflowRun(Base):
             created_at=data.get("created_at"),
             finished_at=data.get("finished_at"),
             exceptions_count=data.get("exceptions_count"),
+            rerun_from_workflow_run_id=data.get("rerun_from_workflow_run_id"),
+            rerun_from_node_id=data.get("rerun_from_node_id"),
+            rerun_overrides=(
+                rerun_overrides if isinstance(rerun_overrides, str) else json.dumps(rerun_overrides)
+            )
+            if rerun_overrides is not None
+            else None,
+            rerun_scope=(rerun_scope if isinstance(rerun_scope, str) else json.dumps(rerun_scope))
+            if rerun_scope is not None
+            else None,
+            rerun_chain_root_workflow_run_id=data.get("rerun_chain_root_workflow_run_id"),
+            rerun_kind=data.get("rerun_kind"),
         )
 
 

@@ -4,12 +4,12 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
-from typing import Union
+from typing import Any, Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from dify_graph.entities import WorkflowExecution
+from dify_graph.entities import WorkflowExecution, WorkflowRunRerunMetadata, WorkflowRunRerunScope
 from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
 from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -51,7 +51,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
-            triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
+            triggered_from: Source of the execution trigger (for example DEBUGGING, APP_RUN, or RERUN)
         """
         # If an engine is provided, create a sessionmaker from it
         if isinstance(session_factory, Engine):
@@ -116,6 +116,46 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             exceptions_count=db_model.exceptions_count,
             started_at=db_model.created_at,
             finished_at=db_model.finished_at,
+            rerun_metadata=self._to_rerun_metadata(db_model),
+        )
+
+    @staticmethod
+    def _load_json(payload: str | None, default: Any) -> Any:
+        if not payload:
+            return default
+        try:
+            return json.loads(payload)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode rerun JSON payload")
+            return default
+
+    def _to_rerun_metadata(self, db_model: WorkflowRun) -> WorkflowRunRerunMetadata | None:
+        if not db_model.rerun_from_workflow_run_id:
+            return None
+
+        rerun_scope = self._load_json(db_model.rerun_scope, {})
+        rerun_overrides = self._load_json(db_model.rerun_overrides, [])
+
+        try:
+            scope_entity = WorkflowRunRerunScope.model_validate(rerun_scope)
+        except Exception:
+            logger.warning("Failed to parse rerun_scope for workflow run %s", db_model.id)
+            scope_entity = WorkflowRunRerunScope(
+                target_node_id=db_model.rerun_from_node_id or "",
+                ancestor_node_ids=[],
+                rerun_node_ids=[],
+                overrideable_node_ids=[],
+            )
+
+        return WorkflowRunRerunMetadata(
+            rerun_from_workflow_run_id=db_model.rerun_from_workflow_run_id,
+            rerun_from_node_id=db_model.rerun_from_node_id or "",
+            rerun_overrides=rerun_overrides if isinstance(rerun_overrides, list) else [],
+            rerun_scope=scope_entity,
+            rerun_chain_root_workflow_run_id=(
+                db_model.rerun_chain_root_workflow_run_id or db_model.rerun_from_workflow_run_id
+            ),
+            rerun_kind=db_model.rerun_kind or "manual-node-rerun",
         )
 
     def _to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
@@ -164,6 +204,14 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         db_model.created_by = self._creator_user_id
         db_model.created_at = domain_model.started_at
         db_model.finished_at = domain_model.finished_at
+        if domain_model.rerun_metadata is not None:
+            rerun_metadata = domain_model.rerun_metadata
+            db_model.rerun_from_workflow_run_id = rerun_metadata.rerun_from_workflow_run_id
+            db_model.rerun_from_node_id = rerun_metadata.rerun_from_node_id
+            db_model.rerun_overrides = json.dumps(rerun_metadata.rerun_overrides, ensure_ascii=False)
+            db_model.rerun_scope = json.dumps(rerun_metadata.rerun_scope.model_dump(mode="json"), ensure_ascii=False)
+            db_model.rerun_chain_root_workflow_run_id = rerun_metadata.rerun_chain_root_workflow_run_id
+            db_model.rerun_kind = rerun_metadata.rerun_kind
 
         # Calculate elapsed time if finished_at is available
         if domain_model.finished_at:
