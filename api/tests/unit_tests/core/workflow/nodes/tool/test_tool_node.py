@@ -8,15 +8,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.file import File, FileTransferMethod, FileType
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayFileSegment
 from core.workflow.entities import GraphInitParams
+from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.node_events import StreamChunkEvent, StreamCompletedEvent
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variables.segments import ArrayFileSegment
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from core.workflow.nodes.tool.tool_node import ToolNode
@@ -92,7 +92,9 @@ def _run_transform(tool_node: ToolNode, message: ToolInvokeMessage) -> tuple[lis
         return messages
 
     tool_runtime = MagicMock()
-    with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform):
+    with patch.object(
+        ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform, autospec=True
+    ):
         generator = tool_node._transform_message(
             messages=iter([message]),
             tool_info={"provider_type": "builtin", "provider_id": "provider"},
