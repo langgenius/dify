@@ -3,10 +3,9 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import InvokeFrom, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import (
     HumanInputFormFilledEvent,
     HumanInputFormTimeoutEvent,

@@ -1069,8 +1069,8 @@ class WorkflowService:
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
             user_id=account.id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.DEBUGGER.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(

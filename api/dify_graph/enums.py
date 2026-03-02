@@ -33,6 +33,38 @@ class SystemVariableKey(StrEnum):
     INVOKE_FROM = "invoke_from"
 
 
+class UserFrom(StrEnum):
+    ACCOUNT = "account"
+    END_USER = "end-user"
+
+
+class InvokeFrom(StrEnum):
+    SERVICE_API = "service-api"
+    WEB_APP = "web-app"
+    TRIGGER = "trigger"
+    EXPLORE = "explore"
+    DEBUGGER = "debugger"
+    PUBLISHED_PIPELINE = "published"
+    VALIDATION = "validation"
+
+    @classmethod
+    def value_of(cls, value: str) -> "InvokeFrom":
+        return cls(value)
+
+    def to_source(self) -> str:
+        if self == InvokeFrom.WEB_APP:
+            return "web_app"
+        if self == InvokeFrom.DEBUGGER:
+            return "dev"
+        if self == InvokeFrom.EXPLORE:
+            return "explore_app"
+        if self == InvokeFrom.TRIGGER:
+            return "trigger"
+        if self == InvokeFrom.SERVICE_API:
+            return "api"
+        return "dev"
+
+
 class NodeType(StrEnum):
     START = "start"
     END = "end"
