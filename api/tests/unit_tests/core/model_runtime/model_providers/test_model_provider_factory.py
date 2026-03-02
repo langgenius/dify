@@ -402,8 +402,7 @@ def test_get_models_filters_by_provider_and_model_type(
     providers = factory.get_models(model_type=ModelType.TEXT_EMBEDDING)
     assert len(providers) == 1
     assert providers[0].provider == "langgenius/openai/openai"
-    # Note: `ProviderEntity.to_simple_provider()` currently includes all models, and then the filtered list is extended.
-    assert [m.model for m in providers[0].models] == ["m1", "e1", "e1"]
+    assert [m.model for m in providers[0].models] == ["e1"]
 
     # Provider filter excludes others
     providers = factory.get_models(provider="langgenius/anthropic/anthropic", model_type=ModelType.LLM)

@@ -180,7 +180,7 @@ class TestCommonValidator:
             schemas, {"v1": "a", "target": "val"}
         )
 
-    def test_validate_and_filter_skips_falsy_results(self):
+    def test_validate_and_filter_preserves_falsy_results(self):
         validator = CommonValidator()
         schemas = [
             CredentialFormSchema(variable="enabled", label=I18nObject(en_US="Enabled"), type=FormType.SWITCH),
@@ -188,9 +188,11 @@ class TestCommonValidator:
                 variable="empty_str", label=I18nObject(en_US="Empty"), type=FormType.TEXT_INPUT, required=False
             ),
         ]
-        # Result of false switch is False. if result: is false. Not added.
-        # Result of empty string is "", if result: is false. Not added.
+        # Result of false switch is False.
+        # Result of empty string is "".
         credentials = {"enabled": "false", "empty_str": ""}
         result = validator._validate_and_filter_credential_form_schemas(schemas, credentials)
-        assert "enabled" not in result
-        assert "empty_str" not in result
+        assert "enabled" in result
+        assert result["enabled"] is False
+        assert "empty_str" in result
+        assert result["empty_str"] == ""

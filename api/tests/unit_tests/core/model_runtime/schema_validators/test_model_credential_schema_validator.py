@@ -183,10 +183,8 @@ def test_common_validator_logic_switch():
     result = validator.validate_and_filter({"enabled": "true"})
     assert result["enabled"] is True
 
-    # Note: Currently CommonValidator has a limitation where it ignores 'False' results
-    # due to 'if result:' check.
     result = validator.validate_and_filter({"enabled": "false"})
-    assert "enabled" not in result
+    assert result["enabled"] is False
 
     with pytest.raises(ValueError, match="Variable enabled should be true or false"):
         validator.validate_and_filter({"enabled": "not_a_bool"})

@@ -21,10 +21,10 @@ class TestInvokeErrors:
         assert str(error) == "InvokeError"
 
     def test_invoke_connection_error(self):
-        # Current implementation overwrites class-level description with None
+        # Now preserves class-level description
         error = InvokeConnectionError()
-        assert error.description is None
-        assert str(error) == "InvokeConnectionError"
+        assert error.description == "Connection Error"
+        assert str(error) == "Connection Error"
         assert isinstance(error, InvokeError)
 
         # Test with explicit description
@@ -34,26 +34,26 @@ class TestInvokeErrors:
 
     def test_invoke_server_unavailable_error(self):
         error = InvokeServerUnavailableError()
-        assert error.description is None
-        assert str(error) == "InvokeServerUnavailableError"
+        assert error.description == "Server Unavailable Error"
+        assert str(error) == "Server Unavailable Error"
         assert isinstance(error, InvokeError)
 
     def test_invoke_rate_limit_error(self):
         error = InvokeRateLimitError()
-        assert error.description is None
-        assert str(error) == "InvokeRateLimitError"
+        assert error.description == "Rate Limit Error"
+        assert str(error) == "Rate Limit Error"
         assert isinstance(error, InvokeError)
 
     def test_invoke_authorization_error(self):
         error = InvokeAuthorizationError()
-        assert error.description is None
-        assert str(error) == "InvokeAuthorizationError"
+        assert error.description == "Incorrect model credentials provided, please check and try again. "
+        assert str(error) == "Incorrect model credentials provided, please check and try again. "
         assert isinstance(error, InvokeError)
 
     def test_invoke_bad_request_error(self):
         error = InvokeBadRequestError()
-        assert error.description is None
-        assert str(error) == "InvokeBadRequestError"
+        assert error.description == "Bad Request Error"
+        assert str(error) == "Bad Request Error"
         assert isinstance(error, InvokeError)
 
     def test_invoke_error_inheritance(self):

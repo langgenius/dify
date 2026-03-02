@@ -280,7 +280,8 @@ class ModelProviderFactory:
                 all_model_type_models.append(model_schema)
 
             simple_provider_schema = provider_schema.to_simple_provider()
-            simple_provider_schema.models.extend(all_model_type_models)
+            if model_type:
+                simple_provider_schema.models = all_model_type_models
 
             providers.append(simple_provider_schema)
 

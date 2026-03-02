@@ -128,27 +128,22 @@ class TestPromptMessages:
         assert msg.content == "you are a bot"
 
     def test_tool_prompt_message(self):
-        # Current logic in ToolPromptMessage.is_empty:
-        # if not super().is_empty() and not self.tool_call_id: return False
-        # else: return True
-
-        # Case 1: not super().is_empty() is True ("result" is not empty)
-        #         AND not self.tool_call_id is False ("call_1" is present)
-        #         Condition False -> returns True
+        # Case 1: Both content and tool_call_id are present
         msg = ToolPromptMessage(content="result", tool_call_id="call_1")
         assert msg.role == PromptMessageRole.TOOL
         assert msg.tool_call_id == "call_1"
-        assert msg.is_empty() is True
+        assert msg.is_empty() is False
 
-        # Case 2: not super().is_empty() is True ("result" is not empty)
-        #         AND not self.tool_call_id is True ("" is empty)
-        #         Condition True -> returns False
-        msg_not_empty = ToolPromptMessage(content="result", tool_call_id="")
-        assert msg_not_empty.is_empty() is False
+        # Case 2: Content is present, but tool_call_id is empty
+        msg_content_only = ToolPromptMessage(content="result", tool_call_id="")
+        assert msg_content_only.is_empty() is False
 
-        # Case 3: not super().is_empty() is False (None is empty)
-        #         Condition False -> returns True
-        msg_empty = ToolPromptMessage(content=None, tool_call_id="call_1")
+        # Case 3: Content is None, but tool_call_id is present
+        msg_id_only = ToolPromptMessage(content=None, tool_call_id="call_1")
+        assert msg_id_only.is_empty() is False
+
+        # Case 4: Both content and tool_call_id are empty
+        msg_empty = ToolPromptMessage(content=None, tool_call_id="")
         assert msg_empty.is_empty() is True
 
     def test_prompt_message_validation_errors(self):
