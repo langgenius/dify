@@ -2,7 +2,6 @@ import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import ExploreContext from '@/context/explore-context'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
@@ -41,12 +40,14 @@ const createApp = (overrides?: Partial<App>): App => ({
 
 describe('AppCard', () => {
   const onCreate = vi.fn()
+  const onTry = vi.fn()
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
       app: createApp(),
       canCreate: false,
       onCreate,
+      onTry,
       isExplore: false,
       ...props,
     }
@@ -138,31 +139,14 @@ describe('AppCard', () => {
       expect(screen.getByText('Sample App')).toBeInTheDocument()
     })
 
-    it('should call setShowTryAppPanel when try button is clicked', () => {
-      const mockSetShowTryAppPanel = vi.fn()
+    it('should call onTry when try button is clicked', () => {
       const app = createApp()
 
-      render(
-        <ExploreContext.Provider
-          value={{
-            controlUpdateInstalledApps: 0,
-            setControlUpdateInstalledApps: vi.fn(),
-            hasEditPermission: false,
-            installedApps: [],
-            setInstalledApps: vi.fn(),
-            isFetchingInstalledApps: false,
-            setIsFetchingInstalledApps: vi.fn(),
-            isShowTryAppPanel: false,
-            setShowTryAppPanel: mockSetShowTryAppPanel,
-          }}
-        >
-          <AppCard app={app} canCreate={true} onCreate={vi.fn()} isExplore={true} />
-        </ExploreContext.Provider>,
-      )
+      renderComponent({ app, canCreate: true, isExplore: true })
 
       fireEvent.click(screen.getByText('explore.appCard.try'))
 
-      expect(mockSetShowTryAppPanel).toHaveBeenCalledWith(true, { appId: 'app-id', app })
+      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
     })
   })
 })

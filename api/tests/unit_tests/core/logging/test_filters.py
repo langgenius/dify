@@ -72,7 +72,7 @@ class TestTraceContextFilter:
         mock_span.get_span_context.return_value = mock_context
 
         with (
-            mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span),
+            mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span, autospec=True),
             mock.patch("opentelemetry.trace.span.INVALID_TRACE_ID", 0),
             mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0),
         ):
@@ -108,7 +108,9 @@ class TestIdentityContextFilter:
         filter = IdentityContextFilter()
 
         # Should not raise even if something goes wrong
-        with mock.patch("core.logging.filters.flask.has_request_context", side_effect=Exception("Test error")):
+        with mock.patch(
+            "core.logging.filters.flask.has_request_context", side_effect=Exception("Test error"), autospec=True
+        ):
             result = filter.filter(log_record)
             assert result is True
             assert log_record.tenant_id == ""

@@ -58,13 +58,13 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
     const remainingChildren = Array.isArray(children) && children.length > 1 ? children.slice(1) : undefined
 
     return (
-      <div className="markdown-img-wrapper">
+      <div className="markdown-img-wrapper" data-testid="image-paragraph-wrapper">
         <ImageGallery srcs={[imageUrl]} />
         {remainingChildren && (
-          <div className="mt-2">{remainingChildren}</div>
+          <div className="mt-2" data-testid="remaining-children">{remainingChildren}</div>
         )}
       </div>
     )
   }
-  return <p>{children}</p>
+  return <p data-testid="standard-paragraph">{children}</p>
 }

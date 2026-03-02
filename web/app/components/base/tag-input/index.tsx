@@ -1,5 +1,4 @@
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
-import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
@@ -90,13 +89,13 @@ const TagInput: FC<TagInputProps> = ({
         (items || []).map((item, index) => (
           <div
             key={item}
-            className={cn('system-xs-regular mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary')}
+            className={cn('mr-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pl-1.5 pr-1 text-text-secondary system-xs-regular')}
           >
             {item}
             {
               !disableRemove && (
                 <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
-                  <RiCloseLine className="ml-0.5 h-3.5 w-3.5 text-text-tertiary" />
+                  <span className="i-ri-close-line ml-0.5 h-3.5 w-3.5 text-text-tertiary" data-testid="remove-tag" />
                 </div>
               )
             }
@@ -106,7 +105,7 @@ const TagInput: FC<TagInputProps> = ({
       {
         !disableAdd && (
           <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
-            {!isSpecialMode && !focused && <RiAddLine className="h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
+            {!isSpecialMode && !focused && <span className="i-ri-add-line h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
             <AutosizeInput
               inputClassName={cn(
                 'appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
@@ -116,7 +115,7 @@ const TagInput: FC<TagInputProps> = ({
               className={cn(
                 !isInWorkflow && 'max-w-[300px]',
                 isInWorkflow && 'max-w-[146px]',
-                'system-xs-regular overflow-hidden rounded-md py-1',
+                'overflow-hidden rounded-md py-1 system-xs-regular',
                 isSpecialMode && 'border border-transparent px-1.5',
                 focused && isSpecialMode && 'border-dashed border-divider-deep',
               )}

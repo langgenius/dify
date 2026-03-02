@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -13,18 +13,15 @@ class TestMailInnerTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_inner_task.mail") as mock_mail,
-            patch("tasks.mail_inner_task.get_email_i18n_service") as mock_get_email_i18n_service,
-            patch("tasks.mail_inner_task._render_template_with_strategy") as mock_render_template,
+            patch("tasks.mail_inner_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_inner_task.get_email_i18n_service", autospec=True) as mock_get_email_i18n_service,
+            patch("tasks.mail_inner_task._render_template_with_strategy", autospec=True) as mock_render_template,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
 
             # Setup mock email i18n service
-            mock_email_service = MagicMock()
-            mock_get_email_i18n_service.return_value = mock_email_service
-
-            # Setup mock template rendering
+            mock_email_service = mock_get_email_i18n_service.return_value  # Setup mock template rendering
             mock_render_template.return_value = "<html>Test email content</html>"
 
             yield {
