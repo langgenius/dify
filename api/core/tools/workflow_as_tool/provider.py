@@ -212,7 +212,7 @@ class WorkflowToolProviderController(ToolProviderController):
         :param tenant_id: the tenant id
         :return: the tools
         """
-        if self.tools is not None:
+        if self.tools:
             return self.tools
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
@@ -244,9 +244,6 @@ class WorkflowToolProviderController(ToolProviderController):
         :param tool_name: the name of the tool
         :return: the tool
         """
-        if self.tools is None:
-            return None
-
         for tool in self.tools:
             if tool.entity.identity.name == tool_name:
                 return tool

@@ -48,9 +48,6 @@ class ToolProviderController(ABC):
         :param credentials: the credentials of the tool
         """
         credentials_schema = dict[str, ProviderConfig]()
-        if credentials_schema is None:
-            return
-
         for credential in self.entity.credentials_schema:
             credentials_schema[credential.name] = credential
 
