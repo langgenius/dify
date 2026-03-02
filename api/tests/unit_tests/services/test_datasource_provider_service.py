@@ -1,17 +1,18 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from sqlalchemy.orm import Session
-from unittest.mock import MagicMock, patch, call
 
 from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin_daemon import CredentialType
-from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
+from models.oauth import DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_id(s: str = "org/plugin/provider") -> DatasourceProviderID:
     return DatasourceProviderID(s)
@@ -96,7 +97,10 @@ class TestDatasourceProviderService:
                     "provider": "prov", "plugin_unique_identifier": "pui", "plugin_id": "org/plug",
                     "is_authorized": False,
                     "declaration": {
-                        "identity": {"author": "a", "name": "n", "description": {"en_US": "d"}, "icon": "i", "label": {"en_US": "l"}},
+                        "identity": {
+                            "author": "a", "name": "n", "description": {"en_US": "d"},
+                            "icon": "i", "label": {"en_US": "l"}
+                        },
                         "credentials_schema": [], "oauth_schema": {"credentials_schema": [], "client_schema": []},
                         "provider_type": "local_file", "datasources": [],
                     }
@@ -120,8 +124,8 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_return_proxy_when_current_object_is_account(self):
-        from services.datasource_provider_service import get_current_user
         from models.account import Account
+        from services.datasource_provider_service import get_current_user
 
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             user_obj = MagicMock()
@@ -130,8 +134,8 @@ class TestDatasourceProviderService:
             assert get_current_user() is proxy
 
     def test_should_return_proxy_when_current_object_is_enduser(self):
-        from services.datasource_provider_service import get_current_user
         from models.model import EndUser
+        from services.datasource_provider_service import get_current_user
 
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             user_obj = MagicMock()
@@ -141,8 +145,8 @@ class TestDatasourceProviderService:
 
     def test_should_return_proxy_when_get_current_object_raises_attribute_error(self):
         """AttributeError from LocalProxy falls back to the proxy itself."""
-        from services.datasource_provider_service import get_current_user
         from models.account import Account
+        from services.datasource_provider_service import get_current_user
 
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             proxy._get_current_object.side_effect = AttributeError("no attr")
@@ -369,7 +373,10 @@ class TestDatasourceProviderService:
         pm = MagicMock()
         pm.declaration.oauth_schema.client_schema = [schema_item]
         with patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm), \
-             patch("services.datasource_provider_service.create_provider_encrypter", return_value=(MagicMock(), MagicMock())):
+             patch(
+                 "services.datasource_provider_service.create_provider_encrypter",
+                 return_value=(MagicMock(), MagicMock())
+             ):
             result = service.get_oauth_encrypter("t1", make_id())
         assert result is not None
 
@@ -524,7 +531,10 @@ class TestDatasourceProviderService:
     def test_should_raise_value_error_when_credentials_validation_fails(self, service, mock_db_session, mock_user):
         mock_db_session.query().count.return_value = 0
         with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")), \
+             patch.object(
+                service.provider_manager, "validate_provider_credentials",
+                side_effect=Exception("bad cred")
+             ), \
              patch.object(service, "extract_secret_variables", return_value=[]):
             with pytest.raises(ValueError, match="Failed to validate"):
                 service.add_datasource_api_key_provider("nm", "t1", make_id(), {"k": "v"})
@@ -674,7 +684,9 @@ class TestDatasourceProviderService:
             with pytest.raises(ValueError, match="already exists"):
                 service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "new_name")
 
-    def test_should_raise_value_error_when_credential_validation_fails_on_update(self, service, mock_db_session, mock_user):
+    def test_should_raise_value_error_when_credential_validation_fails_on_update(
+        self, service, mock_db_session, mock_user
+    ):
         p = MagicMock(spec=DatasourceProvider)
         p.name = "old_name"
         p.auth_type = "api_key"

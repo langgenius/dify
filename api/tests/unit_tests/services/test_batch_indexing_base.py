@@ -1,22 +1,22 @@
-import pytest
-from collections.abc import Sequence
 from dataclasses import asdict
-from typing import Any, cast, ClassVar, Optional
-from unittest.mock import MagicMock, patch, call
+from typing import Any, ClassVar, Optional, cast
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.entities.document_task import DocumentTask
 from enums.cloud_plan import CloudPlan
 from services.document_indexing_proxy.batch_indexing_base import BatchDocumentIndexingProxy
 
-
 # ---------------------------------------------------------------------------
 # Concrete subclass for testing (the base class is abstract)
 # ---------------------------------------------------------------------------
 
+
 class ConcreteBatchProxy(BatchDocumentIndexingProxy):
     """Minimal concrete implementation that provides the required class-level vars."""
 
-    QUEUE_NAME: str = "test_queue"
+    QUEUE_NAME: ClassVar[str] = "test_queue"
     NORMAL_TASK_FUNC: ClassVar[Any] = MagicMock(name="NORMAL_TASK_FUNC")
     PRIORITY_TASK_FUNC: ClassVar[Any] = MagicMock(name="PRIORITY_TASK_FUNC")
     _features_mock: Optional[MagicMock]

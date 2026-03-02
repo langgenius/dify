@@ -1,7 +1,3 @@
-"""
-Unit tests for knowledge_service.py
-"""
-
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -50,7 +46,10 @@ class TestKnowledgeService:
         }
 
         # Act
-        result = cast(dict[str, Any], ExternalDatasetTestService.knowledge_retrieval(retrieval_setting, query, knowledge_id))
+        result = cast(
+            dict[str, Any],
+            ExternalDatasetTestService.knowledge_retrieval(retrieval_setting, query, knowledge_id)
+        )
 
         # Assert
         assert len(result["records"]) == 1

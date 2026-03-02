@@ -1,10 +1,6 @@
-"""
-Unit tests for operation_service.py
-"""
-
-import httpx
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from services.operation_service import OperationService
@@ -16,7 +12,9 @@ class TestOperationService:
     # ===== Internal Method Tests =====
 
     @patch("httpx.request")
-    def test_should_call_with_correct_parameters_when__send_request_invoked(self, mock_request: MagicMock, monkeypatch: pytest.MonkeyPatch):
+    def test_should_call_with_correct_parameters_when__send_request_invoked(
+        self, mock_request: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ):
         """Test that _send_request calls httpx.request with the correct URL, headers, and data"""
         # Arrange
         monkeypatch.setattr(OperationService, "base_url", "https://billing.example")
@@ -47,7 +45,9 @@ class TestOperationService:
         assert kwargs["headers"]["Content-Type"] == "application/json"
 
     @patch("httpx.request")
-    def test_should_propagate_httpx_error_when__send_request_raises(self, mock_request: MagicMock, monkeypatch: pytest.MonkeyPatch):
+    def test_should_propagate_httpx_error_when__send_request_raises(
+        self, mock_request: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ):
         """Test that _send_request handles httpx raising an error"""
         # Arrange
         monkeypatch.setattr(OperationService, "base_url", "https://billing.example")
@@ -91,7 +91,7 @@ class TestOperationService:
                 }
             ),
             (
-                {"utm_source": "newsletter"}, # Partial utm_info
+                {"utm_source": "newsletter"},  # Partial utm_info
                 {
                     "tenant_id": "tenant-123",
                     "utm_source": "newsletter",
@@ -104,7 +104,9 @@ class TestOperationService:
         ]
     )
     @patch.object(OperationService, "_send_request")
-    def test_should_map_parameters_correctly_when_record_utm_called(self, mock_send: MagicMock, utm_info: dict, expected_params: dict):
+    def test_should_map_parameters_correctly_when_record_utm_called(
+        self, mock_send: MagicMock, utm_info: dict, expected_params: dict
+    ):
         """Test that record_utm correctly maps utm_info to parameters and calls _send_request"""
         # Arrange
         tenant_id = "tenant-123"

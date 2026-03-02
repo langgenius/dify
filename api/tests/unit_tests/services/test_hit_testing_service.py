@@ -1,13 +1,8 @@
-"""
-Unit tests for hit_testing_service.py
-"""
-
 import json
-from unittest.mock import ANY, MagicMock, patch
 from typing import Any, cast
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from flask import Flask
 
 from core.rag.models.document import Document
 from models.dataset import Dataset
@@ -346,7 +341,7 @@ class TestHitTestingService:
         # The content is json.dumps([{"content_type": "text_query", ...}, {"content_type": "image_query", ...}])
         called_query = mock_add.call_args[0][0]
         query_content = json.loads(called_query.content)
-        assert len(query_content) == 3 # 1 text + 2 images
+        assert len(query_content) == 3  # 1 text + 2 images
         assert query_content[0]["content_type"] == "text_query"
         assert query_content[1]["content_type"] == "image_query"
         assert query_content[1]["content"] == "att1"
