@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 from core.helper.marketplace import (
-    batch_fetch_plugin_manifests,
     batch_fetch_plugin_by_ids,
+    batch_fetch_plugin_manifests,
     download_plugin_pkg,
     fetch_global_plugin_manifest,
     get_plugin_pkg_url,
