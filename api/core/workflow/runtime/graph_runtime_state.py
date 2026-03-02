@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import threading
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -218,8 +217,6 @@ class GraphRuntimeState:
         # Once the graph is attached, these two fields will be set to None.
         self._pending_graph_node_states: dict[str, NodeState] | None = None
         self._pending_graph_edge_states: dict[str, NodeState] | None = None
-
-        self.stop_event: threading.Event = threading.Event()
 
         if graph is not None:
             self.attach_graph(graph)

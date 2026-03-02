@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -16,16 +16,14 @@ class TestMailAccountDeletionTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.mail_account_deletion_task.mail") as mock_mail,
-            patch("tasks.mail_account_deletion_task.get_email_i18n_service") as mock_get_email_service,
+            patch("tasks.mail_account_deletion_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_account_deletion_task.get_email_i18n_service", autospec=True) as mock_get_email_service,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
 
             # Setup mock email service
-            mock_email_service = MagicMock()
-            mock_get_email_service.return_value = mock_email_service
-
+            mock_email_service = mock_get_email_service.return_value
             yield {
                 "mail": mock_mail,
                 "get_email_service": mock_get_email_service,

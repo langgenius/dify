@@ -13,12 +13,11 @@ from core.app.app_config.entities import (
     ExternalDataVariableEntity,
     ModelConfigEntity,
     PromptTemplateEntity,
-    VariableEntity,
-    VariableEntityType,
 )
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import AppMode
 from services.workflow.workflow_converter import WorkflowConverter

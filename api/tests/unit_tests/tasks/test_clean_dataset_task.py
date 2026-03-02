@@ -50,7 +50,7 @@ def pipeline_id():
 @pytest.fixture
 def mock_db_session():
     """Mock database session via session_factory.create_session()."""
-    with patch("tasks.clean_dataset_task.session_factory") as mock_sf:
+    with patch("tasks.clean_dataset_task.session_factory", autospec=True) as mock_sf:
         mock_session = MagicMock()
         # context manager for create_session()
         cm = MagicMock()
@@ -79,7 +79,7 @@ def mock_db_session():
 @pytest.fixture
 def mock_storage():
     """Mock storage client."""
-    with patch("tasks.clean_dataset_task.storage") as mock_storage:
+    with patch("tasks.clean_dataset_task.storage", autospec=True) as mock_storage:
         mock_storage.delete.return_value = None
         yield mock_storage
 
@@ -87,7 +87,7 @@ def mock_storage():
 @pytest.fixture
 def mock_index_processor_factory():
     """Mock IndexProcessorFactory."""
-    with patch("tasks.clean_dataset_task.IndexProcessorFactory") as mock_factory:
+    with patch("tasks.clean_dataset_task.IndexProcessorFactory", autospec=True) as mock_factory:
         mock_processor = MagicMock()
         mock_processor.clean.return_value = None
         mock_factory_instance = MagicMock()
@@ -104,7 +104,7 @@ def mock_index_processor_factory():
 @pytest.fixture
 def mock_get_image_upload_file_ids():
     """Mock get_image_upload_file_ids function."""
-    with patch("tasks.clean_dataset_task.get_image_upload_file_ids") as mock_func:
+    with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_func:
         mock_func.return_value = []
         yield mock_func
 
