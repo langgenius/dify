@@ -148,25 +148,6 @@ const ImportFromMarketplaceTemplateModal = ({
               </div>
             )}
 
-            {/* Categories */}
-            {template.categories && template.categories.length > 0 && (
-              <div>
-                <div className="mb-1.5 text-text-secondary system-sm-semibold">
-                  {t('marketplace.template.categories', { ns: 'app' })}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {template.categories.map(category => (
-                    <span
-                      key={category}
-                      className="inline-flex items-center rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 text-text-tertiary system-xs-medium"
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Usage count */}
             {template.usage_count !== null && template.usage_count > 0 && (
               <div className="text-text-quaternary system-xs-regular">
