@@ -464,6 +464,13 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         node_data["invoke_from"] = self._application_generate_entity.invoke_from.value
         node_data["user_id"] = self._system_variables().get(SystemVariableKey.USER_ID.value)
 
+        # Extract model info from process_data — LLM nodes store provider/model there,
+        if domain_execution.process_data:
+            if mp := domain_execution.process_data.get("model_provider"):
+                node_data["model_provider"] = mp
+            if mn := domain_execution.process_data.get("model_name"):
+                node_data["model_name"] = mn
+
         if domain_execution.node_type.value == "knowledge-retrieval" and domain_execution.outputs:
             results = domain_execution.outputs.get("result") or []
             dataset_ids: list[str] = []
