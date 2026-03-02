@@ -61,7 +61,6 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        className="!z-20"
         popupClassName="!w-[216px] !max-h-[70vh] !overflow-y-auto !divide-y !divide-divider-subtle !rounded-xl !bg-components-panel-bg-blur !py-0 !shadow-lg !backdrop-blur-sm"
       >
         <DropdownMenuGroup className="p-1">

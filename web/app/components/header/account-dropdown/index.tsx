@@ -167,7 +167,6 @@ export default function AppSelector() {
           <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="!z-20"
           popupClassName="!mt-1.5 !w-60 !max-w-80 !rounded-xl !bg-components-panel-bg-blur !py-0 !shadow-lg !backdrop-blur-sm"
         >
           <DropdownMenuGroup className="px-1 py-1">
