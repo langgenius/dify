@@ -57,7 +57,7 @@ const List = () => {
 
   return (
     <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
+      <div className="sticky top-14 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
         <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
             <CheckboxWithLabel
