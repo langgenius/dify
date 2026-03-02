@@ -25,24 +25,36 @@ type DropdownMenuContentProps = {
   alignOffset?: number
   className?: string
   popupClassName?: string
+  positionerProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof Menu.Positioner>,
+    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
+  >
+  popupProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof Menu.Popup>,
+    'children' | 'className'
+  >
 }
 
-type DropdownMenuPopupProps = Required<Pick<DropdownMenuContentProps, 'children'>> & {
+type DropdownMenuPopupRenderProps = Required<Pick<DropdownMenuContentProps, 'children'>> & {
   placement: Placement
   sideOffset: number
   alignOffset: number
   className?: string
   popupClassName?: string
+  positionerProps?: DropdownMenuContentProps['positionerProps']
+  popupProps?: DropdownMenuContentProps['popupProps']
 }
 
-function DropdownMenuPopup({
+function renderDropdownMenuPopup({
   children,
   placement,
   sideOffset,
   alignOffset,
   className,
   popupClassName,
-}: DropdownMenuPopupProps) {
+  positionerProps,
+  popupProps,
+}: DropdownMenuPopupRenderProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
@@ -53,6 +65,7 @@ function DropdownMenuPopup({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className={cn('outline-none', className)}
+        {...positionerProps}
       >
         <Menu.Popup
           className={cn(
@@ -60,6 +73,7 @@ function DropdownMenuPopup({
             'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
             popupClassName,
           )}
+          {...popupProps}
         >
           {children}
         </Menu.Popup>
@@ -75,18 +89,19 @@ export function DropdownMenuContent({
   alignOffset = 0,
   className,
   popupClassName,
+  positionerProps,
+  popupProps,
 }: DropdownMenuContentProps) {
-  return (
-    <DropdownMenuPopup
-      placement={placement}
-      sideOffset={sideOffset}
-      alignOffset={alignOffset}
-      className={className}
-      popupClassName={popupClassName}
-    >
-      {children}
-    </DropdownMenuPopup>
-  )
+  return renderDropdownMenuPopup({
+    children,
+    placement,
+    sideOffset,
+    alignOffset,
+    className,
+    popupClassName,
+    positionerProps,
+    popupProps,
+  })
 }
 
 type DropdownMenuSubTriggerProps = React.ComponentPropsWithoutRef<typeof Menu.SubmenuTrigger> & {
@@ -118,6 +133,8 @@ type DropdownMenuSubContentProps = {
   alignOffset?: number
   className?: string
   popupClassName?: string
+  positionerProps?: DropdownMenuContentProps['positionerProps']
+  popupProps?: DropdownMenuContentProps['popupProps']
 }
 
 export function DropdownMenuSubContent({
@@ -127,18 +144,19 @@ export function DropdownMenuSubContent({
   alignOffset = 0,
   className,
   popupClassName,
+  positionerProps,
+  popupProps,
 }: DropdownMenuSubContentProps) {
-  return (
-    <DropdownMenuPopup
-      placement={placement}
-      sideOffset={sideOffset}
-      alignOffset={alignOffset}
-      className={className}
-      popupClassName={popupClassName}
-    >
-      {children}
-    </DropdownMenuPopup>
-  )
+  return renderDropdownMenuPopup({
+    children,
+    placement,
+    sideOffset,
+    alignOffset,
+    className,
+    popupClassName,
+    positionerProps,
+    popupProps,
+  })
 }
 
 type DropdownMenuItemProps = React.ComponentPropsWithoutRef<typeof Menu.Item> & {
