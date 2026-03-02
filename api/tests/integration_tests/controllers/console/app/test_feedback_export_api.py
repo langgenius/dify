@@ -25,15 +25,16 @@ class TestFeedbackExportApi:
     def mock_app_model(self):
         """Create a mock App model for testing."""
         app = App(
-            id=str(uuid.uuid4()),
             mode=AppMode.CHAT,
             tenant_id=str(uuid.uuid4()),
             status="normal",
             name="Test App",
+            description="",
             icon="",
             enable_site=True,
             enable_api=True,
         )
+        app.id = str(uuid.uuid4())
         return app
 
     @pytest.fixture
