@@ -11,8 +11,8 @@ from core.app.app_config.entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
 )
-from core.model_runtime.entities.llm_entities import LLMMode
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
 from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 from models import Account, Tenant
 from models.api_based_extension import APIBasedExtension

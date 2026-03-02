@@ -18,9 +18,9 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.helper import ssrf_proxy
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
 from dify_graph.enums import NodeType
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData

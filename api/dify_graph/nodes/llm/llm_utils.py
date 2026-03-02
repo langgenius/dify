@@ -2,16 +2,16 @@ from collections.abc import Sequence
 from typing import cast
 
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import PromptMessageRole
-from core.model_runtime.entities.message_entities import (
+from dify_graph.file.models import File
+from dify_graph.model_runtime.entities import PromptMessageRole
+from dify_graph.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity
-from core.model_runtime.memory import PromptMessageMemory
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.file.models import File
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity
+from dify_graph.model_runtime.memory import PromptMessageMemory
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from dify_graph.runtime import VariablePool
 from dify_graph.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment
 

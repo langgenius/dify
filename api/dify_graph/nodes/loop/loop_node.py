@@ -5,7 +5,6 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -17,6 +16,7 @@ from dify_graph.graph_events import (
     GraphRunFailedEvent,
     NodeRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import (
     LoopFailedEvent,
     LoopNextEvent,

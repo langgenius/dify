@@ -1,6 +1,6 @@
 from typing import Union, cast
 
-from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
+from dify_graph.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
 
 
 class CommonValidator:

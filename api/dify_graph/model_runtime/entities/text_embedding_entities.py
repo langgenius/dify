@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from core.model_runtime.entities.model_entities import ModelUsage
+from dify_graph.model_runtime.entities.model_entities import ModelUsage
 
 
 class EmbeddingUsage(ModelUsage):

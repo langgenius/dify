@@ -438,8 +438,8 @@ class WorkflowService:
         """
         try:
             from core.model_manager import ModelManager
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get model instance to validate provider+model combination
             model_manager = ModelManager()
@@ -558,8 +558,8 @@ class WorkflowService:
         :return: True if load balancing is enabled, False otherwise
         """
         try:
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
             provider_manager = ProviderManager()

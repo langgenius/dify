@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from dify_graph.entities import GraphInitParams
 from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool

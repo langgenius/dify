@@ -10,18 +10,20 @@ from redis import RedisError
 
 import contexts
 from configs import dify_config
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
-from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
-from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
-from core.model_runtime.model_providers.__base.rerank_model import RerankModel
-from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
-from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from dify_graph.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from dify_graph.model_runtime.model_providers.__base.moderation_model import ModerationModel
+from dify_graph.model_runtime.model_providers.__base.rerank_model import RerankModel
+from dify_graph.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from dify_graph.model_runtime.model_providers.__base.tts_model import TTSModel
+from dify_graph.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
+from dify_graph.model_runtime.schema_validators.provider_credential_schema_validator import (
+    ProviderCredentialSchemaValidator,
+)
 from extensions.ext_redis import redis_client
 from models.provider_ids import ModelProviderID
 

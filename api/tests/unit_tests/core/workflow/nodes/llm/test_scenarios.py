@@ -2,9 +2,9 @@ from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.entities.message_entities import PromptMessage
-from core.model_runtime.entities.model_entities import ModelFeature
 from dify_graph.file import File
+from dify_graph.model_runtime.entities.message_entities import PromptMessage
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 from dify_graph.nodes.llm.entities import LLMNodeChatModelMessage
 
 

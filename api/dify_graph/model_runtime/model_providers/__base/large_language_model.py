@@ -7,21 +7,21 @@ from typing import Union
 from pydantic import ConfigDict
 
 from configs import dify_config
-from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.callbacks.logging_callback import LoggingCallback
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.callbacks.base_callback import Callback
+from dify_graph.model_runtime.callbacks.logging_callback import LoggingCallback
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageContentUnionTypes,
     PromptMessageTool,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.model_entities import (
+from dify_graph.model_runtime.entities.model_entities import (
     ModelType,
     PriceType,
 )
-from core.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 logger = logging.getLogger(__name__)
 

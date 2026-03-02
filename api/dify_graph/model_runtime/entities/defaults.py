@@ -1,4 +1,4 @@
-from core.model_runtime.entities.model_entities import DefaultParameterName
+from dify_graph.model_runtime.entities.model_entities import DefaultParameterName
 
 PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
     DefaultParameterName.TEMPERATURE: {

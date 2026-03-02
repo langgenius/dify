@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 

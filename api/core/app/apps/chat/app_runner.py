@@ -13,10 +13,10 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.file import File
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
 

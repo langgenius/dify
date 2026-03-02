@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
-from core.model_runtime.entities import PromptMessage
+from dify_graph.model_runtime.entities import PromptMessage
 
 DEFAULT_MEMORY_MAX_TOKEN_LIMIT = 2000
 

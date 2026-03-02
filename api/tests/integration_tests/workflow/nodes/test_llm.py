@@ -113,8 +113,8 @@ def test_execute_llm():
         from decimal import Decimal
         from unittest.mock import MagicMock
 
-        from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
         mock_model_instance = MagicMock(spec=ModelInstance)
@@ -158,7 +158,7 @@ def test_execute_llm():
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_1(**_kwargs):
-        from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
             SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),
@@ -229,8 +229,8 @@ def test_execute_llm_with_jinja2():
         from decimal import Decimal
         from unittest.mock import MagicMock
 
-        from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
         mock_model_instance = MagicMock(spec=ModelInstance)
@@ -274,7 +274,7 @@ def test_execute_llm_with_jinja2():
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_2(**_kwargs):
-        from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
             SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),

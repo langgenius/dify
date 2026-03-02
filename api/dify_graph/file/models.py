@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 from . import helpers
 from .constants import FILE_MODEL_IDENTITY
