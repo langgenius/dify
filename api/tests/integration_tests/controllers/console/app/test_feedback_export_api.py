@@ -31,6 +31,8 @@ class TestFeedbackExportApi:
             name="Test App",
             description="",
             icon="",
+            icon_type="emoji",
+            icon_background="#FFFFFF",
             enable_site=True,
             enable_api=True,
         )
