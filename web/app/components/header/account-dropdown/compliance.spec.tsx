@@ -1,7 +1,6 @@
 import type { ModalContextState } from '@/context/modal-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -71,26 +70,16 @@ describe('Compliance', () => {
     )
   }
 
-  const renderCompliance = () => {
-    return renderWithQueryClient(
-      <DropdownMenu open={true} onOpenChange={() => {}}>
-        <DropdownMenuTrigger>open</DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <Compliance />
-        </DropdownMenuContent>
-      </DropdownMenu>,
-    )
-  }
-
+  // Wrapper for tests that need the menu open
   const openMenuAndRender = () => {
-    renderCompliance()
-    fireEvent.click(screen.getByText('common.userProfile.compliance'))
+    renderWithQueryClient(<Compliance />)
+    fireEvent.click(screen.getByRole('button'))
   }
 
   describe('Rendering', () => {
     it('should render compliance menu trigger', () => {
       // Act
-      renderCompliance()
+      renderWithQueryClient(<Compliance />)
 
       // Assert
       expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
