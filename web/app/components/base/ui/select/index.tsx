@@ -42,6 +42,18 @@ type SelectContentProps = {
   className?: string
   popupClassName?: string
   listClassName?: string
+  positionerProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof BaseSelect.Positioner>,
+    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
+  >
+  popupProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof BaseSelect.Popup>,
+    'children' | 'className'
+  >
+  listProps?: Omit<
+    React.ComponentPropsWithoutRef<typeof BaseSelect.List>,
+    'children' | 'className'
+  >
 }
 
 export function SelectContent({
@@ -52,6 +64,9 @@ export function SelectContent({
   className,
   popupClassName,
   listClassName,
+  positionerProps,
+  popupProps,
+  listProps,
 }: SelectContentProps) {
   const { side, align } = parsePlacement(placement)
 
@@ -63,6 +78,7 @@ export function SelectContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className={cn('outline-none', className)}
+        {...positionerProps}
       >
         <BaseSelect.Popup
           className={cn(
@@ -70,8 +86,12 @@ export function SelectContent({
             'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
             popupClassName,
           )}
+          {...popupProps}
         >
-          <BaseSelect.List className={cn('max-h-80 min-w-[10rem] overflow-auto p-1 outline-none', listClassName)}>
+          <BaseSelect.List
+            className={cn('max-h-80 min-w-[10rem] overflow-auto p-1 outline-none', listClassName)}
+            {...listProps}
+          >
             {children}
           </BaseSelect.List>
         </BaseSelect.Popup>
