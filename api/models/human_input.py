@@ -30,6 +30,13 @@ def _generate_token() -> str:
 
 class HumanInputForm(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_forms"
+    __table_args__ = (
+        sa.Index(
+            "human_input_forms_workflow_run_id_node_id_idx",
+            "workflow_run_id",
+            "node_id",
+        ),
+    )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
