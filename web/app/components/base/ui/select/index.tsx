@@ -62,7 +62,7 @@ export function SelectContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-dropdown outline-none', className)}
+        className={cn('outline-none', className)}
       >
         <BaseSelect.Popup
           className={cn(
