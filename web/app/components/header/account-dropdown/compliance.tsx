@@ -180,6 +180,7 @@ function ComplianceDocRowItem({
   )
 }
 
+// Submenu-only: this component must be rendered within an existing DropdownMenu root.
 export default function Compliance() {
   const { t } = useTranslation()
 

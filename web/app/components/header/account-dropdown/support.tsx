@@ -43,6 +43,7 @@ function SupportExternalLinkIndicator() {
   return <span aria-hidden className={cn('i-ri-arrow-right-up-line', menuTrailingIconClassName)} />
 }
 
+// Submenu-only: this component must be rendered within an existing DropdownMenu root.
 export default function Support({ closeAccountDropdown }: SupportProps) {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
