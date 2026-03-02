@@ -3961,6 +3961,21 @@
       "count": 1
     }
   },
+  "app/components/header/account-dropdown/compliance.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 6
+    }
+  },
+  "app/components/header/account-dropdown/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 12
+    }
+  },
+  "app/components/header/account-dropdown/support.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 5
+    }
+  },
   "app/components/header/account-dropdown/workplace-selector/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
