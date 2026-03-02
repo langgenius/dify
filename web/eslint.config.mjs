@@ -145,4 +145,34 @@ export default antfu(
       'hyoban/no-dependency-version-prefix': 'error',
     },
   },
+  {
+    name: 'dify/base-ui-primitives',
+    files: ['app/components/base/ui/**/*.ts', 'app/components/base/ui/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    name: 'dify/overlay-migration',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      'app/components/base/**',
+      ...GLOB_TESTS,
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: '@/app/components/base/portal-to-follow-elem',
+          message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+        }],
+        patterns: [{
+          group: [
+            '**/portal-to-follow-elem',
+            '**/portal-to-follow-elem/index',
+          ],
+          message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+        }],
+      }],
+    },
+  },
 )
