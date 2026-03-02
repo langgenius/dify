@@ -19,7 +19,9 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.rag.summary_index.summary_index import SummaryIndex
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.graph_config import NodeConfigDict
 from core.workflow.enums import NodeType, SystemVariableKey
@@ -32,6 +34,7 @@ from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.nodes.datasource import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from core.workflow.nodes.http_request import HttpRequestNode, build_http_request_config
+from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
@@ -200,6 +203,16 @@ class DifyNodeFactory(NodeFactory):
                 http_client=self._http_request_http_client,
                 tool_file_manager_factory=self._http_request_tool_file_manager_factory,
                 file_manager=self._http_request_file_manager,
+            )
+
+        if node_type == NodeType.KNOWLEDGE_INDEX:
+            return KnowledgeIndexNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                index_processor=IndexProcessor(),
+                summary_index_service=SummaryIndex(),
             )
 
         if node_type == NodeType.LLM:
