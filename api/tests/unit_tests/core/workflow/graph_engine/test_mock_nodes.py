@@ -12,23 +12,23 @@ from unittest.mock import MagicMock
 
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.agent import AgentNode
-from core.workflow.nodes.code import CodeNode
-from core.workflow.nodes.document_extractor import DocumentExtractorNode
-from core.workflow.nodes.http_request import HttpRequestNode
-from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
-from core.workflow.nodes.llm import LLMNode
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
-from core.workflow.nodes.question_classifier import QuestionClassifierNode
-from core.workflow.nodes.template_transform import TemplateTransformNode
-from core.workflow.nodes.tool import ToolNode
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from dify_graph.nodes.agent import AgentNode
+from dify_graph.nodes.code import CodeNode
+from dify_graph.nodes.document_extractor import DocumentExtractorNode
+from dify_graph.nodes.http_request import HttpRequestNode
+from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
+from dify_graph.nodes.llm import LLMNode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
+from dify_graph.nodes.question_classifier import QuestionClassifierNode
+from dify_graph.nodes.template_transform import TemplateTransformNode
+from dify_graph.nodes.tool import ToolNode
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -557,8 +557,8 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         )
 
 
-from core.workflow.nodes.iteration import IterationNode
-from core.workflow.nodes.loop import LoopNode
+from dify_graph.nodes.iteration import IterationNode
+from dify_graph.nodes.loop import LoopNode
 
 
 class MockIterationNode(MockNodeMixin, IterationNode):
@@ -572,11 +572,11 @@ class MockIterationNode(MockNodeMixin, IterationNode):
     def _create_graph_engine(self, index: int, item: Any):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-        from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.runtime import GraphRuntimeState
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.graph import Graph
+        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+        from dify_graph.graph_engine.command_channels import InMemoryChannel
+        from dify_graph.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
@@ -621,7 +621,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         )
 
         if not iteration_graph:
-            from core.workflow.nodes.iteration.exc import IterationGraphNotFoundError
+            from dify_graph.nodes.iteration.exc import IterationGraphNotFoundError
 
             raise IterationGraphNotFoundError("iteration graph not found")
 
@@ -648,11 +648,11 @@ class MockLoopNode(MockNodeMixin, LoopNode):
     def _create_graph_engine(self, start_at, root_node_id: str):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-        from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.runtime import GraphRuntimeState
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.graph import Graph
+        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+        from dify_graph.graph_engine.command_channels import InMemoryChannel
+        from dify_graph.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory

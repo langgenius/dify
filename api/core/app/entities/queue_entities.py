@@ -7,11 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.entities.pause_reason import PauseReason
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes import NodeType
+from dify_graph.entities import AgentNodeStrategyInit
+from dify_graph.entities.pause_reason import PauseReason
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.nodes import NodeType
 
 
 class QueueEvent(StrEnum):

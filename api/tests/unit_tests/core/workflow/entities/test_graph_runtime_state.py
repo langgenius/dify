@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 
 class StubCoordinator:
@@ -115,7 +115,7 @@ class TestGraphRuntimeState:
 
         queue = state.ready_queue
 
-        from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
+        from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
 
         assert isinstance(queue, InMemoryReadyQueue)
 
@@ -124,7 +124,7 @@ class TestGraphRuntimeState:
 
         execution = state.graph_execution
 
-        from core.workflow.graph_engine.domain.graph_execution import GraphExecution
+        from dify_graph.graph_engine.domain.graph_execution import GraphExecution
 
         assert isinstance(execution, GraphExecution)
         assert execution.workflow_id == ""
@@ -139,7 +139,7 @@ class TestGraphRuntimeState:
 
         mock_graph = MagicMock()
         with patch(
-            "core.workflow.graph_engine.response_coordinator.ResponseStreamCoordinator", autospec=True
+            "dify_graph.graph_engine.response_coordinator.ResponseStreamCoordinator", autospec=True
         ) as coordinator_cls:
             coordinator_instance = coordinator_cls.return_value
             state.configure(graph=mock_graph)

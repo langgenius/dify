@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import ModelInstance
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.node_events import StreamCompletedEvent
-from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.node_events import StreamCompletedEvent
+from dify_graph.nodes.llm.node import LLMNode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
 

@@ -35,7 +35,7 @@ from controllers.service_api.app.workflow import (
     WorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.workflow.enums import WorkflowExecutionStatus
+from dify_graph.enums import WorkflowExecutionStatus
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
@@ -315,7 +315,7 @@ class TestWorkflowStopMechanism:
 
     def test_graph_engine_manager_has_send_stop_command(self):
         """Test GraphEngineManager has send_stop_command method."""
-        from core.workflow.graph_engine.manager import GraphEngineManager
+        from dify_graph.graph_engine.manager import GraphEngineManager
 
         assert hasattr(GraphEngineManager, "send_stop_command")
 

@@ -25,7 +25,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.file import helpers as file_helpers
+from dify_graph.file import helpers as file_helpers
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted

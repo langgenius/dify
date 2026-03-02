@@ -3,32 +3,32 @@ from unittest import mock
 
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_events import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.graph import Graph
+from dify_graph.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.if_else.entities import IfElseNodeData
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
-from core.workflow.nodes.llm.entities import (
+from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.if_else.entities import IfElseNodeData
+from dify_graph.nodes.if_else.if_else_node import IfElseNode
+from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.utils.condition.entities import Condition
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.utils.condition.entities import Condition
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode

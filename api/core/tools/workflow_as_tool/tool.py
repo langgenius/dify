@@ -18,7 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
-from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from factories.file_factory import build_from_mapping
 from models import Account, Tenant
 from models.model import App, EndUser

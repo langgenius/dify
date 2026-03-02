@@ -8,16 +8,16 @@ from typing import Any
 import pytest
 
 from core.model_runtime.entities import LLMMode
-from core.workflow.nodes.llm import ModelConfig, VisionConfig
-from core.workflow.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
-from core.workflow.nodes.parameter_extractor.exc import (
+from dify_graph.nodes.llm import ModelConfig, VisionConfig
+from dify_graph.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
+from dify_graph.nodes.parameter_extractor.exc import (
     InvalidNumberOfParametersError,
     InvalidSelectValueError,
     InvalidValueTypeError,
     RequiredParameterMissingError,
 )
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from core.workflow.variables.types import SegmentType
+from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from dify_graph.variables.types import SegmentType
 from factories.variable_factory import build_segment_with_type
 
 

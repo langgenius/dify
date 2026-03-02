@@ -4,9 +4,9 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_events import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.graph import Graph
+from dify_graph.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -15,24 +15,24 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.graph_events.node import NodeRunHumanInputFormFilledEvent
-from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.llm.entities import (
+from dify_graph.graph_events.node import NodeRunHumanInputFormFilledEvent
+from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 
 from .test_mock_config import MockConfig

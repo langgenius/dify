@@ -22,10 +22,10 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.entities import GraphInitParams
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.nodes.llm import llm_utils
-from core.workflow.nodes.llm.entities import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.nodes.llm import llm_utils
+from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
@@ -33,12 +33,12 @@ from core.workflow.nodes.llm.entities import (
     VisionConfig,
     VisionConfigOptions,
 )
-from core.workflow.nodes.llm.file_saver import LLMFileSaver
-from core.workflow.nodes.llm.node import LLMNode, _handle_memory_completion_mode
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from dify_graph.nodes.llm.file_saver import LLMFileSaver
+from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.enums import UserFrom
 from models.provider import ProviderType
 
@@ -611,7 +611,7 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    with mock.patch("core.workflow.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+    with mock.patch("dify_graph.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
         memory_text = _handle_memory_completion_mode(
             memory=memory,
             memory_config=memory_config,
