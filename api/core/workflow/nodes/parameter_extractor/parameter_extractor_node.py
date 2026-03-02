@@ -17,6 +17,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
@@ -33,7 +34,6 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import llm_utils
-from core.workflow.nodes.llm.protocols import PromptMessageMemory
 from core.workflow.runtime import VariablePool
 from core.workflow.variables.types import ArrayValidation, SegmentType
 from factories.variable_factory import build_segment_with_type

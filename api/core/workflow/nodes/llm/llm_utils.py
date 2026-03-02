@@ -9,13 +9,13 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.workflow.file.models import File
 from core.workflow.runtime import VariablePool
 from core.workflow.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment
 
 from .exc import InvalidVariableTypeError
-from .protocols import PromptMessageMemory
 
 
 def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
