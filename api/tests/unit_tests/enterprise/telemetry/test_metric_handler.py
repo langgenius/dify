@@ -1,5 +1,6 @@
 """Unit tests for EnterpriseMetricHandler."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -238,31 +239,60 @@ def test_rehydration_uses_payload(sample_envelope):
     assert payload == {"app_id": "app-123", "name": "Test App"}
 
 
-def test_rehydration_fallback():
-    import pickle
-
-    fallback_data = {"fallback": "data"}
+def test_rehydration_from_storage():
+    """Verify _rehydrate loads payload from object storage via payload_ref."""
+    stored_data = {"app_id": "app-stored", "mode": "workflow"}
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
         tenant_id="test-tenant",
         event_id="test-event-fb",
         payload={},
-        payload_fallback=pickle.dumps(fallback_data),
+        metadata={"payload_ref": "telemetry/test-tenant/test-event-fb.json"},
     )
 
     handler = EnterpriseMetricHandler()
-    payload = handler._rehydrate(envelope)
+    with patch("enterprise.telemetry.metric_handler.storage") as mock_storage:
+        mock_storage.load.return_value = json.dumps(stored_data).encode("utf-8")
+        payload = handler._rehydrate(envelope)
 
-    assert payload == fallback_data
+        assert payload == stored_data
+        mock_storage.load.assert_called_once_with("telemetry/test-tenant/test-event-fb.json")
 
 
-def test_rehydration_emits_degraded_event_on_failure():
+def test_rehydration_storage_failure_emits_degraded_event():
+    """Verify _rehydrate emits degraded event when storage load fails."""
     envelope = TelemetryEnvelope(
         case=TelemetryCase.APP_CREATED,
         tenant_id="test-tenant",
         event_id="test-event-fail",
         payload={},
-        payload_fallback=None,
+        metadata={"payload_ref": "telemetry/test-tenant/test-event-fail.json"},
+    )
+
+    handler = EnterpriseMetricHandler()
+    with (
+        patch("enterprise.telemetry.metric_handler.storage") as mock_storage,
+        patch("enterprise.telemetry.telemetry_log.emit_metric_only_event") as mock_emit,
+    ):
+        mock_storage.load.side_effect = Exception("Storage unavailable")
+        payload = handler._rehydrate(envelope)
+
+        from enterprise.telemetry.entities import EnterpriseTelemetryEvent
+
+        assert payload == {}
+        mock_emit.assert_called_once()
+        call_args = mock_emit.call_args
+        assert call_args[1]["event_name"] == EnterpriseTelemetryEvent.REHYDRATION_FAILED
+        assert call_args[1]["attributes"]["rehydration_failed"] is True
+
+
+def test_rehydration_emits_degraded_event_on_empty_payload():
+    """Verify _rehydrate emits degraded event when payload is empty and no ref exists."""
+    envelope = TelemetryEnvelope(
+        case=TelemetryCase.APP_CREATED,
+        tenant_id="test-tenant",
+        event_id="test-event-empty",
+        payload={},
     )
 
     handler = EnterpriseMetricHandler()

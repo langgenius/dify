@@ -62,23 +62,19 @@ def init_app(app: DifyApp):
             # Auto-detect TLS: https:// uses secure, everything else is insecure
             endpoint = dify_config.OTLP_BASE_ENDPOINT
             insecure = not endpoint.startswith("https://")
-            
+
             exporter = GRPCSpanExporter(
                 endpoint=endpoint,
                 # Header field names must consist of lowercase letters, check RFC7540
                 headers=(
-                    (
-                        ("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),
-                    ) if dify_config.OTLP_API_KEY else None
+                    (("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),) if dify_config.OTLP_API_KEY else None
                 ),
                 insecure=insecure,
             )
             metric_exporter = GRPCMetricExporter(
                 endpoint=endpoint,
                 headers=(
-                    (
-                        ("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),
-                    ) if dify_config.OTLP_API_KEY else None
+                    (("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),) if dify_config.OTLP_API_KEY else None
                 ),
                 insecure=insecure,
             )

@@ -177,8 +177,7 @@ class EnterpriseOtelTrace:
             "dify.invoked_by": info.invoked_by,
         }
 
-        trace_correlation_override: str | None = None
-        parent_span_id_source: str | None = None
+        trace_correlation_override, parent_span_id_source = info.resolved_parent_context
 
         parent_ctx = metadata.get("parent_trace_context")
         if isinstance(parent_ctx, dict):
@@ -187,13 +186,6 @@ class EnterpriseOtelTrace:
             span_attrs["dify.parent.node.execution_id"] = parent_ctx_dict.get("parent_node_execution_id")
             span_attrs["dify.parent.workflow.run_id"] = parent_ctx_dict.get("parent_workflow_run_id")
             span_attrs["dify.parent.app.id"] = parent_ctx_dict.get("parent_app_id")
-
-            trace_override_value = parent_ctx_dict.get("parent_workflow_run_id")
-            if isinstance(trace_override_value, str):
-                trace_correlation_override = trace_override_value
-            parent_span_value = parent_ctx_dict.get("parent_node_execution_id")
-            if isinstance(parent_span_value, str):
-                parent_span_id_source = parent_span_value
 
         self._exporter.export_span(
             EnterpriseTelemetrySpan.WORKFLOW_RUN,
@@ -329,13 +321,8 @@ class EnterpriseOtelTrace:
             "dify.node.invoked_by": info.invoked_by,
         }
 
-        trace_correlation_override = trace_correlation_override_param
-        parent_ctx = metadata.get("parent_trace_context")
-        if isinstance(parent_ctx, dict):
-            parent_ctx_dict = cast(dict[str, Any], parent_ctx)
-            override_value = parent_ctx_dict.get("parent_workflow_run_id")
-            if isinstance(override_value, str):
-                trace_correlation_override = override_value
+        resolved_override, _ = info.resolved_parent_context
+        trace_correlation_override = trace_correlation_override_param or resolved_override
 
         effective_correlation_id = correlation_id_override or info.workflow_run_id
         self._exporter.export_span(

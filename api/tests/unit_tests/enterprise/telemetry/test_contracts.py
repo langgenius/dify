@@ -87,26 +87,22 @@ class TestTelemetryEnvelope:
         assert envelope.tenant_id == "tenant-123"
         assert envelope.event_id == "event-456"
         assert envelope.payload == {"key": "value"}
-        assert envelope.payload_fallback is None
         assert envelope.metadata is None
 
     def test_valid_envelope_full(self) -> None:
         """Verify valid envelope with all fields."""
-        metadata = {"source": "api"}
-        fallback = b"fallback data"
+        metadata = {"payload_ref": "telemetry/tenant-789/event-012.json"}
         envelope = TelemetryEnvelope(
             case=TelemetryCase.MESSAGE_RUN,
             tenant_id="tenant-789",
             event_id="event-012",
             payload={"message": "hello"},
-            payload_fallback=fallback,
             metadata=metadata,
         )
         assert envelope.case == TelemetryCase.MESSAGE_RUN
         assert envelope.tenant_id == "tenant-789"
         assert envelope.event_id == "event-012"
         assert envelope.payload == {"message": "hello"}
-        assert envelope.payload_fallback == fallback
         assert envelope.metadata == metadata
 
     def test_missing_required_case(self) -> None:
@@ -145,41 +141,16 @@ class TestTelemetryEnvelope:
                 event_id="event-456",
             )
 
-    def test_payload_fallback_within_limit(self) -> None:
-        """Verify payload_fallback within 64KB limit is accepted."""
-        fallback = b"x" * 65536
+    def test_metadata_none(self) -> None:
+        """Verify metadata can be None."""
         envelope = TelemetryEnvelope(
             case=TelemetryCase.WORKFLOW_RUN,
             tenant_id="tenant-123",
             event_id="event-456",
             payload={"key": "value"},
-            payload_fallback=fallback,
+            metadata=None,
         )
-        assert envelope.payload_fallback == fallback
-
-    def test_payload_fallback_exceeds_limit(self) -> None:
-        """Verify payload_fallback exceeding 64KB is rejected."""
-        fallback = b"x" * 65537
-        with pytest.raises(ValidationError) as exc_info:
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                tenant_id="tenant-123",
-                event_id="event-456",
-                payload={"key": "value"},
-                payload_fallback=fallback,
-            )
-        assert "64KB" in str(exc_info.value)
-
-    def test_payload_fallback_none(self) -> None:
-        """Verify payload_fallback can be None."""
-        envelope = TelemetryEnvelope(
-            case=TelemetryCase.WORKFLOW_RUN,
-            tenant_id="tenant-123",
-            event_id="event-456",
-            payload={"key": "value"},
-            payload_fallback=None,
-        )
-        assert envelope.payload_fallback is None
+        assert envelope.metadata is None
 
 
 class TestCaseRouting:

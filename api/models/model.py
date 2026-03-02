@@ -664,15 +664,11 @@ class ExporleBanner(TypeBase):
     content: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    status: Mapped[str] = mapped_column(
-        sa.String(255), nullable=False, server_default='enabled', default="enabled"
-    )
+    status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default="enabled", default="enabled")
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    language: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default='en-US', default="en-US"
-    )
+    language: Mapped[str] = mapped_column(String(255), nullable=False, server_default="en-US", default="en-US")
 
 
 class OAuthProviderApp(TypeBase):
