@@ -462,7 +462,6 @@ class AppDslService:
                 created_by=account.id,
                 updated_by=account.id,
                 status="normal",
-
             )
             app.id = str(uuid4())
             self._session.add(app)

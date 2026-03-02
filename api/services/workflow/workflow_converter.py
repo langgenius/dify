@@ -86,7 +86,6 @@ class WorkflowConverter:
             updated_by=account.id,
             max_active_requests=None,
             status="normal",
-            
         )
         db.session.add(new_app)
         db.session.flush()

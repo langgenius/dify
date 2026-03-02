@@ -105,9 +105,15 @@ class App(TypeBase):
     )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
 
     @property
     def desc_or_prompt(self) -> str:
