@@ -40,6 +40,7 @@ from models.account import Tenant
 from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from models.provider import Provider, ProviderModel, ProviderType
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -85,6 +86,54 @@ def _lookup_credential_name(credential_id: str | None, provider_type: str | None
     with Session(db.engine) as session:
         name = session.scalar(select(model_cls.name).where(model_cls.id == credential_id))
         return str(name) if name else ""
+
+
+def _lookup_llm_credential_info(
+    tenant_id: str | None, provider: str | None, model: str | None, model_type: str | None = "llm"
+) -> tuple[str | None, str]:
+    """
+    Lookup LLM credential ID and name for the given provider and model.
+    Returns (credential_id, credential_name).
+    """
+    if not tenant_id or not provider:
+        return None, ""
+    
+    with Session(db.engine) as session:
+        # Try to find provider-level or model-level configuration
+        provider_record = session.scalar(
+            select(Provider).where(
+                Provider.tenant_id == tenant_id,
+                Provider.provider_name == provider,
+                Provider.provider_type == ProviderType.CUSTOM,
+            )
+        )
+        
+        if not provider_record:
+            return None, ""
+        
+        # Check if there's a model-specific config
+        credential_id = None
+        credential_name = ""
+        
+        if model and provider_record.credential_id:
+            # Try model-level first
+            model_record = session.scalar(
+                select(ProviderModel).where(
+                    ProviderModel.tenant_id == tenant_id,
+                    ProviderModel.provider_name == provider,
+                    ProviderModel.model_name == model,
+                    ProviderModel.model_type == model_type,
+                )
+            )
+            
+            if model_record and model_record.credential_id:
+                credential_id = model_record.credential_id
+        
+        if not credential_id and provider_record.credential_id:
+            # Fall back to provider-level credential
+            credential_id = provider_record.credential_id
+        
+        return credential_id, credential_name
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
@@ -1173,9 +1222,21 @@ class TraceTask:
 
         app_name, workspace_name = _lookup_app_and_workspace_names(node_data.get("app_id"), node_data.get("tenant_id"))
 
-        credential_name = _lookup_credential_name(
-            node_data.get("credential_id"), node_data.get("credential_provider_type")
-        )
+        # Try tool credential lookup first
+        credential_id = node_data.get("credential_id")
+        credential_name = _lookup_credential_name(credential_id, node_data.get("credential_provider_type"))
+        
+        # If no credential_id found (e.g., LLM nodes), try LLM credential lookup
+        if not credential_id:
+            llm_cred_id, llm_cred_name = _lookup_llm_credential_info(
+                tenant_id=node_data.get("tenant_id"),
+                provider=node_data.get("model_provider"),
+                model=node_data.get("model_name"),
+                model_type="llm",
+            )
+            if llm_cred_id:
+                credential_id = llm_cred_id
+                credential_name = llm_cred_name
 
         metadata: dict[str, Any] = {
             "tenant_id": node_data.get("tenant_id"),
