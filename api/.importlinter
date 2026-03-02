@@ -53,7 +53,6 @@ forbidden_modules =
 allow_indirect_imports = True
 ignore_imports =
     dify_graph.nodes.agent.agent_node -> extensions.ext_database
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     dify_graph.nodes.llm.file_saver -> extensions.ext_database
     dify_graph.nodes.llm.node -> extensions.ext_database
     dify_graph.nodes.tool.tool_node -> extensions.ext_database
@@ -110,7 +109,6 @@ ignore_imports =
     dify_graph.nodes.document_extractor.node -> core.helper.ssrf_proxy
     dify_graph.nodes.iteration.iteration_node -> core.app.workflow.node_factory
     dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
     dify_graph.nodes.llm.llm_utils -> core.model_manager
     dify_graph.nodes.llm.protocols -> core.model_manager
     dify_graph.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
@@ -155,18 +153,12 @@ ignore_imports =
     dify_graph.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
     dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
     dify_graph.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> core.rag.retrieval.retrieval_methods
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> models.dataset
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> services.summary_index_service
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> tasks.generate_summary_index_task
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.processor.paragraph_index_processor
     dify_graph.nodes.llm.node -> models.dataset
     dify_graph.nodes.agent.agent_node -> core.tools.utils.message_transformer
     dify_graph.nodes.llm.file_saver -> core.tools.signature
     dify_graph.nodes.llm.file_saver -> core.tools.tool_file_manager
     dify_graph.nodes.tool.tool_node -> core.tools.errors
     dify_graph.nodes.agent.agent_node -> extensions.ext_database
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
     dify_graph.nodes.llm.file_saver -> extensions.ext_database
     dify_graph.nodes.llm.node -> extensions.ext_database
     dify_graph.nodes.tool.tool_node -> extensions.ext_database
