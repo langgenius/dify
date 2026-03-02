@@ -11,7 +11,9 @@ from opentelemetry.trace import Span
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from core.workflow.variables import Segment
-from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps, should_include_content
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps, should_include_content
+>>>>>>> 9b5b355a4e (fix(telemetry): gate ObservabilityLayer content attrs behind ENTERPRISE_INCLUDE_CONTENT)
 from extensions.otel.semconv.gen_ai import RetrieverAttributes
 
 logger = logging.getLogger(__name__)
@@ -83,23 +85,21 @@ class RetrievalNodeOTelParser:
         inputs = node_run_result.inputs or {}
         outputs = node_run_result.outputs or {}
 
-        # Extract query from inputs
-        query = str(inputs.get("query", "")) if inputs else ""
-        if query:
-            span.set_attribute(RetrieverAttributes.QUERY, query)
+        # Query and documents — gated by content policy
+        if should_include_content():
+            query = str(inputs.get("query", "")) if inputs else ""
+            if query:
+                span.set_attribute(RetrieverAttributes.QUERY, query)
 
-        # Extract and format retrieval documents from outputs
-        result_value = outputs.get("result") if outputs else None
-        retrieval_documents: list[Any] = []
-        if result_value:
-            value_to_check = result_value
-            if isinstance(result_value, Segment):
-                value_to_check = result_value.value
-
-            if isinstance(value_to_check, (list, Sequence)):
-                retrieval_documents = list(value_to_check)
-
-        if retrieval_documents:
-            semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)
-            semantic_retrieval_documents_json = safe_json_dumps(semantic_retrieval_documents)
-            span.set_attribute(RetrieverAttributes.DOCUMENT, semantic_retrieval_documents_json)
+            result_value = outputs.get("result") if outputs else None
+            retrieval_documents: list[Any] = []
+            if result_value:
+                value_to_check = result_value
+                if isinstance(result_value, Segment):
+                    value_to_check = result_value.value
+                if isinstance(value_to_check, (list, Sequence)):
+                    retrieval_documents = list(value_to_check)
+            if retrieval_documents:
+                semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)
+                semantic_retrieval_documents_json = safe_json_dumps(semantic_retrieval_documents)
+                span.set_attribute(RetrieverAttributes.DOCUMENT, semantic_retrieval_documents_json)
