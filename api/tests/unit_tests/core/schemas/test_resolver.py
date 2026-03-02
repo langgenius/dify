@@ -196,7 +196,7 @@ class TestSchemaResolver:
         resolved1 = resolve_dify_schema_refs(schema)
 
         # Mock the registry to return different data
-        with patch.object(self.registry, "get_schema") as mock_get:
+        with patch.object(self.registry, "get_schema", autospec=True) as mock_get:
             mock_get.return_value = {"type": "different"}
 
             # Second resolution should use cache
@@ -445,7 +445,7 @@ class TestSchemaResolverClass:
 
         # Second resolver should use the same cache
         resolver2 = SchemaResolver()
-        with patch.object(resolver2.registry, "get_schema") as mock_get:
+        with patch.object(resolver2.registry, "get_schema", autospec=True) as mock_get:
             result2 = resolver2.resolve(schema)
             # Should not call registry since it's in cache
             mock_get.assert_not_called()

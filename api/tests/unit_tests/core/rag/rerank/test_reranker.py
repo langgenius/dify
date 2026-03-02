@@ -52,7 +52,7 @@ class TestRerankModelRunner:
     @pytest.fixture(autouse=True)
     def mock_model_manager(self):
         """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+        with patch("core.rag.rerank.rerank_model.ModelManager", autospec=True) as mock_mm:
             mock_mm.return_value.check_model_support_vision.return_value = False
             yield mock_mm
 
@@ -397,19 +397,19 @@ class TestWeightRerankRunner:
     @pytest.fixture
     def mock_model_manager(self):
         """Mock ModelManager for embedding model."""
-        with patch("core.rag.rerank.weight_rerank.ModelManager") as mock_manager:
+        with patch("core.rag.rerank.weight_rerank.ModelManager", autospec=True) as mock_manager:
             yield mock_manager
 
     @pytest.fixture
     def mock_cache_embedding(self):
         """Mock CacheEmbedding for vector operations."""
-        with patch("core.rag.rerank.weight_rerank.CacheEmbedding") as mock_cache:
+        with patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache:
             yield mock_cache
 
     @pytest.fixture
     def mock_jieba_handler(self):
         """Mock JiebaKeywordTableHandler for keyword extraction."""
-        with patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler") as mock_jieba:
+        with patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba:
             yield mock_jieba
 
     @pytest.fixture
@@ -914,7 +914,7 @@ class TestRerankIntegration:
     @pytest.fixture(autouse=True)
     def mock_model_manager(self):
         """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+        with patch("core.rag.rerank.rerank_model.ModelManager", autospec=True) as mock_mm:
             mock_mm.return_value.check_model_support_vision.return_value = False
             yield mock_mm
 
@@ -1026,7 +1026,7 @@ class TestRerankEdgeCases:
     @pytest.fixture(autouse=True)
     def mock_model_manager(self):
         """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+        with patch("core.rag.rerank.rerank_model.ModelManager", autospec=True) as mock_mm:
             mock_mm.return_value.check_model_support_vision.return_value = False
             yield mock_mm
 
@@ -1295,9 +1295,9 @@ class TestRerankEdgeCases:
 
         # Mock dependencies
         with (
-            patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler") as mock_jieba,
-            patch("core.rag.rerank.weight_rerank.ModelManager") as mock_manager,
-            patch("core.rag.rerank.weight_rerank.CacheEmbedding") as mock_cache,
+            patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba,
+            patch("core.rag.rerank.weight_rerank.ModelManager", autospec=True) as mock_manager,
+            patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache,
         ):
             mock_handler = MagicMock()
             mock_handler.extract_keywords.return_value = ["test"]
@@ -1367,7 +1367,7 @@ class TestRerankPerformance:
     @pytest.fixture(autouse=True)
     def mock_model_manager(self):
         """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+        with patch("core.rag.rerank.rerank_model.ModelManager", autospec=True) as mock_mm:
             mock_mm.return_value.check_model_support_vision.return_value = False
             yield mock_mm
 
@@ -1441,9 +1441,9 @@ class TestRerankPerformance:
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights)
 
         with (
-            patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler") as mock_jieba,
-            patch("core.rag.rerank.weight_rerank.ModelManager") as mock_manager,
-            patch("core.rag.rerank.weight_rerank.CacheEmbedding") as mock_cache,
+            patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba,
+            patch("core.rag.rerank.weight_rerank.ModelManager", autospec=True) as mock_manager,
+            patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache,
         ):
             mock_handler = MagicMock()
             # Track keyword extraction calls
@@ -1484,7 +1484,7 @@ class TestRerankErrorHandling:
     @pytest.fixture(autouse=True)
     def mock_model_manager(self):
         """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+        with patch("core.rag.rerank.rerank_model.ModelManager", autospec=True) as mock_mm:
             mock_mm.return_value.check_model_support_vision.return_value = False
             yield mock_mm
 
@@ -1592,9 +1592,9 @@ class TestRerankErrorHandling:
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights)
 
         with (
-            patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler") as mock_jieba,
-            patch("core.rag.rerank.weight_rerank.ModelManager") as mock_manager,
-            patch("core.rag.rerank.weight_rerank.CacheEmbedding") as mock_cache,
+            patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba,
+            patch("core.rag.rerank.weight_rerank.ModelManager", autospec=True) as mock_manager,
+            patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache,
         ):
             mock_handler = MagicMock()
             mock_handler.extract_keywords.return_value = ["test"]
