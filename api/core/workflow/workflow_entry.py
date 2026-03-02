@@ -6,6 +6,7 @@ from typing import Any, cast
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
@@ -106,6 +107,7 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
+        self.graph_engine.layer(LLMQuotaLayer())
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
