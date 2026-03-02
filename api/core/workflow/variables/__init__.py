@@ -1,3 +1,4 @@
+from .input_entities import VariableEntity, VariableEntityType
 from .segment_group import SegmentGroup
 from .segments import (
     ArrayAnySegment,
@@ -64,4 +65,6 @@ __all__ = [
     "StringVariable",
     "Variable",
     "VariableBase",
+    "VariableEntity",
+    "VariableEntityType",
 ]
