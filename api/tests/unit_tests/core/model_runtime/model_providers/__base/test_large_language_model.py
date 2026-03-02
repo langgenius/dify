@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 import pytest
 
 import core.model_runtime.model_providers.__base.large_language_model as llm_module
-from core.model_runtime.model_providers.__base.large_language_model import _build_llm_result_from_first_chunk
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -25,6 +24,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelType, PriceInfo
+from core.model_runtime.model_providers.__base.large_language_model import _build_llm_result_from_chunks
 
 # Access large_language_model members via llm_module to avoid partial import issues in CI
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
@@ -238,7 +238,7 @@ def test_increase_tool_call_merges_incremental_arguments() -> None:
         ([TextPromptMessageContent(data="hello")], list),
     ],
 )
-def test_build_llm_result_from_first_chunk_reads_first_and_drains(
+def test_build_llm_result_from_chunks_accumulates_and_raises_error(
     content: str | list[TextPromptMessageContent],
     expected_type: type,
     monkeypatch: pytest.MonkeyPatch,
@@ -254,34 +254,30 @@ def test_build_llm_result_from_first_chunk_reads_first_and_drains(
         yield first
         raise RuntimeError("drain boom")
 
-    result = _build_llm_result_from_first_chunk(
-        model="m", prompt_messages=[UserPromptMessage(content="u")], chunks=iter_with_error()
-    )
-    assert result.model == "m"
-    assert isinstance(result.message.content, expected_type)
-    assert result.usage.prompt_tokens == 3
-    assert result.system_fingerprint == "fp1"
-    assert len(result.message.tool_calls) == 1
-    assert result.message.tool_calls[0].id == "chatcmpl-tool-drain"
-    assert any("Failed to drain non-stream plugin chunk iterator" in record.message for record in caplog.records)
+    with pytest.raises(RuntimeError, match="drain boom"):
+        _build_llm_result_from_chunks(
+            model="m", prompt_messages=[UserPromptMessage(content="u")], chunks=iter_with_error()
+        )
+
+    assert any("Error while consuming non-stream plugin chunk iterator" in record.message for record in caplog.records)
 
 
-def test_build_llm_result_from_first_chunk_empty_iterator() -> None:
+def test_build_llm_result_from_chunks_empty_iterator() -> None:
     def empty() -> Iterator[LLMResultChunk]:
         if False:  # pragma: no cover
             yield _chunk()
         return
 
-    result = _build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=empty())
+    result = _build_llm_result_from_chunks(model="m", prompt_messages=[], chunks=empty())
     assert result.message.content == []
     assert result.usage.total_tokens == 0
     assert result.system_fingerprint is None
 
 
-def test_build_llm_result_from_first_chunk_drains_remaining_chunks() -> None:
+def test_build_llm_result_from_chunks_accumulates_all_chunks() -> None:
     chunks = iter([_chunk(content="first"), _chunk(content="second")])
-    result = _build_llm_result_from_first_chunk(model="m", prompt_messages=[], chunks=chunks)
-    assert result.message.content == "first"
+    result = _build_llm_result_from_chunks(model="m", prompt_messages=[], chunks=chunks)
+    assert result.message.content == "firstsecond"
 
 
 def test_invoke_llm_via_plugin_passes_list_converted_stop(monkeypatch: pytest.MonkeyPatch) -> None:
