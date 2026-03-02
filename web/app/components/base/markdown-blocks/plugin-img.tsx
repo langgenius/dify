@@ -42,8 +42,8 @@ export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
   }, [blobUrl, pluginId, src])
 
   return (
-    <div className="markdown-img-wrapper">
+    <span className="markdown-img-wrapper" style={{ display: 'block' }}>
       <ImageGallery srcs={[imageUrl]} />
-    </div>
+    </span>
   )
 }

@@ -11,14 +11,14 @@ const Paragraph = (paragraph: any) => {
   const children_node = node.children
   if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
     return (
-      <div className="markdown-img-wrapper">
+      <span className="markdown-img-wrapper" style={{ display: 'block' }}>
         <ImageGallery srcs={[children_node[0].properties.src]} />
         {
           Array.isArray(paragraph.children) && paragraph.children.length > 1 && (
-            <div className="mt-2">{paragraph.children.slice(1)}</div>
+            <span className="mt-2" style={{ display: 'block' }}>{paragraph.children.slice(1)}</span>
           )
         }
-      </div>
+      </span>
     )
   }
   return <p>{paragraph.children}</p>

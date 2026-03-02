@@ -36,22 +36,22 @@ const ImageGallery: FC<Props> = ({
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
-    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
+    <span className={cn(s[`img-${imgNum}`])} style={{ display: 'flex', flexWrap: 'wrap' }}>
       {srcs.map((src, index) => (
         !src
           ? null
           : (
-              <img
-                key={index}
-                className={s.item}
-                style={imgStyle}
-                src={src}
-                alt=""
-                data-testid="gallery-image" // Added for testing
-                onClick={() => setImagePreviewUrl(src)}
-                onError={e => e.currentTarget.remove()}
-              />
-            )
+            <img
+              key={index}
+              className={s.item}
+              style={imgStyle}
+              src={src}
+              alt=""
+              data-testid="gallery-image" // Added for testing
+              onClick={() => setImagePreviewUrl(src)}
+              onError={e => e.currentTarget.remove()}
+            />
+          )
       ))}
       {
         imagePreviewUrl && (
@@ -62,7 +62,7 @@ const ImageGallery: FC<Props> = ({
           />
         )
       }
-    </div>
+    </span>
   )
 }
 
