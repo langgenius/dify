@@ -207,7 +207,7 @@ export default function Compliance() {
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        popupClassName="!w-[337px] !max-h-[70vh] !overflow-y-auto !divide-y !divide-divider-subtle !rounded-xl !bg-components-panel-bg-blur !py-0 !shadow-lg !backdrop-blur-sm"
+        popupClassName="w-[337px] max-h-[70vh] overflow-y-auto divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
       >
         <DropdownMenuGroup className="p-1">
           <ComplianceDocRowItem
