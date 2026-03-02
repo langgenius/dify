@@ -8,7 +8,8 @@ import RemarkGfm from 'remark-gfm'
 import RemarkMath from 'remark-math'
 import { AudioBlock, Img, Link, MarkdownButton, MarkdownForm, Paragraph, PluginImg, PluginParagraph, ScriptBlock, ThinkBlock, VideoBlock } from '@/app/components/base/markdown-blocks'
 import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
-import { customUrlTransform } from './markdown-utils'
+import { customUrlTransform, preprocessMarkdownContent } from './markdown-utils'
+import 'katex/dist/katex.min.css'
 
 const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), { ssr: false })
 
@@ -18,7 +19,7 @@ export type SimplePluginInfo = {
 }
 
 export type ReactMarkdownWrapperProps = {
-  latexContent: any
+  content: string
   customDisallowedElements?: string[]
   customComponents?: Record<string, React.ComponentType<any>>
   pluginInfo?: SimplePluginInfo
@@ -26,7 +27,8 @@ export type ReactMarkdownWrapperProps = {
 }
 
 export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
-  const { customComponents, latexContent, pluginInfo } = props
+  const { customComponents, pluginInfo, content } = props
+  const latexContent = preprocessMarkdownContent(content)
 
   return (
     <ReactMarkdown

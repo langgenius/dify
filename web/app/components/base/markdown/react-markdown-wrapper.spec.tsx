@@ -31,7 +31,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'Range: 0.3~8mm'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<ReactMarkdownWrapper content={content} />)
 
       // Assert - check that ~ is rendered as text, not as strikethrough (del element)
       // The content should contain the tilde as literal text
@@ -44,7 +44,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'This is ~~strikethrough~~ text'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<ReactMarkdownWrapper content={content} />)
 
       // Assert - del element should be present for double tildes
       const delElement = document.querySelector('del')
@@ -57,7 +57,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'PCB thickness: 0.3~8mm and ~~removed feature~~ text'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<ReactMarkdownWrapper content={content} />)
 
       // Assert
       // Only double tildes should create strikethrough
@@ -76,7 +76,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'Hello World'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<ReactMarkdownWrapper content={content} />)
 
       // Assert
       expect(screen.getByText('Hello World')).toBeInTheDocument()
@@ -87,7 +87,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = '**bold text**'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<ReactMarkdownWrapper content={content} />)
 
       // Assert
       expect(screen.getByText('bold text')).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = '*italic text*'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<ReactMarkdownWrapper content={content} />)
 
       // Assert
       expect(screen.getByText('italic text')).toBeInTheDocument()

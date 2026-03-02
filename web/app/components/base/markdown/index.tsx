@@ -1,9 +1,6 @@
 import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
-import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
 import { cn } from '@/utils/classnames'
-import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
-import 'katex/dist/katex.min.css'
 
 const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod => mod.ReactMarkdownWrapper), { ssr: false })
 
@@ -22,16 +19,12 @@ export type MarkdownProps = {
 
 export const Markdown = (props: MarkdownProps) => {
   const { customComponents = {}, pluginInfo } = props
-  const latexContent = flow([
-    preprocessThinkTag,
-    preprocessLaTeX,
-  ])(props.content)
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
       <ReactMarkdown
         pluginInfo={pluginInfo}
-        latexContent={latexContent}
+        content={props.content}
         customComponents={customComponents}
         customDisallowedElements={props.customDisallowedElements}
         rehypePlugins={props.rehypePlugins}
