@@ -84,8 +84,9 @@ class WorkflowConverter:
             is_public=app_model.is_public,
             created_by=account.id,
             updated_by=account.id,
-            max_active_requests=None,
-            status="normal",
+            status=app_model.status,
+            max_active_requests=app_model.max_active_requests,
+            use_icon_as_answer_icon=app_model.use_icon_as_answer_icon
         )
         db.session.add(new_app)
         db.session.flush()
