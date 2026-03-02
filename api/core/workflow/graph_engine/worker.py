@@ -42,7 +42,6 @@ class Worker(threading.Thread):
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         layers: Sequence[GraphEngineLayer],
-        stop_event: threading.Event,
         worker_id: int = 0,
         execution_context: IExecutionContext | None = None,
     ) -> None:
@@ -63,16 +62,13 @@ class Worker(threading.Thread):
         self._graph = graph
         self._worker_id = worker_id
         self._execution_context = execution_context
-        self._stop_event = stop_event
+        self._stop_event = threading.Event()
         self._layers = layers if layers is not None else []
         self._last_task_time = time.time()
 
     def stop(self) -> None:
-        """Worker is controlled via shared stop_event from GraphEngine.
-
-        This method is a no-op retained for backward compatibility.
-        """
-        pass
+        """Signal the worker to stop processing."""
+        self._stop_event.set()
 
     @property
     def is_idle(self) -> bool:

@@ -12,7 +12,7 @@ import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflo
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -93,6 +93,7 @@ export const usePipelineRun = () => {
 
   const pipelineId = useStore(s => s.pipelineId)
   const invalidAllLastRun = useInvalidAllLastRun(FlowType.ragPipeline, pipelineId)
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowType: FlowType.ragPipeline,
     flowId: pipelineId!,
@@ -132,6 +133,7 @@ export const usePipelineRun = () => {
       ...restCallback
     } = callback || {}
     const { pipelineId } = workflowStore.getState()
+    const runHistoryUrl = `/rag/pipelines/${pipelineId}/workflow-runs`
     workflowStore.setState({ historyWorkflowData: undefined })
     const workflowContainer = document.getElementById('workflow-container')
 
@@ -170,12 +172,14 @@ export const usePipelineRun = () => {
         },
         onWorkflowStarted: (params) => {
           handleWorkflowStarted(params)
+          invalidateRunHistory(runHistoryUrl)
 
           if (onWorkflowStarted)
             onWorkflowStarted(params)
         },
         onWorkflowFinished: (params) => {
           handleWorkflowFinished(params)
+          invalidateRunHistory(runHistoryUrl)
           fetchInspectVars({})
           invalidAllLastRun()
 
@@ -184,6 +188,7 @@ export const usePipelineRun = () => {
         },
         onError: (params) => {
           handleWorkflowFailed()
+          invalidateRunHistory(runHistoryUrl)
 
           if (onError)
             onError(params)
@@ -275,7 +280,7 @@ export const usePipelineRun = () => {
         ...restCallback,
       },
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
+  }, [store, doSyncWorkflowDraft, workflowStore, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
 
   const handleStopRun = useCallback((taskId: string) => {
     const { pipelineId } = workflowStore.getState()

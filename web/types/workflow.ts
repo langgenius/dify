@@ -4,7 +4,19 @@ import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/c
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, Variable, VarType } from '@/app/components/workflow/types'
+import type {
+  BlockEnum,
+  CommonNodeType,
+  ConversationVariable,
+  Edge,
+  EnvironmentVariable,
+  InputVar,
+  Node,
+  ValueSelector,
+  Variable,
+  VarType,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
 
@@ -372,7 +384,7 @@ export type WorkflowRunHistory = {
     viewport?: Viewport
   }
   inputs: Record<string, string>
-  status: string
+  status: WorkflowRunningStatus
   outputs: Record<string, any>
   error?: string
   elapsed_time: number

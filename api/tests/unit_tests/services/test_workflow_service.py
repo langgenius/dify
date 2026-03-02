@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.workflow.enums import NodeType
+from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -1005,12 +1006,51 @@ class TestWorkflowService:
             mock_node_class = MagicMock()
             mock_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
 
-            mock_mapping.values.return_value = [{"latest": mock_node_class}]
+            mock_mapping.items.return_value = [(NodeType.LLM, {"latest": mock_node_class})]
 
             with patch("services.workflow_service.LATEST_VERSION", "latest"):
                 result = workflow_service.get_default_block_configs()
 
                 assert len(result) > 0
+
+    def test_get_default_block_configs_http_request_injects_default_config(self, workflow_service):
+        injected_config = HttpRequestNodeConfig(
+            max_connect_timeout=15,
+            max_read_timeout=25,
+            max_write_timeout=35,
+            max_binary_size=4096,
+            max_text_size=2048,
+            ssl_verify=True,
+            ssrf_default_max_retries=6,
+        )
+
+        with (
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.LATEST_VERSION", "latest"),
+            patch(
+                "services.workflow_service.build_http_request_config",
+                return_value=injected_config,
+            ) as mock_build_config,
+        ):
+            mock_http_node_class = MagicMock()
+            mock_http_node_class.get_default_config.return_value = {"type": "http-request", "config": {}}
+            mock_llm_node_class = MagicMock()
+            mock_llm_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
+            mock_mapping.items.return_value = [
+                (NodeType.HTTP_REQUEST, {"latest": mock_http_node_class}),
+                (NodeType.LLM, {"latest": mock_llm_node_class}),
+            ]
+
+            result = workflow_service.get_default_block_configs()
+
+            assert result == [
+                {"type": "http-request", "config": {}},
+                {"type": "llm", "config": {}},
+            ]
+            mock_build_config.assert_called_once()
+            passed_http_filters = mock_http_node_class.get_default_config.call_args.kwargs["filters"]
+            assert passed_http_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is injected_config
+            mock_llm_node_class.get_default_config.assert_called_once_with(filters=None)
 
     def test_get_default_block_config_for_node_type(self, workflow_service):
         """
@@ -1047,6 +1087,84 @@ class TestWorkflowService:
             result = workflow_service.get_default_block_config(NodeType.LLM.value)
 
             assert result == {}
+
+    def test_get_default_block_config_http_request_injects_default_config(self, workflow_service):
+        injected_config = HttpRequestNodeConfig(
+            max_connect_timeout=11,
+            max_read_timeout=22,
+            max_write_timeout=33,
+            max_binary_size=4096,
+            max_text_size=2048,
+            ssl_verify=False,
+            ssrf_default_max_retries=7,
+        )
+
+        with (
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.LATEST_VERSION", "latest"),
+            patch(
+                "services.workflow_service.build_http_request_config",
+                return_value=injected_config,
+            ) as mock_build_config,
+        ):
+            mock_node_class = MagicMock()
+            expected = {"type": "http-request", "config": {}}
+            mock_node_class.get_default_config.return_value = expected
+            mock_mapping.__contains__.return_value = True
+            mock_mapping.__getitem__.return_value = {"latest": mock_node_class}
+
+            result = workflow_service.get_default_block_config(NodeType.HTTP_REQUEST.value)
+
+            assert result == expected
+            mock_build_config.assert_called_once()
+            passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
+            assert passed_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is injected_config
+
+    def test_get_default_block_config_http_request_uses_passed_config(self, workflow_service):
+        provided_config = HttpRequestNodeConfig(
+            max_connect_timeout=13,
+            max_read_timeout=23,
+            max_write_timeout=34,
+            max_binary_size=8192,
+            max_text_size=4096,
+            ssl_verify=True,
+            ssrf_default_max_retries=2,
+        )
+
+        with (
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.LATEST_VERSION", "latest"),
+            patch("services.workflow_service.build_http_request_config") as mock_build_config,
+        ):
+            mock_node_class = MagicMock()
+            expected = {"type": "http-request", "config": {}}
+            mock_node_class.get_default_config.return_value = expected
+            mock_mapping.__contains__.return_value = True
+            mock_mapping.__getitem__.return_value = {"latest": mock_node_class}
+
+            result = workflow_service.get_default_block_config(
+                NodeType.HTTP_REQUEST.value,
+                filters={HTTP_REQUEST_CONFIG_FILTER_KEY: provided_config},
+            )
+
+            assert result == expected
+            mock_build_config.assert_not_called()
+            passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
+            assert passed_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is provided_config
+
+    def test_get_default_block_config_http_request_malformed_config_raises_value_error(self, workflow_service):
+        with (
+            patch(
+                "services.workflow_service.NODE_TYPE_CLASSES_MAPPING",
+                {NodeType.HTTP_REQUEST: {"latest": HttpRequestNode}},
+            ),
+            patch("services.workflow_service.LATEST_VERSION", "latest"),
+        ):
+            with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
+                workflow_service.get_default_block_config(
+                    NodeType.HTTP_REQUEST.value,
+                    filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"},
+                )
 
     # ==================== Workflow Conversion Tests ====================
     # These tests verify converting basic apps to workflow apps
