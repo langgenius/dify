@@ -1183,10 +1183,12 @@ class TraceTask:
             "app_name": app_name,
             "workspace_name": workspace_name,
             "user_id": node_data.get("user_id"),
+            "invoke_from": node_data.get("invoke_from"),
+            "credential_id": node_data.get("credential_id"),
+            "credential_name": credential_name,
             "dataset_ids": node_data.get("dataset_ids"),
             "dataset_names": node_data.get("dataset_names"),
             "plugin_name": node_data.get("plugin_name"),
-            "credential_name": credential_name,
         }
 
         parent_trace_context = node_data.get("parent_trace_context")
@@ -1207,6 +1209,8 @@ class TraceTask:
                 if msg_id:
                     message_id = str(msg_id)
                     metadata["message_id"] = message_id
+            if conversation_id:
+                metadata["conversation_id"] = conversation_id
 
         return WorkflowNodeTraceInfo(
             trace_id=self.trace_id,
