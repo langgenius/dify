@@ -81,6 +81,8 @@ COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh ./entrypoint.sh
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 
+RUN chown -R dify:dify /app/web
+
 USER dify
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
