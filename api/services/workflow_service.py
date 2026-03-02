@@ -9,7 +9,6 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -40,6 +39,7 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import load_into_variable_pool
 from core.workflow.variables import VariableBase
+from core.workflow.variables.input_entities import VariableEntityType
 from core.workflow.variables.variables import Variable
 from core.workflow.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan

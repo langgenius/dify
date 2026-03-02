@@ -37,6 +37,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -62,7 +63,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory, PromptMessageMemory
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import VariablePool
 from core.workflow.variables import (
     ArrayFileSegment,
@@ -278,8 +279,6 @@ class LLMNode(Node[LLMNodeData]):
                         else None
                     )
 
-                    # deduct quota
-                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
                 elif isinstance(event, LLMStructuredOutput):
                     structured_output = event
@@ -1234,6 +1233,10 @@ class LLMNode(Node[LLMNodeData]):
     def retry(self) -> bool:
         return self.node_data.retry_config.retry_enabled
 
+    @property
+    def model_instance(self) -> ModelInstance:
+        return self._model_instance
+
 
 def _combine_message_content_with_role(
     *, contents: str | list[PromptMessageContentUnionTypes] | None = None, role: PromptMessageRole
@@ -1336,46 +1339,14 @@ def _handle_memory_completion_mode(
         )
         if not memory_config.role_prefix:
             raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
-        memory_messages = memory.get_history_prompt_messages(
+        memory_text = llm_utils.fetch_memory_text(
+            memory=memory,
             max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
-        )
-        memory_text = _convert_history_messages_to_text(
-            history_messages=memory_messages,
             human_prefix=memory_config.role_prefix.user,
             ai_prefix=memory_config.role_prefix.assistant,
         )
     return memory_text
-
-
-def _convert_history_messages_to_text(
-    *,
-    history_messages: Sequence[PromptMessage],
-    human_prefix: str,
-    ai_prefix: str,
-) -> str:
-    string_messages: list[str] = []
-    for message in history_messages:
-        if message.role == PromptMessageRole.USER:
-            role = human_prefix
-        elif message.role == PromptMessageRole.ASSISTANT:
-            role = ai_prefix
-        else:
-            continue
-
-        if isinstance(message.content, list):
-            content_parts = []
-            for content in message.content:
-                if isinstance(content, TextPromptMessageContent):
-                    content_parts.append(content.data)
-                elif isinstance(content, ImagePromptMessageContent):
-                    content_parts.append("[image]")
-
-            inner_msg = "\n".join(content_parts)
-            string_messages.append(f"{role}: {inner_msg}")
-        else:
-            string_messages.append(f"{role}: {message.content}")
-    return "\n".join(string_messages)
 
 
 def _handle_completion_template(
