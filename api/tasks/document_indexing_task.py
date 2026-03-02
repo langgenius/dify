@@ -21,11 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 class CeleryTaskLike(Protocol):
-    def delay(self, *args: Any, **kwargs: Any) -> Any:
-        ...
+    def delay(self, *args: Any, **kwargs: Any) -> Any: ...
 
-    def apply_async(self, *args: Any, **kwargs: Any) -> Any:
-        ...
+    def apply_async(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 @shared_task(queue="dataset")
