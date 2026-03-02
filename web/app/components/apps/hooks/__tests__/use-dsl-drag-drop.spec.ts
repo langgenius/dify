@@ -5,12 +5,14 @@ import { useDSLDragDrop } from '../use-dsl-drag-drop'
 describe('useDSLDragDrop', () => {
   let container: HTMLDivElement
   let mockOnDSLFileDropped: Mock
+  let mockOnBundleFileDropped: Mock
 
   beforeEach(() => {
     vi.clearAllMocks()
     container = document.createElement('div')
     document.body.appendChild(container)
     mockOnDSLFileDropped = vi.fn()
+    mockOnBundleFileDropped = vi.fn()
   })
 
   afterEach(() => {
@@ -195,6 +197,7 @@ describe('useDSLDragDrop', () => {
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -214,6 +217,7 @@ describe('useDSLDragDrop', () => {
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -233,6 +237,7 @@ describe('useDSLDragDrop', () => {
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -247,11 +252,33 @@ describe('useDSLDragDrop', () => {
       expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file)
     })
 
+    it('should call onBundleFileDropped for .zip file', () => {
+      const containerRef = { current: container }
+      renderHook(() =>
+        useDSLDragDrop({
+          onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
+          containerRef,
+        }),
+      )
+
+      const file = createMockFile('test.zip')
+      const dropEvent = createDragEvent('drop', [file])
+
+      act(() => {
+        container.dispatchEvent(dropEvent)
+      })
+
+      expect(mockOnBundleFileDropped).toHaveBeenCalledWith(file)
+      expect(mockOnDSLFileDropped).not.toHaveBeenCalled()
+    })
+
     it('should not call onDSLFileDropped for non-yaml file', () => {
       const containerRef = { current: container }
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -264,6 +291,7 @@ describe('useDSLDragDrop', () => {
       })
 
       expect(mockOnDSLFileDropped).not.toHaveBeenCalled()
+      expect(mockOnBundleFileDropped).not.toHaveBeenCalled()
     })
 
     it('should set dragging to false on drop', () => {
@@ -271,6 +299,7 @@ describe('useDSLDragDrop', () => {
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -294,6 +323,7 @@ describe('useDSLDragDrop', () => {
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -324,6 +354,7 @@ describe('useDSLDragDrop', () => {
       renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -386,6 +417,7 @@ describe('useDSLDragDrop', () => {
         ({ enabled }) =>
           useDSLDragDrop({
             onDSLFileDropped: mockOnDSLFileDropped,
+            onBundleFileDropped: mockOnBundleFileDropped,
             containerRef,
             enabled,
           }),
@@ -407,6 +439,7 @@ describe('useDSLDragDrop', () => {
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -429,6 +462,7 @@ describe('useDSLDragDrop', () => {
       const { unmount } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )
@@ -450,6 +484,7 @@ describe('useDSLDragDrop', () => {
       const { result } = renderHook(() =>
         useDSLDragDrop({
           onDSLFileDropped: mockOnDSLFileDropped,
+          onBundleFileDropped: mockOnBundleFileDropped,
           containerRef,
         }),
       )

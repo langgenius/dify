@@ -47,10 +47,18 @@ vi.mock('../hooks/use-apps-query-state', () => ({
 }))
 
 let mockOnDSLFileDropped: ((file: File) => void) | null = null
+let mockOnBundleFileDropped: ((file: File) => void) | null = null
 let mockDragging = false
 vi.mock('../hooks/use-dsl-drag-drop', () => ({
-  useDSLDragDrop: ({ onDSLFileDropped }: { onDSLFileDropped: (file: File) => void }) => {
+  useDSLDragDrop: ({
+    onDSLFileDropped,
+    onBundleFileDropped,
+  }: {
+    onDSLFileDropped: (file: File) => void
+    onBundleFileDropped?: (file: File) => void
+  }) => {
     mockOnDSLFileDropped = onDSLFileDropped
+    mockOnBundleFileDropped = onBundleFileDropped ?? null
     return { dragging: mockDragging }
   },
 }))
@@ -223,6 +231,7 @@ describe('List', () => {
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockDragging = false
     mockOnDSLFileDropped = null
+    mockOnBundleFileDropped = null
     mockServiceState.error = null
     mockServiceState.hasNextPage = false
     mockServiceState.isLoading = false
@@ -505,6 +514,18 @@ describe('List', () => {
       act(() => {
         if (mockOnDSLFileDropped)
           mockOnDSLFileDropped(mockFile)
+      })
+
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+    })
+
+    it('should handle zip file drop and show modal', () => {
+      renderList()
+
+      const mockFile = new File(['zip content'], 'bundle.zip', { type: 'application/zip' })
+      act(() => {
+        if (mockOnBundleFileDropped)
+          mockOnBundleFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
