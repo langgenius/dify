@@ -53,6 +53,7 @@ from repositories.types import (
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+from repositories.workflow_run_triggered_from_utils import normalize_workflow_run_triggered_from_values
 
 logger = logging.getLogger(__name__)
 
@@ -166,11 +167,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.app_id == app_id,
             )
 
-            # Handle triggered_from values
-            if isinstance(triggered_from, WorkflowRunTriggeredFrom):
-                triggered_from = [triggered_from]
-            if triggered_from:
-                base_stmt = base_stmt.where(WorkflowRun.triggered_from.in_(triggered_from))
+            triggered_from_values = normalize_workflow_run_triggered_from_values(triggered_from)
+            if triggered_from_values:
+                base_stmt = base_stmt.where(WorkflowRun.triggered_from.in_(triggered_from_values))
 
             # Add optional status filter
             if status:
@@ -232,7 +231,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         status: str | None = None,
         time_range: str | None = None,
     ) -> dict[str, int]:
@@ -248,11 +247,15 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         }
 
         with self._session_maker() as session:
+            triggered_from_values = normalize_workflow_run_triggered_from_values(triggered_from)
+            if not triggered_from_values:
+                return {"total": 0} | _initial_status_counts
+
             # Build base where conditions
             base_conditions = [
                 WorkflowRun.tenant_id == tenant_id,
                 WorkflowRun.app_id == app_id,
-                WorkflowRun.triggered_from == triggered_from,
+                WorkflowRun.triggered_from.in_(triggered_from_values),
             ]
 
             # Add time range filter if provided

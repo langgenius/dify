@@ -17,6 +17,22 @@ from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
 
 
+class WorkflowRunRerunScope(BaseModel):
+    target_node_id: str
+    ancestor_node_ids: list[str] = Field(default_factory=list)
+    rerun_node_ids: list[str] = Field(default_factory=list)
+    overrideable_node_ids: list[str] = Field(default_factory=list)
+
+
+class WorkflowRunRerunMetadata(BaseModel):
+    rerun_from_workflow_run_id: str
+    rerun_from_node_id: str
+    rerun_overrides: list[dict[str, Any]] = Field(default_factory=list)
+    rerun_scope: WorkflowRunRerunScope
+    rerun_chain_root_workflow_run_id: str
+    rerun_kind: str = "manual-node-rerun"
+
+
 class WorkflowExecution(BaseModel):
     """
     Domain model for workflow execution based on WorkflowRun but without
@@ -40,6 +56,7 @@ class WorkflowExecution(BaseModel):
 
     started_at: datetime = Field(...)
     finished_at: datetime | None = None
+    rerun_metadata: WorkflowRunRerunMetadata | None = None
 
     @property
     def elapsed_time(self) -> float:

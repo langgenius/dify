@@ -38,7 +38,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
-            triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
+            triggered_from: Source of the execution trigger (DEBUGGING, APP_RUN, or RERUN)
         """
         logger.debug(
             "LogstoreWorkflowExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
@@ -104,6 +104,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Use WorkflowRuntimeTypeConverter to handle complex types (Segment, File, etc.)
         json_converter = WorkflowRuntimeTypeConverter()
+        rerun_metadata = domain_model.rerun_metadata
 
         logstore_model = [
             ("id", domain_model.id_),
@@ -149,6 +150,26 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             ("created_by", self._creator_user_id),
             ("started_at", domain_model.started_at.isoformat() if domain_model.started_at else ""),
             ("finished_at", domain_model.finished_at.isoformat() if domain_model.finished_at else ""),
+            (
+                "rerun_from_workflow_run_id",
+                rerun_metadata.rerun_from_workflow_run_id if rerun_metadata is not None else "",
+            ),
+            ("rerun_from_node_id", rerun_metadata.rerun_from_node_id if rerun_metadata is not None else ""),
+            (
+                "rerun_overrides",
+                json.dumps(rerun_metadata.rerun_overrides, ensure_ascii=False) if rerun_metadata is not None else "",
+            ),
+            (
+                "rerun_scope",
+                json.dumps(rerun_metadata.rerun_scope.model_dump(mode="json"), ensure_ascii=False)
+                if rerun_metadata is not None
+                else "",
+            ),
+            (
+                "rerun_chain_root_workflow_run_id",
+                rerun_metadata.rerun_chain_root_workflow_run_id if rerun_metadata is not None else "",
+            ),
+            ("rerun_kind", rerun_metadata.rerun_kind if rerun_metadata is not None else ""),
         ]
 
         return logstore_model

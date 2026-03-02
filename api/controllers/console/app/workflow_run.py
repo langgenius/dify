@@ -1,14 +1,17 @@
+import logging
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from controllers.console import console_ns
+from controllers.console.app.error import UnsupportedTriggeredFrom
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
@@ -27,6 +30,7 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from libs import helper
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
@@ -35,7 +39,14 @@ from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowR
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
+from services.workflow_run_rerun_service import (
+    WorkflowRunRerunOverride,
+    WorkflowRunRerunService,
+    WorkflowRunRerunServiceError,
+)
 from services.workflow_run_service import WorkflowRunService
+
+logger = logging.getLogger(__name__)
 
 
 def _build_backstage_input_url(form_token: str | None) -> str | None:
@@ -45,6 +56,11 @@ def _build_backstage_input_url(form_token: str | None) -> str | None:
     if not base_url:
         return None
     return f"{base_url.rstrip('/')}/form/{form_token}"
+
+
+def _raise_if_advanced_chat_rerun_triggered_from(args: Mapping[str, str]) -> None:
+    if args.get("triggered_from") == WorkflowRunTriggeredFrom.RERUN.value:
+        raise UnsupportedTriggeredFrom()
 
 
 # Workflow run status choices for filtering
@@ -128,7 +144,7 @@ workflow_run_export_fields = console_ns.model(
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class WorkflowRunListQuery(BaseModel):
+class AdvancedChatWorkflowRunListQuery(BaseModel):
     last_id: str | None = Field(default=None, description="Last run ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
     status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
@@ -146,7 +162,7 @@ class WorkflowRunListQuery(BaseModel):
         return uuid_value(value)
 
 
-class WorkflowRunCountQuery(BaseModel):
+class AdvancedChatWorkflowRunCountQuery(BaseModel):
     status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
         default=None, description="Workflow run status filter"
     )
@@ -163,12 +179,67 @@ class WorkflowRunCountQuery(BaseModel):
         return time_duration(value)
 
 
+class WorkflowRunListQuery(BaseModel):
+    last_id: str | None = Field(default=None, description="Last run ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
+    triggered_from: Literal["debugging", "app-run", "rerun"] | None = Field(
+        default=None, description="Filter by trigger source: debugging, app-run, or rerun"
+    )
+
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class WorkflowRunCountQuery(BaseModel):
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
+    time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
+    triggered_from: Literal["debugging", "app-run", "rerun"] | None = Field(
+        default=None, description="Filter by trigger source: debugging, app-run, or rerun"
+    )
+
+    @field_validator("time_range")
+    @classmethod
+    def validate_time_range(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return time_duration(value)
+
+
+class WorkflowRunRerunPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_node_id: str = Field(min_length=1)
+    overrides: list[WorkflowRunRerunOverride] = Field(default_factory=list)
+    streaming: bool = True
+
+
+console_ns.schema_model(
+    AdvancedChatWorkflowRunListQuery.__name__,
+    AdvancedChatWorkflowRunListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    AdvancedChatWorkflowRunCountQuery.__name__,
+    AdvancedChatWorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 console_ns.schema_model(
     WorkflowRunListQuery.__name__, WorkflowRunListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 console_ns.schema_model(
     WorkflowRunCountQuery.__name__,
     WorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    WorkflowRunRerunPayload.__name__,
+    WorkflowRunRerunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 
@@ -182,9 +253,12 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
     )
     @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
+        params={
+            "triggered_from": "Filter by trigger source (optional): debugging or app-run. "
+            "Default: debugging"
+        }
     )
-    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
+    @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunListQuery.__name__])
     @console_ns.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_model)
     @setup_required
     @login_required
@@ -195,7 +269,9 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        raw_args = request.args.to_dict(flat=True)  # type: ignore
+        _raise_if_advanced_chat_rerun_triggered_from(raw_args)
+        args_model = AdvancedChatWorkflowRunListQuery.model_validate(raw_args)
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
@@ -280,10 +356,13 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         }
     )
     @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
+        params={
+            "triggered_from": "Filter by trigger source (optional): debugging or app-run. "
+            "Default: debugging"
+        }
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
-    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
+    @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -293,7 +372,9 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         """
         Get advanced chat workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        raw_args = request.args.to_dict(flat=True)  # type: ignore
+        _raise_if_advanced_chat_rerun_triggered_from(raw_args)
+        args_model = AdvancedChatWorkflowRunCountQuery.model_validate(raw_args)
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
@@ -324,7 +405,10 @@ class WorkflowRunListApi(Resource):
         params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
     )
     @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
+        params={
+            "triggered_from": "Filter by trigger source (optional): debugging, app-run, or rerun. "
+            "Default: workflow=debugging+rerun, advanced-chat=debugging"
+        }
     )
     @console_ns.response(200, "Workflow runs retrieved successfully", workflow_run_pagination_model)
     @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
@@ -337,14 +421,23 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        raw_args = request.args.to_dict(flat=True)  # type: ignore
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode == AppMode.ADVANCED_CHAT:
+            _raise_if_advanced_chat_rerun_triggered_from(raw_args)
+        args_model = WorkflowRunListQuery.model_validate(raw_args)
         args = args_model.model_dump(exclude_none=True)
 
-        # Default to DEBUGGING for workflow if not specified (backward compatibility)
+        default_triggered_from: WorkflowRunTriggeredFrom | list[WorkflowRunTriggeredFrom]
+        if app_mode == AppMode.WORKFLOW:
+            default_triggered_from = [WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.RERUN]
+        else:
+            default_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
+
         triggered_from = (
             WorkflowRunTriggeredFrom(args_model.triggered_from)
             if args_model.triggered_from
-            else WorkflowRunTriggeredFrom.DEBUGGING
+            else default_triggered_from
         )
 
         workflow_run_service = WorkflowRunService()
@@ -372,7 +465,10 @@ class WorkflowRunCountApi(Resource):
         }
     )
     @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
+        params={
+            "triggered_from": "Filter by trigger source (optional): debugging, app-run, or rerun. "
+            "Default: workflow=debugging+rerun, advanced-chat=debugging"
+        }
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
     @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
@@ -385,14 +481,23 @@ class WorkflowRunCountApi(Resource):
         """
         Get workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        raw_args = request.args.to_dict(flat=True)  # type: ignore
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode == AppMode.ADVANCED_CHAT:
+            _raise_if_advanced_chat_rerun_triggered_from(raw_args)
+        args_model = WorkflowRunCountQuery.model_validate(raw_args)
         args = args_model.model_dump(exclude_none=True)
 
-        # Default to DEBUGGING for workflow if not specified (backward compatibility)
+        default_triggered_from: WorkflowRunTriggeredFrom | list[WorkflowRunTriggeredFrom]
+        if app_mode == AppMode.WORKFLOW:
+            default_triggered_from = [WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.RERUN]
+        else:
+            default_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
+
         triggered_from = (
             WorkflowRunTriggeredFrom(args_model.triggered_from)
             if args_model.triggered_from
-            else WorkflowRunTriggeredFrom.DEBUGGING
+            else default_triggered_from
         )
 
         workflow_run_service = WorkflowRunService()
@@ -457,6 +562,52 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return {"data": node_executions}
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:source_run_id>/rerun")
+class WorkflowRunRerunApi(Resource):
+    @console_ns.doc("rerun_workflow_run")
+    @console_ns.doc(description="Rerun workflow from a specific main-flow node based on a source run.")
+    @console_ns.doc(params={"app_id": "Application ID", "source_run_id": "Source workflow run ID"})
+    @console_ns.expect(console_ns.models[WorkflowRunRerunPayload.__name__])
+    @console_ns.response(200, "Rerun started successfully")
+    @console_ns.response(400, "Invalid request")
+    @console_ns.response(404, "Workflow run not found")
+    @console_ns.response(409, "Workflow run not ended")
+    @console_ns.response(422, "Unsupported app mode or invalid rerun scope")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model()
+    def post(self, app_model: App, source_run_id: str):
+        payload = WorkflowRunRerunPayload.model_validate(console_ns.payload or {})
+        source_run_id = str(source_run_id)
+
+        service = WorkflowRunRerunService()
+        user = cast("Account | EndUser", current_user)
+        try:
+            response = service.execute_rerun(
+                app_model=app_model,
+                user=user,
+                source_run_id=source_run_id,
+                target_node_id=payload.target_node_id,
+                overrides=payload.overrides,
+                streaming=payload.streaming,
+            )
+            return helper.compact_generate_response(response)
+        except WorkflowRunRerunServiceError as ex:
+            return {
+                "code": ex.code,
+                "message": ex.message,
+                "status": ex.status,
+            }, ex.status
+        except Exception:
+            logger.exception("Failed to execute workflow rerun")
+            return {
+                "code": "rerun_execution_failed",
+                "message": "Rerun execution failed.",
+                "status": 500,
+            }, 500
 
 
 @console_ns.route("/workflow/<string:workflow_run_id>/pause-details")

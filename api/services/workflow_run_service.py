@@ -73,7 +73,12 @@ class WorkflowRunService:
         return pagination
 
     def get_paginate_workflow_runs(
-        self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING
+        self,
+        app_model: App,
+        args: dict,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom] = (
+            WorkflowRunTriggeredFrom.DEBUGGING
+        ),
     ) -> InfiniteScrollPagination:
         """
         Get workflow run list
@@ -113,7 +118,9 @@ class WorkflowRunService:
         app_model: App,
         status: str | None = None,
         time_range: str | None = None,
-        triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom] = (
+            WorkflowRunTriggeredFrom.DEBUGGING
+        ),
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics

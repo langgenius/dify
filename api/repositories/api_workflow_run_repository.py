@@ -150,7 +150,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         status: str | None = None,
         time_range: str | None = None,
     ) -> dict[str, int]:
@@ -163,7 +163,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Args:
             tenant_id: Tenant identifier for multi-tenant isolation
             app_id: Application identifier
-            triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
+            triggered_from: Filter by trigger source(s) (e.g., "debugging", "app-run", or list of values)
             status: Optional filter by specific status
             time_range: Optional time range filter (e.g., "7d", "4h", "30m", "30s")
                        Filters records based on created_at field
