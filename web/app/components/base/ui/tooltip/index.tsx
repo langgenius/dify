@@ -16,7 +16,7 @@ export type TooltipContentProps = {
   className?: string
   popupClassName?: string
   variant?: TooltipContentVariant
-} & Omit<React.ComponentPropsWithoutRef<typeof BaseTooltip.Popup>, 'children'>
+} & Omit<React.ComponentPropsWithoutRef<typeof BaseTooltip.Popup>, 'children' | 'className'>
 
 export function TooltipContent({
   children,
