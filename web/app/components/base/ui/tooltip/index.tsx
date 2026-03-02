@@ -6,61 +6,53 @@ import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
-export type TooltipProps = {
-  position?: Placement
-  disabled?: boolean
-  popupContent?: React.ReactNode
-  children?: React.ReactNode
+type TooltipContentVariant = 'default' | 'plain'
+
+export type TooltipContentProps = {
+  children: React.ReactNode
+  placement?: Placement
+  sideOffset?: number
+  alignOffset?: number
+  className?: string
   popupClassName?: string
-  noDecoration?: boolean
-  offset?: number
-  delay?: number
-  closeDelay?: number
-}
+  variant?: TooltipContentVariant
+} & Omit<React.ComponentPropsWithoutRef<typeof BaseTooltip.Popup>, 'children'>
 
-const Tooltip = React.memo(({
-  position = 'top',
-  disabled = false,
-  popupContent,
+export function TooltipContent({
   children,
+  placement = 'top',
+  sideOffset = 8,
+  alignOffset = 0,
+  className,
   popupClassName,
-  noDecoration,
-  offset = 8,
-  delay,
-  closeDelay,
-}: TooltipProps) => {
-  const { side, align } = parsePlacement(position)
-
-  if (!popupContent || disabled)
-    return <>{children}</>
+  variant = 'default',
+  ...props
+}: TooltipContentProps) {
+  const { side, align } = parsePlacement(placement)
 
   return (
-    <BaseTooltip.Root>
-      {React.isValidElement(children)
-        ? <BaseTooltip.Trigger delay={delay} closeDelay={closeDelay} render={children} />
-        : <BaseTooltip.Trigger delay={delay} closeDelay={closeDelay} render={<span className="inline-flex" />}>{children}</BaseTooltip.Trigger>}
-      <BaseTooltip.Portal>
-        <BaseTooltip.Positioner
-          side={side}
-          align={align}
-          sideOffset={offset}
-          className="outline-none"
+    <BaseTooltip.Portal>
+      <BaseTooltip.Positioner
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        className={cn('isolate outline-none', className)}
+      >
+        <BaseTooltip.Popup
+          className={cn(
+            variant === 'default' && 'max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
+            popupClassName,
+          )}
+          {...props}
         >
-          <BaseTooltip.Popup
-            className={cn(
-              !noDecoration && 'max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
-              popupClassName,
-            )}
-          >
-            {popupContent}
-          </BaseTooltip.Popup>
-        </BaseTooltip.Positioner>
-      </BaseTooltip.Portal>
-    </BaseTooltip.Root>
+          {children}
+        </BaseTooltip.Popup>
+      </BaseTooltip.Positioner>
+    </BaseTooltip.Portal>
   )
-})
-
-Tooltip.displayName = 'Tooltip'
+}
 
 export const TooltipProvider = BaseTooltip.Provider
-export default Tooltip
+export const Tooltip = BaseTooltip.Root
+export const TooltipTrigger = BaseTooltip.Trigger

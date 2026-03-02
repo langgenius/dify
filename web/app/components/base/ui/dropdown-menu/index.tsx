@@ -7,6 +7,7 @@ import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
 export const DropdownMenu = Menu.Root
+export const DropdownMenuPortal = Menu.Portal
 export const DropdownMenuTrigger = Menu.Trigger
 export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
@@ -26,14 +27,22 @@ type DropdownMenuContentProps = {
   popupClassName?: string
 }
 
-export function DropdownMenuContent({
+type DropdownMenuPopupProps = Required<Pick<DropdownMenuContentProps, 'children'>> & {
+  placement: Placement
+  sideOffset: number
+  alignOffset: number
+  className?: string
+  popupClassName?: string
+}
+
+function DropdownMenuPopup({
   children,
-  placement = 'bottom-end',
-  sideOffset = 4,
-  alignOffset = 0,
+  placement,
+  sideOffset,
+  alignOffset,
   className,
   popupClassName,
-}: DropdownMenuContentProps) {
+}: DropdownMenuPopupProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
@@ -43,7 +52,7 @@ export function DropdownMenuContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('outline-none', className)}
+        className={cn('isolate outline-none', className)}
       >
         <Menu.Popup
           className={cn(
@@ -56,6 +65,27 @@ export function DropdownMenuContent({
         </Menu.Popup>
       </Menu.Positioner>
     </Menu.Portal>
+  )
+}
+
+export function DropdownMenuContent({
+  children,
+  placement = 'bottom-end',
+  sideOffset = 4,
+  alignOffset = 0,
+  className,
+  popupClassName,
+}: DropdownMenuContentProps) {
+  return (
+    <DropdownMenuPopup
+      placement={placement}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      className={className}
+      popupClassName={popupClassName}
+    >
+      {children}
+    </DropdownMenuPopup>
   )
 }
 
@@ -98,28 +128,16 @@ export function DropdownMenuSubContent({
   className,
   popupClassName,
 }: DropdownMenuSubContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
-    <Menu.Portal>
-      <Menu.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('outline-none', className)}
-      >
-        <Menu.Popup
-          className={cn(
-            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-1 text-sm text-text-secondary shadow-lg',
-            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
-            popupClassName,
-          )}
-        >
-          {children}
-        </Menu.Popup>
-      </Menu.Positioner>
-    </Menu.Portal>
+    <DropdownMenuPopup
+      placement={placement}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      className={className}
+      popupClassName={popupClassName}
+    >
+      {children}
+    </DropdownMenuPopup>
   )
 }
 

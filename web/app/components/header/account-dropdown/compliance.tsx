@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
-import Tooltip from '@/app/components/base/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -83,14 +83,27 @@ function ComplianceDocActionVisual({
     )
   }
 
+  const canShowUpgradeTooltip = tooltipText.length > 0
+
   return (
-    <Tooltip popupContent={tooltipText} delay={0}>
-      <PremiumBadge color="blue" allowHover={true}>
-        <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
-        <div className="px-1 system-xs-medium">
-          {upgradeText}
-        </div>
-      </PremiumBadge>
+    <Tooltip>
+      <TooltipTrigger
+        delay={0}
+        disabled={!canShowUpgradeTooltip}
+        render={(
+          <PremiumBadge color="blue" allowHover={true}>
+            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <div className="px-1 system-xs-medium">
+              {upgradeText}
+            </div>
+          </PremiumBadge>
+        )}
+      />
+      {canShowUpgradeTooltip && (
+        <TooltipContent>
+          {tooltipText}
+        </TooltipContent>
+      )}
     </Tooltip>
   )
 }
