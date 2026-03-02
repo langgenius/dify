@@ -12,6 +12,7 @@ from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
+from dify_graph.enums import UserFrom
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.models import File
 from dify_graph.graph import Graph
@@ -28,7 +29,6 @@ from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
-from models.enums import UserFrom
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)

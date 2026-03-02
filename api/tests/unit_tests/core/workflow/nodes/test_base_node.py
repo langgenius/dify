@@ -2,8 +2,9 @@ from collections.abc import Mapping
 
 import pytest
 
+from core.app.entities.app_invoke_entities import InvokeFrom as LegacyInvokeFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType
+from dify_graph.enums import InvokeFrom, NodeType, UserFrom
 from dify_graph.nodes.base.entities import BaseNodeData
 from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -56,6 +57,36 @@ def test_node_hydrates_data_during_initialization():
 
     assert node.node_data.foo == "bar"
     assert node.title == "Sample"
+    assert node.user_from == UserFrom.ACCOUNT
+    assert node.invoke_from == InvokeFrom.DEBUGGER
+
+
+def test_node_normalizes_legacy_invoke_from_enum():
+    graph_config: dict[str, object] = {}
+    init_params = GraphInitParams(
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        graph_config=graph_config,
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=LegacyInvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+    runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(system_variables=SystemVariable(user_id="user", files=[]), user_inputs={}),
+        start_at=0.0,
+    )
+
+    node = _SampleNode(
+        id="node-1",
+        config={"id": "node-1", "data": {"title": "Sample", "foo": "bar"}},
+        graph_init_params=init_params,
+        graph_runtime_state=runtime_state,
+    )
+
+    assert node.user_from == UserFrom.ACCOUNT
+    assert node.invoke_from == InvokeFrom.DEBUGGER
 
 
 def test_missing_generic_argument_raises_type_error():

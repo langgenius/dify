@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom
 from dify_graph.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -21,7 +22,6 @@ from dify_graph.nodes.trigger_webhook.node import TriggerWebhookNode
 from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.variable_pool import VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 
