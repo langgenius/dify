@@ -104,12 +104,14 @@ class HologresVector(BaseVector):
             for j, doc in enumerate(batch_docs):
                 doc_id = doc.metadata.get("doc_id", "") if doc.metadata else ""
                 pks.append(doc_id)
-                values.append([
-                    doc_id,
-                    doc.page_content,
-                    json.dumps(doc.metadata or {}),
-                    batch_embeddings[j],
-                ])
+                values.append(
+                    [
+                        doc_id,
+                        doc.page_content,
+                        json.dumps(doc.metadata or {}),
+                        batch_embeddings[j],
+                    ]
+                )
 
             table = self._client.open_table(self.table_name)
             table.upsert_multi(
@@ -171,12 +173,16 @@ class HologresVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         table = self._client.open_table(self.table_name)
-        query = table.search_vector(
-            vector=query_vector,
-            column="embedding",
-            distance_method=self._config.distance_method,
-            output_name="distance",
-        ).select(["id", "text", "meta"]).limit(top_k)
+        query = (
+            table.search_vector(
+                vector=query_vector,
+                column="embedding",
+                distance_method=self._config.distance_method,
+                output_name="distance",
+            )
+            .select(["id", "text", "meta"])
+            .limit(top_k)
+        )
 
         # Apply document_ids_filter if provided
         document_ids_filter = kwargs.get("document_ids_filter")
