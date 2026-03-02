@@ -48,3 +48,59 @@ def test_execute_code_returns_stdout_on_success(mocker: MockerFixture) -> None:
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
     assert CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)") == "done"
+
+
+def test_execute_code_raises_for_non_200_status(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.status_code = 500
+    client = MagicMock()
+    client.post.return_value = response
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(CodeExecutionError, match="likely a network issue"):
+        CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
+
+
+def test_execute_code_raises_when_client_post_fails(mocker: MockerFixture) -> None:
+    client = MagicMock()
+    client.post.side_effect = RuntimeError("timeout")
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(CodeExecutionError, match="likely a network issue"):
+        CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
+
+
+def test_execute_code_raises_when_response_json_is_invalid(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json.side_effect = ValueError("bad json")
+    client = MagicMock()
+    client.post.return_value = response
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(CodeExecutionError, match="Failed to parse response"):
+        CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
+
+
+def test_execute_code_raises_when_sandbox_returns_error_code(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"code": 1, "message": "boom", "data": {"stdout": "", "error": None}}
+    client = MagicMock()
+    client.post.return_value = response
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(CodeExecutionError, match="Got error code: 1"):
+        CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
+
+
+def test_execute_code_raises_when_response_contains_runtime_error(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"code": 0, "message": "ok", "data": {"stdout": "", "error": "runtime failed"}}
+    client = MagicMock()
+    client.post.return_value = response
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(CodeExecutionError, match="runtime failed"):
+        CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")

@@ -4,10 +4,12 @@ from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 from core.helper.marketplace import (
+    batch_fetch_plugin_manifests,
     batch_fetch_plugin_by_ids,
     download_plugin_pkg,
     fetch_global_plugin_manifest,
     get_plugin_pkg_url,
+    record_install_plugin_event,
 )
 
 
@@ -47,6 +49,42 @@ def test_batch_fetch_plugin_by_ids_returns_plugins_from_response(mocker: MockerF
     plugins = batch_fetch_plugin_by_ids(["p1"])
 
     assert plugins == [{"id": "p1"}]
+    post_mock.assert_called_once()
+    response.raise_for_status.assert_called_once()
+
+
+def test_batch_fetch_plugin_manifests_returns_empty_for_empty_input(mocker: MockerFixture) -> None:
+    post_mock = mocker.patch("core.helper.marketplace.httpx.post")
+
+    assert batch_fetch_plugin_manifests([]) == []
+    post_mock.assert_not_called()
+
+
+def test_batch_fetch_plugin_manifests_validates_and_returns_plugins(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {"data": {"plugins": [{"id": "p1"}, {"id": "p2"}]}}
+    post_mock = mocker.patch("core.helper.marketplace.httpx.post", return_value=response)
+    validate_mock = mocker.patch(
+        "core.helper.marketplace.MarketplacePluginDeclaration.model_validate",
+        side_effect=["manifest-1", "manifest-2"],
+    )
+
+    result = batch_fetch_plugin_manifests(["p1", "p2"])
+
+    assert result == ["manifest-1", "manifest-2"]
+    post_mock.assert_called_once()
+    assert validate_mock.call_count == 2
+    response.raise_for_status.assert_called_once()
+
+
+def test_record_install_plugin_event_posts_and_checks_status(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    post_mock = mocker.patch("core.helper.marketplace.httpx.post", return_value=response)
+
+    record_install_plugin_event("plugin.a")
+
     post_mock.assert_called_once()
     response.raise_for_status.assert_called_once()
 
