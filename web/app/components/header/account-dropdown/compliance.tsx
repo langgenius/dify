@@ -1,9 +1,8 @@
-import type { FC, MouseEvent } from 'react'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { RiArrowDownCircleLine, RiArrowRightSLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import type { FC, MouseEvent, ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Fragment, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DropdownMenuGroup, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -20,6 +19,12 @@ import PremiumBadge from '../../base/premium-badge'
 import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 
+const submenuTriggerClassName = '!mx-0 !h-8 !rounded-lg !px-3 data-[highlighted]:!bg-state-base-hover'
+const menuLabelClassName = 'grow px-1 text-text-secondary system-md-regular'
+const menuLeadingIconClassName = 'size-4 shrink-0 text-text-tertiary'
+const menuTrailingIconClassName = 'size-[14px] shrink-0 text-text-tertiary'
+const complianceRowClassName = 'mx-0 flex h-10 w-full items-center gap-1 rounded-lg py-1 pl-1 pr-2 text-text-secondary system-md-regular'
+
 enum DocName {
   SOC2_Type_I = 'SOC2_Type_I',
   SOC2_Type_II = 'SOC2_Type_II',
@@ -27,9 +32,30 @@ enum DocName {
   GDPR = 'GDPR',
 }
 
+type ComplianceMenuItemContentProps = {
+  iconClassName: string
+  label: ReactNode
+  trailing?: ReactNode
+}
+
+function ComplianceMenuItemContent({
+  iconClassName,
+  label,
+  trailing,
+}: ComplianceMenuItemContentProps) {
+  return (
+    <>
+      <span aria-hidden className={cn(menuLeadingIconClassName, iconClassName)} />
+      <div className={menuLabelClassName}>{label}</div>
+      {trailing}
+    </>
+  )
+}
+
 type UpgradeOrDownloadProps = {
   doc_name: DocName
 }
+
 const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
@@ -78,8 +104,8 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   if (isCurrentPlanCanDownload) {
     return (
       <Button loading={isPending} disabled={isPending} size="small" variant="secondary" className="flex items-center gap-[1px]" onClick={handleDownloadClick}>
-        <RiArrowDownCircleLine className="size-[14px] text-components-button-secondary-text-disabled" />
-        <span className="system-xs-medium px-[3px] text-components-button-secondary-text">{t('operation.download', { ns: 'common' })}</span>
+        <span aria-hidden className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
+        <span className="px-[3px] text-components-button-secondary-text system-xs-medium">{t('operation.download', { ns: 'common' })}</span>
       </Button>
     )
   }
@@ -103,85 +129,65 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   )
 }
 
+type ComplianceDocRowProps = {
+  icon: ReactNode
+  label: ReactNode
+  docName: DocName
+}
+
+function ComplianceDocRow({
+  icon,
+  label,
+  docName,
+}: ComplianceDocRowProps) {
+  return (
+    <div className={cn(complianceRowClassName, 'justify-between')}>
+      {icon}
+      <div className="grow truncate px-1 text-text-secondary system-md-regular">{label}</div>
+      <UpgradeOrDownload doc_name={docName} />
+    </div>
+  )
+}
+
 export default function Compliance() {
-  const itemClassName = `
-  flex items-center w-full h-10 pl-1 pr-2 py-1 text-text-secondary system-md-regular
-  rounded-lg hover:bg-state-base-hover gap-1
-`
   const { t } = useTranslation()
 
   return (
-    <Menu as="div" className="relative h-full w-full">
-      {
-        ({ open }) => (
-          <>
-            <MenuButton className={
-              cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')
-            }
-            >
-              <RiVerifiedBadgeLine className="size-4 shrink-0 text-text-tertiary" />
-              <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('userProfile.compliance', { ns: 'common' })}</div>
-              <RiArrowRightSLine className="size-[14px] shrink-0 text-text-tertiary" />
-            </MenuButton>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <MenuItems
-                className={cn(
-                  `absolute top-[1px] z-10 max-h-[70vh] w-[337px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-scroll
-                rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus:outline-none
-              `,
-                )}
-              >
-                <div className="px-1 py-1">
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Soc2 className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.soc2Type1', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
-                    </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Soc2 className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.soc2Type2', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
-                    </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Iso className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.iso27001', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.ISO_27001} />
-                    </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Gdpr className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.gdpr', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.GDPR} />
-                    </div>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Transition>
-          </>
-        )
-      }
-    </Menu>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className={cn(submenuTriggerClassName, 'justify-between')}>
+        <ComplianceMenuItemContent
+          iconClassName="i-ri-verified-badge-line"
+          label={t('userProfile.compliance', { ns: 'common' })}
+          trailing={<span aria-hidden className={cn('i-ri-arrow-right-s-line', menuTrailingIconClassName)} />}
+        />
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent
+        className="!z-20"
+        popupClassName="!w-[337px] !max-h-[70vh] !overflow-y-auto !divide-y !divide-divider-subtle !rounded-xl !bg-components-panel-bg-blur !py-0 !shadow-lg !backdrop-blur-sm"
+      >
+        <DropdownMenuGroup className="p-1">
+          <ComplianceDocRow
+            icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.soc2Type1', { ns: 'common' })}
+            docName={DocName.SOC2_Type_I}
+          />
+          <ComplianceDocRow
+            icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.soc2Type2', { ns: 'common' })}
+            docName={DocName.SOC2_Type_II}
+          />
+          <ComplianceDocRow
+            icon={<Iso aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.iso27001', { ns: 'common' })}
+            docName={DocName.ISO_27001}
+          />
+          <ComplianceDocRow
+            icon={<Gdpr aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.gdpr', { ns: 'common' })}
+            docName={DocName.GDPR}
+          />
+        </DropdownMenuGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }
