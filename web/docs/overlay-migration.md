@@ -25,10 +25,10 @@ This document tracks the migration away from legacy `portal-to-follow-elem` APIs
 1. Business/UI features outside `app/components/base/**`
    - Migrate old calls to semantic primitives.
    - Keep `eslint-suppressions.json` stable or shrinking.
-2. Legacy base components in allowlist
+1. Legacy base components in allowlist
    - Migrate allowlisted base callers gradually.
    - Remove migrated files from allowlist immediately.
-3. Cleanup
+1. Cleanup
    - Remove remaining suppressions for `no-restricted-imports`.
    - Remove legacy `portal-to-follow-elem` implementation.
 
