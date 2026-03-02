@@ -3,15 +3,8 @@
 import type { Placement } from '@floating-ui/react'
 import { Menu } from '@base-ui/react/menu'
 import * as React from 'react'
+import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
-
-function parsePlacement(placement: Placement) {
-  const [side, align] = placement.split('-') as [
-    'top' | 'bottom' | 'left' | 'right',
-    'start' | 'center' | 'end' | undefined,
-  ]
-  return { side, align: align ?? 'center' as const }
-}
 
 export const DropdownMenu = Menu.Root
 export const DropdownMenuTrigger = Menu.Trigger
