@@ -10,7 +10,7 @@ from core.model_runtime.entities import (
 )
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.file import file_manager
+from dify_graph.file import file_manager
 
 
 class CotChatAgentRunner(CotAgentRunner):

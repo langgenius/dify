@@ -14,34 +14,34 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.file import File
-from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from core.workflow.nodes.human_input.entities import (
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.errors import WorkflowNodeRunFailedError
+from dify_graph.file import File
+from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from dify_graph.nodes.human_input.entities import (
     DeliveryChannelConfig,
     HumanInputNodeData,
     apply_debug_email_recipient,
     validate_human_input_submission,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.repositories.human_input_form_repository import FormCreateParams
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import load_into_variable_pool
-from core.workflow.variables import VariableBase
-from core.workflow.variables.input_entities import VariableEntityType
-from core.workflow.variables.variables import Variable
-from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.nodes.human_input.enums import HumanInputFormKind
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.repositories.human_input_form_repository import FormCreateParams
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import load_into_variable_pool
+from dify_graph.variables import VariableBase
+from dify_graph.variables.input_entities import VariableEntityType
+from dify_graph.variables.variables import Variable
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -1360,7 +1360,7 @@ class WorkflowService:
         Raises:
             ValueError: If the node data format is invalid
         """
-        from core.workflow.nodes.human_input.entities import HumanInputNodeData
+        from dify_graph.nodes.human_input.entities import HumanInputNodeData
 
         try:
             HumanInputNodeData.model_validate(node_data)

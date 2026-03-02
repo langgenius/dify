@@ -161,10 +161,6 @@ export default antfu(
     ],
     rules: {
       'no-restricted-imports': ['error', {
-        paths: [{
-          name: '@/app/components/base/portal-to-follow-elem',
-          message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
-        }],
         patterns: [{
           group: [
             '**/portal-to-follow-elem',

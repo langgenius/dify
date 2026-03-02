@@ -18,10 +18,10 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_storage import storage
 from libs.helper import extract_tenant_id
 from libs.uuid_utils import uuidv7

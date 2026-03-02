@@ -53,7 +53,7 @@ from fields.dataset_fields import (
 from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
-from models.dataset import DatasetPermissionEnum
+from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -323,6 +323,18 @@ class DatasetListApi(Resource):
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
         data = cast(list[dict[str, Any]], marshal(datasets, dataset_detail_fields))
+        dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
+        partial_members_map: dict[str, list[str]] = {}
+        if dataset_ids:
+            permissions = db.session.execute(
+                select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
+                    DatasetPermission.dataset_id.in_(dataset_ids)
+                )
+            ).all()
+
+            for dataset_id, account_id in permissions:
+                partial_members_map.setdefault(dataset_id, []).append(account_id)
+
         for item in data:
             # convert embedding_model_provider to plugin standard format
             if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
@@ -336,8 +348,7 @@ class DatasetListApi(Resource):
                 item["embedding_available"] = True
 
             if item.get("permission") == "partial_members":
-                part_users_list = DatasetPermissionService.get_dataset_partial_member_list(item["id"])
-                item.update({"partial_member_list": part_users_list})
+                item.update({"partial_member_list": partial_members_map.get(item["id"], [])})
             else:
                 item.update({"partial_member_list": []})
 

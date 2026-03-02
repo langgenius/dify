@@ -1,5 +1,5 @@
 from core.model_runtime.entities import ImagePromptMessageContent
-from core.workflow.nodes.question_classifier import QuestionClassifierNodeData
+from dify_graph.nodes.question_classifier import QuestionClassifierNodeData
 
 
 def test_init_question_classifier_node_data():

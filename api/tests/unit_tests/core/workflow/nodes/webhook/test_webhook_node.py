@@ -3,21 +3,21 @@ from unittest.mock import patch
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.nodes.trigger_webhook.entities import (
+from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,
     WebhookData,
     WebhookParameter,
 )
-from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
-from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
-from core.workflow.runtime.variable_pool import VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import FileVariable, StringVariable
+from dify_graph.nodes.trigger_webhook.node import TriggerWebhookNode
+from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
+from dify_graph.runtime.variable_pool import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import FileVariable, StringVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 

@@ -2,12 +2,12 @@ from collections.abc import Mapping
 
 import pytest
 
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType
-from core.workflow.nodes.base.entities import BaseNodeData
-from core.workflow.nodes.base.node import Node
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import NodeType
+from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.nodes.base.node import Node
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 class _SampleNodeData(BaseNodeData):

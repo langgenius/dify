@@ -31,7 +31,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel

@@ -7,13 +7,13 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.file.file_manager import file_manager
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout, Response
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.file.file_manager import file_manager
+from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from dify_graph.nodes.http_request.entities import HttpRequestNodeTimeout, Response
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.enums import UserFrom
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
@@ -162,7 +162,7 @@ def test_run_passes_node_data_ssl_verify_to_executor(monkeypatch: pytest.MonkeyP
                 )
             )
 
-    monkeypatch.setattr("core.workflow.nodes.http_request.node.Executor", FakeExecutor)
+    monkeypatch.setattr("dify_graph.nodes.http_request.node.Executor", FakeExecutor)
 
     result = node._run()
 

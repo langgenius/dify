@@ -9,7 +9,7 @@ from pathlib import Path
 api_dir = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(api_dir))
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
@@ -102,8 +102,8 @@ def test_node_mock_config():
 def test_mock_factory_detection():
     """Test MockNodeFactory node type detection."""
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from models.enums import UserFrom
 
     print("Testing MockNodeFactory detection...")
@@ -155,8 +155,8 @@ def test_mock_factory_detection():
 def test_mock_factory_registration():
     """Test registering and unregistering mock node types."""
     from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from models.enums import UserFrom
 
     print("Testing MockNodeFactory registration...")

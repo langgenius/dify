@@ -8,24 +8,24 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.graph_config import NodeConfigData, NodeConfigDict
-from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.file.models import File
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
-from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
+from dify_graph.errors import WorkflowNodeRunFailedError
+from dify_graph.file.models import File
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
+from dify_graph.graph_engine.protocols.command_channel import CommandChannel
+from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from models.enums import UserFrom

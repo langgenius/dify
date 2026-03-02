@@ -60,9 +60,9 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.nodes.knowledge_retrieval import exc
-from core.workflow.repositories.rag_retrieval_protocol import (
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.nodes.knowledge_retrieval import exc
+from dify_graph.repositories.rag_retrieval_protocol import (
     KnowledgeRetrievalRequest,
     Source,
     SourceChildChunk,

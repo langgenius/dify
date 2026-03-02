@@ -39,7 +39,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from core.workflow.file import file_manager
+from dify_graph.file import file_manager
 from extensions.ext_database import db
 from factories import file_factory
 from models.enums import CreatorUserRole
