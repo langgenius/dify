@@ -77,11 +77,11 @@ const Toast = ({
         </div>
         <div className={cn('flex grow flex-col items-start gap-1 py-1', size === 'md' ? 'px-1' : 'px-0.5')}>
           <div className="flex items-center gap-1">
-            <div className="system-sm-semibold text-text-primary [word-break:break-word]">{message}</div>
+            <div className="text-text-primary system-sm-semibold [word-break:break-word]">{message}</div>
             {customComponent}
           </div>
           {!!children && (
-            <div className="system-xs-regular text-text-secondary">
+            <div className="text-text-secondary system-xs-regular">
               {children}
             </div>
           )}
@@ -149,25 +149,26 @@ Toast.notify = ({
   if (typeof window === 'object') {
     const holder = document.createElement('div')
     const root = createRoot(holder)
+    let timerId: ReturnType<typeof setTimeout> | undefined
 
-    toastHandler.clear = () => {
-      if (holder) {
+    const unmountAndRemove = () => {
+      if (timerId) {
+        clearTimeout(timerId)
+        timerId = undefined
+      }
+      if (typeof window !== 'undefined' && holder) {
         root.unmount()
         holder.remove()
       }
       onClose?.()
     }
 
+    toastHandler.clear = unmountAndRemove
+
     root.render(
       <ToastContext.Provider value={{
         notify: noop,
-        close: () => {
-          if (holder) {
-            root.unmount()
-            holder.remove()
-          }
-          onClose?.()
-        },
+        close: unmountAndRemove,
       }}
       >
         <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
@@ -176,7 +177,7 @@ Toast.notify = ({
     document.body.appendChild(holder)
     const d = duration ?? defaultDuring
     if (d > 0)
-      setTimeout(toastHandler.clear, d)
+      timerId = setTimeout(unmountAndRemove, d)
   }
 
   return toastHandler

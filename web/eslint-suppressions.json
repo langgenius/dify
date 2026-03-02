@@ -1856,11 +1856,6 @@
       "count": 4
     }
   },
-  "app/components/base/file-uploader/utils.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/base/file-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2030,11 +2025,6 @@
   },
   "app/components/base/input-with-copy/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/input/index.spec.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -2590,9 +2580,6 @@
   "app/components/base/toast/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/tooltip/index.tsx": {
@@ -2616,11 +2603,6 @@
   "app/components/base/voice-input/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/base/with-input-validation/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/base/with-input-validation/index.stories.tsx": {
