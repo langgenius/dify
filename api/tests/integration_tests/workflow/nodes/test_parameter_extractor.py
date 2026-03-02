@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import AssistantPromptMessage
+from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
@@ -22,19 +22,17 @@ from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_mod
 
 def get_mocked_fetch_memory(memory_text: str):
     class MemoryMock:
-        def get_history_prompt_text(
+        def get_history_prompt_messages(
             self,
-            human_prefix: str = "Human",
-            ai_prefix: str = "Assistant",
             max_token_limit: int = 2000,
             message_limit: int | None = None,
         ):
-            return memory_text
+            return [UserPromptMessage(content=memory_text), AssistantPromptMessage(content="mocked answer")]
 
     return MagicMock(return_value=MemoryMock())
 
 
-def init_parameter_extractor_node(config: dict):
+def init_parameter_extractor_node(config: dict, memory=None):
     graph_config = {
         "edges": [
             {
@@ -79,6 +77,7 @@ def init_parameter_extractor_node(config: dict):
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
+        memory=memory,
     )
     return node
 
@@ -350,7 +349,7 @@ def test_extract_json_from_tool_call():
     assert result["location"] == "kawaii"
 
 
-def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
+def test_chat_parameter_extractor_with_memory(setup_model_mock):
     """
     Test chat parameter extractor with memory.
     """
@@ -373,6 +372,7 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
                 "memory": {"window": {"enabled": True, "size": 50}},
             },
         },
+        memory=get_mocked_fetch_memory("customized memory")(),
     )
 
     node._model_instance = get_mocked_fetch_model_instance(
@@ -381,8 +381,6 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
     )()
-    # Test the mock before running the actual test
-    monkeypatch.setattr("core.workflow.nodes.llm.llm_utils.fetch_memory", get_mocked_fetch_memory("customized memory"))
     db.session.close = MagicMock()
 
     result = node._run()

@@ -29,7 +29,7 @@ from typing import Any, cast
 
 import sqlalchemy as sa
 from pydantic import ValidationError
-from sqlalchemy import and_, delete, func, null, or_, select
+from sqlalchemy import and_, delete, func, null, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
@@ -423,9 +423,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             if last_seen:
                 stmt = stmt.where(
-                    or_(
-                        WorkflowRun.created_at > last_seen[0],
-                        and_(WorkflowRun.created_at == last_seen[0], WorkflowRun.id > last_seen[1]),
+                    tuple_(WorkflowRun.created_at, WorkflowRun.id)
+                    > tuple_(
+                        sa.literal(last_seen[0], type_=sa.DateTime()),
+                        sa.literal(last_seen[1], type_=WorkflowRun.id.type),
                     )
                 )
 

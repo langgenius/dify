@@ -12,19 +12,11 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from psycopg2.extensions import register_adapter
-from psycopg2.extras import Json
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from tasks.document_indexing_sync_task import document_indexing_sync_task
-
-
-@pytest.fixture(autouse=True)
-def _register_dict_adapter_for_psycopg2():
-    """Align test DB adapter behavior with dict payloads used in task update flow."""
-    register_adapter(dict, Json)
 
 
 class DocumentIndexingSyncTaskTestDataFactory:
