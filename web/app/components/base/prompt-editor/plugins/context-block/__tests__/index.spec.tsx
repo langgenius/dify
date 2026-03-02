@@ -12,7 +12,7 @@ import { ContextBlockNode } from '../node'
 const mockCreateContextBlockNode = vi.fn()
 
 vi.mock('../node', async () => {
-  const actual = await vi.importActual<typeof import('../node')>('./node')
+  const actual = await vi.importActual<typeof import('../node')>('../node')
 
   return {
     ...actual,

@@ -41,7 +41,7 @@ vi.mock('@/context/web-app-context', () => ({
 }))
 
 vi.mock('../../utils', async () => {
-  const actual = await vi.importActual<typeof import('../../utils')>('../utils')
+  const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {
     ...actual,
     getProcessedInputsFromUrlParams: vi.fn().mockResolvedValue({}),
