@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
-import * as config from '@/config'
+import { ZENDESK_WIDGET_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
@@ -48,8 +48,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
   const { plan } = useProviderContext()
   const { userProfile, langGeniusVersionInfo } = useAppContext()
   const hasDedicatedChannel = plan.type !== Plan.sandbox
-  const zendeskWidgetKey = 'ZENDESK_WIDGET_KEY' in config ? config.ZENDESK_WIDGET_KEY : ''
-  const hasZendeskWidget = !!zendeskWidgetKey?.trim()
+  const hasZendeskWidget = !!ZENDESK_WIDGET_KEY?.trim()
 
   return (
     <DropdownMenuSub>
