@@ -157,7 +157,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             id=self._message_id,
                             mode=self._conversation_mode,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -170,7 +170,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             mode=self._conversation_mode,
                             conversation_id=self._conversation_id,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -283,7 +283,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
                 # handle output moderation
                 output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                    cast(str, self._task_state.llm_result.message.content)
+                    self._task_state.llm_result.message.get_text_content()
                 )
                 if output_moderation_answer:
                     self._task_state.llm_result.message.content = output_moderation_answer
@@ -397,7 +397,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_unit_price = usage.prompt_unit_price
         message.message_price_unit = usage.prompt_price_unit
         message.answer = (
-            PromptTemplateParser.remove_template_variables(cast(str, llm_result.message.content).strip())
+            PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )
