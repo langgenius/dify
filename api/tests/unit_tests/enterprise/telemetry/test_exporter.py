@@ -142,6 +142,7 @@ def test_https_endpoint_uses_secure_grpc(mock_metric_exporter: MagicMock, mock_s
     assert mock_metric_exporter.call_args is not None
     assert mock_metric_exporter.call_args.kwargs["insecure"] is False
 
+
 @patch("enterprise.telemetry.exporter.GRPCSpanExporter")
 @patch("enterprise.telemetry.exporter.GRPCMetricExporter")
 def test_http_endpoint_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
@@ -164,6 +165,7 @@ def test_http_endpoint_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_
 
     assert mock_metric_exporter.call_args is not None
     assert mock_metric_exporter.call_args.kwargs["insecure"] is True
+
 
 @patch("enterprise.telemetry.exporter.HTTPSpanExporter")
 @patch("enterprise.telemetry.exporter.HTTPMetricExporter")
