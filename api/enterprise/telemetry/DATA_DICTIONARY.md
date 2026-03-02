@@ -29,6 +29,8 @@ Attached to every signal (Span, Metric, Log).
 | `dify.conversation.id` | string | Conversation ID (optional) |
 | `dify.message.id` | string | Message ID (optional) |
 | `dify.invoked_by` | string | User ID who triggered the run |
+| `gen_ai.usage.total_tokens` | int | Total tokens across all nodes (optional) |
+| `gen_ai.user.id` | string | End-user identifier (optional) |
 | `dify.parent.trace_id` | string | Parent workflow trace ID (optional) |
 | `dify.parent.workflow.run_id` | string | Parent workflow run ID (optional) |
 | `dify.parent.node.execution_id` | string | Parent node execution ID (optional) |
@@ -58,6 +60,12 @@ Attached to every signal (Span, Metric, Log).
 | `dify.node.loop_id` | string | Loop ID (optional) |
 | `dify.node.parallel_id` | string | Parallel branch ID (optional) |
 | `dify.node.invoked_by` | string | User ID who triggered execution |
+| `gen_ai.usage.input_tokens` | int | Prompt tokens (LLM nodes only) |
+| `gen_ai.usage.output_tokens` | int | Completion tokens (LLM nodes only) |
+| `gen_ai.usage.total_tokens` | int | Total tokens (LLM nodes only) |
+| `gen_ai.request.model` | string | LLM model name (LLM nodes only) |
+| `gen_ai.provider.name` | string | LLM provider name (LLM nodes only) |
+| `gen_ai.user.id` | string | End-user identifier (optional) |
 
 ### `dify.node.execution.draft`
 
@@ -212,9 +220,9 @@ Logs that accompany spans. Signal type: `span_detail`
 
 | Additional Attribute | Type | Always Present | Description |
 |---------------------|------|----------------|-------------|
-| `dify.user.id` | string | No | User identifier |
-| `gen_ai.usage.total_tokens` | int | No | Total tokens (sum of all nodes) |
-| `dify.workflow.version` | string | Yes | Workflow version |
+| `dify.app.name` | string | No | Application display name |
+| `dify.workspace.name` | string | No | Workspace display name |
+| `dify.workflow.version` | string | Yes | Workflow definition version |
 | `dify.workflow.inputs` | string/JSON | Yes | Input parameters (content-gated) |
 | `dify.workflow.outputs` | string/JSON | Yes | Output results (content-gated) |
 | `dify.workflow.query` | string | No | User query text (content-gated) |
@@ -230,18 +238,19 @@ Logs that accompany spans. Signal type: `span_detail`
 
 | Additional Attribute | Type | Always Present | Description |
 |---------------------|------|----------------|-------------|
-| `dify.user.id` | string | No | User identifier |
-| `gen_ai.provider.name` | string | No | LLM provider (LLM nodes only) |
-| `gen_ai.request.model` | string | No | LLM model (LLM nodes only) |
-| `gen_ai.usage.input_tokens` | int | No | Input tokens (LLM nodes only) |
-| `gen_ai.usage.output_tokens` | int | No | Output tokens (LLM nodes only) |
-| `gen_ai.usage.total_tokens` | int | No | Total tokens (LLM nodes only) |
+| `dify.app.name` | string | No | Application display name |
+| `dify.workspace.name` | string | No | Workspace display name |
+| `dify.invoke_from` | string | No | Invocation source |
+| `gen_ai.tool.name` | string | No | Tool name (tool nodes only) |
 | `dify.node.total_price` | float | No | Cost (LLM nodes only) |
 | `dify.node.currency` | string | No | Currency code (LLM nodes only) |
-| `dify.node.plugin_name` | string | No | Plugin name (tool/knowledge nodes) |
-| `dify.node.plugin_id` | string | No | Plugin ID (tool/knowledge nodes) |
-| `dify.dataset.id` | string | No | Dataset ID (knowledge nodes) |
-| `dify.dataset.name` | string | No | Dataset name (knowledge nodes) |
+| `dify.node.iteration_index` | int | No | Iteration index (iteration nodes) |
+| `dify.node.loop_index` | int | No | Loop index (loop nodes) |
+| `dify.plugin.name` | string | No | Plugin name (tool/knowledge nodes) |
+| `dify.credential.name` | string | No | Credential name (plugin nodes) |
+| `dify.credential.id` | string | No | Credential ID (plugin nodes) |
+| `dify.dataset.ids` | JSON array | No | Dataset IDs (knowledge nodes) |
+| `dify.dataset.names` | JSON array | No | Dataset names (knowledge nodes) |
 | `dify.node.inputs` | string/JSON | Yes | Node inputs (content-gated) |
 | `dify.node.outputs` | string/JSON | Yes | Node outputs (content-gated) |
 | `dify.node.process_data` | string/JSON | No | Processing data (content-gated) |
