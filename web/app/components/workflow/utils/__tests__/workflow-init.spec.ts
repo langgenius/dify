@@ -630,7 +630,13 @@ describe('initialEdges', () => {
     const hasCycleEdge = result.some(
       e => (e.source === 'b' && e.target === 'c') || (e.source === 'c' && e.target === 'b'),
     )
+    const hasABEdge = result.some(
+      e => e.source === 'a' && e.target === 'b',
+    )
     expect(hasCycleEdge).toBe(false)
+    // In this specific graph, getCycleEdges treats all nodes remaining in the DFS stack (a, b, c)
+    // as part of the cycle, so a→b is also filtered. This assertion documents that behaviour.
+    expect(hasABEdge).toBe(false)
   })
 
   it('should keep non-cycle edges intact', () => {

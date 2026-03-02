@@ -4,9 +4,11 @@ import { CUSTOM_NODE } from '../constants'
 import { BlockEnum, NodeRunningStatus } from '../types'
 
 let nodeIdCounter = 0
+let edgeIdCounter = 0
 
 export function resetFixtureCounters() {
   nodeIdCounter = 0
+  edgeIdCounter = 0
 }
 
 export function createNode(
@@ -66,7 +68,7 @@ export function createLoopNode(overrides: Omit<Partial<Node>, 'data'> & { data?:
 export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Partial<CommonEdgeType> & Record<string, unknown> } = {}): Edge {
   const { data: dataOverrides, ...rest } = overrides
   return {
-    id: `edge-${overrides.source ?? 'src'}-${overrides.target ?? 'tgt'}`,
+    id: overrides.id ?? `edge-${overrides.source ?? 'src'}-${overrides.target ?? 'tgt'}-${++edgeIdCounter}`,
     source: 'source-node',
     target: 'target-node',
     data: {
@@ -79,7 +81,6 @@ export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Par
 }
 
 export function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Edge[] } {
-  resetFixtureCounters()
   const nodes: Node[] = []
   const edges: Edge[] = []
 
