@@ -1,7 +1,8 @@
 import re
 
-from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity, VariableEntityType
+from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
+from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
 
 _ALLOWED_VARIABLE_ENTITY_TYPE = frozenset(
     [
