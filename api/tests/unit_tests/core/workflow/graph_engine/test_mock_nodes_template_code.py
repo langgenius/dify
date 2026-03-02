@@ -8,9 +8,9 @@ to ensure they work correctly with the TableTestRunner.
 from configs import dify_config
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.nodes.code.limits import CodeNodeLimits
-from tests.unit_tests.dify_graph.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
-from tests.unit_tests.dify_graph.graph_engine.test_mock_factory import MockNodeFactory
-from tests.unit_tests.dify_graph.graph_engine.test_mock_nodes import MockCodeNode, MockTemplateTransformNode
+from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
+from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
+from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockCodeNode, MockTemplateTransformNode
 
 DEFAULT_CODE_LIMITS = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,

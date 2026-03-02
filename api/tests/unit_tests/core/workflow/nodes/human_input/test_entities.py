@@ -36,7 +36,7 @@ from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.repositories.human_input_form_repository import HumanInputFormRepository
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from tests.unit_tests.dify_graph.graph_engine.human_input_test_utils import InMemoryHumanInputFormRepository
+from tests.unit_tests.core.workflow.graph_engine.human_input_test_utils import InMemoryHumanInputFormRepository
 
 
 class TestDeliveryMethod:

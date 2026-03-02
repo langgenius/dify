@@ -10,8 +10,8 @@ api_dir = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(api_dir))
 
 from dify_graph.enums import NodeType
-from tests.unit_tests.dify_graph.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
-from tests.unit_tests.dify_graph.graph_engine.test_mock_factory import MockNodeFactory
+from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
+from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
 
 def test_mock_config_builder():
