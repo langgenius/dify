@@ -1,11 +1,11 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import OutputVariableEntity
+from core.workflow.variables.input_entities import VariableEntity
 
 
 class WorkflowToolConfigurationUtils:

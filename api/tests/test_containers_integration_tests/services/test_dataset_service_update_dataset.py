@@ -331,7 +331,7 @@ class TestDatasetServiceUpdateDataset:
         )
 
         embedding_model = Mock()
-        embedding_model.model = "text-embedding-ada-002"
+        embedding_model.model_name = "text-embedding-ada-002"
         embedding_model.provider = "openai"
 
         binding = Mock()
@@ -424,7 +424,7 @@ class TestDatasetServiceUpdateDataset:
         )
 
         embedding_model = Mock()
-        embedding_model.model = "text-embedding-3-small"
+        embedding_model.model_name = "text-embedding-3-small"
         embedding_model.provider = "openai"
 
         binding = Mock()

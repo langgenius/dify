@@ -214,7 +214,7 @@ def factory():
 class TestAudioServiceASR:
     """Test speech-to-text (ASR) operations."""
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_asr_success_chat_mode(self, mock_model_manager_class, factory):
         """Test successful ASR transcription in CHAT mode."""
         # Arrange
@@ -226,9 +226,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_speech2text.return_value = "Transcribed text"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -242,7 +240,7 @@ class TestAudioServiceASR:
         call_args = mock_model_instance.invoke_speech2text.call_args
         assert call_args.kwargs["user"] == "user-123"
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_asr_success_advanced_chat_mode(self, mock_model_manager_class, factory):
         """Test successful ASR transcription in ADVANCED_CHAT mode."""
         # Arrange
@@ -254,9 +252,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_speech2text.return_value = "Workflow transcribed text"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -351,7 +347,7 @@ class TestAudioServiceASR:
         with pytest.raises(AudioTooLargeServiceError, match="Audio size larger than 30 mb"):
             AudioService.transcript_asr(app_model=app, file=file)
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_asr_raises_error_when_no_model_instance(self, mock_model_manager_class, factory):
         """Test that ASR raises error when no model instance is available."""
         # Arrange
@@ -363,8 +359,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Mock ModelManager to return None
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_manager.get_default_model_instance.return_value = None
 
         # Act & Assert
@@ -375,7 +370,7 @@ class TestAudioServiceASR:
 class TestAudioServiceTTS:
     """Test text-to-speech (TTS) operations."""
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_with_text_success(self, mock_model_manager_class, factory):
         """Test successful TTS with text input."""
         # Arrange
@@ -388,9 +383,7 @@ class TestAudioServiceTTS:
         )
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"audio data"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -412,8 +405,8 @@ class TestAudioServiceTTS:
             voice="en-US-Neural",
         )
 
-    @patch("services.audio_service.db.session")
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.db.session", autospec=True)
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_with_message_id_success(self, mock_model_manager_class, mock_db_session, factory):
         """Test successful TTS with message ID."""
         # Arrange
@@ -437,9 +430,7 @@ class TestAudioServiceTTS:
         mock_query.first.return_value = message
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"audio from message"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -454,7 +445,7 @@ class TestAudioServiceTTS:
         assert result == b"audio from message"
         mock_model_instance.invoke_tts.assert_called_once()
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_with_default_voice(self, mock_model_manager_class, factory):
         """Test TTS uses default voice when none specified."""
         # Arrange
@@ -467,9 +458,7 @@ class TestAudioServiceTTS:
         )
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"audio data"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -486,7 +475,7 @@ class TestAudioServiceTTS:
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "default-voice"
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_gets_first_available_voice_when_none_configured(self, mock_model_manager_class, factory):
         """Test TTS gets first available voice when none is configured."""
         # Arrange
@@ -499,9 +488,7 @@ class TestAudioServiceTTS:
         )
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.get_tts_voices.return_value = [{"value": "auto-voice"}]
         mock_model_instance.invoke_tts.return_value = b"audio data"
@@ -518,8 +505,8 @@ class TestAudioServiceTTS:
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "auto-voice"
 
-    @patch("services.audio_service.WorkflowService")
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.WorkflowService", autospec=True)
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_workflow_mode_with_draft(
         self, mock_model_manager_class, mock_workflow_service_class, factory
     ):
@@ -533,14 +520,11 @@ class TestAudioServiceTTS:
         )
 
         # Mock WorkflowService
-        mock_workflow_service = MagicMock()
-        mock_workflow_service_class.return_value = mock_workflow_service
+        mock_workflow_service = mock_workflow_service_class.return_value
         mock_workflow_service.get_draft_workflow.return_value = draft_workflow
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"draft audio"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -565,7 +549,7 @@ class TestAudioServiceTTS:
         with pytest.raises(ValueError, match="Text is required"):
             AudioService.transcript_tts(app_model=app, text=None)
 
-    @patch("services.audio_service.db.session")
+    @patch("services.audio_service.db.session", autospec=True)
     def test_transcript_tts_returns_none_for_invalid_message_id(self, mock_db_session, factory):
         """Test that TTS returns None for invalid message ID format."""
         # Arrange
@@ -580,7 +564,7 @@ class TestAudioServiceTTS:
         # Assert
         assert result is None
 
-    @patch("services.audio_service.db.session")
+    @patch("services.audio_service.db.session", autospec=True)
     def test_transcript_tts_returns_none_for_nonexistent_message(self, mock_db_session, factory):
         """Test that TTS returns None when message doesn't exist."""
         # Arrange
@@ -601,7 +585,7 @@ class TestAudioServiceTTS:
         # Assert
         assert result is None
 
-    @patch("services.audio_service.db.session")
+    @patch("services.audio_service.db.session", autospec=True)
     def test_transcript_tts_returns_none_for_empty_message_answer(self, mock_db_session, factory):
         """Test that TTS returns None when message answer is empty."""
         # Arrange
@@ -627,7 +611,7 @@ class TestAudioServiceTTS:
         # Assert
         assert result is None
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_raises_error_when_no_voices_available(self, mock_model_manager_class, factory):
         """Test that TTS raises error when no voices are available."""
         # Arrange
@@ -640,9 +624,7 @@ class TestAudioServiceTTS:
         )
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.get_tts_voices.return_value = []  # No voices available
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -655,7 +637,7 @@ class TestAudioServiceTTS:
 class TestAudioServiceTTSVoices:
     """Test TTS voice listing operations."""
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_voices_success(self, mock_model_manager_class, factory):
         """Test successful retrieval of TTS voices."""
         # Arrange
@@ -668,9 +650,7 @@ class TestAudioServiceTTSVoices:
         ]
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.get_tts_voices.return_value = expected_voices
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
@@ -682,7 +662,7 @@ class TestAudioServiceTTSVoices:
         assert result == expected_voices
         mock_model_instance.get_tts_voices.assert_called_once_with(language)
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_voices_raises_error_when_no_model_instance(self, mock_model_manager_class, factory):
         """Test that TTS voices raises error when no model instance is available."""
         # Arrange
@@ -690,15 +670,14 @@ class TestAudioServiceTTSVoices:
         language = "en-US"
 
         # Mock ModelManager to return None
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_manager.get_default_model_instance.return_value = None
 
         # Act & Assert
         with pytest.raises(ProviderNotSupportTextToSpeechServiceError):
             AudioService.transcript_tts_voices(tenant_id=tenant_id, language=language)
 
-    @patch("services.audio_service.ModelManager")
+    @patch("services.audio_service.ModelManager", autospec=True)
     def test_transcript_tts_voices_propagates_exceptions(self, mock_model_manager_class, factory):
         """Test that TTS voices propagates exceptions from model instance."""
         # Arrange
@@ -706,9 +685,7 @@ class TestAudioServiceTTSVoices:
         language = "en-US"
 
         # Mock ModelManager
-        mock_model_manager = MagicMock()
-        mock_model_manager_class.return_value = mock_model_manager
-
+        mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
         mock_model_instance.get_tts_voices.side_effect = RuntimeError("Model error")
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
