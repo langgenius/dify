@@ -43,7 +43,7 @@ export function DropdownMenuContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-dropdown outline-none', className)}
+        className={cn('outline-none', className)}
       >
         <Menu.Popup
           className={cn(
@@ -107,7 +107,7 @@ export function DropdownMenuSubContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-dropdown outline-none', className)}
+        className={cn('outline-none', className)}
       >
         <Menu.Popup
           className={cn(

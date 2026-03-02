@@ -1,5 +1,10 @@
 'use client'
 
+// z-index strategy (relies on root `isolation: isolate` in layout.tsx):
+//   Tooltip / Popover / Dropdown — no z-index, DOM order is sufficient
+//   Dialog backdrop + popup — z-50, ensures modal covers non-modal portals
+//   Toast — z-[99], always on top (defined in toast component)
+
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
@@ -25,14 +30,14 @@ export function DialogContent({
     <BaseDialog.Portal>
       <BaseDialog.Backdrop
         className={cn(
-          'fixed inset-0 z-modal bg-background-overlay',
+          'fixed inset-0 z-50 bg-background-overlay',
           'transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
           overlayClassName,
         )}
       />
       <BaseDialog.Popup
         className={cn(
-          'fixed left-1/2 top-1/2 z-modal max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
+          'fixed left-1/2 top-1/2 z-50 max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
           'transition-all duration-150 data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
           className,
         )}

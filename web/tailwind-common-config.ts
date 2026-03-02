@@ -161,13 +161,6 @@ const config = {
         'progress-bar-indeterminate-stripe': 'var(--color-progress-bar-indeterminate-stripe)',
         'chat-answer-human-input-form-divider-bg': 'var(--color-chat-answer-human-input-form-divider-bg)',
       },
-      zIndex: {
-        dropdown: '1000',
-        popover: '1100',
-        modal: '1200',
-        toast: '1300',
-        tooltip: '1400',
-      },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
       },

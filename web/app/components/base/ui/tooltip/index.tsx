@@ -40,7 +40,7 @@ const Tooltip = React.memo(({
           side={side}
           align={align}
           sideOffset={offset}
-          className="z-tooltip outline-none"
+          className="outline-none"
         >
           <BaseTooltip.Popup
             className={cn(
