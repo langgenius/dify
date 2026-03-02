@@ -1,27 +1,24 @@
 import logging
 import time
 from collections.abc import Callable
-from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
+from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
@@ -220,6 +217,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
     def decorator(view: Callable[Concatenate[T, P], R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
+            api_token = validate_and_get_api_token("dataset")
+
             # get url path dataset_id from positional args or kwargs
             # Flask passes URL path parameters as positional arguments
             dataset_id = None
@@ -256,12 +255,18 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
             # Validate dataset if dataset_id is provided
             if dataset_id:
                 dataset_id = str(dataset_id)
-                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+                dataset = (
+                    db.session.query(Dataset)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == api_token.tenant_id,
+                    )
+                    .first()
+                )
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
-            api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
@@ -296,7 +301,14 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
 
 def validate_and_get_api_token(scope: str | None = None):
     """
-    Validate and get API token.
+    Validate and get API token with Redis caching.
+
+    This function uses a two-tier approach:
+    1. First checks Redis cache for the token
+    2. If not cached, queries database and caches the result
+
+    The last_used_at field is updated asynchronously via Celery task
+    to avoid blocking the request.
     """
     auth_header = request.headers.get("Authorization")
     if auth_header is None or " " not in auth_header:
@@ -308,29 +320,18 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    current_time = naive_utc_now()
-    cutoff_time = current_time - timedelta(minutes=1)
-    with Session(db.engine, expire_on_commit=False) as session:
-        update_stmt = (
-            update(ApiToken)
-            .where(
-                ApiToken.token == auth_token,
-                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
-                ApiToken.type == scope,
-            )
-            .values(last_used_at=current_time)
-        )
-        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-        result = session.execute(update_stmt)
-        api_token = session.scalar(stmt)
+    # Try to get token from cache first
+    # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
+    cached_token = ApiTokenCache.get(auth_token, scope)
+    if cached_token is not None:
+        logger.debug("Token validation served from cache for scope: %s", scope)
+        # Record usage in Redis for later batch update (no Celery task per request)
+        record_token_usage(auth_token, scope)
+        return cast(ApiToken, cached_token)
 
-        if hasattr(result, "rowcount") and result.rowcount > 0:
-            session.commit()
-
-        if not api_token:
-            raise Unauthorized("Access token is invalid")
-
-    return api_token
+    # Cache miss - use Redis lock for single-flight mode
+    # This ensures only one request queries DB for the same token concurrently
+    return fetch_token_with_single_flight(auth_token, scope)
 
 
 class DatasetApiResource(Resource):

@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Напишите здесь свое ключевое слово подсказки, введите '{', чтобы вставить переменную, введите '/', чтобы вставить блок содержимого подсказки",
   "promptEditor.query.item.desc": "Вставить шаблон запроса пользователя",
   "promptEditor.query.item.title": "Запрос",
+  "promptEditor.requestURL.item.desc": "Вставить URL запроса",
+  "promptEditor.requestURL.item.title": "URL запроса",
   "promptEditor.variable.item.desc": "Вставить переменные и внешние инструменты",
   "promptEditor.variable.item.title": "Переменные и внешние инструменты",
   "promptEditor.variable.modal.add": "Новая переменная",

@@ -63,6 +63,12 @@ class WorkflowPauseEntity(ABC):
         """
         pass
 
+    @property
+    @abstractmethod
+    def paused_at(self) -> datetime:
+        """`paused_at` returns the creation time of the pause."""
+        pass
+
     @abstractmethod
     def get_pause_reasons(self) -> Sequence[PauseReason]:
         """
@@ -70,7 +76,5 @@ class WorkflowPauseEntity(ABC):
 
         Returns a sequence of `PauseReason` objects describing the specific nodes and
         reasons for which the workflow execution was paused.
-        This information is related to, but distinct from, the `PauseReason` type
-        defined in `api/core/workflow/entities/pause_reason.py`.
         """
         ...
