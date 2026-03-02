@@ -91,7 +91,7 @@ class App(TypeBase):
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
     app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"), default='normal')
+    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"), default="normal")
     api_rpm: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), default=0)
     api_rph: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), default=0)
     is_demo: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
