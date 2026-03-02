@@ -102,7 +102,7 @@ class EnterpriseOtelTrace:
         metadata = self._metadata(trace_info)
         tenant_id, app_id, user_id = self._context_ids(trace_info, metadata)
         return {
-            "dify.trace_id": trace_info.trace_id,
+            "dify.trace_id": trace_info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.app_id": app_id,
             "dify.app.name": metadata.get("app_name"),
@@ -163,7 +163,7 @@ class EnterpriseOtelTrace:
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Slim span attrs: identity + structure + status + timing only --
         span_attrs: dict[str, Any] = {
-            "dify.trace_id": info.trace_id,
+            "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.app_id": app_id,
             "dify.workflow.id": info.workflow_id,
@@ -177,8 +177,7 @@ class EnterpriseOtelTrace:
             "dify.invoked_by": info.invoked_by,
         }
 
-        trace_correlation_override: str | None = None
-        parent_span_id_source: str | None = None
+        trace_correlation_override, parent_span_id_source = info.resolved_parent_context
 
         parent_ctx = metadata.get("parent_trace_context")
         if isinstance(parent_ctx, dict):
@@ -187,13 +186,6 @@ class EnterpriseOtelTrace:
             span_attrs["dify.parent.node.execution_id"] = parent_ctx_dict.get("parent_node_execution_id")
             span_attrs["dify.parent.workflow.run_id"] = parent_ctx_dict.get("parent_workflow_run_id")
             span_attrs["dify.parent.app.id"] = parent_ctx_dict.get("parent_app_id")
-
-            trace_override_value = parent_ctx_dict.get("parent_workflow_run_id")
-            if isinstance(trace_override_value, str):
-                trace_correlation_override = trace_override_value
-            parent_span_value = parent_ctx_dict.get("parent_node_execution_id")
-            if isinstance(parent_span_value, str):
-                parent_span_id_source = parent_span_value
 
         self._exporter.export_span(
             EnterpriseTelemetrySpan.WORKFLOW_RUN,
@@ -307,7 +299,7 @@ class EnterpriseOtelTrace:
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         # -- Slim span attrs: identity + structure + status + timing --
         span_attrs: dict[str, Any] = {
-            "dify.trace_id": info.trace_id,
+            "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.app_id": app_id,
             "dify.workflow.id": info.workflow_id,
@@ -329,13 +321,8 @@ class EnterpriseOtelTrace:
             "dify.node.invoked_by": info.invoked_by,
         }
 
-        trace_correlation_override = trace_correlation_override_param
-        parent_ctx = metadata.get("parent_trace_context")
-        if isinstance(parent_ctx, dict):
-            parent_ctx_dict = cast(dict[str, Any], parent_ctx)
-            override_value = parent_ctx_dict.get("parent_workflow_run_id")
-            if isinstance(override_value, str):
-                trace_correlation_override = override_value
+        resolved_override, _ = info.resolved_parent_context
+        trace_correlation_override = trace_correlation_override_param or resolved_override
 
         effective_correlation_id = correlation_id_override or info.workflow_run_id
         self._exporter.export_span(
@@ -419,9 +406,11 @@ class EnterpriseOtelTrace:
                 **labels,
                 type=request_type,
                 status=info.status,
+                model_name=info.model_name or "",
             ),
         )
         duration_labels = dict(labels)
+        duration_labels["model_name"] = info.model_name or ""
         plugin_name = metadata.get("plugin_name")
         if plugin_name and info.node_type in {"tool", "knowledge-retrieval"}:
             duration_labels["plugin_name"] = plugin_name
@@ -434,6 +423,7 @@ class EnterpriseOtelTrace:
                 self._labels(
                     **labels,
                     type=request_type,
+                    model_name=info.model_name or "",
                 ),
             )
 
@@ -488,15 +478,15 @@ class EnterpriseOtelTrace:
         labels = self._labels(
             tenant_id=tenant_id or "",
             app_id=app_id or "",
-            model_provider=metadata.get("ls_provider", ""),
-            model_name=metadata.get("ls_model_name", ""),
+            model_provider=metadata.get("ls_provider") or "",
+            model_name=metadata.get("ls_model_name") or "",
         )
         token_labels = TokenMetricLabels(
             tenant_id=tenant_id or "",
             app_id=app_id or "",
             operation_type=OperationType.MESSAGE,
-            model_provider=metadata.get("ls_provider", ""),
-            model_name=metadata.get("ls_model_name", ""),
+            model_provider=metadata.get("ls_provider") or "",
+            model_name=metadata.get("ls_model_name") or "",
             node_type="",
         ).to_dict()
         self._exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, info.total_tokens, token_labels)
@@ -560,6 +550,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.TOOL_EXECUTION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -614,6 +605,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.MODERATION_CHECK,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -659,6 +651,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.SUGGESTED_QUESTION_GENERATION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -674,6 +667,8 @@ class EnterpriseOtelTrace:
             self._labels(
                 **labels,
                 type="suggested_question",
+                model_provider=info.model_provider or "",
+                model_name=info.model_id or "",
             ),
         )
 
@@ -738,6 +733,13 @@ class EnterpriseOtelTrace:
             attrs["dify.dataset.embedding_providers"] = self._maybe_json(providers)
             attrs["dify.dataset.embedding_models"] = self._maybe_json(models)
 
+        # Add rerank model to logs
+        rerank_provider = metadata.get("rerank_model_provider", "")
+        rerank_model = metadata.get("rerank_model_name", "")
+        if rerank_provider or rerank_model:
+            attrs["dify.retrieval.rerank_provider"] = rerank_provider
+            attrs["dify.retrieval.rerank_model"] = rerank_model
+
         ref = f"ref:message_id={info.message_id}"
         retrieval_inputs = self._safe_payload_value(info.inputs)
         attrs["dify.retrieval.query"] = self._content_or_ref(retrieval_inputs, ref)
@@ -766,12 +768,25 @@ class EnterpriseOtelTrace:
         )
 
         for did in dataset_ids:
+            # Get embedding model for this specific dataset
+            ds_embedding_info = embedding_models.get(did, {})
+            embedding_provider = ds_embedding_info.get("embedding_model_provider", "")
+            embedding_model = ds_embedding_info.get("embedding_model", "")
+
+            # Get rerank model (same for all datasets in this retrieval)
+            rerank_provider = metadata.get("rerank_model_provider", "")
+            rerank_model = metadata.get("rerank_model_name", "")
+
             self._exporter.increment_counter(
                 EnterpriseTelemetryCounter.DATASET_RETRIEVALS,
                 1,
                 self._labels(
                     **labels,
                     dataset_id=did,
+                    embedding_model_provider=embedding_provider,
+                    embedding_model=embedding_model,
+                    rerank_model_provider=rerank_provider,
+                    rerank_model=rerank_model,
                 ),
             )
 
@@ -793,6 +808,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.GENERATE_NAME_EXECUTION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -815,7 +831,7 @@ class EnterpriseOtelTrace:
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = {
-            "dify.trace_id": info.trace_id,
+            "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
             "dify.user.id": user_id,
             "dify.app.id": app_id or "",
@@ -846,6 +862,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.PROMPT_GENERATION_EXECUTION,
             attributes=attrs,
+            trace_id_source=info.resolved_trace_id,
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,

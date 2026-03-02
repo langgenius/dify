@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict
 
 
 class TelemetryCase(StrEnum):
@@ -57,27 +57,17 @@ class TelemetryEnvelope(BaseModel):
         case: The telemetry case type.
         tenant_id: The tenant identifier.
         event_id: Unique event identifier for deduplication.
-        payload: The main event payload.
-        payload_fallback: Fallback payload (max 64KB).
-        metadata: Optional metadata dictionary.
+        payload: The main event payload (inline for small payloads,
+            empty when offloaded to storage via ``payload_ref``).
+        metadata: Optional metadata dictionary.  When the gateway
+            offloads a large payload to object storage, this contains
+            ``{"payload_ref": "<storage_key>"}``.
     """
+
+    model_config = ConfigDict(extra="forbid", use_enum_values=False)
 
     case: TelemetryCase
     tenant_id: str
     event_id: str
     payload: dict[str, Any]
-    payload_fallback: bytes | None = None
     metadata: dict[str, Any] | None = None
-
-    @field_validator("payload_fallback")
-    @classmethod
-    def validate_payload_fallback_size(cls, v: bytes | None) -> bytes | None:
-        """Validate that payload_fallback does not exceed 64KB."""
-        if v is not None and len(v) > 65536:  # 64 * 1024
-            raise ValueError("payload_fallback must not exceed 64KB")
-        return v
-
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = False

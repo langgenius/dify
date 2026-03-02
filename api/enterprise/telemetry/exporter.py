@@ -109,8 +109,9 @@ class EnterpriseExporter:
         sampling_rate: float = getattr(config, "ENTERPRISE_OTEL_SAMPLING_RATE", 1.0)
         self.include_content: bool = getattr(config, "ENTERPRISE_INCLUDE_CONTENT", True)
         api_key: str = getattr(config, "ENTERPRISE_OTLP_API_KEY", "")
-        # Auto-detect TLS: when bearer token is configured, use secure channel
-        insecure: bool = not bool(api_key)
+
+        # Auto-detect TLS: https:// uses secure, everything else is insecure
+        insecure = not endpoint.startswith("https://")
 
         resource = Resource(
             attributes={
@@ -206,7 +207,15 @@ class EnterpriseExporter:
             if parent_span_id_source:
                 # Cross-workflow linking: parent is an explicit span (e.g. tool node in outer workflow)
                 parent_span_id = compute_deterministic_span_id(parent_span_id_source)
-                parent_trace_id = int(uuid.UUID(effective_trace_correlation)) if effective_trace_correlation else 0
+                try:
+                    parent_trace_id = int(uuid.UUID(effective_trace_correlation)) if effective_trace_correlation else 0
+                except (ValueError, AttributeError):
+                    logger.warning(
+                        "Invalid trace correlation UUID for cross-workflow link: %s, span=%s",
+                        effective_trace_correlation,
+                        name,
+                    )
+                    parent_trace_id = 0
                 if parent_trace_id:
                     parent_span_context = SpanContext(
                         trace_id=parent_trace_id,
@@ -218,14 +227,23 @@ class EnterpriseExporter:
             elif correlation_id and correlation_id != span_id_source:
                 # Child span: parent is the correlation-group root (workflow root span)
                 parent_span_id = compute_deterministic_span_id(correlation_id)
-                parent_trace_id = int(uuid.UUID(effective_trace_correlation or correlation_id))
-                parent_span_context = SpanContext(
-                    trace_id=parent_trace_id,
-                    span_id=parent_span_id,
-                    is_remote=True,
-                    trace_flags=TraceFlags(TraceFlags.SAMPLED),
-                )
-                parent_context = trace.set_span_in_context(trace.NonRecordingSpan(parent_span_context))
+                try:
+                    parent_trace_id = int(uuid.UUID(effective_trace_correlation or correlation_id))
+                except (ValueError, AttributeError):
+                    logger.warning(
+                        "Invalid trace correlation UUID for child span link: %s, span=%s",
+                        effective_trace_correlation or correlation_id,
+                        name,
+                    )
+                    parent_trace_id = 0
+                if parent_trace_id:
+                    parent_span_context = SpanContext(
+                        trace_id=parent_trace_id,
+                        span_id=parent_span_id,
+                        is_remote=True,
+                        trace_flags=TraceFlags(TraceFlags.SAMPLED),
+                    )
+                    parent_context = trace.set_span_in_context(trace.NonRecordingSpan(parent_span_context))
 
             span_start_time = _datetime_to_ns(start_time) if start_time is not None else None
             span_end_on_exit = end_time is None

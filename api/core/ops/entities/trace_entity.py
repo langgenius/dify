@@ -27,6 +27,48 @@ class BaseTraceInfo(BaseModel):
 
     model_config = ConfigDict(protected_namespaces=())
 
+    @property
+    def resolved_trace_id(self) -> str | None:
+        """Get trace_id with intelligent fallback.
+
+        Priority:
+        1. External trace_id (from X-Trace-Id header)
+        2. workflow_run_id (if this trace type has it)
+        3. message_id (as final fallback)
+        """
+        if self.trace_id:
+            return self.trace_id
+
+        # Try workflow_run_id (only exists on workflow-related traces)
+        workflow_run_id = getattr(self, "workflow_run_id", None)
+        if workflow_run_id:
+            return workflow_run_id
+
+        # Final fallback to message_id
+        return str(self.message_id) if self.message_id else None
+
+    @property
+    def resolved_parent_context(self) -> tuple[str | None, str | None]:
+        """Resolve cross-workflow parent linking from metadata.
+
+        Extracts typed parent IDs from the untyped ``parent_trace_context``
+        metadata dict (set by tool_node when invoking nested workflows).
+
+        Returns:
+            (trace_correlation_override, parent_span_id_source) where
+            trace_correlation_override is the outer workflow_run_id and
+            parent_span_id_source is the outer node_execution_id.
+        """
+        parent_ctx = self.metadata.get("parent_trace_context")
+        if not isinstance(parent_ctx, dict):
+            return None, None
+        trace_override = parent_ctx.get("parent_workflow_run_id")
+        parent_span = parent_ctx.get("parent_node_execution_id")
+        return (
+            trace_override if isinstance(trace_override, str) else None,
+            parent_span if isinstance(parent_span, str) else None,
+        )
+
     @field_serializer("start_time", "end_time")
     def serialize_datetime(self, dt: datetime | None) -> str | None:
         if dt is None:

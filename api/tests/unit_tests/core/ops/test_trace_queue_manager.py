@@ -39,7 +39,7 @@ def trace_queue_manager_and_task(monkeypatch):
         class StubTraceQueueManager:
             def __init__(self, app_id=None):
                 self.app_id = app_id
-                from core.telemetry import is_enterprise_telemetry_enabled
+                from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
                 self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
                 self.trace_instance = StubOpsTraceManager.get_ops_trace_instance(app_id)
@@ -87,7 +87,7 @@ class TestTraceQueueManagerTelemetryGuard:
         trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
 
         with (
-            patch("core.telemetry.is_enterprise_telemetry_enabled", return_value=False),
+            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
             patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
             patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
         ):
@@ -109,7 +109,7 @@ class TestTraceQueueManagerTelemetryGuard:
         trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
 
         with (
-            patch("core.telemetry.is_enterprise_telemetry_enabled", return_value=True),
+            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
             patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
             patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
         ):
@@ -135,7 +135,7 @@ class TestTraceQueueManagerTelemetryGuard:
         trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
 
         with (
-            patch("core.telemetry.is_enterprise_telemetry_enabled", return_value=False),
+            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
             patch(
                 "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=mock_trace_instance
             ),
@@ -163,7 +163,7 @@ class TestTraceQueueManagerTelemetryGuard:
         trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
 
         with (
-            patch("core.telemetry.is_enterprise_telemetry_enabled", return_value=True),
+            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
             patch(
                 "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=mock_trace_instance
             ),
@@ -189,7 +189,7 @@ class TestTraceQueueManagerTelemetryGuard:
         trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
 
         with (
-            patch("core.telemetry.is_enterprise_telemetry_enabled", return_value=True),
+            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
             patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
             patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
         ):

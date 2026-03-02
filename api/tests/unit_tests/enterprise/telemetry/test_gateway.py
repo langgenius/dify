@@ -6,14 +6,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.ops.entities.trace_entity import TraceTaskName
-from enterprise.telemetry.contracts import SignalType, TelemetryCase, TelemetryEnvelope
-from enterprise.telemetry.gateway import (
+from core.telemetry.gateway import (
     CASE_ROUTING,
     CASE_TO_TRACE_TASK,
     PAYLOAD_SIZE_THRESHOLD_BYTES,
-    TelemetryGateway,
     emit,
 )
+from enterprise.telemetry.contracts import SignalType, TelemetryCase, TelemetryEnvelope
 
 
 class TestCaseRoutingTable:
@@ -38,17 +37,20 @@ class TestCaseRoutingTable:
             TelemetryCase.APP_UPDATED,
             TelemetryCase.APP_DELETED,
             TelemetryCase.FEEDBACK_CREATED,
+        ]
+        for case in metric_log_cases:
+            assert CASE_ROUTING[case].signal_type is SignalType.METRIC_LOG, f"{case} should be metric_log"
+
+    def test_ce_eligible_cases(self) -> None:
+        ce_eligible_cases = [
+            TelemetryCase.WORKFLOW_RUN,
+            TelemetryCase.MESSAGE_RUN,
             TelemetryCase.TOOL_EXECUTION,
             TelemetryCase.MODERATION_CHECK,
             TelemetryCase.SUGGESTED_QUESTION,
             TelemetryCase.DATASET_RETRIEVAL,
             TelemetryCase.GENERATE_NAME,
         ]
-        for case in metric_log_cases:
-            assert CASE_ROUTING[case].signal_type is SignalType.METRIC_LOG, f"{case} should be metric_log"
-
-    def test_ce_eligible_cases(self) -> None:
-        ce_eligible_cases = [TelemetryCase.WORKFLOW_RUN, TelemetryCase.MESSAGE_RUN]
         for case in ce_eligible_cases:
             assert CASE_ROUTING[case].ce_eligible is True, f"{case} should be CE eligible"
 
@@ -87,91 +89,80 @@ def mock_ops_trace_manager():
         yield mock_module, mock_trace_entity
 
 
-class TestTelemetryGatewayTraceRouting:
-    @pytest.fixture
-    def gateway(self) -> TelemetryGateway:
-        return TelemetryGateway()
-
+class TestGatewayTraceRouting:
     @pytest.fixture
     def mock_trace_manager(self) -> MagicMock:
         return MagicMock()
 
-    @patch("enterprise.telemetry.gateway._is_enterprise_telemetry_enabled", return_value=True)
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_trace_case_routes_to_trace_manager(
         self,
         _mock_ee_enabled: MagicMock,
-        gateway: TelemetryGateway,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
         context = {"app_id": "app-123", "user_id": "user-456", "tenant_id": "tenant-789"}
         payload = {"workflow_run_id": "run-abc"}
 
-        gateway.emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+        emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
-    @patch("enterprise.telemetry.gateway._is_enterprise_telemetry_enabled", return_value=False)
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False)
     def test_ce_eligible_trace_enqueued_when_ee_disabled(
         self,
         _mock_ee_enabled: MagicMock,
-        gateway: TelemetryGateway,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
         context = {"app_id": "app-123", "user_id": "user-456"}
         payload = {"workflow_run_id": "run-abc"}
 
-        gateway.emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+        emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
-    @patch("enterprise.telemetry.gateway._is_enterprise_telemetry_enabled", return_value=False)
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False)
     def test_enterprise_only_trace_dropped_when_ee_disabled(
         self,
         _mock_ee_enabled: MagicMock,
-        gateway: TelemetryGateway,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
         context = {"app_id": "app-123", "user_id": "user-456"}
         payload = {"node_id": "node-abc"}
 
-        gateway.emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+        emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_not_called()
 
-    @patch("enterprise.telemetry.gateway._is_enterprise_telemetry_enabled", return_value=True)
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_enterprise_only_trace_enqueued_when_ee_enabled(
         self,
         _mock_ee_enabled: MagicMock,
-        gateway: TelemetryGateway,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
         context = {"app_id": "app-123", "user_id": "user-456"}
         payload = {"node_id": "node-abc"}
 
-        gateway.emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+        emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
 
-class TestTelemetryGatewayMetricLogRouting:
-    @pytest.fixture
-    def gateway(self) -> TelemetryGateway:
-        return TelemetryGateway()
-
+class TestGatewayMetricLogRouting:
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_metric_case_routes_to_celery_task(
         self,
         mock_delay: MagicMock,
-        gateway: TelemetryGateway,
+        _mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         payload = {"app_id": "app-abc", "name": "My App"}
 
-        gateway.emit(TelemetryCase.APP_CREATED, context, payload)
+        emit(TelemetryCase.APP_CREATED, context, payload)
 
         mock_delay.assert_called_once()
         envelope_json = mock_delay.call_args[0][0]
@@ -180,17 +171,18 @@ class TestTelemetryGatewayMetricLogRouting:
         assert envelope.tenant_id == "tenant-123"
         assert envelope.payload["app_id"] == "app-abc"
 
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_envelope_has_unique_event_id(
         self,
         mock_delay: MagicMock,
-        gateway: TelemetryGateway,
+        _mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         payload = {"app_id": "app-abc"}
 
-        gateway.emit(TelemetryCase.APP_CREATED, context, payload)
-        gateway.emit(TelemetryCase.APP_CREATED, context, payload)
+        emit(TelemetryCase.APP_CREATED, context, payload)
+        emit(TelemetryCase.APP_CREATED, context, payload)
 
         assert mock_delay.call_count == 2
         envelope1 = TelemetryEnvelope.model_validate_json(mock_delay.call_args_list[0][0][0])
@@ -198,40 +190,38 @@ class TestTelemetryGatewayMetricLogRouting:
         assert envelope1.event_id != envelope2.event_id
 
 
-class TestTelemetryGatewayPayloadSizing:
-    @pytest.fixture
-    def gateway(self) -> TelemetryGateway:
-        return TelemetryGateway()
-
+class TestGatewayPayloadSizing:
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_small_payload_inlined(
         self,
         mock_delay: MagicMock,
-        gateway: TelemetryGateway,
+        _mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         payload = {"key": "small_value"}
 
-        gateway.emit(TelemetryCase.APP_CREATED, context, payload)
+        emit(TelemetryCase.APP_CREATED, context, payload)
 
         envelope_json = mock_delay.call_args[0][0]
         envelope = TelemetryEnvelope.model_validate_json(envelope_json)
         assert envelope.payload == payload
         assert envelope.metadata is None
 
-    @patch("enterprise.telemetry.gateway.storage")
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
+    @patch("core.telemetry.gateway.storage")
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_large_payload_stored(
         self,
         mock_delay: MagicMock,
         mock_storage: MagicMock,
-        gateway: TelemetryGateway,
+        _mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
         payload = {"key": large_value}
 
-        gateway.emit(TelemetryCase.APP_CREATED, context, payload)
+        emit(TelemetryCase.APP_CREATED, context, payload)
 
         mock_storage.save.assert_called_once()
         storage_key = mock_storage.save.call_args[0][0]
@@ -243,45 +233,26 @@ class TestTelemetryGatewayPayloadSizing:
         assert envelope.metadata is not None
         assert envelope.metadata["payload_ref"] == storage_key
 
-    @patch("enterprise.telemetry.gateway.storage")
+    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
+    @patch("core.telemetry.gateway.storage")
     @patch("tasks.enterprise_telemetry_task.process_enterprise_telemetry.delay")
     def test_large_payload_fallback_on_storage_error(
         self,
         mock_delay: MagicMock,
         mock_storage: MagicMock,
-        gateway: TelemetryGateway,
+        _mock_ee_enabled: MagicMock,
     ) -> None:
         mock_storage.save.side_effect = Exception("Storage failure")
         context = {"tenant_id": "tenant-123"}
         large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
         payload = {"key": large_value}
 
-        gateway.emit(TelemetryCase.APP_CREATED, context, payload)
+        emit(TelemetryCase.APP_CREATED, context, payload)
 
         envelope_json = mock_delay.call_args[0][0]
         envelope = TelemetryEnvelope.model_validate_json(envelope_json)
         assert envelope.payload == payload
         assert envelope.metadata is None
-
-
-class TestModuleLevelFunctions:
-    @patch("extensions.ext_enterprise_telemetry.get_gateway")
-    @patch("enterprise.telemetry.gateway._is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_function_uses_gateway(
-        self,
-        _mock_ee_enabled: MagicMock,
-        mock_get_gateway: MagicMock,
-        mock_ops_trace_manager: tuple[MagicMock, MagicMock],
-    ) -> None:
-        mock_gateway = TelemetryGateway()
-        mock_get_gateway.return_value = mock_gateway
-        mock_trace_manager = MagicMock()
-        context = {"app_id": "app-123", "user_id": "user-456"}
-        payload = {"workflow_run_id": "run-abc"}
-
-        with patch.object(mock_gateway, "emit") as mock_emit:
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
-            mock_emit.assert_called_once_with(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
 
 class TestTraceTaskNameMapping:
