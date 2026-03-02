@@ -161,7 +161,7 @@ class EnterpriseOtelTrace:
     def _workflow_trace(self, info: WorkflowTraceInfo) -> None:
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
-        # -- Slim span attrs: identity + structure + status + timing only --
+        # -- Span attrs: identity + structure + status + timing + gen_ai scalars --
         span_attrs: dict[str, Any] = {
             "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
@@ -175,6 +175,8 @@ class EnterpriseOtelTrace:
             "dify.conversation.id": info.conversation_id,
             "dify.message.id": info.message_id,
             "dify.invoked_by": info.invoked_by,
+            "gen_ai.usage.total_tokens": info.total_tokens,
+            "gen_ai.user.id": user_id,
         }
 
         trace_correlation_override, parent_span_id_source = info.resolved_parent_context
@@ -306,7 +308,7 @@ class EnterpriseOtelTrace:
     ) -> None:
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
-        # -- Slim span attrs: identity + structure + status + timing --
+        # -- Span attrs: identity + structure + status + timing + gen_ai scalars --
         span_attrs: dict[str, Any] = {
             "dify.trace_id": info.resolved_trace_id,
             "dify.tenant_id": tenant_id,
@@ -328,6 +330,12 @@ class EnterpriseOtelTrace:
             "dify.node.loop_id": info.loop_id,
             "dify.node.parallel_id": info.parallel_id,
             "dify.node.invoked_by": info.invoked_by,
+            "gen_ai.usage.input_tokens": info.prompt_tokens,
+            "gen_ai.usage.output_tokens": info.completion_tokens,
+            "gen_ai.usage.total_tokens": info.total_tokens,
+            "gen_ai.request.model": info.model_name,
+            "gen_ai.provider.name": info.model_provider,
+            "gen_ai.user.id": user_id,
         }
 
         resolved_override, _ = info.resolved_parent_context
