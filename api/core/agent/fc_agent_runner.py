@@ -24,8 +24,8 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from core.workflow.file import file_manager
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
+from dify_graph.file import file_manager
+from dify_graph.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)

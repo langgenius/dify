@@ -35,7 +35,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from core.workflow.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.file import File, FileTransferMethod, FileType, file_manager
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper

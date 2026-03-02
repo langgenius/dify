@@ -17,9 +17,9 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.file import file_manager
-from core.workflow.file.models import File
-from core.workflow.runtime import VariablePool
+from dify_graph.file import file_manager
+from dify_graph.file.models import File
+from dify_graph.runtime import VariablePool
 
 
 class AdvancedPromptTransform(PromptTransform):

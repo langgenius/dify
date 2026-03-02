@@ -6,20 +6,20 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes.knowledge_retrieval.entities import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.nodes.knowledge_retrieval.entities import (
     KnowledgeRetrievalNodeData,
     MultipleRetrievalConfig,
     RerankingModelConfig,
     SingleRetrievalConfig,
 )
-from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from core.workflow.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import StringSegment
+from dify_graph.nodes.knowledge_retrieval.exc import RateLimitExceededError
+from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from dify_graph.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import StringSegment
 from models.enums import UserFrom
 
 
@@ -155,7 +155,7 @@ class TestKnowledgeRetrievalNode:
     ):
         """Test _run with query variable in single mode."""
         # Arrange
-        from core.workflow.nodes.llm.entities import ModelConfig
+        from dify_graph.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         query_selector = ["start", "query"]
@@ -444,7 +444,7 @@ class TestFetchDatasetRetriever:
     ):
         """Test _fetch_dataset_retriever in single mode."""
         # Arrange
-        from core.workflow.nodes.llm.entities import ModelConfig
+        from dify_graph.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         variables = {"query": query}

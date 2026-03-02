@@ -17,9 +17,9 @@ from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.file.models import FileUploadConfig
-from core.workflow.nodes import NodeType
-from core.workflow.variables.input_entities import VariableEntity
+from dify_graph.file.models import FileUploadConfig
+from dify_graph.nodes import NodeType
+from dify_graph.variables.input_entities import VariableEntity
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account

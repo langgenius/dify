@@ -1,6 +1,7 @@
 [importlinter]
 root_packages =
     core
+    dify_graph
     configs
     controllers
     extensions
@@ -21,48 +22,48 @@ layers =
     runtime
     entities
 containers =
-    core.workflow
+    dify_graph
 ignore_imports =
-    core.workflow.nodes.base.node -> core.workflow.graph_events
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_events
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
+    dify_graph.nodes.base.node -> dify_graph.graph_events
+    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_events
+    dify_graph.nodes.loop.loop_node -> dify_graph.graph_events
 
-    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
-    core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
-    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
-    core.workflow.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
+    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
+    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
+    dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
+    dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
 
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
+    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_engine
+    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph
+    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_engine.command_channels
+    dify_graph.nodes.loop.loop_node -> dify_graph.graph_engine
+    dify_graph.nodes.loop.loop_node -> dify_graph.graph
+    dify_graph.nodes.loop.loop_node -> dify_graph.graph_engine.command_channels
     # TODO(QuantumGhost): fix the import violation later
-    core.workflow.entities.pause_reason -> core.workflow.nodes.human_input.entities
+    dify_graph.entities.pause_reason -> dify_graph.nodes.human_input.entities
 
 [importlinter:contract:workflow-infrastructure-dependencies]
 name = Workflow Infrastructure Dependencies
 type = forbidden
 source_modules =
-    core.workflow
+    dify_graph
 forbidden_modules =
     extensions.ext_database
     extensions.ext_redis
 allow_indirect_imports = True
 ignore_imports =
-    core.workflow.nodes.agent.agent_node -> extensions.ext_database
-    core.workflow.nodes.llm.file_saver -> extensions.ext_database
-    core.workflow.nodes.llm.node -> extensions.ext_database
-    core.workflow.nodes.tool.tool_node -> extensions.ext_database
+    dify_graph.nodes.agent.agent_node -> extensions.ext_database
+    dify_graph.nodes.llm.file_saver -> extensions.ext_database
+    dify_graph.nodes.llm.node -> extensions.ext_database
+    dify_graph.nodes.tool.tool_node -> extensions.ext_database
     # TODO(QuantumGhost): use DI to avoid depending on global DB.
-    core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
+    dify_graph.nodes.human_input.human_input_node -> extensions.ext_database
 
 [importlinter:contract:workflow-external-imports]
 name = Workflow External Imports
 type = forbidden
 source_modules =
-    core.workflow
+    dify_graph
 forbidden_modules =
     configs
     controllers
@@ -100,77 +101,68 @@ forbidden_modules =
     core.trigger
     core.variables
 ignore_imports =
-    core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
-    core.workflow.workflow_entry -> core.app.workflow.layers.observability
-    core.workflow.nodes.agent.agent_node -> core.model_manager
-    core.workflow.nodes.agent.agent_node -> core.provider_manager
-    core.workflow.nodes.agent.agent_node -> core.tools.tool_manager
-    core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
-    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
-    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
-    core.workflow.nodes.llm.llm_utils -> core.model_manager
-    core.workflow.nodes.llm.protocols -> core.model_manager
-    core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
-    core.workflow.nodes.llm.node -> core.tools.signature
-    core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
-    core.workflow.nodes.tool.tool_node -> core.tools.tool_engine
-    core.workflow.nodes.tool.tool_node -> core.tools.tool_manager
-    core.workflow.workflow_entry -> configs
-    core.workflow.workflow_entry -> models.workflow
-    core.workflow.nodes.agent.agent_node -> core.agent.entities
-    core.workflow.nodes.agent.agent_node -> core.agent.plugin_entities
-    core.workflow.nodes.base.node -> core.app.entities.app_invoke_entities
-    core.workflow.nodes.human_input.human_input_node -> core.app.entities.app_invoke_entities
-    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
-    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_runtime.model_providers.__base.large_language_model
-    core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.simple_prompt_transform
-    core.workflow.workflow_entry -> core.app.apps.exc
-    core.workflow.workflow_entry -> core.app.entities.app_invoke_entities
-    core.workflow.workflow_entry -> core.app.workflow.layers.llm_quota
-    core.workflow.workflow_entry -> core.app.workflow.node_factory
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
-    core.workflow.nodes.question_classifier.question_classifier_node -> core.model_manager
-    core.workflow.nodes.tool.tool_node -> core.tools.utils.message_transformer
-    core.workflow.nodes.tool.tool_node -> models
-    core.workflow.nodes.agent.agent_node -> models.model
-    core.workflow.nodes.llm.file_saver -> core.helper.ssrf_proxy
-    core.workflow.nodes.llm.node -> core.helper.code_executor
-    core.workflow.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor
-    core.workflow.nodes.llm.node -> core.llm_generator.output_parser.errors
-    core.workflow.nodes.llm.node -> core.llm_generator.output_parser.structured_output
-    core.workflow.nodes.llm.node -> core.model_manager
-    core.workflow.nodes.agent.entities -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.llm.node -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.llm.node -> core.prompt.utils.prompt_message_util
-    core.workflow.nodes.parameter_extractor.entities -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.utils.prompt_message_util
-    core.workflow.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
-    core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
-    core.workflow.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
-    core.workflow.nodes.llm.node -> models.dataset
-    core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
-    core.workflow.nodes.llm.file_saver -> core.tools.signature
-    core.workflow.nodes.llm.file_saver -> core.tools.tool_file_manager
-    core.workflow.nodes.tool.tool_node -> core.tools.errors
-    core.workflow.nodes.agent.agent_node -> extensions.ext_database
-    core.workflow.nodes.llm.file_saver -> extensions.ext_database
-    core.workflow.nodes.llm.node -> extensions.ext_database
-    core.workflow.nodes.tool.tool_node -> extensions.ext_database
-    core.workflow.nodes.human_input.human_input_node -> extensions.ext_database
-    core.workflow.nodes.human_input.human_input_node -> core.repositories.human_input_repository
-    core.workflow.workflow_entry -> extensions.otel.runtime
-    core.workflow.nodes.agent.agent_node -> models
-    core.workflow.nodes.base.node -> models.enums
-    core.workflow.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
-    core.workflow.nodes.llm.node -> models.model
-    core.workflow.workflow_entry -> models.enums
-    core.workflow.nodes.agent.agent_node -> services
-    core.workflow.nodes.tool.tool_node -> services
+    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
+    dify_graph.nodes.agent.agent_node -> core.model_manager
+    dify_graph.nodes.agent.agent_node -> core.provider_manager
+    dify_graph.nodes.agent.agent_node -> core.tools.tool_manager
+    dify_graph.nodes.document_extractor.node -> core.helper.ssrf_proxy
+    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
+    dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
+    dify_graph.nodes.llm.llm_utils -> core.model_manager
+    dify_graph.nodes.llm.protocols -> core.model_manager
+    dify_graph.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
+    dify_graph.nodes.llm.node -> core.tools.signature
+    dify_graph.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
+    dify_graph.nodes.tool.tool_node -> core.tools.tool_engine
+    dify_graph.nodes.tool.tool_node -> core.tools.tool_manager
+    dify_graph.nodes.agent.agent_node -> core.agent.entities
+    dify_graph.nodes.agent.agent_node -> core.agent.plugin_entities
+    dify_graph.nodes.base.node -> core.app.entities.app_invoke_entities
+    dify_graph.nodes.human_input.human_input_node -> core.app.entities.app_invoke_entities
+    dify_graph.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
+    dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
+    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
+    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
+    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_runtime.model_providers.__base.large_language_model
+    dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.simple_prompt_transform
+    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
+    dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
+    dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
+    dify_graph.nodes.tool.tool_node -> models
+    dify_graph.nodes.agent.agent_node -> models.model
+    dify_graph.nodes.llm.file_saver -> core.helper.ssrf_proxy
+    dify_graph.nodes.llm.node -> core.helper.code_executor
+    dify_graph.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor
+    dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
+    dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
+    dify_graph.nodes.llm.node -> core.model_manager
+    dify_graph.nodes.agent.entities -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.llm.node -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.llm.node -> core.prompt.utils.prompt_message_util
+    dify_graph.nodes.parameter_extractor.entities -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.utils.prompt_message_util
+    dify_graph.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
+    dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
+    dify_graph.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
+    dify_graph.nodes.llm.node -> models.dataset
+    dify_graph.nodes.agent.agent_node -> core.tools.utils.message_transformer
+    dify_graph.nodes.llm.file_saver -> core.tools.signature
+    dify_graph.nodes.llm.file_saver -> core.tools.tool_file_manager
+    dify_graph.nodes.tool.tool_node -> core.tools.errors
+    dify_graph.nodes.agent.agent_node -> extensions.ext_database
+    dify_graph.nodes.llm.file_saver -> extensions.ext_database
+    dify_graph.nodes.llm.node -> extensions.ext_database
+    dify_graph.nodes.tool.tool_node -> extensions.ext_database
+    dify_graph.nodes.human_input.human_input_node -> extensions.ext_database
+    dify_graph.nodes.human_input.human_input_node -> core.repositories.human_input_repository
+    dify_graph.nodes.agent.agent_node -> models
+    dify_graph.nodes.base.node -> models.enums
+    dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
+    dify_graph.nodes.llm.node -> models.model
+    dify_graph.nodes.agent.agent_node -> services
+    dify_graph.nodes.tool.tool_node -> services
 
 [importlinter:contract:model-runtime-no-internal-imports]
 name = Model Runtime Internal Imports
@@ -214,7 +206,7 @@ forbidden_modules =
     core.tools
     core.trigger
     core.variables
-    core.workflow
+    dify_graph
 ignore_imports =
     core.model_runtime.model_providers.__base.ai_model -> configs
     core.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
@@ -231,7 +223,7 @@ layers =
     graph_engine
     response_coordinator
 containers =
-    core.workflow.graph_engine
+    dify_graph.graph_engine
 
 [importlinter:contract:worker]
 name = Worker
@@ -240,7 +232,7 @@ layers =
     graph_engine
     worker
 containers =
-    core.workflow.graph_engine
+    dify_graph.graph_engine
 
 [importlinter:contract:graph-engine-architecture]
 name = Graph Engine Architecture
@@ -256,28 +248,28 @@ layers =
     worker_management
     domain
 containers =
-    core.workflow.graph_engine
+    dify_graph.graph_engine
 
 [importlinter:contract:domain-isolation]
 name = Domain Model Isolation
 type = forbidden
 source_modules =
-    core.workflow.graph_engine.domain
+    dify_graph.graph_engine.domain
 forbidden_modules =
-    core.workflow.graph_engine.worker_management
-    core.workflow.graph_engine.command_channels
-    core.workflow.graph_engine.layers
-    core.workflow.graph_engine.protocols
+    dify_graph.graph_engine.worker_management
+    dify_graph.graph_engine.command_channels
+    dify_graph.graph_engine.layers
+    dify_graph.graph_engine.protocols
 
 [importlinter:contract:worker-management]
 name = Worker Management
 type = forbidden
 source_modules =
-    core.workflow.graph_engine.worker_management
+    dify_graph.graph_engine.worker_management
 forbidden_modules =
-    core.workflow.graph_engine.orchestration
-    core.workflow.graph_engine.command_processing
-    core.workflow.graph_engine.event_management
+    dify_graph.graph_engine.orchestration
+    dify_graph.graph_engine.command_processing
+    dify_graph.graph_engine.event_management
 
 
 [importlinter:contract:graph-traversal-components]
@@ -287,11 +279,11 @@ layers =
     edge_processor
     skip_propagator
 containers =
-    core.workflow.graph_engine.graph_traversal
+    dify_graph.graph_engine.graph_traversal
 
 [importlinter:contract:command-channels]
 name = Command Channels Independence
 type = independence
 modules =
-    core.workflow.graph_engine.command_channels.in_memory_channel
-    core.workflow.graph_engine.command_channels.redis_channel
+    dify_graph.graph_engine.command_channels.in_memory_channel
+    dify_graph.graph_engine.command_channels.redis_channel

@@ -57,8 +57,8 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.signature import sign_tool_file
-from core.workflow.file import helpers as file_helpers
-from core.workflow.file.enums import FileTransferMethod
+from dify_graph.file import helpers as file_helpers
+from dify_graph.file.enums import FileTransferMethod
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now

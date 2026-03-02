@@ -29,9 +29,9 @@ from core.trigger.debug.event_selectors import (
     create_event_poller,
     select_trigger_debug_events,
 )
-from core.workflow.enums import NodeType
-from core.workflow.file.models import File
-from core.workflow.graph_engine.manager import GraphEngineManager
+from dify_graph.enums import NodeType
+from dify_graph.file.models import File
+from dify_graph.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
