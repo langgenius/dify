@@ -80,6 +80,67 @@ All counters are cumulative and emitted at 100% accuracy.
 
 ⚠️ **Warning:** `dify.tokens.total` at workflow level includes all node tokens. Filter by `operation_type` to avoid double-counting.
 
+#### Token Hierarchy & Query Patterns
+
+Token metrics are emitted at multiple layers. Understanding the hierarchy prevents double-counting:
+
+```
+App-level total
+├── workflow          ← sum of all node_execution tokens (DO NOT add both)
+│   └── node_execution ← per-node breakdown
+├── message           ← independent (non-workflow chat apps only)
+├── rule_generate     ← independent helper LLM call
+├── code_generate     ← independent helper LLM call
+├── structured_output ← independent helper LLM call
+└── instruction_modify← independent helper LLM call
+```
+
+**Key rule:** `workflow` tokens already include all `node_execution` tokens. Never sum both.
+
+**Available labels on token metrics:** `tenant_id`, `app_id`, `operation_type`, `model_provider`, `model_name`, `node_type`.
+App name is only available on span attributes (`dify.app.name`), not metric labels — use `app_id` for metric queries.
+
+**Common queries** (PromQL):
+
+```promql
+# ── Totals ──────────────────────────────────────────────────
+# App-level total (exclude node_execution to avoid double-counting)
+sum by (app_id) (dify_tokens_total{operation_type!="node_execution"})
+
+# Single app total
+sum (dify_tokens_total{app_id="<app_id>", operation_type!="node_execution"})
+
+# Per-tenant totals
+sum by (tenant_id) (dify_tokens_total{operation_type!="node_execution"})
+
+# ── Drill-down ──────────────────────────────────────────────
+# Workflow-level tokens for an app
+sum (dify_tokens_total{app_id="<app_id>", operation_type="workflow"})
+
+# Node-level breakdown within an app
+sum by (node_type) (dify_tokens_total{app_id="<app_id>", operation_type="node_execution"})
+
+# Model breakdown for an app
+sum by (model_provider, model_name) (dify_tokens_total{app_id="<app_id>"})
+
+# Input vs output per model
+sum by (model_name) (dify_tokens_input_total{app_id="<app_id>"})
+sum by (model_name) (dify_tokens_output_total{app_id="<app_id>"})
+
+# ── Rates ───────────────────────────────────────────────────
+# Token consumption rate (per hour)
+sum(rate(dify_tokens_total{operation_type!="node_execution"}[1h]))
+
+# Per-app consumption rate
+sum by (app_id) (rate(dify_tokens_total{operation_type!="node_execution"}[1h]))
+```
+
+**Finding `app_id` from app name** (trace query — Tempo / Jaeger):
+
+```
+{ resource.dify.app.name = "My Chatbot" } | select(resource.dify.app.id)
+```
+
 ### Request Counters
 
 | Metric | Unit | Description |
