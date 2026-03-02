@@ -256,9 +256,18 @@ class EnterpriseOtelTrace:
                 invoke_from=invoke_from,
             ),
         )
+        # Prefer wall-clock timestamps over the elapsed_time field: elapsed_time defaults
+        # to 0 in the DB and can be stale if the Celery write races with the trace task.
+        # start_time = workflow_run.created_at, end_time = workflow_run.finished_at.
+        if info.start_time and info.end_time:
+            workflow_duration = (info.end_time - info.start_time).total_seconds()
+        elif info.workflow_run_elapsed_time:
+            workflow_duration = float(info.workflow_run_elapsed_time)
+        else:
+            workflow_duration = 0.0
         self._exporter.record_histogram(
             EnterpriseTelemetryHistogram.WORKFLOW_DURATION,
-            float(info.workflow_run_elapsed_time),
+            workflow_duration,
             self._labels(
                 **labels,
                 status=info.workflow_run_status,
