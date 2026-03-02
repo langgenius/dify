@@ -87,18 +87,18 @@ class App(TypeBase):
     icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon: Mapped[str] = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
-    app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"))
     enable_site: Mapped[bool] = mapped_column(sa.Boolean)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
+    app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"), default='normal')
     api_rpm: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), default=0)
     api_rph: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), default=0)
     is_demo: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
     is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
     is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"), default=False)
     tracing: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
-    max_active_requests: Mapped[int | None]
+    max_active_requests: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False

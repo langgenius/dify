@@ -1,6 +1,6 @@
-from sqlalchemy.orm import Session
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.variables.segments import StringSegment
@@ -63,7 +63,6 @@ class TestWorkflowDraftVariableService:
         """
         fake = fake or Faker()
         app = App(
-            
             tenant_id=fake.uuid4(),
             name=fake.company(),
             description=fake.text(),
@@ -76,7 +75,7 @@ class TestWorkflowDraftVariableService:
             created_by=fake.uuid4(),
         )
         app.updated_by = app.created_by
-        app.id=fake.uuid4()
+        app.id = fake.uuid4()
 
         db_session_with_containers.add(app)
         db_session_with_containers.commit()
@@ -351,7 +350,9 @@ class TestWorkflowDraftVariableService:
         assert "var2" in var_names
         assert "var3" not in var_names
 
-    def test_list_conversation_variables_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_list_conversation_variables_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test listing conversation variables successfully.
 
@@ -423,7 +424,9 @@ class TestWorkflowDraftVariableService:
         assert variable.get_value().value == new_value.value
         assert variable.last_edited_at is not None
 
-    def test_update_variable_not_editable(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_update_variable_not_editable(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test that updating a non-editable variable raises an exception.
 
@@ -452,7 +455,9 @@ class TestWorkflowDraftVariableService:
         assert "variable not support updating" in str(exc_info.value)
         assert variable.id in str(exc_info.value)
 
-    def test_reset_conversation_variable_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_reset_conversation_variable_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test resetting conversation variable successfully.
 
@@ -515,7 +520,9 @@ class TestWorkflowDraftVariableService:
         service.delete_variable(variable)
         assert db_session_with_containers.query(WorkflowDraftVariable).filter_by(id=variable.id).first() is None
 
-    def test_delete_workflow_variables_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_delete_workflow_variables_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test deleting all variables for a workflow successfully.
 
@@ -547,17 +554,23 @@ class TestWorkflowDraftVariableService:
         )
 
         app_variables = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
-        other_app_variables = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
+        other_app_variables = (
+            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
+        )
         assert len(app_variables) == 3
         assert len(other_app_variables) == 1
         service = WorkflowDraftVariableService(db_session_with_containers)
         service.delete_workflow_variables(app.id)
         app_variables_after = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
-        other_app_variables_after = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
+        other_app_variables_after = (
+            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
+        )
         assert len(app_variables_after) == 0
         assert len(other_app_variables_after) == 1
 
-    def test_delete_node_variables_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_delete_node_variables_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test deleting all variables for a specific node successfully.
 
@@ -600,7 +613,9 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
 
-        target_node_variables = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, node_id=node_id).all()
+        target_node_variables = (
+            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, node_id=node_id).all()
+        )
         other_node_variables = (
             db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, node_id="other_node").all()
         )
@@ -720,7 +735,9 @@ class TestWorkflowDraftVariableService:
         retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id)
         assert retrieved_conv_id is None
 
-    def test_list_system_variables_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_list_system_variables_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test listing system variables successfully.
 
@@ -767,7 +784,9 @@ class TestWorkflowDraftVariableService:
         assert "sys_var2" in var_names
         assert "conv_var" not in var_names
 
-    def test_get_variable_by_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_variable_by_name_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test getting variables by name successfully for different types.
 
@@ -814,7 +833,9 @@ class TestWorkflowDraftVariableService:
         assert retrieved_node_var.name == "test_node_var"
         assert retrieved_node_var.node_id == "test_node"
 
-    def test_get_variable_by_name_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_variable_by_name_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test getting variables by name when they don't exist.
 

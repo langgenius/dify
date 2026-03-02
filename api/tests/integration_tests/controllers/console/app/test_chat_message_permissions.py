@@ -23,7 +23,16 @@ class TestChatMessageApiPermissions:
     @pytest.fixture
     def mock_app_model(self):
         """Create a mock App model for testing."""
-        app = App(id=str(uuid.uuid4()), mode=AppMode.CHAT, tenant_id=str(uuid.uuid4()), status="normal")
+        app = App(
+            id=str(uuid.uuid4()),
+            mode=AppMode.CHAT,
+            tenant_id=str(uuid.uuid4()),
+            status="normal",
+            name="Test App",
+            icon="test-icon",
+            enable_site=True,
+            enable_api=True,
+        )
         return app
 
     @pytest.fixture
