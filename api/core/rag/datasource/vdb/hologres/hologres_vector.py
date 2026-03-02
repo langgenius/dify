@@ -211,10 +211,11 @@ class HologresVector(BaseVector):
         """Process vector search results into Document objects."""
         docs = []
         for row in results:
-            # row format: (id, text, meta, distance)
-            text = row[1]
-            meta = row[2]
-            distance = row[3]
+            # row format: (distance, id, text, meta)
+            # distance is first because search_vector() adds the computed column before selected columns
+            distance = row[0]
+            text = row[2]
+            meta = row[3]
 
             if isinstance(meta, str):
                 meta = json.loads(meta)
