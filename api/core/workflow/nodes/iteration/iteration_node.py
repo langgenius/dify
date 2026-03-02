@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING, Any, NewType, cast
 from typing_extensions import TypeIs
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables import IntegerVariable, NoneSegment
-from core.variables.segments import ArrayAnySegment, ArraySegment
-from core.variables.variables import Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import (
     NodeExecutionType,
@@ -36,6 +33,9 @@ from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from core.workflow.runtime import VariablePool
+from core.workflow.variables import IntegerVariable, NoneSegment
+from core.workflow.variables.segments import ArrayAnySegment, ArraySegment
+from core.workflow.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now
 
 from .exc import (
@@ -588,6 +588,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
+        from core.app.workflow.layers.llm_quota import LLMQuotaLayer
         from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
@@ -642,5 +643,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
             config=GraphEngineConfig(),
         )
+        graph_engine.layer(LLMQuotaLayer())
 
         return graph_engine

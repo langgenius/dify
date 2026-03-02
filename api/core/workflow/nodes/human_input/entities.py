@@ -10,10 +10,10 @@ from typing import Annotated, Any, ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.consts import SELECTORS_LENGTH
 
 from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
 

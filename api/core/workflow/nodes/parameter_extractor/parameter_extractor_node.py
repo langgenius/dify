@@ -3,10 +3,8 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import ImagePromptMessageContent
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -19,20 +17,25 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from core.model_runtime.memory import PromptMessageMemory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.variables.types import ArrayValidation, SegmentType
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import (
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.file import File
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.llm import ModelConfig, llm_utils
+from core.workflow.nodes.llm import llm_utils
 from core.workflow.runtime import VariablePool
+from core.workflow.variables.types import ArrayValidation, SegmentType
 from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
@@ -59,6 +62,11 @@ from .prompts import (
 )
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
+    from core.workflow.runtime import GraphRuntimeState
 
 
 def extract_json(text):
@@ -90,8 +98,33 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     node_type = NodeType.PARAMETER_EXTRACTOR
 
-    _model_instance: ModelInstance | None = None
-    _model_config: ModelConfigWithCredentialsEntity | None = None
+    _model_instance: ModelInstance
+    _credentials_provider: "CredentialsProvider"
+    _model_factory: "ModelFactory"
+    _memory: PromptMessageMemory | None
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        credentials_provider: "CredentialsProvider",
+        model_factory: "ModelFactory",
+        model_instance: ModelInstance,
+        memory: PromptMessageMemory | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._credentials_provider = credentials_provider
+        self._model_factory = model_factory
+        self._model_instance = model_instance
+        self._memory = memory
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -129,25 +162,15 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             else []
         )
 
-        model_instance, model_config = self._fetch_model_config(node_data.model)
+        model_instance = self._model_instance
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
             raise InvalidModelTypeError("Model is not a Large Language Model")
 
-        llm_model = model_instance.model_type_instance
-        model_schema = llm_model.get_model_schema(
-            model=model_config.model,
-            credentials=model_config.credentials,
-        )
-        if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
-
-        # fetch memory
-        memory = llm_utils.fetch_memory(
-            variable_pool=variable_pool,
-            app_id=self.app_id,
-            node_data_memory=node_data.memory,
-            model_instance=model_instance,
-        )
+        try:
+            model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+        except ValueError as exc:
+            raise ModelSchemaNotFoundError("Model schema not found") from exc
+        memory = self._memory
 
         if (
             set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}
@@ -158,7 +181,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 node_data=node_data,
                 query=query,
                 variable_pool=self.graph_runtime_state.variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
                 memory=memory,
                 files=files,
                 vision_detail=node_data.vision.configs.detail,
@@ -169,7 +192,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 data=node_data,
                 query=query,
                 variable_pool=self.graph_runtime_state.variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
                 memory=memory,
                 files=files,
                 vision_detail=node_data.vision.configs.detail,
@@ -185,24 +208,23 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         }
 
         process_data = {
-            "model_mode": model_config.mode,
+            "model_mode": node_data.model.mode,
             "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                model_mode=model_config.mode, prompt_messages=prompt_messages
+                model_mode=node_data.model.mode, prompt_messages=prompt_messages
             ),
             "usage": None,
             "function": {} if not prompt_message_tools else jsonable_encoder(prompt_message_tools[0]),
             "tool_call": None,
-            "model_provider": model_config.provider,
-            "model_name": model_config.model,
+            "model_provider": model_instance.provider,
+            "model_name": model_instance.model_name,
         }
 
         try:
             text, usage, tool_call = self._invoke(
-                node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 tools=prompt_message_tools,
-                stop=model_config.stop,
+                stop=model_instance.stop,
             )
             process_data["usage"] = jsonable_encoder(usage)
             process_data["tool_call"] = jsonable_encoder(tool_call)
@@ -264,17 +286,16 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     def _invoke(
         self,
-        node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         tools: list[PromptMessageTool],
-        stop: list[str],
+        stop: Sequence[str],
     ) -> tuple[str, LLMUsage, AssistantPromptMessage.ToolCall | None]:
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
-            model_parameters=node_data_model.completion_params,
+            model_parameters=dict(model_instance.parameters),
             tools=tools,
-            stop=stop,
+            stop=list(stop),
             stream=False,
             user=self.user_id,
         )
@@ -288,9 +309,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         usage = invoke_result.usage
         tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
 
-        # deduct quota
-        llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
-
         return text, usage, tool_call
 
     def _generate_function_call_prompt(
@@ -298,8 +316,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        model_instance: ModelInstance,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> tuple[list[PromptMessage], list[PromptMessageTool]]:
@@ -311,7 +329,13 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         )
 
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, "")
+        rest_token = self._calculate_rest_token(
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            model_instance=model_instance,
+            context="",
+        )
         prompt_template = self._get_function_calling_prompt_template(
             node_data, query, variable_pool, memory, rest_token
         )
@@ -323,7 +347,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context="",
             memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
             image_detail_config=vision_detail,
         )
 
@@ -380,8 +404,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        model_instance: ModelInstance,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -395,7 +419,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 node_data=data,
                 query=query,
                 variable_pool=variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
                 memory=memory,
                 files=files,
                 vision_detail=vision_detail,
@@ -405,7 +429,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 node_data=data,
                 query=query,
                 variable_pool=variable_pool,
-                model_config=model_config,
+                model_instance=model_instance,
                 memory=memory,
                 files=files,
                 vision_detail=vision_detail,
@@ -418,8 +442,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        model_instance: ModelInstance,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -428,7 +452,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         rest_token = self._calculate_rest_token(
-            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            model_instance=model_instance,
+            context="",
         )
         prompt_template = self._get_prompt_engineering_prompt_template(
             node_data=node_data, query=query, variable_pool=variable_pool, memory=memory, max_token_limit=rest_token
@@ -440,8 +468,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             files=files,
             context="",
             memory_config=node_data.memory,
-            memory=memory,
-            model_config=model_config,
+            # AdvancedPromptTransform is still typed against TokenBufferMemory.
+            memory=cast(Any, memory),
+            model_instance=model_instance,
             image_detail_config=vision_detail,
         )
 
@@ -452,8 +481,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
-        memory: TokenBufferMemory | None,
+        model_instance: ModelInstance,
+        memory: PromptMessageMemory | None,
         files: Sequence[File],
         vision_detail: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -462,7 +491,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         rest_token = self._calculate_rest_token(
-            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
+            node_data=node_data,
+            query=query,
+            variable_pool=variable_pool,
+            model_instance=model_instance,
+            context="",
         )
         prompt_template = self._get_prompt_engineering_prompt_template(
             node_data=node_data,
@@ -482,7 +515,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context="",
             memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
             image_detail_config=vision_detail,
         )
 
@@ -681,7 +714,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         max_token_limit: int = 2000,
     ) -> list[ChatModelMessage]:
         model_mode = ModelMode(node_data.model.mode)
@@ -690,8 +723,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         instruction = variable_pool.convert_template(node_data.instruction or "").text
 
         if memory and node_data.memory and node_data.memory.window:
-            memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
+            memory_str = llm_utils.fetch_memory_text(
+                memory=memory, max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
@@ -708,7 +741,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        memory: TokenBufferMemory | None,
+        memory: PromptMessageMemory | None,
         max_token_limit: int = 2000,
     ):
         model_mode = ModelMode(node_data.model.mode)
@@ -717,8 +750,8 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         instruction = variable_pool.convert_template(node_data.instruction or "").text
 
         if memory and node_data.memory and node_data.memory.window:
-            memory_str = memory.get_history_prompt_text(
-                max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
+            memory_str = llm_utils.fetch_memory_text(
+                memory=memory, max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
@@ -743,21 +776,16 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         node_data: ParameterExtractorNodeData,
         query: str,
         variable_pool: VariablePool,
-        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
         context: str | None,
     ) -> int:
+        try:
+            model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+        except ValueError as exc:
+            raise ModelSchemaNotFoundError("Model schema not found") from exc
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
 
-        model_instance, model_config = self._fetch_model_config(node_data.model)
-        if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
-            raise InvalidModelTypeError("Model is not a Large Language Model")
-
-        llm_model = model_instance.model_type_instance
-        model_schema = llm_model.get_model_schema(model_config.model, model_config.credentials)
-        if not model_schema:
-            raise ModelSchemaNotFoundError("Model schema not found")
-
-        if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
+        if set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
         else:
             prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, variable_pool, None, 2000)
@@ -770,27 +798,28 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             context=context,
             memory_config=node_data.memory,
             memory=None,
-            model_config=model_config,
+            model_instance=model_instance,
         )
         rest_tokens = 2000
 
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+        model_context_tokens = model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if model_context_tokens:
-            model_type_instance = model_config.provider_model_bundle.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
+            model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
             curr_message_tokens = (
-                model_type_instance.get_num_tokens(model_config.model, model_config.credentials, prompt_messages) + 1000
+                model_type_instance.get_num_tokens(
+                    model_instance.model_name, model_instance.credentials, prompt_messages
+                )
+                + 1000
             )  # add 1000 to ensure tool call messages
 
             max_tokens = 0
-            for parameter_rule in model_config.model_schema.parameter_rules:
+            for parameter_rule in model_schema.parameter_rules:
                 if parameter_rule.name == "max_tokens" or (
                     parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
                 ):
                     max_tokens = (
-                        model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template or "")
+                        model_instance.parameters.get(parameter_rule.name)
+                        or model_instance.parameters.get(parameter_rule.use_template or "")
                     ) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
@@ -798,18 +827,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         return rest_tokens
 
-    def _fetch_model_config(
-        self, node_data_model: ModelConfig
-    ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
-        """
-        Fetch model config.
-        """
-        if not self._model_instance or not self._model_config:
-            self._model_instance, self._model_config = llm_utils.fetch_model_config(
-                tenant_id=self.tenant_id, node_data_model=node_data_model
-            )
-
-        return self._model_instance, self._model_config
+    @property
+    def model_instance(self) -> ModelInstance:
+        return self._model_instance
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
