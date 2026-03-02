@@ -28,8 +28,8 @@ ignore_imports =
     dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_events
     dify_graph.nodes.loop.loop_node -> dify_graph.graph_events
 
-    dify_graph.nodes.iteration.iteration_node -> core.app.workflow.node_factory
-    dify_graph.nodes.loop.loop_node -> core.app.workflow.node_factory
+    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
+    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
     dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
 
@@ -101,12 +101,12 @@ forbidden_modules =
     core.trigger
     core.variables
 ignore_imports =
-    dify_graph.nodes.loop.loop_node -> core.app.workflow.node_factory
+    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
     dify_graph.nodes.agent.agent_node -> core.model_manager
     dify_graph.nodes.agent.agent_node -> core.provider_manager
     dify_graph.nodes.agent.agent_node -> core.tools.tool_manager
     dify_graph.nodes.document_extractor.node -> core.helper.ssrf_proxy
-    dify_graph.nodes.iteration.iteration_node -> core.app.workflow.node_factory
+    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
     dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.llm.llm_utils -> core.model_manager
     dify_graph.nodes.llm.protocols -> core.model_manager

@@ -29,7 +29,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.pause_reason import HumanInputRequired

@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.model_manager import ModelInstance
+from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph

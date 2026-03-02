@@ -1393,8 +1393,8 @@ class TestWorkflowService:
 
         from unittest.mock import patch
 
-        from core.app.workflow.node_factory import DifyNodeFactory
         from core.model_manager import ModelInstance
+        from core.workflow.node_factory import DifyNodeFactory
 
         # Act
         with patch.object(

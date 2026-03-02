@@ -12,7 +12,7 @@ import dify_graph.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason

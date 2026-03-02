@@ -589,7 +589,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
         from core.app.workflow.layers.llm_quota import LLMQuotaLayer
-        from core.app.workflow.node_factory import DifyNodeFactory
+        from core.workflow.node_factory import DifyNodeFactory
         from dify_graph.entities import GraphInitParams
         from dify_graph.graph import Graph
         from dify_graph.graph_engine import GraphEngine, GraphEngineConfig

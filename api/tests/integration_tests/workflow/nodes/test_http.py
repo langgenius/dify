@@ -6,9 +6,9 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file.file_manager import file_manager

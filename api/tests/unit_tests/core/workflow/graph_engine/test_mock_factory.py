@@ -8,7 +8,7 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.enums import NodeType
 from dify_graph.nodes.base.node import Node
 

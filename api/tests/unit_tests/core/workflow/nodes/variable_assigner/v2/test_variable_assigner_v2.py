@@ -3,7 +3,7 @@ import uuid
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.nodes.variable_assigner.v2 import VariableAssignerNode

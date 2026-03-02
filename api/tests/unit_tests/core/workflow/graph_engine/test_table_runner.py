@@ -19,8 +19,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.tools.utils.yaml_utils import _load_yaml_file
+from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
