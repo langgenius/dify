@@ -900,7 +900,7 @@ class TraceTask:
             outputs=message_data.answer,
             file_list=file_list,
             start_time=created_at,
-            end_time=created_at + timedelta(seconds=message_data.provider_response_latency),
+            end_time=message_data.updated_at if message_data.updated_at and message_data.updated_at > created_at else created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
