@@ -5,12 +5,12 @@ This module provides comprehensive integration testing for WorkflowService using
 TestContainers to ensure realistic database interactions and proper isolation.
 """
 
-from sqlalchemy.orm import Session
 import json
 from unittest.mock import MagicMock
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from models import Account, App, Workflow
 from models.model import AppMode
@@ -68,7 +68,6 @@ class TestWorkflowService:
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-
         db_session_with_containers.add(tenant)
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -106,7 +105,6 @@ class TestWorkflowService:
         app.id = fake.uuid4()
         app.updated_by = app.created_by
 
-
         db_session_with_containers.add(app)
         db_session_with_containers.commit()
         return app
@@ -139,7 +137,6 @@ class TestWorkflowService:
             environment_variables=[],
             conversation_variables=[],
         )
-
 
         db_session_with_containers.add(workflow)
         db_session_with_containers.commit()
@@ -177,7 +174,6 @@ class TestWorkflowService:
         node_execution.created_by_role = CreatorUserRole.ACCOUNT  # Required field
         node_execution.created_by = account.id  # Required field
         node_execution.created_at = fake.date_time_this_year()
-
 
         db_session_with_containers.add(node_execution)
         db_session_with_containers.commit()
@@ -318,7 +314,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -391,7 +386,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
-
         app.workflow_id = workflow.id
         db_session_with_containers.commit()
 
@@ -450,7 +444,6 @@ class TestWorkflowService:
         # Set the app's workflow_id to the first workflow
         app.workflow_id = workflows[0].id
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -507,7 +500,6 @@ class TestWorkflowService:
         # Set the app's workflow_id to the first workflow
         app.workflow_id = workflow1.id
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -549,7 +541,6 @@ class TestWorkflowService:
 
         # Set the app's workflow_id to the first workflow
         app.workflow_id = workflow1.id
-
 
         db_session_with_containers.commit()
 
@@ -747,7 +738,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         workflow.version = Workflow.VERSION_DRAFT
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -803,7 +793,6 @@ class TestWorkflowService:
         # Create already published workflow
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         workflow.version = "2024.01.01.001"  # Already published
-
 
         db_session_with_containers.commit()
 
@@ -934,7 +923,6 @@ class TestWorkflowService:
         )
         app_model_config.id = fake.uuid4()
 
-
         db_session_with_containers.add(app_model_config)
         app.app_model_config_id = app_model_config.id
         db_session_with_containers.commit()
@@ -995,7 +983,6 @@ class TestWorkflowService:
         )
         app_model_config.id = fake.uuid4()
 
-
         db_session_with_containers.add(app_model_config)
         app.app_model_config_id = app_model_config.id
         db_session_with_containers.commit()
@@ -1034,7 +1021,6 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.WORKFLOW
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -1055,7 +1041,6 @@ class TestWorkflowService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.ADVANCED_CHAT
-
 
         db_session_with_containers.commit()
 
@@ -1086,7 +1071,6 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
         app.mode = AppMode.WORKFLOW
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -1112,7 +1096,6 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
         app.mode = "invalid_mode"  # Invalid mode
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -1135,7 +1118,6 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
-
 
         db_session_with_containers.commit()
 
@@ -1169,7 +1151,6 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
 
-
         workflow_service = WorkflowService()
         non_existent_workflow_id = fake.uuid4()
         update_data = {"marked_name": "Test"}
@@ -1199,7 +1180,6 @@ class TestWorkflowService:
         app = self._create_test_app(db_session_with_containers, fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         original_name = workflow.marked_name
-
 
         db_session_with_containers.commit()
 
@@ -1243,7 +1223,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -1276,7 +1255,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
         # Keep as draft version
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -1285,7 +1263,9 @@ class TestWorkflowService:
         from services.errors.workflow_service import DraftWorkflowDeletionError
 
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
-            workflow_service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id)
+            workflow_service.delete_workflow(
+                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+            )
 
     def test_delete_workflow_in_use_error(self, db_session_with_containers: Session):
         """
@@ -1306,7 +1286,6 @@ class TestWorkflowService:
         # Associate workflow with app
         app.workflow_id = workflow.id
 
-
         db_session_with_containers.commit()
 
         workflow_service = WorkflowService()
@@ -1315,7 +1294,9 @@ class TestWorkflowService:
         from services.errors.workflow_service import WorkflowInUseError
 
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
-            workflow_service.delete_workflow(session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id)
+            workflow_service.delete_workflow(
+                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+            )
 
     def test_delete_workflow_not_found_error(self, db_session_with_containers: Session):
         """
@@ -1328,7 +1309,6 @@ class TestWorkflowService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
         non_existent_workflow_id = fake.uuid4()
-
 
         workflow_service = WorkflowService()
 
