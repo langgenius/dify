@@ -2,10 +2,10 @@
 
 from unittest.mock import Mock
 
-from core.workflow.enums import NodeExecutionType, NodeState, NodeType
-from core.workflow.graph.edge import Edge
-from core.workflow.graph.graph import Graph
-from core.workflow.nodes.base.node import Node
+from dify_graph.enums import NodeExecutionType, NodeState, NodeType
+from dify_graph.graph.edge import Edge
+from dify_graph.graph.graph import Graph
+from dify_graph.nodes.base.node import Node
 
 
 def create_mock_node(node_id: str, execution_type: NodeExecutionType, state: NodeState = NodeState.UNKNOWN) -> Node:

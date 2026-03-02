@@ -10,12 +10,12 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.graph_events.graph import GraphRunPausedEvent
-from core.workflow.nodes.human_input.entities import FormInput, UserAction
-from core.workflow.nodes.human_input.enums import FormInputType
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.graph_events.graph import GraphRunPausedEvent
+from dify_graph.nodes.human_input.entities import FormInput, UserAction
+from dify_graph.nodes.human_input.enums import FormInputType
+from dify_graph.system_variable import SystemVariable
 from models.account import Account
 
 

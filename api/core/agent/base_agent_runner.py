@@ -39,7 +39,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from core.workflow.file import file_manager
+from dify_graph.file import file_manager
 from extensions.ext_database import db
 from factories import file_factory
 from models.enums import CreatorUserRole
@@ -112,7 +112,7 @@ class BaseAgentRunner(AppRunner):
 
         # check if model supports stream tool call
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
         self.files = application_generate_entity.files if ModelFeature.VISION in features else []

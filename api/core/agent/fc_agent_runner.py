@@ -24,8 +24,8 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from core.workflow.file import file_manager
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
+from dify_graph.file import file_manager
+from dify_graph.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -178,7 +178,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 )
 
                 yield LLMResultChunk(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=result.prompt_messages,
                     system_fingerprint=result.system_fingerprint,
                     delta=LLMResultChunkDelta(
@@ -308,7 +308,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),

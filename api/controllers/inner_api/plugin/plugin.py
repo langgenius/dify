@@ -29,7 +29,7 @@ from core.plugin.entities.request import (
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from core.workflow.file.helpers import get_signed_file_url_for_plugin
+from dify_graph.file.helpers import get_signed_file_url_for_plugin
 from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser

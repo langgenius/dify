@@ -3,24 +3,24 @@ from collections.abc import Mapping
 
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeState
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.graph_state_manager import GraphStateManager
-from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.llm.entities import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import NodeState
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.graph_state_manager import GraphStateManager
+from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode

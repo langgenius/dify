@@ -1034,3 +1034,34 @@ class TestConversationServiceExport:
         # Step 2: Async cleanup task triggered
         # The Celery task will handle cleanup of messages, annotations, etc.
         mock_delete_task.delay.assert_called_once_with(conversation_id)
+
+    @patch("services.conversation_service.delete_conversation_related_data")
+    def test_delete_conversation_not_owned_by_account(self, mock_delete_task, db_session_with_containers):
+        """
+        Test deletion is denied when conversation belongs to a different account.
+        """
+        # Arrange
+        app_model, owner_account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        _, other_account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers,
+            app_model,
+            owner_account,
+        )
+
+        # Act & Assert
+        with pytest.raises(ConversationNotExistsError):
+            ConversationService.delete(
+                app_model=app_model,
+                conversation_id=conversation.id,
+                user=other_account,
+            )
+
+        # Verify no deletion and no async cleanup trigger
+        not_deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
+        assert not_deleted is not None
+        mock_delete_task.delay.assert_not_called()

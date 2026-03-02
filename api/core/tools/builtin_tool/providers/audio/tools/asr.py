@@ -8,8 +8,8 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
-from core.workflow.file.enums import FileType
-from core.workflow.file.file_manager import download
+from dify_graph.file.enums import FileType
+from dify_graph.file.file_manager import download
 from services.model_provider_service import ModelProviderService
 
 

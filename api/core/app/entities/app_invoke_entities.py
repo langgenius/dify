@@ -8,7 +8,7 @@ from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.workflow.file import File, FileUploadConfig
+from dify_graph.file import File, FileUploadConfig
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager

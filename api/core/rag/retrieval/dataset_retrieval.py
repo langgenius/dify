@@ -60,9 +60,9 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.nodes.knowledge_retrieval import exc
-from core.workflow.repositories.rag_retrieval_protocol import (
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.nodes.knowledge_retrieval import exc
+from dify_graph.repositories.rag_retrieval_protocol import (
     KnowledgeRetrievalRequest,
     Source,
     SourceChildChunk,
@@ -248,19 +248,22 @@ class DatasetRetrieval:
         retrieval_resource_list = []
         # deal with external documents
         for item in external_documents:
+            ext_meta = item.metadata or {}
+            title = ext_meta.get("title") or ""
+            doc_id = ext_meta.get("document_id") or title
             source = Source(
                 metadata=SourceMetadata(
                     source="knowledge",
-                    dataset_id=item.metadata.get("dataset_id"),
-                    dataset_name=item.metadata.get("dataset_name"),
-                    document_id=item.metadata.get("document_id"),
-                    document_name=item.metadata.get("title"),
+                    dataset_id=ext_meta.get("dataset_id") or "",
+                    dataset_name=ext_meta.get("dataset_name") or "",
+                    document_id=str(doc_id),
+                    document_name=ext_meta.get("title") or "",
                     data_source_type="external",
                     retriever_from="workflow",
-                    score=item.metadata.get("score"),
-                    doc_metadata=item.metadata,
+                    score=float(ext_meta.get("score") or 0.0),
+                    doc_metadata=ext_meta,
                 ),
-                title=item.metadata.get("title"),
+                title=title,
                 content=item.page_content,
             )
             retrieval_resource_list.append(source)

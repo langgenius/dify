@@ -22,7 +22,7 @@ from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransfo
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
+from dify_graph.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -245,7 +245,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             iteration_step += 1
 
         yield LLMResultChunk(
-            model=model_instance.model,
+            model=model_instance.model_name,
             prompt_messages=prompt_messages,
             delta=LLMResultChunkDelta(
                 index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
@@ -268,7 +268,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),
