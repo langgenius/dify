@@ -4,6 +4,8 @@ import time
 from typing import Any
 
 import holo_search_sdk as holo  # type: ignore
+from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
+from psycopg import sql as psql
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -32,9 +34,9 @@ class HologresVectorConfig(BaseModel):
     access_key_id: str
     access_key_secret: str
     schema_name: str = "public"
-    tokenizer: str = "jieba"
-    distance_method: str = "Cosine"
-    base_quantization_type: str = "rabitq"
+    tokenizer: TokenizerType = "jieba"
+    distance_method: DistanceType = "Cosine"
+    base_quantization_type: BaseQuantizationType = "rabitq"
     max_degree: int = 64
     ef_construction: int = 400
 
@@ -130,15 +132,19 @@ class HologresVector(BaseVector):
             return False
 
         result = self._client.execute(
-            f"SELECT 1 FROM {self.table_name} WHERE id = '{id}' LIMIT 1",
+            psql.SQL("SELECT 1 FROM {} WHERE id = {} LIMIT 1").format(
+                psql.Identifier(self.table_name), psql.Literal(id)
+            ),
             fetch_result=True,
         )
         return bool(result)
 
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str] | None:
         """Get document IDs by metadata field key and value."""
         result = self._client.execute(
-            f"SELECT id FROM {self.table_name} WHERE meta->>'{key}' = '{value}'",
+            psql.SQL("SELECT id FROM {} WHERE meta->>{} = {}").format(
+                psql.Identifier(self.table_name), psql.Literal(key), psql.Literal(value)
+            ),
             fetch_result=True,
         )
         if result:
@@ -152,17 +158,23 @@ class HologresVector(BaseVector):
         if not self._client.check_table_exist(self.table_name):
             return
 
-        ids_str = ", ".join(f"'{id}'" for id in ids)
-        table = self._client.open_table(self.table_name)
-        table.delete(f"id IN ({ids_str})")
+        self._client.execute(
+            psql.SQL("DELETE FROM {} WHERE id IN ({})").format(
+                psql.Identifier(self.table_name),
+                psql.SQL(", ").join(psql.Literal(id) for id in ids),
+            )
+        )
 
     def delete_by_metadata_field(self, key: str, value: str):
         """Delete documents by metadata field key and value."""
         if not self._client.check_table_exist(self.table_name):
             return
 
-        table = self._client.open_table(self.table_name)
-        table.delete(f"meta->>'{key}' = '{value}'")
+        self._client.execute(
+            psql.SQL("DELETE FROM {} WHERE meta->>{} = {}").format(
+                psql.Identifier(self.table_name), psql.Literal(key), psql.Literal(value)
+            )
+        )
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Search for documents by vector similarity."""
@@ -187,8 +199,10 @@ class HologresVector(BaseVector):
         # Apply document_ids_filter if provided
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            query = query.where(f"meta->>'document_id' IN ({document_ids})")
+            filter_sql = psql.SQL("meta->>'document_id' IN ({})").format(
+                psql.SQL(", ").join(psql.Literal(id) for id in document_ids_filter)
+            )
+            query = query.where(filter_sql)
 
         results = query.fetchall()
         return self._process_vector_results(results, score_threshold)
@@ -233,8 +247,10 @@ class HologresVector(BaseVector):
         # Apply document_ids_filter if provided
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            search_query = search_query.where(f"meta->>'document_id' IN ({document_ids})")
+            filter_sql = psql.SQL("meta->>'document_id' IN ({})").format(
+                psql.SQL(", ").join(psql.Literal(id) for id in document_ids_filter)
+            )
+            search_query = search_query.where(filter_sql)
 
         results = search_query.fetchall()
         return self._process_full_text_results(results)
@@ -271,20 +287,29 @@ class HologresVector(BaseVector):
 
             if not self._client.check_table_exist(self.table_name):
                 # Create table via SQL with CHECK constraint for vector dimension
-                create_table_sql = f"""
-                    CREATE TABLE IF NOT EXISTS {self.table_name} (
+                create_table_sql = psql.SQL("""
+                    CREATE TABLE IF NOT EXISTS {} (
                         id TEXT PRIMARY KEY,
                         text TEXT NOT NULL,
                         meta JSONB NOT NULL,
                         embedding float4[] NOT NULL
                             CHECK (array_ndims(embedding) = 1
-                                   AND array_length(embedding, 1) = {dimension})
+                                   AND array_length(embedding, 1) = {})
                     );
-                """
+                """).format(psql.Identifier(self.table_name), psql.Literal(dimension))
                 self._client.execute(create_table_sql)
 
                 # Wait for table to be fully ready before creating indexes
-                time.sleep(15)
+                max_wait_seconds = 30
+                poll_interval = 2
+                for _ in range(max_wait_seconds // poll_interval):
+                    if self._client.check_table_exist(self.table_name):
+                        break
+                    time.sleep(poll_interval)
+                else:
+                    raise RuntimeError(
+                        f"Table {self.table_name} was not ready after {max_wait_seconds}s"
+                    )
 
                 # Open table and set vector index
                 table = self._client.open_table(self.table_name)
