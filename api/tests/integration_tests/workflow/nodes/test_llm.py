@@ -80,6 +80,8 @@ def init_llm_node(config: dict) -> LLMNode:
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        credentials_provider=MagicMock(),
+        model_factory=MagicMock(),
     )
 
     return node
@@ -115,7 +117,7 @@ def test_execute_llm():
     db.session.close = MagicMock()
 
     # Mock the _fetch_model_config to avoid database calls
-    def mock_fetch_model_config(**_kwargs):
+    def mock_fetch_model_config(*_args, **_kwargs):
         from decimal import Decimal
         from unittest.mock import MagicMock
 
@@ -227,7 +229,7 @@ def test_execute_llm_with_jinja2():
     db.session.close = MagicMock()
 
     # Mock the _fetch_model_config method
-    def mock_fetch_model_config(**_kwargs):
+    def mock_fetch_model_config(*_args, **_kwargs):
         from decimal import Decimal
         from unittest.mock import MagicMock
 
