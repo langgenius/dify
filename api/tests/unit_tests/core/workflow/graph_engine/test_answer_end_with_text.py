@@ -1,4 +1,4 @@
-from core.workflow.graph_events import (
+from dify_graph.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,

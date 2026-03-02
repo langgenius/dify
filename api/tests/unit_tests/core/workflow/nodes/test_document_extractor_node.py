@@ -6,20 +6,20 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.file import File, FileTransferMethod
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
-from core.workflow.nodes.document_extractor.node import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from dify_graph.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
-from core.workflow.variables import ArrayFileSegment
-from core.workflow.variables.segments import ArrayStringSegment
-from core.workflow.variables.variables import StringVariable
+from dify_graph.variables import ArrayFileSegment
+from dify_graph.variables.segments import ArrayStringSegment
+from dify_graph.variables.variables import StringVariable
 from models.enums import UserFrom
 
 
@@ -146,15 +146,15 @@ def test_run_extract_text(
     mock_ssrf_proxy_get.return_value.content = file_content
     mock_ssrf_proxy_get.return_value.raise_for_status = Mock()
 
-    monkeypatch.setattr("core.workflow.file.file_manager.download", mock_download)
+    monkeypatch.setattr("dify_graph.file.file_manager.download", mock_download)
     monkeypatch.setattr("core.helper.ssrf_proxy.get", mock_ssrf_proxy_get)
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        monkeypatch.setattr("dify_graph.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
+        monkeypatch.setattr("dify_graph.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
 
     result = document_extractor_node._run()
 

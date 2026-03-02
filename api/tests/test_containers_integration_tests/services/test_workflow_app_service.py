@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from dify_graph.entities.workflow_execution import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
 from services.account_service import AccountService, TenantService

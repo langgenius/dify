@@ -1,13 +1,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from dify_graph.graph_engine.entities.graph import Graph
+from dify_graph.graph_engine.entities.graph_init_params import GraphInitParams
+from dify_graph.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
-from core.workflow.nodes.template_transform.template_renderer import TemplateRenderError
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
+from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.nodes.template_transform.template_renderer import TemplateRenderError
+from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
 from models.workflow import WorkflowType
 
 
@@ -128,7 +128,7 @@ class TestTemplateTransformNode:
         assert TemplateTransformNode.version() == "1"
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_simple_template(
@@ -166,7 +166,7 @@ class TestTemplateTransformNode:
         assert result.inputs["age"] == 30
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_none_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
@@ -194,7 +194,7 @@ class TestTemplateTransformNode:
         assert result.inputs["value"] is None
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_code_execution_error(
@@ -218,7 +218,7 @@ class TestTemplateTransformNode:
         assert "Template syntax error" in result.error
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_output_length_exceeds_limit(
@@ -243,7 +243,7 @@ class TestTemplateTransformNode:
         assert "Output length exceeds" in result.error
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_complex_jinja2_template(
@@ -308,7 +308,7 @@ class TestTemplateTransformNode:
         assert mapping["node_123.var2"] == ["sys", "input2"]
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_empty_variables(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
@@ -336,7 +336,7 @@ class TestTemplateTransformNode:
         assert result.inputs == {}
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_numeric_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
@@ -376,7 +376,7 @@ class TestTemplateTransformNode:
         assert result.outputs["output"] == "Total: $31.5"
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_dict_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
@@ -408,7 +408,7 @@ class TestTemplateTransformNode:
         assert "john@example.com" in result.outputs["output"]
 
     @patch(
-        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
+        "dify_graph.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template",
         autospec=True,
     )
     def test_run_with_list_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):

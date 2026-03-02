@@ -3,15 +3,15 @@
 import json
 from unittest.mock import MagicMock
 
-from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
-from core.workflow.graph_engine.entities.commands import (
+from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
+from dify_graph.graph_engine.entities.commands import (
     AbortCommand,
     CommandType,
     GraphEngineCommand,
     UpdateVariablesCommand,
     VariableUpdate,
 )
-from core.workflow.variables import IntegerVariable, StringVariable
+from dify_graph.variables import IntegerVariable, StringVariable
 
 
 class TestRedisChannel:
