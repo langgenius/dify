@@ -235,7 +235,6 @@ class TestDisableSegmentsFromIndexTask:
                 "}"
             ),
             created_by=dataset.created_by,
-            updated_by=dataset.updated_by,
         )
 
         from extensions.ext_database import db
