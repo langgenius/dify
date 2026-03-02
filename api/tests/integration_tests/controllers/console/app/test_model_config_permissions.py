@@ -30,6 +30,7 @@ class TestModelConfigResourcePermissions:
             icon="test-icon",
             enable_site=True,
             enable_api=True,
+            description="",
         )
         app.id = str(uuid.uuid4())
         return app
