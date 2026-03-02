@@ -1,7 +1,10 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { CurrentTryAppParams } from '@/context/explore-context'
-import { useCallback, useState } from 'react'
+import type { MarketplaceTemplate } from '@/service/marketplace-templates'
+import dynamic from 'next/dynamic'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
 import AppListContext from '@/context/app-list-context'
@@ -14,8 +17,15 @@ import CreateAppModal from '../explore/create-app-modal'
 import TryApp from '../explore/try-app'
 import List from './list'
 
+const ImportFromMarketplaceTemplateModal = dynamic(
+  () => import('./import-from-marketplace-template-modal'),
+  { ssr: false },
+)
+
 const Apps = () => {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const { replace } = useRouter()
 
   useDocumentTitle(t('menus.apps', { ns: 'common' }))
   useEducationInit()
@@ -92,6 +102,43 @@ const Apps = () => {
     })
   }
 
+  // Marketplace template import via URL param
+  const marketplaceTemplateId = searchParams.get('template-id') || undefined
+  const dismissedTemplateIdRef = useRef<string | undefined>(undefined)
+  const showMarketplaceModal = !!marketplaceTemplateId && dismissedTemplateIdRef.current !== marketplaceTemplateId
+
+  const handleCloseMarketplaceModal = useCallback(() => {
+    dismissedTemplateIdRef.current = marketplaceTemplateId
+    // Remove template-id from URL without full navigation
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('template-id')
+    const newQuery = params.toString()
+    replace(newQuery ? `/apps?${newQuery}` : '/apps')
+  }, [searchParams, replace, marketplaceTemplateId])
+
+  const handleMarketplaceTemplateConfirm = useCallback(async (
+    yamlContent: string,
+    template: MarketplaceTemplate,
+  ) => {
+    const payload = {
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: yamlContent,
+      name: template.template_name,
+      icon: template.icon || undefined,
+      icon_background: template.icon_background || undefined,
+    }
+    await handleImportDSL(payload, {
+      onSuccess: () => {
+        handleCloseMarketplaceModal()
+        onSuccess()
+      },
+      onPending: () => {
+        handleCloseMarketplaceModal()
+        setShowDSLConfirmModal(true)
+      },
+    })
+  }, [handleImportDSL, onSuccess, handleCloseMarketplaceModal])
+
   return (
     <AppListContext.Provider value={{
       currentApp: currentTryAppParams,
@@ -135,6 +182,14 @@ const Apps = () => {
             onConfirm={onCreate}
             confirmDisabled={isFetching}
             onHide={() => setIsShowCreateModal(false)}
+          />
+        )}
+
+        {showMarketplaceModal && marketplaceTemplateId && (
+          <ImportFromMarketplaceTemplateModal
+            templateId={marketplaceTemplateId}
+            onConfirm={handleMarketplaceTemplateConfirm}
+            onClose={handleCloseMarketplaceModal}
           />
         )}
       </div>
