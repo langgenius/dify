@@ -10,9 +10,7 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from json_repair import repair_json
 
-from core.helper.ssrf_proxy import ssrf_proxy
 from core.workflow.file.enums import FileTransferMethod
-from core.workflow.file.file_manager import file_manager as default_file_manager
 from core.workflow.runtime import VariablePool
 from core.workflow.variables.segments import ArrayFileSegment, FileSegment
 
@@ -81,8 +79,8 @@ class Executor:
         http_request_config: HttpRequestNodeConfig,
         max_retries: int | None = None,
         ssl_verify: bool | None = None,
-        http_client: HttpClientProtocol | None = None,
-        file_manager: FileManagerProtocol | None = None,
+        http_client: HttpClientProtocol,
+        file_manager: FileManagerProtocol,
     ):
         self._http_request_config = http_request_config
         # If authorization API key is present, convert the API key using the variable pool
@@ -116,8 +114,8 @@ class Executor:
         self.max_retries = (
             max_retries if max_retries is not None else self._http_request_config.ssrf_default_max_retries
         )
-        self._http_client = http_client or ssrf_proxy
-        self._file_manager = file_manager or default_file_manager
+        self._http_client = http_client
+        self._file_manager = file_manager
 
         # init template
         self.variable_pool = variable_pool

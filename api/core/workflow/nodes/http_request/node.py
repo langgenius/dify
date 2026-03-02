@@ -3,17 +3,14 @@ import mimetypes
 from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.helper.ssrf_proxy import ssrf_proxy
-from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.file import File, FileTransferMethod
-from core.workflow.file.file_manager import file_manager as default_file_manager
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.http_request.executor import Executor
-from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
+from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol, ToolFileManagerProtocol
 from core.workflow.variables.segments import ArrayFileSegment
 from factories import file_factory
 
@@ -45,9 +42,9 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         graph_runtime_state: "GraphRuntimeState",
         *,
         http_request_config: HttpRequestNodeConfig,
-        http_client: HttpClientProtocol | None = None,
-        tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
-        file_manager: FileManagerProtocol | None = None,
+        http_client: HttpClientProtocol,
+        tool_file_manager_factory: Callable[[], ToolFileManagerProtocol],
+        file_manager: FileManagerProtocol,
     ) -> None:
         super().__init__(
             id=id,
@@ -55,10 +52,11 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+
         self._http_request_config = http_request_config
-        self._http_client = http_client or ssrf_proxy
+        self._http_client = http_client
         self._tool_file_manager_factory = tool_file_manager_factory
-        self._file_manager = file_manager or default_file_manager
+        self._file_manager = file_manager
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
