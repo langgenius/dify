@@ -14,6 +14,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -41,7 +42,6 @@ from dify_graph.variable_loader import load_into_variable_pool
 from dify_graph.variables import VariableBase
 from dify_graph.variables.input_entities import VariableEntityType
 from dify_graph.variables.variables import Variable
-from dify_graph.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db

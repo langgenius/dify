@@ -36,6 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -52,7 +53,6 @@ from dify_graph.repositories.workflow_node_execution_repository import OrderConf
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.variables import VariableBase
-from dify_graph.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account

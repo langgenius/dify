@@ -102,7 +102,6 @@ forbidden_modules =
     core.variables
 ignore_imports =
     dify_graph.nodes.loop.loop_node -> core.app.workflow.node_factory
-    dify_graph.workflow_entry -> core.app.workflow.layers.observability
     dify_graph.nodes.agent.agent_node -> core.model_manager
     dify_graph.nodes.agent.agent_node -> core.provider_manager
     dify_graph.nodes.agent.agent_node -> core.tools.tool_manager
@@ -116,8 +115,6 @@ ignore_imports =
     dify_graph.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     dify_graph.nodes.tool.tool_node -> core.tools.tool_engine
     dify_graph.nodes.tool.tool_node -> core.tools.tool_manager
-    dify_graph.workflow_entry -> configs
-    dify_graph.workflow_entry -> models.workflow
     dify_graph.nodes.agent.agent_node -> core.agent.entities
     dify_graph.nodes.agent.agent_node -> core.agent.plugin_entities
     dify_graph.nodes.base.node -> core.app.entities.app_invoke_entities
@@ -128,10 +125,6 @@ ignore_imports =
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_runtime.model_providers.__base.large_language_model
     dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.simple_prompt_transform
-    dify_graph.workflow_entry -> core.app.apps.exc
-    dify_graph.workflow_entry -> core.app.entities.app_invoke_entities
-    dify_graph.workflow_entry -> core.app.workflow.layers.llm_quota
-    dify_graph.workflow_entry -> core.app.workflow.node_factory
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
     dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
     dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
@@ -164,12 +157,10 @@ ignore_imports =
     dify_graph.nodes.tool.tool_node -> extensions.ext_database
     dify_graph.nodes.human_input.human_input_node -> extensions.ext_database
     dify_graph.nodes.human_input.human_input_node -> core.repositories.human_input_repository
-    dify_graph.workflow_entry -> extensions.otel.runtime
     dify_graph.nodes.agent.agent_node -> models
     dify_graph.nodes.base.node -> models.enums
     dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.llm.node -> models.model
-    dify_graph.workflow_entry -> models.enums
     dify_graph.nodes.agent.agent_node -> services
     dify_graph.nodes.tool.tool_node -> services
 

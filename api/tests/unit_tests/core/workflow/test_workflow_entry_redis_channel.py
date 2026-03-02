@@ -3,9 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.workflow_entry import WorkflowEntry
 from models.enums import UserFrom
 
 
@@ -26,7 +26,7 @@ class TestWorkflowEntryRedisChannel:
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
         # Patch GraphEngine to verify it receives the Redis channel
-        with patch("dify_graph.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
             mock_graph_engine = MockGraphEngine.return_value  # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
@@ -60,8 +60,8 @@ class TestWorkflowEntryRedisChannel:
 
         # Patch GraphEngine and InMemoryChannel
         with (
-            patch("dify_graph.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine,
-            patch("dify_graph.workflow_entry.InMemoryChannel", autospec=True) as MockInMemoryChannel,
+            patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine,
+            patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as MockInMemoryChannel,
         ):
             mock_graph_engine = MockGraphEngine.return_value
             mock_inmemory_channel = MockInMemoryChannel.return_value  # Create WorkflowEntry without providing a channel
@@ -107,7 +107,7 @@ class TestWorkflowEntryRedisChannel:
         mock_event2 = MagicMock()
 
         # Patch GraphEngine
-        with patch("dify_graph.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
             mock_graph_engine = MagicMock()
             mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
             MockGraphEngine.return_value = mock_graph_engine

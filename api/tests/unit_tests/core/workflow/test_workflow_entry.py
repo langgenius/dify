@@ -4,6 +4,7 @@ import pytest
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
+from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
@@ -15,7 +16,6 @@ from dify_graph.nodes.code.limits import CodeNodeLimits
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.variables import StringVariable
-from dify_graph.workflow_entry import WorkflowEntry
 
 
 @pytest.fixture(autouse=True)

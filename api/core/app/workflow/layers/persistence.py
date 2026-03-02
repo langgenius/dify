@@ -316,7 +316,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 continue
             inputs[f"sys.{field_name}"] = value
         # Local import to avoid circular dependency during app bootstrapping.
-        from dify_graph.workflow_entry import WorkflowEntry
+        from core.workflow.workflow_entry import WorkflowEntry
 
         handled = WorkflowEntry.handle_special_values(inputs)
         return handled or {}
