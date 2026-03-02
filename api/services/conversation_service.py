@@ -180,6 +180,14 @@ class ConversationService:
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
+        """
+        Delete a conversation only if it belongs to the given user and app context.
+
+        Raises:
+            ConversationNotExistsError: When the conversation is not visible to the current user.
+        """
+        conversation = cls.get_conversation(app_model, conversation_id, user)
+
         try:
             logger.info(
                 "Initiating conversation deletion for app_name %s, conversation_id: %s",
@@ -187,10 +195,10 @@ class ConversationService:
                 conversation_id,
             )
 
-            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
+            db.session.delete(conversation)
             db.session.commit()
 
-            delete_conversation_related_data.delay(conversation_id)
+            delete_conversation_related_data.delay(conversation.id)
 
         except Exception as e:
             db.session.rollback()
