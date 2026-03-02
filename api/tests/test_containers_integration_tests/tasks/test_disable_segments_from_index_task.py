@@ -224,8 +224,6 @@ class TestDisableSegmentsFromIndexTask:
         """
         fake = fake or Faker()
         process_rule = DatasetProcessRule(
-            id=fake.uuid4(),
-            tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             mode="automatic",
             rules=(
