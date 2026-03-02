@@ -7,9 +7,13 @@ from typing import Any
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.helper import encrypter
+from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_execution import WorkflowRunRerunScope
+from dify_graph.file.models import File
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import SecretVariable, StringVariable
 from models import Account, EndUser
 from services.workflow_run_rerun_service import (
     WorkflowRunRerunOverride,
@@ -92,6 +96,23 @@ def _build_source_run(**kwargs: Any) -> SimpleNamespace:
     )
 
 
+def _build_file_mapping() -> dict[str, Any]:
+    return {
+        "dify_model_identity": "__dify__file__",
+        "id": "file_1",
+        "tenant_id": "tenant_1",
+        "type": "image",
+        "transfer_method": "remote_url",
+        "remote_url": "https://example.com/a.png",
+        "related_id": None,
+        "filename": "a.png",
+        "extension": ".png",
+        "mime_type": "image/png",
+        "size": 123,
+        "url": "https://example.com/a.png",
+    }
+
+
 def test_apply_overrides_patch_nested_path() -> None:
     service = _new_service()
     variable_pool = _build_variable_pool()
@@ -105,7 +126,7 @@ def test_apply_overrides_patch_nested_path() -> None:
                 value="new",
             )
         ],
-        ancestors=["node_a"],
+        allowed_node_ids=["node_a"],
     )
 
     segment = variable_pool.get(["node_a", "output", "nested", "value"])
@@ -127,7 +148,7 @@ def test_apply_overrides_raises_for_missing_path() -> None:
                     value="new",
                 )
             ],
-            ancestors=["node_a"],
+            allowed_node_ids=["node_a"],
         )
 
     assert exc_info.value.code == "override_selector_invalid"
@@ -148,11 +169,26 @@ def test_apply_overrides_raises_for_type_mismatch() -> None:
                     value="new",
                 )
             ],
-            ancestors=["node_a"],
+            allowed_node_ids=["node_a"],
         )
 
     assert exc_info.value.code == "override_type_mismatch"
     assert exc_info.value.status == 422
+
+
+def test_apply_overrides_accepts_environment_variable_selector() -> None:
+    service = _new_service()
+    variable_pool = _build_variable_pool()
+
+    service._apply_overrides(
+        variable_pool=variable_pool,
+        overrides=[WorkflowRunRerunOverride(selector=["env", "region"], value="us-west")],
+        allowed_node_ids=[ENVIRONMENT_VARIABLE_NODE_ID],
+    )
+
+    segment = variable_pool.get(["env", "region"])
+    assert segment is not None
+    assert segment.value == "us-west"
 
 
 def test_analyze_main_flow_scope() -> None:
@@ -227,6 +263,43 @@ def test_build_plan_rejects_internal_target_node(monkeypatch: pytest.MonkeyPatch
 
     assert exc_info.value.code == "unsupported_target_node_scope"
     assert exc_info.value.status == 422
+
+
+def test_build_plan_adds_start_and_env_to_override_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_workflow_run_by_id=lambda **_: _build_source_run(
+            graph_dict={
+                "nodes": [
+                    {"id": "start", "data": {"type": "start"}},
+                    {"id": "target", "data": {"type": "llm"}},
+                ],
+                "edges": [{"source": "start", "target": "target"}],
+            }
+        )
+    )
+    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
+
+    captured_allowed_node_ids: list[str] = []
+
+    def _fake_rebuild_variable_pool(**kwargs: Any) -> tuple[dict[str, Any], VariablePool]:
+        nonlocal captured_allowed_node_ids
+        captured_allowed_node_ids = list(kwargs["allowed_node_ids"])
+        return {}, _build_variable_pool()
+
+    monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
+    monkeypatch.setattr(service, "_rebuild_variable_pool", _fake_rebuild_variable_pool)
+
+    plan = service._build_plan_or_raise(
+        app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1", mode="workflow"),
+        source_run_id="run_1",
+        target_node_id="start",
+        overrides=[],
+    )
+
+    assert plan.scope.overrideable_node_ids == ["start", "env"]
+    assert captured_allowed_node_ids == ["start", "env"]
 
 
 def test_build_plan_fallbacks_to_sql_graph_when_source_graph_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -495,7 +568,7 @@ def test_rebuild_variable_pool_drops_conversation_id_and_clears_all_rerun_nodes(
         workflow_run_id="new-run",
         rerun_node_ids=["target", "container_inner"],
         overrides=[WorkflowRunRerunOverride(selector=["ancestor", "out"], value="patched")],
-        ancestors=["ancestor"],
+        allowed_node_ids=["ancestor"],
     )
 
     assert user_inputs == {"foo": "bar"}
@@ -506,6 +579,31 @@ def test_rebuild_variable_pool_drops_conversation_id_and_clears_all_rerun_nodes(
     ancestor_segment = variable_pool.get(["ancestor", "out"])
     assert ancestor_segment is not None
     assert ancestor_segment.value == "patched"
+
+
+def test_rebuild_variable_pool_reconstructs_file_outputs() -> None:
+    service = _new_service()
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: [
+            _FakeNodeExecution("node_file", {"image": _build_file_mapping()}),
+        ]
+    )
+    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
+
+    _, variable_pool = service._rebuild_variable_pool(
+        app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1"),
+        workflow=SimpleNamespace(environment_variables=[]),
+        source_run=_build_source_run(id="source_1", inputs_dict={}),
+        workflow_run_id="new-run",
+        rerun_node_ids=[],
+        overrides=[],
+        allowed_node_ids=[],
+    )
+
+    segment = variable_pool.get(["node_file", "image"])
+    assert segment is not None
+    assert segment.value_type.exposed_type().value == "file"
+    assert isinstance(segment.value, File)
 
 
 def test_rebuild_variable_pool_replays_node_outputs_by_created_at_asc() -> None:
@@ -537,12 +635,113 @@ def test_rebuild_variable_pool_replays_node_outputs_by_created_at_asc() -> None:
         workflow_run_id="new-run",
         rerun_node_ids=[],
         overrides=[],
-        ancestors=[],
+        allowed_node_ids=[],
     )
 
     segment = variable_pool.get(["node_a", "output"])
     assert segment is not None
     assert segment.value == "new"
+
+
+def test_get_overrideable_variables_groups_ancestor_start_and_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    source_run = _build_source_run(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "type": "start",
+                        "variables": [
+                            {
+                                "variable": "query",
+                                "type": "text-input",
+                                "required": True,
+                            },
+                            {
+                                "variable": "input_file",
+                                "type": "file",
+                                "required": False,
+                            },
+                        ],
+                    },
+                },
+                {"id": "node_a", "data": {"type": "llm"}},
+                {"id": "target", "data": {"type": "answer"}},
+            ],
+            "edges": [
+                {"source": "start", "target": "node_a"},
+                {"source": "node_a", "target": "target"},
+            ],
+        },
+        inputs_dict={
+            "query": "hello",
+            "input_file": _build_file_mapping(),
+        },
+    )
+    service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_workflow_run_by_id=lambda **_: source_run
+    )
+    service._sql_workflow_run_repo = SimpleNamespace(get_workflow_run_by_id=lambda **_: None)  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: [
+            _FakeNodeExecution("node_a", {"summary": "ready"}),
+        ]
+    )
+    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(
+        service,
+        "_load_workflow",
+        lambda **_: SimpleNamespace(
+            environment_variables=[
+                StringVariable(name="region", value="us-east", selector=["env", "region"]),
+                SecretVariable(name="api_key", value="secret-value", selector=["env", "api_key"]),
+            ]
+        ),
+    )
+
+    result = service.get_overrideable_variables(
+        app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1", mode="workflow"),
+        source_run_id="run_1",
+        target_node_id="target",
+    )
+
+    assert result["source_workflow_run_id"] == "run_1"
+    assert result["target_node_id"] == "target"
+
+    groups = {item["group"]: item["variables"] for item in result["groups"]}
+    assert set(groups.keys()) == {
+        "ancestor_node_outputs",
+        "start_node_variables",
+        "environment_variables",
+    }
+
+    assert groups["ancestor_node_outputs"] == [
+        {
+            "selector": ["node_a", "summary"],
+            "value_type": "string",
+            "value": "ready",
+            "required": None,
+            "declared_type": None,
+            "masked": False,
+        }
+    ]
+
+    start_query = next(v for v in groups["start_node_variables"] if v["selector"] == ["start", "query"])
+    assert start_query["value_type"] == "string"
+    assert start_query["value"] == "hello"
+    assert start_query["required"] is True
+    assert start_query["declared_type"] == "text-input"
+
+    start_file = next(v for v in groups["start_node_variables"] if v["selector"] == ["start", "input_file"])
+    assert start_file["value_type"] == "file"
+    assert isinstance(start_file["value"], dict)
+    assert start_file["value"]["dify_model_identity"] == "__dify__file__"
+
+    env_secret = next(v for v in groups["environment_variables"] if v["selector"] == ["env", "api_key"])
+    assert env_secret["masked"] is True
+    assert env_secret["value"] == encrypter.full_mask_token()
 
 
 def test_execute_rerun_dispatches_by_streaming(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -8,7 +8,7 @@ import uuid
 from collections import defaultdict, deque
 from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Engine, select
@@ -21,23 +21,31 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.helper import encrypter
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata, WorkflowRunRerunScope
 from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
+from dify_graph.file.models import File
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import SecretVariable, VariableBase
+from dify_graph.variables.types import SegmentType
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, EndUser, WorkflowNodeExecutionTriggeredFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowDraftVariable, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_generate_service import AppGenerateService
 
 logger = logging.getLogger(__name__)
+
+_RERUN_OVERRIDEABLE_GROUP = Literal["ancestor_node_outputs", "start_node_variables", "environment_variables"]
+_MISSING = object()
 
 
 class WorkflowRunRerunServiceError(ValueError):
@@ -53,6 +61,26 @@ class WorkflowRunRerunOverride(BaseModel):
 
     selector: list[str] = Field(min_length=2)
     value: Any
+
+
+class WorkflowRunRerunOverrideableVariable(BaseModel):
+    selector: list[str] = Field(min_length=2)
+    value_type: str
+    value: Any
+    required: bool | None = None
+    declared_type: str | None = None
+    masked: bool = False
+
+
+class WorkflowRunRerunOverrideableVariableGroup(BaseModel):
+    group: _RERUN_OVERRIDEABLE_GROUP
+    variables: list[WorkflowRunRerunOverrideableVariable]
+
+
+class WorkflowRunRerunOverrideableVariablesResponse(BaseModel):
+    source_workflow_run_id: str
+    target_node_id: str
+    groups: list[WorkflowRunRerunOverrideableVariableGroup]
 
 
 @dataclass(slots=True)
@@ -134,6 +162,69 @@ class WorkflowRunRerunService:
             return self._execute_streaming_with_plan(plan=plan, user=user)
         return self._execute_blocking_with_plan(plan=plan, user=user)
 
+    def get_overrideable_variables(
+        self,
+        *,
+        app_model: App,
+        source_run_id: str,
+        target_node_id: str,
+    ) -> dict[str, Any]:
+        plan = self._build_plan_or_raise(
+            app_model=app_model,
+            source_run_id=source_run_id,
+            target_node_id=target_node_id,
+            overrides=[],
+        )
+
+        source_graph = self._load_source_graph_or_raise(
+            app_model=app_model,
+            source_run=plan.source_run,
+        )
+        nodes = source_graph.get("nodes")
+        if not isinstance(nodes, list):
+            self._raise_error("rerun_execution_failed", 500, "Invalid workflow graph data in source run.")
+
+        start_nodes = self._extract_main_flow_start_nodes(nodes=nodes)
+        start_node_ids = [cast("str", node.get("id")) for node in start_nodes]
+
+        source_inputs = plan.source_run.inputs_dict
+        if not isinstance(source_inputs, Mapping):
+            self._raise_error("rerun_execution_failed", 500, "Invalid source workflow run inputs.")
+
+        variable_pool = plan.graph_runtime_state.variable_pool
+        ancestor_candidates = self._collect_node_output_candidates(
+            variable_pool=variable_pool,
+            node_ids=plan.scope.ancestor_node_ids,
+            exclude_node_ids=set(start_node_ids),
+        )
+        start_candidates = self._collect_start_node_candidates(
+            source_inputs=source_inputs,
+            start_nodes=start_nodes,
+        )
+        environment_candidates = self._collect_environment_candidates(
+            environment_variables=plan.workflow.environment_variables,
+        )
+
+        response = WorkflowRunRerunOverrideableVariablesResponse(
+            source_workflow_run_id=plan.source_run.id,
+            target_node_id=target_node_id,
+            groups=[
+                WorkflowRunRerunOverrideableVariableGroup(
+                    group="ancestor_node_outputs",
+                    variables=ancestor_candidates,
+                ),
+                WorkflowRunRerunOverrideableVariableGroup(
+                    group="start_node_variables",
+                    variables=start_candidates,
+                ),
+                WorkflowRunRerunOverrideableVariableGroup(
+                    group="environment_variables",
+                    variables=environment_candidates,
+                ),
+            ],
+        )
+        return cast("dict[str, Any]", response.model_dump(mode="json"))
+
     def _build_plan_or_raise(
         self,
         *,
@@ -195,6 +286,14 @@ class WorkflowRunRerunService:
             main_node_ids=main_node_ids,
             main_node_id_set=main_node_id_set,
         )
+        start_node_ids = self._extract_main_flow_start_node_ids(
+            nodes_by_id=nodes_by_id,
+            main_node_ids=main_node_ids,
+        )
+        overrideable_node_ids = self._build_overrideable_node_ids(
+            ancestors=ancestors,
+            start_node_ids=start_node_ids,
+        )
         descendants_main_set = set(descendants_main)
 
         rerun_node_id_set = set(descendants_main_set)
@@ -237,7 +336,7 @@ class WorkflowRunRerunService:
             workflow_run_id=workflow_run_id,
             rerun_node_ids=rerun_node_ids,
             overrides=overrides,
-            ancestors=ancestors,
+            allowed_node_ids=overrideable_node_ids,
         )
 
         override_payload = [override.model_dump(mode="json") for override in overrides]
@@ -245,7 +344,7 @@ class WorkflowRunRerunService:
             target_node_id=target_node_id,
             ancestor_node_ids=ancestors,
             rerun_node_ids=rerun_node_ids,
-            overrideable_node_ids=ancestors,
+            overrideable_node_ids=overrideable_node_ids,
         )
         rerun_chain_root_workflow_run_id = self._resolve_rerun_chain_root(
             app_model=app_model,
@@ -521,7 +620,7 @@ class WorkflowRunRerunService:
         workflow_run_id: str,
         rerun_node_ids: Sequence[str],
         overrides: Sequence[WorkflowRunRerunOverride],
-        ancestors: Sequence[str],
+        allowed_node_ids: Sequence[str],
     ) -> tuple[dict[str, Any], VariablePool]:
         source_inputs = source_run.inputs_dict
         if not isinstance(source_inputs, Mapping):
@@ -566,12 +665,17 @@ class WorkflowRunRerunService:
                 if not outputs:
                     continue
                 for variable_name, value in outputs.items():
-                    variable_pool.add([node_execution.node_id, str(variable_name)], value)
+                    rebuilt_value = WorkflowDraftVariable.rebuild_file_types(value)
+                    variable_pool.add([node_execution.node_id, str(variable_name)], rebuilt_value)
 
         for node_id in rerun_node_ids:
             variable_pool.remove([node_id])
 
-        self._apply_overrides(variable_pool=variable_pool, overrides=overrides, ancestors=ancestors)
+        self._apply_overrides(
+            variable_pool=variable_pool,
+            overrides=overrides,
+            allowed_node_ids=allowed_node_ids,
+        )
         return user_inputs, variable_pool
 
     def _apply_overrides(
@@ -579,18 +683,19 @@ class WorkflowRunRerunService:
         *,
         variable_pool: VariablePool,
         overrides: Sequence[WorkflowRunRerunOverride],
-        ancestors: Sequence[str],
+        allowed_node_ids: Sequence[str],
     ) -> None:
-        ancestor_set = set(ancestors)
+        allowed_node_id_set = set(allowed_node_ids)
         for override in overrides:
             selector = override.selector
             if not selector or len(selector) < 2 or not all(isinstance(part, str) and part for part in selector):
                 self._raise_error("override_selector_invalid", 422, "Override selector is invalid.")
-            if selector[0] not in ancestor_set:
+            if selector[0] not in allowed_node_id_set:
                 self._raise_error("override_out_of_scope", 422, "Override selector is out of rerun scope.")
 
+            override_value = WorkflowDraftVariable.rebuild_file_types(override.value)
             if len(selector) == 2:
-                variable_pool.add(selector, override.value)
+                variable_pool.add(selector, override_value)
                 continue
 
             root_selector = selector[:2]
@@ -614,8 +719,219 @@ class WorkflowRunRerunService:
             leaf = selector[-1]
             if leaf not in current:
                 self._raise_error("override_selector_invalid", 422, "Override selector path does not exist.")
-            current[leaf] = override.value
+            current[leaf] = override_value
             variable_pool.add(root_selector, root_value)
+
+    def _collect_node_output_candidates(
+        self,
+        *,
+        variable_pool: VariablePool,
+        node_ids: Sequence[str],
+        exclude_node_ids: set[str] | None = None,
+    ) -> list[WorkflowRunRerunOverrideableVariable]:
+        exclude_node_ids = exclude_node_ids or set()
+        results: list[WorkflowRunRerunOverrideableVariable] = []
+
+        for node_id in node_ids:
+            if node_id in exclude_node_ids:
+                continue
+
+            node_variables = variable_pool.get_by_prefix(node_id)
+            for variable_name in sorted(node_variables.keys()):
+                selector = [node_id, variable_name]
+                segment = variable_pool.get(selector)
+                if segment is None:
+                    continue
+                results.append(
+                    WorkflowRunRerunOverrideableVariable(
+                        selector=selector,
+                        value_type=segment.value_type.exposed_type().value,
+                        value=self._to_jsonable_value(segment.value),
+                    )
+                )
+
+        return results
+
+    def _collect_start_node_candidates(
+        self,
+        *,
+        source_inputs: Mapping[str, Any],
+        start_nodes: Sequence[Mapping[str, Any]],
+    ) -> list[WorkflowRunRerunOverrideableVariable]:
+        results: list[WorkflowRunRerunOverrideableVariable] = []
+
+        for start_node in start_nodes:
+            node_id = start_node.get("id")
+            if not isinstance(node_id, str) or not node_id:
+                continue
+
+            variables = self._node_data(start_node).get("variables")
+            if not isinstance(variables, Sequence):
+                continue
+
+            for variable in variables:
+                if not isinstance(variable, Mapping):
+                    continue
+                variable_name = variable.get("variable")
+                if not isinstance(variable_name, str) or not variable_name:
+                    continue
+
+                declared_type = variable.get("type")
+                declared_type_value = declared_type if isinstance(declared_type, str) else None
+                required = variable.get("required")
+                required_value = required if isinstance(required, bool) else None
+
+                raw_value = self._resolve_start_variable_value(
+                    source_inputs=source_inputs,
+                    node_id=node_id,
+                    variable_name=variable_name,
+                    default_value=variable.get("default", None),
+                )
+                rebuilt_value = WorkflowDraftVariable.rebuild_file_types(raw_value)
+                value_type = self._resolve_start_variable_value_type(
+                    value=rebuilt_value,
+                    declared_type=declared_type_value,
+                )
+
+                results.append(
+                    WorkflowRunRerunOverrideableVariable(
+                        selector=[node_id, variable_name],
+                        value_type=value_type,
+                        value=self._to_jsonable_value(rebuilt_value),
+                        required=required_value,
+                        declared_type=declared_type_value,
+                    )
+                )
+
+        return results
+
+    def _collect_environment_candidates(
+        self,
+        *,
+        environment_variables: Sequence[VariableBase],
+    ) -> list[WorkflowRunRerunOverrideableVariable]:
+        results: list[WorkflowRunRerunOverrideableVariable] = []
+
+        for env_variable in sorted(environment_variables, key=lambda variable: variable.name):
+            masked = isinstance(env_variable, SecretVariable)
+            value = encrypter.full_mask_token() if masked else self._to_jsonable_value(env_variable.value)
+            results.append(
+                WorkflowRunRerunOverrideableVariable(
+                    selector=[ENVIRONMENT_VARIABLE_NODE_ID, env_variable.name],
+                    value_type=env_variable.value_type.exposed_type().value,
+                    value=value,
+                    masked=masked,
+                )
+            )
+
+        return results
+
+    def _extract_main_flow_start_nodes(
+        self,
+        *,
+        nodes: Sequence[Any],
+    ) -> list[Mapping[str, Any]]:
+        start_nodes: list[Mapping[str, Any]] = []
+        for node in nodes:
+            if not isinstance(node, Mapping):
+                continue
+            if not self._is_main_flow_node(node):
+                continue
+            if self._node_type(node) == "start":
+                start_nodes.append(node)
+        return start_nodes
+
+    def _extract_main_flow_start_node_ids(
+        self,
+        *,
+        nodes_by_id: Mapping[str, Mapping[str, Any]],
+        main_node_ids: Sequence[str],
+    ) -> list[str]:
+        start_node_ids: list[str] = []
+        for node_id in main_node_ids:
+            node = nodes_by_id.get(node_id)
+            if node is None:
+                continue
+            if self._node_type(node) == "start":
+                start_node_ids.append(node_id)
+        return start_node_ids
+
+    @staticmethod
+    def _build_overrideable_node_ids(
+        *,
+        ancestors: Sequence[str],
+        start_node_ids: Sequence[str],
+    ) -> list[str]:
+        overrideable_node_ids: list[str] = []
+        seen: set[str] = set()
+
+        for node_id in [*ancestors, *start_node_ids, ENVIRONMENT_VARIABLE_NODE_ID]:
+            if node_id in seen:
+                continue
+            seen.add(node_id)
+            overrideable_node_ids.append(node_id)
+
+        return overrideable_node_ids
+
+    @staticmethod
+    def _resolve_start_variable_value(
+        *,
+        source_inputs: Mapping[str, Any],
+        node_id: str,
+        variable_name: str,
+        default_value: Any,
+    ) -> Any:
+        value = source_inputs.get(variable_name, _MISSING)
+        if value is _MISSING:
+            value = source_inputs.get(f"{node_id}.{variable_name}", _MISSING)
+        if value is _MISSING:
+            return default_value
+        return value
+
+    @classmethod
+    def _resolve_start_variable_value_type(
+        cls,
+        *,
+        value: Any,
+        declared_type: str | None,
+    ) -> str:
+        inferred_type = SegmentType.infer_segment_type(value)
+        if inferred_type is not None and inferred_type != SegmentType.NONE:
+            return inferred_type.exposed_type().value
+
+        declared_segment_type = cls._declared_start_variable_type_to_segment_type(declared_type)
+        if declared_segment_type is not None:
+            return declared_segment_type.exposed_type().value
+
+        if inferred_type is None:
+            return SegmentType.NONE.value
+        return inferred_type.exposed_type().value
+
+    @staticmethod
+    def _declared_start_variable_type_to_segment_type(declared_type: str | None) -> SegmentType | None:
+        if declared_type in {"text-input", "paragraph", "select", "external_data_tool"}:
+            return SegmentType.STRING
+        if declared_type == "number":
+            return SegmentType.NUMBER
+        if declared_type == "checkbox":
+            return SegmentType.BOOLEAN
+        if declared_type == "file":
+            return SegmentType.FILE
+        if declared_type == "file-list":
+            return SegmentType.ARRAY_FILE
+        if declared_type == "json_object":
+            return SegmentType.OBJECT
+        return None
+
+    @classmethod
+    def _to_jsonable_value(cls, value: Any) -> Any:
+        if isinstance(value, File):
+            return value.model_dump(mode="json")
+        if isinstance(value, Mapping):
+            return {str(key): cls._to_jsonable_value(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [cls._to_jsonable_value(item) for item in value]
+        return value
 
     def _expand_container_internal_nodes(
         self,

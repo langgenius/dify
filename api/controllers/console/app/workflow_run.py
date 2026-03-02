@@ -41,6 +41,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_rerun_service import (
     WorkflowRunRerunOverride,
+    WorkflowRunRerunOverrideableVariablesResponse,
     WorkflowRunRerunService,
     WorkflowRunRerunServiceError,
 )
@@ -240,6 +241,10 @@ console_ns.schema_model(
 console_ns.schema_model(
     WorkflowRunRerunPayload.__name__,
     WorkflowRunRerunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    WorkflowRunRerunOverrideableVariablesResponse.__name__,
+    WorkflowRunRerunOverrideableVariablesResponse.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 
@@ -603,6 +608,61 @@ class WorkflowRunRerunApi(Resource):
             }, ex.status
         except Exception:
             logger.exception("Failed to execute workflow rerun")
+            return {
+                "code": "rerun_execution_failed",
+                "message": "Rerun execution failed.",
+                "status": 500,
+            }, 500
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:source_run_id>/rerun/nodes/<string:node_id>")
+class WorkflowRunRerunNodeOverrideableVariablesApi(Resource):
+    @console_ns.doc("get_workflow_run_rerun_node_overrideable_variables")
+    @console_ns.doc(
+        description=(
+            "Get overrideable variables for rerun from a specific node, grouped by "
+            "ancestor outputs, start node variables, and environment variables."
+        )
+    )
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "source_run_id": "Source workflow run ID",
+            "node_id": "Target node ID",
+        }
+    )
+    @console_ns.response(
+        200,
+        "Overrideable variables retrieved successfully",
+        console_ns.models[WorkflowRunRerunOverrideableVariablesResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
+    @console_ns.response(409, "Workflow run not ended")
+    @console_ns.response(422, "Unsupported app mode or invalid rerun scope")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model()
+    def get(self, app_model: App, source_run_id: str, node_id: str):
+        source_run_id = str(source_run_id)
+        node_id = str(node_id)
+
+        service = WorkflowRunRerunService()
+        try:
+            response = service.get_overrideable_variables(
+                app_model=app_model,
+                source_run_id=source_run_id,
+                target_node_id=node_id,
+            )
+            return response, 200
+        except WorkflowRunRerunServiceError as ex:
+            return {
+                "code": ex.code,
+                "message": ex.message,
+                "status": ex.status,
+            }, ex.status
+        except Exception:
+            logger.exception("Failed to get rerun overrideable variables")
             return {
                 "code": "rerun_execution_failed",
                 "message": "Rerun execution failed.",
