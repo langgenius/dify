@@ -35,7 +35,7 @@ type DropdownMenuPopupProps = Required<Pick<DropdownMenuContentProps, 'children'
   popupClassName?: string
 }
 
-function DropdownMenuPopup({
+function renderDropdownMenuPopup({
   children,
   placement,
   sideOffset,
@@ -76,17 +76,14 @@ export function DropdownMenuContent({
   className,
   popupClassName,
 }: DropdownMenuContentProps) {
-  return (
-    <DropdownMenuPopup
-      placement={placement}
-      sideOffset={sideOffset}
-      alignOffset={alignOffset}
-      className={className}
-      popupClassName={popupClassName}
-    >
-      {children}
-    </DropdownMenuPopup>
-  )
+  return renderDropdownMenuPopup({
+    children,
+    placement,
+    sideOffset,
+    alignOffset,
+    className,
+    popupClassName,
+  })
 }
 
 type DropdownMenuSubTriggerProps = React.ComponentPropsWithoutRef<typeof Menu.SubmenuTrigger> & {
@@ -128,17 +125,14 @@ export function DropdownMenuSubContent({
   className,
   popupClassName,
 }: DropdownMenuSubContentProps) {
-  return (
-    <DropdownMenuPopup
-      placement={placement}
-      sideOffset={sideOffset}
-      alignOffset={alignOffset}
-      className={className}
-      popupClassName={popupClassName}
-    >
-      {children}
-    </DropdownMenuPopup>
-  )
+  return renderDropdownMenuPopup({
+    children,
+    placement,
+    sideOffset,
+    alignOffset,
+    className,
+    popupClassName,
+  })
 }
 
 type DropdownMenuItemProps = React.ComponentPropsWithoutRef<typeof Menu.Item> & {
