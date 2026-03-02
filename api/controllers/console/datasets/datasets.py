@@ -327,8 +327,9 @@ class DatasetListApi(Resource):
         partial_members_map: dict[str, list[str]] = {}
         if dataset_ids:
             permissions = db.session.execute(
-                select(DatasetPermission.dataset_id, DatasetPermission.account_id)
-                .where(DatasetPermission.dataset_id.in_(dataset_ids))
+                select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
+                    DatasetPermission.dataset_id.in_(dataset_ids)
+                )
             ).all()
 
             for dataset_id, account_id in permissions:
