@@ -588,6 +588,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
+        from core.app.workflow.layers.llm_quota import LLMQuotaLayer
         from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
@@ -642,5 +643,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
             config=GraphEngineConfig(),
         )
+        graph_engine.layer(LLMQuotaLayer())
 
         return graph_engine

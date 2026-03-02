@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import queue
-import threading
 from unittest import mock
 
 from core.workflow.entities.pause_reason import SchedulingPause
@@ -37,7 +36,6 @@ def test_dispatcher_should_consume_remains_events_after_pause():
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=execution_coordinator,
-        stop_event=threading.Event(),
     )
     dispatcher._dispatcher_loop()
     assert event_queue.empty()
@@ -98,7 +96,6 @@ def _run_dispatcher_for_event(event) -> int:
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=coordinator,
-        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()
@@ -184,7 +181,6 @@ def test_dispatcher_drain_event_queue():
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=coordinator,
-        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()
