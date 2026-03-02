@@ -111,7 +111,7 @@ class TestWorkflowService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers, app, account, fake=None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake=None):
         """
         Helper method to create a test workflow associated with an app.
 
