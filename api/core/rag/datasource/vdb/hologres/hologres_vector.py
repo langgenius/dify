@@ -308,9 +308,7 @@ class HologresVector(BaseVector):
                         break
                     time.sleep(poll_interval)
                 else:
-                    raise RuntimeError(
-                        f"Table {self.table_name} was not ready after {max_wait_seconds}s"
-                    )
+                    raise RuntimeError(f"Table {self.table_name} was not ready after {max_wait_seconds}s")
 
                 # Open table and set vector index
                 table = self._client.open_table(self.table_name)
