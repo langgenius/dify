@@ -1568,9 +1568,6 @@
   "app/components/base/date-and-time-picker/date-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/date-and-time-picker/time-picker/header.tsx": {
@@ -1581,9 +1578,6 @@
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/date-and-time-picker/time-picker/options.tsx": {
