@@ -219,6 +219,7 @@ export enum WorkflowRunTriggeredFrom {
   WEBHOOK = 'webhook',
   SCHEDULE = 'schedule',
   PLUGIN = 'plugin',
+  RERUN = 'rerun',
 }
 
 export type TriggerMetadata = {
@@ -240,7 +241,7 @@ export type WorkflowLogDetails = {
 export type WorkflowRunDetail = {
   id: string
   version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
   error?: string
   triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
@@ -296,7 +297,7 @@ export type WorkflowRunDetailResponse = {
   }
   inputs: string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
   outputs?: string
   outputs_truncated: boolean
   outputs_full_content?: {

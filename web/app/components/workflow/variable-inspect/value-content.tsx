@@ -1,7 +1,7 @@
 import type { VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -32,23 +32,29 @@ type Props = {
   currentVar: VarInInspect
   handleValueChange: (varId: string, value: any) => void
   isTruncated: boolean
+  mode?: 'cache' | 'rerun-edit'
+  isMasked?: boolean
+  maskedPlaceholder?: string
 }
 
 const ValueContent = ({
   currentVar,
   handleValueChange,
   isTruncated,
+  mode = 'cache',
+  isMasked = false,
+  maskedPlaceholder = '',
 }: Props) => {
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
   const [editorHeight, setEditorHeight] = useState(0)
   const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
-  const showBoolEditor = typeof currentVar.value === 'boolean'
-  const showBoolArrayEditor = Array.isArray(currentVar.value) && currentVar.value.every(v => typeof v === 'boolean')
+  const showBoolEditor = currentVar.value_type === 'boolean'
+  const showBoolArrayEditor = currentVar.value_type === 'array[boolean]' && Array.isArray(currentVar.value)
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
   const showJSONEditor = !isSysFiles && (currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]' || currentVar.value_type === 'array[any]')
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
-  const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
+  const textEditorDisabled = mode === 'cache' && (currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files'))
   const JSONEditorDisabled = currentVar.value_type === 'array[any]'
   const fileUploadConfig = useStore(s => s.fileUploadConfig)
 
@@ -71,24 +77,47 @@ const ValueContent = ({
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
   const [fileValue, setFileValue] = useState<any>(() => formatFileValue(currentVar))
+  const [hasClearedMaskedPlaceholder, setHasClearedMaskedPlaceholder] = useState(false)
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
 
-  // update default value when id changed
-  useEffect(() => {
+  /* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
+  const syncEditorState = useCallback(() => {
+    setHasClearedMaskedPlaceholder(false)
     if (showTextEditor) {
       if (currentVar.value_type === 'number')
-        return setValue(JSON.stringify(currentVar.value))
-      if (!currentVar.value)
-        return setValue('')
-      setValue(currentVar.value)
+        setValue(JSON.stringify(currentVar.value))
+      else if (!currentVar.value)
+        setValue('')
+      else
+        setValue(currentVar.value)
     }
+    else if (showBoolEditor) {
+      setValue(typeof currentVar.value === 'boolean' ? currentVar.value : false)
+    }
+    else if (showBoolArrayEditor) {
+      setValue(Array.isArray(currentVar.value) ? currentVar.value : [])
+    }
+    else {
+      setValue(undefined)
+    }
+
     if (showJSONEditor)
       setJson(currentVar.value != null ? JSON.stringify(currentVar.value, null, 2) : '')
+    else
+      setJson('')
 
     if (showFileEditor)
       setFileValue(formatFileValue(currentVar))
-  }, [currentVar.id, currentVar.value])
+    else
+      setFileValue([])
+  }, [currentVar, showTextEditor, showBoolEditor, showBoolArrayEditor, showJSONEditor, showFileEditor])
+
+  // Sync local editor state when selected var changes.
+  useEffect(() => {
+    syncEditorState()
+  }, [currentVar.id, currentVar.value, syncEditorState])
+  /* eslint-enable react-hooks-extra/no-direct-set-state-in-use-effect */
 
   const handleTextChange = (value: string) => {
     if (isTruncated)
@@ -102,6 +131,17 @@ const ValueContent = ({
     }
     const newValue = currentVar.value_type === 'number' ? Number.parseFloat(value) : value
     debounceValueChange(currentVar.id, newValue)
+  }
+
+  const handleMaskedInputFocus = () => {
+    if (mode !== 'rerun-edit' || !isMasked || hasClearedMaskedPlaceholder)
+      return
+    if (typeof value !== 'string' || value !== maskedPlaceholder)
+      return
+
+    setHasClearedMaskedPlaceholder(true)
+    setValue('')
+    debounceValueChange(currentVar.id, '')
   }
 
   const jsonValueValidate = (value: string, type: string) => {
@@ -209,6 +249,7 @@ const ValueContent = ({
                       disabled={textEditorDisabled || isTruncated}
                       className={cn('h-full', isTruncated && 'pt-[48px]')}
                       value={value as any}
+                      onFocus={handleMaskedInputFocus}
                       onChange={e => handleTextChange(e.target.value)}
                     />
                   )
@@ -218,7 +259,7 @@ const ValueContent = ({
         {showBoolEditor && (
           <div className="w-[295px]">
             <BoolValue
-              value={currentVar.value as boolean}
+              value={typeof value === 'boolean' ? value : false}
               onChange={(newValue) => {
                 setValue(newValue)
                 debounceValueChange(currentVar.id, newValue)
@@ -229,12 +270,12 @@ const ValueContent = ({
         {
           showBoolArrayEditor && (
             <div className="w-[295px] space-y-1">
-              {currentVar.value.map((v: boolean, i: number) => (
+              {(value as boolean[] || []).map((v: boolean, i: number) => (
                 <BoolValue
                   key={i}
                   value={v}
                   onChange={(newValue) => {
-                    const newArray = [...(currentVar.value as boolean[])]
+                    const newArray = [...((value as boolean[]) || [])]
                     newArray[i] = newValue
                     setValue(newArray)
                     debounceValueChange(currentVar.id, newArray)

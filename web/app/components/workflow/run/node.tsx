@@ -14,16 +14,18 @@ import {
   RiErrorWarningFill,
   RiLoader2Line,
   RiPauseCircleFill,
+  RiRefreshLine,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Tooltip from '@/app/components/base/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
+import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -32,6 +34,7 @@ import { AgentLogTrigger } from './agent-log'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
+import StatusContainer from './status-container'
 
 type Props = {
   className?: string
@@ -46,6 +49,10 @@ type Props = {
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   notShowIterationNav?: boolean
   notShowLoopNav?: boolean
+  rerunEntryScope?: 'workflow-editor' | 'readonly'
+  sourceRunId?: string
+  sourceRunStatus?: string
+  onOpenRerunEditor?: (nodeInfo: NodeTracing) => void
 }
 
 const NodePanel: FC<Props> = ({
@@ -61,6 +68,10 @@ const NodePanel: FC<Props> = ({
   onShowAgentOrToolLog,
   notShowIterationNav,
   notShowLoopNav,
+  rerunEntryScope = 'readonly',
+  sourceRunId,
+  sourceRunStatus,
+  onOpenRerunEditor,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback((state: boolean) => {
@@ -69,6 +80,7 @@ const NodePanel: FC<Props> = ({
     doSetCollapseState(state)
   }, [hideProcessDetail])
   const { t } = useTranslation()
+  const appMode = useAppStore(s => s.appDetail?.mode)
   const docLink = useDocLink()
 
   const getTime = (time: number) => {
@@ -112,6 +124,22 @@ const NodePanel: FC<Props> = ({
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
+  const isEndedSourceRun = sourceRunStatus && ['succeeded', 'failed', 'stopped', 'partial-succeeded'].includes(sourceRunStatus)
+  const isUnsupportedNodeType = nodeInfo.node_type === BlockEnum.Start || nodeInfo.node_type === BlockEnum.End
+  const isLoopOrIterationInnerNode = !!(
+    nodeInfo.iteration_id
+    || nodeInfo.loop_id
+    || nodeInfo.execution_metadata?.iteration_id
+    || nodeInfo.execution_metadata?.loop_id
+  )
+  const canShowRerunEntry = rerunEntryScope === 'workflow-editor'
+    && !!sourceRunId
+    && !!isEndedSourceRun
+    && appMode === AppModeEnum.WORKFLOW
+    && !isUnsupportedNodeType
+    && !isLoopOrIterationInnerNode
+    && !!onOpenRerunEditor
+
   return (
     <div className={cn('px-2 py-1', className)}>
       <div className="group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
@@ -138,7 +166,7 @@ const NodePanel: FC<Props> = ({
             }
           >
             <div className={cn(
-              'system-xs-semibold-uppercase grow truncate text-text-secondary',
+              'grow truncate text-text-secondary system-xs-semibold-uppercase',
               hideInfo && '!text-xs',
             )}
             >
@@ -146,31 +174,44 @@ const NodePanel: FC<Props> = ({
             </div>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
-            <div className="system-xs-regular shrink-0 text-text-tertiary">
+            <div className={cn('shrink-0 text-text-tertiary system-xs-regular', canShowRerunEntry && 'group-hover:hidden')}>
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
             </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <RiCheckboxCircleFill className={cn('ml-2 h-3.5 w-3.5 shrink-0 text-text-success', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <RiErrorWarningFill className={cn('ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'running' && (
-            <div className="flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent">
+            <div className={cn('flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent', canShowRerunEntry && 'group-hover:hidden')}>
               <span className="mr-2 text-xs font-normal">Running</span>
               <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
             </div>
+          )}
+          {canShowRerunEntry && (
+            <button
+              type="button"
+              className="ml-auto hidden h-5 shrink-0 items-center gap-0.5 rounded-md border border-components-button-primary-border bg-components-button-primary-bg px-1.5 text-text-accent transition-colors system-xs-medium hover:bg-components-button-primary-bg-hover group-hover:flex"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenRerunEditor?.(nodeInfo)
+              }}
+            >
+              <RiRefreshLine className="h-3 w-3" />
+              <span>{t('debug.rerun.entry', { ns: 'workflow' })}</span>
+            </button>
           )}
         </div>
         {!collapseState && !hideProcessDetail && (
@@ -235,7 +276,7 @@ const NodePanel: FC<Props> = ({
               )}
               {(nodeInfo.status === 'paused') && (
                 <StatusContainer status="paused">
-                  <div className="system-xs-regular text-text-warning">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
+                  <div className="text-text-warning system-xs-regular">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
                 </StatusContainer>
               )}
             </div>

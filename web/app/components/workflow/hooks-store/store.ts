@@ -37,6 +37,7 @@ export type CommonHooksFnMap = {
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
   handleRun: (params: any, callback?: IOtherOptions, options?: any) => void
+  handleRerun: (params: { sourceRunId: string, targetNodeId: string, overrides: Array<{ selector: string[], value: unknown }> }) => Promise<void>
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
@@ -83,6 +84,7 @@ export const createHooksStore = ({
   handleLoadBackupDraft = noop,
   handleRestoreFromPublishedWorkflow = noop,
   handleRun = noop,
+  handleRerun = async () => noop(),
   handleStopRun = noop,
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
@@ -125,6 +127,7 @@ export const createHooksStore = ({
     handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow,
     handleRun,
+    handleRerun,
     handleStopRun,
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
