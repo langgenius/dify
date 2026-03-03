@@ -2086,9 +2086,6 @@
     "regexp/no-super-linear-backtracking": {
       "count": 3
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 2
     }

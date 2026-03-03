@@ -227,13 +227,11 @@ describe('DraggableBlockPlugin', () => {
       if (!isOnMenu)
         throw new Error('Expected isOnMenu callback')
 
-      const menuContainer = document.createElement('div')
-      menuContainer.className = renderedMenu.className
-      const menuChild = document.createElement('span')
-      menuContainer.appendChild(menuChild)
+      const menuIcon = screen.getByTestId('draggable-menu-icon')
       const outsideElement = document.createElement('div')
 
-      expect(isOnMenu(menuChild)).toBe(true)
+      expect(isOnMenu(menuIcon)).toBe(true)
+      expect(isOnMenu(renderedMenu)).toBe(true)
       expect(isOnMenu(outsideElement)).toBe(false)
     })
 
