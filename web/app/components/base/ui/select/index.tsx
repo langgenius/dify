@@ -48,6 +48,7 @@ export function SelectTrigger({
           ? (
               <span
                 role="button"
+                aria-label="Clear selection"
                 tabIndex={-1}
                 className="ml-1 shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary"
                 onClick={(e) => {
