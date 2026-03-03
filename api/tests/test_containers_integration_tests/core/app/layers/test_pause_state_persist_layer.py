@@ -31,12 +31,12 @@ from core.app.layers.pause_state_persist_layer import (
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
 )
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.graph_engine.entities.commands import GraphEngineCommand
 from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from dify_graph.graph_events.graph import GraphRunPausedEvent
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from dify_graph.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper

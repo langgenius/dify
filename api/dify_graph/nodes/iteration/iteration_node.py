@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, NewType, cast
 
 from typing_extensions import TypeIs
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.enums import (
     NodeExecutionType,
@@ -20,6 +19,7 @@ from dify_graph.graph_events import (
     GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import (
     IterationFailedEvent,
     IterationNextEvent,

@@ -2,7 +2,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.entities import LLMUsage
+from dify_graph.model_runtime.entities import LLMUsage
 from dify_graph.nodes.knowledge_retrieval.entities import MetadataFilteringCondition
 from dify_graph.nodes.llm.entities import ModelConfig
 

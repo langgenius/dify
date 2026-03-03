@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 
 
 class NodeEventBase(BaseModel):

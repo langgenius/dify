@@ -10,8 +10,11 @@ from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory,
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.message_entities import (
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from dify_graph.entities import GraphInitParams
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
@@ -19,11 +22,8 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from dify_graph.entities import GraphInitParams
-from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from dify_graph.nodes.llm import llm_utils
 from dify_graph.nodes.llm.entities import (
     ContextConfig,

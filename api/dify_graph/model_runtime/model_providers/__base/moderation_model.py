@@ -2,8 +2,8 @@ import time
 
 from pydantic import ConfigDict
 
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 
 class ModerationModel(AIModel):

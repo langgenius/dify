@@ -7,8 +7,8 @@ from typing import Any, TypedDict, Union
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
-from core.model_runtime.entities.model_entities import ModelUsage, PriceInfo
+from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
+from dify_graph.model_runtime.entities.model_entities import ModelUsage, PriceInfo
 
 
 class LLMMode(StrEnum):

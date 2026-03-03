@@ -11,7 +11,7 @@ from sqlalchemy import func
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper

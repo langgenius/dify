@@ -37,7 +37,6 @@ from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -58,6 +57,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 

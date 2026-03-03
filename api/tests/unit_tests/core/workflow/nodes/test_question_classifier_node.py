@@ -1,4 +1,4 @@
-from core.model_runtime.entities import ImagePromptMessageContent
+from dify_graph.model_runtime.entities import ImagePromptMessageContent
 from dify_graph.nodes.question_classifier import QuestionClassifierNodeData
 
 

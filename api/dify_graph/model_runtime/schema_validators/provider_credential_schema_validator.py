@@ -1,5 +1,5 @@
-from core.model_runtime.entities.provider_entities import ProviderCredentialSchema
-from core.model_runtime.schema_validators.common_validator import CommonValidator
+from dify_graph.model_runtime.entities.provider_entities import ProviderCredentialSchema
+from dify_graph.model_runtime.schema_validators.common_validator import CommonValidator
 
 
 class ProviderCredentialSchemaValidator(CommonValidator):

@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
-from core.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.system_variable import SystemVariableReadOnlyView
 from dify_graph.variables.segments import Segment
 

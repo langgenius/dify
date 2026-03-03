@@ -3,14 +3,14 @@ from __future__ import annotations
 import base64
 from collections.abc import Mapping
 
-from core.model_runtime.entities import (
+from dify_graph.model_runtime.entities import (
     AudioPromptMessageContent,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
     TextPromptMessageContent,
     VideoPromptMessageContent,
 )
-from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 
 from . import helpers
 from .enums import FileAttribute

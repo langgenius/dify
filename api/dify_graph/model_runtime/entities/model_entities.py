@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from core.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.common_entities import I18nObject
 
 
 class ModelType(StrEnum):

@@ -4,7 +4,6 @@ from collections.abc import Iterable
 from unittest import mock
 from unittest.mock import MagicMock
 
-from core.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.entities import GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.graph_events import (
@@ -17,6 +16,7 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.graph_events.node import NodeRunHumanInputFormFilledEvent
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from dify_graph.nodes.end.end_node import EndNode
 from dify_graph.nodes.end.entities import EndNodeData

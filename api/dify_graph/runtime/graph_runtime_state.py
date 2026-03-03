@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from pydantic import BaseModel, Field
 from pydantic.json import pydantic_encoder
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import NodeExecutionType, NodeState, NodeType
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime.variable_pool import VariablePool
 
 if TYPE_CHECKING:

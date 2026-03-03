@@ -24,21 +24,21 @@ from core.app.features.hosting_moderation.hosting_moderation import HostingModer
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    ImagePromptMessageContent,
-    PromptMessage,
-    TextPromptMessageContent,
-)
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    TextPromptMessageContent,
+)
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.errors.invoke import InvokeBadRequestError
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, Message, MessageAnnotation, MessageFile

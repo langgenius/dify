@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 _TEXT_COLOR_MAPPING = {
     "blue": "36;1",

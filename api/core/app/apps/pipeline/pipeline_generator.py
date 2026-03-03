@@ -33,9 +33,9 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories.factory import DifyCoreRepositoryFactory
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
 from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository

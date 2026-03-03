@@ -1,9 +1,9 @@
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
-from core.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 
 class TextEmbeddingModel(AIModel):

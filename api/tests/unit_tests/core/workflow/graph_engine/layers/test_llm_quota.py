@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.errors.error import QuotaExceededError
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.graph_engine.entities.commands import CommandType
 from dify_graph.graph_events.node import NodeRunSucceededEvent
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult
 
 

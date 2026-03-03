@@ -1,6 +1,6 @@
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ModelCredentialSchema
-from core.model_runtime.schema_validators.common_validator import CommonValidator
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import ModelCredentialSchema
+from dify_graph.model_runtime.schema_validators.common_validator import CommonValidator
 
 
 class ModelCredentialSchemaValidator(CommonValidator):
