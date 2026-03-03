@@ -43,11 +43,11 @@ describe('Dialog wrapper', () => {
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
 
-    it('should render explicit close button with custom label', () => {
+    it('should render explicit close button with custom aria-label', () => {
       render(
         <Dialog open>
           <DialogContent>
-            <DialogCloseButton ariaLabel="Dismiss dialog" />
+            <DialogCloseButton aria-label="Dismiss dialog" />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
@@ -56,7 +56,7 @@ describe('Dialog wrapper', () => {
       expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
     })
 
-    it('should render default close button label when ariaLabel is omitted', () => {
+    it('should render default close button label when aria-label is omitted', () => {
       render(
         <Dialog open>
           <DialogContent>

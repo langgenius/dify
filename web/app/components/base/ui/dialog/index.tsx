@@ -18,13 +18,11 @@ export const DialogDescription = BaseDialog.Description
 export const DialogClose = BaseDialog.Close
 export const DialogPortal = BaseDialog.Portal
 
-type DialogCloseButtonProps = Omit<React.ComponentPropsWithoutRef<typeof BaseDialog.Close>, 'aria-label'> & {
-  ariaLabel?: string
-}
+type DialogCloseButtonProps = React.ComponentPropsWithoutRef<typeof BaseDialog.Close>
 
 export function DialogCloseButton({
   className,
-  ariaLabel = 'Close',
+  'aria-label': ariaLabel = 'Close',
   ...props
 }: DialogCloseButtonProps) {
   return (
