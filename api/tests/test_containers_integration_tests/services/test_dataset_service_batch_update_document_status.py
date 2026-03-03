@@ -81,8 +81,8 @@ class DocumentBatchUpdateIntegrationDataFactory:
         document.enabled = enabled
         document.archived = archived
         document.indexing_status = indexing_status
-        document.completed_at = completed_at if completed_at is not None else (
-            FIXED_TIME if indexing_status == "completed" else None
+        document.completed_at = (
+            completed_at if completed_at is not None else (FIXED_TIME if indexing_status == "completed" else None)
         )
 
         for key, value in kwargs.items():
@@ -182,7 +182,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Act
-        DocumentService.batch_update_document_status(dataset=dataset, document_ids=document_ids, action="enable", user=user)
+        DocumentService.batch_update_document_status(
+            dataset=dataset, document_ids=document_ids, action="enable", user=user
+        )
 
         # Assert
         for document in disabled_docs:
@@ -196,7 +198,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["redis_client"].setex.assert_has_calls(expected_setex_calls)
         patched_dependencies["add_task"].delay.assert_has_calls(expected_add_calls)
 
-    def test_batch_update_enable_already_enabled_document_skipped(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_enable_already_enabled_document_skipped(
+        self, db_session_with_containers, patched_dependencies
+    ):
         """Skip enable operation for already-enabled documents."""
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
@@ -248,7 +252,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["redis_client"].setex.assert_has_calls(expected_setex_calls)
         patched_dependencies["remove_task"].delay.assert_has_calls(expected_remove_calls)
 
-    def test_batch_update_disable_already_disabled_document_skipped(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_disable_already_disabled_document_skipped(
+        self, db_session_with_containers, patched_dependencies
+    ):
         """Skip disable operation for already-disabled documents."""
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
@@ -300,7 +306,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, archived=False)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            dataset=dataset, enabled=True, archived=False
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -316,12 +324,16 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
         patched_dependencies["remove_task"].delay.assert_called_once_with(document.id)
 
-    def test_batch_update_archive_already_archived_document_skipped(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_archive_already_archived_document_skipped(
+        self, db_session_with_containers, patched_dependencies
+    ):
         """Skip archive operation for already-archived documents."""
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, archived=True)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            dataset=dataset, enabled=True, archived=True
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -344,7 +356,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=False, archived=False)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            dataset=dataset, enabled=False, archived=False
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -365,7 +379,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, archived=True)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            dataset=dataset, enabled=True, archived=True
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -389,7 +405,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, archived=False)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            dataset=dataset, enabled=True, archived=False
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -412,7 +430,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=False, archived=True)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            dataset=dataset, enabled=False, archived=True
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -429,7 +449,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["add_task"].delay.assert_not_called()
 
-    def test_batch_update_document_indexing_error_redis_cache_hit(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_document_indexing_error_redis_cache_hit(
+        self, db_session_with_containers, patched_dependencies
+    ):
         """Raise DocumentIndexingError when redis indicates active indexing."""
         # Arrange
         dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
@@ -481,7 +503,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
 
         # Act
-        result = DocumentService.batch_update_document_status(dataset=dataset, document_ids=[], action="enable", user=user)
+        result = DocumentService.batch_update_document_status(
+            dataset=dataset, document_ids=[], action="enable", user=user
+        )
 
         # Assert
         assert result is None
