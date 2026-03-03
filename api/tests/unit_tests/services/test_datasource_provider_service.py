@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin_daemon import CredentialType
+from dify_graph.model_runtime.entities.provider_entities import FormType
 from models.account import Account
 from models.model import EndUser
 from models.oauth import DatasourceProvider

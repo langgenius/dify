@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Any, ClassVar, Optional, cast
+from typing import Any, ClassVar, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
