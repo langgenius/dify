@@ -2,8 +2,10 @@
 Proxy requests to avoid SSRF
 """
 
+import contextlib
 import logging
 import time
+from collections.abc import Generator
 from typing import Any, TypeAlias
 
 import httpx
@@ -268,3 +270,45 @@ class SSRFProxy:
 
 
 ssrf_proxy = SSRFProxy()
+
+
+@contextlib.contextmanager
+def stream_request(method: str, url: str, **kwargs: Any) -> Generator[httpx.Response, None, None]:
+    """Streaming HTTP request context manager with SSRF protection.
+
+    Unlike make_request(), this does not implement retry logic because retries
+    are meaningless for streaming responses -- the stream cannot be replayed.
+    """
+    if "allow_redirects" in kwargs:
+        allow_redirects = kwargs.pop("allow_redirects")
+        if "follow_redirects" not in kwargs:
+            kwargs["follow_redirects"] = allow_redirects
+
+    if "timeout" not in kwargs:
+        kwargs["timeout"] = httpx.Timeout(
+            timeout=dify_config.SSRF_DEFAULT_TIME_OUT,
+            connect=dify_config.SSRF_DEFAULT_CONNECT_TIME_OUT,
+            read=dify_config.SSRF_DEFAULT_READ_TIME_OUT,
+            write=dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
+        )
+
+    verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
+    if not isinstance(verify_option, bool):
+        raise ValueError("ssl_verify must be a boolean")
+    client = _get_ssrf_client(verify_option)
+
+    try:
+        headers: Headers = _HEADERS_ADAPTER.validate_python(kwargs.get("headers") or {})
+    except ValidationError as e:
+        raise ValueError("headers must be a mapping of string keys to string values") from e
+    headers = _inject_trace_headers(headers)
+    kwargs["headers"] = headers
+
+    user_provided_host = _get_user_provided_host_header(headers)
+    if user_provided_host is not None:
+        headers = {k: v for k, v in headers.items() if k.lower() != "host"}
+        headers["host"] = user_provided_host
+        kwargs["headers"] = headers
+
+    with client.stream(method=method, url=url, **kwargs) as response:
+        yield response

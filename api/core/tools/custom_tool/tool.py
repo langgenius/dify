@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
@@ -14,6 +15,8 @@ from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from dify_graph.file.file_manager import download
+
+logger = logging.getLogger(__name__)
 
 API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
@@ -168,14 +171,15 @@ class ApiTool(Tool):
         else:
             return (parameter.get("schema", {}) or {}).get("default", "")
 
-    def do_http_request(
+    def _prepare_request_parts(
         self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
-    ) -> httpx.Response:
+    ) -> tuple[dict, Any, dict, list, str, dict[str, Any]]:
         """
-        do http request depending on api bundle
-        """
-        method = method.lower()
+        Assemble request parts (params, body, cookies, files, url, headers) from
+        the OpenAPI bundle and supplied parameters.
 
+        This is shared by both the streaming and non-streaming request paths.
+        """
         params = {}
         path_params = {}
         # FIXME: body should be a dict[str, Any] but it changed a lot in this function
@@ -275,6 +279,21 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
+        return params, body, cookies, files, url, headers
+
+    def do_http_request(
+        self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
+    ) -> httpx.Response:
+        """
+        do http request depending on api bundle
+        """
+        params, body, cookies, files, url, headers = self._prepare_request_parts(url, method, headers, parameters)
+
+        _VALID_METHODS = {"get", "head", "post", "put", "delete", "patch"}
+        method_lc = method.lower()
+        if method_lc not in _VALID_METHODS:
+            raise ValueError(f"Invalid http method {method}")
+
         _METHOD_MAP = {
             "get": ssrf_proxy.get,
             "head": ssrf_proxy.head,
@@ -283,9 +302,6 @@ class ApiTool(Tool):
             "delete": ssrf_proxy.delete,
             "patch": ssrf_proxy.patch,
         }
-        method_lc = method.lower()
-        if method_lc not in _METHOD_MAP:
-            raise ValueError(f"Invalid http method {method}")
         response: httpx.Response = _METHOD_MAP[
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
@@ -300,6 +316,120 @@ class ApiTool(Tool):
             follow_redirects=True,
         )
         return response
+
+    def do_http_request_streaming(
+        self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        """Streaming HTTP request, yields ToolInvokeMessage as response chunks arrive."""
+        params, body, cookies, files, url, headers = self._prepare_request_parts(url, method, headers, parameters)
+
+        try:
+            with ssrf_proxy.stream_request(
+                method=method.upper(),
+                url=url,
+                params=params,
+                headers=headers,
+                cookies=cookies,
+                data=body,
+                files=files or None,
+                timeout=API_TOOL_DEFAULT_TIMEOUT,
+                follow_redirects=True,
+            ) as response:
+                if response.status_code >= 400:
+                    response.read()
+                    raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
+
+                content_type = response.headers.get("content-type", "").lower()
+
+                if "text/event-stream" in content_type:
+                    yield from self._parse_sse_stream(response)
+                elif "application/x-ndjson" in content_type or "application/jsonl" in content_type:
+                    yield from self._parse_ndjson_stream(response)
+                else:
+                    yield from self._parse_text_stream(response)
+
+        except (httpx.StreamError, httpx.TimeoutException) as e:
+            raise ToolInvokeError(f"Stream request failed: {e}")
+
+    def _parse_sse_stream(self, response: httpx.Response) -> Generator[ToolInvokeMessage, None, None]:
+        """Parse Server-Sent Events stream, yielding text messages."""
+        for line in response.iter_lines():
+            if not line:
+                continue
+
+            # Handle data: prefix
+            if line.startswith("data:"):
+                data = line[5:].strip()
+
+                # Handle [DONE] terminator (OpenAI convention)
+                if data == "[DONE]":
+                    return
+
+                # Try to parse as JSON and extract content
+                text = self._extract_text_from_sse_data(data)
+                if text:
+                    yield self.create_text_message(text)
+
+    def _extract_text_from_sse_data(self, data: str) -> str:
+        """Extract text content from SSE data line. Supports OpenAI format and common field names."""
+        try:
+            obj = json.loads(data)
+        except (json.JSONDecodeError, ValueError):
+            # Not JSON, return raw data
+            return data
+
+        if not isinstance(obj, dict):
+            return data
+
+        # OpenAI chat completion format: choices[].delta.content
+        choices = obj.get("choices")
+        if isinstance(choices, list) and len(choices) > 0:
+            delta = choices[0].get("delta", {})
+            if isinstance(delta, dict):
+                content = delta.get("content")
+                if content:
+                    return str(content)
+            # Non-delta format: choices[].text (completion API)
+            text = choices[0].get("text")
+            if text:
+                return str(text)
+
+        # Common field names
+        for field in ("content", "text", "message", "data"):
+            value = obj.get(field)
+            if value and isinstance(value, str):
+                return value
+
+        # Fallback: return raw data
+        return data
+
+    def _parse_ndjson_stream(self, response: httpx.Response) -> Generator[ToolInvokeMessage, None, None]:
+        """Parse newline-delimited JSON stream."""
+        for line in response.iter_lines():
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                if isinstance(obj, dict):
+                    # Try common text fields
+                    for field in ("content", "text", "message", "data"):
+                        value = obj.get(field)
+                        if value and isinstance(value, str):
+                            yield self.create_text_message(value)
+                            break
+                    else:
+                        yield self.create_text_message(json.dumps(obj, ensure_ascii=False))
+                else:
+                    yield self.create_text_message(str(obj))
+            except (json.JSONDecodeError, ValueError):
+                if line.strip():
+                    yield self.create_text_message(line)
+
+    def _parse_text_stream(self, response: httpx.Response) -> Generator[ToolInvokeMessage, None, None]:
+        """Parse plain text stream in chunks."""
+        for chunk in response.iter_text(chunk_size=4096):
+            if chunk:
+                yield self.create_text_message(chunk)
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
@@ -384,10 +514,18 @@ class ApiTool(Tool):
         """
         invoke http request
         """
-        response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
 
+        # streaming path
+        if self.api_bundle.streaming:
+            yield from self.do_http_request_streaming(
+                self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters
+            )
+            return
+
+        # non-streaming path (original)
+        response: httpx.Response | str = ""
         # do http request
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
 
