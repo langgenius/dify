@@ -63,16 +63,16 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes import NodeType
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.nodes import NodeType
+from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
@@ -669,16 +669,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse, None, None]:
         """Handle retriever resources events."""
         self._message_cycle_manager.handle_retriever_resources(event)
-        return
-        yield  # Make this a generator
+        yield from ()
 
     def _handle_annotation_reply_event(
         self, event: QueueAnnotationReplyEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle annotation reply events."""
         self._message_cycle_manager.handle_annotation_reply(event)
-        return
-        yield  # Make this a generator
+        yield from ()
 
     def _handle_message_replace_event(
         self, event: QueueMessageReplaceEvent, **kwargs

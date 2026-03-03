@@ -269,3 +269,221 @@ class TestDatasetDocumentProperties:
         db_session_with_containers.flush()
 
         assert doc.hit_count == 25
+
+
+class TestDocumentSegmentNavigationProperties:
+    """Integration tests for DocumentSegment navigation properties."""
+
+    @pytest.fixture(autouse=True)
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+        """Automatically rollback session changes after each test."""
+        yield
+        db_session_with_containers.rollback()
+
+    def test_document_segment_dataset_property(self, db_session_with_containers: Session) -> None:
+        """Test segment can access its parent dataset."""
+        # Arrange
+        tenant_id = str(uuid4())
+        created_by = str(uuid4())
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name="Test Dataset",
+            data_source_type="upload_file",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.flush()
+
+        document = Document(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type="upload_file",
+            batch="batch_001",
+            name="test.pdf",
+            created_from="web",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(document)
+        db_session_with_containers.flush()
+
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=1,
+            content="Test",
+            word_count=1,
+            tokens=2,
+            created_by=created_by,
+        )
+        db_session_with_containers.add(segment)
+        db_session_with_containers.flush()
+
+        # Act
+        related_dataset = segment.dataset
+
+        # Assert
+        assert related_dataset is not None
+        assert related_dataset.id == dataset.id
+
+    def test_document_segment_document_property(self, db_session_with_containers: Session) -> None:
+        """Test segment can access its parent document."""
+        # Arrange
+        tenant_id = str(uuid4())
+        created_by = str(uuid4())
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name="Test Dataset",
+            data_source_type="upload_file",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.flush()
+
+        document = Document(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type="upload_file",
+            batch="batch_001",
+            name="test.pdf",
+            created_from="web",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(document)
+        db_session_with_containers.flush()
+
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=1,
+            content="Test",
+            word_count=1,
+            tokens=2,
+            created_by=created_by,
+        )
+        db_session_with_containers.add(segment)
+        db_session_with_containers.flush()
+
+        # Act
+        related_document = segment.document
+
+        # Assert
+        assert related_document is not None
+        assert related_document.id == document.id
+
+    def test_document_segment_previous_segment(self, db_session_with_containers: Session) -> None:
+        """Test segment can access previous segment."""
+        # Arrange
+        tenant_id = str(uuid4())
+        created_by = str(uuid4())
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name="Test Dataset",
+            data_source_type="upload_file",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.flush()
+
+        document = Document(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type="upload_file",
+            batch="batch_001",
+            name="test.pdf",
+            created_from="web",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(document)
+        db_session_with_containers.flush()
+
+        previous_segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=1,
+            content="Previous",
+            word_count=1,
+            tokens=2,
+            created_by=created_by,
+        )
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=2,
+            content="Current",
+            word_count=1,
+            tokens=2,
+            created_by=created_by,
+        )
+        db_session_with_containers.add_all([previous_segment, segment])
+        db_session_with_containers.flush()
+
+        # Act
+        prev_seg = segment.previous_segment
+
+        # Assert
+        assert prev_seg is not None
+        assert prev_seg.position == 1
+
+    def test_document_segment_next_segment(self, db_session_with_containers: Session) -> None:
+        """Test segment can access next segment."""
+        # Arrange
+        tenant_id = str(uuid4())
+        created_by = str(uuid4())
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name="Test Dataset",
+            data_source_type="upload_file",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.flush()
+
+        document = Document(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type="upload_file",
+            batch="batch_001",
+            name="test.pdf",
+            created_from="web",
+            created_by=created_by,
+        )
+        db_session_with_containers.add(document)
+        db_session_with_containers.flush()
+
+        segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=1,
+            content="Current",
+            word_count=1,
+            tokens=2,
+            created_by=created_by,
+        )
+        next_segment = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=2,
+            content="Next",
+            word_count=1,
+            tokens=2,
+            created_by=created_by,
+        )
+        db_session_with_containers.add_all([segment, next_segment])
+        db_session_with_containers.flush()
+
+        # Act
+        next_seg = segment.next_segment
+
+        # Assert
+        assert next_seg is not None
+        assert next_seg.position == 2

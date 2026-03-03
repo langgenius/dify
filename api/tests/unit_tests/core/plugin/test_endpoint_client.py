@@ -64,7 +64,7 @@ class TestPluginEndpointClientDelete:
             "data": True,
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = endpoint_client.delete_endpoint(
                 tenant_id=tenant_id,
@@ -102,7 +102,7 @@ class TestPluginEndpointClientDelete:
             ),
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = endpoint_client.delete_endpoint(
                 tenant_id=tenant_id,
@@ -139,7 +139,7 @@ class TestPluginEndpointClientDelete:
             ),
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(PluginDaemonInternalServerError) as exc_info:
                 endpoint_client.delete_endpoint(
@@ -174,7 +174,7 @@ class TestPluginEndpointClientDelete:
             "message": '{"error_type": "PluginDaemonInternalServerError", "message": "Record Not Found"}',
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act
             result = endpoint_client.delete_endpoint(
                 tenant_id=tenant_id,
@@ -222,7 +222,7 @@ class TestPluginEndpointClientDelete:
             ),
         }
 
-        with patch("httpx.request") as mock_request:
+        with patch("httpx.request", autospec=True) as mock_request:
             # Act - first call
             mock_request.return_value = mock_response_success
             result1 = endpoint_client.delete_endpoint(
@@ -266,7 +266,7 @@ class TestPluginEndpointClientDelete:
             "message": '{"error_type": "PluginDaemonUnauthorizedError", "message": "unauthorized access"}',
         }
 
-        with patch("httpx.request", return_value=mock_response):
+        with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(Exception) as exc_info:
                 endpoint_client.delete_endpoint(

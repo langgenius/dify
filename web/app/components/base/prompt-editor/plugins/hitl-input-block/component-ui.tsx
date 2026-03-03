@@ -4,10 +4,10 @@ import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Type } from '@/app/components/workflow/nodes/llm/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
 import ActionButton from '../../../action-button'
 import { VariableX } from '../../../icons/src/vender/workflow'
@@ -55,6 +55,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   ragVariables,
   readonly,
 }) => {
+  const { t } = useTranslation()
   const [isShowEditModal, {
     setTrue: showEditModal,
     setFalse: hideEditModal,
@@ -125,7 +126,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             />
           )}
           {!isDefaultValueVariable && (
-            <div className="system-xs-medium max-w-full truncate text-components-input-text-filled">{formInput.default?.value}</div>
+            <div className="max-w-full truncate text-components-input-text-filled system-xs-medium">{formInput.default?.value}</div>
           )}
         </div>
 
@@ -133,14 +134,22 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         {!readonly && (
           <div className="hidden h-full shrink-0 items-center space-x-1 group-hover:flex">
             <div className="flex h-full items-center" ref={editBtnRef}>
-              <ActionButton size="s">
-                <RiEditLine className="size-4 text-text-tertiary" />
+              <ActionButton
+                size="s"
+                data-testid="action-btn-edit"
+                aria-label={t('operation.edit', { ns: 'common' })}
+              >
+                <span className="i-ri-edit-line size-4 text-text-tertiary" />
               </ActionButton>
             </div>
 
             <div className="flex h-full items-center" ref={removeBtnRef}>
-              <ActionButton size="s">
-                <RiDeleteBinLine className="size-4 text-text-tertiary" />
+              <ActionButton
+                size="s"
+                data-testid="action-btn-remove"
+                aria-label={t('operation.remove', { ns: 'common' })}
+              >
+                <span className="i-ri-delete-bin-line size-4 text-text-tertiary" />
               </ActionButton>
             </div>
           </div>

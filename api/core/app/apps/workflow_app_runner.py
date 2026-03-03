@@ -29,12 +29,13 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import (
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -60,13 +61,12 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.graph_events.graph import GraphRunAbortedEvent
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.graph_events.graph import GraphRunAbortedEvent
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.enums import UserFrom
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
