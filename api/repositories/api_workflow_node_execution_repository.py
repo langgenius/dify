@@ -16,7 +16,7 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 

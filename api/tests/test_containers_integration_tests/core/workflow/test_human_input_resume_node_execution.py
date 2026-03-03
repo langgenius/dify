@@ -12,21 +12,21 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowType
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import WorkflowType
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from dify_graph.graph_engine.graph_engine import GraphEngine
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole

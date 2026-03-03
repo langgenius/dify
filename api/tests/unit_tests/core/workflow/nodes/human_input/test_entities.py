@@ -8,10 +8,10 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.entities import GraphInitParams
-from core.workflow.node_events import PauseRequestedEvent
-from core.workflow.node_events.node import StreamCompletedEvent
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.node_events import PauseRequestedEvent
+from dify_graph.node_events.node import StreamCompletedEvent
+from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
@@ -24,7 +24,7 @@ from core.workflow.nodes.human_input.entities import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.nodes.human_input.enums import (
+from dify_graph.nodes.human_input.enums import (
     ButtonStyle,
     DeliveryMethodType,
     EmailRecipientType,
@@ -32,10 +32,10 @@ from core.workflow.nodes.human_input.enums import (
     PlaceholderType,
     TimeoutUnit,
 )
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.repositories.human_input_form_repository import HumanInputFormRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.repositories.human_input_form_repository import HumanInputFormRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from tests.unit_tests.core.workflow.graph_engine.human_input_test_utils import InMemoryHumanInputFormRepository
 
 
