@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -441,6 +442,43 @@ describe('WorkflowOnboardingModal', () => {
       mockOnClose.mockClear()
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
       expect(mockOnClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('Integration - real StartNodeSelectionPanel', () => {
+    it('should call selection and close callbacks when choosing user input from the real panel', async () => {
+      // Arrange
+      vi.resetModules()
+      vi.doUnmock('../start-node-selection-panel')
+      vi.doMock('@/app/components/workflow/block-selector', () => ({
+        default: function MockNodeSelector({ trigger }: { trigger: (() => ReactNode) | ReactNode }) {
+          return (
+            <div data-testid="real-panel-node-selector">
+              {typeof trigger === 'function' ? trigger() : trigger}
+            </div>
+          )
+        },
+      }))
+      const { default: WorkflowOnboardingModalWithRealPanel } = await import('../index')
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      const onSelectStartNode = vi.fn()
+
+      render(
+        <WorkflowOnboardingModalWithRealPanel
+          isShow={true}
+          onClose={onClose}
+          onSelectStartNode={onSelectStartNode}
+        />,
+      )
+
+      // Act
+      await user.click(screen.getByRole('heading', { name: 'workflow.onboarding.userInputFull' }))
+
+      // Assert
+      expect(onSelectStartNode).toHaveBeenCalledTimes(1)
+      expect(onSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
   })
 })
