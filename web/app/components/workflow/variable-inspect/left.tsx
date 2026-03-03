@@ -1,4 +1,4 @@
-import type { currentVarType } from './panel'
+import type { currentVarType, selectedVarState } from './panel'
 
 import type { VarInInspect } from '@/types/workflow'
 // import { useState } from 'react'
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
+import { useRerunEditor } from '../hooks'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useStore } from '../store'
@@ -15,7 +16,7 @@ import Group from './group'
 
 type Props = {
   currentNodeVar?: currentVarType
-  handleVarSelect: (state: any) => void
+  handleVarSelect: (state: selectedVarState) => void
 }
 
 const Left = ({
@@ -23,9 +24,12 @@ const Left = ({
   handleVarSelect,
 }: Props) => {
   const { t } = useTranslation()
+  const { handleSubmitRerun } = useRerunEditor()
 
   const environmentVariables = useStore(s => s.environmentVariables)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const variableInspectMode = useStore(s => s.variableInspectMode)
+  const rerunContext = useStore(s => s.rerunContext)
 
   const {
     conversationVars,
@@ -35,8 +39,13 @@ const Left = ({
     deleteNodeInspectorVars,
   } = useCurrentVars()
   const { handleNodeSelect } = useNodesInteractions()
+  const isRerunEditMode = variableInspectMode === 'rerun-edit'
+  const envVars = isRerunEditMode ? (rerunContext?.envVars || []) : environmentVariables
+  const nodeVarGroups = isRerunEditMode ? (rerunContext?.nodeGroups || []) : nodesWithInspectVars
+  const conversationVarList = isRerunEditMode ? [] : conversationVars
+  const systemVarList = isRerunEditMode ? [] : systemVars
 
-  const showDivider = environmentVariables.length > 0 || conversationVars.length > 0 || systemVars.length > 0
+  const showDivider = envVars.length > 0 || conversationVarList.length > 0 || systemVarList.length > 0
 
   const handleClearAll = () => {
     deleteAllInspectorVars()
@@ -52,34 +61,41 @@ const Left = ({
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2">
-        <div className="system-sm-semibold-uppercase truncate text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-        <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
+        <div className="truncate text-text-primary system-sm-semibold-uppercase">
+          {isRerunEditMode
+            ? t('debug.rerun.editVariablesTitle', { ns: 'workflow' })
+            : t('debug.variableInspect.title', { ns: 'workflow' })}
+        </div>
+        {!isRerunEditMode && (
+          <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
+        )}
       </div>
       {/* content */}
       <div className="grow overflow-y-auto py-1">
         {/* group ENV */}
-        {environmentVariables.length > 0 && (
+        {envVars.length > 0 && (
           <Group
             varType={VarInInspectType.environment}
-            varList={environmentVariables as VarInInspect[]}
+            varList={envVars as VarInInspect[]}
+            mode={isRerunEditMode ? 'rerun-edit' : 'cache'}
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
           />
         )}
         {/* group CHAT VAR */}
-        {conversationVars.length > 0 && (
+        {conversationVarList.length > 0 && (
           <Group
             varType={VarInInspectType.conversation}
-            varList={conversationVars}
+            varList={conversationVarList}
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
           />
         )}
         {/* group SYSTEM VAR */}
-        {systemVars.length > 0 && (
+        {systemVarList.length > 0 && (
           <Group
             varType={VarInInspectType.system}
-            varList={systemVars}
+            varList={systemVarList}
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
           />
@@ -91,12 +107,13 @@ const Left = ({
           </div>
         )}
         {/* group nodes */}
-        {nodesWithInspectVars.length > 0 && nodesWithInspectVars.map(group => (
+        {nodeVarGroups.length > 0 && nodeVarGroups.map(group => (
           <Group
             key={group.nodeId}
             varType={VarInInspectType.node}
             varList={group.vars}
             nodeData={group}
+            mode={isRerunEditMode ? 'rerun-edit' : 'cache'}
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
             handleView={() => handleNodeSelect(group.nodeId, false, true)}
@@ -104,6 +121,19 @@ const Left = ({
           />
         ))}
       </div>
+      {isRerunEditMode && (
+        <div className="border-t border-divider-subtle p-2">
+          <Button
+            variant="primary"
+            className="w-full"
+            disabled={!!rerunContext?.loading || !!rerunContext?.submitting}
+            loading={!!rerunContext?.submitting}
+            onClick={handleSubmitRerun}
+          >
+            {t('debug.rerun.submit', { ns: 'workflow' })}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

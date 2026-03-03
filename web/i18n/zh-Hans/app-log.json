@@ -76,6 +76,7 @@
   "triggerBy.plugin": "插件",
   "triggerBy.ragPipelineDebugging": "RAG 调试",
   "triggerBy.ragPipelineRun": "RAG 流水线",
+  "triggerBy.rerun": "重新执行",
   "triggerBy.schedule": "定时任务",
   "triggerBy.webhook": "Webhook",
   "viewLog": "查看日志",

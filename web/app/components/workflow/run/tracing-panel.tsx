@@ -22,6 +22,10 @@ type TracingPanelProps = {
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  rerunEntryScope?: 'workflow-editor' | 'readonly'
+  sourceRunId?: string
+  sourceRunStatus?: string
+  onOpenRerunEditor?: (nodeInfo: NodeTracing) => void
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -29,6 +33,10 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  rerunEntryScope = 'readonly',
+  sourceRunId,
+  sourceRunStatus,
+  onOpenRerunEditor,
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
@@ -118,7 +126,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
             >
               {isHovered ? <RiArrowDownSLine className="h-3 w-3" /> : <RiMenu4Line className="h-3 w-3 text-text-tertiary" />}
             </button>
-            <div className="system-xs-semibold-uppercase flex items-center text-text-secondary">
+            <div className="flex items-center text-text-secondary system-xs-semibold-uppercase">
               <span>{parallelDetail.parallelTitle}</span>
             </div>
             <div
@@ -143,7 +151,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
       const isHovered = hoveredParallel === node.id
       return (
         <div key={node.id}>
-          <div className={cn('system-2xs-medium-uppercase -mb-1.5 pl-4', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
+          <div className={cn('-mb-1.5 pl-4 system-2xs-medium-uppercase', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
             {node?.parallelDetail?.branchTitle}
           </div>
           <NodePanel
@@ -155,6 +163,10 @@ const TracingPanel: FC<TracingPanelProps> = ({
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
+            rerunEntryScope={rerunEntryScope}
+            sourceRunId={sourceRunId}
+            sourceRunStatus={sourceRunStatus}
+            onOpenRerunEditor={onOpenRerunEditor}
           />
         </div>
       )

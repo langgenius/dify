@@ -66,6 +66,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         activeTab={defaultTab as any}
         runDetailUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}`}
         tracingListUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        rerunEntryScope="readonly"
       />
     </div>
   )

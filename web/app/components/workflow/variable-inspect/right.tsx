@@ -34,6 +34,7 @@ import { CodeLanguage } from '../nodes/code/types'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import Empty from './empty'
+import { RERUN_MASK_PLACEHOLDER } from './rerun-adapter'
 import ValueContent from './value-content'
 
 type Props = {
@@ -53,9 +54,14 @@ const Right = ({
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const variableInspectMode = useStore(s => s.variableInspectMode)
+  const setVariableInspectMode = useStore(s => s.setVariableInspectMode)
+  const clearRerunContext = useStore(s => s.clearRerunContext)
+  const updateRerunVarValue = useStore(s => s.updateRerunVarValue)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const isTruncated = currentNodeVar?.var.is_truncated
   const fullContent = currentNodeVar?.var.full_content
+  const isRerunEditMode = variableInspectMode === 'rerun-edit'
 
   const {
     resetConversationVar,
@@ -66,6 +72,10 @@ const Right = ({
   const handleValueChange = (varId: string, value: any) => {
     if (!currentNodeVar)
       return
+    if (isRerunEditMode) {
+      updateRerunVarValue(varId, value)
+      return
+    }
     editInspectVarValue(currentNodeVar.nodeId, varId, value)
   }
 
@@ -78,6 +88,10 @@ const Right = ({
   const handleClose = () => {
     setShowVariableInspectPanel(false)
     setCurrentFocusNodeId('')
+    if (isRerunEditMode) {
+      setVariableInspectMode('cache')
+      clearRerunContext()
+    }
   }
 
   const handleClear = () => {
@@ -192,12 +206,12 @@ const Right = ({
                       size="xs"
                       toolIcon={toolIcon}
                     />
-                    <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeVar.title}</div>
-                    <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
+                    <div className="shrink-0 text-text-secondary system-sm-regular">{currentNodeVar.title}</div>
+                    <div className="shrink-0 text-text-quaternary system-sm-regular">/</div>
                   </>
                 )}
-              <div title={currentNodeVar.var.name} className="system-sm-semibold truncate text-text-secondary">{currentNodeVar.var.name}</div>
-              <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
+              <div title={currentNodeVar.var.name} className="truncate text-text-secondary system-sm-semibold">{currentNodeVar.var.name}</div>
+              <div className="ml-1 shrink-0 space-x-2 text-text-tertiary system-xs-medium">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
@@ -216,7 +230,7 @@ const Right = ({
         <div className="flex shrink-0 items-center gap-1">
           {currentNodeVar && (
             <>
-              {canShowPromptGenerator && (
+              {!isRerunEditMode && canShowPromptGenerator && (
                 <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
                   <div
                     className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
@@ -244,14 +258,14 @@ const Right = ({
                   <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                 </Badge>
               )}
-              {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
+              {!isRerunEditMode && !isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
                 <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
-              {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
+              {!isRerunEditMode && !isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
                 <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
                   <ActionButton onClick={handleClear}>
                     <RiArrowGoBackLine className="h-4 w-4" />
@@ -270,7 +284,15 @@ const Right = ({
       </div>
       {/* content */}
       <div className="grow p-2">
-        {!currentNodeVar?.var && <Empty />}
+        {!currentNodeVar?.var && !isValueFetching && (
+          isRerunEditMode
+            ? (
+                <div className="flex h-full items-center justify-center px-4 text-center text-sm text-text-tertiary">
+                  {t('debug.rerun.empty', { ns: 'workflow' })}
+                </div>
+              )
+            : <Empty />
+        )}
         {isValueFetching && (
           <div className="flex h-full items-center justify-center">
             <Loading />
@@ -282,6 +304,9 @@ const Right = ({
             currentVar={currentNodeVar.var}
             handleValueChange={handleValueChange}
             isTruncated={!!isTruncated}
+            mode={isRerunEditMode ? 'rerun-edit' : 'cache'}
+            isMasked={!!currentNodeVar?.rerunMeta?.masked}
+            maskedPlaceholder={RERUN_MASK_PLACEHOLDER}
           />
         )}
       </div>
