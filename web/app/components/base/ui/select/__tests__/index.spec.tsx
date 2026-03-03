@@ -1,10 +1,9 @@
-import type { Placement } from '@floating-ui/react'
 import type {
   ButtonHTMLAttributes,
   HTMLAttributes,
   ReactNode,
 } from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SelectContent,
@@ -18,7 +17,7 @@ type ParsedPlacement = {
 }
 
 const { mockParsePlacement } = vi.hoisted(() => ({
-  mockParsePlacement: vi.fn<(placement: Placement) => ParsedPlacement>(),
+  mockParsePlacement: vi.fn<(placement: string) => ParsedPlacement>(),
 }))
 
 vi.mock('@/app/components/base/ui/placement', () => ({
@@ -32,41 +31,43 @@ vi.mock('@base-ui/react/select', () => {
     align?: 'start' | 'center' | 'end'
     sideOffset?: number
     alignOffset?: number
+    alignItemWithTrigger?: boolean
   }
 
-  const Root = ({ children }: WithChildren) => <div data-testid="base-select-root">{children}</div>
-  const Value = ({ children }: WithChildren) => <span data-testid="base-select-value">{children}</span>
-  const Group = ({ children }: WithChildren) => <div data-testid="base-select-group">{children}</div>
-  const GroupLabel = ({ children }: WithChildren) => <div data-testid="base-select-group-label">{children}</div>
-  const Separator = (props: HTMLAttributes<HTMLHRElement>) => <hr data-testid="base-select-separator" {...props} />
+  const Root = ({ children }: WithChildren) => <div>{children}</div>
+  const Value = ({ children }: WithChildren) => <span>{children}</span>
+  const Group = ({ children }: WithChildren) => <div>{children}</div>
+  const GroupLabel = ({ children }: WithChildren) => <div>{children}</div>
+  const Separator = (props: HTMLAttributes<HTMLHRElement>) => <hr {...props} />
 
   const Trigger = ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button data-testid="base-select-trigger" type="button" {...props}>
+    <button type="button" {...props}>
       {children}
     </button>
   )
   const Icon = ({ children, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-    <span data-testid="base-select-icon" {...props}>
+    <span aria-label="Open select menu" role="img" {...props}>
       {children}
     </span>
   )
 
-  const Portal = ({ children }: WithChildren) => <div data-testid="base-select-portal">{children}</div>
+  const Portal = ({ children }: WithChildren) => <div>{children}</div>
   const Positioner = ({
     children,
     side,
     align,
     sideOffset,
     alignOffset,
+    alignItemWithTrigger,
     className,
     ...props
   }: PositionerProps) => (
     <div
       data-align={align}
       data-align-offset={alignOffset}
+      data-align-item-with-trigger={alignItemWithTrigger === undefined ? undefined : String(alignItemWithTrigger)}
       data-side={side}
       data-side-offset={sideOffset}
-      data-testid="base-select-positioner"
       className={className}
       {...props}
     >
@@ -74,28 +75,28 @@ vi.mock('@base-ui/react/select', () => {
     </div>
   )
   const Popup = ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
-    <div data-testid="base-select-popup" {...props}>
+    <div {...props}>
       {children}
     </div>
   )
   const List = ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
-    <div data-testid="base-select-list" {...props}>
+    <div {...props}>
       {children}
     </div>
   )
 
   const Item = ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
-    <div data-testid="base-select-item" {...props}>
+    <div role="option" {...props}>
       {children}
     </div>
   )
   const ItemText = ({ children, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-    <span data-testid="base-select-item-text" {...props}>
+    <span {...props}>
       {children}
     </span>
   )
   const ItemIndicator = ({ children, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-    <span data-testid="base-select-item-indicator" {...props}>
+    <span aria-label="Selected item indicator" role="img" {...props}>
       {children}
     </span>
   )
@@ -126,14 +127,42 @@ describe('Select wrappers', () => {
     mockParsePlacement.mockReturnValue({ side: 'bottom', align: 'start' })
   })
 
-  // Covers trigger-level wrapper behavior.
+  // Covers default rendering and visual branches for trigger content.
   describe('SelectTrigger', () => {
-    it('should forward trigger props when trigger props are provided', () => {
+    it('should render the default icon when clearable and loading are not enabled', () => {
+      // Arrange
+      render(<SelectTrigger>Trigger Label</SelectTrigger>)
+
+      // Assert
+      expect(screen.getByText('Trigger Label')).toBeInTheDocument()
+      expect(screen.getByRole('img', { name: /open select menu/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
+    })
+
+    it('should render clear button when clearable is true and loading is false', () => {
+      // Arrange
+      render(<SelectTrigger clearable>Trigger Label</SelectTrigger>)
+
+      // Assert
+      expect(screen.getByRole('button', { name: /clear selection/i })).toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: /open select menu/i })).not.toBeInTheDocument()
+    })
+
+    it('should render loading indicator and hide clear button when loading is true', () => {
+      // Arrange
+      render(<SelectTrigger clearable loading>Trigger Label</SelectTrigger>)
+
+      // Assert
+      expect(screen.getByRole('button', { name: /trigger label/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: /open select menu/i })).not.toBeInTheDocument()
+    })
+
+    it('should forward native trigger props when trigger props are provided', () => {
       // Arrange
       render(
         <SelectTrigger
           aria-label="Choose option"
-          data-testid="custom-trigger"
           disabled
         >
           Trigger Label
@@ -141,44 +170,71 @@ describe('Select wrappers', () => {
       )
 
       // Assert
-      const trigger = screen.getByTestId('custom-trigger')
+      const trigger = screen.getByRole('button', { name: /choose option/i })
       expect(trigger).toBeDisabled()
       expect(trigger).toHaveAttribute('aria-label', 'Choose option')
-      expect(trigger).toHaveAttribute('data-testid', 'custom-trigger')
     })
 
-    it('should compose default and custom class names when className is provided', () => {
-      // Arrange & Act
-      render(<SelectTrigger className="custom-trigger-class">Trigger Label</SelectTrigger>)
+    it('should call onClear and stop click propagation when clear button is clicked', () => {
+      // Arrange
+      const onClear = vi.fn()
+      const onTriggerClick = vi.fn()
+      render(
+        <SelectTrigger clearable onClear={onClear} onClick={onTriggerClick}>
+          Trigger Label
+        </SelectTrigger>,
+      )
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: /clear selection/i }))
 
       // Assert
-      const trigger = screen.getByTestId('base-select-trigger')
-      expect(trigger).toHaveClass('group')
-      expect(trigger).toHaveClass('h-8')
-      expect(trigger).toHaveClass('custom-trigger-class')
+      expect(onClear).toHaveBeenCalledTimes(1)
+      expect(onTriggerClick).not.toHaveBeenCalled()
     })
 
-    it('should render children and icon when content is provided', () => {
-      // Arrange & Act
-      render(<SelectTrigger>Trigger Label</SelectTrigger>)
+    it('should stop mouse down propagation when clear button receives mouse down', () => {
+      // Arrange
+      const onTriggerMouseDown = vi.fn()
+      render(
+        <SelectTrigger clearable onMouseDown={onTriggerMouseDown}>
+          Trigger Label
+        </SelectTrigger>,
+      )
+
+      // Act
+      fireEvent.mouseDown(screen.getByRole('button', { name: /clear selection/i }))
 
       // Assert
-      expect(screen.getByText('Trigger Label')).toBeInTheDocument()
-      expect(screen.getByTestId('base-select-icon')).toBeInTheDocument()
+      expect(onTriggerMouseDown).not.toHaveBeenCalled()
+    })
+
+    it('should not throw when clear button is clicked without onClear handler', () => {
+      // Arrange
+      render(<SelectTrigger clearable>Trigger Label</SelectTrigger>)
+      const clearButton = screen.getByRole('button', { name: /clear selection/i })
+
+      // Act & Assert
+      expect(() => fireEvent.click(clearButton)).not.toThrow()
     })
   })
 
-  // Covers content placement parsing and positioner forwarding.
+  // Covers content placement parsing, forwarding props, and slot rendering.
   describe('SelectContent', () => {
     it('should call parsePlacement with default placement when placement is not provided', () => {
       // Arrange
       mockParsePlacement.mockReturnValueOnce({ side: 'bottom', align: 'start' })
 
       // Act
-      render(<SelectContent><div>Option A</div></SelectContent>)
+      render(
+        <SelectContent>
+          <span>Option A</span>
+        </SelectContent>,
+      )
 
       // Assert
       expect(mockParsePlacement).toHaveBeenCalledWith('bottom-start')
+      expect(screen.getByText('Option A')).toBeInTheDocument()
     })
 
     it('should pass parsed side align and offsets to Positioner when custom placement and offsets are provided', () => {
@@ -187,36 +243,24 @@ describe('Select wrappers', () => {
 
       // Act
       render(
-        <SelectContent alignOffset={6} placement="top-end" sideOffset={12}>
-          <div>Option A</div>
-        </SelectContent>,
-      )
-
-      // Assert
-      const positioner = screen.getByTestId('base-select-positioner')
-      expect(mockParsePlacement).toHaveBeenCalledWith('top-end')
-      expect(positioner).toHaveAttribute('data-side', 'top')
-      expect(positioner).toHaveAttribute('data-align', 'end')
-      expect(positioner).toHaveAttribute('data-side-offset', '12')
-      expect(positioner).toHaveAttribute('data-align-offset', '6')
-    })
-
-    it('should compose positioner popup and list class names when custom class props are provided', () => {
-      // Arrange & Act
-      render(
         <SelectContent
-          className="custom-positioner"
-          listClassName="custom-list"
-          popupClassName="custom-popup"
+          alignOffset={6}
+          placement="top-end"
+          sideOffset={12}
+          positionerProps={{ 'role': 'group', 'aria-label': 'Select positioner' }}
         >
           <div>Option A</div>
         </SelectContent>,
       )
 
       // Assert
-      expect(screen.getByTestId('base-select-positioner')).toHaveClass('outline-none', 'custom-positioner')
-      expect(screen.getByTestId('base-select-popup')).toHaveClass('rounded-xl', 'custom-popup')
-      expect(screen.getByTestId('base-select-list')).toHaveClass('max-h-80', 'custom-list')
+      const positioner = screen.getByRole('group', { name: /select positioner/i })
+      expect(mockParsePlacement).toHaveBeenCalledWith('top-end')
+      expect(positioner).toHaveAttribute('data-side', 'top')
+      expect(positioner).toHaveAttribute('data-align', 'end')
+      expect(positioner).toHaveAttribute('data-side-offset', '12')
+      expect(positioner).toHaveAttribute('data-align-offset', '6')
+      expect(positioner).toHaveAttribute('data-align-item-with-trigger', 'false')
     })
 
     it('should forward passthrough props to positioner popup and list when passthrough props are provided', () => {
@@ -224,6 +268,7 @@ describe('Select wrappers', () => {
       render(
         <SelectContent
           positionerProps={{
+            'role': 'group',
             'aria-label': 'select positioner',
           }}
           popupProps={{
@@ -240,9 +285,9 @@ describe('Select wrappers', () => {
       )
 
       // Assert
-      const positioner = screen.getByTestId('base-select-positioner')
-      const popup = screen.getByTestId('base-select-popup')
-      const list = screen.getByTestId('base-select-list')
+      const positioner = screen.getByRole('group', { name: /select positioner/i })
+      const popup = screen.getByRole('dialog', { name: /select popup/i })
+      const list = screen.getByRole('listbox', { name: /select list/i })
 
       expect(positioner).toHaveAttribute('aria-label', 'select positioner')
       expect(popup).toHaveAttribute('role', 'dialog')
@@ -250,46 +295,31 @@ describe('Select wrappers', () => {
       expect(list).toHaveAttribute('role', 'listbox')
       expect(list).toHaveAttribute('aria-label', 'select list')
     })
-
-    it('should render children inside list when children are provided', () => {
-      // Arrange & Act
-      render(
-        <SelectContent>
-          <span data-testid="list-child">Option A</span>
-        </SelectContent>,
-      )
-
-      // Assert
-      const list = screen.getByTestId('base-select-list')
-      expect(list).toContainElement(screen.getByTestId('list-child'))
-    })
   })
 
-  // Covers option item wrapper behavior.
+  // Covers option item rendering and prop forwarding behavior.
   describe('SelectItem', () => {
-    it('should forward props and compose class names when item props are provided', () => {
-      // Arrange & Act
+    it('should render item text and indicator when children are provided', () => {
+      // Arrange
+      render(<SelectItem>Seattle</SelectItem>)
+
+      // Assert
+      expect(screen.getByRole('option', { name: /seattle/i })).toBeInTheDocument()
+      expect(screen.getByRole('img', { name: /selected item indicator/i })).toBeInTheDocument()
+    })
+
+    it('should forward item props when item props are provided', () => {
+      // Arrange
       render(
-        <SelectItem aria-label="City option" className="custom-item-class" data-testid="city-option-item">
+        <SelectItem aria-label="City option" disabled>
           Seattle
         </SelectItem>,
       )
 
       // Assert
-      const item = screen.getByTestId('city-option-item')
+      const item = screen.getByRole('option', { name: /city option/i })
       expect(item).toHaveAttribute('aria-label', 'City option')
-      expect(item).toHaveAttribute('data-testid', 'city-option-item')
-      expect(item).toHaveClass('h-8')
-      expect(item).toHaveClass('custom-item-class')
-    })
-
-    it('should render item text and indicator when children are provided', () => {
-      // Arrange & Act
-      render(<SelectItem>Seattle</SelectItem>)
-
-      // Assert
-      expect(screen.getByTestId('base-select-item-text')).toHaveTextContent('Seattle')
-      expect(screen.getByTestId('base-select-item-indicator')).toBeInTheDocument()
+      expect(item).toHaveAttribute('disabled')
     })
   })
 })

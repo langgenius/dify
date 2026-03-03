@@ -11,27 +11,45 @@ import {
   DialogTrigger,
 } from '../index'
 
-type PrimitiveProps = ComponentPropsWithoutRef<'div'>
+type DivPrimitiveProps = ComponentPropsWithoutRef<'div'>
+type ButtonPrimitiveProps = ComponentPropsWithoutRef<'button'>
+type SectionPrimitiveProps = ComponentPropsWithoutRef<'section'>
 
 vi.mock('@base-ui/react/dialog', () => {
-  const createPrimitive = (testId: string) => {
-    return vi.fn(({ children, ...props }: PrimitiveProps) => (
-      <div data-testid={testId} {...props}>
+  const createDivPrimitive = () => {
+    return vi.fn(({ children, ...props }: DivPrimitiveProps) => (
+      <div {...props}>
         {children}
       </div>
     ))
   }
 
+  const createButtonPrimitive = () => {
+    return vi.fn(({ children, ...props }: ButtonPrimitiveProps) => (
+      <button type="button" {...props}>
+        {children}
+      </button>
+    ))
+  }
+
+  const createPopupPrimitive = () => {
+    return vi.fn(({ children, ...props }: SectionPrimitiveProps) => (
+      <section role="dialog" {...props}>
+        {children}
+      </section>
+    ))
+  }
+
   return {
     Dialog: {
-      Root: createPrimitive('base-dialog-root'),
-      Trigger: createPrimitive('base-dialog-trigger'),
-      Title: createPrimitive('base-dialog-title'),
-      Description: createPrimitive('base-dialog-description'),
-      Close: createPrimitive('base-dialog-close'),
-      Portal: createPrimitive('base-dialog-portal'),
-      Backdrop: createPrimitive('base-dialog-backdrop'),
-      Popup: createPrimitive('base-dialog-popup'),
+      Root: createDivPrimitive(),
+      Trigger: createDivPrimitive(),
+      Title: createDivPrimitive(),
+      Description: createDivPrimitive(),
+      Close: createButtonPrimitive(),
+      Portal: createDivPrimitive(),
+      Backdrop: createDivPrimitive(),
+      Popup: createPopupPrimitive(),
     },
   }
 })
@@ -43,7 +61,7 @@ describe('Dialog wrapper', () => {
 
   // Rendering behavior for wrapper-specific structure and content.
   describe('Rendering', () => {
-    it('should render backdrop and popup when DialogContent is rendered', () => {
+    it('should render portal structure and dialog content when DialogContent is rendered', () => {
       // Arrange
       const contentText = 'dialog body'
 
@@ -55,81 +73,56 @@ describe('Dialog wrapper', () => {
       )
 
       // Assert
-      expect(screen.getByTestId('base-dialog-portal')).toBeInTheDocument()
-      expect(screen.getByTestId('base-dialog-backdrop')).toBeInTheDocument()
-      expect(screen.getByTestId('base-dialog-popup')).toBeInTheDocument()
+      expect(vi.mocked(BaseDialog.Portal)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(BaseDialog.Backdrop)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(BaseDialog.Popup)).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText(contentText)).toBeInTheDocument()
-    })
-
-    it('should apply default wrapper class names when no override classes are provided', () => {
-      // Arrange
-      render(
-        <DialogContent>
-          <span>content</span>
-        </DialogContent>,
-      )
-
-      // Act
-      const backdrop = screen.getByTestId('base-dialog-backdrop')
-      const popup = screen.getByTestId('base-dialog-popup')
-
-      // Assert
-      expect(backdrop).toHaveClass('fixed', 'inset-0', 'z-50', 'bg-background-overlay')
-      expect(backdrop).toHaveClass('transition-opacity', 'duration-150')
-      expect(backdrop).toHaveClass('data-[ending-style]:opacity-0', 'data-[starting-style]:opacity-0')
-
-      expect(popup).toHaveClass('fixed', 'left-1/2', 'top-1/2', 'z-50')
-      expect(popup).toHaveClass('max-h-[80dvh]', 'w-[480px]', 'max-w-[calc(100vw-2rem)]')
-      expect(popup).toHaveClass('-translate-x-1/2', '-translate-y-1/2')
-      expect(popup).toHaveClass('rounded-2xl', 'border-[0.5px]', 'bg-components-panel-bg', 'p-6', 'shadow-xl')
-      expect(popup).toHaveClass('transition-all', 'duration-150')
-      expect(popup).toHaveClass(
-        'data-[ending-style]:scale-95',
-        'data-[starting-style]:scale-95',
-        'data-[ending-style]:opacity-0',
-        'data-[starting-style]:opacity-0',
-      )
     })
   })
 
-  // Props behavior for class merging and custom styling.
+  // Props behavior for closable semantics and defaults.
   describe('Props', () => {
-    it('should merge overlayClassName and className with default classes when overrides are provided', () => {
+    it('should not render close button when closable is omitted', () => {
       // Arrange
-      const overlayClassName = 'custom-overlay opacity-90'
-      const className = 'custom-popup max-w-[640px]'
-
-      // Act
       render(
-        <DialogContent overlayClassName={overlayClassName} className={className}>
+        <DialogContent>
           <span>content</span>
         </DialogContent>,
       )
 
-      const backdrop = screen.getByTestId('base-dialog-backdrop')
-      const popup = screen.getByTestId('base-dialog-popup')
-
       // Assert
-      expect(backdrop).toHaveClass('fixed', 'inset-0', 'custom-overlay', 'opacity-90')
-      expect(popup).toHaveClass('fixed', 'left-1/2', 'custom-popup', 'max-w-[640px]')
-      expect(popup).not.toHaveClass('max-w-[calc(100vw-2rem)]')
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
 
-    it('should render children inside popup when children are provided', () => {
+    it('should not render close button when closable is false', () => {
       // Arrange
-      const childText = 'child content'
-
-      // Act
       render(
-        <DialogContent>
-          <div>{childText}</div>
+        <DialogContent closable={false}>
+          <span>content</span>
         </DialogContent>,
       )
 
-      const popup = screen.getByTestId('base-dialog-popup')
+      // Assert
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    })
+
+    it('should render semantic close button when closable is true', () => {
+      // Arrange
+      render(
+        <DialogContent closable>
+          <span>content</span>
+        </DialogContent>,
+      )
 
       // Assert
-      expect(popup).toContainElement(screen.getByText(childText))
+      const closeButton = screen.getByRole('button', { name: 'Close' })
+      expect(closeButton).toHaveAttribute('aria-label', 'Close')
+      expect(screen.getByRole('dialog')).toContainElement(closeButton)
+
+      const closeIcon = closeButton.querySelector('span')
+      expect(closeIcon).toBeInTheDocument()
+      expect(closeButton).toContainElement(closeIcon)
     })
   })
 

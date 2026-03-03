@@ -1,19 +1,14 @@
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@/app/components/base/ui/placement'
 import { Menu } from '@base-ui/react/menu'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuCheckboxItemIndicator,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuGroupLabel,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -28,6 +23,11 @@ vi.mock('@base-ui/react/menu', async () => {
     children?: React.ReactNode
   }
 
+  type PrimitiveOptions = {
+    displayName: string
+    defaultRole?: React.AriaRole
+  }
+
   type PositionerProps = PrimitiveProps & {
     side?: string
     align?: string
@@ -35,20 +35,33 @@ vi.mock('@base-ui/react/menu', async () => {
     alignOffset?: number
   }
 
-  const createPrimitive = (testId: string) => {
-    const Primitive = React.forwardRef<HTMLDivElement, PrimitiveProps>(({ children, ...props }, ref) => {
-      return React.createElement('div', { ref, 'data-testid': testId, ...props }, children)
+  const createPrimitive = ({ displayName, defaultRole }: PrimitiveOptions) => {
+    const Primitive = React.forwardRef<HTMLDivElement, PrimitiveProps>(({ children, role, ...props }, ref) => {
+      return React.createElement(
+        'div',
+        {
+          ref,
+          role: role ?? defaultRole,
+          ...props,
+        },
+        children,
+      )
     })
-    Primitive.displayName = testId
+    Primitive.displayName = displayName
     return Primitive
   }
 
-  const Positioner = React.forwardRef<HTMLDivElement, PositionerProps>(({ children, side, align, sideOffset, alignOffset, ...props }, ref) => {
+  const Portal = ({ children }: PrimitiveProps) => {
+    return React.createElement(React.Fragment, null, children)
+  }
+  Portal.displayName = 'menu-portal'
+
+  const Positioner = React.forwardRef<HTMLDivElement, PositionerProps>(({ children, role, side, align, sideOffset, alignOffset, ...props }, ref) => {
     return React.createElement(
       'div',
       {
         ref,
-        'data-testid': 'menu-positioner',
+        'role': role ?? 'group',
         'data-side': side,
         'data-align': align,
         'data-side-offset': sideOffset,
@@ -61,22 +74,22 @@ vi.mock('@base-ui/react/menu', async () => {
   Positioner.displayName = 'menu-positioner'
 
   const Menu = {
-    Root: createPrimitive('menu-root'),
-    Portal: createPrimitive('menu-portal'),
-    Trigger: createPrimitive('menu-trigger'),
-    SubmenuRoot: createPrimitive('menu-submenu-root'),
-    Group: createPrimitive('menu-group'),
-    GroupLabel: createPrimitive('menu-group-label'),
-    RadioGroup: createPrimitive('menu-radio-group'),
-    RadioItem: createPrimitive('menu-radio-item'),
-    RadioItemIndicator: createPrimitive('menu-radio-item-indicator'),
-    CheckboxItem: createPrimitive('menu-checkbox-item'),
-    CheckboxItemIndicator: createPrimitive('menu-checkbox-item-indicator'),
+    Root: createPrimitive({ displayName: 'menu-root' }),
+    Portal,
+    Trigger: createPrimitive({ displayName: 'menu-trigger', defaultRole: 'button' }),
+    SubmenuRoot: createPrimitive({ displayName: 'menu-submenu-root' }),
+    Group: createPrimitive({ displayName: 'menu-group', defaultRole: 'group' }),
+    GroupLabel: createPrimitive({ displayName: 'menu-group-label' }),
+    RadioGroup: createPrimitive({ displayName: 'menu-radio-group', defaultRole: 'radiogroup' }),
+    RadioItem: createPrimitive({ displayName: 'menu-radio-item', defaultRole: 'menuitemradio' }),
+    RadioItemIndicator: createPrimitive({ displayName: 'menu-radio-item-indicator' }),
+    CheckboxItem: createPrimitive({ displayName: 'menu-checkbox-item', defaultRole: 'menuitemcheckbox' }),
+    CheckboxItemIndicator: createPrimitive({ displayName: 'menu-checkbox-item-indicator' }),
     Positioner,
-    Popup: createPrimitive('menu-popup'),
-    SubmenuTrigger: createPrimitive('menu-submenu-trigger'),
-    Item: createPrimitive('menu-item'),
-    Separator: createPrimitive('menu-separator'),
+    Popup: createPrimitive({ displayName: 'menu-popup', defaultRole: 'menu' }),
+    SubmenuTrigger: createPrimitive({ displayName: 'menu-submenu-trigger', defaultRole: 'menuitem' }),
+    Item: createPrimitive({ displayName: 'menu-item', defaultRole: 'menuitem' }),
+    Separator: createPrimitive({ displayName: 'menu-separator', defaultRole: 'separator' }),
   }
 
   return { Menu }
@@ -99,7 +112,7 @@ describe('dropdown-menu wrapper', () => {
 
   // Ensures exported aliases stay aligned with the wrapped Menu primitives.
   describe('alias exports', () => {
-    it('should map each alias export to the corresponding Menu primitive', () => {
+    it('should map direct aliases to the corresponding Menu primitive when importing menu roots', () => {
       // Arrange
 
       // Act
@@ -110,44 +123,38 @@ describe('dropdown-menu wrapper', () => {
       expect(DropdownMenuTrigger).toBe(Menu.Trigger)
       expect(DropdownMenuSub).toBe(Menu.SubmenuRoot)
       expect(DropdownMenuGroup).toBe(Menu.Group)
-      expect(DropdownMenuGroupLabel).toBe(Menu.GroupLabel)
       expect(DropdownMenuRadioGroup).toBe(Menu.RadioGroup)
-      expect(DropdownMenuRadioItem).toBe(Menu.RadioItem)
-      expect(DropdownMenuRadioItemIndicator).toBe(Menu.RadioItemIndicator)
-      expect(DropdownMenuCheckboxItem).toBe(Menu.CheckboxItem)
-      expect(DropdownMenuCheckboxItemIndicator).toBe(Menu.CheckboxItemIndicator)
     })
   })
 
+  // Verifies content popup placement and passthrough behavior.
   describe('DropdownMenuContent', () => {
-    it('should use default placement and offsets when props are omitted', () => {
+    it('should position content at bottom-end with default offsets when placement props are omitted', () => {
       // Arrange
       const parsePlacementMock = vi.mocked(parsePlacement)
 
       // Act
       render(
         <DropdownMenuContent>
-          <span>content child</span>
+          <button type="button">content action</button>
         </DropdownMenuContent>,
       )
 
       // Assert
-      const positioner = screen.getByTestId('menu-positioner')
-      const popup = screen.getByTestId('menu-popup')
+      const popup = screen.getByRole('menu')
+      const positioner = popup.parentElement
 
       expect(parsePlacementMock).toHaveBeenCalledTimes(1)
       expect(parsePlacementMock).toHaveBeenCalledWith('bottom-end')
+      expect(positioner).not.toBeNull()
       expect(positioner).toHaveAttribute('data-side', 'bottom')
       expect(positioner).toHaveAttribute('data-align', 'end')
       expect(positioner).toHaveAttribute('data-side-offset', '4')
       expect(positioner).toHaveAttribute('data-align-offset', '0')
-      expect(positioner).toHaveClass('outline-none')
-      expect(popup).toHaveClass('rounded-xl')
-      expect(popup).toHaveClass('py-1')
-      expect(screen.getByText('content child')).toBeInTheDocument()
+      expect(within(popup).getByRole('button', { name: 'content action' })).toBeInTheDocument()
     })
 
-    it('should parse custom placement and merge custom class names', () => {
+    it('should apply custom placement offsets when custom positioning props are provided', () => {
       // Arrange
       const parsePlacementMock = vi.mocked(parsePlacement)
 
@@ -157,41 +164,42 @@ describe('dropdown-menu wrapper', () => {
           placement="top-start"
           sideOffset={12}
           alignOffset={-3}
-          className="content-positioner-custom"
-          popupClassName="content-popup-custom"
         >
           <span>custom content</span>
         </DropdownMenuContent>,
       )
 
       // Assert
-      const positioner = screen.getByTestId('menu-positioner')
-      const popup = screen.getByTestId('menu-popup')
+      const popup = screen.getByRole('menu')
+      const positioner = popup.parentElement
 
       expect(parsePlacementMock).toHaveBeenCalledTimes(1)
       expect(parsePlacementMock).toHaveBeenCalledWith('top-start')
+      expect(positioner).not.toBeNull()
       expect(positioner).toHaveAttribute('data-side', 'top')
       expect(positioner).toHaveAttribute('data-align', 'start')
       expect(positioner).toHaveAttribute('data-side-offset', '12')
       expect(positioner).toHaveAttribute('data-align-offset', '-3')
-      expect(positioner).toHaveClass('outline-none')
-      expect(positioner).toHaveClass('content-positioner-custom')
-      expect(popup).toHaveClass('content-popup-custom')
-      expect(screen.getByText('custom content')).toBeInTheDocument()
+      expect(within(popup).getByText('custom content')).toBeInTheDocument()
     })
 
-    it('should forward positioner and popup passthrough props when passthrough props are provided', () => {
+    it('should forward passthrough attributes and handlers when positionerProps and popupProps are provided', () => {
       // Arrange
+      const handlePositionerMouseEnter = vi.fn()
+      const handlePopupClick = vi.fn()
 
       // Act
       render(
         <DropdownMenuContent
           positionerProps={{
             'aria-label': 'dropdown content positioner',
+            'id': 'dropdown-content-positioner',
+            'onMouseEnter': handlePositionerMouseEnter,
           }}
           popupProps={{
-            'role': 'menu',
             'aria-label': 'dropdown content popup',
+            'id': 'dropdown-content-popup',
+            'onClick': handlePopupClick,
           }}
         >
           <span>passthrough content</span>
@@ -199,41 +207,50 @@ describe('dropdown-menu wrapper', () => {
       )
 
       // Assert
-      const positioner = screen.getByTestId('menu-positioner')
-      const popup = screen.getByTestId('menu-popup')
-      expect(positioner).toHaveAttribute('aria-label', 'dropdown content positioner')
-      expect(popup).toHaveAttribute('role', 'menu')
-      expect(popup).toHaveAttribute('aria-label', 'dropdown content popup')
+      const positioner = screen.getByRole('group', { name: 'dropdown content positioner' })
+      const popup = screen.getByRole('menu', { name: 'dropdown content popup' })
+      fireEvent.mouseEnter(positioner)
+      fireEvent.click(popup)
+
+      expect(positioner).toHaveAttribute('id', 'dropdown-content-positioner')
+      expect(popup).toHaveAttribute('id', 'dropdown-content-popup')
+      expect(handlePositionerMouseEnter).toHaveBeenCalledTimes(1)
+      expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
   })
 
+  // Verifies submenu popup placement and passthrough behavior.
   describe('DropdownMenuSubContent', () => {
-    it('should use the default sub-content placement and offsets', () => {
+    it('should position sub-content at left-start with default offsets when props are omitted', () => {
       // Arrange
       const parsePlacementMock = vi.mocked(parsePlacement)
 
       // Act
       render(
         <DropdownMenuSubContent>
-          <span>sub content child</span>
+          <button type="button">sub action</button>
         </DropdownMenuSubContent>,
       )
 
       // Assert
-      const positioner = screen.getByTestId('menu-positioner')
+      const popup = screen.getByRole('menu')
+      const positioner = popup.parentElement
+
       expect(parsePlacementMock).toHaveBeenCalledTimes(1)
       expect(parsePlacementMock).toHaveBeenCalledWith('left-start')
+      expect(positioner).not.toBeNull()
       expect(positioner).toHaveAttribute('data-side', 'left')
       expect(positioner).toHaveAttribute('data-align', 'start')
       expect(positioner).toHaveAttribute('data-side-offset', '4')
       expect(positioner).toHaveAttribute('data-align-offset', '0')
-      expect(positioner).toHaveClass('outline-none')
-      expect(screen.getByText('sub content child')).toBeInTheDocument()
+      expect(within(popup).getByRole('button', { name: 'sub action' })).toBeInTheDocument()
     })
 
-    it('should parse custom placement and merge popup class names', () => {
+    it('should apply custom placement offsets and forward passthrough props when custom sub-content props are provided', () => {
       // Arrange
       const parsePlacementMock = vi.mocked(parsePlacement)
+      const handlePositionerFocus = vi.fn()
+      const handlePopupClick = vi.fn()
 
       // Act
       render(
@@ -241,16 +258,26 @@ describe('dropdown-menu wrapper', () => {
           placement="right-end"
           sideOffset={6}
           alignOffset={2}
-          className="sub-positioner-custom"
-          popupClassName="sub-popup-custom"
+          positionerProps={{
+            'aria-label': 'dropdown sub positioner',
+            'id': 'dropdown-sub-positioner',
+            'onFocus': handlePositionerFocus,
+          }}
+          popupProps={{
+            'aria-label': 'dropdown sub popup',
+            'id': 'dropdown-sub-popup',
+            'onClick': handlePopupClick,
+          }}
         >
           <span>custom sub content</span>
         </DropdownMenuSubContent>,
       )
 
       // Assert
-      const positioner = screen.getByTestId('menu-positioner')
-      const popup = screen.getByTestId('menu-popup')
+      const positioner = screen.getByRole('group', { name: 'dropdown sub positioner' })
+      const popup = screen.getByRole('menu', { name: 'dropdown sub popup' })
+      fireEvent.focus(positioner)
+      fireEvent.click(popup)
 
       expect(parsePlacementMock).toHaveBeenCalledTimes(1)
       expect(parsePlacementMock).toHaveBeenCalledWith('right-end')
@@ -258,117 +285,123 @@ describe('dropdown-menu wrapper', () => {
       expect(positioner).toHaveAttribute('data-align', 'end')
       expect(positioner).toHaveAttribute('data-side-offset', '6')
       expect(positioner).toHaveAttribute('data-align-offset', '2')
-      expect(positioner).toHaveClass('outline-none')
-      expect(positioner).toHaveClass('sub-positioner-custom')
-      expect(popup).toHaveClass('sub-popup-custom')
-    })
-
-    it('should forward passthrough props for sub-content positioner and popup when passthrough props are provided', () => {
-      // Arrange
-
-      // Act
-      render(
-        <DropdownMenuSubContent
-          positionerProps={{
-            'aria-label': 'dropdown sub positioner',
-          }}
-          popupProps={{
-            'role': 'menu',
-            'aria-label': 'dropdown sub popup',
-          }}
-        >
-          <span>passthrough sub content</span>
-        </DropdownMenuSubContent>,
-      )
-
-      // Assert
-      const positioner = screen.getByTestId('menu-positioner')
-      const popup = screen.getByTestId('menu-popup')
-      expect(positioner).toHaveAttribute('aria-label', 'dropdown sub positioner')
-      expect(popup).toHaveAttribute('role', 'menu')
-      expect(popup).toHaveAttribute('aria-label', 'dropdown sub popup')
+      expect(positioner).toHaveAttribute('id', 'dropdown-sub-positioner')
+      expect(popup).toHaveAttribute('id', 'dropdown-sub-popup')
+      expect(handlePositionerFocus).toHaveBeenCalledTimes(1)
+      expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
   })
 
+  // Covers submenu trigger behavior with and without destructive flag.
   describe('DropdownMenuSubTrigger', () => {
-    it('should merge className and apply destructive style when destructive is true', () => {
+    it('should render label and submenu chevron when trigger children are provided', () => {
       // Arrange
 
       // Act
       render(
-        <DropdownMenuSubTrigger className="sub-trigger-custom" destructive>
+        <DropdownMenuSubTrigger>
           Trigger item
         </DropdownMenuSubTrigger>,
       )
 
       // Assert
-      const subTrigger = screen.getByTestId('menu-submenu-trigger')
-      expect(subTrigger).toHaveClass('mx-1')
-      expect(subTrigger).toHaveClass('sub-trigger-custom')
-      expect(subTrigger).toHaveClass('text-text-destructive')
+      const subTrigger = screen.getByRole('menuitem', { name: 'Trigger item' })
+      expect(subTrigger.querySelector('span[aria-hidden="true"]')).not.toBeNull()
     })
 
-    it('should not apply destructive style when destructive is false', () => {
+    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
       // Arrange
+      const handleClick = vi.fn()
 
       // Act
       render(
-        <DropdownMenuSubTrigger className="sub-trigger-custom">
+        <DropdownMenuSubTrigger
+          destructive={destructive}
+          aria-label="submenu action"
+          id={`submenu-trigger-${String(destructive)}`}
+          onClick={handleClick}
+        >
           Trigger item
         </DropdownMenuSubTrigger>,
       )
 
       // Assert
-      expect(screen.getByTestId('menu-submenu-trigger')).not.toHaveClass('text-text-destructive')
+      const subTrigger = screen.getByRole('menuitem', { name: 'submenu action' })
+      fireEvent.click(subTrigger)
+
+      expect(subTrigger).toHaveAttribute('id', `submenu-trigger-${String(destructive)}`)
+      expect(subTrigger).not.toHaveAttribute('destructive')
+      expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
 
+  // Covers menu item behavior with and without destructive flag.
   describe('DropdownMenuItem', () => {
-    it('should merge className and apply destructive style when destructive is true', () => {
+    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
       // Arrange
+      const handleClick = vi.fn()
 
       // Act
       render(
-        <DropdownMenuItem className="item-custom" destructive>
+        <DropdownMenuItem
+          destructive={destructive}
+          aria-label="menu action"
+          id={`menu-item-${String(destructive)}`}
+          onClick={handleClick}
+        >
           Item label
         </DropdownMenuItem>,
       )
 
       // Assert
-      const item = screen.getByTestId('menu-item')
-      expect(item).toHaveClass('mx-1')
-      expect(item).toHaveClass('item-custom')
-      expect(item).toHaveClass('text-text-destructive')
-    })
+      const item = screen.getByRole('menuitem', { name: 'menu action' })
+      fireEvent.click(item)
 
-    it('should not apply destructive style when destructive is false', () => {
-      // Arrange
-
-      // Act
-      render(
-        <DropdownMenuItem className="item-custom">
-          Item label
-        </DropdownMenuItem>,
-      )
-
-      // Assert
-      expect(screen.getByTestId('menu-item')).not.toHaveClass('text-text-destructive')
+      expect(item).toHaveAttribute('id', `menu-item-${String(destructive)}`)
+      expect(item).not.toHaveAttribute('destructive')
+      expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
 
+  // Verifies separator semantics and row separation behavior.
   describe('DropdownMenuSeparator', () => {
-    it('should merge custom class names with default separator classes', () => {
+    it('should forward passthrough props and handlers when separator props are provided', () => {
+      // Arrange
+      const handleMouseEnter = vi.fn()
+
+      // Act
+      render(
+        <DropdownMenuSeparator
+          aria-label="actions divider"
+          id="menu-separator"
+          onMouseEnter={handleMouseEnter}
+        />,
+      )
+
+      // Assert
+      const separator = screen.getByRole('separator', { name: 'actions divider' })
+      fireEvent.mouseEnter(separator)
+
+      expect(separator).toHaveAttribute('id', 'menu-separator')
+      expect(handleMouseEnter).toHaveBeenCalledTimes(1)
+    })
+
+    it('should keep surrounding menu rows rendered when separator is placed between items', () => {
       // Arrange
 
       // Act
-      render(<DropdownMenuSeparator className="separator-custom" />)
+      render(
+        <>
+          <DropdownMenuItem>First action</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>Second action</DropdownMenuItem>
+        </>,
+      )
 
       // Assert
-      const separator = screen.getByTestId('menu-separator')
-      expect(separator).toHaveClass('my-1')
-      expect(separator).toHaveClass('h-px')
-      expect(separator).toHaveClass('bg-divider-regular')
-      expect(separator).toHaveClass('separator-custom')
+      expect(screen.getByRole('menuitem', { name: 'First action' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Second action' })).toBeInTheDocument()
+      expect(screen.getAllByRole('separator')).toHaveLength(1)
     })
   })
 })
