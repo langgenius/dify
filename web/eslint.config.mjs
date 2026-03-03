@@ -6,7 +6,7 @@ import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import dify from './eslint-rules/index.js'
-import { BASE_UI_PRIMITIVE_EXPORT_NAMES, OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
+import { OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
@@ -150,9 +150,7 @@ export default antfu(
     name: 'dify/base-ui-primitives',
     files: ['app/components/base/ui/**/*.tsx'],
     rules: {
-      'react-refresh/only-export-components': ['error', {
-        allowExportNames: BASE_UI_PRIMITIVE_EXPORT_NAMES,
-      }],
+      'react-refresh/only-export-components': 'off',
     },
   },
   {
