@@ -6,7 +6,6 @@ from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
 from dify_graph.nodes.template_transform.template_renderer import (
-    CodeExecutorJinja2TemplateRenderer,
     Jinja2TemplateRenderer,
     TemplateRenderError,
 )
@@ -30,7 +29,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
-        template_renderer: Jinja2TemplateRenderer | None = None,
+        template_renderer: Jinja2TemplateRenderer,
         max_output_length: int | None = None,
     ) -> None:
         super().__init__(
@@ -39,7 +38,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
+        self._template_renderer = template_renderer
 
         if max_output_length is not None and max_output_length <= 0:
             raise ValueError("max_output_length must be a positive integer")
