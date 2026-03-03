@@ -64,7 +64,10 @@ class VariablePool(BaseModel):
         self._add_system_variables(self.system_variables)
         # Add environment variables to the variable pool
         for var in self.environment_variables:
-            self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
+            selector = (ENVIRONMENT_VARIABLE_NODE_ID, var.name)
+            if self._has(selector):
+                continue
+            self.add(selector, var)
         # Add conversation variables to the variable pool. When restoring from a serialized
         # snapshot, `variable_dictionary` already carries the latest runtime values.
         # In that case, keep existing entries instead of overwriting them with the
@@ -83,7 +86,10 @@ class VariablePool(BaseModel):
                 value = rag_var.value
                 rag_pipeline_variables_map[node_id][key] = value
             for key, value in rag_pipeline_variables_map.items():
-                self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
+                selector = (RAG_PIPELINE_VARIABLE_NODE_ID, key)
+                if self._has(selector):
+                    continue
+                self.add(selector, value)
 
     def add(self, selector: Sequence[str], value: Any, /):
         """
