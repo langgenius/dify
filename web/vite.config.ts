@@ -108,16 +108,32 @@ export default defineConfig(({ mode }) => {
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],
+            // Make Prism in lexical works
+            // https://github.com/vitejs/rolldown-vite/issues/396
+            rolldownOptions: {
+              output: {
+                strictExecutionOrder: true,
+              },
+            },
           },
           server: {
             port: 3000,
           },
+          ssr: {
+            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
+            noExternal: ['emoji-mart'],
+          },
+          // Make Prism in lexical works
+          // https://github.com/vitejs/rolldown-vite/issues/396
+          build: {
+            rolldownOptions: {
+              output: {
+                strictExecutionOrder: true,
+              },
+            },
+          },
         }
       : {}),
-
-    ssr: {
-      noExternal: ['emoji-mart'],
-    },
 
     // Vitest config
     test: {
