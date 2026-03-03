@@ -23,7 +23,7 @@
     "and_qq >= 14.9"
   ],
   "engines": {
-    "node": ">=24"
+    "node": "^22"
   },
   "scripts": {
     "dev": "next dev",
@@ -63,6 +63,7 @@
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",
     "@amplitude/plugin-session-replay-browser": "1.23.6",
+    "@base-ui/react": "1.2.0",
     "@emoji-mart/data": "1.2.1",
     "@floating-ui/react": "0.26.28",
     "@formatjs/intl-localematcher": "0.5.10",
