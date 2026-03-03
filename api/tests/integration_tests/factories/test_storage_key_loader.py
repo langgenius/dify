@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 from extensions.ext_database import db
 from factories.file_factory import StorageKeyLoader
 from models import ToolFile, UploadFile

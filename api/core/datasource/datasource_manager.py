@@ -24,12 +24,12 @@ from core.datasource.utils.message_transformer import DatasourceFileMessageTrans
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
 from core.db.session_factory import session_factory
 from core.plugin.impl.datasource import PluginDatasourceManager
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.file import File
-from core.workflow.file.enums import FileTransferMethod, FileType
-from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.repositories.datasource_manager_protocol import DatasourceParameter, OnlineDriveDownloadFileParam
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.file import File
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from dify_graph.repositories.datasource_manager_protocol import DatasourceParameter, OnlineDriveDownloadFileParam
 from factories import file_factory
 from models.model import UploadFile
 from models.tools import ToolFile

@@ -1,13 +1,13 @@
 from unittest.mock import MagicMock
 
 import pytest
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from dify_graph.graph_engine.entities.graph import Graph
+from dify_graph.graph_engine.entities.graph_init_params import GraphInitParams
+from dify_graph.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.nodes.list_operator.node import ListOperatorNode
-from core.workflow.variables import ArrayNumberSegment, ArrayStringSegment
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.nodes.list_operator.node import ListOperatorNode
+from dify_graph.variables import ArrayNumberSegment, ArrayStringSegment
 from models.workflow import WorkflowType
 
 

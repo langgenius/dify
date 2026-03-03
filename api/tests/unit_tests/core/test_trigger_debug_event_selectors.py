@@ -6,7 +6,7 @@ import pytest
 import pytz
 
 from core.trigger.debug import event_selectors
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
+from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig
 
 
 class _DummyRedis:

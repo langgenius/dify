@@ -19,20 +19,20 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import (
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
