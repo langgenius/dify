@@ -352,9 +352,15 @@ describe('WorkflowOnboardingModal', () => {
     it('should have proper heading hierarchy', () => {
       renderComponent()
 
-      const heading = screen.getByRole('heading', { level: 3 })
+      const heading = screen.getByRole('heading', { name: 'workflow.onboarding.title' })
       expect(heading).toBeInTheDocument()
       expect(heading).toHaveTextContent('workflow.onboarding.title')
+    })
+
+    it('should expose dialog accessible name from title', () => {
+      renderComponent()
+
+      expect(screen.getByRole('dialog', { name: 'workflow.onboarding.title' })).toBeInTheDocument()
     })
 
     it('should support ESC key dismissal', () => {

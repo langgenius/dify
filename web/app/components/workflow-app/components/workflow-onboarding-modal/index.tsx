@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, DialogCloseButton, DialogContent, DialogPortal } from '@/app/components/base/ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@/app/components/base/ui/dialog'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
@@ -46,12 +46,12 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
         <div className="pb-4">
           <div className="mb-6">
-            <h3 className="mb-2 text-text-primary title-2xl-semi-bold">
+            <DialogTitle className="mb-2 text-text-primary title-2xl-semi-bold">
               {t('onboarding.title', { ns: 'workflow' })}
-            </h3>
-            <div className="leading-4 text-text-tertiary body-xs-regular">
+            </DialogTitle>
+            <DialogDescription className="leading-4 text-text-tertiary body-xs-regular">
               {t('onboarding.description', { ns: 'workflow' })}
-            </div>
+            </DialogDescription>
           </div>
 
           <StartNodeSelectionPanel

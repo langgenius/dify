@@ -1,6 +1,6 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import {
   Dialog,
   DialogClose,
@@ -67,6 +67,23 @@ describe('Dialog wrapper', () => {
       )
 
       expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    })
+
+    it('should forward close button props to base primitive', () => {
+      const onClick = vi.fn()
+      render(
+        <Dialog open>
+          <DialogContent>
+            <DialogCloseButton data-testid="close-button" disabled onClick={onClick} />
+            <span>Dialog body</span>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      const closeButton = screen.getByTestId('close-button')
+      expect(closeButton).toBeDisabled()
+      fireEvent.click(closeButton)
+      expect(onClick).not.toHaveBeenCalled()
     })
   })
 
