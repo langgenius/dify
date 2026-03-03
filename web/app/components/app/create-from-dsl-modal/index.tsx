@@ -1,7 +1,7 @@
 'use client'
 
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -66,6 +66,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
+  const [isCreating, setIsCreating] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const isZipFile = (file?: File) => !!file && file.name.toLowerCase().endsWith('.zip')
@@ -92,11 +93,18 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
+  const isMountedRef = useRef(true)
 
   useEffect(() => {
     if (droppedFile)
       handleFile(droppedFile)
   }, [droppedFile])
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
@@ -106,6 +114,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
     if (isCreatingRef.current)
       return
     isCreatingRef.current = true
+    setIsCreating(true)
     try {
       let response
 
@@ -171,14 +180,16 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
     catch (e) {
       notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
-    isCreatingRef.current = false
+    finally {
+      isCreatingRef.current = false
+      if (isMountedRef.current)
+        setIsCreating(false)
+    }
   }
-
-  const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp(undefined)
+      onCreate(undefined)
   })
 
   useKeyPress('esc', () => {
@@ -332,10 +343,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               {t('newApp.Cancel', { ns: 'app' })}
             </Button>
             <Button
-              disabled={buttonDisabled}
+              disabled={buttonDisabled || isCreating}
               variant="primary"
-              onClick={handleCreateApp}
+              onClick={onCreate}
               className="gap-1"
+              loading={isCreating}
             >
               <span>{t('newApp.import', { ns: 'app' })}</span>
               <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
