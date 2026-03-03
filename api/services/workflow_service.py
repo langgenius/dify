@@ -27,7 +27,6 @@ from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
-from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -733,6 +732,8 @@ class WorkflowService:
 
         with Session(db.engine) as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
+
+        from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution,
