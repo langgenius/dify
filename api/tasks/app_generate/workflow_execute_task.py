@@ -33,6 +33,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 logger = logging.getLogger(__name__)
 
 WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_based_app_execution"
+WORKFLOW_BASED_APP_RESUMPTION_QUEUE = "workflow_based_app_resumption"
 
 
 class _UserType(StrEnum):
@@ -267,6 +268,8 @@ def workflow_based_app_execution_task(
 def _resume_app_execution(payload: dict[str, Any]) -> None:
     workflow_run_id = payload["workflow_run_id"]
 
+    logger.info("resume workflow based app execution, workflow_run_id=%s", workflow_run_id)
+
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_factory)
 
@@ -409,6 +412,7 @@ def _resume_advanced_chat(
     generator = AdvancedChatAppGenerator()
 
     try:
+        logger.info("resume chatflow, workflow_run_id=%s", workflow_run_id)
         response = generator.resume(
             app_model=app_model,
             workflow=workflow,
@@ -465,6 +469,7 @@ def _resume_workflow(
     generator = WorkflowAppGenerator()
 
     try:
+        logger.info("resume workflow, workflow_run_id=%s", workflow_run_id)
         response = generator.resume(
             app_model=app_model,
             workflow=workflow,
@@ -486,6 +491,6 @@ def _resume_workflow(
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
 
-@shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
+@shared_task(queue=WORKFLOW_BASED_APP_RESUMPTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
     _resume_app_execution(payload)

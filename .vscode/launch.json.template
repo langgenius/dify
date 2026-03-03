@@ -35,9 +35,9 @@
                 "-P",
                 "solo",
                 "-c",
-                "1",
+                "20",
                 "-Q",
-                "dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution",
+                "workflow_based_app_resumption,workflow_based_app_execution,dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention",
                 "--loglevel",
                 "INFO"
             ],
