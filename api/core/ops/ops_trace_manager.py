@@ -15,7 +15,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
-from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
+from core.ops.entities.config_entity import (
+    OPS_FILE_PATH,
+    TracingProviderEnum,
+)
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     DraftNodeExecutionTrace,
@@ -31,13 +34,13 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
+from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.dataset import Dataset
-from models.engine import db
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
-from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -91,13 +94,13 @@ def _lookup_llm_credential_info(
     """
     Lookup LLM credential ID and name for the given provider and model.
     Returns (credential_id, credential_name).
-    
+
     Handles async timing issues gracefully - if credential is deleted between lookups,
     returns the ID but empty name rather than failing.
     """
     if not tenant_id or not provider:
         return None, ""
-    
+
     try:
         with Session(db.engine) as session:
             # Try to find provider-level or model-level configuration
@@ -108,15 +111,15 @@ def _lookup_llm_credential_info(
                     Provider.provider_type == ProviderType.CUSTOM,
                 )
             )
-            
+
             if not provider_record:
                 return None, ""
-            
+
             # Check if there's a model-specific config
             credential_id = None
             credential_name = ""
             is_model_level = False
-            
+
             if model and provider_record.credential_id:
                 # Try model-level first
                 model_record = session.scalar(
@@ -127,16 +130,16 @@ def _lookup_llm_credential_info(
                         ProviderModel.model_type == model_type,
                     )
                 )
-                
+
                 if model_record and model_record.credential_id:
                     credential_id = model_record.credential_id
                     is_model_level = True
-            
+
             if not credential_id and provider_record.credential_id:
                 # Fall back to provider-level credential
                 credential_id = provider_record.credential_id
                 is_model_level = False
-            
+
             # Lookup credential_name if we have credential_id
             if credential_id:
                 try:
@@ -150,11 +153,9 @@ def _lookup_llm_credential_info(
                     else:
                         # Query ProviderCredential
                         cred_name = session.scalar(
-                            select(ProviderCredential.credential_name).where(
-                                ProviderCredential.id == credential_id
-                            )
+                            select(ProviderCredential.credential_name).where(ProviderCredential.id == credential_id)
                         )
-                    
+
                     if cred_name:
                         credential_name = str(cred_name)
                 except Exception as e:
@@ -167,7 +168,7 @@ def _lookup_llm_credential_info(
                         model,
                         str(e),
                     )
-            
+
             return credential_id, credential_name
     except Exception as e:
         # Database query failed or other unexpected error
@@ -183,8 +184,8 @@ def _lookup_llm_credential_info(
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, key: str) -> dict[str, Any]:
-        match key:
+    def __getitem__(self, provider: str) -> dict[str, Any]:
+        match provider:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
@@ -291,7 +292,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 }
 
             case _:
-                raise KeyError(f"Unsupported tracing provider: {key}")
+                raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -612,8 +613,6 @@ class TraceTask:
 
     @classmethod
     def _get_workflow_run_repo(cls):
-        from repositories.factory import DifyAPIRepositoryFactory
-
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
@@ -753,9 +752,6 @@ class TraceTask:
 
         workflow_id = workflow_run.workflow_id
         tenant_id = workflow_run.tenant_id
-        prompt_tokens, completion_tokens = self._calculate_workflow_token_split(
-            workflow_run_id=workflow_run_id, tenant_id=tenant_id
-        )
         workflow_run_id = workflow_run.id
         workflow_run_elapsed_time = workflow_run.elapsed_time
         workflow_run_status = workflow_run.status
@@ -765,6 +761,10 @@ class TraceTask:
         error = workflow_run.error or ""
 
         total_tokens = workflow_run.total_tokens
+
+        prompt_tokens, completion_tokens = self._calculate_workflow_token_split(
+            workflow_run_id=workflow_run_id, tenant_id=tenant_id
+        )
 
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
@@ -786,7 +786,12 @@ class TraceTask:
                 )
                 message_id = session.scalar(message_data_stmt)
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(workflow_run.app_id, tenant_id)
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(workflow_run.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
 
         metadata: dict[str, Any] = {
             "workflow_id": workflow_id,
@@ -796,14 +801,15 @@ class TraceTask:
             "elapsed_time": workflow_run_elapsed_time,
             "status": workflow_run_status,
             "version": workflow_run_version,
-            "app_name": app_name,
-            "workspace_name": workspace_name,
             "total_tokens": total_tokens,
             "file_list": file_list,
             "triggered_from": workflow_run.triggered_from,
             "user_id": user_id,
             "app_id": workflow_run.app_id,
+            "app_name": app_name,
+            "workspace_name": workspace_name,
         }
+
         parent_trace_context = self.kwargs.get("parent_trace_context")
         if parent_trace_context:
             metadata["parent_trace_context"] = parent_trace_context
@@ -825,13 +831,13 @@ class TraceTask:
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             file_list=file_list,
-            invoked_by=self._get_user_id_from_metadata(metadata),
             query=query,
             metadata=metadata,
             workflow_app_log_id=workflow_app_log_id,
             message_id=message_id,
             start_time=workflow_run.created_at,
             end_time=workflow_run.finished_at,
+            invoked_by=self._get_user_id_from_metadata(metadata),
         )
         return workflow_trace_info
 
@@ -841,13 +847,6 @@ class TraceTask:
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
-        tenant_id = ""
-        with Session(db.engine) as session:
-            tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
-            if tid:
-                tenant_id = str(tid)
-
-        app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
         conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
         conversation_mode = db.session.scalars(conversation_mode_stmt).all()
         if not conversation_mode or len(conversation_mode) == 0:
@@ -864,6 +863,19 @@ class TraceTask:
             file_list.append(file_url)
 
         streaming_metrics = self._extract_streaming_metrics(message_data)
+
+        tenant_id = ""
+        with Session(db.engine) as session:
+            tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
+            if tid:
+                tenant_id = str(tid)
+
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
 
         metadata = {
             "conversation_id": message_data.conversation_id,
@@ -900,7 +912,9 @@ class TraceTask:
             outputs=message_data.answer,
             file_list=file_list,
             start_time=created_at,
-            end_time=message_data.updated_at if message_data.updated_at and message_data.updated_at > created_at else created_at + timedelta(seconds=message_data.provider_response_latency),
+            end_time=message_data.updated_at
+            if message_data.updated_at and message_data.updated_at > created_at
+            else created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
@@ -1015,7 +1029,12 @@ class TraceTask:
             if tid:
                 tenant_id = str(tid)
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
 
         doc_list = [doc.model_dump() for doc in documents] if documents else []
         dataset_ids: set[str] = set()
@@ -1164,6 +1183,35 @@ class TraceTask:
 
         return tool_trace_info
 
+    def generate_name_trace(self, conversation_id, timer, **kwargs):
+        generate_conversation_name = kwargs.get("generate_conversation_name")
+        inputs = kwargs.get("inputs")
+        tenant_id = kwargs.get("tenant_id")
+        if not tenant_id:
+            return {}
+        start_time = timer.get("start")
+        end_time = timer.get("end")
+
+        metadata = {
+            "conversation_id": conversation_id,
+            "tenant_id": tenant_id,
+        }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
+
+        generate_name_trace_info = GenerateNameTraceInfo(
+            trace_id=self.trace_id,
+            conversation_id=conversation_id,
+            inputs=inputs,
+            outputs=generate_conversation_name,
+            start_time=start_time,
+            end_time=end_time,
+            metadata=metadata,
+            tenant_id=tenant_id,
+        )
+
+        return generate_name_trace_info
+
     def prompt_generation_trace(self, **kwargs) -> PromptGenerationTraceInfo | dict:
         tenant_id = kwargs.get("tenant_id", "")
         user_id = kwargs.get("user_id", "")
@@ -1236,24 +1284,32 @@ class TraceTask:
         if not node_data:
             return {}
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(node_data.get("app_id"), node_data.get("tenant_id"))
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(
+                node_data.get("app_id"), node_data.get("tenant_id")
+            )
+        else:
+            app_name, workspace_name = "", ""
 
         # Try tool credential lookup first
         credential_id = node_data.get("credential_id")
-        credential_name = _lookup_credential_name(credential_id, node_data.get("credential_provider_type"))
-        
-        # If no credential_id found (e.g., LLM nodes), try LLM credential lookup
-        if not credential_id:
-            llm_cred_id, llm_cred_name = _lookup_llm_credential_info(
-                tenant_id=node_data.get("tenant_id"),
-                provider=node_data.get("model_provider"),
-                model=node_data.get("model_name"),
-                model_type="llm",
-            )
-            if llm_cred_id:
-                credential_id = llm_cred_id
-                credential_name = llm_cred_name
-
+        if is_enterprise_telemetry_enabled():
+            credential_name = _lookup_credential_name(credential_id, node_data.get("credential_provider_type"))
+            # If no credential_id found (e.g., LLM nodes), try LLM credential lookup
+            if not credential_id:
+                llm_cred_id, llm_cred_name = _lookup_llm_credential_info(
+                    tenant_id=node_data.get("tenant_id"),
+                    provider=node_data.get("model_provider"),
+                    model=node_data.get("model_name"),
+                    model_type="llm",
+                )
+                if llm_cred_id:
+                    credential_id = llm_cred_id
+                    credential_name = llm_cred_name
+        else:
+            credential_name = ""
         metadata: dict[str, Any] = {
             "tenant_id": node_data.get("tenant_id"),
             "app_id": node_data.get("app_id"),
@@ -1332,35 +1388,6 @@ class TraceTask:
             return node_trace
         return DraftNodeExecutionTrace(**node_trace.model_dump())
 
-    def generate_name_trace(self, conversation_id, timer, **kwargs):
-        generate_conversation_name = kwargs.get("generate_conversation_name")
-        inputs = kwargs.get("inputs")
-        tenant_id = kwargs.get("tenant_id")
-        if not tenant_id:
-            return {}
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
-        metadata = {
-            "conversation_id": conversation_id,
-            "tenant_id": tenant_id,
-        }
-        if node_execution_id := kwargs.get("node_execution_id"):
-            metadata["node_execution_id"] = node_execution_id
-
-        generate_name_trace_info = GenerateNameTraceInfo(
-            trace_id=self.trace_id,
-            conversation_id=conversation_id,
-            inputs=inputs,
-            outputs=generate_conversation_name,
-            start_time=start_time,
-            end_time=end_time,
-            metadata=metadata,
-            tenant_id=tenant_id,
-        )
-
-        return generate_name_trace_info
-
     def _extract_streaming_metrics(self, message_data) -> dict:
         if not message_data.message_metadata:
             return {}
@@ -1394,6 +1421,7 @@ class TraceQueueManager:
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
+
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
         self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
@@ -1447,6 +1475,7 @@ class TraceQueueManager:
                     else:
                         logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
                         continue
+
                 file_id = uuid4().hex
                 trace_info = task.execute()
 

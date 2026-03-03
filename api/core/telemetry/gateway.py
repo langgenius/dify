@@ -18,11 +18,11 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from core.ops.entities.trace_entity import TraceTaskName
-from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase, TelemetryEnvelope
 from extensions.ext_storage import storage
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
+    from enterprise.telemetry.contracts import TelemetryCase
 
 logger = logging.getLogger(__name__)
 
@@ -32,40 +32,56 @@ PAYLOAD_SIZE_THRESHOLD_BYTES = 1 * 1024 * 1024
 # Routing table — authoritative mapping for all editions
 # ---------------------------------------------------------------------------
 
-CASE_TO_TRACE_TASK: dict[TelemetryCase, TraceTaskName] = {
-    TelemetryCase.WORKFLOW_RUN: TraceTaskName.WORKFLOW_TRACE,
-    TelemetryCase.MESSAGE_RUN: TraceTaskName.MESSAGE_TRACE,
-    TelemetryCase.NODE_EXECUTION: TraceTaskName.NODE_EXECUTION_TRACE,
-    TelemetryCase.DRAFT_NODE_EXECUTION: TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
-    TelemetryCase.PROMPT_GENERATION: TraceTaskName.PROMPT_GENERATION_TRACE,
-    TelemetryCase.TOOL_EXECUTION: TraceTaskName.TOOL_TRACE,
-    TelemetryCase.MODERATION_CHECK: TraceTaskName.MODERATION_TRACE,
-    TelemetryCase.SUGGESTED_QUESTION: TraceTaskName.SUGGESTED_QUESTION_TRACE,
-    TelemetryCase.DATASET_RETRIEVAL: TraceTaskName.DATASET_RETRIEVAL_TRACE,
-    TelemetryCase.GENERATE_NAME: TraceTaskName.GENERATE_NAME_TRACE,
-}
+_case_to_trace_task: dict | None = None
+_case_routing: dict | None = None
 
-TRACE_TASK_TO_CASE: dict[TraceTaskName, TelemetryCase] = {v: k for k, v in CASE_TO_TRACE_TASK.items()}
 
-CASE_ROUTING: dict[TelemetryCase, CaseRoute] = {
-    # TRACE — CE-eligible (flow in both CE and EE)
-    TelemetryCase.WORKFLOW_RUN: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    TelemetryCase.MESSAGE_RUN: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    TelemetryCase.TOOL_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    TelemetryCase.MODERATION_CHECK: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    TelemetryCase.SUGGESTED_QUESTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    TelemetryCase.DATASET_RETRIEVAL: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    TelemetryCase.GENERATE_NAME: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
-    # TRACE — enterprise-only
-    TelemetryCase.NODE_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
-    TelemetryCase.DRAFT_NODE_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
-    TelemetryCase.PROMPT_GENERATION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
-    # METRIC_LOG — enterprise-only (signal-driven, not trace)
-    TelemetryCase.APP_CREATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
-    TelemetryCase.APP_UPDATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
-    TelemetryCase.APP_DELETED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
-    TelemetryCase.FEEDBACK_CREATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
-}
+def _get_case_to_trace_task() -> dict:
+    global _case_to_trace_task
+    if _case_to_trace_task is None:
+        from enterprise.telemetry.contracts import TelemetryCase
+
+        _case_to_trace_task = {
+            TelemetryCase.WORKFLOW_RUN: TraceTaskName.WORKFLOW_TRACE,
+            TelemetryCase.MESSAGE_RUN: TraceTaskName.MESSAGE_TRACE,
+            TelemetryCase.NODE_EXECUTION: TraceTaskName.NODE_EXECUTION_TRACE,
+            TelemetryCase.DRAFT_NODE_EXECUTION: TraceTaskName.DRAFT_NODE_EXECUTION_TRACE,
+            TelemetryCase.PROMPT_GENERATION: TraceTaskName.PROMPT_GENERATION_TRACE,
+            TelemetryCase.TOOL_EXECUTION: TraceTaskName.TOOL_TRACE,
+            TelemetryCase.MODERATION_CHECK: TraceTaskName.MODERATION_TRACE,
+            TelemetryCase.SUGGESTED_QUESTION: TraceTaskName.SUGGESTED_QUESTION_TRACE,
+            TelemetryCase.DATASET_RETRIEVAL: TraceTaskName.DATASET_RETRIEVAL_TRACE,
+            TelemetryCase.GENERATE_NAME: TraceTaskName.GENERATE_NAME_TRACE,
+        }
+    return _case_to_trace_task
+
+
+def _get_case_routing() -> dict:
+    global _case_routing
+    if _case_routing is None:
+        from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase
+
+        _case_routing = {
+            # TRACE — CE-eligible (flow in both CE and EE)
+            TelemetryCase.WORKFLOW_RUN: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            TelemetryCase.MESSAGE_RUN: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            TelemetryCase.TOOL_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            TelemetryCase.MODERATION_CHECK: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            TelemetryCase.SUGGESTED_QUESTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            TelemetryCase.DATASET_RETRIEVAL: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            TelemetryCase.GENERATE_NAME: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=True),
+            # TRACE — enterprise-only
+            TelemetryCase.NODE_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
+            TelemetryCase.DRAFT_NODE_EXECUTION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
+            TelemetryCase.PROMPT_GENERATION: CaseRoute(signal_type=SignalType.TRACE, ce_eligible=False),
+            # METRIC_LOG — enterprise-only (signal-driven, not trace)
+            TelemetryCase.APP_CREATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+            TelemetryCase.APP_UPDATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+            TelemetryCase.APP_DELETED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+            TelemetryCase.FEEDBACK_CREATED: CaseRoute(signal_type=SignalType.METRIC_LOG, ce_eligible=False),
+        }
+    return _case_routing
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -132,7 +148,7 @@ def emit(
     METRIC_LOG events are dispatched to the enterprise Celery queue;
     silently dropped when enterprise telemetry is unavailable.
     """
-    route = CASE_ROUTING.get(case)
+    route = _get_case_routing().get(case)
     if route is None:
         logger.warning("Unknown telemetry case: %s, dropping event", case)
         return
@@ -141,7 +157,7 @@ def emit(
         logger.debug("Dropping EE-only event: case=%s (EE disabled)", case)
         return
 
-    if route.signal_type is SignalType.TRACE:
+    if route.signal_type == "trace":
         _emit_trace(case, context, payload, trace_manager)
     else:
         _emit_metric_log(case, context, payload)
@@ -156,7 +172,7 @@ def _emit_trace(
     from core.ops.ops_trace_manager import TraceQueueManager as LocalTraceQueueManager
     from core.ops.ops_trace_manager import TraceTask
 
-    trace_task_name = CASE_TO_TRACE_TASK.get(case)
+    trace_task_name = _get_case_to_trace_task().get(case)
     if trace_task_name is None:
         logger.warning("No TraceTaskName mapping for case: %s", case)
         return
@@ -188,6 +204,8 @@ def _emit_metric_log(
     event_id = str(uuid.uuid4())
 
     payload_for_envelope, payload_ref = _handle_payload_sizing(payload, tenant_id, event_id)
+
+    from enterprise.telemetry.contracts import TelemetryEnvelope
 
     envelope = TelemetryEnvelope(
         case=case,
