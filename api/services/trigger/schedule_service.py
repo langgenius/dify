@@ -7,9 +7,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
-from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
+from dify_graph.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan
