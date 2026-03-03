@@ -6,10 +6,10 @@ This test validates that:
 - When blocking != 1: NodeRunStreamChunkEvent present (direct LLM to End output)
 """
 
-from core.workflow.enums import NodeType
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
+from dify_graph.enums import NodeType
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,

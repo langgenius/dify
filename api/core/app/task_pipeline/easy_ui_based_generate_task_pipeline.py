@@ -46,19 +46,19 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    TextPromptMessageContent,
-)
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.signature import sign_tool_file
-from core.workflow.file import helpers as file_helpers
-from core.workflow.file.enums import FileTransferMethod
+from dify_graph.file import helpers as file_helpers
+from dify_graph.file.enums import FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    TextPromptMessageContent,
+)
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -157,7 +157,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             id=self._message_id,
                             mode=self._conversation_mode,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -170,7 +170,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             mode=self._conversation_mode,
                             conversation_id=self._conversation_id,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -283,7 +283,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
                 # handle output moderation
                 output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                    cast(str, self._task_state.llm_result.message.content)
+                    self._task_state.llm_result.message.get_text_content()
                 )
                 if output_moderation_answer:
                     self._task_state.llm_result.message.content = output_moderation_answer
@@ -397,7 +397,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_unit_price = usage.prompt_unit_price
         message.message_price_unit = usage.prompt_price_unit
         message.answer = (
-            PromptTemplateParser.remove_template_variables(cast(str, llm_result.message.content).strip())
+            PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )

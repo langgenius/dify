@@ -48,7 +48,7 @@ jobs:
 
       - name: Compute diff
         run: |
-          diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
+          diff -u /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
 
       - name: Save PR number
         run: |
