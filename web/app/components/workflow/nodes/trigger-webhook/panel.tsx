@@ -14,8 +14,8 @@ import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflow } from '@/app/components/workflow/hooks'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { VarType } from '@/app/components/workflow/types'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
@@ -92,7 +92,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     // Group variables by their source label
     const groups: Record<string, Var[]> = {}
     sourceVars.forEach((v) => {
-      const groupName = labelToGroupName[(v.label as string)] || (v.label as string)
+      const groupName = labelToGroupName[v.label as string] || v.label as string
       if (!groups[groupName])
         groups[groupName] = []
       groups[groupName].push({
