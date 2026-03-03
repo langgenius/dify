@@ -789,7 +789,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if form_ids:
                 form_deliveries_count = (
                     session.scalar(
-                        select(func.count()).select_from(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids))
+                        select(func.count())
+                        .select_from(HumanInputDelivery)
+                        .where(HumanInputDelivery.form_id.in_(form_ids))
                     )
                     or 0
                 )

@@ -265,7 +265,7 @@ class TestDeleteRunsWithRelated:
         fake_trigger_repo.delete_by_run_ids.return_value = 3
         fake_execution_extra_content_repo = Mock()
         fake_execution_extra_content_repo.delete_by_workflow_run_ids.return_value = 1
-        
+
         def _delete_execution_extra_contents(session: Session, run_ids: list[str]) -> int:
             return fake_execution_extra_content_repo.delete_by_workflow_run_ids(session, run_ids)
 
@@ -368,7 +368,7 @@ class TestCountRunsWithRelated:
         fake_trigger_repo.count_by_run_ids.return_value = 3
         fake_execution_extra_content_repo = Mock()
         fake_execution_extra_content_repo.count_by_workflow_run_ids.return_value = 1
-        
+
         def _count_execution_extra_contents(session: Session, run_ids: list[str]) -> int:
             return fake_execution_extra_content_repo.count_by_workflow_run_ids(session, run_ids)
 
