@@ -268,14 +268,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     drawWaveform()
   }, [drawWaveform, bufferedTime, hasStartedPlaying])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     const audio = audioRef.current
     if (!canvas || !audio)
       return
 
+    const clientX = 'touches' in e
+      ? e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX
+      : e.clientX
+    if (clientX === undefined)
+      return
+
     const rect = canvas.getBoundingClientRect()
-    const percent = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width
+    const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
     const time = percent * duration
 
     // Check if the hovered position is within a buffered range before updating hoverTime
