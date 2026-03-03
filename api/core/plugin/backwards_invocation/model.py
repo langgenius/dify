@@ -2,20 +2,9 @@ import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
 
+from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
-    LLMResultChunkWithStructuredOutput,
-    LLMResultWithStructuredOutput,
-)
-from core.model_runtime.entities.message_entities import (
-    PromptMessage,
-    SystemPromptMessage,
-    UserPromptMessage,
-)
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
     RequestInvokeLLM,
@@ -29,7 +18,18 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.workflow.nodes.llm import llm_utils
+from dify_graph.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
+from dify_graph.model_runtime.entities.message_entities import (
+    PromptMessage,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 from models.account import Tenant
 
 
@@ -63,16 +63,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
                     if chunk.delta.usage:
-                        llm_utils.deduct_llm_quota(
-                            tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
-                        )
+                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
             if response.usage:
-                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
@@ -126,16 +124,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
                 for chunk in response:
                     if chunk.delta.usage:
-                        llm_utils.deduct_llm_quota(
-                            tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
-                        )
+                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
             if response.usage:
-                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(
                 response: LLMResultWithStructuredOutput,
