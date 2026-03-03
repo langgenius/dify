@@ -28,6 +28,7 @@ from dify_graph.enums import (
     WorkflowType,
 )
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_engine.replay import normalize_execution_metadata
 from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
@@ -368,11 +369,14 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution.error = error
 
         if update_outputs:
+            metadata = normalize_execution_metadata(node_result.metadata)
+            if node_result.edge_source_handle and node_result.edge_source_handle != "source":
+                metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] = node_result.edge_source_handle
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
                 process_data=node_result.process_data,
                 outputs=node_result.outputs,
-                metadata=node_result.metadata,
+                metadata=metadata or None,
             )
 
         self._workflow_node_execution_repository.save(domain_execution)

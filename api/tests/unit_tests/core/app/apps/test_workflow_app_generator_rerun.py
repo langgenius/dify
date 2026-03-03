@@ -40,12 +40,13 @@ def test_rerun_delegates_to_generate_with_rerun_specific_flags() -> None:
         execution_graph_config=execution_graph_config,
         graph_runtime_state=SimpleNamespace(),
         rerun_metadata=rerun_metadata,
-        root_node_id="target-node-id",
+        root_node_id=None,
         streaming=False,
     )
 
     assert result == {"ok": True}
     assert captured["execution_graph_config"] == execution_graph_config
-    assert captured["root_node_id"] == "target-node-id"
+    assert captured["root_node_id"] is None
     assert captured["skip_validation"] is True
     assert captured["rerun_metadata"] == rerun_metadata
+    assert captured["rerun_strategy_config"] is None

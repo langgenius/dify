@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from pydantic.json import pydantic_encoder
 
 from dify_graph.enums import NodeExecutionType, NodeState, NodeType
+from dify_graph.file import File
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime.variable_pool import VariablePool
 
@@ -400,6 +401,8 @@ class GraphRuntimeState:
     def dumps(self) -> str:
         """Serialize runtime state into a JSON string."""
 
+        variable_pool_payload = self.variable_pool.model_dump(mode="json")
+        self._inject_file_storage_keys_into_variable_pool_payload(variable_pool_payload)
         snapshot: dict[str, Any] = {
             "version": "1.0",
             "start_at": self._start_at,
@@ -407,7 +410,7 @@ class GraphRuntimeState:
             "node_run_steps": self._node_run_steps,
             "llm_usage": self._llm_usage.model_dump(mode="json"),
             "outputs": self.outputs,
-            "variable_pool": self.variable_pool.model_dump(mode="json"),
+            "variable_pool": variable_pool_payload,
             "ready_queue": self.ready_queue.dumps(),
             "graph_execution": self.graph_execution.dumps(),
             "paused_nodes": list(self._paused_nodes),
@@ -645,6 +648,59 @@ class GraphRuntimeState:
             edge_states[edge_id] = edge.state
 
         return _GraphStateSnapshot(nodes=node_states, edges=edge_states)
+
+    def _inject_file_storage_keys_into_variable_pool_payload(self, payload: dict[str, Any]) -> None:
+        """
+        Inject File.storage_key into runtime snapshot payload for round-trip safety.
+
+        File keeps storage_key as a private runtime-only field and plain model_dump()
+        intentionally excludes it. Runtime snapshots are internal persistence data and
+        need this field to avoid losing file download capability after restore.
+        """
+        variable_dictionary_payload = payload.get("variable_dictionary")
+        if not isinstance(variable_dictionary_payload, dict):
+            return
+
+        for node_id, node_variables in self.variable_pool.variable_dictionary.items():
+            node_payload = variable_dictionary_payload.get(node_id)
+            if not isinstance(node_payload, dict):
+                continue
+            for variable_name, variable in node_variables.items():
+                variable_payload = node_payload.get(variable_name)
+                if not isinstance(variable_payload, dict):
+                    continue
+                self._inject_file_storage_keys_into_value_payload(
+                    source_value=variable.value,
+                    payload_value=variable_payload.get("value"),
+                )
+
+    @classmethod
+    def _inject_file_storage_keys_into_value_payload(cls, *, source_value: Any, payload_value: Any) -> None:
+        if isinstance(source_value, File):
+            if isinstance(payload_value, dict):
+                payload_value["storage_key"] = source_value.storage_key
+            return
+
+        if isinstance(source_value, Mapping) and isinstance(payload_value, dict):
+            for key, child_source_value in source_value.items():
+                if key not in payload_value:
+                    continue
+                cls._inject_file_storage_keys_into_value_payload(
+                    source_value=child_source_value,
+                    payload_value=payload_value[key],
+                )
+            return
+
+        if (
+            isinstance(source_value, Sequence)
+            and not isinstance(source_value, str | bytes | bytearray)
+            and isinstance(payload_value, list)
+        ):
+            for child_source_value, child_payload_value in zip(source_value, payload_value, strict=False):
+                cls._inject_file_storage_keys_into_value_payload(
+                    source_value=child_source_value,
+                    payload_value=child_payload_value,
+                )
 
     def _apply_pending_graph_state(self) -> None:
         if self._graph is None:

@@ -13,6 +13,11 @@ from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata
 from dify_graph.enums import WorkflowType
 from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_engine.replay import (
+    DefaultNodeExecutionStrategyResolver,
+    DefaultReplayExecutionExecutor,
+    ReplayExecutionStrategyConfig,
+)
 from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -47,6 +52,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         execution_graph_config: Mapping[str, Any] | None = None,
         skip_validation: bool = False,
         rerun_metadata: WorkflowRunRerunMetadata | None = None,
+        rerun_strategy_config: ReplayExecutionStrategyConfig | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -64,6 +70,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._execution_graph_config = execution_graph_config
         self._skip_validation = skip_validation
         self._rerun_metadata = rerun_metadata
+        self._rerun_strategy_config = rerun_strategy_config
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -142,6 +149,19 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
+        node_execution_strategy_resolver = None
+        replay_execution_executor = None
+        rerun_strategy_config = self._rerun_strategy_config
+        if rerun_strategy_config is not None:
+            node_execution_strategy_resolver = DefaultNodeExecutionStrategyResolver(
+                real_node_ids=set(rerun_strategy_config.real_node_ids),
+                baseline_snapshots_by_node_id=rerun_strategy_config.baseline_snapshots_by_node_id,
+            )
+            replay_execution_executor = DefaultReplayExecutionExecutor(
+                variable_pool=graph_runtime_state.variable_pool,
+                override_context=rerun_strategy_config.override_context,
+            )
+
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,
             app_id=self._workflow.app_id,
@@ -155,6 +175,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
+            node_execution_strategy_resolver=node_execution_strategy_resolver,
+            replay_execution_executor=replay_execution_executor,
         )
 
         persistence_layer = WorkflowPersistenceLayer(

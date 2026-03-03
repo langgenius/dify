@@ -20,6 +20,7 @@ from dify_graph.graph_engine.command_channels import InMemoryChannel
 from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_engine.protocols.command_channel import CommandChannel
+from dify_graph.graph_engine.replay import NodeExecutionStrategyResolver, ReplayExecutionExecutor
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from dify_graph.nodes import NodeType
 from dify_graph.nodes.base.node import Node
@@ -109,6 +110,8 @@ class WorkflowEntry:
         variable_pool: VariablePool,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel | None = None,
+        node_execution_strategy_resolver: NodeExecutionStrategyResolver | None = None,
+        replay_execution_executor: ReplayExecutionExecutor | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -150,6 +153,8 @@ class WorkflowEntry:
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
             child_engine_builder=self._child_engine_builder,
+            node_execution_strategy_resolver=node_execution_strategy_resolver,
+            replay_execution_executor=replay_execution_executor,
         )
 
         # Add debug logging layer when in debug mode

@@ -10,7 +10,9 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper import encrypter
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_execution import WorkflowRunRerunScope
+from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
+from dify_graph.graph_engine.replay import BaselineNodeSnapshot
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import SecretVariable, StringVariable
@@ -30,6 +32,10 @@ def _new_service() -> WorkflowRunRerunService:
     service._sql_workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=lambda **kwargs: service._workflow_run_repo.get_workflow_run_by_id(**kwargs)
     )
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
+    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
     return service
 
 
@@ -64,13 +70,23 @@ class _FakeNodeExecution:
         execution_id: str | None = None,
     ):
         self.node_id = node_id
+        self.node_execution_id = execution_id or f"execution_{node_id}_{index}"
         self._outputs = outputs
+        self._inputs: Mapping[str, Any] = {}
+        self._process_data: Mapping[str, Any] = {}
         self.created_at = created_at
         self.index = index
-        self.id = execution_id or f"execution_{node_id}_{index}"
+        self.id = self.node_execution_id
+        self.execution_metadata_dict: dict[str, Any] = {}
 
     def load_full_outputs(self, *, session: object, storage: object) -> Mapping[str, Any]:
         return self._outputs
+
+    def load_full_inputs(self, *, session: object, storage: object) -> Mapping[str, Any]:
+        return self._inputs
+
+    def load_full_process_data(self, *, session: object, storage: object) -> Mapping[str, Any]:
+        return self._process_data
 
 
 def _build_source_run(**kwargs: Any) -> SimpleNamespace:
@@ -127,6 +143,7 @@ def test_apply_overrides_patch_nested_path() -> None:
             )
         ],
         allowed_node_ids=["node_a"],
+        tenant_id="tenant_1",
     )
 
     segment = variable_pool.get(["node_a", "output", "nested", "value"])
@@ -149,6 +166,7 @@ def test_apply_overrides_raises_for_missing_path() -> None:
                 )
             ],
             allowed_node_ids=["node_a"],
+            tenant_id="tenant_1",
         )
 
     assert exc_info.value.code == "override_selector_invalid"
@@ -170,6 +188,7 @@ def test_apply_overrides_raises_for_type_mismatch() -> None:
                 )
             ],
             allowed_node_ids=["node_a"],
+            tenant_id="tenant_1",
         )
 
     assert exc_info.value.code == "override_type_mismatch"
@@ -184,11 +203,182 @@ def test_apply_overrides_accepts_environment_variable_selector() -> None:
         variable_pool=variable_pool,
         overrides=[WorkflowRunRerunOverride(selector=["env", "region"], value="us-west")],
         allowed_node_ids=[ENVIRONMENT_VARIABLE_NODE_ID],
+        tenant_id="tenant_1",
     )
 
     segment = variable_pool.get(["env", "region"])
     assert segment is not None
     assert segment.value == "us-west"
+
+
+def test_apply_overrides_converts_upload_style_file_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    variable_pool = _build_variable_pool()
+
+    expected_file = File(
+        tenant_id="tenant_1",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="11111111-1111-1111-1111-111111111111",
+        filename="uploaded.png",
+        extension=".png",
+        mime_type="image/png",
+        size=12,
+        remote_url="https://example.com/uploaded.png",
+    )
+    monkeypatch.setattr(
+        "services.workflow_run_rerun_service.file_factory.build_from_mapping",
+        lambda **_: expected_file,
+    )
+
+    service._apply_overrides(
+        variable_pool=variable_pool,
+        overrides=[
+            WorkflowRunRerunOverride(
+                selector=["start", "input_file"],
+                value={
+                    "type": "image",
+                    "transfer_method": "local_file",
+                    "upload_file_id": "11111111-1111-1111-1111-111111111111",
+                    "url": "https://example.com/uploaded.png",
+                },
+            )
+        ],
+        allowed_node_ids=["start"],
+        tenant_id="tenant_1",
+    )
+
+    segment = variable_pool.get(["start", "input_file"])
+    assert segment is not None
+    assert segment.value_type.exposed_type().value == "file"
+    assert isinstance(segment.value, File)
+    assert segment.value.related_id == "11111111-1111-1111-1111-111111111111"
+
+
+def test_apply_overrides_rebuilds_file_object_through_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    variable_pool = _build_variable_pool()
+
+    captured_mapping: dict[str, Any] = {}
+    expected_file = File(
+        tenant_id="tenant_1",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="11111111-1111-1111-1111-111111111111",
+        filename="rebuilt.png",
+        extension=".png",
+        mime_type="image/png",
+        size=12,
+        remote_url="https://example.com/rebuilt.png",
+    )
+
+    def _capture_build_from_mapping(**kwargs: Any) -> File:
+        nonlocal captured_mapping
+        captured_mapping = dict(kwargs["mapping"])
+        return expected_file
+
+    monkeypatch.setattr(
+        "services.workflow_run_rerun_service.file_factory.build_from_mapping",
+        _capture_build_from_mapping,
+    )
+
+    raw_file = File(
+        tenant_id="tenant_1",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="11111111-1111-1111-1111-111111111111",
+        filename="raw.png",
+        extension=".png",
+        mime_type="image/png",
+        size=8,
+    )
+    # raw_file.storage_key is "None" when directly reconstructed from plain payloads.
+    assert raw_file.storage_key == "None"
+
+    service._apply_overrides(
+        variable_pool=variable_pool,
+        overrides=[WorkflowRunRerunOverride(selector=["start", "input_file"], value=raw_file)],
+        allowed_node_ids=["start"],
+        tenant_id="tenant_1",
+    )
+
+    assert captured_mapping["transfer_method"] == "local_file"
+    assert captured_mapping["upload_file_id"] == "11111111-1111-1111-1111-111111111111"
+    segment = variable_pool.get(["start", "input_file"])
+    assert segment is not None
+    assert isinstance(segment.value, File)
+    assert segment.value.related_id == "11111111-1111-1111-1111-111111111111"
+
+
+def test_apply_overrides_raises_for_invalid_file_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    variable_pool = _build_variable_pool()
+    variable_pool.add(
+        ["start", "input_file"],
+        File(
+            tenant_id="tenant_1",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/old.png",
+            filename="old.png",
+            extension=".png",
+            mime_type="image/png",
+            size=1,
+        ),
+    )
+
+    def _raise_build_error(**_: Any) -> File:
+        raise ValueError("invalid file mapping")
+
+    monkeypatch.setattr("services.workflow_run_rerun_service.file_factory.build_from_mapping", _raise_build_error)
+
+    with pytest.raises(WorkflowRunRerunServiceError) as exc_info:
+        service._apply_overrides(
+            variable_pool=variable_pool,
+            overrides=[
+                WorkflowRunRerunOverride(
+                    selector=["start", "input_file"],
+                    value={
+                        "type": "image",
+                        "transfer_method": "local_file",
+                        "upload_file_id": "invalid",
+                    },
+                )
+            ],
+            allowed_node_ids=["start"],
+            tenant_id="tenant_1",
+        )
+
+    assert exc_info.value.code == "override_type_mismatch"
+
+
+def test_apply_overrides_raises_for_invalid_file_payload_when_root_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    variable_pool = _build_variable_pool()
+
+    def _raise_build_error(**_: Any) -> File:
+        raise ValueError("invalid file mapping")
+
+    monkeypatch.setattr("services.workflow_run_rerun_service.file_factory.build_from_mapping", _raise_build_error)
+
+    with pytest.raises(WorkflowRunRerunServiceError) as exc_info:
+        service._apply_overrides(
+            variable_pool=variable_pool,
+            overrides=[
+                WorkflowRunRerunOverride(
+                    selector=["start", "input_file"],
+                    value={
+                        "type": "image",
+                        "transfer_method": "local_file",
+                        "upload_file_id": "invalid",
+                    },
+                )
+            ],
+            allowed_node_ids=["start"],
+            tenant_id="tenant_1",
+        )
+
+    assert exc_info.value.code == "override_type_mismatch"
 
 
 def test_analyze_main_flow_scope() -> None:
@@ -247,7 +437,9 @@ def test_build_plan_rejects_internal_target_node(monkeypatch: pytest.MonkeyPatch
             inputs_dict={},
         )
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = SimpleNamespace()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: None)
@@ -278,7 +470,9 @@ def test_build_plan_adds_start_and_env_to_override_scope(monkeypatch: pytest.Mon
             }
         )
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     captured_allowed_node_ids: list[str] = []
@@ -305,9 +499,7 @@ def test_build_plan_adds_start_and_env_to_override_scope(monkeypatch: pytest.Mon
 def test_build_plan_fallbacks_to_sql_graph_when_source_graph_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _new_service()
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
-        get_workflow_run_by_id=lambda **_: _build_source_run(
-            graph_dict={}
-        )
+        get_workflow_run_by_id=lambda **_: _build_source_run(graph_dict={})
     )
     service._sql_workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=lambda **_: _build_source_run(
@@ -320,7 +512,9 @@ def test_build_plan_fallbacks_to_sql_graph_when_source_graph_invalid(monkeypatch
             }
         )
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
@@ -343,7 +537,9 @@ def test_build_plan_uses_source_graph_when_sql_graph_missing(monkeypatch: pytest
         get_workflow_run_by_id=lambda **_: _build_source_run()
     )
     service._sql_workflow_run_repo = SimpleNamespace(get_workflow_run_by_id=lambda **_: None)  # type: ignore[attr-defined]
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
@@ -358,6 +554,41 @@ def test_build_plan_uses_source_graph_when_sql_graph_missing(monkeypatch: pytest
 
     assert plan.target_node_id == "target"
     assert "target" in plan.scope.rerun_node_ids
+
+
+def test_build_plan_uses_full_graph_config_and_real_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _new_service()
+    source_graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start"}},
+            {"id": "ancestor", "data": {"type": "llm"}},
+            {"id": "target", "data": {"type": "if-else"}},
+            {"id": "downstream", "data": {"type": "answer"}},
+        ],
+        "edges": [
+            {"source": "start", "target": "ancestor"},
+            {"source": "ancestor", "target": "target"},
+            {"source": "target", "target": "downstream"},
+        ],
+    }
+    service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_workflow_run_by_id=lambda **_: _build_source_run(graph_dict=source_graph)
+    )
+    service._sql_workflow_run_repo = SimpleNamespace(get_workflow_run_by_id=lambda **_: None)  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
+    monkeypatch.setattr(service, "_rebuild_variable_pool", lambda **_: ({}, _build_variable_pool()))
+
+    plan = service._build_plan_or_raise(
+        app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1", mode="workflow"),
+        source_run_id="run_1",
+        target_node_id="target",
+        overrides=[],
+    )
+
+    assert plan.execution_graph_config == source_graph
+    assert plan.scope.rerun_node_ids == ["target", "downstream"]
+    assert plan.rerun_strategy_config.real_node_ids == ["target", "downstream"]
 
 
 def test_build_plan_rejects_unsupported_app_mode() -> None:
@@ -380,7 +611,9 @@ def test_build_plan_rejects_source_run_not_ended(monkeypatch: pytest.MonkeyPatch
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=lambda **_: _build_source_run(status="running")
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: None)
@@ -403,7 +636,9 @@ def test_build_plan_rejects_non_workflow_source_run(monkeypatch: pytest.MonkeyPa
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=lambda **_: _build_source_run(type="chat")
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: None)
@@ -427,7 +662,9 @@ def test_build_plan_sets_rerun_chain_root(monkeypatch: pytest.MonkeyPatch) -> No
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=lambda **_: source_run
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
@@ -449,7 +686,9 @@ def test_build_plan_uses_source_as_chain_root_for_normal_run(monkeypatch: pytest
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=lambda **_: source_run
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
@@ -491,7 +730,9 @@ def test_build_plan_resolves_chain_root_from_parent_when_source_chain_root_missi
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=_get_workflow_run_by_id
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
@@ -526,7 +767,9 @@ def test_build_plan_uses_parent_id_when_chain_root_missing_and_parent_not_found(
     service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_workflow_run_by_id=_get_workflow_run_by_id
     )
-    service._node_execution_repo = SimpleNamespace()  # type: ignore[attr-defined]
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=lambda **_: []
+    )
     service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
 
     monkeypatch.setattr(service, "_load_workflow", lambda **_: SimpleNamespace(environment_variables=[]))
@@ -544,14 +787,32 @@ def test_build_plan_uses_parent_id_when_chain_root_missing_and_parent_not_found(
 
 def test_rebuild_variable_pool_drops_conversation_id_and_clears_all_rerun_nodes() -> None:
     service = _new_service()
-    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
-        get_executions_by_workflow_run=lambda **_: [
-            _FakeNodeExecution("target", {"out": "old-target"}),
-            _FakeNodeExecution("container_inner", {"out": "old-inner"}),
-            _FakeNodeExecution("ancestor", {"out": "ancestor-old"}),
-        ]
-    )
-    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
+    baseline_snapshots_by_node_id = {
+        "target": BaselineNodeSnapshot(
+            node_id="target",
+            source_workflow_run_id="source_1",
+            source_node_execution_id="exec_target",
+            inputs={},
+            process_data={},
+            outputs={"out": "old-target"},
+        ),
+        "container_inner": BaselineNodeSnapshot(
+            node_id="container_inner",
+            source_workflow_run_id="source_1",
+            source_node_execution_id="exec_container_inner",
+            inputs={},
+            process_data={},
+            outputs={"out": "old-inner"},
+        ),
+        "ancestor": BaselineNodeSnapshot(
+            node_id="ancestor",
+            source_workflow_run_id="source_1",
+            source_node_execution_id="exec_ancestor",
+            inputs={},
+            process_data={},
+            outputs={"out": "ancestor-old"},
+        ),
+    }
 
     user_inputs, variable_pool = service._rebuild_variable_pool(
         app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1"),
@@ -566,6 +827,7 @@ def test_rebuild_variable_pool_drops_conversation_id_and_clears_all_rerun_nodes(
             },
         ),
         workflow_run_id="new-run",
+        baseline_snapshots_by_node_id=baseline_snapshots_by_node_id,
         rerun_node_ids=["target", "container_inner"],
         overrides=[WorkflowRunRerunOverride(selector=["ancestor", "out"], value="patched")],
         allowed_node_ids=["ancestor"],
@@ -583,18 +845,23 @@ def test_rebuild_variable_pool_drops_conversation_id_and_clears_all_rerun_nodes(
 
 def test_rebuild_variable_pool_reconstructs_file_outputs() -> None:
     service = _new_service()
-    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
-        get_executions_by_workflow_run=lambda **_: [
-            _FakeNodeExecution("node_file", {"image": _build_file_mapping()}),
-        ]
-    )
-    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
+    baseline_snapshots_by_node_id = {
+        "node_file": BaselineNodeSnapshot(
+            node_id="node_file",
+            source_workflow_run_id="source_1",
+            source_node_execution_id="exec_node_file",
+            inputs={},
+            process_data={},
+            outputs={"image": _build_file_mapping()},
+        )
+    }
 
     _, variable_pool = service._rebuild_variable_pool(
         app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1"),
         workflow=SimpleNamespace(environment_variables=[]),
         source_run=_build_source_run(id="source_1", inputs_dict={}),
         workflow_run_id="new-run",
+        baseline_snapshots_by_node_id=baseline_snapshots_by_node_id,
         rerun_node_ids=[],
         overrides=[],
         allowed_node_ids=[],
@@ -606,7 +873,7 @@ def test_rebuild_variable_pool_reconstructs_file_outputs() -> None:
     assert isinstance(segment.value, File)
 
 
-def test_rebuild_variable_pool_replays_node_outputs_by_created_at_asc() -> None:
+def test_collect_baseline_snapshots_prefers_newer_execution_within_source_run() -> None:
     service = _new_service()
     service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
         get_executions_by_workflow_run=lambda **_: [
@@ -626,21 +893,45 @@ def test_rebuild_variable_pool_replays_node_outputs_by_created_at_asc() -> None:
             ),
         ]
     )
-    service._session_factory = _DummySessionFactory()  # type: ignore[attr-defined]
-
-    _, variable_pool = service._rebuild_variable_pool(
+    snapshots = service._collect_baseline_snapshots(
         app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1"),
-        workflow=SimpleNamespace(environment_variables=[]),
         source_run=_build_source_run(id="source_1", inputs_dict={}),
-        workflow_run_id="new-run",
-        rerun_node_ids=[],
-        overrides=[],
-        allowed_node_ids=[],
     )
 
-    segment = variable_pool.get(["node_a", "output"])
-    assert segment is not None
-    assert segment.value == "new"
+    snapshot = snapshots["node_a"]
+    assert snapshot.source_node_execution_id == "exec_new"
+    assert snapshot.outputs == {"output": "new"}
+
+
+def test_collect_baseline_snapshots_prefers_source_run_over_ancestor() -> None:
+    service = _new_service()
+    source_run = _build_source_run(id="source_1", rerun_from_workflow_run_id="parent_1")
+    parent_run = _build_source_run(id="parent_1")
+    service._workflow_run_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_workflow_run_by_id=lambda **kwargs: parent_run if kwargs.get("run_id") == "parent_1" else None
+    )
+
+    def _get_executions_by_workflow_run(**kwargs: Any) -> list[_FakeNodeExecution]:
+        run_id = kwargs.get("workflow_run_id")
+        if run_id == "source_1":
+            return [_FakeNodeExecution("node_a", {"output": "source"}, execution_id="exec_source")]
+        if run_id == "parent_1":
+            return [_FakeNodeExecution("node_a", {"output": "parent"}, execution_id="exec_parent")]
+        return []
+
+    service._node_execution_repo = SimpleNamespace(  # type: ignore[attr-defined]
+        get_executions_by_workflow_run=_get_executions_by_workflow_run
+    )
+
+    snapshots = service._collect_baseline_snapshots(
+        app_model=SimpleNamespace(id="app_1", tenant_id="tenant_1"),
+        source_run=source_run,
+    )
+
+    snapshot = snapshots["node_a"]
+    assert snapshot.source_workflow_run_id == "source_1"
+    assert snapshot.source_node_execution_id == "exec_source"
+    assert snapshot.outputs == {"output": "source"}
 
 
 def test_get_overrideable_variables_groups_ancestor_start_and_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -921,6 +1212,7 @@ def test_execute_streaming_with_plan_uses_on_subscribe_task_trigger(monkeypatch:
             "rerun_chain_root_workflow_run_id": "source_1",
             "rerun_kind": "manual-node-rerun",
         },
+        rerun_strategy_config=None,
         graph_runtime_state=SimpleNamespace(dumps=lambda: "snapshot"),
     )
 
