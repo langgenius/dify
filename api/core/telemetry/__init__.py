@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.telemetry.events import TelemetryContext, TelemetryEvent
-from core.telemetry.gateway import TRACE_TASK_TO_CASE
 from core.telemetry.gateway import emit as gateway_emit
+from core.telemetry.gateway import get_trace_task_to_case
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -23,7 +23,7 @@ def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) 
     Translates the ``TelemetryEvent`` (keyed by ``TraceTaskName``) into a
     ``TelemetryCase`` and delegates to ``core.telemetry.gateway.emit()``.
     """
-    case = TRACE_TASK_TO_CASE.get(event.name)
+    case = get_trace_task_to_case().get(event.name)
     if case is None:
         return
 
