@@ -1,22 +1,25 @@
 import type { FC } from 'react'
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, NodePanelProps, Var } from '@/app/components/workflow/types'
 
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputNumber } from '@/app/components/base/input-number'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { useWorkflow } from '@/app/components/workflow/hooks'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
+import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { VarType } from '@/app/components/workflow/types'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import HeaderTable from './components/header-table'
-import ParagraphInput from './components/paragraph-input'
 import ParameterTable from './components/parameter-table'
 import useConfig from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
@@ -60,6 +63,76 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleResponseBodyChange,
     generateWebhookUrl,
   } = useConfig(id, data)
+
+  const { getNodeById } = useWorkflow()
+
+  const { availableVars: upstreamVars, availableNodes: upstreamNodes } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString].includes(varPayload.type)
+    },
+  })
+
+  // Build variable list from the webhook trigger's own output variables
+  // so they appear in the variable selector (since trigger has no upstream nodes).
+  // Each source type becomes a VarType.object group with children = its variables.
+  // This matches the format expected by VarReferenceVars/checkKeys (no dots in variable names).
+  const labelToGroupName: Record<string, string> = {
+    param: 'query_params',
+    header: 'header_params',
+    body: 'req_body_params',
+    raw: 'payload',
+  }
+
+  const selfOutputVars: NodeOutPutVar = useMemo(() => {
+    const sourceVars = (inputs.variables || []).filter(
+      v => typeof v.label === 'string' && typeof v.variable === 'string',
+    )
+
+    // Group variables by their source label
+    const groups: Record<string, Var[]> = {}
+    sourceVars.forEach((v) => {
+      const groupName = labelToGroupName[(v.label as string)] || (v.label as string)
+      if (!groups[groupName])
+        groups[groupName] = []
+      groups[groupName].push({
+        variable: v.variable as string,
+        type: (v.value_type as VarType) || VarType.string,
+      })
+    })
+
+    // Each group becomes a VarType.object with children
+    const vars: Var[] = Object.entries(groups).map(([groupName, children]) => ({
+      variable: groupName,
+      type: VarType.object,
+      children,
+    }))
+
+    return {
+      nodeId: id,
+      title: data.title || t(`${i18nPrefix}.title`, { ns: 'workflow' }) || 'Webhook Trigger',
+      vars,
+      isStartNode: true,
+    }
+  }, [id, data.title, inputs.variables, t])
+
+  const availableVars: NodeOutPutVar[] = useMemo(() => {
+    if (selfOutputVars.vars.length > 0)
+      return [selfOutputVars, ...upstreamVars]
+    return upstreamVars
+  }, [selfOutputVars, upstreamVars])
+
+  // Include the current webhook trigger node in availableNodes so the editor's
+  // workflowNodesMap recognizes the nodeId and displays our self-output variables.
+  const availableNodes: Node[] = useMemo(() => {
+    const currentNode = getNodeById(id)
+    if (currentNode) {
+      const alreadyIncluded = upstreamNodes.some((n: Node) => n.id === id)
+      if (!alreadyIncluded)
+        return [currentNode, ...upstreamNodes]
+    }
+    return upstreamNodes
+  }, [id, getNodeById, upstreamNodes])
 
   // Ensure we only attempt to generate URL once for a newly created node without url
   const hasRequestedUrlRef = useRef(false)
@@ -210,14 +283,16 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               />
             </div>
             <div>
-              <label className="system-sm-medium mb-2 block text-text-tertiary">
-                {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
-              </label>
-              <ParagraphInput
+              <InputWithVar
+                instanceId="webhook-response-body"
+                title={t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
                 value={inputs.response_body}
                 onChange={handleResponseBodyChange}
+                justVar
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodes}
+                readOnly={readOnly}
                 placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`, { ns: 'workflow' })}
-                disabled={readOnly}
               />
             </div>
           </div>
