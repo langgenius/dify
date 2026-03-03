@@ -9,6 +9,7 @@ type GraphPayload = {
 }
 
 type DslPayload = {
+  version?: string | number
   workflow?: {
     graph?: GraphPayload
   }
@@ -36,6 +37,21 @@ export const parseGraphFromDsl = (dslContent: string): ParsedGraph => {
       edges: graph.edges || [],
       viewport: graph.viewport || { x: 0, y: 0, zoom: 0.5 },
     }
+  }
+  catch {
+    return null
+  }
+}
+
+export const parseDslVersionFromDsl = (dslContent: string): string | null => {
+  if (!dslContent)
+    return null
+
+  try {
+    const data = yamlLoad(dslContent) as DslPayload
+    if (data?.version === undefined || data?.version === null)
+      return null
+    return String(data.version)
   }
   catch {
     return null
