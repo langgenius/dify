@@ -31,5 +31,13 @@ def test_pipeline_template_retrieval_base_concrete_implementation() -> None:
 
 
 def test_pipeline_template_retrieval_base_requires_abstract_methods() -> None:
-    with pytest.raises(TypeError):
-        MissingTypeRetrieval()
+    assert "get_type" in MissingTypeRetrieval.__abstractmethods__
+
+
+def test_pipeline_template_retrieval_base_default_methods_raise() -> None:
+    with pytest.raises(NotImplementedError):
+        PipelineTemplateRetrievalBase.get_pipeline_templates(DummyRetrieval(), "en-US")
+    with pytest.raises(NotImplementedError):
+        PipelineTemplateRetrievalBase.get_pipeline_template_detail(DummyRetrieval(), "tpl-1")
+    with pytest.raises(NotImplementedError):
+        PipelineTemplateRetrievalBase.get_type(DummyRetrieval())

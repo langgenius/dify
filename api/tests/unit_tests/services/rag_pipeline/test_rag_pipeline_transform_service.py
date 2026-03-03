@@ -1,8 +1,11 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
+from models.dataset import Dataset
+from services.entities.knowledge_entities.rag_pipeline_entities import RetrievalSetting
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 
 
@@ -36,6 +39,14 @@ def test_get_transform_yaml_raises_for_unsupported_doc_form() -> None:
         service._get_transform_yaml("unknown", "upload_file", "high_quality")
 
 
+@pytest.mark.parametrize("doc_form", ["text_model", "hierarchical_model"])
+def test_get_transform_yaml_raises_for_unsupported_datasource_type(doc_form: str) -> None:
+    service = RagPipelineTransformService()
+
+    with pytest.raises(ValueError, match="Unsupported datasource type"):
+        service._get_transform_yaml(doc_form, "unsupported", "high_quality")
+
+
 def test_deal_file_extensions_filters_and_normalizes_extensions() -> None:
     service = RagPipelineTransformService()
     node = {"data": {"fileExtensions": ["pdf", "TXT", "exe"]}}
@@ -43,6 +54,15 @@ def test_deal_file_extensions_filters_and_normalizes_extensions() -> None:
     result = service._deal_file_extensions(node)
 
     assert result["data"]["fileExtensions"] == ["pdf", "txt"]
+
+
+def test_deal_file_extensions_returns_original_when_empty() -> None:
+    service = RagPipelineTransformService()
+    node = {"data": {"fileExtensions": []}}
+
+    result = service._deal_file_extensions(node)
+
+    assert result is node
 
 
 def test_deal_dependencies_installs_missing_marketplace_plugins(mocker) -> None:
@@ -101,7 +121,7 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(mocker) -> None
         updated_at=None,
     )
 
-    result = service._transform_to_empty_pipeline(dataset)
+    result = service._transform_to_empty_pipeline(cast(Dataset, dataset))
 
     assert result == {"pipeline_id": "pipeline-1", "dataset_id": "dataset-1", "status": "success"}
     assert dataset.pipeline_id == "pipeline-1"
@@ -240,7 +260,9 @@ def test_deal_knowledge_index_high_quality_sets_embedding(mocker) -> None:
         model_dump=lambda: {"search_method": "semantic_search"},
     )
 
-    result = service._deal_knowledge_index(dataset, "text_model", "high_quality", retrieval_model, node)
+    result = service._deal_knowledge_index(
+        cast(Dataset, dataset), "text_model", "high_quality", cast(RetrievalSetting, retrieval_model), node
+    )
 
     assert result["data"]["embedding_model"] == "text-embedding-ada-002"
     assert result["data"]["embedding_model_provider"] == "openai"
@@ -274,7 +296,7 @@ def test_deal_document_data_notion(mocker) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
     add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
 
-    service._deal_document_data(dataset)
+    service._deal_document_data(cast(Dataset, dataset))
 
     assert doc.data_source_type == "online_document"
     assert "page1" in doc.data_source_info
@@ -304,7 +326,7 @@ def test_deal_document_data_website(mocker, provider: str, node_id: str) -> None
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
     add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
 
-    service._deal_document_data(dataset)
+    service._deal_document_data(cast(Dataset, dataset))
 
     assert doc.data_source_type == "website_crawl"
     assert "example.com" in doc.data_source_info
@@ -352,3 +374,93 @@ def test_transform_dataset_full_flow(mocker) -> None:
     assert result["pipeline_id"] == "p-new"
     assert dataset.runtime_mode == "rag_pipeline"
     assert dataset.chunk_structure == "text_model"
+
+
+def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create(mocker) -> None:
+    service = RagPipelineTransformService()
+    dataset = SimpleNamespace(
+        id="d1",
+        tenant_id="t1",
+        name="D",
+        description="d",
+        pipeline_id=None,
+        runtime_mode=None,
+        provider="vendor",
+        data_source_type="upload_file",
+        indexing_technique="high_quality",
+        doc_form="unsupported",
+        retrieval_model=None,
+    )
+    query_mock = mocker.Mock()
+    query_mock.where.return_value.first.return_value = dataset
+    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    mocker.patch.object(service, "_get_transform_yaml", return_value={"workflow": {"graph": {"nodes": []}}})
+    mocker.patch.object(service, "_deal_dependencies")
+    mocker.patch.object(service, "_create_pipeline", return_value=SimpleNamespace(id="p-new"))
+
+    with pytest.raises(ValueError, match="Unsupported doc form"):
+        service.transform_dataset("d1")
+
+
+def test_transform_dataset_raises_when_transform_yaml_missing_workflow(mocker) -> None:
+    service = RagPipelineTransformService()
+    dataset = SimpleNamespace(
+        id="d1",
+        tenant_id="t1",
+        name="D",
+        description="d",
+        pipeline_id=None,
+        runtime_mode=None,
+        provider="vendor",
+        data_source_type="upload_file",
+        indexing_technique="high_quality",
+        doc_form="text_model",
+        retrieval_model=None,
+    )
+    query_mock = mocker.Mock()
+    query_mock.where.return_value.first.return_value = dataset
+    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.query", return_value=query_mock)
+    mocker.patch.object(service, "_get_transform_yaml", return_value={})
+    mocker.patch.object(service, "_deal_dependencies")
+
+    with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
+        service.transform_dataset("d1")
+
+
+def test_create_pipeline_raises_when_workflow_data_missing() -> None:
+    service = RagPipelineTransformService()
+
+    with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
+        service._create_pipeline({"rag_pipeline": {"name": "N"}})
+
+
+def test_deal_document_data_upload_file_with_existing_file(mocker) -> None:
+    service = RagPipelineTransformService()
+    dataset = SimpleNamespace(id="d1", pipeline_id="p1")
+    document = SimpleNamespace(
+        id="doc-1",
+        dataset_id="d1",
+        data_source_type="upload_file",
+        data_source_info_dict={"upload_file_id": "file-1"},
+        name="Doc",
+        created_by="u1",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        data_source_info=None,
+    )
+    upload_file = SimpleNamespace(name="f.txt", size=10, extension="txt", mime_type="text/plain")
+
+    query_document = mocker.Mock()
+    query_document.where.return_value.all.return_value = [document]
+    query_upload = mocker.Mock()
+    query_upload.where.return_value.first.return_value = upload_file
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.db.session.query",
+        side_effect=[query_document, query_upload],
+    )
+    add_mock = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.add")
+
+    service._deal_document_data(cast(Dataset, dataset))
+
+    assert document.data_source_type == "local_file"
+    assert "real_file_id" in document.data_source_info
+    assert add_mock.call_count >= 2
