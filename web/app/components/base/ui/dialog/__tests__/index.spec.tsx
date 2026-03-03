@@ -31,7 +31,7 @@ describe('Dialog wrapper', () => {
   })
 
   describe('Props', () => {
-    it('should not render close button when closable is omitted', () => {
+    it('should not render close button when DialogCloseButton is not provided', () => {
       render(
         <Dialog open>
           <DialogContent>
@@ -41,22 +41,6 @@ describe('Dialog wrapper', () => {
       )
 
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
-    })
-
-    it('should render close button when closable is true', () => {
-      render(
-        <Dialog open>
-          <DialogContent closable>
-            <span>Dialog body</span>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      const dialog = screen.getByRole('dialog')
-      const closeButton = screen.getByRole('button', { name: 'Close' })
-
-      expect(dialog).toContainElement(closeButton)
-      expect(closeButton).toHaveAttribute('aria-label', 'Close')
     })
 
     it('should render explicit close button with custom label', () => {
@@ -70,6 +54,19 @@ describe('Dialog wrapper', () => {
       )
 
       expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
+    })
+
+    it('should render default close button label when ariaLabel is omitted', () => {
+      render(
+        <Dialog open>
+          <DialogContent>
+            <DialogCloseButton />
+            <span>Dialog body</span>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
     })
   })
 
