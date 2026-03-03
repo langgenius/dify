@@ -252,6 +252,7 @@
   "debug.rerun.errors.unsupportedAppMode": "仅 workflow 模式支持重新执行。",
   "debug.rerun.errors.unsupportedScope": "该节点位于循环/迭代内部，暂不支持重新执行。",
   "debug.rerun.operation.skip": "已跳过",
+  "debug.rerun.sourceLine": "重执行自 {{source}} - 节点 {{node}}",
   "debug.rerun.submit": "重新执行",
   "debug.settingsTab": "设置",
   "debug.variableInspect.chatNode": "会话变量",
