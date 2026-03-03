@@ -156,6 +156,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             node_execution_strategy_resolver = DefaultNodeExecutionStrategyResolver(
                 real_node_ids=set(rerun_strategy_config.real_node_ids),
                 baseline_snapshots_by_node_id=rerun_strategy_config.baseline_snapshots_by_node_id,
+                override_context=rerun_strategy_config.override_context,
             )
             replay_execution_executor = DefaultReplayExecutionExecutor(
                 variable_pool=graph_runtime_state.variable_pool,

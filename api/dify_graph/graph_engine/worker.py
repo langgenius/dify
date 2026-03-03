@@ -5,11 +5,12 @@ Workers pull node IDs from the ready_queue, execute nodes, and push events
 to the event_queue for the dispatcher to process.
 """
 
+import copy
 import logging
 import queue
 import threading
 import time
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, final
 
@@ -223,6 +224,8 @@ class Worker(threading.Thread):
         if self._node_execution_strategy_resolver is None:
             return
 
+        self._apply_override_outputs(event=event)
+
         metadata = normalize_execution_metadata(event.node_run_result.metadata)
         metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] = decision.mode
         if decision.mode == "real" and decision.reason:
@@ -245,6 +248,42 @@ class Worker(threading.Thread):
             )
 
         event.node_run_result.metadata = metadata
+
+    def _apply_override_outputs(self, *, event: GraphNodeEventBase) -> None:
+        outputs = event.node_run_result.outputs
+        if not isinstance(outputs, Mapping) or not outputs:
+            return
+
+        resolver = self._node_execution_strategy_resolver
+        if resolver is None:
+            return
+
+        has_override_selector = getattr(resolver, "has_override_selector", None)
+        if not callable(has_override_selector):
+            return
+
+        node = self._graph.nodes.get(event.node_id)
+        if node is None:
+            return
+        variable_pool = node.graph_runtime_state.variable_pool
+
+        merged_outputs = dict(outputs)
+        updated = False
+        for variable_name in outputs:
+            if not isinstance(variable_name, str):
+                continue
+            if not has_override_selector(node_id=event.node_id, variable_name=variable_name):
+                continue
+
+            override_segment = variable_pool.get([event.node_id, variable_name])
+            if override_segment is None:
+                continue
+
+            merged_outputs[variable_name] = copy.deepcopy(override_segment.value)
+            updated = True
+
+        if updated:
+            event.node_run_result.outputs = merged_outputs
 
     @staticmethod
     def _log_execution_strategy(*, node: Node, decision: ExecutionStrategyDecision) -> None:
