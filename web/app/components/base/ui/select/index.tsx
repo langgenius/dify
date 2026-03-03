@@ -1,6 +1,6 @@
 'use client'
 
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -12,11 +12,22 @@ export const SelectGroup = BaseSelect.Group
 export const SelectGroupLabel = BaseSelect.GroupLabel
 export const SelectSeparator = BaseSelect.Separator
 
+type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger> & {
+  clearable?: boolean
+  onClear?: () => void
+  loading?: boolean
+}
+
 export function SelectTrigger({
   className,
   children,
+  clearable = false,
+  onClear,
+  loading = false,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger>) {
+}: SelectTriggerProps) {
+  const showClear = clearable && !loading
+
   return (
     <BaseSelect.Trigger
       className={cn(
@@ -26,10 +37,36 @@ export function SelectTrigger({
       )}
       {...props}
     >
-      {children}
-      <BaseSelect.Icon className="ml-1 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
-        <span className="i-ri-arrow-down-s-line h-4 w-4" />
-      </BaseSelect.Icon>
+      <span className="grow truncate">{children}</span>
+      {loading
+        ? (
+            <span className="ml-1 shrink-0 text-text-quaternary">
+              <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin" />
+            </span>
+          )
+        : showClear
+          ? (
+              <span
+                role="button"
+                aria-label="Clear selection"
+                tabIndex={-1}
+                className="ml-1 shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClear?.()
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                }}
+              >
+                <span className="i-ri-close-circle-fill h-3.5 w-3.5" />
+              </span>
+            )
+          : (
+              <BaseSelect.Icon className="ml-1 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
+                <span className="i-ri-arrow-down-s-line h-4 w-4" />
+              </BaseSelect.Icon>
+            )}
     </BaseSelect.Trigger>
   )
 }
@@ -77,13 +114,14 @@ export function SelectContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('outline-none', className)}
+        alignItemWithTrigger={false}
+        className={cn('z-50 outline-none', className)}
         {...positionerProps}
       >
         <BaseSelect.Popup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
+            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...popupProps}

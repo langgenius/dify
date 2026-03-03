@@ -5,16 +5,16 @@ import pytest
 from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
+from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessageRole,
     UserPromptMessage,
 )
-from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dify_graph.file import File, FileTransferMethod, FileType
 from models.model import Conversation
 
 

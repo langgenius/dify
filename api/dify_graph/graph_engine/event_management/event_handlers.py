@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, final
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState
 from dify_graph.graph import Graph
 from dify_graph.graph_events import (
@@ -30,6 +29,7 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState
 
 from ..domain.graph_execution import GraphExecution

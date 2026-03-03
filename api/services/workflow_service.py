@@ -17,7 +17,7 @@ from core.repositories.human_input_repository import HumanInputFormRepositoryImp
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import ErrorStrategy, UserFrom, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file import File
 from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
@@ -49,7 +49,6 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import UserFrom
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -438,8 +437,8 @@ class WorkflowService:
         """
         try:
             from core.model_manager import ModelManager
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get model instance to validate provider+model combination
             model_manager = ModelManager()
@@ -558,8 +557,8 @@ class WorkflowService:
         :return: True if load balancing is enabled, False otherwise
         """
         try:
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
             provider_manager = ProviderManager()
@@ -1069,8 +1068,8 @@ class WorkflowService:
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
             user_id=account.id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.DEBUGGER.value,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(

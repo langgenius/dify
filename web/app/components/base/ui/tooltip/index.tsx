@@ -1,6 +1,6 @@
 'use client'
 
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@/app/components/base/ui/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -37,11 +37,12 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('outline-none', className)}
+        className={cn('z-50 outline-none', className)}
       >
         <BaseTooltip.Popup
           className={cn(
             variant === 'default' && 'max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
+            'origin-[var(--transform-origin)] transition-[opacity] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 data-[instant]:transition-none motion-reduce:transition-none',
             popupClassName,
           )}
           {...props}

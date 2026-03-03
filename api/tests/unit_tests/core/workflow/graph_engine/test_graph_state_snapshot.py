@@ -1,13 +1,13 @@
 import time
 from collections.abc import Mapping
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.entities import GraphInitParams
 from dify_graph.enums import NodeState
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.graph_state_manager import GraphStateManager
 from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.nodes.end.end_node import EndNode
 from dify_graph.nodes.end.entities import EndNodeData
 from dify_graph.nodes.llm.entities import (

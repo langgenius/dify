@@ -65,6 +65,7 @@ vi.mock('@/context/i18n', () => ({
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
+    ZENDESK_WIDGET_KEY: '',
   },
   mockEnv: {
     env: {
@@ -74,6 +75,7 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
 }))
 vi.mock('@/config', () => ({
   get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
   IS_DEV: false,
   IS_CE_EDITION: false,
 }))
@@ -185,6 +187,14 @@ describe('AccountDropdown', () => {
       // Assert
       expect(screen.getByText('Test User')).toBeInTheDocument()
       expect(screen.getByText('test@example.com')).toBeInTheDocument()
+    })
+
+    it('should set an accessible label on avatar trigger when menu trigger is rendered', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
     })
 
     it('should show EDU badge for education accounts', () => {

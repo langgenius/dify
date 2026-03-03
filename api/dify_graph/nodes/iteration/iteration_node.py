@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, NewType, cast
 
 from typing_extensions import TypeIs
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.enums import (
     NodeExecutionType,
@@ -20,6 +19,7 @@ from dify_graph.graph_events import (
     GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import (
     IterationFailedEvent,
     IterationNextEvent,
@@ -603,8 +603,8 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
             user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            user_from=self.user_from,
+            invoke_from=self.invoke_from,
             call_depth=self.workflow_call_depth,
         )
         # Create a deep copy of the variable pool for each iteration

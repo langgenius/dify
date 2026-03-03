@@ -5,9 +5,9 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.nodes.knowledge_retrieval.entities import (
     KnowledgeRetrievalNodeData,
     MultipleRetrievalConfig,
@@ -20,7 +20,6 @@ from dify_graph.repositories.rag_retrieval_protocol import RAGRetrievalProtocol,
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import StringSegment
-from models.enums import UserFrom
 
 
 @pytest.fixture

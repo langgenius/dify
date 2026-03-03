@@ -46,5 +46,5 @@ pnpm eslint --prune-suppressions --pass-on-unpruned-suppressions <changed-files>
 ## React Refresh policy for base UI primitives
 
 - We keep primitive aliases (for example `DropdownMenu = Menu.Root`) in the same module.
-- To avoid IDE noise, `react-refresh/only-export-components` is configured with explicit `allowExportNames` for the base UI primitive surface.
-- Do not use file-level `eslint-disable` comments for this policy.
+- For `app/components/base/ui/**/*.tsx`, `react-refresh/only-export-components` is currently set to `off` in ESLint to avoid false positives and IDE noise during migration.
+- Do not use file-level `eslint-disable` comments for this policy; keep control in the scoped ESLint override.

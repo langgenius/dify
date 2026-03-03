@@ -5,6 +5,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.nodes.trigger_webhook.entities import (
     ContentType,
@@ -18,7 +19,6 @@ from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.variable_pool import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import FileVariable, StringVariable
-from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 

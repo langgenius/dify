@@ -21,7 +21,6 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.trace_id_helper import get_external_trace_id
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginInvokeError
 from core.trigger.debug.event_selectors import (
     TriggerDebugEvent,
@@ -32,6 +31,7 @@ from core.trigger.debug.event_selectors import (
 from dify_graph.enums import NodeType
 from dify_graph.file.models import File
 from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory

@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.graph import Graph
@@ -18,6 +16,8 @@ from dify_graph.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.nodes.end.end_node import EndNode
 from dify_graph.nodes.end.entities import EndNodeData
 from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction

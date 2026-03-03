@@ -4,11 +4,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from dify_graph.entities import AgentNodeStrategyInit
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from dify_graph.nodes.human_input.entities import FormInput, UserAction
 
 

@@ -1,5 +1,4 @@
 from collections.abc import Mapping, Sequence
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -7,78 +6,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from core.model_runtime.entities.model_entities import AIModelEntity
+from dify_graph.enums import InvokeFrom
 from dify_graph.file import File, FileUploadConfig
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
-
-
-class InvokeFrom(StrEnum):
-    """
-    Invoke From.
-    """
-
-    # SERVICE_API indicates that this invocation is from an API call to Dify app.
-    #
-    # Description of service api in Dify docs:
-    # https://docs.dify.ai/en/guides/application-publishing/developing-with-apis
-    SERVICE_API = "service-api"
-
-    # WEB_APP indicates that this invocation is from
-    # the web app of the workflow (or chatflow).
-    #
-    # Description of web app in Dify docs:
-    # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
-    WEB_APP = "web-app"
-
-    # TRIGGER indicates that this invocation is from a trigger.
-    # this is used for plugin trigger and webhook trigger.
-    TRIGGER = "trigger"
-
-    # EXPLORE indicates that this invocation is from
-    # the workflow (or chatflow) explore page.
-    EXPLORE = "explore"
-    # DEBUGGER indicates that this invocation is from
-    # the workflow (or chatflow) edit page.
-    DEBUGGER = "debugger"
-    # PUBLISHED_PIPELINE indicates that this invocation runs a published RAG pipeline workflow.
-    PUBLISHED_PIPELINE = "published"
-
-    # VALIDATION indicates that this invocation is from validation.
-    VALIDATION = "validation"
-
-    @classmethod
-    def value_of(cls, value: str):
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid invoke from value {value}")
-
-    def to_source(self) -> str:
-        """
-        Get source of invoke from.
-
-        :return: source
-        """
-        if self == InvokeFrom.WEB_APP:
-            return "web_app"
-        elif self == InvokeFrom.DEBUGGER:
-            return "dev"
-        elif self == InvokeFrom.EXPLORE:
-            return "explore_app"
-        elif self == InvokeFrom.TRIGGER:
-            return "trigger"
-        elif self == InvokeFrom.SERVICE_API:
-            return "api"
-
-        return "dev"
 
 
 class ModelConfigWithCredentialsEntity(BaseModel):

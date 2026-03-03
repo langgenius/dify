@@ -8,7 +8,6 @@ from typing import Any, cast
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -19,6 +18,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from factories.file_factory import build_from_mapping
 from models import Account, Tenant
 from models.model import App, EndUser
