@@ -1302,7 +1302,7 @@ class TestDatasetIdCrypto:
     @pytest.mark.parametrize(
         ("value", "expected"),
         [
-            (str(uuid4()), True),
+            ("550e8400-e29b-41d4-a716-446655440000", True),
             ("not-a-uuid", False),
             ("", False),
         ],
