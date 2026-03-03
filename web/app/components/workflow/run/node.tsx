@@ -15,6 +15,7 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
   RiRefreshLine,
+  RiSkipForwardLine,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -139,6 +140,8 @@ const NodePanel: FC<Props> = ({
     && !isUnsupportedNodeType
     && !isLoopOrIterationInnerNode
     && !!onOpenRerunEditor
+  const isSkipped = nodeInfo.execution_metadata?.execution_mode === 'replay'
+    && nodeInfo.status === 'succeeded'
 
   return (
     <div className={cn('px-2 py-1', className)}>
@@ -173,13 +176,19 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.title}
             </div>
           </Tooltip>
-          {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
+          {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && !isSkipped && (
             <div className={cn('shrink-0 text-text-tertiary system-xs-regular', canShowRerunEntry && 'group-hover:hidden')}>
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
             </div>
           )}
-          {nodeInfo.status === 'succeeded' && (
+          {isSkipped && !hideInfo && (
+            <div className={cn('ml-2 flex shrink-0 items-center gap-1 text-text-tertiary system-xs-medium', canShowRerunEntry && 'group-hover:hidden')}>
+              <span>{t('operation.skip', { ns: 'common' }).toUpperCase()}</span>
+              <RiSkipForwardLine className="h-3.5 w-3.5 shrink-0" />
+            </div>
+          )}
+          {nodeInfo.status === 'succeeded' && !isSkipped && (
             <RiCheckboxCircleFill className={cn('ml-2 h-3.5 w-3.5 shrink-0 text-text-success', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'failed' && (

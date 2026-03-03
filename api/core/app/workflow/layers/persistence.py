@@ -361,15 +361,19 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         finished_at = naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
+        metadata = normalize_execution_metadata(node_result.metadata)
+        is_replay = metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
         domain_execution.status = status
         domain_execution.finished_at = finished_at
-        domain_execution.elapsed_time = max((finished_at - start_at).total_seconds(), 0.0)
+        domain_execution.elapsed_time = 0.0 if is_replay else max((finished_at - start_at).total_seconds(), 0.0)
 
         if error:
             domain_execution.error = error
 
         if update_outputs:
-            metadata = normalize_execution_metadata(node_result.metadata)
+            if is_replay:
+                metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
+                metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
             if node_result.edge_source_handle and node_result.edge_source_handle != "source":
                 metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] = node_result.edge_source_handle
             domain_execution.update_from_mapping(

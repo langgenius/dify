@@ -503,13 +503,25 @@ class WorkflowResponseConverter:
 
         start_at = snapshot.start_at if snapshot else event.start_at
         finished_at = naive_utc_now()
-        elapsed_time = (finished_at - start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)
         process_data, process_data_truncated = self._truncate_mapping(event.process_data)
         encoded_outputs = self._encode_outputs(event.outputs)
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
+        is_replay = (
+            isinstance(metadata, Mapping)
+            and (
+                metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
+                or metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE.value) == "replay"
+            )
+        )
+        elapsed_time = 0.0 if is_replay else (finished_at - start_at).total_seconds()
+        if is_replay and isinstance(metadata, Mapping):
+            if not isinstance(metadata, dict):
+                metadata = dict(metadata)
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
 
         if isinstance(event, QueueNodeSucceededEvent):
             status = WorkflowNodeExecutionStatus.SUCCEEDED
