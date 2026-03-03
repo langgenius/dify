@@ -1064,6 +1064,67 @@ class TestRegisterService:
 
     # ==================== Registration Tests ====================
 
+    def test_create_account_and_tenant_calls_default_workspace_join_when_enterprise_enabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should be invoked when ENTERPRISE_ENABLED is True."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            result = AccountService.create_account_and_tenant(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+            )
+
+            assert result == mock_account
+            mock_create_workspace.assert_called_once_with(account=mock_account)
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+
+    def test_create_account_and_tenant_does_not_call_default_workspace_join_when_enterprise_disabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should not be invoked when ENTERPRISE_ENABLED is False."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            AccountService.create_account_and_tenant(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+            )
+
+            mock_create_workspace.assert_called_once_with(account=mock_account)
+            mock_join_default_workspace.assert_not_called()
+
     def test_register_success(self, mock_db_dependencies, mock_external_service_dependencies):
         """Test successful account registration."""
         # Setup mocks
@@ -1114,6 +1175,65 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
                 mock_event.send.assert_called_once_with(mock_tenant)
                 self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_register_calls_default_workspace_join_when_enterprise_enabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should be invoked after successful register commit."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            result = RegisterService.register(
+                email="test@example.com",
+                name="Test User",
+                password="password123",
+                language="en-US",
+                create_workspace_required=False,
+            )
+
+            assert result == mock_account
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+
+    def test_register_does_not_call_default_workspace_join_when_enterprise_disabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should not be invoked when ENTERPRISE_ENABLED is False."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            RegisterService.register(
+                email="test@example.com",
+                name="Test User",
+                password="password123",
+                language="en-US",
+                create_workspace_required=False,
+            )
+
+            mock_join_default_workspace.assert_not_called()
 
     def test_register_with_oauth(self, mock_db_dependencies, mock_external_service_dependencies):
         """Test account registration with OAuth integration."""

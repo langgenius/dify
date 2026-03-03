@@ -4,33 +4,33 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from core.workflow.graph_engine.config import GraphEngineConfig
-from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.graph_events import (
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from dify_graph.graph_engine.config import GraphEngineConfig
+from dify_graph.graph_engine.graph_engine import GraphEngine
+from dify_graph.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import OutputVariableEntity
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.repositories.human_input_form_repository import (
+from dify_graph.nodes.base.entities import OutputVariableEntity
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.repositories.human_input_form_repository import (
     FormCreateParams,
     HumanInputFormEntity,
     HumanInputFormRepository,
 )
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 
 
