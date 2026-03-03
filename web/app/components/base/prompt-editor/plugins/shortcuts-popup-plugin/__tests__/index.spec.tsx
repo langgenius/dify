@@ -23,6 +23,9 @@ const mockDOMRect = {
   toJSON: () => ({}),
 }
 
+const originalRangeGetClientRects = Range.prototype.getClientRects
+const originalRangeGetBoundingClientRect = Range.prototype.getBoundingClientRect
+
 beforeAll(() => {
   // Mock getClientRects on Range prototype
   Range.prototype.getClientRects = vi.fn(() => {
@@ -34,6 +37,11 @@ beforeAll(() => {
 
   // Mock getBoundingClientRect on Range prototype
   Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect as DOMRect)
+})
+
+afterAll(() => {
+  Range.prototype.getClientRects = originalRangeGetClientRects
+  Range.prototype.getBoundingClientRect = originalRangeGetBoundingClientRect
 })
 
 const CONTAINER_ID = 'host'
@@ -415,7 +423,6 @@ describe('ShortcutsPopupPlugin', () => {
     })
   })
 
-  // ─── Escape handling: stopPropagation and preventDefault ───
   it('prevents default and stops propagation on Escape when open', async () => {
     render(<MinimalEditor />)
     focusAndTriggerHotkey('/')
@@ -433,6 +440,8 @@ describe('ShortcutsPopupPlugin', () => {
     await waitFor(() => {
       expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
     })
+    expect(preventDefaultSpy).toHaveBeenCalledTimes(1)
+    expect(stopPropagationSpy).toHaveBeenCalledTimes(1)
   })
 
   // ─── Zero-rect fallback in openPortal ───

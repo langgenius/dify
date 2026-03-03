@@ -428,32 +428,45 @@ describe('AudioPlayer', () => {
       expect(player.msgId).toBe('msg-2')
     })
 
-    it('should finish stream without decoding when playAudioWithAudio receives empty content', async () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
-      const finishStream = vi
-        .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
-        .mockImplementation(() => { })
+    it('should end stream without playback when playAudioWithAudio receives empty content', async () => {
+      vi.useFakeTimers()
+      try {
+        const callback = vi.fn()
+        const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+        const mediaSource = testState.mediaSources[0]
 
-      await player.playAudioWithAudio('', true)
+        await player.playAudioWithAudio('', true)
+        await vi.advanceTimersByTimeAsync(40)
 
-      expect(finishStream).toHaveBeenCalledTimes(1)
+        expect(player.isLoadData).toBe(false)
+        expect(player.cacheBuffers).toHaveLength(0)
+        expect(mediaSource.endOfStream).toHaveBeenCalledTimes(1)
+        expect(callback).not.toHaveBeenCalledWith('play')
+      }
+      finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should decode base64 and start playback when playAudioWithAudio is called with playable content', async () => {
       const callback = vi.fn()
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
-      const receiveAudioData = vi
-        .spyOn(player as unknown as { receiveAudioData: (data: Uint8Array) => void }, 'receiveAudioData')
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
+      const mediaSource = testState.mediaSources[0]
       const audioBase64 = Buffer.from('hello').toString('base64')
 
+      mediaSource.emit('sourceopen')
       audio.paused = true
       await player.playAudioWithAudio(audioBase64, true)
       await Promise.resolve()
 
-      expect(receiveAudioData).toHaveBeenCalledTimes(1)
       expect(player.isLoadData).toBe(true)
+      expect(player.cacheBuffers).toHaveLength(0)
+      expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
+      const appendedAudioData = mediaSource.sourceBuffer.appendBuffer.mock.calls[0][0]
+      expect(appendedAudioData).toBeInstanceOf(ArrayBuffer)
+      expect(appendedAudioData.byteLength).toBeGreaterThan(0)
       expect(audioContext.resume).toHaveBeenCalledTimes(1)
       expect(audio.play).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith('play')

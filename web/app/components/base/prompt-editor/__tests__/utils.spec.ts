@@ -46,6 +46,16 @@ describe('prompt-editor/utils', () => {
     mockState.isAtNodeEnd = false
     mockState.selection = null
   })
+  function makeEditor() {
+    const removePlainTextTransform = vi.fn()
+    const removeReverseNodeTransform = vi.fn()
+    const registerNodeTransform = vi
+      .fn()
+      .mockReturnValueOnce(removePlainTextTransform)
+      .mockReturnValueOnce(removeReverseNodeTransform)
+    const editor = { registerNodeTransform } as unknown as LexicalEditor
+    return { editor, registerNodeTransform }
+  }
 
   // ---------------------------------------------------------------------------
   // getSelectedNode
@@ -119,18 +129,6 @@ describe('prompt-editor/utils', () => {
   // registerLexicalTextEntity
   // ---------------------------------------------------------------------------
   describe('registerLexicalTextEntity', () => {
-    /** Builds a minimal mock editor that captures registered transforms. */
-    function makeEditor() {
-      const removePlainTextTransform = vi.fn()
-      const removeReverseNodeTransform = vi.fn()
-      const registerNodeTransform = vi
-        .fn()
-        .mockReturnValueOnce(removePlainTextTransform)
-        .mockReturnValueOnce(removeReverseNodeTransform)
-      const editor = { registerNodeTransform } as unknown as LexicalEditor
-      return { editor, registerNodeTransform }
-    }
-
     // ---- reverseNodeTransform ----
 
     it('reverseNodeTransform: replaceWithSimpleText when match is null', () => {
@@ -150,7 +148,7 @@ describe('prompt-editor/utils', () => {
       const getMatch = vi.fn(() => null)
       type TN = InstanceType<typeof TargetNode> & TextNode
       const targetNodeClass = TargetNode as unknown as Klass<TN>
-      const createNode = vi.fn((n: TextNode) => n as TN)
+      const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
       const reverseTransform = registerNodeTransform.mock.calls[1][1] as (n: TN) => void
@@ -726,17 +724,6 @@ describe('prompt-editor/utils', () => {
   // Additional textNodeTransform branches (lines 115, 122, 134, 137-138)
   // ---------------------------------------------------------------------------
   describe('registerLexicalTextEntity - additional textNodeTransform branches', () => {
-    function makeEditor() {
-      const removePlainTextTransform = vi.fn()
-      const removeReverseNodeTransform = vi.fn()
-      const registerNodeTransform = vi
-        .fn()
-        .mockReturnValueOnce(removePlainTextTransform)
-        .mockReturnValueOnce(removeReverseNodeTransform)
-      const editor = { registerNodeTransform } as unknown as LexicalEditor
-      return { editor, registerNodeTransform }
-    }
-
     it('should replaceWithSimpleText on nextSibling when it IS a TargetNode and nextMatch is null', () => {
       // Line 115: isTargetNode(nextSibling) === true → replaceWithSimpleText(nextSibling)
       class TargetNode {
@@ -997,17 +984,6 @@ describe('prompt-editor/utils', () => {
   // textNodeTransform remaining branches (lines 54, 59, 77-93, 131)
   // ---------------------------------------------------------------------------
   describe('registerLexicalTextEntity - remaining textNodeTransform branches', () => {
-    function makeEditor() {
-      const removePlainTextTransform = vi.fn()
-      const removeReverseNodeTransform = vi.fn()
-      const registerNodeTransform = vi
-        .fn()
-        .mockReturnValueOnce(removePlainTextTransform)
-        .mockReturnValueOnce(removeReverseNodeTransform)
-      const editor = { registerNodeTransform } as unknown as LexicalEditor
-      return { editor, registerNodeTransform }
-    }
-
     it('textNodeTransform: returns immediately when node is not simple text (line 58-59)', () => {
       class TargetNode { }
       class NodeUnderTest {

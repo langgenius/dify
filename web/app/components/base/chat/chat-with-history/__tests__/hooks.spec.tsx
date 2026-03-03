@@ -146,6 +146,7 @@ describe('useChatWithHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    localStorage.removeItem('webappSidebarCollapse')
     mockStoreState.appInfo = {
       app_id: 'app-1',
       custom_config: null,
@@ -163,6 +164,7 @@ describe('useChatWithHistory', () => {
 
   afterEach(() => {
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    localStorage.removeItem('webappSidebarCollapse')
   })
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.

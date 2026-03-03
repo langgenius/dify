@@ -165,16 +165,19 @@ describe('Mermaid Flowchart Component', () => {
       const errorMsg = 'Syntax error'
       vi.mocked(mermaid.render).mockRejectedValue(new Error(errorMsg))
 
-      const uniqueCode = 'graph TD\n  X-->Y\n  Y-->Z'
-      const { container } = render(<Flowchart PrimitiveCode={uniqueCode} />)
+      try {
+        const uniqueCode = 'graph TD\n  X-->Y\n  Y-->Z'
+        const { container } = render(<Flowchart PrimitiveCode={uniqueCode} />)
 
-      await waitFor(() => {
-        const errorSpan = container.querySelector('.text-red-500 span.ml-2')
-        expect(errorSpan).toBeInTheDocument()
-        expect(errorSpan?.textContent).toContain('Rendering failed')
-      })
-
-      consoleSpy.mockRestore()
+        await waitFor(() => {
+          const errorSpan = container.querySelector('.text-red-500 span.ml-2')
+          expect(errorSpan).toBeInTheDocument()
+          expect(errorSpan?.textContent).toContain('Rendering failed')
+        })
+      }
+      finally {
+        consoleSpy.mockRestore()
+      }
     })
 
     it('should use cached diagram if available', async () => {
@@ -191,10 +194,9 @@ describe('Mermaid Flowchart Component', () => {
         rerender(<Flowchart PrimitiveCode={mockCode} />)
       })
 
-      // Wait a bit for any potential re-renders
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
-      })
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialCallCount)
+      }, { timeout: 3000 })
 
       // Call count should not increase (cache was used)
       expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialCallCount)
@@ -236,10 +238,9 @@ describe('Mermaid Flowchart Component', () => {
         rerender(<Flowchart PrimitiveCode="graph TD\n  A-->B" />)
       })
 
-      // Wait a bit for any potential re-renders
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
-      })
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render).mock.calls.length).toBe(afterSecondRenderCallCount)
+      }, { timeout: 3000 })
 
       // Call count should not increase (cache was used)
       expect(vi.mocked(mermaid.render).mock.calls.length).toBe(afterSecondRenderCallCount)
@@ -269,9 +270,9 @@ describe('Mermaid Flowchart Component', () => {
         fireEvent.click(cancelBtn)
       })
 
-      // Wait for preview to close
       await waitFor(() => {
-        expect(screen.queryByTestId('image-preview-cancel-mock')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('image-preview-close-button')).not.toBeInTheDocument()
       })
     })
 

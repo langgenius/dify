@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { InputProps } from '../input'
-import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 import Input from '../input'
@@ -86,12 +85,12 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   }, [isValidValue, onChange])
 
   return (
-    <div className={cn('flex', wrapClassName)}>
+    <div data-testid="input-number-wrapper" className={cn('flex', wrapClassName)}>
       <Input
         {...rest}
         // disable default controller
         type="number"
-        className={cn('no-spinner rounded-r-none', className)}
+        className={cn('rounded-r-none no-spinner', className)}
         value={value ?? 0}
         max={max}
         min={min}
@@ -100,7 +99,10 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         unit={unit}
         size={size}
       />
-      <div className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs', disabled && 'cursor-not-allowed opacity-50', controlWrapClassName)}>
+      <div
+        data-testid="input-number-controls"
+        className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs', disabled && 'cursor-not-allowed opacity-50', controlWrapClassName)}
+      >
         <button
           type="button"
           onClick={inc}
@@ -108,7 +110,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           aria-label="increment"
           className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
         >
-          <RiArrowUpSLine className="size-3" />
+          <span className="i-ri-arrow-up-s-line size-3" />
         </button>
         <button
           type="button"
@@ -117,7 +119,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           aria-label="decrement"
           className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
         >
-          <RiArrowDownSLine className="size-3" />
+          <span className="i-ri-arrow-down-s-line size-3" />
         </button>
       </div>
     </div>

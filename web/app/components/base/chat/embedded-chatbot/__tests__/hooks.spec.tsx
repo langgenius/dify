@@ -116,14 +116,13 @@ const renderWithClient = async <T,>(hook: () => T) => {
   const queryClient = createQueryClient()
   const wrapper = createWrapper(queryClient)
   let result: ReturnType<typeof renderHook<T, unknown>> | undefined
-  await act(async () => {
+  act(() => {
     result = renderHook(hook, { wrapper })
-    await new Promise(resolve => setTimeout(resolve, 0))
-    // Wait for queries to settle
-    while (queryClient.isFetching()) {
-      await new Promise(resolve => setTimeout(resolve, 10))
-    }
   })
+  await waitFor(() => {
+    if (queryClient.isFetching() > 0)
+      throw new Error('Queries are still fetching')
+  }, { timeout: 2000 })
   return {
     queryClient,
     ...result!,
@@ -457,15 +456,14 @@ describe('useEmbeddedChatbot', () => {
         })
       })
 
-      // eslint-disable-next-line unused-imports/no-unused-vars
+      const onStart = vi.fn()
       let checkResult: boolean | undefined
       act(() => {
-        checkResult = (result.current as unknown as { handleStartChat: () => boolean }).handleStartChat()
+        checkResult = (result.current as unknown as { handleStartChat: (onStart?: () => void) => boolean }).handleStartChat(onStart)
       })
 
-      await waitFor(() => {
-        expect(result.current.conversationList[0]?.id).not.toBe('') // "New chat item" is '' id
-      })
+      expect(checkResult).toBeUndefined()
+      expect(onStart).not.toHaveBeenCalled()
     })
 
     it('should fail checkInputsRequired when required fields are missing', async () => {
@@ -482,14 +480,12 @@ describe('useEmbeddedChatbot', () => {
           t1: '',
         })
       })
-
+      const onStart = vi.fn()
       act(() => {
-        (result.current as unknown as { handleStartChat: () => void }).handleStartChat()
+        (result.current as unknown as { handleStartChat: (cb?: () => void) => void }).handleStartChat(onStart)
       })
 
-      await waitFor(() => {
-        expect(result.current.conversationList[0]?.id).not.toBe('')
-      })
+      expect(onStart).not.toHaveBeenCalled()
     })
 
     it('should pass checkInputsRequired when allInputsHidden is true', async () => {
@@ -532,13 +528,19 @@ describe('useEmbeddedChatbot', () => {
       expect(result.current.clearChatList).toBe(true)
     })
 
-    it('handleChangeConversation updates current conversation', async () => {
+    it('handleChangeConversation updates current conversation and refetches chat list', async () => {
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       act(() => {
         result.current.handleChangeConversation('another-convo')
       })
 
+      await waitFor(() => {
+        expect(result.current.currentConversationId).toBe('another-convo')
+      })
+      await waitFor(() => {
+        expect(mockFetchChatList).toHaveBeenCalledWith('another-convo', AppSourceType.webApp, 'app-1')
+      })
       expect(result.current.newConversationId).toBe('')
       expect(result.current.clearChatList).toBe(false)
     })

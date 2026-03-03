@@ -189,12 +189,18 @@ describe('DraggableBlockPlugin', () => {
       expect(screen.queryByTestId('draggable-menu')).not.toBeInTheDocument()
     })
 
-    it('should keep menu hidden when event target is null', () => {
+    it('should keep menu hidden when event target becomes null', () => {
       const rootMock = createRootElementMock()
       setupEditorRoot(rootMock.rootElement)
       render(<DraggableBlockPlugin />)
 
       const onMove = getRegisteredMouseMoveHandler(rootMock)
+      const supportDragTarget = document.createElement('div')
+      supportDragTarget.className = 'support-drag'
+      act(() => {
+        onMove({ target: supportDragTarget } as unknown as MouseEvent)
+      })
+      expect(screen.getByTestId('draggable-menu')).toBeInTheDocument()
       act(() => {
         onMove({ target: null } as unknown as MouseEvent)
       })
@@ -209,12 +215,20 @@ describe('DraggableBlockPlugin', () => {
       setupEditorRoot(rootMock.rootElement)
       render(<DraggableBlockPlugin />)
 
+      const onMove = getRegisteredMouseMoveHandler(rootMock)
+      const supportDragTarget = document.createElement('div')
+      supportDragTarget.className = 'support-drag'
+      act(() => {
+        onMove({ target: supportDragTarget } as unknown as MouseEvent)
+      })
+
+      const renderedMenu = screen.getByTestId('draggable-menu')
       const isOnMenu = draggableMockState.latestProps?.isOnMenu
       if (!isOnMenu)
         throw new Error('Expected isOnMenu callback')
 
       const menuContainer = document.createElement('div')
-      menuContainer.className = 'draggable-block-menu'
+      menuContainer.className = renderedMenu.className
       const menuChild = document.createElement('span')
       menuContainer.appendChild(menuChild)
       const outsideElement = document.createElement('div')

@@ -81,17 +81,20 @@ describe('InputNumber Component', () => {
     const input = screen.getByRole('spinbutton')
 
     const originalNumber = globalThis.Number
-    vi.spyOn(globalThis, 'Number').mockImplementation((val: unknown) => {
+    const numberSpy = vi.spyOn(globalThis, 'Number').mockImplementation((val: unknown) => {
       if (val === '123') {
         return Number.NaN
       }
       return originalNumber(val)
     })
 
-    fireEvent.change(input, { target: { value: '123' } })
-
-    expect(onChange).not.toHaveBeenCalled()
-    vi.restoreAllMocks()
+    try {
+      fireEvent.change(input, { target: { value: '123' } })
+      expect(onChange).not.toHaveBeenCalled()
+    }
+    finally {
+      numberSpy.mockRestore()
+    }
   })
 
   it('does not call onChange when direct input exceeds range', () => {
@@ -264,27 +267,27 @@ describe('InputNumber Component', () => {
   it('applies wrapClassName to outer div', () => {
     const onChange = vi.fn()
     const wrapClassName = 'custom-wrap-class'
-    const { container } = render(<InputNumber onChange={onChange} wrapClassName={wrapClassName} />)
-    const wrapper = container.querySelector('div')
+    render(<InputNumber onChange={onChange} wrapClassName={wrapClassName} />)
+    const wrapper = screen.getByTestId('input-number-wrapper')
     expect(wrapper).toHaveClass(wrapClassName)
   })
 
   it('applies controlWrapClassName to control buttons container', () => {
     const onChange = vi.fn()
     const controlWrapClassName = 'custom-control-wrap'
-    const { container } = render(<InputNumber onChange={onChange} controlWrapClassName={controlWrapClassName} />)
-    const controlDiv = container.querySelector('[class*="flex-col"]')
+    render(<InputNumber onChange={onChange} controlWrapClassName={controlWrapClassName} />)
+    const controlDiv = screen.getByTestId('input-number-controls')
     expect(controlDiv).toHaveClass(controlWrapClassName)
   })
 
   it('applies controlClassName to individual control buttons', () => {
     const onChange = vi.fn()
     const controlClassName = 'custom-control'
-    const { container } = render(<InputNumber onChange={onChange} controlClassName={controlClassName} />)
-    const buttons = container.querySelectorAll('button')
-    buttons.forEach((btn) => {
-      expect(btn).toHaveClass(controlClassName)
-    })
+    render(<InputNumber onChange={onChange} controlClassName={controlClassName} />)
+    const incrementBtn = screen.getByRole('button', { name: /increment/i })
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+    expect(incrementBtn).toHaveClass(controlClassName)
+    expect(decrementBtn).toHaveClass(controlClassName)
   })
 
   it('applies regular-size classes for control buttons when size is regular', () => {
