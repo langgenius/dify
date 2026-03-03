@@ -6,7 +6,7 @@ type Side = 'top' | 'bottom' | 'left' | 'right'
 type Align = 'start' | 'center' | 'end'
 
 export type Placement
-  = | 'top'
+  = 'top'
     | 'top-start'
     | 'top-end'
     | 'right'
