@@ -1,23 +1,25 @@
 """Unit tests for services.api_based_extension_service."""
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 
 
 @pytest.fixture
-def extension_data() -> SimpleNamespace:
-    """Create a mutable extension-like object for service tests."""
-    return SimpleNamespace(
-        id=None,
+def extension_data() -> APIBasedExtension:
+    """Create a mutable extension object for service tests."""
+    extension = APIBasedExtension(
         tenant_id="tenant-1",
         name="My Extension",
         api_endpoint="https://example.com/api",
         api_key="plain-key",
     )
+    # Keep empty id by default so validation follows the "new extension" branch.
+    extension.id = ""
+    return extension
 
 
 class TestAPIBasedExtensionService:
@@ -26,8 +28,18 @@ class TestAPIBasedExtensionService:
     def test_get_all_by_tenant_id_should_return_decrypted_extensions(self) -> None:
         """Test extension list is decrypted before returning."""
         # Arrange
-        extension1 = SimpleNamespace(tenant_id="tenant-1", api_key="enc-1")
-        extension2 = SimpleNamespace(tenant_id="tenant-1", api_key="enc-2")
+        extension1 = APIBasedExtension(
+            tenant_id="tenant-1",
+            name="Extension 1",
+            api_endpoint="https://example.com/1",
+            api_key="enc-1",
+        )
+        extension2 = APIBasedExtension(
+            tenant_id="tenant-1",
+            name="Extension 2",
+            api_endpoint="https://example.com/2",
+            api_key="enc-2",
+        )
 
         with (
             patch("services.api_based_extension_service.db") as mock_db,
@@ -48,7 +60,7 @@ class TestAPIBasedExtensionService:
             assert extension1.api_key == "plain-1"
             assert extension2.api_key == "plain-2"
 
-    def test_save_should_validate_encrypt_and_persist(self, extension_data: SimpleNamespace) -> None:
+    def test_save_should_validate_encrypt_and_persist(self, extension_data: APIBasedExtension) -> None:
         """Test save validates input, encrypts api key, and commits."""
         # Arrange
         with (
@@ -67,7 +79,7 @@ class TestAPIBasedExtensionService:
             mock_db.session.add.assert_called_once_with(extension_data)
             mock_db.session.commit.assert_called_once()
 
-    def test_delete_should_remove_extension_and_commit(self, extension_data: SimpleNamespace) -> None:
+    def test_delete_should_remove_extension_and_commit(self, extension_data: APIBasedExtension) -> None:
         """Test delete removes extension and commits transaction."""
         # Arrange
         with patch("services.api_based_extension_service.db") as mock_db:
@@ -94,7 +106,12 @@ class TestAPIBasedExtensionService:
     def test_get_with_tenant_id_should_return_decrypted_extension(self) -> None:
         """Test get_with_tenant_id decrypts and returns extension."""
         # Arrange
-        extension = SimpleNamespace(tenant_id="tenant-1", api_key="enc-key")
+        extension = APIBasedExtension(
+            tenant_id="tenant-1",
+            name="Extension",
+            api_endpoint="https://example.com",
+            api_key="enc-key",
+        )
 
         with (
             patch("services.api_based_extension_service.db") as mock_db,
@@ -113,7 +130,7 @@ class TestAPIBasedExtensionService:
             assert result.api_key == "plain-key"
             mock_decrypt.assert_called_once_with("tenant-1", "enc-key")
 
-    def test_validation_should_raise_when_name_empty(self, extension_data: SimpleNamespace) -> None:
+    def test_validation_should_raise_when_name_empty(self, extension_data: APIBasedExtension) -> None:
         """Test validation rejects empty name."""
         # Arrange
         extension_data.name = ""
@@ -122,10 +139,10 @@ class TestAPIBasedExtensionService:
         with pytest.raises(ValueError, match="name must not be empty"):
             APIBasedExtensionService._validation(extension_data)
 
-    def test_validation_should_raise_when_new_name_is_duplicated(self, extension_data: SimpleNamespace) -> None:
+    def test_validation_should_raise_when_new_name_is_duplicated(self, extension_data: APIBasedExtension) -> None:
         """Test validation rejects duplicated name for new extension."""
         # Arrange
-        extension_data.id = None
+        extension_data.id = ""
 
         with patch("services.api_based_extension_service.db") as mock_db:
             query = MagicMock()
@@ -137,7 +154,7 @@ class TestAPIBasedExtensionService:
             with pytest.raises(ValueError, match="already existed"):
                 APIBasedExtensionService._validation(extension_data)
 
-    def test_validation_should_raise_when_existing_name_is_duplicated(self, extension_data: SimpleNamespace) -> None:
+    def test_validation_should_raise_when_existing_name_is_duplicated(self, extension_data: APIBasedExtension) -> None:
         """Test validation rejects duplicated name for existing extension."""
         # Arrange
         extension_data.id = "ext-1"
@@ -162,7 +179,7 @@ class TestAPIBasedExtensionService:
     )
     def test_validation_should_raise_when_required_field_missing(
         self,
-        extension_data: SimpleNamespace,
+        extension_data: APIBasedExtension,
         field: str,
         value: str,
         message: str,
@@ -181,7 +198,7 @@ class TestAPIBasedExtensionService:
             with pytest.raises(ValueError, match=message):
                 APIBasedExtensionService._validation(extension_data)
 
-    def test_validation_should_raise_when_api_key_too_short(self, extension_data: SimpleNamespace) -> None:
+    def test_validation_should_raise_when_api_key_too_short(self, extension_data: APIBasedExtension) -> None:
         """Test validation rejects short api keys."""
         # Arrange
         extension_data.api_key = "1234"
@@ -196,7 +213,7 @@ class TestAPIBasedExtensionService:
             with pytest.raises(ValueError, match="at least 5"):
                 APIBasedExtensionService._validation(extension_data)
 
-    def test_validation_should_call_ping_when_data_is_valid(self, extension_data: SimpleNamespace) -> None:
+    def test_validation_should_call_ping_when_data_is_valid(self, extension_data: APIBasedExtension) -> None:
         """Test validation delegates endpoint verification for valid payloads."""
         # Arrange
         with (
@@ -214,7 +231,7 @@ class TestAPIBasedExtensionService:
             # Assert
             mock_ping.assert_called_once_with(extension_data)
 
-    def test_ping_connection_should_succeed_on_pong_response(self, extension_data: SimpleNamespace) -> None:
+    def test_ping_connection_should_succeed_on_pong_response(self, extension_data: APIBasedExtension) -> None:
         """Test ping connection succeeds when endpoint returns pong."""
         # Arrange
         with patch("services.api_based_extension_service.APIBasedExtensionRequestor") as mock_requestor:
@@ -227,7 +244,7 @@ class TestAPIBasedExtensionService:
             # Assert
             client.request.assert_called_once()
 
-    def test_ping_connection_should_raise_when_response_not_pong(self, extension_data: SimpleNamespace) -> None:
+    def test_ping_connection_should_raise_when_response_not_pong(self, extension_data: APIBasedExtension) -> None:
         """Test ping connection wraps non-pong responses into connection error."""
         # Arrange
         with patch("services.api_based_extension_service.APIBasedExtensionRequestor") as mock_requestor:
@@ -238,7 +255,7 @@ class TestAPIBasedExtensionService:
             with pytest.raises(ValueError, match="connection error"):
                 APIBasedExtensionService._ping_connection(extension_data)
 
-    def test_ping_connection_should_raise_when_requestor_errors(self, extension_data: SimpleNamespace) -> None:
+    def test_ping_connection_should_raise_when_requestor_errors(self, extension_data: APIBasedExtension) -> None:
         """Test ping connection wraps request exceptions."""
         # Arrange
         with patch("services.api_based_extension_service.APIBasedExtensionRequestor") as mock_requestor:

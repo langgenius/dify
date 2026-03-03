@@ -4,6 +4,7 @@ Unit tests for services.annotation_service
 
 from io import BytesIO
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -949,7 +950,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "Invalid CSV format" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "Invalid CSV format" in error_msg
 
     def test_batch_import_app_annotations_should_return_error_when_file_empty(self) -> None:
         """Test empty file returns validation error before CSV parsing."""
@@ -975,7 +977,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "empty or invalid" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "empty or invalid" in error_msg
 
     def test_batch_import_app_annotations_should_return_error_when_min_records_not_met(self) -> None:
         """Test min records validation returns error message."""
@@ -1005,7 +1008,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "at least" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "at least" in error_msg
 
     def test_batch_import_app_annotations_should_return_error_when_row_limit_exceeded(self) -> None:
         """Test row count over max limit returns explicit error."""
@@ -1033,7 +1037,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "too many records" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "too many records" in error_msg
 
     def test_batch_import_app_annotations_should_skip_malformed_rows_and_fail_min_records(self) -> None:
         """Test malformed row extraction is skipped and can fail min record validation."""
@@ -1065,7 +1070,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "at least" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "at least" in error_msg
 
     def test_batch_import_app_annotations_should_skip_nan_rows_and_fail_min_records(self) -> None:
         """Test NaN rows are skipped by validation and reported via min record check."""
@@ -1093,7 +1099,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "at least" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "at least" in error_msg
 
     def test_batch_import_app_annotations_should_return_error_when_question_too_long(self) -> None:
         """Test oversized question is rejected with row context."""
@@ -1121,7 +1128,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "Question at row" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "Question at row" in error_msg
 
     def test_batch_import_app_annotations_should_return_error_when_answer_too_long(self) -> None:
         """Test oversized answer is rejected with row context."""
@@ -1149,7 +1157,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "Answer at row" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "Answer at row" in error_msg
 
     def test_batch_import_app_annotations_should_return_error_when_quota_exceeded(self) -> None:
         """Test quota validation returns error message."""
@@ -1182,7 +1191,8 @@ class TestAppAnnotationServiceBatchImport:
             result = AppAnnotationService.batch_import_app_annotations(app.id, file)
 
             # Assert
-            assert "exceeds the limit" in result["error_msg"]
+            error_msg = cast(str, result["error_msg"])
+            assert "exceeds the limit" in error_msg
 
     def test_batch_import_app_annotations_should_enqueue_job_when_valid(self) -> None:
         """Test successful batch import enqueues job and returns status."""
@@ -1425,8 +1435,9 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
             # Assert
             assert result["enabled"] is True
-            assert result["embedding_model"]["embedding_provider_name"] == "provider-a"
-            assert result["embedding_model"]["embedding_model_name"] == "model-a"
+            embedding_model = cast(dict[str, Any], result["embedding_model"])
+            assert embedding_model["embedding_provider_name"] == "provider-a"
+            assert embedding_model["embedding_model_name"] == "model-a"
 
     def test_get_app_annotation_setting_by_app_id_should_raise_not_found_when_app_missing(self) -> None:
         """Test missing app raises NotFound."""
@@ -1530,7 +1541,8 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             # Assert
             assert result["enabled"] is True
             assert result["score_threshold"] == 0.8
-            assert result["embedding_model"]["embedding_provider_name"] == "provider-a"
+            embedding_model = cast(dict[str, Any], result["embedding_model"])
+            assert embedding_model["embedding_provider_name"] == "provider-a"
             mock_db.session.add.assert_called_once_with(setting)
             mock_db.session.commit.assert_called_once()
 

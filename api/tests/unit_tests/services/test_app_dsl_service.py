@@ -2,6 +2,7 @@
 
 import base64
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -9,7 +10,9 @@ import pytest
 import yaml
 
 from core.plugin.entities.plugin import PluginDependency
-from models.model import AppMode, IconType
+from models import Account, Tenant
+from models.model import App, AppMode, IconType
+from models.workflow import Workflow
 from services.app_dsl_service import (
     CURRENT_DSL_VERSION,
     IMPORT_INFO_REDIS_KEY_PREFIX,
@@ -24,13 +27,18 @@ from services.app_dsl_service import (
 @pytest.fixture
 def service() -> AppDslService:
     """Provide AppDslService with a mocked session."""
-    return AppDslService(session=MagicMock())
+    return AppDslService(session=cast(Any, MagicMock()))
 
 
 @pytest.fixture
-def account() -> SimpleNamespace:
-    """Create account-like object with tenant context."""
-    return SimpleNamespace(id="acc-1", current_tenant_id="tenant-1")
+def account() -> Account:
+    """Create Account with tenant context."""
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    result = Account(name="Tester", email="tester@example.com")
+    result.id = "acc-1"
+    result._current_tenant = tenant
+    return result
 
 
 def _build_yaml_content(version: str = CURRENT_DSL_VERSION, mode: str = AppMode.CHAT.value) -> str:
@@ -87,7 +95,7 @@ class TestImportApp:
     def test_import_app_should_raise_when_import_mode_invalid(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test invalid import mode raises ValueError."""
         # Arrange
@@ -99,7 +107,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_yaml_url_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test yaml-url mode fails without yaml_url."""
         # Arrange
@@ -114,7 +122,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_yaml_content_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test yaml-content mode fails without yaml_content."""
         # Arrange
@@ -129,7 +137,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_fetching_yaml_url_errors(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test URL fetch errors are wrapped into failed import result."""
         # Arrange
@@ -148,7 +156,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_url_content_empty(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test empty URL content is rejected."""
         # Arrange
@@ -171,7 +179,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_url_content_exceeds_max_size(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test URL content larger than max size is rejected."""
         # Arrange
@@ -194,7 +202,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_yaml_is_not_mapping(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test non-mapping YAML content fails validation."""
         # Arrange
@@ -213,7 +221,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_app_data_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test YAML without app section returns failure."""
         # Arrange
@@ -233,7 +241,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_app_to_overwrite_not_found(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test overwrite import fails when app_id does not exist."""
         # Arrange
@@ -255,7 +263,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_overwriting_unsupported_mode(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test overwrite import fails for non-workflow/non-advanced-chat apps."""
         # Arrange
@@ -277,7 +285,7 @@ class TestImportApp:
     def test_import_app_should_return_pending_and_store_data_for_newer_version(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test newer DSL versions store pending import metadata in Redis."""
         # Arrange
@@ -300,7 +308,7 @@ class TestImportApp:
     def test_import_app_should_create_app_with_explicit_dependencies(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test dependencies list from YAML is validated and passed to app creation."""
         # Arrange
@@ -339,7 +347,7 @@ class TestImportApp:
     def test_import_app_should_generate_dependencies_from_workflow_for_legacy_versions(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test legacy workflow DSL uses graph extraction for dependency generation."""
         # Arrange
@@ -375,7 +383,7 @@ class TestImportApp:
     def test_import_app_should_generate_dependencies_from_model_config_for_legacy_versions(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test legacy non-workflow DSL uses model config dependency extraction."""
         # Arrange
@@ -411,7 +419,7 @@ class TestImportApp:
     def test_import_app_should_fail_on_yaml_error(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test YAML parser errors are returned as failed import."""
         # Arrange
@@ -430,7 +438,7 @@ class TestImportApp:
     def test_import_app_should_fail_when_version_type_invalid(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test non-string version type is rejected."""
         # Arrange
@@ -456,7 +464,7 @@ class TestImportApp:
     def test_import_app_should_default_missing_version_and_kind(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test missing version/kind are defaulted and import proceeds."""
         # Arrange
@@ -493,7 +501,7 @@ class TestConfirmImport:
     def test_confirm_import_should_fail_when_pending_data_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test confirm_import fails when Redis pending data is missing."""
         # Arrange
@@ -510,7 +518,7 @@ class TestConfirmImport:
     def test_confirm_import_should_fail_when_pending_data_type_invalid(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test confirm_import rejects non-string/bytes pending data."""
         # Arrange
@@ -527,7 +535,7 @@ class TestConfirmImport:
     def test_confirm_import_should_create_app_and_cleanup_pending_data(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test confirm_import loads pending payload, creates app, and deletes Redis key."""
         # Arrange
@@ -558,7 +566,7 @@ class TestConfirmImport:
     def test_confirm_import_should_lookup_existing_app_when_pending_has_app_id(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test confirm_import loads existing app when pending payload contains app_id."""
         # Arrange
@@ -590,7 +598,7 @@ class TestConfirmImport:
     def test_confirm_import_should_fail_when_exception_raised(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test confirm_import wraps runtime errors into failed status."""
         # Arrange
@@ -617,7 +625,7 @@ class TestDependencyChecks:
     def test_check_dependencies_should_return_empty_when_no_pending_data(self, service: AppDslService) -> None:
         """Test check_dependencies returns empty result when cache key is absent."""
         # Arrange
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
         with patch("services.app_dsl_service.redis_client") as mock_redis:
             mock_redis.get.return_value = None
 
@@ -633,7 +641,7 @@ class TestDependencyChecks:
         dependency = PluginDependency.model_validate(
             {"type": "package", "value": {"plugin_unique_identifier": "a/b", "version": "1.0.0"}}
         )
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
         pending_data = SimpleNamespace(dependencies=[dependency])
 
         with (
@@ -663,7 +671,7 @@ class TestCreateOrUpdateApp:
     def test_create_or_update_app_should_raise_when_app_mode_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test missing app.mode raises ValueError."""
         # Arrange
@@ -677,7 +685,9 @@ class TestCreateOrUpdateApp:
         """Test new app creation requires current tenant id."""
         # Arrange
         data = {"app": {"mode": AppMode.CHAT.value}}
-        account = SimpleNamespace(id="acc-1", current_tenant_id=None)
+        account = Account(name="Tester", email="tester@example.com")
+        account.id = "acc-1"
+        account._current_tenant = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="Current tenant is not set"):
@@ -686,20 +696,21 @@ class TestCreateOrUpdateApp:
     def test_create_or_update_app_should_raise_when_workflow_data_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test workflow modes require workflow data."""
         # Arrange
         data = {"app": {"mode": AppMode.WORKFLOW.value}}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Missing workflow data"):
-            service._create_or_update_app(app=None, data=data, account=account)
+        with patch("services.app_dsl_service.app_was_created"):
+            with pytest.raises(ValueError, match="Missing workflow data"):
+                service._create_or_update_app(app=None, data=data, account=account)
 
     def test_create_or_update_app_should_create_workflow_app_and_sync_draft(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test workflow app creation decrypts dataset ids and syncs draft workflow."""
         # Arrange
@@ -770,20 +781,21 @@ class TestCreateOrUpdateApp:
             mock_redis.setex.assert_called_once()
             mock_created_event.send.assert_called_once()
 
-    def test_create_or_update_app_should_update_existing_app(
-        self, service: AppDslService, account: SimpleNamespace
-    ) -> None:
+    def test_create_or_update_app_should_update_existing_app(self, service: AppDslService, account: Account) -> None:
         """Test existing app is updated in-place with provided app overrides."""
         # Arrange
-        app = SimpleNamespace(
-            id="app-1",
-            name="old",
-            description="old",
-            icon_type="emoji",
-            icon="x",
-            icon_background="#000",
-            mode=AppMode.CHAT.value,
-            app_model_config=SimpleNamespace(id="cfg-1"),
+        app = cast(
+            App,
+            SimpleNamespace(
+                id="app-1",
+                name="old",
+                description="old",
+                icon_type="emoji",
+                icon="x",
+                icon_background="#000",
+                mode=AppMode.CHAT.value,
+                app_model_config=SimpleNamespace(id="cfg-1"),
+            ),
         )
         data = {
             "app": {"mode": AppMode.CHAT.value, "name": "new", "description": "new desc"},
@@ -808,7 +820,7 @@ class TestCreateOrUpdateApp:
     def test_create_or_update_app_should_use_none_unique_hash_when_draft_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test workflow sync uses None unique_hash when no current draft is present."""
         # Arrange
@@ -839,20 +851,21 @@ class TestCreateOrUpdateApp:
     def test_create_or_update_app_should_raise_when_model_config_missing_for_chat_modes(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test chat modes require model_config in payload."""
         # Arrange
         data = {"app": {"mode": AppMode.CHAT.value}}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Missing model_config"):
-            service._create_or_update_app(app=None, data=data, account=account)
+        with patch("services.app_dsl_service.app_was_created"):
+            with pytest.raises(ValueError, match="Missing model_config"):
+                service._create_or_update_app(app=None, data=data, account=account)
 
     def test_create_or_update_app_should_create_app_model_config_when_missing(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test chat app creation initializes app model config when absent."""
         # Arrange
@@ -870,21 +883,22 @@ class TestCreateOrUpdateApp:
 
             # Assert
             assert app.app_model_config_id == model_config_instance.id
-            service._session.add.assert_any_call(model_config_instance)
+            cast(MagicMock, service._session).add.assert_any_call(model_config_instance)
             mock_updated_event.send.assert_called_once_with(app, app_model_config=model_config_instance)
 
     def test_create_or_update_app_should_raise_for_unsupported_app_mode(
         self,
         service: AppDslService,
-        account: SimpleNamespace,
+        account: Account,
     ) -> None:
         """Test unsupported app modes raise ValueError."""
         # Arrange
         data = {"app": {"mode": AppMode.CHANNEL.value}}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Invalid app mode"):
-            service._create_or_update_app(app=None, data=data, account=account)
+        with patch("services.app_dsl_service.app_was_created"):
+            with pytest.raises(ValueError, match="Invalid app mode"):
+                service._create_or_update_app(app=None, data=data, account=account)
 
 
 class TestExportAndDependencies:
@@ -893,14 +907,17 @@ class TestExportAndDependencies:
     def test_export_dsl_should_delegate_to_workflow_export_for_workflow_modes(self) -> None:
         """Test export_dsl delegates to workflow exporter for workflow apps."""
         # Arrange
-        app_model = SimpleNamespace(
-            mode=AppMode.WORKFLOW.value,
-            name="App",
-            icon_type="emoji",
-            icon_background="#fff",
-            description="desc",
-            use_icon_as_answer_icon=False,
-            tenant_id="tenant-1",
+        app_model = cast(
+            App,
+            SimpleNamespace(
+                mode=AppMode.WORKFLOW.value,
+                name="App",
+                icon_type="emoji",
+                icon_background="#fff",
+                description="desc",
+                use_icon_as_answer_icon=False,
+                tenant_id="tenant-1",
+            ),
         )
 
         with patch.object(AppDslService, "_append_workflow_export_data") as mock_append_workflow:
@@ -914,14 +931,17 @@ class TestExportAndDependencies:
     def test_export_dsl_should_delegate_to_model_config_export_for_chat_modes(self) -> None:
         """Test export_dsl delegates to model config exporter for chat apps."""
         # Arrange
-        app_model = SimpleNamespace(
-            mode=AppMode.CHAT.value,
-            name="App",
-            icon_type="emoji",
-            icon_background="#fff",
-            description="desc",
-            use_icon_as_answer_icon=False,
-            tenant_id="tenant-1",
+        app_model = cast(
+            App,
+            SimpleNamespace(
+                mode=AppMode.CHAT.value,
+                name="App",
+                icon_type="emoji",
+                icon_background="#fff",
+                description="desc",
+                use_icon_as_answer_icon=False,
+                tenant_id="tenant-1",
+            ),
         )
 
         with patch.object(AppDslService, "_append_model_config_export_data") as mock_append_model_config:
@@ -935,7 +955,7 @@ class TestExportAndDependencies:
     def test_append_workflow_export_data_should_raise_when_draft_workflow_missing(self) -> None:
         """Test workflow export requires draft workflow."""
         # Arrange
-        app_model = SimpleNamespace(tenant_id="tenant-1")
+        app_model = cast(App, SimpleNamespace(tenant_id="tenant-1"))
 
         with patch("services.app_dsl_service.WorkflowService") as mock_workflow_service:
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -947,7 +967,7 @@ class TestExportAndDependencies:
     def test_append_workflow_export_data_should_transform_nodes_and_append_dependencies(self) -> None:
         """Test workflow export filters workspace-specific fields and appends dependencies."""
         # Arrange
-        app_model = SimpleNamespace(tenant_id="tenant-1")
+        app_model = cast(App, SimpleNamespace(tenant_id="tenant-1"))
         workflow_dict = {
             "graph": {
                 "nodes": [
@@ -966,7 +986,7 @@ class TestExportAndDependencies:
                 ]
             }
         }
-        workflow = SimpleNamespace(to_dict=lambda include_secret: workflow_dict)
+        workflow = cast(Workflow, SimpleNamespace(to_dict=lambda include_secret: workflow_dict))
 
         export_data: dict = {}
 
@@ -1002,7 +1022,7 @@ class TestExportAndDependencies:
     def test_append_model_config_export_data_should_raise_when_model_config_missing(self) -> None:
         """Test model-config export requires app model config."""
         # Arrange
-        app_model = SimpleNamespace(app_model_config=None)
+        app_model = cast(App, SimpleNamespace(app_model_config=None))
 
         # Act & Assert
         with pytest.raises(ValueError, match="Missing app configuration"):
@@ -1013,7 +1033,7 @@ class TestExportAndDependencies:
         # Arrange
         model_config_payload = {"agent_mode": {"tools": [{"provider_id": "p1", "credential_id": "cred"}]}}
         app_model_config = SimpleNamespace(to_dict=lambda: model_config_payload)
-        app_model = SimpleNamespace(app_model_config=app_model_config, tenant_id="tenant-1")
+        app_model = cast(App, SimpleNamespace(app_model_config=app_model_config, tenant_id="tenant-1"))
         export_data: dict = {}
 
         with (
@@ -1033,7 +1053,7 @@ class TestExportAndDependencies:
     def test_extract_dependencies_from_workflow_should_delegate_to_graph_extractor(self) -> None:
         """Test workflow dependency extraction delegates to graph extractor."""
         # Arrange
-        workflow = SimpleNamespace(graph_dict={"nodes": []})
+        workflow = cast(Workflow, SimpleNamespace(graph_dict={"nodes": []}))
 
         with patch.object(AppDslService, "_extract_dependencies_from_workflow_graph", return_value=["a/b"]):
             # Act
@@ -1208,7 +1228,11 @@ class TestExportAndDependencies:
     def test_get_leaked_dependencies_should_delegate_when_dependencies_exist(self) -> None:
         """Test get_leaked_dependencies delegates to dependency analysis service."""
         # Arrange
-        dependencies = [SimpleNamespace(plugin_unique_identifier="a/b:1.0.0")]
+        dependencies = [
+            PluginDependency.model_validate(
+                {"type": "package", "value": {"plugin_unique_identifier": "a/b", "version": "1.0.0"}}
+            )
+        ]
         with patch(
             "services.app_dsl_service.DependenciesAnalysisService.get_leaked_dependencies",
             return_value=dependencies,

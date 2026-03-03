@@ -2,13 +2,14 @@
 
 import json
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.errors.error import ProviderTokenNotInitError
-from models import Account
-from models.model import AppMode
+from models import Account, Tenant
+from models.model import App, AppMode
 from services.app_service import AppService
 
 
@@ -19,9 +20,14 @@ def service() -> AppService:
 
 
 @pytest.fixture
-def account() -> SimpleNamespace:
-    """Create account-like object for create_app tests."""
-    return SimpleNamespace(id="acc-1", current_tenant_id="tenant-1")
+def account() -> Account:
+    """Create account object for create_app tests."""
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    result = Account(name="Account User", email="account@example.com")
+    result.id = "acc-1"
+    result._current_tenant = tenant
+    return result
 
 
 @pytest.fixture
@@ -56,7 +62,9 @@ def app_template() -> dict:
 def _make_current_user() -> Account:
     user = Account(name="Tester", email="tester@example.com")
     user.id = "user-1"
-    user._current_tenant = SimpleNamespace(id="tenant-1")
+    tenant = Tenant(name="Tenant")
+    tenant.id = "tenant-1"
+    user._current_tenant = tenant
     return user
 
 
@@ -109,7 +117,7 @@ class TestAppServiceCreate:
     def test_create_app_should_create_with_matching_default_model(
         self,
         service: AppService,
-        account: SimpleNamespace,
+        account: Account,
         default_args: dict,
         app_template: dict,
     ) -> None:
@@ -156,7 +164,7 @@ class TestAppServiceCreate:
     def test_create_app_should_raise_when_model_schema_missing(
         self,
         service: AppService,
-        account: SimpleNamespace,
+        account: Account,
         default_args: dict,
         app_template: dict,
     ) -> None:
@@ -188,7 +196,7 @@ class TestAppServiceCreate:
     def test_create_app_should_fallback_to_default_provider_when_model_missing(
         self,
         service: AppService,
-        account: SimpleNamespace,
+        account: Account,
         default_args: dict,
         app_template: dict,
     ) -> None:
@@ -226,7 +234,7 @@ class TestAppServiceCreate:
     def test_create_app_should_log_and_fallback_on_unexpected_model_error(
         self,
         service: AppService,
-        account: SimpleNamespace,
+        account: Account,
         default_args: dict,
         app_template: dict,
     ) -> None:
@@ -364,14 +372,17 @@ class TestAppServiceGetAndUpdate:
     def test_update_methods_should_mutate_app_and_commit(self, service: AppService) -> None:
         """Test update methods set fields and commit changes."""
         # Arrange
-        app = SimpleNamespace(
-            name="old",
-            description="old",
-            icon_type="emoji",
-            icon="a",
-            icon_background="#111",
-            enable_site=True,
-            enable_api=True,
+        app = cast(
+            App,
+            SimpleNamespace(
+                name="old",
+                description="old",
+                icon_type="emoji",
+                icon="a",
+                icon_background="#111",
+                enable_site=True,
+                enable_api=True,
+            ),
         )
         args = {
             "name": "new",
@@ -415,7 +426,7 @@ class TestAppServiceDeleteAndMeta:
     def test_delete_app_should_cleanup_and_enqueue_task(self, service: AppService) -> None:
         """Test delete_app removes app, runs cleanup, and triggers async deletion task."""
         # Arrange
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
 
         with (
             patch("services.app_service.db") as mock_db,
@@ -466,13 +477,16 @@ class TestAppServiceDeleteAndMeta:
                 ]
             }
         )
-        app = SimpleNamespace(
-            mode=AppMode.WORKFLOW.value,
-            workflow=workflow,
-            app_model_config=None,
-            tenant_id="tenant-1",
-            icon_type="emoji",
-            icon_background="#fff",
+        app = cast(
+            App,
+            SimpleNamespace(
+                mode=AppMode.WORKFLOW.value,
+                workflow=workflow,
+                app_model_config=None,
+                tenant_id="tenant-1",
+                icon_type="emoji",
+                icon_background="#fff",
+            ),
         )
 
         provider = SimpleNamespace(icon=json.dumps({"background": "#000", "content": "A"}))
@@ -501,7 +515,7 @@ class TestAppServiceDeleteAndMeta:
                 "tools": [{"provider_type": "api", "provider_id": "x", "tool_name": "t", "tool_parameters": {}}]
             }
         )
-        app = SimpleNamespace(mode=AppMode.CHAT.value, app_model_config=app_model_config, workflow=None)
+        app = cast(App, SimpleNamespace(mode=AppMode.CHAT.value, app_model_config=app_model_config, workflow=None))
 
         with (
             patch("services.app_service.dify_config", new=SimpleNamespace(CONSOLE_API_URL="https://console.example")),
@@ -521,8 +535,8 @@ class TestAppServiceDeleteAndMeta:
     def test_get_app_meta_should_return_empty_when_required_data_missing(self, service: AppService) -> None:
         """Test get_app_meta returns empty metadata when workflow/model config is absent."""
         # Arrange
-        workflow_app = SimpleNamespace(mode=AppMode.WORKFLOW.value, workflow=None)
-        chat_app = SimpleNamespace(mode=AppMode.CHAT.value, app_model_config=None)
+        workflow_app = cast(App, SimpleNamespace(mode=AppMode.WORKFLOW.value, workflow=None))
+        chat_app = cast(App, SimpleNamespace(mode=AppMode.CHAT.value, app_model_config=None))
 
         # Act
         workflow_meta = service.get_app_meta(workflow_app)
