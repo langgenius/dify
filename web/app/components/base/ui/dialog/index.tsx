@@ -16,6 +16,23 @@ export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
 export const DialogClose = BaseDialog.Close
+export const DialogPortal = BaseDialog.Portal
+
+type DialogCloseButtonProps = {
+  className?: string
+  ariaLabel?: string
+}
+
+export function DialogCloseButton({
+  className,
+  ariaLabel = 'Close',
+}: DialogCloseButtonProps) {
+  return (
+    <BaseDialog.Close aria-label={ariaLabel} className={cn('absolute right-6 top-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover', className)}>
+      <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+    </BaseDialog.Close>
+  )
+}
 
 type DialogContentProps = {
   children: React.ReactNode
@@ -31,7 +48,7 @@ export function DialogContent({
   closable = false,
 }: DialogContentProps) {
   return (
-    <BaseDialog.Portal>
+    <DialogPortal>
       <BaseDialog.Backdrop
         className={cn(
           'fixed inset-0 z-50 bg-background-overlay',
@@ -46,13 +63,9 @@ export function DialogContent({
           className,
         )}
       >
-        {closable && (
-          <BaseDialog.Close aria-label="Close" className="absolute right-6 top-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover">
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-          </BaseDialog.Close>
-        )}
+        {closable && <DialogCloseButton />}
         {children}
       </BaseDialog.Popup>
-    </BaseDialog.Portal>
+    </DialogPortal>
   )
 }

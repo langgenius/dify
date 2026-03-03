@@ -70,7 +70,6 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
             onClick={handleTriggerClick}
           />
         )}
-        popupClassName="z-[1200]"
       />
     </div>
   )

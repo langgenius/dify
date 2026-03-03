@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest'
 import {
   Dialog,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogPortal,
   DialogTitle,
   DialogTrigger,
 } from '../index'
@@ -56,6 +58,19 @@ describe('Dialog wrapper', () => {
       expect(dialog).toContainElement(closeButton)
       expect(closeButton).toHaveAttribute('aria-label', 'Close')
     })
+
+    it('should render explicit close button with custom label', () => {
+      render(
+        <Dialog open>
+          <DialogContent>
+            <DialogCloseButton ariaLabel="Dismiss dialog" />
+            <span>Dialog body</span>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
+    })
   })
 
   describe('Exports', () => {
@@ -65,6 +80,7 @@ describe('Dialog wrapper', () => {
       expect(DialogTitle).toBe(BaseDialog.Title)
       expect(DialogDescription).toBe(BaseDialog.Description)
       expect(DialogClose).toBe(BaseDialog.Close)
+      expect(DialogPortal).toBe(BaseDialog.Portal)
     })
   })
 })
