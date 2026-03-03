@@ -4,31 +4,29 @@ import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowOnboardingModal from '../index'
 
-vi.mock('../start-node-selection-panel', () => ({
-  default: function MockStartNodeSelectionPanel({
-    onSelectUserInput,
-    onSelectTrigger,
+vi.mock('@/app/components/workflow/block-selector', () => ({
+  default: function MockNodeSelector({
+    open,
+    onSelect,
+    trigger,
   }: {
-    onSelectUserInput?: () => void
-    onSelectTrigger?: (type: BlockEnum, config?: Record<string, unknown>) => void
+    open?: boolean
+    onSelect: (type: BlockEnum, config?: Record<string, unknown>) => void
+    trigger?: ((open: boolean) => ReactNode) | ReactNode
   }) {
     return (
-      <div data-testid="start-node-selection-panel">
-        <button data-testid="select-user-input" onClick={onSelectUserInput}>
-          Select User Input
-        </button>
-        <button
-          data-testid="select-trigger-schedule"
-          onClick={() => onSelectTrigger?.(BlockEnum.TriggerSchedule)}
-        >
-          Select Trigger Schedule
-        </button>
-        <button
-          data-testid="select-trigger-webhook"
-          onClick={() => onSelectTrigger?.(BlockEnum.TriggerWebhook, { config: 'test' })}
-        >
-          Select Trigger Webhook
-        </button>
+      <div data-testid="mock-node-selector">
+        {typeof trigger === 'function' ? trigger(Boolean(open)) : trigger}
+        {open && (
+          <div>
+            <button data-testid="select-trigger-schedule" onClick={() => onSelect(BlockEnum.TriggerSchedule)}>
+              Select Trigger Schedule
+            </button>
+            <button data-testid="select-trigger-webhook" onClick={() => onSelect(BlockEnum.TriggerWebhook, { config: 'test' })}>
+              Select Trigger Webhook
+            </button>
+          </div>
+        )}
       </div>
     )
   },
@@ -52,6 +50,8 @@ describe('WorkflowOnboardingModal', () => {
     return render(<WorkflowOnboardingModal {...defaultProps} {...props} />)
   }
   const getBackdrop = () => document.body.querySelector('.bg-workflow-canvas-canvas-overlay')
+  const getUserInputHeading = () => screen.getByRole('heading', { name: 'workflow.onboarding.userInputFull' })
+  const getTriggerHeading = () => screen.getByRole('heading', { name: 'workflow.onboarding.trigger' })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -87,7 +87,8 @@ describe('WorkflowOnboardingModal', () => {
     it('should render StartNodeSelectionPanel', () => {
       renderComponent()
 
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
+      expect(getTriggerHeading()).toBeInTheDocument()
     })
 
     it('should render ESC tip when shown', () => {
@@ -151,7 +152,7 @@ describe('WorkflowOnboardingModal', () => {
 
       renderComponent({ onSelectStartNode: customHandler })
 
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
     })
   })
 
@@ -160,7 +161,7 @@ describe('WorkflowOnboardingModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByTestId('select-user-input'))
+      await user.click(getUserInputHeading())
 
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
@@ -170,7 +171,7 @@ describe('WorkflowOnboardingModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByTestId('select-user-input'))
+      await user.click(getUserInputHeading())
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
@@ -179,6 +180,7 @@ describe('WorkflowOnboardingModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-schedule'))
 
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
@@ -189,6 +191,7 @@ describe('WorkflowOnboardingModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-schedule'))
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
@@ -198,6 +201,7 @@ describe('WorkflowOnboardingModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-webhook'))
 
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
@@ -300,7 +304,7 @@ describe('WorkflowOnboardingModal', () => {
       const user = userEvent.setup()
       const { rerender } = renderComponent()
 
-      await user.click(screen.getByTestId('select-user-input'))
+      await user.click(getUserInputHeading())
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
       expect(mockOnClose).toHaveBeenCalledTimes(1)
 
@@ -308,6 +312,7 @@ describe('WorkflowOnboardingModal', () => {
       mockOnSelectStartNode.mockClear()
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} />)
 
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-schedule'))
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerSchedule, undefined)
       expect(mockOnClose).toHaveBeenCalledTimes(1)
@@ -401,9 +406,9 @@ describe('WorkflowOnboardingModal', () => {
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.title')).toBeInTheDocument()
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
 
-      await user.click(screen.getByTestId('select-user-input'))
+      await user.click(getUserInputHeading())
 
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
       expect(mockOnClose).toHaveBeenCalledTimes(1)
@@ -415,6 +420,7 @@ describe('WorkflowOnboardingModal', () => {
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
 
+      await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-webhook'))
 
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
@@ -427,7 +433,7 @@ describe('WorkflowOnboardingModal', () => {
       const dialog = screen.getByRole('dialog')
       expect(dialog).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.title')).toBeInTheDocument()
-      expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()
+      expect(getUserInputHeading()).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.escTip.key')).toBeInTheDocument()
       expect(dialog).not.toContainElement(screen.getByText('workflow.onboarding.escTip.key'))
     })
@@ -442,43 +448,6 @@ describe('WorkflowOnboardingModal', () => {
       mockOnClose.mockClear()
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
       expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Integration - real StartNodeSelectionPanel', () => {
-    it('should call selection and close callbacks when choosing user input from the real panel', async () => {
-      // Arrange
-      vi.resetModules()
-      vi.doUnmock('../start-node-selection-panel')
-      vi.doMock('@/app/components/workflow/block-selector', () => ({
-        default: function MockNodeSelector({ trigger }: { trigger: (() => ReactNode) | ReactNode }) {
-          return (
-            <div data-testid="real-panel-node-selector">
-              {typeof trigger === 'function' ? trigger() : trigger}
-            </div>
-          )
-        },
-      }))
-      const { default: WorkflowOnboardingModalWithRealPanel } = await import('../index')
-      const user = userEvent.setup()
-      const onClose = vi.fn()
-      const onSelectStartNode = vi.fn()
-
-      render(
-        <WorkflowOnboardingModalWithRealPanel
-          isShow={true}
-          onClose={onClose}
-          onSelectStartNode={onSelectStartNode}
-        />,
-      )
-
-      // Act
-      await user.click(screen.getByRole('heading', { name: 'workflow.onboarding.userInputFull' }))
-
-      // Assert
-      expect(onSelectStartNode).toHaveBeenCalledTimes(1)
-      expect(onSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
-      expect(onClose).toHaveBeenCalledTimes(1)
     })
   })
 })
