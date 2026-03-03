@@ -184,6 +184,12 @@ class BaseNodeData(ABC, BaseModel):
             return {item.key: item.value for item in self.default_value}
         return {}
 
+    def __getitem__(self, key: str) -> Any:
+        return self.model_dump()[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.model_dump().get(key, default)
+
 
 class BaseIterationNodeData(BaseNodeData):
     start_node_id: str | None = None

@@ -233,8 +233,10 @@ class Workflow(Base):  # bug
 
     def get_node_config_by_id(self, node_id: str) -> NodeConfigDict:
         """Extract a node configuration from the workflow graph by node ID.
-        A node configuration is a dictionary containing the node's properties, including
-        the node's id, title, and its data as a dict.
+
+        A node configuration includes the node id and a typed `BaseNodeData` for `data`.
+        `BaseNodeData` keeps a dict-like `get`/`__getitem__` compatibility layer via
+        `model_dump()` for legacy consumers, but callers should prefer attribute access.
         """
         workflow_graph = self.graph_dict
 

@@ -14,6 +14,7 @@ from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
@@ -47,6 +48,7 @@ if "core.ops.ops_trace_manager" not in sys.modules:
 
 
 class _StubToolNodeData(BaseNodeData):
+    type: NodeType = NodeType.TOOL
     pause_on: bool = False
 
 
@@ -93,16 +95,17 @@ class _StubToolNode(Node[_StubToolNodeData]):
 def _patch_tool_node(mocker):
     original_create_node = DifyNodeFactory.create_node
 
-    def _patched_create_node(self, node_config: dict[str, object]) -> Node:
-        node_data = node_config.get("data", {})
-        if isinstance(node_data, dict) and node_data.get("type") == NodeType.TOOL.value:
+    def _patched_create_node(self, node_config: dict[str, object] | NodeConfigDict) -> Node:
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        node_data = typed_node_config["data"]
+        if node_data.type == NodeType.TOOL:
             return _StubToolNode(
-                id=str(node_config["id"]),
-                config=node_config,
+                id=str(typed_node_config["id"]),
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
             )
-        return original_create_node(self, node_config)
+        return original_create_node(self, typed_node_config)
 
     mocker.patch.object(DifyNodeFactory, "create_node", _patched_create_node)
 

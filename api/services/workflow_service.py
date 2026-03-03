@@ -16,6 +16,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import ErrorStrategy, UserFrom, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -941,7 +942,7 @@ class WorkflowService:
         if node_type is not NodeType.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
-        node_data = HumanInputNodeData.model_validate(node_config.get("data", {}))
+        node_data = HumanInputNodeData.model_validate(node_config["data"], from_attributes=True)
         delivery_method = self._resolve_human_input_delivery_method(
             node_data=node_data,
             delivery_method_id=delivery_method_id,
@@ -1059,7 +1060,7 @@ class WorkflowService:
         *,
         workflow: Workflow,
         account: Account,
-        node_config: Mapping[str, Any],
+        node_config: NodeConfigDict,
         variable_pool: VariablePool,
     ) -> HumanInputNode:
         graph_init_params = GraphInitParams(
@@ -1077,7 +1078,7 @@ class WorkflowService:
             start_at=time.perf_counter(),
         )
         node = HumanInputNode(
-            id=node_config.get("id", str(uuid.uuid4())),
+            id=node_config["id"],
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
@@ -1089,7 +1090,7 @@ class WorkflowService:
         *,
         app_model: App,
         workflow: Workflow,
-        node_config: Mapping[str, Any],
+        node_config: NodeConfigDict,
         manual_inputs: Mapping[str, Any],
     ) -> VariablePool:
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
