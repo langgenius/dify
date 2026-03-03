@@ -18,8 +18,8 @@ def test_mock_factory_registers_iteration_node():
     """Test that MockNodeFactory has iteration node registered."""
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
 
     # Create a MockNodeFactory instance
     graph_init_params = GraphInitParams(
@@ -67,8 +67,8 @@ def test_mock_iteration_node_preserves_config():
 
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockIterationNode
 
     # Create mock config
@@ -129,8 +129,8 @@ def test_mock_loop_node_preserves_config():
 
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockLoopNode
 
     # Create mock config

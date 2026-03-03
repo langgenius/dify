@@ -33,6 +33,39 @@ class SystemVariableKey(StrEnum):
     INVOKE_FROM = "invoke_from"
 
 
+class UserFrom(StrEnum):
+    ACCOUNT = "account"
+    END_USER = "end-user"
+
+
+class InvokeFrom(StrEnum):
+    SERVICE_API = "service-api"
+    WEB_APP = "web-app"
+    TRIGGER = "trigger"
+    EXPLORE = "explore"
+    DEBUGGER = "debugger"
+    PUBLISHED_PIPELINE = "published"
+    VALIDATION = "validation"
+
+    @classmethod
+    def value_of(cls, value: str) -> "InvokeFrom":
+        return cls(value)
+
+    def to_source(self) -> str:
+        """Get source of invoke from.
+
+        :return: source
+        """
+        source_mapping = {
+            InvokeFrom.WEB_APP: "web_app",
+            InvokeFrom.DEBUGGER: "dev",
+            InvokeFrom.EXPLORE: "explore_app",
+            InvokeFrom.TRIGGER: "trigger",
+            InvokeFrom.SERVICE_API: "api",
+        }
+        return source_mapping.get(self, "dev")
+
+
 class NodeType(StrEnum):
     START = "start"
     END = "end"
