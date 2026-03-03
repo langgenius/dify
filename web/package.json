@@ -237,7 +237,7 @@
     "nock": "14.0.10",
     "postcss": "8.5.6",
     "postcss-js": "5.0.3",
-    "react-scan": "0.4.3",
+    "react-scan": "0.5.3",
     "react-server-dom-webpack": "19.2.4",
     "sass": "1.93.2",
     "serwist": "9.5.4",
