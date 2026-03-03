@@ -4,6 +4,7 @@ from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.tools.entities.tool_entities import ToolProviderType
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base.entities import BaseNodeData
 
 
@@ -32,6 +33,8 @@ class ToolEntity(BaseModel):
 
 
 class ToolNodeData(BaseNodeData, ToolEntity):
+    type: NodeType = NodeType.TOOL
+
     class ToolInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]

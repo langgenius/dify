@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator
 
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
 from dify_graph.utils.condition.entities import Condition
 from dify_graph.variables.types import SegmentType
@@ -39,6 +40,7 @@ class LoopVariableData(BaseModel):
 
 
 class LoopNodeData(BaseLoopNodeData):
+    type: NodeType = NodeType.LOOP
     loop_count: int  # Maximum number of loops
     break_conditions: list[Condition]  # Conditions to break the loop
     logical_operator: Literal["and", "or"]
@@ -58,7 +60,7 @@ class LoopStartNodeData(BaseNodeData):
     Loop Start Node Data.
     """
 
-    pass
+    type: NodeType = NodeType.LOOP_START
 
 
 class LoopEndNodeData(BaseNodeData):
@@ -66,7 +68,7 @@ class LoopEndNodeData(BaseNodeData):
     Loop End Node Data.
     """
 
-    pass
+    type: NodeType = NodeType.LOOP_END
 
 
 class LoopState(BaseLoopState):

@@ -1,6 +1,10 @@
-from core.workflow.entities.base_node import BaseNodeError, DefaultValueTypeError
+class BaseNodeError(ValueError):
+    """Base class for node errors."""
 
-__all__ = [
-    "BaseNodeError",
-    "DefaultValueTypeError",
-]
+    pass
+
+
+class DefaultValueTypeError(BaseNodeError):
+    """Raised when the default value type is invalid."""
+
+    pass

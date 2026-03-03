@@ -7,9 +7,9 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from dify_graph.enums import ErrorStrategy
+from dify_graph.enums import ErrorStrategy, NodeType
 
 from .exc import DefaultValueTypeError
 
@@ -168,12 +168,15 @@ class DefaultValue(BaseModel):
 
 
 class BaseNodeData(ABC, BaseModel):
-    title: str
+    model_config = ConfigDict(extra="allow")
+
+    type: NodeType
+    title: str = ""
     desc: str | None = None
     version: str = "1"
     error_strategy: ErrorStrategy | None = None
     default_value: list[DefaultValue] | None = None
-    retry_config: RetryConfig = RetryConfig()
+    retry_config: RetryConfig = Field(default_factory=RetryConfig)
 
     @property
     def default_value_dict(self) -> dict[str, Any]:

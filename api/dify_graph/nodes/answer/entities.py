@@ -3,6 +3,7 @@ from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
 
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base import BaseNodeData
 
 
@@ -11,6 +12,7 @@ class AnswerNodeData(BaseNodeData):
     Answer Node Data.
     """
 
+    type: NodeType = NodeType.ANSWER
     answer: str = Field(..., description="answer template string")
 
 

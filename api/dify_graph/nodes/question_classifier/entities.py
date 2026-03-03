@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base import BaseNodeData
 from dify_graph.nodes.llm import ModelConfig, VisionConfig
 
@@ -11,6 +12,7 @@ class ClassConfig(BaseModel):
 
 
 class QuestionClassifierNodeData(BaseNodeData):
+    type: NodeType = NodeType.QUESTION_CLASSIFIER
     query_variable_selector: list[str]
     model: ModelConfig
     classes: list[ClassConfig]

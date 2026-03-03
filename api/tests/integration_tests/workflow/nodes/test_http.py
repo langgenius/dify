@@ -189,6 +189,7 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
+    from dify_graph.enums import NodeType
     from dify_graph.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
@@ -209,6 +210,7 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
 
     # Create node data with custom auth and empty api_key
     node_data = HttpRequestNodeData(
+        type=NodeType.HTTP_REQUEST,
         title="http",
         desc="",
         url="http://example.com",

@@ -8,7 +8,7 @@ from typing import Protocol, cast, final
 from pydantic import TypeAdapter
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
+from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState
 from dify_graph.nodes.base.node import Node
 from libs.typing import is_str
 
@@ -115,10 +115,7 @@ class Graph:
         start_node_id = None
         for nid in root_candidates:
             node_data = node_configs_map[nid]["data"]
-            node_type = node_data["type"]
-            if not isinstance(node_type, str):
-                continue
-            if NodeType(node_type).is_start_node:
+            if node_data.type.is_start_node:
                 start_node_id = nid
                 break
 

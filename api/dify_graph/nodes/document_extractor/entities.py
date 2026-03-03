@@ -1,10 +1,12 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base import BaseNodeData
 
 
 class DocumentExtractorNodeData(BaseNodeData):
+    type: NodeType = NodeType.DOCUMENT_EXTRACTOR
     variable_selector: Sequence[str]
 
 

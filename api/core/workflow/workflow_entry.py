@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -11,7 +11,7 @@ from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import UserFrom
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.models import File
@@ -150,7 +150,7 @@ class WorkflowEntry:
         node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data["type"])
+        node_type = node_config_data.type
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -170,8 +170,7 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        typed_node_config = cast(dict[str, object], node_config)
-        node = cast(Any, node_factory).create_node(typed_node_config)
+        node = node_factory.create_node(node_config)
         node_cls = type(node)
 
         try:
@@ -305,10 +304,7 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config: NodeConfigDict = {
-            "id": node_id,
-            "data": cast(NodeConfigData, node_data),
-        }
+        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
