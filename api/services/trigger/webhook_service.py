@@ -1,6 +1,7 @@
 import json
 import logging
 import mimetypes
+import re
 import secrets
 from collections.abc import Mapping
 from typing import Any
@@ -841,8 +842,6 @@ class WebhookService:
         Returns:
             str: Template with all resolvable placeholders substituted.
         """
-        import re
-
         namespace_map: dict[str, dict[str, Any]] = {
             "req_body_params": webhook_data.get("body", {}),
             "body": webhook_data.get("body", {}),
@@ -851,6 +850,9 @@ class WebhookService:
             "req_header_params": webhook_data.get("headers", {}),
             "header_params": webhook_data.get("headers", {}),
         }
+
+        # Detect whether the template is a JSON structure to enable safe escaping.
+        is_json_template = template.strip().startswith(("{", "["))
 
         def _resolve_path(parts: list[str]) -> str | None:
             """Walk parts through namespace_map and return a string value, or None."""
@@ -864,7 +866,8 @@ class WebhookService:
             if value is None:
                 return None
             if isinstance(value, str):
-                return value
+                # Escape string to prevent JSON injection; strip surrounding quotes added by json.dumps.
+                return json.dumps(value, ensure_ascii=False)[1:-1] if is_json_template else value
             try:
                 return json.dumps(value, ensure_ascii=False)
             except (TypeError, ValueError):
@@ -872,7 +875,7 @@ class WebhookService:
 
         def _replace(match: re.Match) -> str:
             expr = match.group(1).strip()
-            # Workflow editor format: {{#nodeId.namespace.key#}} — skip nodeId
+            # Workflow editor format: {{#nodeId.namespace.key#}}: strip leading nodeId before resolving
             if expr.startswith("#") and expr.endswith("#"):
                 parts = expr[1:-1].split(".")
                 resolved = _resolve_path(parts[1:]) if len(parts) >= 3 else None
