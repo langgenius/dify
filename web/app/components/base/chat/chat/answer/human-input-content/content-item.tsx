@@ -45,6 +45,7 @@ const ContentItem = ({
           className="h-[104px] sm:text-xs"
           value={inputs[fieldName]}
           onChange={(e) => { onInputChange(fieldName, e.target.value) }}
+          data-testid="content-item-textarea"
         />
       )}
     </div>

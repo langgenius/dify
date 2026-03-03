@@ -4,11 +4,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
-import {
-  RiArrowRightSLine,
-  RiInformation2Fill,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -82,6 +78,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
 
   return (
     <div
+      data-testid="provider-added-card"
       className={cn(
         'mb-2 rounded-xl border-[0.5px] border-divider-regular bg-third-party-model-bg-default shadow-xs',
         provider.provider === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
@@ -114,7 +111,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         collapsed && (
-          <div className="system-xs-medium group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary">
+          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
             {(showModelProvider || !notConfigured) && (
               <>
                 <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
@@ -123,9 +120,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                       ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
                       : t('modelProvider.showModels', { ns: 'common' })
                   }
-                  {!loading && <RiArrowRightSLine className="h-4 w-4" />}
+                  {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
                 </div>
                 <div
+                  data-testid="show-models-button"
                   className="hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover group-hover:flex"
                   onClick={handleOpenModelList}
                 >
@@ -134,10 +132,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                       ? t('modelProvider.showModelsNum', { ns: 'common', num: modelList.length })
                       : t('modelProvider.showModels', { ns: 'common' })
                   }
-                  {!loading && <RiArrowRightSLine className="h-4 w-4" />}
+                  {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
                   {
                     loading && (
-                      <RiLoader2Line className="ml-0.5 h-3 w-3 animate-spin" />
+                      <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
                     )
                   }
                 </div>
@@ -145,8 +143,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             )}
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
-                <RiInformation2Fill className="mr-1 h-4 w-4 text-text-accent" />
-                <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
+                <div className="i-ri-information-2-fill mr-1 h-4 w-4 text-text-accent" />
+                <span className="text-text-secondary system-xs-medium">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}
             {

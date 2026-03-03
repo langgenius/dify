@@ -41,17 +41,15 @@ class TestOpenSearchConfig:
         assert params["connection_class"].__name__ == "Urllib3HttpConnection"
         assert params["http_auth"] == ("admin", "password")
 
-    @patch("boto3.Session")
-    @patch("core.rag.datasource.vdb.opensearch.opensearch_vector.Urllib3AWSV4SignerAuth")
+    @patch("boto3.Session", autospec=True)
+    @patch("core.rag.datasource.vdb.opensearch.opensearch_vector.Urllib3AWSV4SignerAuth", autospec=True)
     def test_to_opensearch_params_with_aws_managed_iam(
         self, mock_aws_signer_auth: MagicMock, mock_boto_session: MagicMock
     ):
         mock_credentials = MagicMock()
         mock_boto_session.return_value.get_credentials.return_value = mock_credentials
 
-        mock_auth_instance = MagicMock()
-        mock_aws_signer_auth.return_value = mock_auth_instance
-
+        mock_auth_instance = mock_aws_signer_auth.return_value
         aws_region = "ap-southeast-2"
         aws_service = "aoss"
         host = f"aoss-endpoint.{aws_region}.aoss.amazonaws.com"
@@ -157,7 +155,7 @@ class TestOpenSearchVector:
         doc = Document(page_content="Test content", metadata={"document_id": self.example_doc_id})
         embedding = [0.1] * 128
 
-        with patch("opensearchpy.helpers.bulk") as mock_bulk:
+        with patch("opensearchpy.helpers.bulk", autospec=True) as mock_bulk:
             mock_bulk.return_value = ([], [])
             self.vector.add_texts([doc], [embedding])
 
@@ -171,7 +169,7 @@ class TestOpenSearchVector:
         doc = Document(page_content="Test content", metadata={"document_id": self.example_doc_id})
         embedding = [0.1] * 128
 
-        with patch("opensearchpy.helpers.bulk") as mock_bulk:
+        with patch("opensearchpy.helpers.bulk", autospec=True) as mock_bulk:
             mock_bulk.return_value = ([], [])
             self.vector.add_texts([doc], [embedding])
 
