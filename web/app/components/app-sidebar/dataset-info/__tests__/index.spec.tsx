@@ -9,10 +9,10 @@ import {
   DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import Dropdown from './dropdown'
-import DatasetInfo from './index'
-import Menu from './menu'
-import MenuItem from './menu-item'
+import DatasetInfo from '..'
+import Dropdown from '../dropdown'
+import Menu from '../menu'
+import MenuItem from '../menu-item'
 
 let mockDataset: DataSet
 let mockIsDatasetOperator = false

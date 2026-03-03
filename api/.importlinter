@@ -119,9 +119,6 @@ ignore_imports =
     dify_graph.nodes.tool.tool_node -> core.tools.tool_manager
     dify_graph.nodes.agent.agent_node -> core.agent.entities
     dify_graph.nodes.agent.agent_node -> core.agent.plugin_entities
-    dify_graph.nodes.base.node -> core.app.entities.app_invoke_entities
-    dify_graph.nodes.human_input.human_input_node -> core.app.entities.app_invoke_entities
-    dify_graph.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
     dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
@@ -134,7 +131,6 @@ ignore_imports =
     dify_graph.nodes.agent.agent_node -> models.model
     dify_graph.nodes.llm.file_saver -> core.helper.ssrf_proxy
     dify_graph.nodes.llm.node -> core.helper.code_executor
-    dify_graph.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     dify_graph.nodes.llm.node -> core.model_manager
@@ -160,7 +156,6 @@ ignore_imports =
     dify_graph.nodes.human_input.human_input_node -> extensions.ext_database
     dify_graph.nodes.human_input.human_input_node -> core.repositories.human_input_repository
     dify_graph.nodes.agent.agent_node -> models
-    dify_graph.nodes.base.node -> models.enums
     dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.llm.node -> models.model
     dify_graph.nodes.agent.agent_node -> services

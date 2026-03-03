@@ -103,8 +103,8 @@ def test_mock_factory_detection():
     """Test MockNodeFactory node type detection."""
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
 
     print("Testing MockNodeFactory detection...")
 
@@ -156,8 +156,8 @@ def test_mock_factory_registration():
     """Test registering and unregistering mock node types."""
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
 
     print("Testing MockNodeFactory registration...")
 

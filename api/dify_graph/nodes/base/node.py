@@ -11,9 +11,14 @@ from types import MappingProxyType
 from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
-from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import (
+    ErrorStrategy,
+    NodeExecutionType,
+    NodeState,
+    NodeType,
+    WorkflowNodeExecutionStatus,
+)
 from dify_graph.graph_events import (
     GraphNodeEventBase,
     NodeRunAgentLogEvent,
@@ -55,7 +60,6 @@ from dify_graph.node_events import (
 )
 from dify_graph.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
-from models.enums import UserFrom
 
 from .entities import BaseNodeData, RetryConfig
 
@@ -229,8 +233,8 @@ class Node(Generic[NodeDataT]):
         self.workflow_id = graph_init_params.workflow_id
         self.graph_config = graph_init_params.graph_config
         self.user_id = graph_init_params.user_id
-        self.user_from = UserFrom(graph_init_params.user_from)
-        self.invoke_from = InvokeFrom(graph_init_params.invoke_from)
+        self.user_from = graph_init_params.user_from
+        self.invoke_from = graph_init_params.invoke_from
         self.workflow_call_depth = graph_init_params.call_depth
         self.graph_runtime_state = graph_runtime_state
         self.state: NodeState = NodeState.UNKNOWN  # node execution state

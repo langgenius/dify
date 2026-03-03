@@ -7,12 +7,12 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
+from dify_graph.enums import UserFrom
 from dify_graph.graph import Graph
 from dify_graph.graph.validation import GraphValidationError
 from dify_graph.nodes import NodeType
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 
 
 def _build_iteration_graph(node_id: str) -> dict[str, Any]:
