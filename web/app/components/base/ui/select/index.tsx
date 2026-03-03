@@ -26,7 +26,7 @@ export function SelectTrigger({
       )}
       {...props}
     >
-      {children}
+      <span className="grow truncate">{children}</span>
       <BaseSelect.Icon className="ml-1 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" />
       </BaseSelect.Icon>
