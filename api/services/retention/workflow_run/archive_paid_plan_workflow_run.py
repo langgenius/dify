@@ -31,7 +31,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.workflow.enums import WorkflowType
+from dify_graph.enums import WorkflowType
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.archive_storage import (
