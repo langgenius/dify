@@ -48,7 +48,7 @@ class HologresVectorTest(AbstractVectorTest):
 def test_hologres_vector(setup_mock_redis):
     """
     Test Hologres vector database implementation.
-    
+
     This test covers:
     - Creating collection with vector index
     - Adding texts with embeddings
